@@ -38,6 +38,29 @@ böngészőt.
 npm run build
 ```
 
+## Backend API
+
+A külön futtatható Node.js backend SQLite-ban tárolja a GrapesJS projekteket,
+képeket optimalizál, és Playwright segítségével PDF-et generál.
+
+```bash
+npm run server
+# fejlesztéshez:
+npm run server:dev
+# ellenőrzés:
+npm run test:server
+```
+
+Az API alapértelmezés szerint a `http://localhost:3001` címen érhető el.
+`PORT` és `DATA_DIR` környezeti változóval módosítható. Ha az `API_KEY`
+be van állítva, az `/api` végpontokhoz `x-api-key` vagy `Authorization:
+Bearer <kulcs>` fejléc szükséges (a `/api/health` végpont nyilvános).
+
+Végpontok: `GET/POST/PUT/DELETE /api/projects`, `POST /api/uploads`
+(JPEG/PNG/WebP/GIF, alapértelmezetten legfeljebb 5 MB), valamint
+`POST /api/projects/:id/pdf`. A PDF végpont használatához a Playwright
+Chromium böngészőjét is telepíteni kell: `npx playwright install chromium`.
+
 ## Licenc
 
 A projekt MIT licenc alatt érhető el. Részletek a [LICENSE](./LICENSE) fájlban.

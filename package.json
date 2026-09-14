@@ -7,13 +7,30 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "server": "node server/index.js",
+    "server:dev": "node --watch server/index.js",
+    "test:server": "set NODE_ENV=test&& node --test server/*.test.js"
   },
   "devDependencies": {
+    "supertest": "^7.2.2",
     "vite": "^8.3.0"
   },
   "dependencies": {
+    "better-sqlite3": "^12.4.1",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
     "grapesjs": "^0.23.6",
-    "grapesjs-blocks-basic": "^1.0.2"
+    "grapesjs-blocks-basic": "^1.0.2",
+    "grapesjs-custom-code": "^1.0.2",
+    "grapesjs-navbar": "^1.0.2",
+    "grapesjs-plugin-forms": "^2.0.6",
+    "grapesjs-preset-webpage": "^1.0.3",
+    "grapesjs-style-bg": "^2.0.2",
+    "grapesjs-tabs": "^1.0.6",
+    "grapesjs-tooltip": "^0.1.8",
+    "multer": "^2.0.2",
+    "playwright": "^1.55.1",
+    "sharp": "^0.34.3"
   }
 }
