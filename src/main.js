@@ -404,9 +404,17 @@ document.querySelector('#pdf-btn').addEventListener('click', () => {
 
 document.querySelector('#server-pdf-btn').addEventListener('click', async () => {
   if (!currentProjectId) {
-    window.alert('Előbb mentsd el a projektet a szerverre.')
+    window.alert('Előbb mentsd el a projektet a „Szerver mentés” gombbal.')
     return
   }
+
+  const pdfWindow = window.open('', '_blank')
+  if (!pdfWindow) {
+    window.alert('A PDF-ablak megnyitását a böngésző blokkolta. Engedélyezd a felugró ablakokat.')
+    return
+  }
+  pdfWindow.document.title = 'PDF készítése...'
+  pdfWindow.document.body.textContent = 'A PDF készítése folyamatban...'
 
   try {
     const response = await fetch(`${API_BASE}/api/projects/${currentProjectId}/pdf`, {
@@ -421,12 +429,10 @@ document.querySelector('#server-pdf-btn').addEventListener('click', async () => 
 
     const pdfBlob = await response.blob()
     const downloadUrl = URL.createObjectURL(pdfBlob)
-    const downloadLink = document.createElement('a')
-    downloadLink.href = downloadUrl
-    downloadLink.download = 'brossura-szerver.pdf'
-    downloadLink.click()
-    URL.revokeObjectURL(downloadUrl)
+    pdfWindow.location.replace(downloadUrl)
+    window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 60_000)
   } catch (error) {
+    pdfWindow.close()
     console.error('Szerveres PDF-generálás sikertelen:', error)
     window.alert(`Szerveres PDF-generálás sikertelen: ${error.message}`)
   }

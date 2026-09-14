@@ -133,7 +133,7 @@ app.post('/api/projects/:id/pdf', async (req, res, next) => {
     const page = await browser.newPage({ viewport: { width: 1123, height: 794 } });
     await page.setContent(`<!doctype html><html><head><meta charset="utf-8"><style>${css}</style></head><body>${html}</body></html>`, { waitUntil: 'networkidle' });
     const pdf = await page.pdf({ format: 'A4', landscape: true, printBackground: true, margin: { top: '0', right: '0', bottom: '0', left: '0' } });
-    res.type('application/pdf').set('Content-Disposition', `attachment; filename="${row.name.replace(/[^a-z0-9_-]+/gi, '_') || 'project'}.pdf"`).send(pdf);
+    res.type('application/pdf').set('Content-Disposition', `inline; filename="${row.name.replace(/[^a-z0-9_-]+/gi, '_') || 'project'}.pdf"`).send(pdf);
   } catch (error) {
     next(error);
   } finally {
