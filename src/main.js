@@ -10,9 +10,6 @@ import gjsTabs from 'grapesjs-tabs'
 import gjsTooltip from 'grapesjs-tooltip'
 import './style.css'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3001'
-let currentProjectId = null
-
 const editor = grapesjs.init({
   container: '#gjs',
   height: '100%',
@@ -75,8 +72,6 @@ const editor = grapesjs.init({
     ],
   },
   assetManager: {
-    upload: `${API_BASE}/api/uploads`,
-    uploadName: 'file',
     uploadText: 'Húzd ide a fájlokat vagy kattints a tallózáshoz',
     assets: [],
   },
@@ -290,73 +285,6 @@ document.querySelector('#save-project-btn').addEventListener('click', () => {
   URL.revokeObjectURL(downloadUrl)
 })
 
-async function requestJson(path, options = {}) {
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
-  })
-  const payload = await response.json().catch(() => ({}))
-  if (!response.ok) {
-    throw new Error(payload.error || `A szerver hibát adott vissza (${response.status}).`)
-  }
-  return payload
-}
-
-async function saveProjectToServer() {
-  const name = window.prompt('Projekt neve:', 'brossura-projekt')
-  if (!name?.trim()) {
-    return
-  }
-
-  const payload = { name: name.trim(), data: editor.getProjectData() }
-  const project = await requestJson(
-    currentProjectId ? `/api/projects/${currentProjectId}` : '/api/projects',
-    { method: currentProjectId ? 'PUT' : 'POST', body: JSON.stringify(payload) },
-  )
-  currentProjectId = project.id
-  window.alert(`A projekt elmentve a szerveren: ${project.name}`)
-}
-
-async function loadProjectFromServer() {
-  const { projects } = await requestJson('/api/projects')
-  if (!projects.length) {
-    window.alert('Nincs még mentett projekt a szerveren.')
-    return
-  }
-
-  const choices = projects.map((project, index) => `${index + 1}. ${project.name}`).join('\n')
-  const selected = Number.parseInt(window.prompt(`Válaszd ki a projektet:\n${choices}`, '1'), 10)
-  const project = projects[selected - 1]
-  if (!project) {
-    window.alert('Érvénytelen projektválasztás.')
-    return
-  }
-
-  editor.loadProjectData(project.data)
-  currentProjectId = project.id
-}
-
-document.querySelector('#server-save-btn').addEventListener('click', async () => {
-  try {
-    await saveProjectToServer()
-  } catch (error) {
-    console.error('Szerveres mentés sikertelen:', error)
-    window.alert(`Szerveres mentés sikertelen: ${error.message}`)
-  }
-})
-
-document.querySelector('#server-load-btn').addEventListener('click', async () => {
-  try {
-    await loadProjectFromServer()
-  } catch (error) {
-    console.error('Szerveres betöltés sikertelen:', error)
-    window.alert(`Szerveres betöltés sikertelen: ${error.message}`)
-  }
-})
-
 document.querySelector('#undo-btn').addEventListener('click', () => {
   editor.UndoManager.undo()
 })
@@ -421,42 +349,6 @@ document.querySelector('#pdf-btn').addEventListener('click', () => {
     printWindow.focus()
     printWindow.print()
   })
-})
-
-document.querySelector('#server-pdf-btn').addEventListener('click', async () => {
-  if (!currentProjectId) {
-    window.alert('Előbb mentsd el a projektet a „Szerver mentés” gombbal.')
-    return
-  }
-
-  const pdfWindow = window.open('', '_blank')
-  if (!pdfWindow) {
-    window.alert('A PDF-ablak megnyitását a böngésző blokkolta. Engedélyezd a felugró ablakokat.')
-    return
-  }
-  pdfWindow.document.title = 'PDF készítése...'
-  pdfWindow.document.body.textContent = 'A PDF készítése folyamatban...'
-
-  try {
-    const response = await fetch(`${API_BASE}/api/projects/${currentProjectId}/pdf`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ html: editor.getHtml(), css: editor.getCss() }),
-    })
-    if (!response.ok) {
-      const payload = await response.json().catch(() => ({}))
-      throw new Error(payload.error || `A PDF-generálás sikertelen (${response.status}).`)
-    }
-
-    const pdfBlob = await response.blob()
-    const downloadUrl = URL.createObjectURL(pdfBlob)
-    pdfWindow.location.replace(downloadUrl)
-    window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 60_000)
-  } catch (error) {
-    pdfWindow.close()
-    console.error('Szerveres PDF-generálás sikertelen:', error)
-    window.alert(`Szerveres PDF-generálás sikertelen: ${error.message}`)
-  }
 })
 
 editor.Panels.addButton('options', {
