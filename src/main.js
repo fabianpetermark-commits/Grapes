@@ -81,42 +81,6 @@ const editor = grapesjs.init({
       { name: 'Web / Responsive', width: '100%' },
     ],
   },
-  canvas: {
-    styles: [
-      `
-        html, body {
-          height: auto !important;
-          min-height: 100%;
-          overflow-y: auto !important;
-        }
-
-        .sheet {
-          display: flex;
-          flex-direction: row;
-          width: 1123px;
-          height: 794px;
-          box-sizing: border-box;
-          overflow: hidden;
-          background: #fff;
-        }
-
-        .sheet-panel {
-          flex: 1;
-          width: 33.333%;
-          height: 100%;
-          box-sizing: border-box;
-          display: flex;
-          flex-direction: column;
-          padding: 40px;
-          border-right: 1px dashed #ccc;
-        }
-
-        .sheet-panel:last-child {
-          border-right: 0;
-        }
-      `,
-    ],
-  },
   blockManager: {
     blocks: [
       {
@@ -181,6 +145,39 @@ const editor = grapesjs.init({
   },
 })
 
+editor.Css.addRules(`
+  html, body {
+    height: auto !important;
+    min-height: 100%;
+    overflow-y: auto !important;
+  }
+
+  .sheet {
+    display: flex;
+    flex-direction: row;
+    width: 1123px;
+    height: 794px;
+    box-sizing: border-box;
+    overflow: hidden;
+    background: #fff;
+  }
+
+  .sheet-panel {
+    flex: 1;
+    width: 33.333%;
+    height: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    padding: 40px;
+    border-right: 1px dashed #ccc;
+  }
+
+  .sheet-panel:last-child {
+    border-right: 0;
+  }
+`)
+
 const htmlFileInput = document.querySelector('#html-file-input')
 const jsonFileInput = document.querySelector('#json-file-input')
 
@@ -218,7 +215,7 @@ htmlFileInput.addEventListener('change', () => {
       const componentMarkup = bodyMarkup.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
       editor.setComponents(componentMarkup)
       if (importedStyles.trim()) {
-        editor.setStyle(importedStyles)
+        editor.Css.addRules(importedStyles)
       }
 
       const bodyAttributes = [...(importedBody?.attributes || [])].reduce((attributes, attribute) => {
