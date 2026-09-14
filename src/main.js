@@ -318,6 +318,7 @@ editor.DomComponents.addType('svg', {
       resizable: true,
       removable: true,
       copyable: true,
+      dragMode: 'absolute',
       toolbar: [
         { attributes: { class: 'fa fa-level-up', title: 'Előre hozás' }, command: 'shape:bring-front' },
         { attributes: { class: 'fa fa-level-down', title: 'Hátra küldés' }, command: 'shape:send-back' },
@@ -335,6 +336,7 @@ editor.DomComponents.addType('qr-placeholder', {
       tagName: 'div',
       draggable: true,
       droppable: false,
+      dragMode: 'absolute',
       style: {
         position: 'absolute',
         top: '20px',
@@ -775,6 +777,7 @@ editor.Commands.add('unsplash:open', {
               editor.getWrapper().append({
                 type: 'image',
                 src: fullUrl,
+                dragMode: 'absolute',
                 style: { position: 'absolute', top: '20px', left: '20px', width: '240px' },
               })
             }
