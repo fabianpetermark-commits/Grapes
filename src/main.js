@@ -14,6 +14,33 @@ import './style.css'
 const GRID_SIZE = 10
 const UNSPLASH_ACCESS_KEY = import.meta.env.VITE_UNSPLASH_ACCESS_KEY || ''
 
+// --- Nyitó képernyő ---
+document.querySelector('#splash-enter-btn').addEventListener('click', () => {
+  document.querySelector('#splash-screen').classList.add('hidden')
+  editor.refresh()
+})
+
+// --- Főmenü ---
+const mainMenu = document.querySelector('#main-menu')
+const mainMenuBtn = document.querySelector('#main-menu-btn')
+
+mainMenuBtn.addEventListener('click', (event) => {
+  event.stopPropagation()
+  mainMenu.classList.toggle('hidden')
+})
+
+mainMenu.addEventListener('click', (event) => {
+  if (event.target.tagName === 'BUTTON') {
+    mainMenu.classList.add('hidden')
+  }
+})
+
+document.addEventListener('click', (event) => {
+  if (!mainMenu.classList.contains('hidden') && !mainMenu.contains(event.target) && event.target !== mainMenuBtn) {
+    mainMenu.classList.add('hidden')
+  }
+})
+
 const editor = grapesjs.init({
   container: '#gjs',
   height: '100%',
@@ -45,9 +72,6 @@ const editor = grapesjs.init({
     [gjsStyleBg]: {},
     [gjsTabs]: {},
     [gjsTooltip]: {},
-  },
-  layerManager: {
-    appendTo: '.layers-container',
   },
   pageManager: {
     pages: [
@@ -224,52 +248,6 @@ const editor = grapesjs.init({
         category: 'Alakzatok',
         media: '<svg viewBox="0 0 24 24" width="28" height="28"><rect x="3" y="3" width="7" height="7" fill="#1e293b"/><rect x="14" y="3" width="7" height="7" fill="#1e293b"/><rect x="3" y="14" width="7" height="7" fill="#1e293b"/><rect x="14" y="14" width="3" height="3" fill="#1e293b"/><rect x="18" y="18" width="3" height="3" fill="#1e293b"/></svg>',
         content: { type: 'qr-placeholder' },
-      },
-    ],
-  },
-  panels: {
-    defaults: [
-      {
-        id: 'panels',
-        el: '.panel__top',
-        command: 'sw-visibility',
-      },
-      {
-        id: 'basic-actions',
-        el: '.panel__basic-actions',
-        buttons: [
-          {
-            id: 'visibility',
-            active: true,
-            className: 'btn-toggle-borders',
-            command: 'sw-visibility',
-          },
-        ],
-      },
-      {
-        id: 'views',
-        el: '.panel__right',
-        buttons: [
-          {
-            id: 'open-blocks',
-            active: true,
-            className: 'fa fa-th-large',
-            command: 'open-blocks',
-            togglable: false,
-          },
-          {
-            id: 'open-sm',
-            className: 'fa fa-paint-brush',
-            command: 'open-sm',
-            togglable: false,
-          },
-          {
-            id: 'open-layers',
-            className: 'fa fa-bars',
-            command: 'open-layers',
-            togglable: false,
-          },
-        ],
       },
     ],
   },

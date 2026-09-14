@@ -3,79 +3,273 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Brossúra Szerkesztő</title>
+    <title>Grapes Brossúra Szerkesztő</title>
     <style>
+      :root {
+        --neon-blue: #00e5ff;
+        --neon-blue-dim: #0891b2;
+        --bg-black: #05070a;
+        --bg-panel: #0b0f14;
+        --bg-panel-alt: #10161d;
+        --border-neon: rgba(0, 229, 255, 0.35);
+      }
+
       html,
       body {
         height: 100%;
         margin: 0;
         overflow: hidden;
-        font-family: sans-serif;
+        font-family: 'Segoe UI', sans-serif;
+        background: var(--bg-black);
+      }
+
+      /* --- Nyitó képernyő --- */
+      #splash-screen {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 24px;
+        background: radial-gradient(circle at 50% 40%, #0a1a22 0%, var(--bg-black) 70%);
+        color: #e6fbff;
+        text-align: center;
+      }
+
+      #splash-screen.hidden {
+        display: none;
+      }
+
+      #splash-screen .splash-logo {
+        filter: drop-shadow(0 0 18px var(--neon-blue)) drop-shadow(0 0 36px rgba(0, 229, 255, 0.5));
+      }
+
+      #splash-screen h1 {
+        margin: 0;
+        font-size: 40px;
+        letter-spacing: 4px;
+        color: #f2feff;
+        text-shadow: 0 0 12px var(--neon-blue), 0 0 28px rgba(0, 229, 255, 0.6);
+      }
+
+      #splash-screen p {
+        margin: 0;
+        color: #7fdfff;
+        font-size: 14px;
+        letter-spacing: 1px;
+      }
+
+      #splash-enter-btn {
+        margin-top: 12px;
+        background: transparent;
+        border: 2px solid var(--neon-blue);
+        color: var(--neon-blue);
+        padding: 12px 32px;
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 2px;
+        border-radius: 999px;
+        cursor: pointer;
+        transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+        text-transform: uppercase;
+      }
+
+      #splash-enter-btn:hover {
+        background: var(--neon-blue);
+        color: #001217;
+        box-shadow: 0 0 24px var(--neon-blue);
+      }
+
+      /* --- Alkalmazás keret --- */
+      #app {
+        height: 100%;
       }
 
       #toolbar {
-        height: 50px;
-        background: #1e1e1e;
+        height: 54px;
+        background: var(--bg-panel);
         display: flex;
         align-items: center;
-        padding: 0 20px;
-        gap: 10px;
-        border-bottom: 1px solid #333;
+        padding: 0 16px;
+        gap: 14px;
+        border-bottom: 1px solid var(--border-neon);
         box-sizing: border-box;
+        box-shadow: 0 1px 12px rgba(0, 229, 255, 0.12);
+        position: relative;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--neon-blue);
+        font-weight: 700;
+        letter-spacing: 1px;
+        font-size: 14px;
+        white-space: nowrap;
+        text-shadow: 0 0 8px rgba(0, 229, 255, 0.6);
+      }
+
+      .brand svg {
+        filter: drop-shadow(0 0 6px var(--neon-blue));
+      }
+
+      .toolbar-spacer {
+        flex-grow: 1;
       }
 
       .tb-btn {
-        background: #374151;
-        color: white;
-        border: none;
+        background: var(--bg-panel-alt);
+        color: #d7f6ff;
+        border: 1px solid var(--border-neon);
         padding: 8px 12px;
         border-radius: 4px;
         cursor: pointer;
         font-size: 13px;
         font-weight: 500;
+        white-space: nowrap;
       }
 
       .tb-btn:hover {
-        background: #4b5563;
+        background: rgba(0, 229, 255, 0.12);
+        border-color: var(--neon-blue);
+        color: #fff;
       }
 
       .tb-btn.primary {
-        background: #3b82f6;
+        background: rgba(0, 229, 255, 0.15);
+        border-color: var(--neon-blue);
+        color: #fff;
       }
 
       .tb-btn.primary:hover {
-        background: #2563eb;
+        background: var(--neon-blue);
+        color: #00131a;
       }
 
       .tb-btn.success {
-        background: #10b981;
+        background: rgba(0, 229, 255, 0.08);
+        border-color: var(--neon-blue-dim);
       }
 
       .tb-btn.success:hover {
-        background: #059669;
+        background: var(--neon-blue);
+        color: #00131a;
+        border-color: var(--neon-blue);
+      }
+
+      /* --- Főmenü --- */
+      #main-menu-wrapper {
+        position: relative;
+      }
+
+      #main-menu-btn {
+        font-size: 16px;
+      }
+
+      #main-menu {
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 0;
+        background: var(--bg-panel);
+        border: 1px solid var(--border-neon);
+        border-radius: 6px;
+        box-shadow: 0 8px 32px rgba(0, 229, 255, 0.18), 0 0 0 1px rgba(0, 229, 255, 0.05);
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 240px;
+        z-index: 50;
+      }
+
+      #main-menu.hidden {
+        display: none;
+      }
+
+      #main-menu .menu-section-title {
+        color: var(--neon-blue);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin: 8px 6px 2px;
+      }
+
+      #main-menu .menu-section-title:first-child {
+        margin-top: 2px;
+      }
+
+      #main-menu .tb-btn {
+        width: 100%;
+        text-align: left;
+        box-sizing: border-box;
+      }
+
+      #main-menu hr {
+        border: none;
+        border-top: 1px solid var(--border-neon);
+        margin: 6px 0;
       }
 
       #gjs {
-        height: calc(100vh - 50px);
+        height: calc(100vh - 54px);
         width: 100%;
       }
     </style>
   </head>
   <body>
-    <div id="toolbar">
-      <button id="load-file-btn" class="tb-btn primary" type="button">📁 HTML megnyitása</button>
-      <input id="html-file-input" type="file" accept=".html,.htm,text/html" hidden />
-      <button id="load-project-btn" class="tb-btn" type="button">📂 Projekt betöltés</button>
-      <input id="json-file-input" type="file" accept=".json,application/json" hidden />
-      <button id="save-project-btn" class="tb-btn" type="button">💾 Projekt mentés</button>
-      <div class="toolbar-spacer"></div>
-      <button id="undo-btn" class="tb-btn" type="button">↩ Vissza</button>
-      <button id="redo-btn" class="tb-btn" type="button">↪ Ismét</button>
-      <button id="code-btn" class="tb-btn" type="button">&lt;/&gt; Kódnézet</button>
-      <button id="preview-btn" class="tb-btn" type="button">👁️ Előnézet</button>
-      <button id="pdf-btn" class="tb-btn success" type="button">📄 PDF nyomtatás / mentés</button>
+    <div id="splash-screen">
+      <svg class="splash-logo" width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="10" y="10" width="76" height="76" rx="16" stroke="#00e5ff" stroke-width="4" />
+        <path d="M28 66V30h18a10 10 0 0 1 0 20H28" stroke="#00e5ff" stroke-width="4" stroke-linejoin="round" />
+        <circle cx="66" cy="30" r="5" fill="#00e5ff" />
+      </svg>
+      <h1>GRAPES BROSSÚRA</h1>
+      <p>Vizuális brossúra- és PDF-szerkesztő</p>
+      <button id="splash-enter-btn" type="button">Belépés a szerkesztőbe</button>
     </div>
-    <div id="gjs"></div>
+
+    <div id="app">
+      <div id="toolbar">
+        <div class="brand">
+          <svg width="24" height="24" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="10" y="10" width="76" height="76" rx="16" stroke="#00e5ff" stroke-width="6" />
+            <path d="M28 66V30h18a10 10 0 0 1 0 20H28" stroke="#00e5ff" stroke-width="6" stroke-linejoin="round" />
+            <circle cx="66" cy="30" r="6" fill="#00e5ff" />
+          </svg>
+          <span>GRAPES</span>
+        </div>
+
+        <div id="main-menu-wrapper">
+          <button id="main-menu-btn" class="tb-btn primary" type="button">☰ Menü</button>
+          <div id="main-menu" class="hidden">
+            <div class="menu-section-title">Fájl</div>
+            <button id="load-file-btn" class="tb-btn" type="button">📁 HTML megnyitása</button>
+            <button id="load-project-btn" class="tb-btn" type="button">📂 Projekt betöltés</button>
+            <button id="save-project-btn" class="tb-btn" type="button">💾 Projekt mentés</button>
+            <hr />
+            <div class="menu-section-title">Szerkesztés</div>
+            <button id="undo-btn" class="tb-btn" type="button">↩ Vissza</button>
+            <button id="redo-btn" class="tb-btn" type="button">↪ Ismét</button>
+            <hr />
+            <div class="menu-section-title">Nézet</div>
+            <button id="code-btn" class="tb-btn" type="button">&lt;/&gt; Kódnézet</button>
+            <button id="preview-btn" class="tb-btn" type="button">👁️ Előnézet</button>
+            <hr />
+            <div class="menu-section-title">Export</div>
+            <button id="pdf-btn" class="tb-btn success" type="button">📄 PDF nyomtatás / mentés</button>
+          </div>
+        </div>
+
+        <input id="html-file-input" type="file" accept=".html,.htm,text/html" hidden />
+        <input id="json-file-input" type="file" accept=".json,application/json" hidden />
+
+        <div class="toolbar-spacer"></div>
+      </div>
+      <div id="gjs"></div>
+    </div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
