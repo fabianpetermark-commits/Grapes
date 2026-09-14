@@ -203,11 +203,32 @@ htmlFileInput.addEventListener('change', () => {
   reader.addEventListener('load', () => {
     if (typeof reader.result !== 'string') {
       window.alert('A kiválasztott HTML fájl nem olvasható szövegként.')
+      htmlFileInput.value = ''
       return
     }
 
-    editor.setComponents(reader.result)
-    htmlFileInput.value = ''
+    try {
+      const documentParser = new DOMParser()
+      const importedDocument = documentParser.parseFromString(reader.result, 'text/html')
+      const bodyMarkup = importedDocument.body?.innerHTML.trim() || ''
+      const importedStyles = [...importedDocument.querySelectorAll('style')]
+        .map((styleElement) => styleElement.textContent || '')
+        .join('\n')
+
+      if (!bodyMarkup) {
+        throw new Error('A HTML-fájl nem tartalmaz megjeleníthető body-tartalmat.')
+      }
+
+      editor.setComponents(bodyMarkup)
+      if (importedStyles.trim()) {
+        editor.setStyle(importedStyles)
+      }
+    } catch (error) {
+      console.error('HTML-import sikertelen:', error)
+      window.alert(`A HTML-fájl betöltése sikertelen: ${error.message}`)
+    } finally {
+      htmlFileInput.value = ''
+    }
   })
   reader.addEventListener('error', () => {
     window.alert(`A(z) "${file.name}" HTML-fájl beolvasása sikertelen.`)
