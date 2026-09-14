@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="hu">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Brossúra Szerkesztő</title>
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        font-family: sans-serif;
+      }
+
+      #toolbar {
+        height: 50px;
+        background: #1e1e1e;
+        display: flex;
+        align-items: center;
+        padding: 0 20px;
+        gap: 10px;
+        border-bottom: 1px solid #333;
+        box-sizing: border-box;
+      }
+
+      .tb-btn {
+        background: #374151;
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+      }
+
+      .tb-btn:hover {
+        background: #4b5563;
+      }
+
+      .tb-btn.primary {
+        background: #3b82f6;
+      }
+
+      .tb-btn.primary:hover {
+        background: #2563eb;
+      }
+
+      .tb-btn.success {
+        background: #10b981;
+      }
+
+      .tb-btn.success:hover {
+        background: #059669;
+      }
+
+      #gjs {
+        height: calc(100vh - 50px);
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="toolbar">
+      <button id="load-file-btn" class="tb-btn primary" type="button">📁 HTML megnyitása</button>
+      <input id="html-file-input" type="file" accept=".html,.htm,text/html" hidden />
+      <button id="load-project-btn" class="tb-btn" type="button">📂 Projekt betöltés</button>
+      <input id="json-file-input" type="file" accept=".json,application/json" hidden />
+      <button id="save-project-btn" class="tb-btn" type="button">💾 Projekt mentés</button>
+      <div class="toolbar-spacer"></div>
+      <button id="undo-btn" class="tb-btn" type="button">↩ Vissza</button>
+      <button id="redo-btn" class="tb-btn" type="button">↪ Ismét</button>
+      <button id="code-btn" class="tb-btn" type="button">&lt;/&gt; Kódnézet</button>
+      <button id="preview-btn" class="tb-btn" type="button">👁️ Előnézet</button>
+      <button id="pdf-btn" class="tb-btn success" type="button">📄 PDF nyomtatás / mentés</button>
+    </div>
+    <div id="gjs"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
