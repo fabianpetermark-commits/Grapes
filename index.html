@@ -3,79 +3,406 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Brossúra Szerkesztő</title>
+    <title>Grapes Stúdió</title>
     <style>
+      :root {
+        --neon-blue: #00e5ff;
+        --neon-blue-dim: #0891b2;
+        --bg-black: #05070a;
+        --bg-panel: #0b0f14;
+        --bg-panel-alt: #10161d;
+        --border-neon: rgba(0, 229, 255, 0.35);
+      }
+
       html,
       body {
         height: 100%;
         margin: 0;
         overflow: hidden;
-        font-family: sans-serif;
+        font-family: 'Segoe UI', sans-serif;
+        background: var(--bg-black);
       }
 
+      /* --- Nyitó képernyő --- */
+      #splash-screen {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 24px;
+        background: radial-gradient(circle at 50% 40%, #0a1a22 0%, var(--bg-black) 70%);
+        color: #e6fbff;
+        text-align: center;
+      }
+
+      #splash-screen.hidden {
+        display: none;
+      }
+
+      #splash-screen .splash-logo {
+        filter: drop-shadow(0 0 18px var(--neon-blue)) drop-shadow(0 0 36px rgba(0, 229, 255, 0.5));
+      }
+
+      #splash-screen h1 {
+        margin: 0;
+        font-size: 40px;
+        letter-spacing: 4px;
+        color: #f2feff;
+        text-shadow: 0 0 12px var(--neon-blue), 0 0 28px rgba(0, 229, 255, 0.6);
+      }
+
+      #splash-screen p {
+        margin: 0;
+        color: #7fdfff;
+        font-size: 14px;
+        letter-spacing: 1px;
+      }
+
+      #module-picker {
+        margin-top: 16px;
+        display: flex;
+        gap: 24px;
+        flex-wrap: wrap;
+        justify-content: center;
+        max-width: 700px;
+      }
+
+      .module-card {
+        width: 260px;
+        background: rgba(0, 229, 255, 0.04);
+        border: 2px solid var(--neon-blue);
+        border-radius: 16px;
+        padding: 28px 20px;
+        cursor: pointer;
+        transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
+        color: #e6fbff;
+      }
+
+      .module-card:hover {
+        background: rgba(0, 229, 255, 0.14);
+        box-shadow: 0 0 28px rgba(0, 229, 255, 0.5);
+        transform: translateY(-3px);
+      }
+
+      .module-card .module-icon {
+        font-size: 40px;
+        margin-bottom: 12px;
+      }
+
+      .module-card h2 {
+        margin: 0 0 6px;
+        font-size: 16px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        color: var(--neon-blue);
+      }
+
+      .module-card p {
+        margin: 0;
+        font-size: 12px;
+        color: #9ce9ff;
+        letter-spacing: 0.5px;
+      }
+
+      /* --- Alkalmazás keret --- */
+      #app,
+      #studio-app {
+        height: 100%;
+      }
+
+      #app.hidden,
+      #studio-app.hidden {
+        display: none;
+      }
+
+
       #toolbar {
-        height: 50px;
-        background: #1e1e1e;
+        height: 54px;
+        background: var(--bg-panel);
         display: flex;
         align-items: center;
-        padding: 0 20px;
-        gap: 10px;
-        border-bottom: 1px solid #333;
+        padding: 0 16px;
+        gap: 14px;
+        border-bottom: 1px solid var(--border-neon);
         box-sizing: border-box;
+        box-shadow: 0 1px 12px rgba(0, 229, 255, 0.12);
+        position: relative;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--neon-blue);
+        font-weight: 700;
+        letter-spacing: 1px;
+        font-size: 14px;
+        white-space: nowrap;
+        text-shadow: 0 0 8px rgba(0, 229, 255, 0.6);
+      }
+
+      .brand svg {
+        filter: drop-shadow(0 0 6px var(--neon-blue));
+      }
+
+      .toolbar-spacer {
+        flex-grow: 1;
       }
 
       .tb-btn {
-        background: #374151;
-        color: white;
-        border: none;
+        background: var(--bg-panel-alt);
+        color: #d7f6ff;
+        border: 1px solid var(--border-neon);
         padding: 8px 12px;
         border-radius: 4px;
         cursor: pointer;
         font-size: 13px;
         font-weight: 500;
+        white-space: nowrap;
       }
 
       .tb-btn:hover {
-        background: #4b5563;
+        background: rgba(0, 229, 255, 0.12);
+        border-color: var(--neon-blue);
+        color: #fff;
       }
 
       .tb-btn.primary {
-        background: #3b82f6;
+        background: rgba(0, 229, 255, 0.15);
+        border-color: var(--neon-blue);
+        color: #fff;
       }
 
       .tb-btn.primary:hover {
-        background: #2563eb;
+        background: var(--neon-blue);
+        color: #00131a;
       }
 
       .tb-btn.success {
-        background: #10b981;
+        background: rgba(0, 229, 255, 0.08);
+        border-color: var(--neon-blue-dim);
       }
 
       .tb-btn.success:hover {
-        background: #059669;
+        background: var(--neon-blue);
+        color: #00131a;
+        border-color: var(--neon-blue);
+      }
+
+      /* --- Főmenü --- */
+      #main-menu-wrapper {
+        position: relative;
+      }
+
+      #main-menu-btn {
+        font-size: 16px;
+      }
+
+      #main-menu {
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 0;
+        background: var(--bg-panel);
+        border: 1px solid var(--border-neon);
+        border-radius: 6px;
+        box-shadow: 0 8px 32px rgba(0, 229, 255, 0.18), 0 0 0 1px rgba(0, 229, 255, 0.05);
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 240px;
+        z-index: 50;
+      }
+
+      #main-menu.hidden {
+        display: none;
+      }
+
+      #main-menu .menu-section-title {
+        color: var(--neon-blue);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin: 8px 6px 2px;
+      }
+
+      #main-menu .menu-section-title:first-child {
+        margin-top: 2px;
+      }
+
+      #main-menu .tb-btn {
+        width: 100%;
+        text-align: left;
+        box-sizing: border-box;
+      }
+
+      #main-menu hr {
+        border: none;
+        border-top: 1px solid var(--border-neon);
+        margin: 6px 0;
       }
 
       #gjs {
-        height: calc(100vh - 50px);
+        height: calc(100vh - 54px);
         width: 100%;
       }
     </style>
   </head>
   <body>
-    <div id="toolbar">
-      <button id="load-file-btn" class="tb-btn primary" type="button">📁 HTML megnyitása</button>
-      <input id="html-file-input" type="file" accept=".html,.htm,text/html" hidden />
-      <button id="load-project-btn" class="tb-btn" type="button">📂 Projekt betöltés</button>
-      <input id="json-file-input" type="file" accept=".json,application/json" hidden />
-      <button id="save-project-btn" class="tb-btn" type="button">💾 Projekt mentés</button>
-      <div class="toolbar-spacer"></div>
-      <button id="undo-btn" class="tb-btn" type="button">↩ Vissza</button>
-      <button id="redo-btn" class="tb-btn" type="button">↪ Ismét</button>
-      <button id="code-btn" class="tb-btn" type="button">&lt;/&gt; Kódnézet</button>
-      <button id="preview-btn" class="tb-btn" type="button">👁️ Előnézet</button>
-      <button id="pdf-btn" class="tb-btn success" type="button">📄 PDF nyomtatás / mentés</button>
+    <div id="splash-screen">
+      <svg class="splash-logo" width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="10" y="10" width="76" height="76" rx="16" stroke="#00e5ff" stroke-width="4" />
+        <path d="M28 66V30h18a10 10 0 0 1 0 20H28" stroke="#00e5ff" stroke-width="4" stroke-linejoin="round" />
+        <circle cx="66" cy="30" r="5" fill="#00e5ff" />
+      </svg>
+      <h1>GRAPES STÚDIÓ</h1>
+      <p>Válassz modult a folytatáshoz</p>
+      <div id="module-picker">
+        <div id="pick-brochure" class="module-card">
+          <div class="module-icon">📐</div>
+          <h2>Brossúra Szerkesztő</h2>
+          <p>Vizuális brossúra- és PDF-szerkesztő</p>
+        </div>
+        <div id="pick-studio" class="module-card">
+          <div class="module-icon">🖨️</div>
+          <h2>3D Nyomtatási Stúdió</h2>
+          <p>Parametrikus 3D-szerkesztő és STL-export</p>
+        </div>
+      </div>
     </div>
-    <div id="gjs"></div>
+
+    <div id="app">
+      <div id="toolbar">
+        <div class="brand">
+          <svg width="24" height="24" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="10" y="10" width="76" height="76" rx="16" stroke="#00e5ff" stroke-width="6" />
+            <path d="M28 66V30h18a10 10 0 0 1 0 20H28" stroke="#00e5ff" stroke-width="6" stroke-linejoin="round" />
+            <circle cx="66" cy="30" r="6" fill="#00e5ff" />
+          </svg>
+          <span>GRAPES</span>
+        </div>
+
+        <div id="main-menu-wrapper">
+          <button id="main-menu-btn" class="tb-btn primary" type="button">☰ Menü</button>
+          <div id="main-menu" class="hidden">
+            <div class="menu-section-title">Fájl</div>
+            <button id="load-file-btn" class="tb-btn" type="button">📁 HTML megnyitása</button>
+            <button id="load-project-btn" class="tb-btn" type="button">📂 Projekt betöltés</button>
+            <button id="save-project-btn" class="tb-btn" type="button">💾 Projekt mentés</button>
+            <hr />
+            <div class="menu-section-title">Szerkesztés</div>
+            <button id="undo-btn" class="tb-btn" type="button">↩ Vissza</button>
+            <button id="redo-btn" class="tb-btn" type="button">↪ Ismét</button>
+            <hr />
+            <div class="menu-section-title">Nézet</div>
+            <button id="code-btn" class="tb-btn" type="button">&lt;/&gt; Kódnézet</button>
+            <button id="preview-btn" class="tb-btn" type="button">👁️ Előnézet</button>
+            <hr />
+            <div class="menu-section-title">Export</div>
+            <button id="pdf-btn" class="tb-btn success" type="button">📄 PDF nyomtatás / mentés</button>
+            <hr />
+            <button id="app-back-to-menu-btn" class="tb-btn" type="button">🏠 Vissza a főmenübe</button>
+          </div>
+        </div>
+
+        <input id="html-file-input" type="file" accept=".html,.htm,text/html" hidden />
+        <input id="json-file-input" type="file" accept=".json,application/json" hidden />
+
+        <div class="toolbar-spacer"></div>
+      </div>
+      <div id="gjs"></div>
+    </div>
+
+    <div id="studio-app" class="hidden dark bg-zinc-950 text-zinc-100 flex flex-col overflow-hidden">
+      <header class="h-14 border-b border-zinc-800 bg-zinc-900/90 backdrop-blur px-4 flex items-center justify-between shrink-0 z-20">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-brand-500 to-brand-700 flex items-center justify-center text-zinc-950 font-bold shadow-lg shadow-brand-900/30">
+            <svg class="w-5 h-5 text-zinc-950" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"></path>
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-sm font-semibold tracking-wide flex items-center gap-2">
+              3D Nyomtatási Stúdió
+              <span class="text-[10px] font-mono uppercase bg-brand-500/15 text-brand-500 px-1.5 py-0.5 rounded border border-brand-500/30">Szerkesztő</span>
+            </h1>
+            <p class="text-[11px] text-zinc-400 hidden sm:block">Parametrikus alakzatok, pozicionálás és STL-export</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button id="studio-back-to-menu-btn" class="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-zinc-100 transition" type="button">
+            🏠 Főmenü
+          </button>
+          <button id="studio-download-stl-btn" class="px-4 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-xs font-semibold text-zinc-950 shadow-lg shadow-brand-900/30 transition flex items-center gap-2 active:scale-95" type="button">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+            </svg>
+            <span>STL Letöltése</span>
+          </button>
+        </div>
+      </header>
+
+      <div class="flex-1 flex overflow-hidden relative">
+        <div id="studio-viewport-container" class="flex-1 relative bg-gradient-to-b from-zinc-950 via-zinc-900 to-zinc-950 cursor-grab active:cursor-grabbing">
+          <canvas id="studio-three-canvas" class="w-full h-full block"></canvas>
+
+          <div class="absolute top-4 left-4 flex flex-col gap-1.5 bg-zinc-900/90 backdrop-blur p-1.5 rounded-lg border border-zinc-800 text-[11px] shadow-xl z-10">
+            <button id="studio-view-front" class="px-2 py-1 text-zinc-300 hover:bg-zinc-800 rounded transition text-left" type="button">👁️ Elölnézet</button>
+            <button id="studio-view-back" class="px-2 py-1 text-zinc-300 hover:bg-zinc-800 rounded transition text-left" type="button">🔙 Hátulnézet</button>
+            <button id="studio-view-iso" class="px-2 py-1 text-zinc-300 hover:bg-zinc-800 rounded transition text-left" type="button">📐 Izometrikus</button>
+            <div class="h-[1px] bg-zinc-800 my-0.5"></div>
+            <button id="studio-toggle-wireframe" class="px-2 py-1 text-zinc-400 hover:bg-zinc-800 rounded transition text-left" type="button">🕸️ Drótváz</button>
+          </div>
+
+          <div class="absolute bottom-4 left-4 bg-zinc-900/90 backdrop-blur p-2 rounded-lg border border-zinc-800 text-[11px] text-zinc-400 shadow-xl z-10 max-w-xs">
+            Húzd a kijelölt elem nyilait a mozgatáshoz. Válassz elemet a listából vagy kattints rá a 3D-nézetben.
+          </div>
+        </div>
+
+        <aside class="w-80 md:w-96 bg-zinc-900 border-l border-zinc-800 flex flex-col shrink-0 overflow-y-auto p-5 gap-5">
+          <div class="space-y-2">
+            <h2 class="text-sm font-semibold text-zinc-100 border-b border-zinc-800 pb-2">Elem hozzáadása</h2>
+            <div class="grid grid-cols-3 gap-2 text-xs">
+              <button id="studio-add-box" class="py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-brand-500 transition" type="button">⬛<br />Kocka</button>
+              <button id="studio-add-cylinder" class="py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-brand-500 transition" type="button">🥫<br />Henger</button>
+              <button id="studio-add-sphere" class="py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-brand-500 transition" type="button">⚪<br />Gömb</button>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <h2 class="text-sm font-semibold text-zinc-100 border-b border-zinc-800 pb-2">Elemek</h2>
+            <div id="studio-element-list" class="flex flex-col gap-1.5 text-xs max-h-56 overflow-y-auto"></div>
+          </div>
+
+          <div id="studio-selected-props" class="space-y-3 text-xs hidden">
+            <h2 class="text-sm font-semibold text-zinc-100 border-b border-zinc-800 pb-2">Kijelölt elem</h2>
+            <div>
+              <div class="flex justify-between text-zinc-300 mb-1"><span>Méret</span><span id="studio-val-size" class="text-brand-500 font-mono">—</span></div>
+              <input id="studio-param-size" type="range" min="10" max="200" value="60" class="w-full h-1.5 bg-zinc-800 rounded-lg cursor-pointer" />
+            </div>
+            <div>
+              <span class="text-zinc-300 mb-1 block">Szín</span>
+              <input id="studio-param-color" type="color" value="#00b8d4" class="w-full h-8 rounded cursor-pointer bg-zinc-800 border border-zinc-700" />
+            </div>
+            <button id="studio-delete-selected" class="w-full py-1.5 rounded-lg bg-red-900/40 hover:bg-red-900/70 border border-red-800 text-red-300 transition" type="button">🗑️ Elem törlése</button>
+          </div>
+
+          <div class="bg-zinc-950 p-3 rounded-xl border border-zinc-800 text-xs flex flex-col gap-1.5 mt-auto">
+            <div class="flex justify-between text-zinc-400"><span>Elemek száma:</span><span id="studio-element-count" class="text-brand-500 font-semibold">0</span></div>
+            <div class="flex justify-between text-zinc-400"><span>Nyomtathatóság:</span><span class="text-emerald-400 font-semibold">Tökéletes</span></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-6 right-6 bg-brand-500 text-zinc-950 font-semibold px-4 py-2.5 rounded-xl shadow-2xl text-xs transition-all transform translate-y-20 opacity-0 pointer-events-none z-50">
+      <span id="toast-msg">Sikeres művelet!</span>
+    </div>
+
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

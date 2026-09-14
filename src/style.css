@@ -1,13 +1,61 @@
+:root {
+  --gjs-main-color: #0b0f14;
+  --gjs-primary-color: #0b0f14;
+  --gjs-secondary-color: #d7f6ff;
+  --gjs-tertiary-color: #00e5ff;
+  --gjs-quaternary-color: #00b8d4;
+  --gjs-font-color: #d7f6ff;
+  --gjs-font-color-active: #ffffff;
+}
+
 html,
 body {
-  height: auto !important;
-  min-height: 100%;
+  height: 100%;
   margin: 0;
-  overflow-y: auto !important;
+  overflow: hidden;
+}
+
+/* A grapesjs-preset-webpage plugin saját, beégetett színtémát injektál
+   futásidőben, ami felülírja a --gjs-* CSS-változóinkat. Ezért a neon
+   kék-fekete témát itt, !important-tal kényszerítjük érvényre. */
+.gjs-one-bg {
+  background-color: #0b0f14 !important;
+}
+
+.gjs-one-color,
+.gjs-one-color-h:hover {
+  color: #d7f6ff !important;
+}
+
+.gjs-two-bg {
+  background-color: #10161d !important;
+}
+
+.gjs-two-color,
+.gjs-two-color-h:hover {
+  color: #d7f6ff !important;
+}
+
+.gjs-three-bg {
+  background-color: #00b8d4 !important;
+}
+
+.gjs-three-color,
+.gjs-three-color-h:hover {
+  color: #00e5ff !important;
+}
+
+.gjs-four-bg {
+  background-color: #00e5ff !important;
+}
+
+.gjs-four-color,
+.gjs-four-color-h:hover {
+  color: #00e5ff !important;
 }
 
 #gjs {
-  min-height: calc(100vh - 50px);
+  height: calc(100vh - 54px);
 }
 
 .sheet {
@@ -53,4 +101,51 @@ body {
   background: #1e1e1e;
   color: #fff;
   border: none;
+}
+
+.gjs-qr-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.gjs-qr-preview {
+  margin-top: 12px;
+}
+
+.gjs-unsplash-search-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.gjs-unsplash-input {
+  flex: 1;
+  padding: 8px 10px;
+  box-sizing: border-box;
+  border: 1px solid #00e5ff;
+  border-radius: 4px;
+  background: #10161d;
+  color: #d7f6ff;
+}
+
+.gjs-unsplash-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.gjs-unsplash-thumb {
+  width: 100%;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+
+.gjs-unsplash-thumb:hover {
+  border-color: #00e5ff;
 }
