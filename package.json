@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "tailwindcss": "^4.3.3",
     "vite": "^8.3.0"
   },
   "dependencies": {
@@ -22,6 +24,7 @@
     "grapesjs-style-bg": "^2.0.2",
     "grapesjs-tabs": "^1.0.6",
     "grapesjs-tooltip": "^0.1.8",
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.4",
+    "three": "^0.128.0"
   }
 }

@@ -9,16 +9,37 @@ import gjsStyleBg from 'grapesjs-style-bg'
 import gjsTabs from 'grapesjs-tabs'
 import gjsTooltip from 'grapesjs-tooltip'
 import QRCode from 'qrcode'
+import './tailwind.css'
 import './style.css'
 
 const GRID_SIZE = 10
 const UNSPLASH_ACCESS_KEY = import.meta.env.VITE_UNSPLASH_ACCESS_KEY || ''
 
-// --- Nyitó képernyő ---
-document.querySelector('#splash-enter-btn').addEventListener('click', () => {
+// --- Modulválasztó (nyitó képernyő) ---
+function showBrochureApp() {
   document.querySelector('#splash-screen').classList.add('hidden')
+  document.querySelector('#studio-app').classList.add('hidden')
+  document.querySelector('#app').classList.remove('hidden')
   editor.refresh()
-})
+}
+
+function showStudioApp() {
+  document.querySelector('#splash-screen').classList.add('hidden')
+  document.querySelector('#app').classList.add('hidden')
+  document.querySelector('#studio-app').classList.remove('hidden')
+  import('./studio.js').then(({ initStudio }) => initStudio())
+}
+
+function showModulePicker() {
+  document.querySelector('#app').classList.add('hidden')
+  document.querySelector('#studio-app').classList.add('hidden')
+  document.querySelector('#splash-screen').classList.remove('hidden')
+}
+
+document.querySelector('#pick-brochure').addEventListener('click', showBrochureApp)
+document.querySelector('#pick-studio').addEventListener('click', showStudioApp)
+document.querySelector('#app-back-to-menu-btn').addEventListener('click', showModulePicker)
+document.querySelector('#studio-back-to-menu-btn').addEventListener('click', showModulePicker)
 
 // --- Főmenü ---
 const mainMenu = document.querySelector('#main-menu')
