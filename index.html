@@ -249,6 +249,88 @@
         height: calc(100vh - 54px);
         width: 100%;
       }
+
+      /* --- Mobil optimalizáció --- */
+      @media (max-width: 768px) {
+        #splash-screen h1 {
+          font-size: 28px;
+        }
+
+        .module-card {
+          width: min(85vw, 300px);
+          padding: 20px 16px;
+        }
+
+        #toolbar {
+          padding: 0 10px;
+          gap: 8px;
+        }
+
+        .brand span {
+          display: none;
+        }
+
+        #main-menu {
+          min-width: min(80vw, 280px);
+        }
+
+        /* A GrapesJS blokk/stílus/réteg panel telefonon teljes szélességű,
+           lebegő "fiókként" jelenik meg a canvas fölött. A canvas mérete
+           (--gjs-left-width) NEM köthető a fiók szélességéhez, különben a
+           canvas állandóan összenyomva maradna, amíg a fiók zárva van. */
+        :root {
+          --gjs-left-width: 0px !important;
+        }
+
+        .gjs-pn-views-container {
+          position: fixed !important;
+          top: 54px !important;
+          right: 0 !important;
+          bottom: 0 !important;
+          width: 88vw !important;
+          height: auto !important;
+          z-index: 40 !important;
+          box-shadow: -4px 0 24px rgba(0, 0, 0, 0.6) !important;
+        }
+
+        .gjs-pn-views {
+          position: fixed !important;
+          top: 54px !important;
+          right: 0 !important;
+          width: 88vw !important;
+          z-index: 41 !important;
+        }
+
+        /* A fiók (blokkok/stílus/rétegek tartalma) alapból rejtett, csak
+           akkor jelenik meg, ha a felhasználó megnyitott egy panelt. */
+        #gjs .gjs-pn-views-container {
+          display: none !important;
+        }
+
+        #gjs.mobile-panel-open .gjs-pn-views-container {
+          display: block !important;
+        }
+
+        #mobile-panel-close-btn {
+          display: none;
+        }
+
+        body:has(#gjs.mobile-panel-open) #mobile-panel-close-btn {
+          display: block;
+          position: fixed;
+          top: 102px;
+          right: 0;
+          width: 88vw;
+          z-index: 42;
+          background: var(--neon-blue);
+          color: #00131a;
+          border: none;
+          padding: 10px;
+          font-weight: 700;
+          font-size: 13px;
+          cursor: pointer;
+        }
+      }
     </style>
   </head>
   <body>
@@ -317,37 +399,37 @@
     </div>
 
     <div id="studio-app" class="hidden dark bg-zinc-950 text-zinc-100 flex flex-col overflow-hidden">
-      <header class="h-14 border-b border-zinc-800 bg-zinc-900/90 backdrop-blur px-4 flex items-center justify-between shrink-0 z-20">
-        <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-brand-500 to-brand-700 flex items-center justify-center text-zinc-950 font-bold shadow-lg shadow-brand-900/30">
+      <header class="h-14 border-b border-zinc-800 bg-zinc-900/90 backdrop-blur px-2 sm:px-4 flex items-center justify-between shrink-0 z-20 gap-2">
+        <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-brand-500 to-brand-700 flex items-center justify-center text-zinc-950 font-bold shadow-lg shadow-brand-900/30 shrink-0">
             <svg class="w-5 h-5 text-zinc-950" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"></path>
             </svg>
           </div>
-          <div>
-            <h1 class="text-sm font-semibold tracking-wide flex items-center gap-2">
+          <div class="min-w-0">
+            <h1 class="text-xs sm:text-sm font-semibold tracking-wide flex items-center gap-2 truncate">
               3D Nyomtatási Stúdió
-              <span class="text-[10px] font-mono uppercase bg-brand-500/15 text-brand-500 px-1.5 py-0.5 rounded border border-brand-500/30">Szerkesztő</span>
+              <span class="hidden md:inline text-[10px] font-mono uppercase bg-brand-500/15 text-brand-500 px-1.5 py-0.5 rounded border border-brand-500/30">Szerkesztő</span>
             </h1>
             <p class="text-[11px] text-zinc-400 hidden sm:block">Parametrikus alakzatok, pozicionálás és STL-export</p>
           </div>
         </div>
 
-        <div class="flex items-center gap-2">
-          <button id="studio-back-to-menu-btn" class="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-zinc-100 transition" type="button">
-            🏠 Főmenü
+        <div class="flex items-center gap-2 shrink-0">
+          <button id="studio-back-to-menu-btn" class="px-2 sm:px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-zinc-100 transition" type="button">
+            <span aria-hidden="true">🏠</span><span class="hidden sm:inline"> Főmenü</span>
           </button>
-          <button id="studio-download-stl-btn" class="px-4 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-xs font-semibold text-zinc-950 shadow-lg shadow-brand-900/30 transition flex items-center gap-2 active:scale-95" type="button">
+          <button id="studio-download-stl-btn" class="px-3 sm:px-4 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-xs font-semibold text-zinc-950 shadow-lg shadow-brand-900/30 transition flex items-center gap-2 active:scale-95" type="button">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
             </svg>
-            <span>STL Letöltése</span>
+            <span class="hidden sm:inline">STL Letöltése</span>
           </button>
         </div>
       </header>
 
-      <div class="flex-1 flex overflow-hidden relative">
-        <div id="studio-viewport-container" class="flex-1 relative bg-gradient-to-b from-zinc-950 via-zinc-900 to-zinc-950 cursor-grab active:cursor-grabbing">
+      <div class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+        <div id="studio-viewport-container" class="flex-1 relative bg-gradient-to-b from-zinc-950 via-zinc-900 to-zinc-950 cursor-grab active:cursor-grabbing min-h-[45vh]">
           <canvas id="studio-three-canvas" class="w-full h-full block"></canvas>
 
           <div class="absolute top-4 left-4 flex flex-col gap-1.5 bg-zinc-900/90 backdrop-blur p-1.5 rounded-lg border border-zinc-800 text-[11px] shadow-xl z-10">
@@ -363,7 +445,7 @@
           </div>
         </div>
 
-        <aside class="w-80 md:w-96 bg-zinc-900 border-l border-zinc-800 flex flex-col shrink-0 overflow-y-auto p-5 gap-5">
+        <aside class="w-full md:w-80 lg:w-96 bg-zinc-900 border-t md:border-t-0 md:border-l border-zinc-800 flex flex-col shrink-0 overflow-y-auto p-4 md:p-5 gap-4 md:gap-5 max-h-[45vh] md:max-h-none">
           <div class="space-y-2">
             <h2 class="text-sm font-semibold text-zinc-100 border-b border-zinc-800 pb-2">Elem hozzáadása</h2>
             <div class="grid grid-cols-3 gap-2 text-xs">

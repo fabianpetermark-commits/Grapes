@@ -27,6 +27,7 @@ function showStudioApp() {
   document.querySelector('#splash-screen').classList.add('hidden')
   document.querySelector('#app').classList.add('hidden')
   document.querySelector('#studio-app').classList.remove('hidden')
+  document.querySelector('#gjs').classList.remove('mobile-panel-open')
   import('./studio.js').then(({ initStudio }) => initStudio())
 }
 
@@ -34,6 +35,7 @@ function showModulePicker() {
   document.querySelector('#app').classList.add('hidden')
   document.querySelector('#studio-app').classList.add('hidden')
   document.querySelector('#splash-screen').classList.remove('hidden')
+  document.querySelector('#gjs').classList.remove('mobile-panel-open')
 }
 
 document.querySelector('#pick-brochure').addEventListener('click', showBrochureApp)
@@ -792,3 +794,43 @@ editor.Commands.add('unsplash:open', {
     })
   },
 })
+
+// --- Mobil nézet: a jobb oldali panel (blokkok/stílus/rétegek) egy
+// teljes szélességű "fiókként" jelenik meg, amit be lehet zárni, hogy a
+// canvas is látszódjon egy keskeny telefonképernyőn ---
+const mobileMediaQuery = window.matchMedia('(max-width: 768px)')
+const panelToggleCommands = ['open-blocks', 'open-sm', 'open-layers', 'open-tm']
+
+function isMobileView() {
+  return mobileMediaQuery.matches
+}
+
+function setPanelDrawerOpen(isOpen) {
+  document.querySelector('#gjs').classList.toggle('mobile-panel-open', isOpen)
+}
+
+panelToggleCommands.forEach((commandId) => {
+  editor.on(`command:run:${commandId}`, () => {
+    if (isMobileView()) setPanelDrawerOpen(true)
+  })
+  editor.on(`command:stop:${commandId}`, () => {
+    if (isMobileView() && !panelToggleCommands.some((id) => editor.Commands.isActive(id))) {
+      setPanelDrawerOpen(false)
+    }
+  })
+})
+
+const panelCloseBtn = document.createElement('button')
+panelCloseBtn.id = 'mobile-panel-close-btn'
+panelCloseBtn.type = 'button'
+panelCloseBtn.textContent = '✕ Bezárás'
+panelCloseBtn.addEventListener('click', () => {
+  panelToggleCommands.forEach((commandId) => {
+    if (editor.Commands.isActive(commandId)) editor.stopCommand(commandId)
+  })
+  setPanelDrawerOpen(false)
+})
+// A GrapesJS újrarajzolja a panel tartalmát (pl. panelváltáskor), ami
+// törölné a beágyazott gombot, ezért ezt önálló, rögzített elemként
+// adjuk a body-hoz, nem a panel konténer belsejébe.
+document.body.append(panelCloseBtn)
