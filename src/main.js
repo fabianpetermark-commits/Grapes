@@ -205,7 +205,8 @@ htmlFileInput.addEventListener('change', () => {
     try {
       const documentParser = new DOMParser()
       const importedDocument = documentParser.parseFromString(reader.result, 'text/html')
-      const bodyMarkup = importedDocument.body?.innerHTML.trim() || ''
+      const importedBody = importedDocument.body
+      const bodyMarkup = importedBody?.innerHTML.trim() || ''
       const importedStyles = [...importedDocument.querySelectorAll('style')]
         .map((styleElement) => styleElement.textContent || '')
         .join('\n')
@@ -214,9 +215,23 @@ htmlFileInput.addEventListener('change', () => {
         throw new Error('A HTML-fájl nem tartalmaz megjeleníthető body-tartalmat.')
       }
 
-      editor.setComponents(bodyMarkup)
+      const componentMarkup = bodyMarkup.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
+      editor.setComponents(componentMarkup)
       if (importedStyles.trim()) {
         editor.setStyle(importedStyles)
+      }
+
+      const bodyAttributes = [...(importedBody?.attributes || [])].reduce((attributes, attribute) => {
+        attributes[attribute.name] = attribute.value
+        return attributes
+      }, {})
+      if (Object.keys(bodyAttributes).length) {
+        editor.getWrapper().setAttributes(bodyAttributes)
+      }
+
+      editor.refresh()
+      if (!editor.getHtml().trim()) {
+        throw new Error('A HTML-fájl tartalma nem hozott létre megjeleníthető komponenst.')
       }
     } catch (error) {
       console.error('HTML-import sikertelen:', error)
