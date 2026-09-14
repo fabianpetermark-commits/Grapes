@@ -10,6 +10,11 @@ JSON-projektek kezelését, valamint böngészős PDF-nyomtatást biztosít.
 - A4 fekvő, hárompaneles brossúra-sablon
 - Többoldalas projektstruktúra
 - Alap blokkok, rétegek és stíluskezelés
+- Szabadon pozicionálható, átméretezhető alakzatok (téglalap, kör, vonal,
+  nyíl, csillag) saját szín/körvonal beállítással
+- QR-kód generátor és beillesztés
+- Ingyenes képtár (Unsplash) tallózása és beillesztése (API-kulcs szükséges)
+- Igazítás, rács (snap-to-grid) és réteg-sorrend (előre/hátra hozás)
 - HTML-fájl megnyitása és szerkesztése
 - Projekt mentése és betöltése JSON formátumban
 - Visszavonás és ismétlés
@@ -21,6 +26,18 @@ JSON-projektek kezelését, valamint böngészős PDF-nyomtatást biztosít.
 ```bash
 npm install
 ```
+
+Az Unsplash-képtár tallózásához hozz létre egy ingyenes API-kulcsot a
+[unsplash.com/developers](https://unsplash.com/developers) oldalon, majd
+másold a `.env.example` fájlt `.env` néven, és írd be a kulcsot:
+
+```bash
+cp .env.example .env
+# szerkeszd a .env fájlt, és add meg a VITE_UNSPLASH_ACCESS_KEY értékét
+```
+
+Kulcs nélkül a szerkesztő minden más funkciója változatlanul működik, csak
+a képtár-tallózás jelez hibaüzenetet.
 
 ## Fejlesztői szerver
 
