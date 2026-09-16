@@ -17,6 +17,7 @@ import { importHtmlFile } from './html-import.js'
 import { initHistory } from './history.js'
 import { saveProject, loadProject } from './project-io.js'
 import { exportToPdf } from './pdf-export.js'
+import { exportToHtml } from './html-export.js'
 
 // Fázis 2 / Lépés 1: alapvető szerkesztő-UX (alakzat-paletta, tulajdonságok
 // panel, rétegek panel, snap-to-grid, igazítás, előre/hátra) a kísérleti
@@ -195,6 +196,7 @@ function setupProjectIO() {
   })
 
   document.querySelector('#fabric-pdf-btn').addEventListener('click', () => exportToPdf(canvas))
+  document.querySelector('#fabric-html-export-btn').addEventListener('click', () => exportToHtml(canvas))
 }
 
 export function initBrochureFabric() {
