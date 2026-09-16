@@ -18,6 +18,9 @@ import { initHistory } from './history.js'
 import { saveProject, loadProject } from './project-io.js'
 import { exportToPdf } from './pdf-export.js'
 import { exportToHtml } from './html-export.js'
+import { groupSelection, ungroupSelection } from './group.js'
+import { importSvgFile } from './svg-import.js'
+import { snapToNearbyObjects } from './smart-guides.js'
 
 // Fázis 2 / Lépés 1: alapvető szerkesztő-UX (alakzat-paletta, tulajdonságok
 // panel, rétegek panel, snap-to-grid, igazítás, előre/hátra) a kísérleti
@@ -101,6 +104,18 @@ function setupPalette() {
     })
   })
 
+  const svgInput = document.querySelector('#fabric-svg-input')
+  document.querySelector('#fabric-svg-import-btn').addEventListener('click', () => svgInput.click())
+  svgInput.addEventListener('change', () => {
+    const [file] = svgInput.files ?? []
+    svgInput.value = ''
+    if (!file) return
+    importSvgFile(file, canvas).catch((error) => {
+      console.error('SVG-import sikertelen:', error)
+      window.alert(`Az SVG-fájl importálása sikertelen: ${error.message}`)
+    })
+  })
+
   document.querySelector('#fabric-delete-btn').addEventListener('click', () => {
     const active = canvas.getActiveObject()
     if (!active) return
@@ -132,6 +147,8 @@ function setupLayerOrderButtons() {
     canvas.sendObjectToBack(active)
     canvas.requestRenderAll()
   })
+  document.querySelector('#fabric-group-btn').addEventListener('click', () => groupSelection(canvas))
+  document.querySelector('#fabric-ungroup-btn').addEventListener('click', () => ungroupSelection(canvas))
 }
 
 function setupAlignment() {
@@ -164,14 +181,24 @@ function setupAlignment() {
 }
 
 function setupSnapToGrid() {
-  const snap = (object) => {
+  canvas.on('object:moving', (event) => {
+    const object = event.target
+    // A más objektumokhoz igazodó "okos" snap élvez elsőbbséget a rácshoz
+    // igazítással szemben — csak akkor esünk vissza a rácsra, ha nincs
+    // közeli másik objektum-él/közép, amihez igazodhatna.
+    const { left, top } = snapToNearbyObjects(canvas, object)
+    object.set({
+      left: left ?? snapValueToGrid(object.left),
+      top: top ?? snapValueToGrid(object.top),
+    })
+  })
+  canvas.on('object:scaling', (event) => {
+    const object = event.target
     object.set({
       left: snapValueToGrid(object.left),
       top: snapValueToGrid(object.top),
     })
-  }
-  canvas.on('object:moving', (event) => snap(event.target))
-  canvas.on('object:scaling', (event) => snap(event.target))
+  })
 }
 
 function setupHistory() {
