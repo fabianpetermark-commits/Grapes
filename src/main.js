@@ -16,9 +16,22 @@ const GRID_SIZE = 10
 const UNSPLASH_ACCESS_KEY = import.meta.env.VITE_UNSPLASH_ACCESS_KEY || ''
 
 // --- Modulválasztó (nyitó képernyő) ---
+// A "?engine=fabric" URL-paraméter a kísérleti, Fabric.js-alapú brossúra-
+// motort aktiválja a jelenlegi GrapesJS-es szerkesztő helyett (lásd a
+// migrációs tervet) — a régi motor ettől függetlenül teljesen érintetlen
+// marad, amíg ez a zászló nincs bekapcsolva.
+const useFabricEngine = new URLSearchParams(window.location.search).get('engine') === 'fabric'
+
 function showBrochureApp() {
   document.querySelector('#splash-screen').classList.add('hidden')
   document.querySelector('#studio-app').classList.add('hidden')
+  if (useFabricEngine) {
+    document.querySelector('#app').classList.add('hidden')
+    document.querySelector('#fabric-app').classList.remove('hidden')
+    import('./brochure-fabric/editor.js').then(({ initBrochureFabric }) => initBrochureFabric())
+    return
+  }
+  document.querySelector('#fabric-app').classList.add('hidden')
   document.querySelector('#app').classList.remove('hidden')
   editor.refresh()
 }
@@ -26,6 +39,7 @@ function showBrochureApp() {
 function showStudioApp() {
   document.querySelector('#splash-screen').classList.add('hidden')
   document.querySelector('#app').classList.add('hidden')
+  document.querySelector('#fabric-app').classList.add('hidden')
   document.querySelector('#studio-app').classList.remove('hidden')
   document.querySelector('#gjs').classList.remove('mobile-panel-open')
   import('./studio.js').then(({ initStudio }) => initStudio())
@@ -33,6 +47,7 @@ function showStudioApp() {
 
 function showModulePicker() {
   document.querySelector('#app').classList.add('hidden')
+  document.querySelector('#fabric-app').classList.add('hidden')
   document.querySelector('#studio-app').classList.add('hidden')
   document.querySelector('#splash-screen').classList.remove('hidden')
   document.querySelector('#gjs').classList.remove('mobile-panel-open')
@@ -42,6 +57,7 @@ document.querySelector('#pick-brochure').addEventListener('click', showBrochureA
 document.querySelector('#pick-studio').addEventListener('click', showStudioApp)
 document.querySelector('#app-back-to-menu-btn').addEventListener('click', showModulePicker)
 document.querySelector('#studio-back-to-menu-btn').addEventListener('click', showModulePicker)
+document.querySelector('#fabric-back-to-menu-btn').addEventListener('click', showModulePicker)
 
 // --- Főmenü ---
 const mainMenu = document.querySelector('#main-menu')

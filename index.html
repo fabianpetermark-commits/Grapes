@@ -298,6 +298,49 @@
         width: 100%;
       }
 
+      #fabric-app {
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      #fabric-toolbar {
+        height: 54px;
+        flex-shrink: 0;
+        background: var(--bg-panel);
+        display: flex;
+        align-items: center;
+        padding: 0 16px;
+        gap: 14px;
+        border-bottom: 1px solid var(--border-neon);
+        box-sizing: border-box;
+      }
+
+      #fabric-toolbar .brand small {
+        font-size: 11px;
+        opacity: 0.6;
+        font-weight: normal;
+      }
+
+      #fabric-zoom-controls {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      #fabric-canvas-wrapper {
+        flex: 1;
+        overflow: auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #05070a;
+      }
+
+      #fabric-canvas-wrapper canvas {
+        box-shadow: 0 0 24px rgba(0, 229, 255, 0.15);
+      }
+
       /* --- Mobil optimalizáció --- */
       @media (max-width: 768px) {
         #splash-screen h1 {
@@ -512,6 +555,34 @@
         </div>
       </div>
       <div id="gjs"></div>
+    </div>
+
+    <!-- Kísérleti Fabric.js-alapú brossúra-motor (?engine=fabric), a GrapesJS-es
+         #app mellett, azzal párhuzamosan, attól függetlenül. Lásd a migrációs
+         tervet: a GrapesJS visszatérő pozicionálási hibái (importált fix-pixel
+         grafikák ütközése a canvas DOM/CSS-modelljével) egy szabad-pozicionálású
+         canvas-objektum motorral (Fabric.js) a gyökerénél szűnnek meg. -->
+    <div id="fabric-app" class="hidden">
+      <div id="fabric-toolbar">
+        <div class="brand">
+          <span>GRAPES <small>(kísérleti Fabric motor)</small></span>
+        </div>
+        <button id="fabric-add-rect-btn" class="tb-btn" type="button">▭ Téglalap</button>
+        <button id="fabric-add-circle-btn" class="tb-btn" type="button">◯ Kör</button>
+        <button id="fabric-add-text-btn" class="tb-btn" type="button">🔤 Szöveg</button>
+        <div class="toolbar-spacer"></div>
+        <div id="fabric-zoom-controls">
+          <button id="fabric-zoom-out-btn" class="tb-btn" type="button" title="Kicsinyítés">−</button>
+          <button id="fabric-zoom-reset-btn" class="tb-btn" type="button" title="100%-ra állítás">
+            <span id="fabric-zoom-level">100%</span>
+          </button>
+          <button id="fabric-zoom-in-btn" class="tb-btn" type="button" title="Nagyítás">+</button>
+        </div>
+        <button id="fabric-back-to-menu-btn" class="tb-btn" type="button">🏠 Vissza a főmenübe</button>
+      </div>
+      <div id="fabric-canvas-wrapper">
+        <canvas id="fabric-canvas"></canvas>
+      </div>
     </div>
 
     <div id="studio-app" class="hidden dark bg-zinc-950 text-zinc-100 flex flex-col overflow-hidden">
