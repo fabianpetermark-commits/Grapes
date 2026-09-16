@@ -622,6 +622,37 @@
         overflow-y: auto;
       }
 
+      /* A Kódnézet modál szélesebb/magasabb legyen, hogy a kód olvasható
+         maradjon — a többi (QR/Unsplash) modál marad a szűkebb alapméreten. */
+      .fabric-modal:has(.fabric-code-view) {
+        width: min(900px, 94vw);
+        max-height: 90vh;
+      }
+
+      .fabric-code-view {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        height: 70vh;
+      }
+
+      .fabric-code-view-toolbar {
+        display: flex;
+        justify-content: flex-end;
+      }
+
+      .fabric-code-view-editor {
+        flex: 1;
+        overflow: hidden;
+        border: 1px solid var(--border-neon);
+        border-radius: 4px;
+      }
+
+      .fabric-code-view-editor .cm-editor {
+        height: 100%;
+        font-size: 13px;
+      }
+
       /* --- Mobil optimalizáció --- */
       @media (max-width: 768px) {
         #splash-screen h1 {
@@ -955,6 +986,7 @@
         <input id="fabric-project-input" type="file" accept="application/json" hidden />
         <button id="fabric-pdf-btn" class="tb-btn success" type="button" title="PDF nyomtatás / mentés">📄 PDF</button>
         <button id="fabric-html-export-btn" class="tb-btn success" type="button" title="Valódi, szerkeszthető HTML exportálása">🌐 HTML export</button>
+        <button id="fabric-code-view-btn" class="tb-btn" type="button" title="Kódnézet (szintaxis-kiemeléssel)">🧑‍💻 Kódnézet</button>
         <div class="toolbar-spacer"></div>
         <button id="fabric-bring-front-btn" class="tb-btn" type="button" title="Előre hozás">⬆ Előre</button>
         <button id="fabric-send-back-btn" class="tb-btn" type="button" title="Háttérbe küldés">⬇ Hátra</button>

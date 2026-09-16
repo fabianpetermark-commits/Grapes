@@ -8,9 +8,12 @@
 // szándékos, mert pont ez szünteti meg az eredeti pozicionálási
 // hibaosztályt. Emiatt egy importált grafika az exportált HTML-ben is egy
 // <image> marad, nem bomlik vissza elemenként szerkeszthető jelöléssé.
-export function exportToHtml(canvas) {
+// A tényleges HTML-dokumentum felépítése külön függvényben, hogy a
+// code-view.js (Kódnézet) is újrahasználhassa ugyanazt a tartalmat, amit
+// ez a export letölt — nincs duplikált canvas.toSVG()+wrapper logika.
+export function buildHtmlDocument(canvas) {
   const svgMarkup = canvas.toSVG()
-  const html = `<!doctype html>
+  return `<!doctype html>
 <html lang="hu">
   <head>
     <meta charset="utf-8" />
@@ -25,7 +28,10 @@ ${svgMarkup}
   </body>
 </html>
 `
+}
 
+export function exportToHtml(canvas) {
+  const html = buildHtmlDocument(canvas)
   const blob = new Blob([html], { type: 'text/html' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
