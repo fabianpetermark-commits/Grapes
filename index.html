@@ -385,9 +385,17 @@
         display: block;
       }
 
-      #fabric-properties-fields input {
+      #fabric-properties-fields input,
+      #fabric-properties-fields select {
         width: 100%;
         box-sizing: border-box;
+        margin-bottom: 4px;
+      }
+
+      #fabric-prop-shadow-offset-x,
+      #fabric-prop-shadow-offset-y {
+        width: calc(50% - 2px);
+        display: inline-block;
       }
 
       #fabric-layers-list {
@@ -753,6 +761,8 @@
         <div class="toolbar-spacer"></div>
         <button id="fabric-bring-front-btn" class="tb-btn" type="button" title="Előre hozás">⬆ Előre</button>
         <button id="fabric-send-back-btn" class="tb-btn" type="button" title="Háttérbe küldés">⬇ Hátra</button>
+        <button id="fabric-group-btn" class="tb-btn" type="button" title="Kijelölt elemek csoportosítása">⛓ Csoport</button>
+        <button id="fabric-ungroup-btn" class="tb-btn" type="button" title="Csoport szétválasztása">⛓️‍💥 Szétválasztás</button>
         <div class="toolbar-spacer"></div>
         <div id="fabric-align-controls">
           <button id="fabric-align-left-btn" class="tb-btn" type="button" title="Balra igazítás">⯇</button>
@@ -787,6 +797,8 @@
           <button id="fabric-unsplash-btn" class="tb-btn" type="button">🌄 Unsplash képtár</button>
           <button id="fabric-html-import-btn" class="tb-btn" type="button">📁 HTML importálása</button>
           <input id="fabric-html-input" type="file" accept=".html,.htm,text/html" hidden />
+          <button id="fabric-svg-import-btn" class="tb-btn" type="button">🔺 SVG importálása</button>
+          <input id="fabric-svg-input" type="file" accept=".svg,image/svg+xml" hidden />
           <button id="fabric-delete-btn" class="tb-btn" type="button">🗑️ Törlés</button>
         </div>
         <div id="fabric-canvas-wrapper">
@@ -796,14 +808,58 @@
           <div class="fabric-panel-title">Tulajdonságok</div>
           <div id="fabric-properties-empty" class="fabric-panel-hint">Nincs kijelölt elem.</div>
           <div id="fabric-properties-fields" class="hidden">
-            <label class="fabric-field-label" for="fabric-prop-fill">Kitöltés</label>
-            <input id="fabric-prop-fill" type="color" />
+            <label class="fabric-field-label" for="fabric-prop-fill-mode">Kitöltés típusa</label>
+            <select id="fabric-prop-fill-mode">
+              <option value="solid">Egyszínű</option>
+              <option value="gradient">Színátmenet (gradiens)</option>
+              <option value="pattern">Mintás (kép)</option>
+            </select>
+
+            <div id="fabric-prop-fill-solid-group">
+              <label class="fabric-field-label" for="fabric-prop-fill">Kitöltés</label>
+              <input id="fabric-prop-fill" type="color" />
+            </div>
+
+            <div id="fabric-prop-fill-gradient-group" class="hidden">
+              <label class="fabric-field-label" for="fabric-prop-gradient-type">Gradiens típusa</label>
+              <select id="fabric-prop-gradient-type">
+                <option value="linear">Lineáris</option>
+                <option value="radial">Radiális</option>
+              </select>
+              <label class="fabric-field-label" for="fabric-prop-gradient-from">Kezdőszín</label>
+              <input id="fabric-prop-gradient-from" type="color" />
+              <label class="fabric-field-label" for="fabric-prop-gradient-to">Végszín</label>
+              <input id="fabric-prop-gradient-to" type="color" />
+            </div>
+
+            <div id="fabric-prop-fill-pattern-group" class="hidden">
+              <label class="fabric-field-label" for="fabric-prop-pattern-input">Mintakép feltöltése</label>
+              <input id="fabric-prop-pattern-input" type="file" accept="image/*" />
+            </div>
+
             <label class="fabric-field-label" for="fabric-prop-stroke">Körvonal</label>
             <input id="fabric-prop-stroke" type="color" />
             <label class="fabric-field-label" for="fabric-prop-stroke-width">Körvonal vastagsága</label>
             <input id="fabric-prop-stroke-width" type="number" min="0" max="40" />
             <label class="fabric-field-label" for="fabric-prop-opacity">Átlátszóság</label>
             <input id="fabric-prop-opacity" type="range" min="0" max="100" />
+            <label class="fabric-field-label" for="fabric-prop-angle">Elfordítás (fok)</label>
+            <input id="fabric-prop-angle" type="number" min="-360" max="360" />
+
+            <label class="fabric-field-label">
+              <input id="fabric-prop-shadow-enabled" type="checkbox" style="width:auto;display:inline-block;vertical-align:middle;margin-right:4px;" />
+              Vetett árnyék
+            </label>
+            <div id="fabric-prop-shadow-group" class="hidden">
+              <label class="fabric-field-label" for="fabric-prop-shadow-color">Árnyék színe</label>
+              <input id="fabric-prop-shadow-color" type="color" />
+              <label class="fabric-field-label" for="fabric-prop-shadow-blur">Árnyék elmosása</label>
+              <input id="fabric-prop-shadow-blur" type="number" min="0" max="60" />
+              <label class="fabric-field-label" for="fabric-prop-shadow-offset">Árnyék eltolása (x/y)</label>
+              <input id="fabric-prop-shadow-offset-x" type="number" min="-40" max="40" />
+              <input id="fabric-prop-shadow-offset-y" type="number" min="-40" max="40" />
+            </div>
+
             <div id="fabric-prop-font-group" class="hidden">
               <label class="fabric-field-label" for="fabric-prop-font-size">Betűméret</label>
               <input id="fabric-prop-font-size" type="number" min="6" max="200" />

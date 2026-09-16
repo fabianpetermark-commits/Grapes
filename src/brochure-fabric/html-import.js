@@ -1,5 +1,5 @@
 import html2canvas from 'html2canvas'
-import { FabricImage, Textbox, Rect } from 'fabric'
+import { FabricImage, Textbox, Rect, Gradient } from 'fabric'
 
 const SHEET_WIDTH = 1123
 const SHEET_HEIGHT = 794
@@ -14,6 +14,52 @@ function hasDirectOrOnlyInlineText(el) {
 
 function isSolidColor(colorString) {
   return Boolean(colorString) && colorString !== 'transparent' && colorString !== 'rgba(0, 0, 0, 0)'
+}
+
+// A böngésző a kiszámított `background-image`-et normalizált
+// `linear-gradient(<szög>deg, <szín> <offset>, ...)` alakban adja vissza —
+// ezt fordítjuk le egy Fabric `Gradient`-re, hogy a korábban teljesen
+// kimaradó CSS-gradiensek is átjöjjenek az importnál, ne csak az
+// egyszínű hátterek.
+function parseLinearGradient(backgroundImage, width, height) {
+  const match = backgroundImage?.match(/^linear-gradient\(([^)]+)\)$/)
+  if (!match) return null
+
+  const parts = match[1].split(/,(?![^(]*\))/).map((part) => part.trim())
+  let angleDeg = 180 // a CSS-ben az "irány nélküli" gradiens alapból felülről lefelé megy
+  let colorParts = parts
+  const angleMatch = parts[0].match(/^(-?[\d.]+)deg$/)
+  if (angleMatch) {
+    angleDeg = parseFloat(angleMatch[1])
+    colorParts = parts.slice(1)
+  }
+
+  const colors = colorParts.map((part) => part.split(/\s+/)[0])
+  if (colors.length < 2) return null
+
+  // CSS gradiens-szög: 0deg felfelé mutat, óramutató járása szerint nő —
+  // ezt irányvektorra váltjuk, majd a doboz közepéhez képest húzzuk ki a
+  // gradiens-vonalat úgy, hogy lefedje a teljes dobozt.
+  const rad = (angleDeg * Math.PI) / 180
+  const dx = Math.sin(rad)
+  const dy = -Math.cos(rad)
+  const halfLength = (Math.abs(dx * width) + Math.abs(dy * height)) / 2 || Math.max(width, height) / 2
+  const centerX = width / 2
+  const centerY = height / 2
+
+  return new Gradient({
+    type: 'linear',
+    coords: {
+      x1: centerX - dx * halfLength,
+      y1: centerY - dy * halfLength,
+      x2: centerX + dx * halfLength,
+      y2: centerY + dy * halfLength,
+    },
+    colorStops: colors.map((color, index) => ({
+      offset: colors.length > 1 ? index / (colors.length - 1) : 0,
+      color,
+    })),
+  })
 }
 
 // Az importált HTML-t "okos" módon, elemenként szerkeszthető Fabric-
@@ -46,7 +92,8 @@ function pickElements(root) {
       return
     }
 
-    if (el.children.length === 0 && isSolidColor(style.backgroundColor)) {
+    const hasGradient = style.backgroundImage?.startsWith('linear-gradient(')
+    if (el.children.length === 0 && (isSolidColor(style.backgroundColor) || hasGradient)) {
       picks.push({ type: 'box', el, style })
       return
     }
@@ -97,13 +144,14 @@ async function buildFabricObjects(picks, originRect, scale) {
         }),
       )
     } else if (pick.type === 'box') {
+      const gradient = parseLinearGradient(pick.style.backgroundImage, width, height)
       objects.push(
         new Rect({
           left,
           top,
           width,
           height,
-          fill: pick.style.backgroundColor,
+          fill: gradient || pick.style.backgroundColor,
         }),
       )
     }
