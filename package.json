@@ -15,6 +15,7 @@
     "vite": "^8.3.0"
   },
   "dependencies": {
+    "fabric": "^7.4.0",
     "grapesjs": "^0.23.6",
     "grapesjs-blocks-basic": "^1.0.2",
     "grapesjs-custom-code": "^1.0.2",
@@ -24,6 +25,7 @@
     "grapesjs-style-bg": "^2.0.2",
     "grapesjs-tabs": "^1.0.6",
     "grapesjs-tooltip": "^0.1.8",
+    "html2canvas": "^1.4.1",
     "qrcode": "^1.5.4",
     "three": "^0.128.0"
   }
