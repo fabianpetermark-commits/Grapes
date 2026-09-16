@@ -653,6 +653,44 @@ editor.Panels.addButton('options', {
   attributes: { title: 'Asset Manager megnyitása' },
 })
 
+// --- Nagyítás / kicsinyítés ---
+const ZOOM_STEP = 10
+const ZOOM_MIN = 20
+const ZOOM_MAX = 200
+const zoomLevelEl = document.querySelector('#zoom-level')
+
+function setZoom(value) {
+  const clamped = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(value)))
+  editor.Canvas.setZoom(clamped)
+  zoomLevelEl.textContent = `${clamped}%`
+}
+
+document.querySelector('#zoom-in-btn').addEventListener('click', () => {
+  setZoom(editor.Canvas.getZoom() + ZOOM_STEP)
+})
+
+document.querySelector('#zoom-out-btn').addEventListener('click', () => {
+  setZoom(editor.Canvas.getZoom() - ZOOM_STEP)
+})
+
+document.querySelector('#zoom-reset-btn').addEventListener('click', () => {
+  setZoom(100)
+})
+
+document.querySelector('#zoom-fit-btn').addEventListener('click', () => {
+  const viewportWidth = document.querySelector('#gjs').clientWidth
+  const canvasPanelWidth = window.matchMedia('(max-width: 768px)').matches
+    ? viewportWidth
+    : viewportWidth - 240
+  const sheetWidth = 1123
+  const fitZoom = (canvasPanelWidth / sheetWidth) * 100 - 4
+  setZoom(fitZoom)
+})
+
+editor.on('canvas:zoom', () => {
+  zoomLevelEl.textContent = `${Math.round(editor.Canvas.getZoom())}%`
+})
+
 // --- QR-kód generátor ---
 editor.Commands.add('qr:configure', {
   run(ed) {
@@ -821,6 +859,22 @@ panelToggleCommands.forEach((commandId) => {
       setPanelDrawerOpen(false)
     }
   })
+})
+
+// A grapesjs-preset-webpage plugin automatikusan aktiválja a "Blokkok"
+// panelt betöltéskor ('load' esemény), ami a fenti figyelők miatt
+// tévesen nyitva tartaná a mobil fiókot már az első megnyitáskor is,
+// pedig a felhasználó még nem kattintott semmire. Ezért induláskor
+// (a 'load' után, hogy az alapértelmezett aktiválás már megtörténjen)
+// erőltetve zárjuk a fiókot mobilon.
+editor.on('load', () => {
+  setTimeout(() => {
+    if (!isMobileView()) return
+    panelToggleCommands.forEach((commandId) => {
+      if (editor.Commands.isActive(commandId)) editor.stopCommand(commandId)
+    })
+    setPanelDrawerOpen(false)
+  }, 0)
 })
 
 const panelCloseBtn = document.createElement('button')
