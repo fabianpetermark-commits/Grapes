@@ -241,17 +241,27 @@ function setupProjectIO() {
 function setupMobilePanels() {
   const paletteEl = document.querySelector('#fabric-palette')
   const sidePanelEl = document.querySelector('#fabric-side-panel')
+  const backdropEl = document.querySelector('#fabric-mobile-backdrop')
 
   const openPanel = (panelEl, otherPanelEl) => {
     otherPanelEl.classList.remove('fabric-mobile-open')
     panelEl.classList.add('fabric-mobile-open')
+    backdropEl.classList.add('fabric-mobile-open')
   }
-  const closePanel = (panelEl) => panelEl.classList.remove('fabric-mobile-open')
+  const closePanel = (panelEl) => {
+    panelEl.classList.remove('fabric-mobile-open')
+    backdropEl.classList.remove('fabric-mobile-open')
+  }
+  const closeAllPanels = () => {
+    closePanel(paletteEl)
+    closePanel(sidePanelEl)
+  }
 
   document.querySelector('#fabric-mobile-palette-btn').addEventListener('click', () => openPanel(paletteEl, sidePanelEl))
   document.querySelector('#fabric-mobile-props-btn').addEventListener('click', () => openPanel(sidePanelEl, paletteEl))
   document.querySelector('#fabric-palette-close-btn').addEventListener('click', () => closePanel(paletteEl))
   document.querySelector('#fabric-side-panel-close-btn').addEventListener('click', () => closePanel(sidePanelEl))
+  backdropEl.addEventListener('click', closeAllPanels)
 
   // Mobilon egy elem hozzáadása után rögtön a canvasra ugrunk, hogy
   // azonnal látszódjon az eredmény (asztali nézeten nincs hatása, mert
