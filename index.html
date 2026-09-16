@@ -193,22 +193,40 @@
       }
 
       /* --- Nagyítás/kicsinyítés --- */
-      #zoom-controls {
+      #zoom-controls,
+      #content-zoom-controls {
         display: flex;
         align-items: center;
         gap: 4px;
       }
 
-      #zoom-controls .tb-btn {
+      .zoom-group-label {
+        color: #7fdfff;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-right: 2px;
+        white-space: nowrap;
+      }
+
+      #zoom-controls .tb-btn,
+      #content-zoom-controls .tb-btn {
         padding: 8px 10px;
         font-weight: 700;
         line-height: 1;
       }
 
-      #zoom-reset-btn {
+      #zoom-reset-btn,
+      #content-zoom-reset-btn {
         min-width: 56px;
         font-weight: 500;
         font-variant-numeric: tabular-nums;
+      }
+
+      #content-zoom-controls {
+        border-left: 1px solid var(--border-neon);
+        padding-left: 12px;
+        margin-left: 4px;
       }
 
       /* --- Főmenü --- */
@@ -281,12 +299,44 @@
         }
 
         #toolbar {
-          padding: 0 10px;
+          height: auto;
+          min-height: 54px;
+          flex-wrap: wrap;
+          row-gap: 6px;
+          padding: 6px 10px;
           gap: 8px;
         }
 
         .brand span {
           display: none;
+        }
+
+        #zoom-controls,
+        #content-zoom-controls {
+          order: 3;
+        }
+
+        #content-zoom-controls {
+          border-left: none;
+          padding-left: 0;
+          margin-left: 0;
+        }
+
+        .zoom-group-label {
+          display: none;
+        }
+
+        #zoom-controls .tb-btn,
+        #content-zoom-controls .tb-btn {
+          padding: 6px 8px;
+        }
+
+        /* A #toolbar mobilon 1-3 sorra törhet a tartalmától függően, ezért
+           a fix magasságát (--toolbar-h) futásidőben a JS méri és állítja
+           be (lásd main.js) — minden alább lévő, a toolbar magasságától
+           függő elem ezt a változót haszn álja, nem egy beégetett értéket. */
+        #gjs {
+          height: calc(100vh - var(--toolbar-h, 100px));
         }
 
         #main-menu {
@@ -303,7 +353,7 @@
 
         .gjs-pn-views-container {
           position: fixed !important;
-          top: 54px !important;
+          top: var(--toolbar-h, 100px) !important;
           right: 0 !important;
           bottom: 0 !important;
           width: 88vw !important;
@@ -314,7 +364,7 @@
 
         .gjs-pn-views {
           position: fixed !important;
-          top: 54px !important;
+          top: var(--toolbar-h, 100px) !important;
           right: 0 !important;
           width: 88vw !important;
           z-index: 41 !important;
@@ -337,7 +387,7 @@
         body:has(#gjs.mobile-panel-open) #mobile-panel-close-btn {
           display: block;
           position: fixed;
-          top: 102px;
+          top: calc(var(--toolbar-h, 100px) + 48px);
           right: 0;
           width: 88vw;
           z-index: 42;
@@ -415,12 +465,22 @@
         <div class="toolbar-spacer"></div>
 
         <div id="zoom-controls">
+          <span class="zoom-group-label">Lap</span>
           <button id="zoom-out-btn" class="tb-btn" type="button" title="Kicsinyítés">−</button>
           <button id="zoom-reset-btn" class="tb-btn" type="button" title="100%-ra állítás">
             <span id="zoom-level">100%</span>
           </button>
           <button id="zoom-in-btn" class="tb-btn" type="button" title="Nagyítás">+</button>
           <button id="zoom-fit-btn" class="tb-btn" type="button" title="Teljes lap illesztése">⛶</button>
+        </div>
+
+        <div id="content-zoom-controls">
+          <span class="zoom-group-label">Tartalom</span>
+          <button id="content-zoom-out-btn" class="tb-btn" type="button" title="Tartalom kicsinyítése (nézet)">−</button>
+          <button id="content-zoom-reset-btn" class="tb-btn" type="button" title="Tartalom 100%-ra állítása">
+            <span id="content-zoom-level">100%</span>
+          </button>
+          <button id="content-zoom-in-btn" class="tb-btn" type="button" title="Tartalom nagyítása (nézet)">+</button>
         </div>
       </div>
       <div id="gjs"></div>
