@@ -54,9 +54,10 @@ body {
   color: #00e5ff !important;
 }
 
-#gjs {
-  height: calc(100vh - 54px);
-}
+/* A #gjs magassága a toolbar tényleges (esetenként több soros, mobilon
+   tördelt) magasságától függ, ezért az index.html saját <style>-je
+   definiálja (base + @media mobil eset) — itt szándékosan nincs
+   felülíró szabály, nehogy versenyezzen vele a cascade sorrend miatt. */
 
 .sheet {
   display: flex;

@@ -64,6 +64,19 @@ document.addEventListener('click', (event) => {
   }
 })
 
+// A toolbar mobilon több sorra törhet (a tartalmától függően), ezért a
+// tényleges magasságát mérjük és --toolbar-h CSS változóként tesszük
+// elérhetővé mindennek, ami ehhez képest pozícionál (canvas magassága,
+// mobil panel-fiók stb.) — így nem kell beégetett px-értékekkel
+// próbálkozni a lehetséges 1-3 soros elrendezéshez.
+const toolbarEl = document.querySelector('#toolbar')
+function updateToolbarHeight() {
+  document.documentElement.style.setProperty('--toolbar-h', `${toolbarEl.offsetHeight}px`)
+}
+updateToolbarHeight()
+window.addEventListener('resize', updateToolbarHeight)
+new ResizeObserver(updateToolbarHeight).observe(toolbarEl)
+
 const editor = grapesjs.init({
   container: '#gjs',
   height: '100%',
@@ -611,10 +624,17 @@ document.querySelector('#code-btn').addEventListener('click', () => {
 })
 
 let isPreview = false
-document.querySelector('#preview-btn').addEventListener('click', (event) => {
-  isPreview = !isPreview
+const previewBtnEl = document.querySelector('#preview-btn')
+
+function setPreviewMode(active) {
+  if (active === isPreview) return
+  isPreview = active
   editor.runCommand(isPreview ? 'preview' : 'stop-preview')
-  event.currentTarget.textContent = isPreview ? '✏️ Szerkesztés' : '👁️ Előnézet'
+  previewBtnEl.textContent = isPreview ? '✏️ Szerkesztés' : '👁️ Előnézet'
+}
+
+previewBtnEl.addEventListener('click', () => {
+  setPreviewMode(!isPreview)
 })
 
 document.querySelector('#pdf-btn').addEventListener('click', () => {
@@ -690,6 +710,67 @@ document.querySelector('#zoom-fit-btn').addEventListener('click', () => {
 editor.on('canvas:zoom', () => {
   zoomLevelEl.textContent = `${Math.round(editor.Canvas.getZoom())}%`
 })
+
+// --- Tartalom nézet-zoom: a lap mérete fixen marad, csak a rajta lévő
+// tartalom (szöveg, alakzatok) nő/zsugorodik rá-nézésre. Mivel ez a
+// GrapesJS saját kattintás/húzás-koordinátáival ütközne, csak nézetként
+// működik: nem 100%-on a szerkesztés zárolva van (előnézet-mód). ---
+const CONTENT_ZOOM_STEP = 10
+const CONTENT_ZOOM_MIN = 50
+const CONTENT_ZOOM_MAX = 200
+const contentZoomLevelEl = document.querySelector('#content-zoom-level')
+let contentZoomValue = 100
+let contentZoomLockedPreview = false
+
+function applyContentZoomStyle() {
+  const doc = editor.Canvas.getDocument()
+  if (!doc) return
+  let styleEl = doc.querySelector('#content-zoom-style')
+  if (!styleEl) {
+    styleEl = doc.createElement('style')
+    styleEl.id = 'content-zoom-style'
+    doc.head.append(styleEl)
+  }
+  const scale = contentZoomValue / 100
+  styleEl.textContent =
+    contentZoomValue === 100
+      ? ''
+      : `.sheet-panel, [data-gjs-type="wrapper"] > *:not(.sheet) {
+          transform: scale(${scale});
+          transform-origin: top left;
+        }`
+}
+
+function setContentZoom(value) {
+  contentZoomValue = Math.min(CONTENT_ZOOM_MAX, Math.max(CONTENT_ZOOM_MIN, Math.round(value)))
+  contentZoomLevelEl.textContent = `${contentZoomValue}%`
+  applyContentZoomStyle()
+
+  const shouldLock = contentZoomValue !== 100
+  if (shouldLock && !isPreview) {
+    contentZoomLockedPreview = true
+    setPreviewMode(true)
+  } else if (!shouldLock && contentZoomLockedPreview) {
+    contentZoomLockedPreview = false
+    setPreviewMode(false)
+  }
+}
+
+document.querySelector('#content-zoom-in-btn').addEventListener('click', () => {
+  setContentZoom(contentZoomValue + CONTENT_ZOOM_STEP)
+})
+
+document.querySelector('#content-zoom-out-btn').addEventListener('click', () => {
+  setContentZoom(contentZoomValue - CONTENT_ZOOM_STEP)
+})
+
+document.querySelector('#content-zoom-reset-btn').addEventListener('click', () => {
+  setContentZoom(100)
+})
+
+// A canvas iframe újratöltődhet (pl. oldalváltáskor), ilyenkor a
+// befecskendezett stílust újra kell alkalmazni, különben elveszne.
+editor.on('canvas:frame:load', () => applyContentZoomStyle())
 
 // --- QR-kód generátor ---
 editor.Commands.add('qr:configure', {
