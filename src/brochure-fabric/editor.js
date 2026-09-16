@@ -223,21 +223,21 @@ function setupPalette() {
   })
 }
 
-function setupLayerOrderButtons() {
-  document.querySelector('#fabric-bring-front-btn').addEventListener('click', () => {
+function setupLayerOrderButtons(layersPanel) {
+  // A z-sorrend változása nem vált ki Fabric-eseményt, amire a rétegpanel
+  // magától feliratkozhatna, ezért itt kérjük az újrarajzolását.
+  const reorder = (apply) => {
     const active = canvas.getActiveObject()
     if (!active) return
-    canvas.bringObjectToFront(active)
+    apply(active)
     canvas.requestRenderAll()
-  })
-  document.querySelector('#fabric-send-back-btn').addEventListener('click', () => {
-    const active = canvas.getActiveObject()
-    if (!active) return
-    canvas.sendObjectToBack(active)
-    canvas.requestRenderAll()
-  })
-  document.querySelector('#fabric-group-btn').addEventListener('click', () => groupSelection(canvas))
-  document.querySelector('#fabric-ungroup-btn').addEventListener('click', () => ungroupSelection(canvas))
+    layersPanel.render()
+  }
+
+  el('#fabric-bring-front-btn').addEventListener('click', () => reorder((o) => canvas.bringObjectToFront(o)))
+  el('#fabric-send-back-btn').addEventListener('click', () => reorder((o) => canvas.sendObjectToBack(o)))
+  el('#fabric-group-btn').addEventListener('click', () => groupSelection(canvas))
+  el('#fabric-ungroup-btn').addEventListener('click', () => ungroupSelection(canvas))
 }
 
 function setupAlignment() {
@@ -403,18 +403,19 @@ export function initBrochureFabric() {
     backgroundColor: '#ffffff',
   })
 
+  const layersPanel = initLayersPanel(canvas)
+
   setupZoom()
   setupPalette()
   setupObjectBar()
   setupOverflowMenu()
-  setupLayerOrderButtons()
+  setupLayerOrderButtons(layersPanel)
   setupAlignment()
   setupSnapToGrid()
   setupHistory()
   setupProjectIO()
   setupMobilePanels()
   initPropertiesPanel(canvas)
-  initLayersPanel(canvas)
 
   return canvas
 }
