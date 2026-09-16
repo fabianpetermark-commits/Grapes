@@ -1,19 +1,131 @@
 import html2canvas from 'html2canvas'
-import { FabricImage } from 'fabric'
+import { FabricImage, Textbox, Rect } from 'fabric'
 
 const SHEET_WIDTH = 1123
 const SHEET_HEIGHT = 794
 
-// A GrapesJS-es importnál (main.js) a legfőbb, visszatérő hibaosztály az
-// volt, hogy egy tetszőleges, fix-pixelméretű HTML/CSS-grafika élő DOM-ként
-// a szerkesztő saját DOM-fájában/canvas-ában élt, és a `body{...}` stílus-
-// szabály ütközött a szerkesztő valódi <body>-jával és az A4 "lap"
-// koncepciójával. Itt ez a hibaosztály a gyökerénél szűnik meg: az
-// importált HTML-t egy REJTETT, off-DOM konténerbe töltjük, html2canvas-szal
-// egyetlen PNG-vé rendereljük, majd egyetlen mozgatható/átméretezhető Fabric
-// Image objektumként szúrjuk be — nincs többé élő idegen DOM/CSS a
-// szerkesztő fájában. Kompromisszum: az importált grafika elemei többé NEM
-// szerkeszthetők egyenként, csak egészében mozgatható/átméretezhető/törölhető.
+const INLINE_TAGS = new Set(['SPAN', 'A', 'B', 'I', 'EM', 'STRONG', 'BR', 'SMALL'])
+
+function hasDirectOrOnlyInlineText(el) {
+  if (el.querySelector('img')) return false
+  if (!(el.textContent || '').trim()) return false
+  return [...el.children].every((child) => INLINE_TAGS.has(child.tagName))
+}
+
+function isSolidColor(colorString) {
+  return Boolean(colorString) && colorString !== 'transparent' && colorString !== 'rgba(0, 0, 0, 0)'
+}
+
+// Az importált HTML-t "okos" módon, elemenként szerkeszthető Fabric-
+// objektumokra bontjuk (kép/szöveg/szín-doboz), a végleges renderelt
+// geometriát (getBoundingClientRect) és kiszámított stílust
+// (getComputedStyle) olvasva ki — NEM a live DOM/CSS-t tartjuk meg. Ez a
+// lényeg: csak a végeredmény (hova kerül, mi a szöveg/szín/kép) kerül át,
+// a forrás HTML/CSS-fa és a szerkesztő saját DOM-ja soha nem érintkezik,
+// ezért nem térhet vissza az eredeti pozicionálási hibaosztály (a `body`
+// szelektor ütközése stb.) — csak az elemek geometriáját "fényképezzük le".
+//
+// Korlátok: gradiens hátterek, komplex CSS-effektek (árnyék, transform)
+// nem kerülnek át; ha egy elemnek nincs egyértelmű szöveg/kép/egyszínű
+// háttere, kimarad. Ha egyáltalán nem sikerül elemeket azonosítani,
+// visszaesünk a korábbi, teljes-lap rasterizálásra (html2canvas), hogy
+// sose maradjon üres/hiányos az import.
+function pickElements(root) {
+  const picks = []
+
+  function visit(el) {
+    if (el.tagName === 'IMG') {
+      picks.push({ type: 'image', el })
+      return
+    }
+
+    const style = window.getComputedStyle(el)
+
+    if (hasDirectOrOnlyInlineText(el)) {
+      picks.push({ type: 'text', el, style })
+      return
+    }
+
+    if (el.children.length === 0 && isSolidColor(style.backgroundColor)) {
+      picks.push({ type: 'box', el, style })
+      return
+    }
+
+    for (const child of el.children) {
+      visit(child)
+    }
+  }
+
+  for (const child of root.children) {
+    visit(child)
+  }
+
+  return picks
+}
+
+async function buildFabricObjects(picks, originRect, scale) {
+  const objects = []
+
+  for (const pick of picks) {
+    const rect = pick.el.getBoundingClientRect()
+    const left = (rect.left - originRect.left) * scale
+    const top = (rect.top - originRect.top) * scale
+    const width = rect.width * scale
+    const height = rect.height * scale
+    if (width <= 0 || height <= 0) continue
+
+    if (pick.type === 'image') {
+      try {
+        const img = await FabricImage.fromURL(pick.el.src, { crossOrigin: 'anonymous' })
+        img.set({ left, top, scaleX: width / img.width, scaleY: height / img.height })
+        objects.push(img)
+      } catch (error) {
+        console.warn('Kép importálása sikertelen, kihagyva:', pick.el.src, error)
+      }
+    } else if (pick.type === 'text') {
+      const text = (pick.el.textContent || '').trim()
+      if (!text) continue
+      objects.push(
+        new Textbox(text, {
+          left,
+          top,
+          width,
+          fontSize: (parseFloat(pick.style.fontSize) || 16) * scale,
+          fontWeight: pick.style.fontWeight,
+          fill: pick.style.color || '#000000',
+          textAlign: pick.style.textAlign === 'start' ? 'left' : pick.style.textAlign,
+        }),
+      )
+    } else if (pick.type === 'box') {
+      objects.push(
+        new Rect({
+          left,
+          top,
+          width,
+          height,
+          fill: pick.style.backgroundColor,
+        }),
+      )
+    }
+  }
+
+  return objects
+}
+
+async function rasterizeFallback(contentEl, contentWidth, contentHeight) {
+  const canvasEl = await html2canvas(contentEl, {
+    backgroundColor: '#ffffff',
+    scale: 2,
+    width: contentWidth,
+    height: contentHeight,
+  })
+  const dataUrl = canvasEl.toDataURL('image/png')
+  const img = await FabricImage.fromURL(dataUrl)
+  const scale = Math.min(1, SHEET_WIDTH / img.width, SHEET_HEIGHT / img.height)
+  img.set({ left: 0, top: 0, scaleX: scale, scaleY: scale })
+  return [img]
+}
+
 export async function importHtmlFile(file, canvas) {
   const text = await file.text()
   const parser = new DOMParser()
@@ -25,16 +137,12 @@ export async function importHtmlFile(file, canvas) {
     throw new Error('A HTML-fájl nem tartalmaz megjeleníthető body-tartalmat.')
   }
 
-  // Rejtett, off-DOM (de renderelhető) konténer: a viewport-on kívülre
-  // pozicionálva, hogy html2canvas rendereljen, de a felhasználó ne lássa
-  // és semmilyen módon ne ütközhessen a szerkesztő saját DOM-fájával/CSS-ével.
-  // Az importált body gyerekei jellemzően mind absolute pozicionáltak
-  // (fix-pixel grafikák, mint egy social media poszt), ezért a konténer
-  // saját magától 0×0 méretűre esne össze (nincs normál-flow tartalom, ami
-  // méretet adna neki) — a html2canvas így egy üres/érvénytelen képet
-  // renderelne. Ezért, ha a body-szabály tartalmaz explicit width/height-ot,
-  // ugyanazt a méretet adjuk a konténernek is; ha nem, az A4 lap méretét
-  // használjuk alapértékként.
+  // Az importált body gyerekei jellemzően mind absolute pozicionáltak (fix-
+  // pixel grafikák, mint egy social media poszt), ezért a konténer saját
+  // magától 0×0 méretűre esne össze (nincs normál-flow tartalom, ami
+  // méretet adna neki) — a rendereléshez explicit méretet adunk neki, a
+  // body-szabályból kiolvasott width/height alapján (vagy az A4 lap
+  // méretét alapértékként, ha nincs ilyen szabály).
   const bodyRuleMatch = styles.match(/(^|\})\s*body\s*\{([^}]*)\}/)
   const widthMatch = bodyRuleMatch?.[2].match(/width\s*:\s*([\d.]+)px/)
   const heightMatch = bodyRuleMatch?.[2].match(/height\s*:\s*([\d.]+)px/)
@@ -61,19 +169,17 @@ export async function importHtmlFile(file, canvas) {
   document.body.append(sandbox)
 
   try {
-    const canvasEl = await html2canvas(contentEl, {
-      backgroundColor: '#ffffff',
-      scale: 2,
-      width: contentWidth,
-      height: contentHeight,
-    })
-    const dataUrl = canvasEl.toDataURL('image/png')
+    const scale = Math.min(1, SHEET_WIDTH / contentWidth, SHEET_HEIGHT / contentHeight)
+    const picks = pickElements(contentEl)
 
-    const img = await FabricImage.fromURL(dataUrl)
-    const scale = Math.min(1, SHEET_WIDTH / img.width, SHEET_HEIGHT / img.height)
-    img.set({ left: 0, top: 0, scaleX: scale, scaleY: scale })
-    canvas.add(img)
-    canvas.setActiveObject(img)
+    const objects = picks.length
+      ? await buildFabricObjects(picks, contentEl.getBoundingClientRect(), scale)
+      : []
+
+    const finalObjects = objects.length ? objects : await rasterizeFallback(contentEl, contentWidth, contentHeight)
+
+    finalObjects.forEach((object) => canvas.add(object))
+    canvas.setActiveObject(finalObjects[finalObjects.length - 1])
     canvas.requestRenderAll()
   } finally {
     sandbox.remove()
