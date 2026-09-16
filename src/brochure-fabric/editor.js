@@ -18,6 +18,7 @@ import { initHistory } from './history.js'
 import { saveProject, loadProject } from './project-io.js'
 import { exportToPdf } from './pdf-export.js'
 import { exportToHtml } from './html-export.js'
+import { openCodeView } from './code-view.js'
 import { groupSelection, ungroupSelection } from './group.js'
 import { importSvgFile } from './svg-import.js'
 import { snapToNearbyObjects } from './smart-guides.js'
@@ -232,6 +233,7 @@ function setupProjectIO() {
 
   document.querySelector('#fabric-pdf-btn').addEventListener('click', () => exportToPdf(canvas))
   document.querySelector('#fabric-html-export-btn').addEventListener('click', () => exportToHtml(canvas))
+  document.querySelector('#fabric-code-view-btn').addEventListener('click', () => openCodeView(canvas))
 }
 
 // Mobilon az "Elemek" paletta és a "Tulajdonságok/Rétegek" panel csak
