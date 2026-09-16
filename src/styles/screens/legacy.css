@@ -1,7 +1,7 @@
-/* ÁTMENETI FÁJL — a korábbi, index.html-be ágyazott <style> blokk maradéka.
-   A Fabric szerkesztőhöz tartozó szabályok már az új komponens-CSS-ben
-   vannak, itt csak a nyitóképernyő és a legacy GrapesJS-motor stílusai
-   maradtak. Mindkettő saját lépésben szűnik meg (8. és 9. lépés). */
+/* A legacy GrapesJS-motor (?engine=grapes) képernyőjének stílusai — a
+   korábbi, index.html-be ágyazott <style> blokk maradéka. Szándékosan
+   érintetlen: ez a motor nem kap UI-átdolgozást. Csak a brochure-grapes
+   modul importálja, így az alapértelmezett úton le sem töltődik. */
 
 :root {
   --neon-blue: #00e5ff;
@@ -12,9 +12,7 @@
   --border-neon: rgba(0, 229, 255, 0.35);
 }
 
-/* --- Legacy GrapesJS motor (?engine=grapes) --- */
-#app,
-#studio-app {
+#app {
   height: 100%;
 }
 

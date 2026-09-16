@@ -23,6 +23,7 @@ import gjsTabs from 'grapesjs-tabs'
 import gjsTooltip from 'grapesjs-tooltip'
 import QRCode from 'qrcode'
 import '../styles/legacy-grapes.css'
+import '../styles/screens/legacy.css'
 
 const GRID_SIZE = 10
 const UNSPLASH_ACCESS_KEY = import.meta.env.VITE_UNSPLASH_ACCESS_KEY || ''

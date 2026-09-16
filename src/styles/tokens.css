@@ -31,6 +31,13 @@
   --color-success: #3ecf8e;
   --color-warning: #e3a008;
 
+  /* Átfedő rétegek: elsötétítő fátyol és a vászon fölött lebegő,
+     áttetsző felület. */
+  --color-scrim: rgb(5 7 10 / 72%);
+  --color-scrim-soft: rgb(5 7 10 / 60%);
+  --color-bg-floating: rgb(22 27 34 / 92%);
+  --color-accent-glow: rgb(76 141 253 / 8%);
+
   /* --- Térköz: 4px-es rács --- */
   --space-1: 4px;
   --space-2: 8px;

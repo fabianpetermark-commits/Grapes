@@ -5,7 +5,7 @@
   display: grid;
   place-items: center;
   padding: var(--space-4);
-  background: rgb(5 7 10 / 72%);
+  background: var(--color-scrim);
   backdrop-filter: blur(2px);
 }
 

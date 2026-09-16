@@ -7,7 +7,7 @@
   position: absolute;
   inset: 0;
   z-index: var(--z-drawer-backdrop);
-  background: rgb(5 7 10 / 60%);
+  background: var(--color-scrim-soft);
   opacity: 0;
   transition: opacity var(--dur-base) var(--ease-out);
 }

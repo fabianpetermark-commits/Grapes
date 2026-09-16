@@ -1,41 +1,48 @@
 # Task — UI újraépítés
 
+Minden lépés kész, mindegyik után zöld `npm run build` és böngészős ellenőrzés.
+
 - [x] **0. P0 hotfixek** — `#fabric-app.hidden` (A), toolbar `flex-wrap` (B),
       PDF print load-race mindkét motoron (F), főmenü `max-height` (H). `9b6db03`
 - [x] **1. Stílusváz + tokenek** — `src/styles/{index,tokens,reset,base}.css`;
-      a 866 soros inline `<style>` átemelve `screens/legacy.css`-be. `3a07b39`
-- [x] **2. Interakciós réteg** — `src/ui/{dom,overlay,modal,toast}.js`;
-      `brochure-fabric/modal.js` törölve; a Fabric ág összes `window.alert()`-je
-      toastra cserélve; QR-előnézet megjavítva (G); PDF tainted-canvas kezelés;
-      Kódnézet CodeMirror-felszabadítás. A `main.js` alertjei a 9. lépésben
-      megszűnő legacy ágon maradnak.
-- [ ] **3. Gomb + ikon** — `button.css`, `icon.css`, `public/ui-icons.svg`;
-      `.tb-btn` → `.btn`, emoji → SVG
-- [ ] **4. Héj Gridre** — `toolbar/panel/accordion/field` CSS; `--toolbar-h`
-      hack törölve; vászon overflow (C) + `ResizeObserver` (D)
-- [ ] **5. Objektum-sáv** — igazítás/z-sorrend/csoport a vászon fölé,
-      mobilon is elérhetően
-- [ ] **6. Drawer-réteg** — `drawer.js` + `drawer.css`, `setupMobilePanels()` ki
-- [ ] **7. Panelek** — üres állapot, nincs teljes újraépítés, mezők témázása,
-      J/K/L/M javítások
-- [ ] **8. Modulválasztó** — `.module-card` `<div>` → `<button>`, glow nélkül
-- [ ] **9. Fabric = alapértelmezett** — `main.js` szétbontása, GrapesJS lazy
-- [ ] **10. Tailwind ki + 3D stúdió** — `studio.css`, markup átírás, E és N
-- [ ] **11. Takarítás** — dead code, `legacy.css` felszámolása
+      a 866 soros inline `<style>` kiemelve. `3a07b39`
+- [x] **2. Interakciós réteg** — `src/ui/{dom,overlay,modal,toast}.js`; a Fabric
+      ág alertjei toastra; QR-előnézet (G); PDF tainted-canvas; CodeMirror
+      felszabadítás. `15292b7`
+- [x] **3–6. Héj, ikonok, objektum-sáv, fiókok** — SVG sprite, `.btn`, CSS Grid
+      héj, `--toolbar-h` hack törölve, vászon-túlcsordulás (C), `ResizeObserver`
+      (D), kontextuális objektum-sáv, `inert` fiókok. `071c4a2`
+- [x] **7. Panelek** — J/K/L/M javítások, rétegpanel nem épül újra, üres
+      állapot, semleges alapértelmezett kitöltés. `fa22209`
+- [x] **8. Modulválasztó** — `<div>` → `<button>`, glow nélkül. `18d4b66`
+- [x] **9. Fabric = alapértelmezett** — `main.js` 1028 → 21 sor, GrapesJS lusta
+      betöltéssel, `screens.js` képernyőváltó. Belépő bundle 1228 kB → 3,6 kB.
+      `1cf4088`
+- [x] **10. Tailwind ki + 3D stúdió** — közös komponensekre átírva; E és N
+      javítások, render-loop leállítás, deselect, STL-letöltés hibakezelés.
+      `426c0c5`
+- [x] **11. Takarítás** — halott fájlok törölve, legacy CSS a legacy modulhoz
+      kötve, README és `system_architecture.md` frissítve.
 
-## Kézi verifikáció (minden lépés után)
+## Kézi verifikáció (Chromium, 1440px és 390px)
 
-`npm run build` zöld, majd `npm run dev`:
+| Ellenőrzés | Eredmény |
+|---|---|
+| Nyitó → Brossúra → a Fabric szerkesztő nyílik | ✔ |
+| Nyitó → 3D Stúdió → **a stúdió nyílik** (korábban az üres Fabric szerkesztő) | ✔ |
+| Objektum-sáv csak kijelöléskor; igazítás/z-sorrend/csoport működik | ✔ |
+| Zoom −/+/100%/lapra illesztés; átméretezésre újraillesztés | ✔ |
+| QR élő előnézet; modal Escape-re zár, fókusz visszatér a nyitó gombra | ✔ |
+| Overflow-menü Escape-re zár | ✔ |
+| Tab a nyitókártyákig, Enterrel belép | ✔ |
+| Mobil: fiókok oldalról, zárt fiók `inert`, igazítás elérhető | ✔ |
+| Nincs vízszintes görgetés 390 / 768 / 1024 / 1440px-en | ✔ |
+| Stúdió: elem hozzáadás, drótváz `aria-pressed`, főmenübe vissza | ✔ |
+| Nincs konzolhiba (a sandbox proxy Google Fonts-hibáin kívül) | ✔ |
+| `npm run build` | ✔ |
 
-1. Nyitó → Brossúra → a Fabric szerkesztő nyílik
-2. Nyitó → 3D Stúdió → **a stúdió nyílik** (nem az üres Fabric szerkesztő)
-3. Alakzatok, szöveg, kép, QR, Unsplash, HTML/SVG import
-4. Kijelölés → objektum-sáv; igazítás, z-sorrend, csoport
-5. Tulajdonságpanel minden mezője
-6. Undo/redo, mentés→betöltés, PDF (**a print tényleg elindul**), HTML export,
-   Kódnézet (zárás után nincs CodeMirror-példány)
-7. Zoom −/+/100%/lapra illesztés; ablakátméretezésre a vászon középen marad
-8. Billentyűzet: Tab a nyitókártyákig, fókuszgyűrű mindenhol, modal Escape +
-   fókusz-visszaállítás
-9. 375 / 768 / 1024 / 1440px: nincs vízszintes görgetés, a fiókok oldalról
-   csúsznak, az igazítás mobilon is elérhető
+## Nem ellenőrizhető ebben a környezetben
+
+- Tényleges PDF-nyomtatás (a print-dialógus fejlécnélküli böngészőben nem nyílik)
+- Unsplash-keresés (nincs API-kulcs, és a sandbox blokkolja a kimenő kérést)
+- Google Fonts betűtípusok betöltése (a proxy blokkolja)

@@ -14,7 +14,7 @@
   padding: var(--space-6);
   text-align: center;
   background:
-    radial-gradient(60% 50% at 50% 35%, rgb(76 141 253 / 8%) 0%, transparent 70%),
+    radial-gradient(60% 50% at 50% 35%, var(--color-accent-glow) 0%, transparent 70%),
     var(--color-bg-app);
 }
 

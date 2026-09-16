@@ -18,5 +18,7 @@
 @import './screens/splash.css';
 @import './screens/brochure.css';
 
-/* Átmeneti: a korábbi, index.html-be ágyazott stíluslap. Lépésenként ürül. */
-@import './screens/legacy.css';
+/* A 3D stúdió (screens/studio.css) és a legacy GrapesJS-motor
+   (screens/legacy.css, legacy-grapes.css) stílusait a saját moduljuk
+   importálja, így csak akkor kerülnek le a hálóról, ha az adott képernyő
+   tényleg megnyílik. */
