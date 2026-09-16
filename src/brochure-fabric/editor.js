@@ -1,12 +1,21 @@
-import { Canvas, Rect, Circle, Textbox } from 'fabric'
+import { Canvas } from 'fabric'
+import {
+  createRect,
+  createCircle,
+  createLine,
+  createArrow,
+  createStar,
+  createText,
+  createImageFromDataUrl,
+  snapValueToGrid,
+} from './shapes.js'
+import { initPropertiesPanel } from './panels/properties.js'
+import { initLayersPanel } from './panels/layers.js'
 
-// Fázis 1: minimális, kísérleti Fabric.js-alapú "lap", ami a jelenlegi
-// GrapesJS-es brossúra-szerkesztő MELLETT fut, attól teljesen elszigetelten
-// (?engine=fabric aktiválja, lásd main.js). A cél itt csak annak igazolása,
-// hogy egy szabad-pozicionálású canvas-objektum modell (nincs CSS-kaszkád,
-// nincs DOM-ütközés) valóban megszünteti a GrapesJS-nél tapasztalt
-// pozicionálási hibaosztályt — a teljes funkcióparitás (rétegek, stílus
-// panel, QR, Unsplash, HTML-import stb.) egy későbbi fázis feladata.
+// Fázis 2 / Lépés 1: alapvető szerkesztő-UX (alakzat-paletta, tulajdonságok
+// panel, rétegek panel, snap-to-grid, igazítás, előre/hátra) a kísérleti
+// Fabric.js-alapú "lap" fölé. Lásd a migrációs tervet: ez a GrapesJS-es
+// szerkesztő MELLETT fut, attól teljesen elszigetelten (?engine=fabric).
 
 const SHEET_WIDTH = 1123
 const SHEET_HEIGHT = 794
@@ -17,7 +26,7 @@ const ZOOM_MAX = 200
 
 let canvas = null
 
-function setZoom(canvasEl, zoomLevelEl, value) {
+function setZoom(zoomLevelEl, value) {
   const clamped = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(value)))
   canvas.setZoom(clamped / 100)
   canvas.setDimensions({
@@ -26,6 +35,121 @@ function setZoom(canvasEl, zoomLevelEl, value) {
   })
   zoomLevelEl.textContent = `${clamped}%`
   return clamped
+}
+
+function setupZoom() {
+  let zoomValue = 100
+  const zoomLevelEl = document.querySelector('#fabric-zoom-level')
+
+  document.querySelector('#fabric-zoom-in-btn').addEventListener('click', () => {
+    zoomValue = setZoom(zoomLevelEl, zoomValue + ZOOM_STEP)
+  })
+  document.querySelector('#fabric-zoom-out-btn').addEventListener('click', () => {
+    zoomValue = setZoom(zoomLevelEl, zoomValue - ZOOM_STEP)
+  })
+  document.querySelector('#fabric-zoom-reset-btn').addEventListener('click', () => {
+    zoomValue = setZoom(zoomLevelEl, 100)
+  })
+}
+
+function setupPalette() {
+  const addAndSelect = (object) => {
+    canvas.add(object)
+    canvas.setActiveObject(object)
+    canvas.requestRenderAll()
+  }
+
+  document.querySelector('#fabric-add-rect-btn').addEventListener('click', () => addAndSelect(createRect()))
+  document.querySelector('#fabric-add-circle-btn').addEventListener('click', () => addAndSelect(createCircle()))
+  document.querySelector('#fabric-add-line-btn').addEventListener('click', () => addAndSelect(createLine()))
+  document.querySelector('#fabric-add-arrow-btn').addEventListener('click', () => addAndSelect(createArrow()))
+  document.querySelector('#fabric-add-star-btn').addEventListener('click', () => addAndSelect(createStar()))
+  document.querySelector('#fabric-add-text-btn').addEventListener('click', () => addAndSelect(createText()))
+
+  const imageInput = document.querySelector('#fabric-image-input')
+  document.querySelector('#fabric-add-image-btn').addEventListener('click', () => imageInput.click())
+  imageInput.addEventListener('change', () => {
+    const [file] = imageInput.files ?? []
+    if (!file) return
+    const reader = new FileReader()
+    reader.addEventListener('load', () => {
+      createImageFromDataUrl(reader.result).then(addAndSelect)
+    })
+    reader.readAsDataURL(file)
+    imageInput.value = ''
+  })
+
+  document.querySelector('#fabric-delete-btn').addEventListener('click', () => {
+    const active = canvas.getActiveObject()
+    if (!active) return
+    canvas.remove(active)
+    canvas.requestRenderAll()
+  })
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Delete' && event.key !== 'Backspace') return
+    if (document.querySelector('#fabric-app').classList.contains('hidden')) return
+    if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') return
+    const active = canvas.getActiveObject()
+    if (!active || active.isEditing) return
+    canvas.remove(active)
+    canvas.requestRenderAll()
+  })
+}
+
+function setupLayerOrderButtons() {
+  document.querySelector('#fabric-bring-front-btn').addEventListener('click', () => {
+    const active = canvas.getActiveObject()
+    if (!active) return
+    canvas.bringObjectToFront(active)
+    canvas.requestRenderAll()
+  })
+  document.querySelector('#fabric-send-back-btn').addEventListener('click', () => {
+    const active = canvas.getActiveObject()
+    if (!active) return
+    canvas.sendObjectToBack(active)
+    canvas.requestRenderAll()
+  })
+}
+
+function setupAlignment() {
+  const align = (fn) => {
+    const active = canvas.getActiveObject()
+    if (!active) return
+    fn(active)
+    active.setCoords()
+    canvas.requestRenderAll()
+  }
+
+  document.querySelector('#fabric-align-left-btn').addEventListener('click', () =>
+    align((object) => object.set('left', 0)),
+  )
+  document.querySelector('#fabric-align-center-btn').addEventListener('click', () =>
+    align((object) => object.set('left', (SHEET_WIDTH - object.getScaledWidth()) / 2)),
+  )
+  document.querySelector('#fabric-align-right-btn').addEventListener('click', () =>
+    align((object) => object.set('left', SHEET_WIDTH - object.getScaledWidth())),
+  )
+  document.querySelector('#fabric-align-top-btn').addEventListener('click', () =>
+    align((object) => object.set('top', 0)),
+  )
+  document.querySelector('#fabric-align-middle-btn').addEventListener('click', () =>
+    align((object) => object.set('top', (SHEET_HEIGHT - object.getScaledHeight()) / 2)),
+  )
+  document.querySelector('#fabric-align-bottom-btn').addEventListener('click', () =>
+    align((object) => object.set('top', SHEET_HEIGHT - object.getScaledHeight())),
+  )
+}
+
+function setupSnapToGrid() {
+  const snap = (object) => {
+    object.set({
+      left: snapValueToGrid(object.left),
+      top: snapValueToGrid(object.top),
+    })
+  }
+  canvas.on('object:moving', (event) => snap(event.target))
+  canvas.on('object:scaling', (event) => snap(event.target))
 }
 
 export function initBrochureFabric() {
@@ -40,57 +164,13 @@ export function initBrochureFabric() {
     backgroundColor: '#ffffff',
   })
 
-  let zoomValue = 100
-  const zoomLevelEl = document.querySelector('#fabric-zoom-level')
-
-  document.querySelector('#fabric-zoom-in-btn').addEventListener('click', () => {
-    zoomValue = setZoom(canvasEl, zoomLevelEl, zoomValue + ZOOM_STEP)
-  })
-  document.querySelector('#fabric-zoom-out-btn').addEventListener('click', () => {
-    zoomValue = setZoom(canvasEl, zoomLevelEl, zoomValue - ZOOM_STEP)
-  })
-  document.querySelector('#fabric-zoom-reset-btn').addEventListener('click', () => {
-    zoomValue = setZoom(canvasEl, zoomLevelEl, 100)
-  })
-
-  document.querySelector('#fabric-add-rect-btn').addEventListener('click', () => {
-    canvas.add(
-      new Rect({
-        left: 80,
-        top: 80,
-        width: 200,
-        height: 120,
-        fill: '#00e5ff',
-        stroke: '#0891b2',
-        strokeWidth: 2,
-      }),
-    )
-  })
-
-  document.querySelector('#fabric-add-circle-btn').addEventListener('click', () => {
-    canvas.add(
-      new Circle({
-        left: 320,
-        top: 80,
-        radius: 60,
-        fill: '#00e5ff',
-        stroke: '#0891b2',
-        strokeWidth: 2,
-      }),
-    )
-  })
-
-  document.querySelector('#fabric-add-text-btn').addEventListener('click', () => {
-    canvas.add(
-      new Textbox('Szöveg szerkesztése...', {
-        left: 80,
-        top: 260,
-        width: 300,
-        fontSize: 28,
-        fill: '#1e293b',
-      }),
-    )
-  })
+  setupZoom()
+  setupPalette()
+  setupLayerOrderButtons()
+  setupAlignment()
+  setupSnapToGrid()
+  initPropertiesPanel(canvas)
+  initLayersPanel(canvas)
 
   return canvas
 }
