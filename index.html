@@ -65,33 +65,40 @@
       <symbol id="i-layout" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2" /><path d="M3.5 9.5h17M9.5 9.5v10" /></symbol>
     </svg>
 
-    <div id="splash-screen">
-      <svg class="splash-logo" width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M48 8v12" stroke="#00e5ff" stroke-width="4" stroke-linecap="round" />
-        <path d="M48 18c-6-6-16-4-16 4 6 4 12 2 16-4z" fill="#00e5ff" />
-        <circle cx="48" cy="32" r="8" fill="#00e5ff" />
-        <circle cx="36" cy="46" r="9" fill="#00e5ff" />
-        <circle cx="60" cy="46" r="9" fill="#00e5ff" />
-        <circle cx="24" cy="60" r="9" fill="#00e5ff" />
-        <circle cx="48" cy="60" r="9" fill="#00e5ff" />
-        <circle cx="72" cy="60" r="9" fill="#00e5ff" />
-        <circle cx="36" cy="74" r="9" fill="#00e5ff" />
-        <circle cx="60" cy="74" r="9" fill="#00e5ff" />
-        <circle cx="48" cy="86" r="8" fill="#00e5ff" />
+    <div id="splash-screen" class="splash">
+      <svg class="splash__logo" width="72" height="72" viewBox="0 0 96 96" fill="none" aria-hidden="true">
+        <path d="M48 8v12" stroke="currentColor" stroke-width="4" stroke-linecap="round" />
+        <path d="M48 18c-6-6-16-4-16 4 6 4 12 2 16-4z" fill="currentColor" />
+        <circle cx="48" cy="32" r="8" fill="currentColor" />
+        <circle cx="36" cy="46" r="9" fill="currentColor" />
+        <circle cx="60" cy="46" r="9" fill="currentColor" />
+        <circle cx="24" cy="60" r="9" fill="currentColor" />
+        <circle cx="48" cy="60" r="9" fill="currentColor" />
+        <circle cx="72" cy="60" r="9" fill="currentColor" />
+        <circle cx="36" cy="74" r="9" fill="currentColor" />
+        <circle cx="60" cy="74" r="9" fill="currentColor" />
+        <circle cx="48" cy="86" r="8" fill="currentColor" />
       </svg>
-      <h1>GRAPES STÚDIÓ</h1>
-      <p>Válassz modult a folytatáshoz</p>
-      <div id="module-picker">
-        <div id="pick-brochure" class="module-card">
-          <div class="module-icon">📐</div>
-          <h2>Brossúra Szerkesztő</h2>
-          <p>Vizuális brossúra- és PDF-szerkesztő</p>
-        </div>
-        <div id="pick-studio" class="module-card">
-          <div class="module-icon">🖨️</div>
-          <h2>3D Nyomtatási Stúdió</h2>
-          <p>Parametrikus 3D-szerkesztő és STL-export</p>
-        </div>
+      <h1 class="splash__title">Grapes Stúdió</h1>
+      <p class="splash__subtitle">Válassz modult a folytatáshoz</p>
+
+      <!-- A két kártya korábban <div> volt kattintásfigyelővel: az app
+           belépőpontja nem volt billentyűzettel elérhető. -->
+      <div class="splash__cards">
+        <button id="pick-brochure" class="card" type="button">
+          <span class="card__icon">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-layout" /></svg>
+          </span>
+          <span class="card__title">Brossúra Szerkesztő</span>
+          <span class="card__text">Vizuális brossúra- és PDF-szerkesztő</span>
+        </button>
+        <button id="pick-studio" class="card" type="button">
+          <span class="card__icon">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cube" /></svg>
+          </span>
+          <span class="card__title">3D Nyomtatási Stúdió</span>
+          <span class="card__text">Parametrikus 3D-szerkesztő és STL-export</span>
+        </button>
       </div>
     </div>
 

@@ -15,6 +15,7 @@
 @import './components/toast.css';
 @import './components/empty-state.css';
 
+@import './screens/splash.css';
 @import './screens/brochure.css';
 
 /* Átmeneti: a korábbi, index.html-be ágyazott stíluslap. Lépésenként ürül. */

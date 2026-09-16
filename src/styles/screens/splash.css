@@ -1,0 +1,102 @@
+/* Nyitóképernyő. A korábbi változat neon cián glow-kkal dolgozott
+   (text-shadow, drop-shadow, 2px-es világító keret a kártyákon); itt a
+   hangsúly a nyugodt felületeken és egyetlen akcentszínen van. */
+
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  text-align: center;
+  background:
+    radial-gradient(60% 50% at 50% 35%, rgb(76 141 253 / 8%) 0%, transparent 70%),
+    var(--color-bg-app);
+}
+
+.splash__logo {
+  color: var(--color-accent);
+}
+
+.splash__title {
+  margin: 0;
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.01em;
+}
+
+.splash__subtitle {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+}
+
+.splash__cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  justify-content: center;
+  margin-top: var(--space-4);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: flex-start;
+  width: 260px;
+  padding: var(--space-5);
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  transition:
+    background var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+.card:hover {
+  background: var(--color-bg-hover);
+  border-color: var(--color-accent);
+  transform: translateY(-2px);
+}
+
+.card__icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: var(--space-1);
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+  border-radius: var(--radius-md);
+}
+
+.card__icon .icon {
+  width: 22px;
+  height: 22px;
+}
+
+.card__title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+.card__text {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+@media (width <= 768px) {
+  .card {
+    width: min(85vw, 320px);
+  }
+}

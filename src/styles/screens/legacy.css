@@ -12,86 +12,6 @@
   --border-neon: rgba(0, 229, 255, 0.35);
 }
 
-/* --- Nyitó képernyő --- */
-#splash-screen {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 24px;
-  background: radial-gradient(circle at 50% 40%, #0a1a22 0%, var(--bg-black) 70%);
-  color: #e6fbff;
-  text-align: center;
-}
-
-#splash-screen .splash-logo {
-  filter: drop-shadow(0 0 18px var(--neon-blue)) drop-shadow(0 0 36px rgba(0, 229, 255, 0.5));
-}
-
-#splash-screen h1 {
-  margin: 0;
-  font-size: 40px;
-  letter-spacing: 4px;
-  color: #f2feff;
-  text-shadow: 0 0 12px var(--neon-blue), 0 0 28px rgba(0, 229, 255, 0.6);
-}
-
-#splash-screen p {
-  margin: 0;
-  color: #7fdfff;
-  font-size: 14px;
-  letter-spacing: 1px;
-}
-
-#module-picker {
-  margin-top: 16px;
-  display: flex;
-  gap: 24px;
-  flex-wrap: wrap;
-  justify-content: center;
-  max-width: 700px;
-}
-
-.module-card {
-  width: 260px;
-  background: rgba(0, 229, 255, 0.04);
-  border: 2px solid var(--neon-blue);
-  border-radius: 16px;
-  padding: 28px 20px;
-  cursor: pointer;
-  transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
-  color: #e6fbff;
-}
-
-.module-card:hover {
-  background: rgba(0, 229, 255, 0.14);
-  box-shadow: 0 0 28px rgba(0, 229, 255, 0.5);
-  transform: translateY(-3px);
-}
-
-.module-card .module-icon {
-  font-size: 40px;
-  margin-bottom: 12px;
-}
-
-.module-card h2 {
-  margin: 0 0 6px;
-  font-size: 16px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--neon-blue);
-}
-
-.module-card p {
-  margin: 0;
-  font-size: 12px;
-  color: #9ce9ff;
-  letter-spacing: 0.5px;
-}
-
 /* --- Legacy GrapesJS motor (?engine=grapes) --- */
 #app,
 #studio-app {
@@ -274,15 +194,6 @@
 }
 
 @media (max-width: 768px) {
-  #splash-screen h1 {
-    font-size: 28px;
-  }
-
-  .module-card {
-    width: min(85vw, 300px);
-    padding: 20px 16px;
-  }
-
   #toolbar {
     height: auto;
     min-height: 54px;
