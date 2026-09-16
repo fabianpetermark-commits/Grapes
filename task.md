@@ -2,10 +2,13 @@
 
 - [x] **0. P0 hotfixek** — `#fabric-app.hidden` (A), toolbar `flex-wrap` (B),
       PDF print load-race mindkét motoron (F), főmenü `max-height` (H). `9b6db03`
-- [ ] **1. Stílusváz + tokenek** — `src/styles/{index,tokens,reset,base}.css`;
-      a 866 soros inline `<style>` átemelve `screens/legacy.css`-be
-- [ ] **2. Interakciós réteg** — `src/ui/{dom,overlay,modal,toast}.js`;
-      `brochure-fabric/modal.js` lecserélve; `window.alert()` → `notify()`
+- [x] **1. Stílusváz + tokenek** — `src/styles/{index,tokens,reset,base}.css`;
+      a 866 soros inline `<style>` átemelve `screens/legacy.css`-be. `3a07b39`
+- [x] **2. Interakciós réteg** — `src/ui/{dom,overlay,modal,toast}.js`;
+      `brochure-fabric/modal.js` törölve; a Fabric ág összes `window.alert()`-je
+      toastra cserélve; QR-előnézet megjavítva (G); PDF tainted-canvas kezelés;
+      Kódnézet CodeMirror-felszabadítás. A `main.js` alertjei a 9. lépésben
+      megszűnő legacy ágon maradnak.
 - [ ] **3. Gomb + ikon** — `button.css`, `icon.css`, `public/ui-icons.svg`;
       `.tb-btn` → `.btn`, emoji → SVG
 - [ ] **4. Héj Gridre** — `toolbar/panel/accordion/field` CSS; `--toolbar-h`

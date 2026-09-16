@@ -22,6 +22,7 @@ import { openCodeView } from './code-view.js'
 import { groupSelection, ungroupSelection } from './group.js'
 import { importSvgFile } from './svg-import.js'
 import { snapToNearbyObjects } from './smart-guides.js'
+import { notifyError } from '../ui/toast.js'
 
 // Fázis 2 / Lépés 1: alapvető szerkesztő-UX (alakzat-paletta, tulajdonságok
 // panel, rétegek panel, snap-to-grid, igazítás, előre/hátra) a kísérleti
@@ -109,7 +110,7 @@ function setupPalette() {
     if (!file) return
     importHtmlFile(file, canvas).catch((error) => {
       console.error('HTML-import sikertelen:', error)
-      window.alert(`A HTML-fájl importálása sikertelen: ${error.message}`)
+      notifyError(`A HTML-fájl importálása sikertelen: ${error.message}`)
     })
   })
 
@@ -121,7 +122,7 @@ function setupPalette() {
     if (!file) return
     importSvgFile(file, canvas).catch((error) => {
       console.error('SVG-import sikertelen:', error)
-      window.alert(`Az SVG-fájl importálása sikertelen: ${error.message}`)
+      notifyError(`Az SVG-fájl importálása sikertelen: ${error.message}`)
     })
   })
 
@@ -227,7 +228,7 @@ function setupProjectIO() {
     if (!file) return
     loadProject(file, canvas).catch((error) => {
       console.error('Projekt betöltése sikertelen:', error)
-      window.alert(`A projekt betöltése sikertelen: ${error.message}`)
+      notifyError(`A projekt betöltése sikertelen: ${error.message}`)
     })
   })
 

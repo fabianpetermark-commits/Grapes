@@ -1,3 +1,5 @@
+import { notifyError } from '../ui/toast.js'
+
 // PDF export/nyomtatás: a canvas-t nagyobb felbontású PNG-vé rendereljük
 // (multiplier: 2), majd egy nyomtatható ablakba fecskendezzük @page A4
 // fekvő CSS-sel — ugyanazt a print-window mintát követi, mint a GrapesJS-es
@@ -29,11 +31,23 @@ function printOnceReady(printWindow) {
 }
 
 export function exportToPdf(canvas) {
-  const dataUrl = canvas.toDataURL({ format: 'png', multiplier: 2 })
+  let dataUrl
+  try {
+    dataUrl = canvas.toDataURL({ format: 'png', multiplier: 2 })
+  } catch (error) {
+    // Egyetlen CORS-hibás kép is "megmérgezi" a vásznat, és ilyenkor a
+    // toDataURL SecurityError-t dob. Korábban ez lekezeletlen volt: a PDF
+    // gomb egyszerűen nem csinált semmit.
+    console.error('A vászon képpé alakítása sikertelen:', error)
+    notifyError(
+      'A lap nem exportálható, mert külső forrásból származó kép van rajta. Töltsd fel a képet fájlként, majd próbáld újra.',
+    )
+    return
+  }
 
   const printWindow = window.open('', '_blank')
   if (!printWindow) {
-    window.alert('A felugró ablakot a böngésző letiltotta. Engedélyezd a felugró ablakokat a PDF-exporthoz.')
+    notifyError('A felugró ablakot a böngésző letiltotta. Engedélyezd a felugró ablakokat a PDF-exporthoz.')
     return
   }
 

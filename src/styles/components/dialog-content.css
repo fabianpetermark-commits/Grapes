@@ -1,0 +1,107 @@
+/* A három modális tartalom (QR, Unsplash, Kódnézet) elrendezése. */
+
+.modal__actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+  margin-top: var(--space-4);
+}
+
+/* --- QR --- */
+
+.qr-preview {
+  display: grid;
+  place-items: center;
+  min-height: 160px;
+  margin-top: var(--space-4);
+  background: var(--color-bg-app);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.qr-preview__image {
+  width: 144px;
+  height: 144px;
+  border-radius: var(--radius-sm);
+}
+
+/* --- Unsplash --- */
+
+.unsplash__search {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.unsplash__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--space-2);
+}
+
+.unsplash__item {
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--color-bg-app);
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+
+.unsplash__item:hover {
+  border-color: var(--color-accent);
+}
+
+.unsplash__item img {
+  width: 100%;
+  height: 104px;
+  object-fit: cover;
+}
+
+.skeleton {
+  height: 104px;
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-app) 0%,
+    var(--color-bg-hover) 50%,
+    var(--color-bg-app) 100%
+  );
+  background-size: 200% 100%;
+  border-radius: var(--radius-md);
+  animation: skeleton-shimmer 1.2s linear infinite;
+}
+
+@keyframes skeleton-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* --- Kódnézet --- */
+
+.code-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  height: 100%;
+  min-height: 0;
+}
+
+.code-view__toolbar {
+  display: flex;
+  flex-shrink: 0;
+  justify-content: flex-end;
+}
+
+.code-view__editor {
+  flex: 1;
+  min-height: 320px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.code-view__editor .cm-editor {
+  height: 100%;
+}

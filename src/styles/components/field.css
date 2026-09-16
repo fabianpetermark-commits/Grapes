@@ -1,0 +1,90 @@
+/* Űrlapmezők. A tulajdonságpanel mezőinek korábban CSAK szélességük volt
+   beállítva, ezért a sötét panelben a böngésző alapértelmezett fehér
+   hátterű, fekete szövegű widgetjeiként jelentek meg. */
+
+.field__label {
+  display: block;
+  margin-bottom: var(--space-1);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-muted);
+}
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+  min-height: 32px;
+  padding: 0 var(--space-2);
+  font-family: inherit;
+  font-size: var(--text-md);
+  color: var(--color-text);
+  background: var(--color-bg-app);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+
+.input:hover,
+.select:hover,
+.textarea:hover {
+  border-color: var(--color-text-subtle);
+}
+
+.input--textarea,
+.textarea {
+  min-height: 72px;
+  padding: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  resize: vertical;
+}
+
+.input[type='color'],
+.color-input {
+  width: 100%;
+  height: 32px;
+  padding: 2px;
+  cursor: pointer;
+  background: var(--color-bg-app);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+}
+
+.input[type='range'],
+.range {
+  width: 100%;
+  height: 32px;
+  padding: 0;
+  cursor: pointer;
+  accent-color: var(--color-accent);
+  background: transparent;
+  border: 0;
+}
+
+/* Több mező egy sorban (pl. szélesség / magasság / mértékegység). */
+.field-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.field-row > * {
+  min-width: 0;
+}
+
+.field-checkbox {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.field-checkbox input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--color-accent);
+}
