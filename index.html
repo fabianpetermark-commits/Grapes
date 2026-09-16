@@ -440,6 +440,57 @@
         box-shadow: 0 0 24px rgba(0, 229, 255, 0.15);
       }
 
+      .fabric-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(5, 7, 10, 0.75);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 200;
+      }
+
+      .fabric-modal-overlay.hidden {
+        display: none;
+      }
+
+      .fabric-modal {
+        background: var(--bg-panel);
+        border: 1px solid var(--border-neon);
+        border-radius: 8px;
+        box-shadow: 0 8px 32px rgba(0, 229, 255, 0.18);
+        width: min(600px, 90vw);
+        max-height: 80vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .fabric-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border-neon);
+      }
+
+      .fabric-modal-title {
+        color: var(--neon-blue);
+        font-weight: 600;
+      }
+
+      .fabric-modal-close {
+        background: none;
+        border: none;
+        color: inherit;
+        font-size: 16px;
+        cursor: pointer;
+      }
+
+      .fabric-modal-body {
+        padding: 16px;
+        overflow-y: auto;
+      }
+
       /* --- Mobil optimalizáció --- */
       @media (max-width: 768px) {
         #splash-screen h1 {
@@ -692,6 +743,13 @@
         <div class="brand">
           <span>GRAPES <small>(kísérleti Fabric motor)</small></span>
         </div>
+        <button id="fabric-undo-btn" class="tb-btn" type="button" title="Visszavonás">↩ Vissza</button>
+        <button id="fabric-redo-btn" class="tb-btn" type="button" title="Mégis">↪ Ismét</button>
+        <button id="fabric-save-btn" class="tb-btn" type="button" title="Projekt mentése">💾 Mentés</button>
+        <button id="fabric-load-btn" class="tb-btn" type="button" title="Projekt betöltése">📂 Betöltés</button>
+        <input id="fabric-project-input" type="file" accept="application/json" hidden />
+        <button id="fabric-pdf-btn" class="tb-btn success" type="button" title="PDF nyomtatás / mentés">📄 PDF</button>
+        <div class="toolbar-spacer"></div>
         <button id="fabric-bring-front-btn" class="tb-btn" type="button" title="Előre hozás">⬆ Előre</button>
         <button id="fabric-send-back-btn" class="tb-btn" type="button" title="Háttérbe küldés">⬇ Hátra</button>
         <div class="toolbar-spacer"></div>
@@ -724,6 +782,10 @@
           <button id="fabric-add-text-btn" class="tb-btn" type="button">🔤 Szöveg</button>
           <button id="fabric-add-image-btn" class="tb-btn" type="button">🖼️ Kép feltöltése</button>
           <input id="fabric-image-input" type="file" accept="image/*" hidden />
+          <button id="fabric-qr-btn" class="tb-btn" type="button">▦ QR-kód</button>
+          <button id="fabric-unsplash-btn" class="tb-btn" type="button">🌄 Unsplash képtár</button>
+          <button id="fabric-html-import-btn" class="tb-btn" type="button">📁 HTML importálása</button>
+          <input id="fabric-html-input" type="file" accept=".html,.htm,text/html" hidden />
           <button id="fabric-delete-btn" class="tb-btn" type="button">🗑️ Törlés</button>
         </div>
         <div id="fabric-canvas-wrapper">

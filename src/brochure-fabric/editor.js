@@ -11,6 +11,12 @@ import {
 } from './shapes.js'
 import { initPropertiesPanel } from './panels/properties.js'
 import { initLayersPanel } from './panels/layers.js'
+import { openQrModal } from './qr.js'
+import { openUnsplashModal } from './unsplash.js'
+import { importHtmlFile } from './html-import.js'
+import { initHistory } from './history.js'
+import { saveProject, loadProject } from './project-io.js'
+import { exportToPdf } from './pdf-export.js'
 
 // Fázis 2 / Lépés 1: alapvető szerkesztő-UX (alakzat-paletta, tulajdonságok
 // panel, rétegek panel, snap-to-grid, igazítás, előre/hátra) a kísérleti
@@ -77,6 +83,21 @@ function setupPalette() {
     })
     reader.readAsDataURL(file)
     imageInput.value = ''
+  })
+
+  document.querySelector('#fabric-qr-btn').addEventListener('click', () => openQrModal(canvas))
+  document.querySelector('#fabric-unsplash-btn').addEventListener('click', () => openUnsplashModal(canvas))
+
+  const htmlInput = document.querySelector('#fabric-html-input')
+  document.querySelector('#fabric-html-import-btn').addEventListener('click', () => htmlInput.click())
+  htmlInput.addEventListener('change', () => {
+    const [file] = htmlInput.files ?? []
+    htmlInput.value = ''
+    if (!file) return
+    importHtmlFile(file, canvas).catch((error) => {
+      console.error('HTML-import sikertelen:', error)
+      window.alert(`A HTML-fájl importálása sikertelen: ${error.message}`)
+    })
   })
 
   document.querySelector('#fabric-delete-btn').addEventListener('click', () => {
@@ -152,6 +173,30 @@ function setupSnapToGrid() {
   canvas.on('object:scaling', (event) => snap(event.target))
 }
 
+function setupHistory() {
+  const history = initHistory(canvas)
+  document.querySelector('#fabric-undo-btn').addEventListener('click', () => history.undo())
+  document.querySelector('#fabric-redo-btn').addEventListener('click', () => history.redo())
+}
+
+function setupProjectIO() {
+  document.querySelector('#fabric-save-btn').addEventListener('click', () => saveProject(canvas))
+
+  const projectInput = document.querySelector('#fabric-project-input')
+  document.querySelector('#fabric-load-btn').addEventListener('click', () => projectInput.click())
+  projectInput.addEventListener('change', () => {
+    const [file] = projectInput.files ?? []
+    projectInput.value = ''
+    if (!file) return
+    loadProject(file, canvas).catch((error) => {
+      console.error('Projekt betöltése sikertelen:', error)
+      window.alert(`A projekt betöltése sikertelen: ${error.message}`)
+    })
+  })
+
+  document.querySelector('#fabric-pdf-btn').addEventListener('click', () => exportToPdf(canvas))
+}
+
 export function initBrochureFabric() {
   if (canvas) {
     return canvas
@@ -169,6 +214,8 @@ export function initBrochureFabric() {
   setupLayerOrderButtons()
   setupAlignment()
   setupSnapToGrid()
+  setupHistory()
+  setupProjectIO()
   initPropertiesPanel(canvas)
   initLayersPanel(canvas)
 
