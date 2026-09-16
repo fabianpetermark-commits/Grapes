@@ -48,8 +48,16 @@ function setZoom(zoomLevelEl, value) {
 }
 
 function setupZoom() {
-  let zoomValue = 100
   const zoomLevelEl = document.querySelector('#fabric-zoom-level')
+
+  // Mobilon a fix A4-méretű canvas (1123px széles) messze nem férne el a
+  // képernyőn — kezdéskor a rendelkezésre álló szélességhez illesztjük a
+  // zoomot, hogy azonnal használható legyen, ne kelljen elsőre kézzel
+  // kicsinyíteni/pöckölni.
+  const wrapperWidth = document.querySelector('#fabric-canvas-wrapper').clientWidth
+  const initialZoom =
+    wrapperWidth > 0 && wrapperWidth < SHEET_WIDTH ? Math.floor((wrapperWidth / SHEET_WIDTH) * 100) - 2 : 100
+  let zoomValue = setZoom(zoomLevelEl, initialZoom)
 
   document.querySelector('#fabric-zoom-in-btn').addEventListener('click', () => {
     zoomValue = setZoom(zoomLevelEl, zoomValue + ZOOM_STEP)
@@ -226,6 +234,35 @@ function setupProjectIO() {
   document.querySelector('#fabric-html-export-btn').addEventListener('click', () => exportToHtml(canvas))
 }
 
+// Mobilon az "Elemek" paletta és a "Tulajdonságok/Rétegek" panel csak
+// igény szerint, teljes képernyős fiókként nyílik meg a canvas fölött
+// (lásd a CSS media query-t) — asztali nézeten ezek a gombok/osztályok
+// nem látszanak/hatnak, mert a `.fabric-mobile-only` alapból `display:none`.
+function setupMobilePanels() {
+  const paletteEl = document.querySelector('#fabric-palette')
+  const sidePanelEl = document.querySelector('#fabric-side-panel')
+
+  const openPanel = (panelEl, otherPanelEl) => {
+    otherPanelEl.classList.remove('fabric-mobile-open')
+    panelEl.classList.add('fabric-mobile-open')
+  }
+  const closePanel = (panelEl) => panelEl.classList.remove('fabric-mobile-open')
+
+  document.querySelector('#fabric-mobile-palette-btn').addEventListener('click', () => openPanel(paletteEl, sidePanelEl))
+  document.querySelector('#fabric-mobile-props-btn').addEventListener('click', () => openPanel(sidePanelEl, paletteEl))
+  document.querySelector('#fabric-palette-close-btn').addEventListener('click', () => closePanel(paletteEl))
+  document.querySelector('#fabric-side-panel-close-btn').addEventListener('click', () => closePanel(sidePanelEl))
+
+  // Mobilon egy elem hozzáadása után rögtön a canvasra ugrunk, hogy
+  // azonnal látszódjon az eredmény (asztali nézeten nincs hatása, mert
+  // a fiók-osztály ott nem befolyásolja a layoutot).
+  paletteEl.addEventListener('click', (event) => {
+    if (event.target.closest('.tb-btn') && event.target.id !== 'fabric-palette-close-btn') {
+      closePanel(paletteEl)
+    }
+  })
+}
+
 export function initBrochureFabric() {
   if (canvas) {
     return canvas
@@ -245,6 +282,7 @@ export function initBrochureFabric() {
   setupSnapToGrid()
   setupHistory()
   setupProjectIO()
+  setupMobilePanels()
   initPropertiesPanel(canvas)
   initLayersPanel(canvas)
 
