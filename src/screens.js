@@ -12,11 +12,19 @@ import { el } from './ui/dom.js'
 // kérésre, ?engine=grapes URL-paraméterrel indul.
 const useGrapesEngine = new URLSearchParams(window.location.search).get('engine') === 'grapes'
 
+// A betöltött stúdió-modulra hivatkozunk, hogy a render-ciklust le tudjuk
+// állítani anélkül, hogy a modult emiatt be kellene tölteni.
+let studioModule = null
+
 const SCREENS = {
   splash: { id: '#splash-screen' },
   studio: {
     id: '#studio-app',
-    load: () => import('./studio.js').then(({ initStudio }) => initStudio()),
+    load: () =>
+      import('./studio.js').then((module) => {
+        studioModule = module
+        module.initStudio()
+      }),
   },
   brochure: useGrapesEngine
     ? {
@@ -39,6 +47,13 @@ export function showScreen(name) {
 
   for (const id of ALL_SCREEN_IDS) {
     el(id).classList.toggle('hidden', id !== screen.id)
+  }
+
+  // A 3D stúdió render-ciklusa nem futhat tovább rejtett jelenetre. Csak
+  // akkor nyúlunk a modulhoz, ha már betöltődött — különben a leállítás
+  // maga húzná be a Three.js-t minden képernyőváltáskor.
+  if (name !== 'studio' && studioModule) {
+    studioModule.stopStudio()
   }
 
   return screen.load?.()
