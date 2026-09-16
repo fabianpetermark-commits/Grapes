@@ -2,6 +2,10 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js'
 import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js'
+// Átmeneti: a stúdió markupja még Tailwind utility-osztályokkal van írva.
+// A 10. lépésben ez a képernyő is a közös komponens-CSS-re költözik, és
+// ez az import (a Tailwinddel együtt) megszűnik.
+import './tailwind.css'
 
 let scene, camera, renderer, controls, transformControls
 let elements = []
