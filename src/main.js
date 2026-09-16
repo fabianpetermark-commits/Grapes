@@ -509,9 +509,47 @@ htmlFileInput.addEventListener('change', () => {
       }
 
       const componentMarkup = bodyMarkup.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
-      editor.setComponents(componentMarkup)
-      if (importedStyles.trim()) {
-        editor.Css.addRules(importedStyles)
+
+      // Ha az importált CSS önálló `body{...}` szabályt tartalmaz (pl. egy
+      // fix méretű, saját body-ra tervezett grafika), az szó szerint a
+      // canvas iframe VALÓDI <body>-jára vonatkozna, nem a beillesztett
+      // tartalomra — ez elcsúsztatja a right/bottom alapú abszolút
+      // pozicionált elemeket a látható lapon kívülre. Ezért a tartalmat egy
+      // saját konténerbe csomagoljuk, és a `body` szelektort erre a
+      // konténerre írjuk át, hogy a pozicionálási referencia-keret a
+      // beillesztett tartalomé legyen, ne a valódi canvas body-é.
+      const hasBodyRule = /(^|\})\s*body\s*(,|\{)/.test(importedStyles)
+      let importMarkup = componentMarkup
+      let importStyles = importedStyles
+
+      if (hasBodyRule) {
+        importMarkup = `<div class="imported-page">${componentMarkup}</div>`
+        importStyles = importedStyles.replace(/(^|\})([^{}]+)\{/g, (match, brace, selectorList) => {
+          const rewrittenSelectors = selectorList
+            .split(',')
+            .map((selector) => (selector.trim() === 'body' ? '.imported-page' : selector))
+            .join(',')
+          return `${brace}${rewrittenSelectors}{`
+        })
+
+        const bodyRuleMatch = importedStyles.match(/(^|\})\s*body\s*\{([^}]*)\}/)
+        const widthMatch = bodyRuleMatch?.[2].match(/width\s*:\s*([\d.]+)px/)
+        const heightMatch = bodyRuleMatch?.[2].match(/height\s*:\s*([\d.]+)px/)
+        if (widthMatch && heightMatch) {
+          const SHEET_WIDTH = 1123
+          const SHEET_HEIGHT = 794
+          const importedWidth = parseFloat(widthMatch[1])
+          const importedHeight = parseFloat(heightMatch[1])
+          const scale = Math.min(1, SHEET_WIDTH / importedWidth, SHEET_HEIGHT / importedHeight)
+          if (scale < 1) {
+            importStyles += `\n.imported-page { transform: scale(${scale}); transform-origin: top left; }`
+          }
+        }
+      }
+
+      editor.setComponents(importMarkup)
+      if (importStyles.trim()) {
+        editor.Css.addRules(importStyles)
       }
 
       const bodyAttributes = [...(importedBody?.attributes || [])].reduce((attributes, attribute) => {
