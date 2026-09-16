@@ -567,6 +567,10 @@
         box-shadow: 0 0 24px rgba(0, 229, 255, 0.15);
       }
 
+      .fabric-mobile-only {
+        display: none;
+      }
+
       .fabric-modal-overlay {
         position: fixed;
         inset: 0;
@@ -631,23 +635,67 @@
           padding: 6px 10px;
         }
 
+        /* Mobilon a toolbar tele van gombbal, ezért az "Elemek" paletta és a
+           "Tulajdonságok/Rétegek" panel nem fér el állandóan a canvas
+           mellett — helyette csak a két dedikált gombbal ("🧩 Elemek",
+           "🎛️ Panel") nyitható, teljes képernyős fiókként a canvas fölött,
+           ugyanazt a mintát követve, mint a régi GrapesJS-es szerkesztő
+           mobil "fiók" megoldása. */
+        .fabric-mobile-only {
+          display: inline-flex;
+        }
+
+        /* A csoportosítás/igazítás/réteg-sorrend gombok másodlagosak, és
+           mobilon a sok gomb miatt a toolbar túl sok helyet foglalna el a
+           canvasból — ezek helyett a "🎛️ Panel" fiók rétegek listájában
+           lévő fel/le gombokkal, illetve a fiók szélesebb elrendezésében is
+           elérhetők maradnak a lényegi műveletek. */
+        #fabric-align-controls,
+        #fabric-group-btn,
+        #fabric-ungroup-btn,
+        #fabric-bring-front-btn,
+        #fabric-send-back-btn {
+          display: none;
+        }
+
         #fabric-body {
-          flex-direction: column;
+          position: relative;
         }
 
         #fabric-palette,
         #fabric-side-panel {
+          position: absolute;
+          inset: 0;
           width: 100%;
-          flex-direction: row;
-          flex-wrap: wrap;
-          border: none;
-          border-bottom: 1px solid var(--border-neon);
-          max-height: 160px;
+          max-height: none;
+          flex-direction: column;
+          z-index: 45;
+          background: var(--bg-panel);
+          transform: translateX(-100%);
+          transition: transform 0.2s ease;
+          overflow-y: auto;
+        }
+
+        #fabric-side-panel {
+          border-left: none;
+          transform: translateX(100%);
+        }
+
+        #fabric-palette.fabric-mobile-open,
+        #fabric-side-panel.fabric-mobile-open {
+          transform: translateX(0);
         }
 
         #fabric-palette .tb-btn,
         #fabric-side-panel .tb-btn {
-          width: auto;
+          width: 100%;
+        }
+
+        .fabric-drawer-close {
+          margin-bottom: 10px;
+          background: var(--neon-blue);
+          color: #00131a;
+          font-weight: 700;
         }
 
         .module-card {
@@ -870,6 +918,8 @@
         <div class="brand">
           <span>GRAPES <small>HTML Szerkesztő</small></span>
         </div>
+        <button id="fabric-mobile-palette-btn" class="tb-btn fabric-mobile-only" type="button" title="Elemek">🧩 Elemek</button>
+        <button id="fabric-mobile-props-btn" class="tb-btn fabric-mobile-only" type="button" title="Tulajdonságok / Rétegek">🎛️ Panel</button>
         <button id="fabric-undo-btn" class="tb-btn" type="button" title="Visszavonás">↩ Vissza</button>
         <button id="fabric-redo-btn" class="tb-btn" type="button" title="Mégis">↪ Ismét</button>
         <button id="fabric-save-btn" class="tb-btn" type="button" title="Projekt mentése">💾 Mentés</button>
@@ -903,6 +953,7 @@
       </div>
       <div id="fabric-body">
         <div id="fabric-palette">
+          <button id="fabric-palette-close-btn" class="tb-btn fabric-mobile-only fabric-drawer-close" type="button">✕ Bezárás</button>
           <div class="fabric-panel-title">Elemek</div>
           <button id="fabric-add-rect-btn" class="tb-btn" type="button">▭ Téglalap</button>
           <button id="fabric-add-circle-btn" class="tb-btn" type="button">◯ Kör</button>
@@ -924,6 +975,7 @@
           <canvas id="fabric-canvas"></canvas>
         </div>
         <div id="fabric-side-panel">
+          <button id="fabric-side-panel-close-btn" class="tb-btn fabric-mobile-only fabric-drawer-close" type="button">✕ Bezárás</button>
           <details class="fabric-accordion" open>
             <summary>Tulajdonságok</summary>
             <div class="fabric-accordion-body">
