@@ -1,4 +1,29 @@
 import { Gradient, Pattern, Shadow } from 'fabric'
+import { populateFontSelect } from '../fonts.js'
+
+const SWATCH_COLORS = [
+  '#000000',
+  '#ffffff',
+  '#ef4444',
+  '#f97316',
+  '#f59e0b',
+  '#eab308',
+  '#84cc16',
+  '#22c55e',
+  '#10b981',
+  '#06b6d4',
+  '#3b82f6',
+  '#6366f1',
+  '#8b5cf6',
+  '#d946ef',
+  '#ec4899',
+  '#00e5ff',
+]
+
+// px <-> cm/inch átváltás 96 DPI-vel számolva (ez a szokásos böngésző
+// CSS-pixel <-> fizikai méret megfeleltetés, ugyanez az alap, mint amivel
+// az A4 "lap" mérete is 1123×794px-ben van megadva).
+const UNIT_TO_PX = { px: 1, cm: 96 / 2.54, in: 96 }
 
 // Tulajdonságok panel: a kijelölt Fabric objektum stílus-property-jeit
 // szerkeszti (kitöltés — egyszínű/gradiens/mintás —, körvonal, átlátszóság,
@@ -67,7 +92,27 @@ export function initPropertiesPanel(canvas) {
   const shadowOffsetYInput = document.querySelector('#fabric-prop-shadow-offset-y')
 
   const fontGroup = document.querySelector('#fabric-prop-font-group')
+  const fontFamilySelect = document.querySelector('#fabric-prop-font-family')
   const fontSizeInput = document.querySelector('#fabric-prop-font-size')
+
+  const widthInput = document.querySelector('#fabric-prop-width')
+  const heightInput = document.querySelector('#fabric-prop-height')
+  const sizeUnitSelect = document.querySelector('#fabric-prop-size-unit')
+
+  const swatchRow = document.querySelector('#fabric-prop-fill-swatches')
+  SWATCH_COLORS.forEach((color) => {
+    const swatch = document.createElement('button')
+    swatch.type = 'button'
+    swatch.title = color
+    swatch.style.background = color
+    swatch.addEventListener('click', () => {
+      fillInput.value = color
+      applyAndRender('fill', color)
+    })
+    swatchRow.append(swatch)
+  })
+
+  populateFontSelect(fontFamilySelect)
 
   function refresh() {
     const active = canvas.getActiveObject()
@@ -115,7 +160,12 @@ export function initPropertiesPanel(canvas) {
     fontGroup.classList.toggle('hidden', !isText)
     if (isText) {
       fontSizeInput.value = active.fontSize ?? 28
+      fontFamilySelect.value = active.fontFamily || 'Arial'
     }
+
+    const unitToPx = UNIT_TO_PX[sizeUnitSelect.value]
+    widthInput.value = (active.getScaledWidth() / unitToPx).toFixed(2)
+    heightInput.value = (active.getScaledHeight() / unitToPx).toFixed(2)
   }
 
   function applyAndRender(property, value) {
@@ -178,6 +228,22 @@ export function initPropertiesPanel(canvas) {
     canvas.requestRenderAll()
   })
   fontSizeInput.addEventListener('input', () => applyAndRender('fontSize', Number(fontSizeInput.value) || 1))
+  fontFamilySelect.addEventListener('change', () => applyAndRender('fontFamily', fontFamilySelect.value))
+
+  function applySize() {
+    const active = canvas.getActiveObject()
+    if (!active) return
+    const unitToPx = UNIT_TO_PX[sizeUnitSelect.value]
+    const widthPx = Number(widthInput.value) * unitToPx
+    const heightPx = Number(heightInput.value) * unitToPx
+    if (widthPx > 0 && active.width) active.set('scaleX', widthPx / active.width)
+    if (heightPx > 0 && active.height) active.set('scaleY', heightPx / active.height)
+    active.setCoords()
+    canvas.requestRenderAll()
+  }
+  widthInput.addEventListener('input', applySize)
+  heightInput.addEventListener('input', applySize)
+  sizeUnitSelect.addEventListener('change', refresh)
 
   function applyShadow() {
     const active = canvas.getActiveObject()
