@@ -714,10 +714,13 @@ document.querySelector('#pdf-btn').addEventListener('click', () => {
     </html>
   `)
   printWindow.document.close()
-  printWindow.addEventListener('load', () => {
-    printWindow.focus()
+  printWindow.focus()
+  // A document.close() után a `load` már lefuthatott, ezért nem arra várunk.
+  if (printWindow.document.readyState === 'complete') {
     printWindow.print()
-  })
+  } else {
+    printWindow.addEventListener('load', () => printWindow.print(), { once: true })
+  }
 })
 
 editor.Panels.addButton('options', {
