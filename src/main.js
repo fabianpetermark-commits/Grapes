@@ -10,6 +10,7 @@ import gjsTabs from 'grapesjs-tabs'
 import gjsTooltip from 'grapesjs-tooltip'
 import QRCode from 'qrcode'
 import './tailwind.css'
+import './styles/index.css'
 import './style.css'
 
 const GRID_SIZE = 10

@@ -1,0 +1,92 @@
+/* Design tokenek — ez az EGYETLEN hely, ahol nyers szín- és méretérték
+   szerepelhet. Minden más stílusfájl kizárólag var(--…)-ot használ. */
+
+:root {
+  color-scheme: dark;
+
+  /* --- Felületek, a legmélyebbtől a legkiemeltebbig --- */
+  --color-bg-sunken: #080a0d; /* a vászon mögötti terület */
+  --color-bg-app: #0f1318;
+  --color-bg-surface: #161b22; /* toolbar, panelek */
+  --color-bg-raised: #1d242e; /* menü, modal, űrlapmező */
+  --color-bg-hover: #242c38;
+  --color-bg-active: #2c3644;
+
+  /* --- Keretek --- */
+  --color-border: #252d38;
+  --color-border-strong: #364252;
+
+  /* --- Szöveg --- */
+  --color-text: #e3e8ef;
+  --color-text-muted: #98a2b3;
+  --color-text-subtle: #6b7686;
+  --color-text-inverse: #0b0f14;
+
+  /* --- Akcent és státuszok --- */
+  --color-accent: #4c8dfd;
+  --color-accent-hover: #6ba0ff;
+  --color-accent-soft: rgb(76 141 253 / 14%);
+  --color-danger: #f0616d;
+  --color-danger-soft: rgb(240 97 109 / 14%);
+  --color-success: #3ecf8e;
+  --color-warning: #e3a008;
+
+  /* --- Térköz: 4px-es rács --- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* --- Tipográfia --- */
+  --font-ui: system-ui, -apple-system, 'Segoe UI', roboto, 'Helvetica Neue', sans-serif;
+  --font-mono: ui-monospace, 'JetBrains Mono', 'Cascadia Code', consolas, monospace;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-md: 13px;
+  --text-lg: 15px;
+  --text-xl: 20px;
+  --text-2xl: 28px;
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  /* --- Sarokkerekítés --- */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-full: 999px;
+
+  /* --- Elevation --- */
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 40%);
+  --shadow-2: 0 4px 14px rgb(0 0 0 / 45%);
+  --shadow-3: 0 18px 44px rgb(0 0 0 / 55%);
+
+  /* --- Mozgás --- */
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.4, 1);
+
+  /* --- Fókusz --- */
+  --focus-ring: 0 0 0 2px var(--color-bg-app), 0 0 0 4px var(--color-accent);
+
+  /* --- Rétegsorrend: egyetlen skála a korábbi ad-hoc 40/44/45/50/200/1000 helyett --- */
+  --z-base: 0;
+  --z-sticky: 10;
+  --z-drawer-backdrop: 40;
+  --z-drawer: 45;
+  --z-menu: 50;
+  --z-modal-backdrop: 60;
+  --z-modal: 65;
+  --z-toast: 80;
+
+  /* --- Alkalmazás-specifikus méretek --- */
+  --rail-width: 220px;
+  --inspector-width: 288px;
+}

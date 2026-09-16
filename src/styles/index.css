@@ -1,0 +1,8 @@
+/* A stílusréteg egyetlen belépőpontja — ezt importálja a src/main.js. */
+
+@import './tokens.css';
+@import './reset.css';
+@import './base.css';
+
+/* Átmeneti: a korábbi, index.html-be ágyazott stíluslap. Lépésenként ürül. */
+@import './screens/legacy.css';

@@ -1,0 +1,870 @@
+/* ÁTMENETI FÁJL — a korábbi, index.html-be ágyazott <style> blokk tartalma,
+   szándékosan változatlanul átemelve, hogy a stílus-átépítés lépésenként,
+   működő alkalmazás mellett haladhasson. Ahogy az új komponens-CSS átveszi
+   egy-egy rész szerepét, az innen törlendő; a fájl végül megszűnik. */
+
+:root {
+  --neon-blue: #00e5ff;
+  --neon-blue-dim: #0891b2;
+  --bg-black: #05070a;
+  --bg-panel: #0b0f14;
+  --bg-panel-alt: #10161d;
+  --border-neon: rgba(0, 229, 255, 0.35);
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  font-family: 'Segoe UI', sans-serif;
+  background: var(--bg-black);
+}
+
+/* --- Nyitó képernyő --- */
+#splash-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  background: radial-gradient(circle at 50% 40%, #0a1a22 0%, var(--bg-black) 70%);
+  color: #e6fbff;
+  text-align: center;
+}
+
+#splash-screen.hidden {
+  display: none;
+}
+
+#splash-screen .splash-logo {
+  filter: drop-shadow(0 0 18px var(--neon-blue)) drop-shadow(0 0 36px rgba(0, 229, 255, 0.5));
+}
+
+#splash-screen h1 {
+  margin: 0;
+  font-size: 40px;
+  letter-spacing: 4px;
+  color: #f2feff;
+  text-shadow: 0 0 12px var(--neon-blue), 0 0 28px rgba(0, 229, 255, 0.6);
+}
+
+#splash-screen p {
+  margin: 0;
+  color: #7fdfff;
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+
+#module-picker {
+  margin-top: 16px;
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 700px;
+}
+
+.module-card {
+  width: 260px;
+  background: rgba(0, 229, 255, 0.04);
+  border: 2px solid var(--neon-blue);
+  border-radius: 16px;
+  padding: 28px 20px;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
+  color: #e6fbff;
+}
+
+.module-card:hover {
+  background: rgba(0, 229, 255, 0.14);
+  box-shadow: 0 0 28px rgba(0, 229, 255, 0.5);
+  transform: translateY(-3px);
+}
+
+.module-card .module-icon {
+  font-size: 40px;
+  margin-bottom: 12px;
+}
+
+.module-card h2 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--neon-blue);
+}
+
+.module-card p {
+  margin: 0;
+  font-size: 12px;
+  color: #9ce9ff;
+  letter-spacing: 0.5px;
+}
+
+/* --- Alkalmazás keret --- */
+#app,
+#studio-app {
+  height: 100%;
+}
+
+#app.hidden,
+#fabric-app.hidden,
+#studio-app.hidden {
+  display: none;
+}
+
+
+#toolbar {
+  height: 54px;
+  background: var(--bg-panel);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 14px;
+  border-bottom: 1px solid var(--border-neon);
+  box-sizing: border-box;
+  box-shadow: 0 1px 12px rgba(0, 229, 255, 0.12);
+  position: relative;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--neon-blue);
+  font-weight: 700;
+  letter-spacing: 1px;
+  font-size: 14px;
+  white-space: nowrap;
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.6);
+}
+
+.brand svg {
+  filter: drop-shadow(0 0 6px var(--neon-blue));
+}
+
+.toolbar-spacer {
+  flex-grow: 1;
+}
+
+.tb-btn {
+  background: var(--bg-panel-alt);
+  color: #d7f6ff;
+  border: 1px solid var(--border-neon);
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.tb-btn:hover {
+  background: rgba(0, 229, 255, 0.12);
+  border-color: var(--neon-blue);
+  color: #fff;
+}
+
+.tb-btn.primary {
+  background: rgba(0, 229, 255, 0.15);
+  border-color: var(--neon-blue);
+  color: #fff;
+}
+
+.tb-btn.primary:hover {
+  background: var(--neon-blue);
+  color: #00131a;
+}
+
+.tb-btn.success {
+  background: rgba(0, 229, 255, 0.08);
+  border-color: var(--neon-blue-dim);
+}
+
+.tb-btn.success:hover {
+  background: var(--neon-blue);
+  color: #00131a;
+  border-color: var(--neon-blue);
+}
+
+/* --- Nagyítás/kicsinyítés --- */
+#zoom-controls,
+#content-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.zoom-group-label {
+  color: #7fdfff;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-right: 2px;
+  white-space: nowrap;
+}
+
+#zoom-controls .tb-btn,
+#content-zoom-controls .tb-btn {
+  padding: 8px 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+#zoom-reset-btn,
+#content-zoom-reset-btn {
+  min-width: 56px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+#content-zoom-controls {
+  border-left: 1px solid var(--border-neon);
+  padding-left: 12px;
+  margin-left: 4px;
+}
+
+/* --- Főmenü --- */
+#main-menu-wrapper {
+  position: relative;
+}
+
+#main-menu-btn {
+  font-size: 16px;
+}
+
+#main-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-neon);
+  border-radius: 6px;
+  box-shadow: 0 8px 32px rgba(0, 229, 255, 0.18), 0 0 0 1px rgba(0, 229, 255, 0.05);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 240px;
+  max-height: calc(100vh - var(--toolbar-h, 54px) - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  z-index: 50;
+}
+
+#main-menu.hidden {
+  display: none;
+}
+
+#main-menu .menu-section-title {
+  color: var(--neon-blue);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 8px 6px 2px;
+}
+
+#main-menu .menu-section-title:first-child {
+  margin-top: 2px;
+}
+
+#main-menu .tb-btn {
+  width: 100%;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+#main-menu hr {
+  border: none;
+  border-top: 1px solid var(--border-neon);
+  margin: 6px 0;
+}
+
+#main-menu .menu-footer {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-neon);
+  font-size: 11px;
+  color: var(--gjs-font-color, #d7f6ff);
+  opacity: 0.6;
+  text-align: center;
+}
+
+#gjs {
+  height: calc(100vh - 54px);
+  width: 100%;
+}
+
+#fabric-app {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+#fabric-toolbar {
+  min-height: 54px;
+  flex-wrap: wrap;
+  row-gap: 6px;
+  padding-block: 6px;
+  flex-shrink: 0;
+  background: var(--bg-panel);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 14px;
+  border-bottom: 1px solid var(--border-neon);
+  box-sizing: border-box;
+}
+
+#fabric-toolbar .brand small {
+  font-size: 11px;
+  opacity: 0.6;
+  font-weight: normal;
+}
+
+#fabric-zoom-controls,
+#fabric-align-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+#fabric-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+#fabric-palette,
+#fabric-side-panel {
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border-neon);
+  padding: 12px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#fabric-side-panel {
+  border-right: none;
+  border-left: 1px solid var(--border-neon);
+}
+
+#fabric-palette .tb-btn,
+#fabric-side-panel .tb-btn {
+  width: 100%;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.fabric-panel-title {
+  color: var(--neon-blue);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 6px;
+}
+
+.fabric-panel-title:first-child {
+  margin-top: 0;
+}
+
+.fabric-panel-hint {
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+/* Összecsukható panel-szekciók a jobb oldali "Tulajdonságok"/"Rétegek"
+   alatt (natív <details>/<summary>-re építve, JS nélkül) — összecsukott
+   állapotban egy vékony neon kék csík jelzi alul, hogy van benne
+   tartalom, csak épp be van csukva. */
+.fabric-accordion {
+  border: 1px solid var(--border-neon);
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.fabric-accordion > summary {
+  cursor: pointer;
+  padding: 8px 10px;
+  color: var(--neon-blue);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  list-style: none;
+  user-select: none;
+}
+
+.fabric-accordion > summary::-webkit-details-marker {
+  display: none;
+}
+
+.fabric-accordion > summary::before {
+  content: '▸ ';
+}
+
+.fabric-accordion[open] > summary::before {
+  content: '▾ ';
+}
+
+.fabric-accordion:not([open]) {
+  border-bottom: 3px solid var(--neon-blue);
+  box-shadow: 0 2px 10px rgba(0, 229, 255, 0.3);
+}
+
+.fabric-accordion .fabric-accordion-body {
+  padding: 0 10px 10px;
+}
+
+.fabric-subaccordion {
+  border: 1px solid var(--border-neon);
+  border-radius: 4px;
+  margin-bottom: 6px;
+}
+
+.fabric-subaccordion > summary {
+  cursor: pointer;
+  padding: 6px 8px;
+  font-size: 11px;
+  color: var(--neon-blue);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  list-style: none;
+  user-select: none;
+}
+
+.fabric-subaccordion > summary::-webkit-details-marker {
+  display: none;
+}
+
+.fabric-subaccordion > summary::before {
+  content: '▸ ';
+}
+
+.fabric-subaccordion[open] > summary::before {
+  content: '▾ ';
+}
+
+.fabric-subaccordion:not([open]) {
+  border-bottom: 2px solid var(--neon-blue);
+}
+
+.fabric-subaccordion .fabric-accordion-body {
+  padding: 0 8px 8px;
+}
+
+.fabric-subaccordion.hidden {
+  display: none;
+}
+
+.fabric-field-label {
+  font-size: 11px;
+  opacity: 0.75;
+  margin-top: 6px;
+  display: block;
+}
+
+#fabric-properties-fields input,
+#fabric-properties-fields select {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 4px;
+}
+
+.fabric-swatch-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.fabric-swatch-row button {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 1px solid var(--border-neon);
+  cursor: pointer;
+  padding: 0;
+}
+
+.fabric-size-row {
+  display: flex;
+  gap: 4px;
+}
+
+.fabric-size-row input {
+  width: auto !important;
+  min-width: 0;
+  flex: 1 1 0%;
+}
+
+.fabric-size-row select {
+  width: auto !important;
+  flex-shrink: 0;
+}
+
+#fabric-prop-font-family option {
+  font-size: 14px;
+}
+
+#fabric-prop-shadow-offset-x,
+#fabric-prop-shadow-offset-y {
+  width: calc(50% - 2px);
+  display: inline-block;
+}
+
+#fabric-layers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fabric-layer-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: var(--bg-panel-alt);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.fabric-layer-row.active {
+  border: 1px solid var(--neon-blue);
+}
+
+.fabric-layer-row span.fabric-layer-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fabric-layer-row button {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 4px;
+}
+
+#fabric-canvas-wrapper {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #05070a;
+}
+
+#fabric-canvas-wrapper canvas {
+  box-shadow: 0 0 24px rgba(0, 229, 255, 0.15);
+}
+
+.fabric-mobile-only {
+  display: none;
+}
+
+.fabric-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 7, 10, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.fabric-modal-overlay.hidden {
+  display: none;
+}
+
+.fabric-modal {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-neon);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 229, 255, 0.18);
+  width: min(600px, 90vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.fabric-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-neon);
+}
+
+.fabric-modal-title {
+  color: var(--neon-blue);
+  font-weight: 600;
+}
+
+.fabric-modal-close {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.fabric-modal-body {
+  padding: 16px;
+  overflow-y: auto;
+}
+
+/* A Kódnézet modál szélesebb/magasabb legyen, hogy a kód olvasható
+   maradjon — a többi (QR/Unsplash) modál marad a szűkebb alapméreten. */
+.fabric-modal:has(.fabric-code-view) {
+  width: min(900px, 94vw);
+  max-height: 90vh;
+}
+
+.fabric-code-view {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 70vh;
+}
+
+.fabric-code-view-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.fabric-code-view-editor {
+  flex: 1;
+  overflow: hidden;
+  border: 1px solid var(--border-neon);
+  border-radius: 4px;
+}
+
+.fabric-code-view-editor .cm-editor {
+  height: 100%;
+  font-size: 13px;
+}
+
+/* --- Mobil optimalizáció --- */
+@media (max-width: 768px) {
+  #splash-screen h1 {
+    font-size: 28px;
+  }
+
+  #fabric-toolbar {
+    height: auto;
+    flex-wrap: wrap;
+    row-gap: 6px;
+    padding: 6px 10px;
+  }
+
+  /* Mobilon a toolbar tele van gombbal, ezért az "Elemek" paletta és a
+     "Tulajdonságok/Rétegek" panel nem fér el állandóan a canvas
+     mellett — helyette csak a két dedikált gombbal ("🧩 Elemek",
+     "🎛️ Panel") nyitható, teljes képernyős fiókként a canvas fölött,
+     ugyanazt a mintát követve, mint a régi GrapesJS-es szerkesztő
+     mobil "fiók" megoldása. */
+  .fabric-mobile-only {
+    display: inline-flex;
+  }
+
+  /* A csoportosítás/igazítás/réteg-sorrend gombok másodlagosak, és
+     mobilon a sok gomb miatt a toolbar túl sok helyet foglalna el a
+     canvasból — ezek helyett a "🎛️ Panel" fiók rétegek listájában
+     lévő fel/le gombokkal, illetve a fiók szélesebb elrendezésében is
+     elérhetők maradnak a lényegi műveletek. */
+  #fabric-align-controls,
+  #fabric-group-btn,
+  #fabric-ungroup-btn,
+  #fabric-bring-front-btn,
+  #fabric-send-back-btn {
+    display: none;
+  }
+
+  #fabric-body {
+    position: relative;
+  }
+
+  /* Sötétített háttér-réteg a fiók mögött — ettől egyértelmű, hogy egy
+     OLDALRÓL becsúszó panelről van szó a canvas fölött, nem egy
+     felülről leeső teljes képernyős váltásról. Kattintásra bezárja a
+     nyitott fiókot (lásd editor.js setupMobilePanels). */
+  #fabric-mobile-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(5, 7, 10, 0.6);
+    z-index: 44;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+
+  #fabric-mobile-backdrop.fabric-mobile-open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  #fabric-palette,
+  #fabric-side-panel {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: min(88vw, 340px);
+    max-height: none;
+    flex-direction: column;
+    z-index: 45;
+    background: var(--bg-panel);
+    transition: transform 0.2s ease;
+    overflow-y: auto;
+  }
+
+  #fabric-palette {
+    left: 0;
+    transform: translateX(-100%);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
+  }
+
+  #fabric-side-panel {
+    left: auto;
+    right: 0;
+    border-left: none;
+    transform: translateX(100%);
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.5);
+  }
+
+  #fabric-palette.fabric-mobile-open,
+  #fabric-side-panel.fabric-mobile-open {
+    transform: translateX(0);
+  }
+
+  #fabric-palette .tb-btn,
+  #fabric-side-panel .tb-btn {
+    width: 100%;
+  }
+
+  .fabric-drawer-close {
+    margin-bottom: 10px;
+    background: var(--neon-blue);
+    color: #00131a;
+    font-weight: 700;
+  }
+
+  .module-card {
+    width: min(85vw, 300px);
+    padding: 20px 16px;
+  }
+
+  #toolbar {
+    height: auto;
+    min-height: 54px;
+    flex-wrap: wrap;
+    row-gap: 6px;
+    padding: 6px 10px;
+    gap: 8px;
+  }
+
+  .brand span {
+    display: none;
+  }
+
+  #zoom-controls,
+  #content-zoom-controls {
+    order: 3;
+  }
+
+  #content-zoom-controls {
+    border-left: none;
+    padding-left: 0;
+    margin-left: 0;
+  }
+
+  .zoom-group-label {
+    display: none;
+  }
+
+  #zoom-controls .tb-btn,
+  #content-zoom-controls .tb-btn {
+    padding: 6px 8px;
+  }
+
+  /* A #toolbar mobilon 1-3 sorra törhet a tartalmától függően, ezért
+     a fix magasságát (--toolbar-h) futásidőben a JS méri és állítja
+     be (lásd main.js) — minden alább lévő, a toolbar magasságától
+     függő elem ezt a változót haszn álja, nem egy beégetett értéket. */
+  #gjs {
+    height: calc(100vh - var(--toolbar-h, 100px));
+  }
+
+  #main-menu {
+    min-width: min(80vw, 280px);
+  }
+
+  /* A GrapesJS blokk/stílus/réteg panel telefonon teljes szélességű,
+     lebegő "fiókként" jelenik meg a canvas fölött. A canvas mérete
+     (--gjs-left-width) NEM köthető a fiók szélességéhez, különben a
+     canvas állandóan összenyomva maradna, amíg a fiók zárva van. */
+  :root {
+    --gjs-left-width: 0px !important;
+  }
+
+  .gjs-pn-views-container {
+    position: fixed !important;
+    top: var(--toolbar-h, 100px) !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 88vw !important;
+    height: auto !important;
+    z-index: 40 !important;
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.6) !important;
+  }
+
+  .gjs-pn-views {
+    position: fixed !important;
+    top: var(--toolbar-h, 100px) !important;
+    right: 0 !important;
+    width: 88vw !important;
+    z-index: 41 !important;
+  }
+
+  /* A fiók (blokkok/stílus/rétegek tartalma) alapból rejtett, csak
+     akkor jelenik meg, ha a felhasználó megnyitott egy panelt. */
+  #gjs .gjs-pn-views-container {
+    display: none !important;
+  }
+
+  #gjs.mobile-panel-open .gjs-pn-views-container {
+    display: block !important;
+  }
+
+  #mobile-panel-close-btn {
+    display: none;
+  }
+
+  body:has(#gjs.mobile-panel-open) #mobile-panel-close-btn {
+    display: block;
+    position: fixed;
+    top: calc(var(--toolbar-h, 100px) + 48px);
+    right: 0;
+    width: 88vw;
+    z-index: 42;
+    background: var(--neon-blue);
+    color: #00131a;
+    border: none;
+    padding: 10px;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+  }
+}
