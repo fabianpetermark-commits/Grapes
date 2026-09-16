@@ -23,6 +23,7 @@ import { groupSelection, ungroupSelection } from './group.js'
 import { importSvgFile } from './svg-import.js'
 import { snapToNearbyObjects } from './smart-guides.js'
 import { notifyError } from '../ui/toast.js'
+import { el } from '../ui/dom.js'
 
 // Fázis 2 / Lépés 1: alapvető szerkesztő-UX (alakzat-paletta, tulajdonságok
 // panel, rétegek panel, snap-to-grid, igazítás, előre/hátra) a kísérleti
@@ -34,41 +35,119 @@ const SHEET_HEIGHT = 794
 
 const ZOOM_STEP = 10
 const ZOOM_MIN = 20
-const ZOOM_MAX = 200
+const ZOOM_MAX = 400
+
+// A vászon körüli levegő, hogy a lap ne érjen a panelek széléhez.
+const VIEWPORT_PADDING = 48
 
 let canvas = null
+let zoomValue = 100
+// Amíg a felhasználó nem állít kézzel a nagyításon, a lap a rendelkezésre
+// álló területhez igazodik — így ablakátméretezés és eszközforgatás után is
+// használható marad. Korábban ez egyetlen, indításkori számítás volt.
+let isFitMode = true
 
-function setZoom(zoomLevelEl, value) {
+function applyZoom(value) {
   const clamped = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(value)))
+  zoomValue = clamped
   canvas.setZoom(clamped / 100)
   canvas.setDimensions({
     width: SHEET_WIDTH * (clamped / 100),
     height: SHEET_HEIGHT * (clamped / 100),
   })
-  zoomLevelEl.textContent = `${clamped}%`
+  el('#fabric-zoom-level').textContent = `${clamped}%`
   return clamped
 }
 
+function computeFitZoom() {
+  const viewport = el('.editor__viewport')
+  const availableWidth = viewport.clientWidth - VIEWPORT_PADDING
+  const availableHeight = viewport.clientHeight - VIEWPORT_PADDING
+  if (availableWidth <= 0 || availableHeight <= 0) return zoomValue
+
+  const scale = Math.min(availableWidth / SHEET_WIDTH, availableHeight / SHEET_HEIGHT)
+  return Math.floor(scale * 100)
+}
+
+function fitToViewport() {
+  isFitMode = true
+  applyZoom(computeFitZoom())
+}
+
 function setupZoom() {
-  const zoomLevelEl = document.querySelector('#fabric-zoom-level')
+  const setManualZoom = (value) => {
+    isFitMode = false
+    applyZoom(value)
+  }
 
-  // Mobilon a fix A4-méretű canvas (1123px széles) messze nem férne el a
-  // képernyőn — kezdéskor a rendelkezésre álló szélességhez illesztjük a
-  // zoomot, hogy azonnal használható legyen, ne kelljen elsőre kézzel
-  // kicsinyíteni/pöckölni.
-  const wrapperWidth = document.querySelector('#fabric-canvas-wrapper').clientWidth
-  const initialZoom =
-    wrapperWidth > 0 && wrapperWidth < SHEET_WIDTH ? Math.floor((wrapperWidth / SHEET_WIDTH) * 100) - 2 : 100
-  let zoomValue = setZoom(zoomLevelEl, initialZoom)
+  el('#fabric-zoom-in-btn').addEventListener('click', () => setManualZoom(zoomValue + ZOOM_STEP))
+  el('#fabric-zoom-out-btn').addEventListener('click', () => setManualZoom(zoomValue - ZOOM_STEP))
+  el('#fabric-zoom-reset-btn').addEventListener('click', () => setManualZoom(100))
+  el('#fabric-zoom-fit-btn').addEventListener('click', fitToViewport)
 
-  document.querySelector('#fabric-zoom-in-btn').addEventListener('click', () => {
-    zoomValue = setZoom(zoomLevelEl, zoomValue + ZOOM_STEP)
+  fitToViewport()
+
+  // A ResizeObserver az ablakátméretezést, az eszközforgatást és a mobil
+  // fiókok nyitását/zárását is lefedi — a korábbi kódban egyik sem volt
+  // kezelve, a vászon a kezdeti méretben ragadt.
+  const observer = new ResizeObserver(() => {
+    if (isFitMode) applyZoom(computeFitZoom())
   })
-  document.querySelector('#fabric-zoom-out-btn').addEventListener('click', () => {
-    zoomValue = setZoom(zoomLevelEl, zoomValue - ZOOM_STEP)
+  observer.observe(el('.editor__viewport'))
+}
+
+// A kijelöléshez kötött műveletek (igazítás, rétegsorrend, csoportosítás,
+// törlés) saját sávot kaptak a vászon fölött. Korábban a felső toolbarban
+// ültek, és keskeny nézeten display:none-nal tűntek el — vagyis mobilon
+// egyáltalán nem voltak elérhetők.
+function setupObjectBar() {
+  const bar = el('#fabric-objectbar')
+  const sync = () => {
+    bar.hidden = !canvas.getActiveObject()
+  }
+
+  canvas.on('selection:created', sync)
+  canvas.on('selection:updated', sync)
+  canvas.on('selection:cleared', sync)
+  sync()
+}
+
+// A ritkábban használt exportok külön menübe kerültek, hogy a toolbar
+// olvasható maradjon.
+function setupOverflowMenu() {
+  const trigger = el('#fabric-overflow-btn')
+  const panel = el('#fabric-overflow-menu')
+
+  const close = () => {
+    panel.hidden = true
+    trigger.setAttribute('aria-expanded', 'false')
+  }
+  const open = () => {
+    panel.hidden = false
+    trigger.setAttribute('aria-expanded', 'true')
+    panel.querySelector('[role="menuitem"]')?.focus()
+  }
+
+  trigger.addEventListener('click', (event) => {
+    event.stopPropagation()
+    if (panel.hidden) open()
+    else close()
   })
-  document.querySelector('#fabric-zoom-reset-btn').addEventListener('click', () => {
-    zoomValue = setZoom(zoomLevelEl, 100)
+
+  panel.addEventListener('click', (event) => {
+    if (event.target.closest('[role="menuitem"]')) close()
+  })
+
+  document.addEventListener('click', (event) => {
+    if (panel.hidden) return
+    if (!panel.contains(event.target) && event.target !== trigger) close()
+  })
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !panel.hidden) {
+      close()
+      trigger.focus()
+    }
   })
 }
 
@@ -237,43 +316,79 @@ function setupProjectIO() {
   document.querySelector('#fabric-code-view-btn').addEventListener('click', () => openCodeView(canvas))
 }
 
-// Mobilon az "Elemek" paletta és a "Tulajdonságok/Rétegek" panel csak
-// igény szerint, teljes képernyős fiókként nyílik meg a canvas fölött
-// (lásd a CSS media query-t) — asztali nézeten ezek a gombok/osztályok
-// nem látszanak/hatnak, mert a `.fabric-mobile-only` alapból `display:none`.
+// Keskeny nézeten az "Elemek" paletta és a "Tulajdonságok/Rétegek" panel
+// oldalról becsúszó fiókká válik a vászon fölött.
+//
+// A korábbi megoldás a zárt fiókot csak `translateX`-szel tolta ki a
+// képből: a benne lévő gombok és űrlapmezők bent maradtak a tabsorrendben,
+// láthatatlanul fókuszálhatóan, és Escape-re sem záródott semmi. Az `inert`
+// és a fókuszkezelés ezt orvosolja.
 function setupMobilePanels() {
-  const paletteEl = document.querySelector('#fabric-palette')
-  const sidePanelEl = document.querySelector('#fabric-side-panel')
-  const backdropEl = document.querySelector('#fabric-mobile-backdrop')
+  const paletteEl = el('#fabric-palette')
+  const sidePanelEl = el('#fabric-side-panel')
+  const backdropEl = el('#fabric-mobile-backdrop')
+  const paletteTrigger = el('#fabric-mobile-palette-btn')
+  const propsTrigger = el('#fabric-mobile-props-btn')
 
-  const openPanel = (panelEl, otherPanelEl) => {
-    otherPanelEl.classList.remove('fabric-mobile-open')
-    panelEl.classList.add('fabric-mobile-open')
-    backdropEl.classList.add('fabric-mobile-open')
-  }
-  const closePanel = (panelEl) => {
-    panelEl.classList.remove('fabric-mobile-open')
-    backdropEl.classList.remove('fabric-mobile-open')
-  }
-  const closeAllPanels = () => {
-    closePanel(paletteEl)
-    closePanel(sidePanelEl)
+  const isDrawerLayout = () => window.matchMedia('(max-width: 768px)').matches
+
+  const drawers = [
+    { panel: paletteEl, trigger: paletteTrigger },
+    { panel: sidePanelEl, trigger: propsTrigger },
+  ]
+
+  const syncInert = () => {
+    for (const { panel, trigger } of drawers) {
+      const open = panel.classList.contains('is-open')
+      // Asztali nézeten a panel mindig látszik, ott soha nem inert.
+      panel.inert = isDrawerLayout() && !open
+      trigger.setAttribute('aria-expanded', String(open))
+    }
   }
 
-  document.querySelector('#fabric-mobile-palette-btn').addEventListener('click', () => openPanel(paletteEl, sidePanelEl))
-  document.querySelector('#fabric-mobile-props-btn').addEventListener('click', () => openPanel(sidePanelEl, paletteEl))
-  document.querySelector('#fabric-palette-close-btn').addEventListener('click', () => closePanel(paletteEl))
-  document.querySelector('#fabric-side-panel-close-btn').addEventListener('click', () => closePanel(sidePanelEl))
-  backdropEl.addEventListener('click', closeAllPanels)
+  const closeAll = ({ restoreFocus } = {}) => {
+    for (const { panel } of drawers) panel.classList.remove('is-open')
+    backdropEl.classList.remove('is-open')
+    backdropEl.hidden = true
+    syncInert()
+    restoreFocus?.focus()
+  }
 
-  // Mobilon egy elem hozzáadása után rögtön a canvasra ugrunk, hogy
-  // azonnal látszódjon az eredmény (asztali nézeten nincs hatása, mert
-  // a fiók-osztály ott nem befolyásolja a layoutot).
-  paletteEl.addEventListener('click', (event) => {
-    if (event.target.closest('.tb-btn') && event.target.id !== 'fabric-palette-close-btn') {
-      closePanel(paletteEl)
+  const open = (panel) => {
+    for (const drawer of drawers) drawer.panel.classList.toggle('is-open', drawer.panel === panel)
+    backdropEl.hidden = false
+    // A hidden levétele után egy képkockával később kapcsoljuk be az
+    // átmenetet, különben nincs mihez képest animálni.
+    requestAnimationFrame(() => backdropEl.classList.add('is-open'))
+    syncInert()
+    panel.querySelector('button, input, select')?.focus()
+  }
+
+  paletteTrigger.addEventListener('click', () => open(paletteEl))
+  propsTrigger.addEventListener('click', () => open(sidePanelEl))
+  el('#fabric-palette-close-btn').addEventListener('click', () => closeAll({ restoreFocus: paletteTrigger }))
+  el('#fabric-side-panel-close-btn').addEventListener('click', () => closeAll({ restoreFocus: propsTrigger }))
+  backdropEl.addEventListener('click', () => closeAll())
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return
+    if (drawers.some(({ panel }) => panel.classList.contains('is-open'))) {
+      closeAll()
     }
   })
+
+  // Elem hozzáadása után a fiók záródik, hogy rögtön látszódjon az eredmény.
+  paletteEl.addEventListener('click', (event) => {
+    if (!isDrawerLayout()) return
+    const button = event.target.closest('button')
+    if (!button || button.id === 'fabric-palette-close-btn') return
+    closeAll()
+  })
+
+  // Az asztali és a fiókos elrendezés között váltva az inert állapotot
+  // újra kell számolni, különben asztali nézetben is inert maradhat.
+  window.matchMedia('(max-width: 768px)').addEventListener('change', () => closeAll())
+  syncInert()
 }
 
 export function initBrochureFabric() {
@@ -290,6 +405,8 @@ export function initBrochureFabric() {
 
   setupZoom()
   setupPalette()
+  setupObjectBar()
+  setupOverflowMenu()
   setupLayerOrderButtons()
   setupAlignment()
   setupSnapToGrid()

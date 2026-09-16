@@ -1,0 +1,25 @@
+.icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  overflow: visible;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.icon--sm {
+  width: 15px;
+  height: 15px;
+  stroke-width: 1.9;
+}
+
+/* A sprite maga nem jelenik meg. */
+#icon-sprite {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}

@@ -7,6 +7,64 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   </head>
   <body>
+    <!-- Ikon-sprite. Beágyazva, hogy ne legyen külön hálózati kérés, és hogy
+         a hivatkozás ne függjön a Vite `base` beállításától. A gombok
+         korábbi emoji-feliratait váltja ki. -->
+    <svg id="icon-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <!-- alakzatok -->
+      <symbol id="i-rect" viewBox="0 0 24 24"><rect x="3.5" y="6" width="17" height="12" rx="1.5" /></symbol>
+      <symbol id="i-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" /></symbol>
+      <symbol id="i-line" viewBox="0 0 24 24"><path d="M4.5 19.5 19.5 4.5" /></symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4.5 19.5 19 5" /><path d="M11.5 5H19v7.5" /></symbol>
+      <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3.5 2.6 5.5 5.9.8-4.3 4.2 1 6-5.2-2.8-5.2 2.8 1-6L3.5 9.8l5.9-.8Z" /></symbol>
+      <symbol id="i-text" viewBox="0 0 24 24"><path d="M5 7V5h14v2" /><path d="M12 5v14" /><path d="M9 19h6" /></symbol>
+      <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="8.5" cy="10" r="1.5" /><path d="m21 15.5-4.5-4.5L7 20.5" /></symbol>
+      <symbol id="i-qr" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="6" height="6" rx="1" /><rect x="14.5" y="3.5" width="6" height="6" rx="1" /><rect x="3.5" y="14.5" width="6" height="6" rx="1" /><path d="M14.5 14.5h3v3M20.5 17.5v3h-3" /></symbol>
+      <symbol id="i-gallery" viewBox="0 0 24 24"><rect x="7" y="3.5" width="13.5" height="13.5" rx="2" /><path d="M3.5 7v11.5a2 2 0 0 0 2 2H17" /><path d="m20.5 13-3.5-3.5-5 5" /></symbol>
+      <symbol id="i-file-html" viewBox="0 0 24 24"><path d="M13.5 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9Z" /><path d="M13.5 3.5V9H19" /><path d="m10 12.5-1.5 2 1.5 2M14 12.5l1.5 2-1.5 2" /></symbol>
+      <symbol id="i-file-svg" viewBox="0 0 24 24"><path d="M13.5 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9Z" /><path d="M13.5 3.5V9H19" /><path d="m12 11.5 3 5H9Z" /></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.5 6.5h15" /><path d="M9.5 6.5V5a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 14.5 5v1.5" /><path d="M6.5 6.5 7.4 19a1.5 1.5 0 0 0 1.5 1.4h6.2a1.5 1.5 0 0 0 1.5-1.4l.9-12.5" /><path d="M10.5 10.5v6M13.5 10.5v6" /></symbol>
+
+      <!-- előzmények, fájl -->
+      <symbol id="i-undo" viewBox="0 0 24 24"><path d="M4 9.5h9.5a5.5 5.5 0 0 1 0 11H8" /><path d="m7.5 5.5-3.5 4 3.5 4" /></symbol>
+      <symbol id="i-redo" viewBox="0 0 24 24"><path d="M20 9.5h-9.5a5.5 5.5 0 0 0 0 11H16" /><path d="m16.5 5.5 3.5 4-3.5 4" /></symbol>
+      <symbol id="i-save" viewBox="0 0 24 24"><path d="M5.5 3.5h11L20.5 7.5v13a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1v-16a1 1 0 0 1 1-1Z" /><path d="M7.5 3.5v6h9v-6" /><rect x="7.5" y="13.5" width="9" height="8" rx="1" /></symbol>
+      <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 19.5v-14a1 1 0 0 1 1-1h4.3l2 2.5h8.7a1 1 0 0 1 1 1v2" /><path d="m3.5 19.5 2.6-8h15.4l-2.6 8Z" /></symbol>
+      <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V3.5h10V9" /><path d="M7 17.5H5a1.5 1.5 0 0 1-1.5-1.5v-5A1.5 1.5 0 0 1 5 9.5h14a1.5 1.5 0 0 1 1.5 1.5v5a1.5 1.5 0 0 1-1.5 1.5h-2" /><rect x="7" y="14.5" width="10" height="6" rx="1" /></symbol>
+      <symbol id="i-code" viewBox="0 0 24 24"><path d="m8.5 8.5-5 3.5 5 3.5" /><path d="m15.5 8.5 5 3.5-5 3.5" /><path d="m13.5 4.5-3 15" /></symbol>
+      <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="M3.5 12h17" /><path d="M12 3.5c2.2 2.3 3.4 5.3 3.4 8.5S14.2 18.2 12 20.5c-2.2-2.3-3.4-5.3-3.4-8.5S9.8 5.8 12 3.5Z" /></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3.5v11" /><path d="m7.5 10.5 4.5 4 4.5-4" /><path d="M4.5 18.5v1a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-1" /></symbol>
+
+      <!-- rétegsorrend, csoport -->
+      <symbol id="i-bring-front" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="10" height="10" rx="1.5" /><path d="M5.5 15.5h-1a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v1" stroke-dasharray="2.5 2.5" /></symbol>
+      <symbol id="i-send-back" viewBox="0 0 24 24"><rect x="5.5" y="5.5" width="10" height="10" rx="1.5" stroke-dasharray="2.5 2.5" /><path d="M18.5 8.5h1a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1v-1" /></symbol>
+      <symbol id="i-layer-up" viewBox="0 0 24 24"><path d="m6.5 13.5 5.5-5 5.5 5" /><path d="M6.5 19.5h11" /></symbol>
+      <symbol id="i-layer-down" viewBox="0 0 24 24"><path d="m6.5 10.5 5.5 5 5.5-5" /><path d="M6.5 4.5h11" /></symbol>
+      <symbol id="i-group" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="2" stroke-dasharray="3 2.5" /><rect x="6.5" y="6.5" width="5.5" height="5.5" rx="1" /><rect x="12" y="12" width="5.5" height="5.5" rx="1" /></symbol>
+      <symbol id="i-ungroup" viewBox="0 0 24 24"><rect x="3" y="3" width="9" height="9" rx="1.5" /><rect x="12" y="12" width="9" height="9" rx="1.5" /></symbol>
+
+      <!-- igazítás -->
+      <symbol id="i-align-left" viewBox="0 0 24 24"><path d="M4 3.5v17" /><rect x="7.5" y="6" width="12" height="4" rx="1" /><rect x="7.5" y="14" width="7.5" height="4" rx="1" /></symbol>
+      <symbol id="i-align-center-h" viewBox="0 0 24 24"><path d="M12 3.5v17" /><rect x="4" y="6" width="16" height="4" rx="1" /><rect x="7.5" y="14" width="9" height="4" rx="1" /></symbol>
+      <symbol id="i-align-right" viewBox="0 0 24 24"><path d="M20 3.5v17" /><rect x="4.5" y="6" width="12" height="4" rx="1" /><rect x="9" y="14" width="7.5" height="4" rx="1" /></symbol>
+      <symbol id="i-align-top" viewBox="0 0 24 24"><path d="M3.5 4h17" /><rect x="6" y="7.5" width="4" height="12" rx="1" /><rect x="14" y="7.5" width="4" height="7.5" rx="1" /></symbol>
+      <symbol id="i-align-center-v" viewBox="0 0 24 24"><path d="M3.5 12h17" /><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="7.5" width="4" height="9" rx="1" /></symbol>
+      <symbol id="i-align-bottom" viewBox="0 0 24 24"><path d="M3.5 20h17" /><rect x="6" y="4.5" width="4" height="12" rx="1" /><rect x="14" y="9" width="4" height="7.5" rx="1" /></symbol>
+
+      <!-- nagyítás, felület -->
+      <symbol id="i-zoom-in" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m15.5 15.5 5 5" /><path d="M8 10.5h5M10.5 8v5" /></symbol>
+      <symbol id="i-zoom-out" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m15.5 15.5 5 5" /><path d="M8 10.5h5" /></symbol>
+      <symbol id="i-fit" viewBox="0 0 24 24"><path d="M9 3.5H4.5a1 1 0 0 0-1 1V9" /><path d="M15 3.5h4.5a1 1 0 0 1 1 1V9" /><path d="M9 20.5H4.5a1 1 0 0 1-1-1V15" /><path d="M15 20.5h4.5a1 1 0 0 0 1-1V15" /></symbol>
+      <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4" /><circle cx="12" cy="12" r="1.4" /><circle cx="12" cy="19" r="1.4" /></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18" /></symbol>
+      <symbol id="i-home" viewBox="0 0 24 24"><path d="m3.5 11 8.5-7.5 8.5 7.5" /><path d="M6 9.5v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-10" /></symbol>
+      <symbol id="i-panel-left" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2" /><path d="M9.5 4.5v15" /></symbol>
+      <symbol id="i-panel-right" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2" /><path d="M14.5 4.5v15" /></symbol>
+      <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6.5 9.5 5.5 5.5 5.5-5.5" /></symbol>
+      <symbol id="i-cube" viewBox="0 0 24 24"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9Z" /><path d="m4 7.5 8 4.5 8-4.5M12 12v9" /></symbol>
+      <symbol id="i-layout" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2" /><path d="M3.5 9.5h17M9.5 9.5v10" /></symbol>
+    </svg>
+
     <div id="splash-screen">
       <svg class="splash-logo" width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M48 8v12" stroke="#00e5ff" stroke-width="4" stroke-linecap="round" />
@@ -112,171 +170,341 @@
          tervet: a GrapesJS visszatérő pozicionálási hibái (importált fix-pixel
          grafikák ütközése a canvas DOM/CSS-modelljével) egy szabad-pozicionálású
          canvas-objektum motorral (Fabric.js) a gyökerénél szűnnek meg. -->
-    <div id="fabric-app" class="hidden">
-      <div id="fabric-toolbar">
-        <div class="brand">
-          <span>GRAPES <small>HTML Szerkesztő</small></span>
+    <div id="fabric-app" class="editor hidden">
+      <!-- A toolbar korábban ~20 gombot sorolt fel egyetlen sorban, vegyesen:
+           fájlműveletek, előzmények, rétegsorrend, csoportosítás, hat igazítás
+           és nagyítás. Az elemhez kötött műveletek innen a vászon fölötti
+           kontextuális sávba (#fabric-objectbar) kerültek — ezek mobilon
+           korábban egyszerűen display:none-nal eltűntek, vagyis elérhetetlenek
+           voltak. -->
+      <header class="toolbar" id="fabric-toolbar">
+        <div class="toolbar__brand">
+          <span class="toolbar__brand-name">Grapes</span>
+          <span class="toolbar__brand-sub">Brossúra</span>
         </div>
-        <button id="fabric-mobile-palette-btn" class="tb-btn fabric-mobile-only" type="button" title="Elemek">🧩 Elemek</button>
-        <button id="fabric-mobile-props-btn" class="tb-btn fabric-mobile-only" type="button" title="Tulajdonságok / Rétegek">🎛️ Panel</button>
-        <button id="fabric-undo-btn" class="tb-btn" type="button" title="Visszavonás">↩ Vissza</button>
-        <button id="fabric-redo-btn" class="tb-btn" type="button" title="Mégis">↪ Ismét</button>
-        <button id="fabric-save-btn" class="tb-btn" type="button" title="Projekt mentése">💾 Mentés</button>
-        <button id="fabric-load-btn" class="tb-btn" type="button" title="Projekt betöltése">📂 Betöltés</button>
-        <input id="fabric-project-input" type="file" accept="application/json" hidden />
-        <button id="fabric-pdf-btn" class="tb-btn success" type="button" title="PDF nyomtatás / mentés">📄 PDF</button>
-        <button id="fabric-html-export-btn" class="tb-btn success" type="button" title="Valódi, szerkeszthető HTML exportálása">🌐 HTML export</button>
-        <button id="fabric-code-view-btn" class="tb-btn" type="button" title="Kódnézet (szintaxis-kiemeléssel)">🧑‍💻 Kódnézet</button>
-        <div class="toolbar-spacer"></div>
-        <button id="fabric-bring-front-btn" class="tb-btn" type="button" title="Előre hozás">⬆ Előre</button>
-        <button id="fabric-send-back-btn" class="tb-btn" type="button" title="Háttérbe küldés">⬇ Hátra</button>
-        <button id="fabric-group-btn" class="tb-btn" type="button" title="Kijelölt elemek csoportosítása">⛓ Csoport</button>
-        <button id="fabric-ungroup-btn" class="tb-btn" type="button" title="Csoport szétválasztása">⛓️‍💥 Szétválasztás</button>
-        <div class="toolbar-spacer"></div>
-        <div id="fabric-align-controls">
-          <button id="fabric-align-left-btn" class="tb-btn" type="button" title="Balra igazítás">⯇</button>
-          <button id="fabric-align-center-btn" class="tb-btn" type="button" title="Vízszintes középre">↔</button>
-          <button id="fabric-align-right-btn" class="tb-btn" type="button" title="Jobbra igazítás">⯈</button>
-          <button id="fabric-align-top-btn" class="tb-btn" type="button" title="Felülre igazítás">⯅</button>
-          <button id="fabric-align-middle-btn" class="tb-btn" type="button" title="Függőleges középre">↕</button>
-          <button id="fabric-align-bottom-btn" class="tb-btn" type="button" title="Alulra igazítás">⯆</button>
+
+        <div class="toolbar__group toolbar__group--mobile">
+          <button id="fabric-mobile-palette-btn" class="btn btn--icon btn--ghost" type="button" aria-label="Elemek panel" aria-expanded="false">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-panel-left" /></svg>
+          </button>
+          <button id="fabric-mobile-props-btn" class="btn btn--icon btn--ghost" type="button" aria-label="Tulajdonságok és rétegek panel" aria-expanded="false">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-panel-right" /></svg>
+          </button>
         </div>
-        <div class="toolbar-spacer"></div>
-        <div id="fabric-zoom-controls">
-          <button id="fabric-zoom-out-btn" class="tb-btn" type="button" title="Kicsinyítés">−</button>
-          <button id="fabric-zoom-reset-btn" class="tb-btn" type="button" title="100%-ra állítás">
+
+        <div class="toolbar__group" role="group" aria-label="Előzmények">
+          <button id="fabric-undo-btn" class="btn btn--icon btn--ghost" type="button" aria-label="Visszavonás" title="Visszavonás">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-undo" /></svg>
+          </button>
+          <button id="fabric-redo-btn" class="btn btn--icon btn--ghost" type="button" aria-label="Ismét" title="Ismét">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-redo" /></svg>
+          </button>
+        </div>
+
+        <span class="toolbar__sep"></span>
+
+        <div class="toolbar__group" role="group" aria-label="Fájl">
+          <button id="fabric-save-btn" class="btn btn--icon btn--ghost" type="button" aria-label="Projekt mentése" title="Projekt mentése">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-save" /></svg>
+          </button>
+          <button id="fabric-load-btn" class="btn btn--icon btn--ghost" type="button" aria-label="Projekt betöltése" title="Projekt betöltése">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-folder" /></svg>
+          </button>
+          <input id="fabric-project-input" type="file" accept="application/json" hidden />
+          <button id="fabric-pdf-btn" class="btn btn--primary" type="button">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-print" /></svg>
+            <span class="btn__label">PDF</span>
+          </button>
+        </div>
+
+        <span class="toolbar__spacer"></span>
+
+        <div class="toolbar__group toolbar__group--boxed" role="group" aria-label="Nagyítás">
+          <button id="fabric-zoom-out-btn" class="btn btn--icon btn--ghost btn--sm" type="button" aria-label="Kicsinyítés" title="Kicsinyítés">
+            <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-zoom-out" /></svg>
+          </button>
+          <button id="fabric-zoom-reset-btn" class="btn btn--ghost btn--sm zoom__value" type="button" aria-label="Nagyítás visszaállítása 100%-ra" title="100%">
             <span id="fabric-zoom-level">100%</span>
           </button>
-          <button id="fabric-zoom-in-btn" class="tb-btn" type="button" title="Nagyítás">+</button>
+          <button id="fabric-zoom-in-btn" class="btn btn--icon btn--ghost btn--sm" type="button" aria-label="Nagyítás" title="Nagyítás">
+            <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-zoom-in" /></svg>
+          </button>
+          <button id="fabric-zoom-fit-btn" class="btn btn--icon btn--ghost btn--sm" type="button" aria-label="Lapra illesztés" title="Lapra illesztés">
+            <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-fit" /></svg>
+          </button>
         </div>
-        <button id="fabric-back-to-menu-btn" class="tb-btn" type="button">🏠 Vissza a főmenübe</button>
-      </div>
-      <div id="fabric-body">
-        <div id="fabric-mobile-backdrop" class="fabric-mobile-only"></div>
-        <div id="fabric-palette">
-          <button id="fabric-palette-close-btn" class="tb-btn fabric-mobile-only fabric-drawer-close" type="button">✕ Bezárás</button>
-          <div class="fabric-panel-title">Elemek</div>
-          <button id="fabric-add-rect-btn" class="tb-btn" type="button">▭ Téglalap</button>
-          <button id="fabric-add-circle-btn" class="tb-btn" type="button">◯ Kör</button>
-          <button id="fabric-add-line-btn" class="tb-btn" type="button">╱ Vonal</button>
-          <button id="fabric-add-arrow-btn" class="tb-btn" type="button">➤ Nyíl</button>
-          <button id="fabric-add-star-btn" class="tb-btn" type="button">★ Csillag</button>
-          <button id="fabric-add-text-btn" class="tb-btn" type="button">🔤 Szöveg</button>
-          <button id="fabric-add-image-btn" class="tb-btn" type="button">🖼️ Kép feltöltése</button>
-          <input id="fabric-image-input" type="file" accept="image/*" hidden />
-          <button id="fabric-qr-btn" class="tb-btn" type="button">▦ QR-kód</button>
-          <button id="fabric-unsplash-btn" class="tb-btn" type="button">🌄 Unsplash képtár</button>
-          <button id="fabric-html-import-btn" class="tb-btn" type="button">📁 HTML importálása</button>
-          <input id="fabric-html-input" type="file" accept=".html,.htm,text/html" hidden />
-          <button id="fabric-svg-import-btn" class="tb-btn" type="button">🔺 SVG importálása</button>
-          <input id="fabric-svg-input" type="file" accept=".svg,image/svg+xml" hidden />
-          <button id="fabric-delete-btn" class="tb-btn" type="button">🗑️ Törlés</button>
+
+        <div class="menu" id="fabric-overflow">
+          <button id="fabric-overflow-btn" class="btn btn--icon btn--ghost" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="fabric-overflow-menu" aria-label="További műveletek">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-more" /></svg>
+          </button>
+          <div class="menu__panel" id="fabric-overflow-menu" role="menu" hidden>
+            <button id="fabric-html-export-btn" class="menu__item" type="button" role="menuitem">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-globe" /></svg>
+              Exportálás HTML-ként
+            </button>
+            <button id="fabric-code-view-btn" class="menu__item" type="button" role="menuitem">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-code" /></svg>
+              Kódnézet
+            </button>
+          </div>
         </div>
-        <div id="fabric-canvas-wrapper">
-          <canvas id="fabric-canvas"></canvas>
-        </div>
-        <div id="fabric-side-panel">
-          <button id="fabric-side-panel-close-btn" class="tb-btn fabric-mobile-only fabric-drawer-close" type="button">✕ Bezárás</button>
-          <details class="fabric-accordion" open>
-            <summary>Tulajdonságok</summary>
-            <div class="fabric-accordion-body">
-              <div id="fabric-properties-empty" class="fabric-panel-hint">Nincs kijelölt elem.</div>
-              <div id="fabric-properties-fields" class="hidden">
-                <details class="fabric-subaccordion" open>
-                  <summary>Kitöltés</summary>
-                  <div class="fabric-accordion-body">
-                    <label class="fabric-field-label" for="fabric-prop-fill-mode">Kitöltés típusa</label>
-                    <select id="fabric-prop-fill-mode">
-                      <option value="solid">Egyszínű</option>
-                      <option value="gradient">Színátmenet (gradiens)</option>
-                      <option value="pattern">Mintás (kép)</option>
-                    </select>
 
-                    <div id="fabric-prop-fill-solid-group">
-                      <label class="fabric-field-label" for="fabric-prop-fill">Kitöltés / betűszín</label>
-                      <input id="fabric-prop-fill" type="color" />
-                      <div id="fabric-prop-fill-swatches" class="fabric-swatch-row"></div>
+        <button id="fabric-back-to-menu-btn" class="btn btn--ghost" type="button">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-home" /></svg>
+          <span class="btn__label">Főmenü</span>
+        </button>
+      </header>
+      <div id="fabric-body" class="editor__body">
+        <div id="fabric-mobile-backdrop" class="drawer__backdrop" hidden></div>
+
+        <aside id="fabric-palette" class="panel editor__rail" aria-label="Elemek">
+          <div class="panel__header">
+            <h2 class="panel__title">Elemek</h2>
+            <button id="fabric-palette-close-btn" class="btn btn--icon btn--ghost btn--sm drawer__close" type="button" aria-label="Panel bezárása">
+              <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-close" /></svg>
+            </button>
+          </div>
+          <div class="panel__body">
+            <p class="panel__group-label">Alakzatok</p>
+            <div class="palette__grid">
+              <button id="fabric-add-rect-btn" class="palette__item" type="button">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-rect" /></svg>Téglalap
+              </button>
+              <button id="fabric-add-circle-btn" class="palette__item" type="button">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-circle" /></svg>Kör
+              </button>
+              <button id="fabric-add-line-btn" class="palette__item" type="button">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-line" /></svg>Vonal
+              </button>
+              <button id="fabric-add-arrow-btn" class="palette__item" type="button">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow" /></svg>Nyíl
+              </button>
+              <button id="fabric-add-star-btn" class="palette__item" type="button">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-star" /></svg>Csillag
+              </button>
+              <button id="fabric-add-text-btn" class="palette__item" type="button">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-text" /></svg>Szöveg
+              </button>
+            </div>
+
+            <p class="panel__group-label">Tartalom</p>
+            <button id="fabric-add-image-btn" class="btn btn--block" type="button">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-image" /></svg>Kép feltöltése
+            </button>
+            <input id="fabric-image-input" type="file" accept="image/*" hidden />
+            <button id="fabric-qr-btn" class="btn btn--block" type="button">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-qr" /></svg>QR-kód
+            </button>
+            <button id="fabric-unsplash-btn" class="btn btn--block" type="button">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-gallery" /></svg>Unsplash képtár
+            </button>
+
+            <p class="panel__group-label">Importálás</p>
+            <button id="fabric-html-import-btn" class="btn btn--block" type="button">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-file-html" /></svg>HTML-fájl
+            </button>
+            <input id="fabric-html-input" type="file" accept=".html,.htm,text/html" hidden />
+            <button id="fabric-svg-import-btn" class="btn btn--block" type="button">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-file-svg" /></svg>SVG-fájl
+            </button>
+            <input id="fabric-svg-input" type="file" accept=".svg,image/svg+xml" hidden />
+          </div>
+        </aside>
+
+        <main id="fabric-canvas-wrapper" class="editor__canvas">
+          <!-- Kontextuális sáv: csak akkor látszik, ha van kijelölt elem.
+               Így a felső toolbar nem zsúfolódik tele, és ezek a műveletek
+               mobilon is elérhetők. -->
+          <div id="fabric-objectbar" class="objectbar" role="toolbar" aria-label="A kijelölt elem műveletei" hidden>
+            <div class="objectbar__group" role="group" aria-label="Igazítás">
+              <button id="fabric-align-left-btn" class="btn btn--icon btn--ghost btn--sm" type="button" aria-label="Balra igazítás" title="Balra igazítás">
+                <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-align-left" /></svg>
+              </button>
+              <button id="fabric-align-center-btn" class="btn btn--icon btn--ghost btn--sm" type="button" aria-label="Vízszintesen középre" title="Vízszintesen középre">
+                <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-align-center-h" /></svg>
+              </button>
+              <button id="fabric-align-right-btn" class="btn btn--icon btn--ghost btn--sm" type="button" aria-label="Jobbra igazítás" title="Jobbra igazítás">
+                <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-align-right" /></svg>
+              </button>
+              <button id="fabric-align-top-btn" class="btn btn--icon btn--ghost btn--sm" type="button" aria-label="Felülre igazítás" title="Felülre igazítás">
+                <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-align-top" /></svg>
+              </button>
+              <button id="fabric-align-middle-btn" class="btn btn--icon btn--ghost btn--sm" type="button" aria-label="Függőlegesen középre" title="Függőlegesen középre">
+                <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-align-center-v" /></svg>
+              </button>
+              <button id="fabric-align-bottom-btn" class="btn btn--icon btn--ghost btn--sm" type="button" aria-label="Alulra igazítás" title="Alulra igazítás">
+                <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-align-bottom" /></svg>
+              </button>
+            </div>
+
+            <span class="objectbar__sep"></span>
+
+            <div class="objectbar__group" role="group" aria-label="Rétegsorrend">
+              <button id="fabric-bring-front-btn" class="btn btn--icon btn--ghost btn--sm" type="button" aria-label="Előre hozás" title="Előre hozás">
+                <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-bring-front" /></svg>
+              </button>
+              <button id="fabric-send-back-btn" class="btn btn--icon btn--ghost btn--sm" type="button" aria-label="Háttérbe küldés" title="Háttérbe küldés">
+                <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-send-back" /></svg>
+              </button>
+            </div>
+
+            <span class="objectbar__sep"></span>
+
+            <div class="objectbar__group" role="group" aria-label="Csoportosítás">
+              <button id="fabric-group-btn" class="btn btn--icon btn--ghost btn--sm" type="button" aria-label="Csoportosítás" title="Csoportosítás">
+                <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-group" /></svg>
+              </button>
+              <button id="fabric-ungroup-btn" class="btn btn--icon btn--ghost btn--sm" type="button" aria-label="Csoport szétválasztása" title="Csoport szétválasztása">
+                <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-ungroup" /></svg>
+              </button>
+            </div>
+
+            <span class="objectbar__sep"></span>
+
+            <button id="fabric-delete-btn" class="btn btn--icon btn--ghost btn--sm btn--danger" type="button" aria-label="Törlés" title="Törlés (Delete)">
+              <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-trash" /></svg>
+            </button>
+          </div>
+
+          <!-- A görgethető terület külön réteg, hogy az objektum-sáv a
+               vászon görgetésekor a helyén maradjon. -->
+          <div class="editor__viewport">
+            <div class="editor__sheet">
+              <canvas id="fabric-canvas"></canvas>
+            </div>
+          </div>
+        </main>
+
+        <aside id="fabric-side-panel" class="panel editor__inspector" aria-label="Tulajdonságok és rétegek">
+          <div class="panel__header">
+            <h2 class="panel__title">Panel</h2>
+            <button id="fabric-side-panel-close-btn" class="btn btn--icon btn--ghost btn--sm drawer__close" type="button" aria-label="Panel bezárása">
+              <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-close" /></svg>
+            </button>
+          </div>
+          <div class="panel__body">
+            <details class="accordion" open>
+              <summary class="accordion__summary">Tulajdonságok</summary>
+              <div class="accordion__body">
+                <div id="fabric-properties-empty" class="empty-state empty-state--inline">
+                  Jelölj ki egy elemet a vásznon a szerkesztéshez.
+                </div>
+                <div id="fabric-properties-fields" class="hidden">
+                  <details class="accordion accordion--nested" open>
+                    <summary class="accordion__summary">Kitöltés</summary>
+                    <div class="accordion__body">
+                      <div class="field">
+                        <label class="field__label" for="fabric-prop-fill-mode">Kitöltés típusa</label>
+                        <select id="fabric-prop-fill-mode" class="select">
+                          <option value="solid">Egyszínű</option>
+                          <option value="gradient">Színátmenet (gradiens)</option>
+                          <option value="pattern">Mintás (kép)</option>
+                        </select>
+                      </div>
+
+                      <div id="fabric-prop-fill-solid-group" class="field">
+                        <label class="field__label" for="fabric-prop-fill">Kitöltés / betűszín</label>
+                        <input id="fabric-prop-fill" class="color-input" type="color" />
+                        <div id="fabric-prop-fill-swatches" class="swatch-grid"></div>
+                      </div>
+
+                      <div id="fabric-prop-fill-gradient-group" class="field hidden">
+                        <label class="field__label" for="fabric-prop-gradient-type">Gradiens típusa</label>
+                        <select id="fabric-prop-gradient-type" class="select">
+                          <option value="linear">Lineáris</option>
+                          <option value="radial">Radiális</option>
+                        </select>
+                        <label class="field__label" for="fabric-prop-gradient-from">Kezdőszín</label>
+                        <input id="fabric-prop-gradient-from" class="color-input" type="color" />
+                        <label class="field__label" for="fabric-prop-gradient-to">Végszín</label>
+                        <input id="fabric-prop-gradient-to" class="color-input" type="color" />
+                      </div>
+
+                      <div id="fabric-prop-fill-pattern-group" class="field hidden">
+                        <label class="field__label" for="fabric-prop-pattern-input">Mintakép feltöltése</label>
+                        <input id="fabric-prop-pattern-input" class="input input--file" type="file" accept="image/*" />
+                      </div>
+
+                      <div class="field">
+                        <label class="field__label" for="fabric-prop-stroke">Körvonal</label>
+                        <input id="fabric-prop-stroke" class="color-input" type="color" />
+                      </div>
+                      <div class="field">
+                        <label class="field__label" for="fabric-prop-stroke-width">Körvonal vastagsága</label>
+                        <input id="fabric-prop-stroke-width" class="input" type="number" min="0" max="40" />
+                      </div>
                     </div>
+                  </details>
 
-                    <div id="fabric-prop-fill-gradient-group" class="hidden">
-                      <label class="fabric-field-label" for="fabric-prop-gradient-type">Gradiens típusa</label>
-                      <select id="fabric-prop-gradient-type">
-                        <option value="linear">Lineáris</option>
-                        <option value="radial">Radiális</option>
-                      </select>
-                      <label class="fabric-field-label" for="fabric-prop-gradient-from">Kezdőszín</label>
-                      <input id="fabric-prop-gradient-from" type="color" />
-                      <label class="fabric-field-label" for="fabric-prop-gradient-to">Végszín</label>
-                      <input id="fabric-prop-gradient-to" type="color" />
+                  <details class="accordion accordion--nested" open>
+                    <summary class="accordion__summary">Elrendezés &amp; effektek</summary>
+                    <div class="accordion__body">
+                      <div class="field">
+                        <label class="field__label" for="fabric-prop-opacity">Átlátszóság</label>
+                        <input id="fabric-prop-opacity" class="range" type="range" min="0" max="100" />
+                      </div>
+                      <div class="field">
+                        <label class="field__label" for="fabric-prop-angle">Elfordítás (fok)</label>
+                        <input id="fabric-prop-angle" class="input" type="number" min="-360" max="360" />
+                      </div>
+
+                      <div class="field">
+                        <span class="field__label">Méret</span>
+                        <div class="field-row">
+                          <input id="fabric-prop-width" class="input" type="number" min="0" step="0.1" aria-label="Szélesség" />
+                          <input id="fabric-prop-height" class="input" type="number" min="0" step="0.1" aria-label="Magasság" />
+                          <select id="fabric-prop-size-unit" class="select select--unit" aria-label="Mértékegység">
+                            <option value="px">px</option>
+                            <option value="cm">cm</option>
+                            <option value="in">inch</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <label class="field-checkbox">
+                        <input id="fabric-prop-shadow-enabled" type="checkbox" />
+                        Vetett árnyék
+                      </label>
+                      <div id="fabric-prop-shadow-group" class="field hidden">
+                        <label class="field__label" for="fabric-prop-shadow-color">Árnyék színe</label>
+                        <input id="fabric-prop-shadow-color" class="color-input" type="color" />
+                        <label class="field__label" for="fabric-prop-shadow-blur">Árnyék elmosása</label>
+                        <input id="fabric-prop-shadow-blur" class="input" type="number" min="0" max="60" />
+                        <span class="field__label">Árnyék eltolása (x / y)</span>
+                        <div class="field-row">
+                          <input id="fabric-prop-shadow-offset-x" class="input" type="number" min="-40" max="40" aria-label="Árnyék eltolása vízszintesen" />
+                          <input id="fabric-prop-shadow-offset-y" class="input" type="number" min="-40" max="40" aria-label="Árnyék eltolása függőlegesen" />
+                        </div>
+                      </div>
                     </div>
+                  </details>
 
-                    <div id="fabric-prop-fill-pattern-group" class="hidden">
-                      <label class="fabric-field-label" for="fabric-prop-pattern-input">Mintakép feltöltése</label>
-                      <input id="fabric-prop-pattern-input" type="file" accept="image/*" />
+                  <details id="fabric-prop-font-group" class="accordion accordion--nested hidden" open>
+                    <summary class="accordion__summary">Betűtípus</summary>
+                    <div class="accordion__body">
+                      <div class="field">
+                        <label class="field__label" for="fabric-prop-font-family">Betűtípus</label>
+                        <select id="fabric-prop-font-family" class="select"></select>
+                      </div>
+                      <div class="field">
+                        <label class="field__label" for="fabric-prop-font-size">Betűméret (px)</label>
+                        <input id="fabric-prop-font-size" class="input" type="number" min="6" max="400" />
+                      </div>
                     </div>
-
-                    <label class="fabric-field-label" for="fabric-prop-stroke">Körvonal</label>
-                    <input id="fabric-prop-stroke" type="color" />
-                    <label class="fabric-field-label" for="fabric-prop-stroke-width">Körvonal vastagsága</label>
-                    <input id="fabric-prop-stroke-width" type="number" min="0" max="40" />
-                  </div>
-                </details>
-
-                <details class="fabric-subaccordion" open>
-                  <summary>Elrendezés &amp; effektek</summary>
-                  <div class="fabric-accordion-body">
-                    <label class="fabric-field-label" for="fabric-prop-opacity">Átlátszóság</label>
-                    <input id="fabric-prop-opacity" type="range" min="0" max="100" />
-                    <label class="fabric-field-label" for="fabric-prop-angle">Elfordítás (fok)</label>
-                    <input id="fabric-prop-angle" type="number" min="-360" max="360" />
-
-                    <label class="fabric-field-label">Méret</label>
-                    <div class="fabric-size-row">
-                      <input id="fabric-prop-width" type="number" min="0" step="0.1" title="Szélesség" />
-                      <input id="fabric-prop-height" type="number" min="0" step="0.1" title="Magasság" />
-                      <select id="fabric-prop-size-unit">
-                        <option value="px">px</option>
-                        <option value="cm">cm</option>
-                        <option value="in">inch</option>
-                      </select>
-                    </div>
-
-                    <label class="fabric-field-label">
-                      <input id="fabric-prop-shadow-enabled" type="checkbox" style="width:auto;display:inline-block;vertical-align:middle;margin-right:4px;" />
-                      Vetett árnyék
-                    </label>
-                    <div id="fabric-prop-shadow-group" class="hidden">
-                      <label class="fabric-field-label" for="fabric-prop-shadow-color">Árnyék színe</label>
-                      <input id="fabric-prop-shadow-color" type="color" />
-                      <label class="fabric-field-label" for="fabric-prop-shadow-blur">Árnyék elmosása</label>
-                      <input id="fabric-prop-shadow-blur" type="number" min="0" max="60" />
-                      <label class="fabric-field-label" for="fabric-prop-shadow-offset">Árnyék eltolása (x/y)</label>
-                      <input id="fabric-prop-shadow-offset-x" type="number" min="-40" max="40" />
-                      <input id="fabric-prop-shadow-offset-y" type="number" min="-40" max="40" />
-                    </div>
-                  </div>
-                </details>
-
-                <details id="fabric-prop-font-group" class="fabric-subaccordion hidden" open>
-                  <summary>Betűtípus</summary>
-                  <div class="fabric-accordion-body">
-                    <label class="fabric-field-label" for="fabric-prop-font-family">Betűtípus</label>
-                    <select id="fabric-prop-font-family"></select>
-                    <label class="fabric-field-label" for="fabric-prop-font-size">Betűméret (px)</label>
-                    <input id="fabric-prop-font-size" type="number" min="6" max="400" />
-                  </div>
-                </details>
+                  </details>
+                </div>
               </div>
-            </div>
-          </details>
+            </details>
 
-          <details class="fabric-accordion" open>
-            <summary>Rétegek</summary>
-            <div class="fabric-accordion-body">
-              <div id="fabric-layers-list"></div>
-            </div>
-          </details>
-        </div>
+            <details class="accordion" open>
+              <summary class="accordion__summary">Rétegek</summary>
+              <div class="accordion__body accordion__body--flush">
+                <div id="fabric-layers-list" class="layers"></div>
+              </div>
+            </details>
+          </div>
+        </aside>
       </div>
     </div>
 

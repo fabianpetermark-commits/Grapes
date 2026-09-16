@@ -4,12 +4,18 @@
 @import './reset.css';
 @import './base.css';
 
+@import './components/icon.css';
 @import './components/button.css';
 @import './components/field.css';
+@import './components/toolbar.css';
+@import './components/panel.css';
+@import './components/drawer.css';
 @import './components/modal.css';
 @import './components/dialog-content.css';
 @import './components/toast.css';
 @import './components/empty-state.css';
+
+@import './screens/brochure.css';
 
 /* Átmeneti: a korábbi, index.html-be ágyazott stíluslap. Lépésenként ürül. */
 @import './screens/legacy.css';

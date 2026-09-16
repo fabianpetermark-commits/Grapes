@@ -1,0 +1,32 @@
+/* Mobil fiókok. Korábban a zárt fiókot csak egy translateX tolta ki a
+   képből: a benne lévő ~14 gomb és minden űrlapmező bent maradt a
+   tabsorrendben, láthatatlanul fókuszálhatóan. A JS ezért `inert`-et is
+   tesz a zárt fiókra; itt csak a megjelenés van. */
+
+.drawer__backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-drawer-backdrop);
+  background: rgb(5 7 10 / 60%);
+  opacity: 0;
+  transition: opacity var(--dur-base) var(--ease-out);
+}
+
+.drawer__backdrop[hidden] {
+  display: none;
+}
+
+.drawer__backdrop.is-open {
+  opacity: 1;
+}
+
+/* A fiókot záró gomb asztali nézeten nem kell: ott a panel mindig látszik. */
+.drawer__close {
+  display: none;
+}
+
+@media (width <= 768px) {
+  .drawer__close {
+    display: inline-flex;
+  }
+}

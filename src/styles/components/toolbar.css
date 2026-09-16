@@ -1,0 +1,133 @@
+/* Felső eszköztár. A régi változat fix 54px magas, nem tördelő flex sor
+   volt, csupa nowrap gombbal — szűkebb ablakon a jobb szélső vezérlők
+   (köztük a főmenü gomb) egyszerűen levágódtak. */
+
+.toolbar {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-bg-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.toolbar__brand {
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+  padding-right: var(--space-2);
+}
+
+.toolbar__brand-name {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.01em;
+}
+
+.toolbar__brand-sub {
+  font-size: var(--text-sm);
+  color: var(--color-text-subtle);
+}
+
+.toolbar__group {
+  display: flex;
+  gap: var(--space-1);
+  align-items: center;
+}
+
+/* Összefüggő vezérlőcsoport (pl. nagyítás) saját háttérdobozban. */
+.toolbar__group--boxed {
+  gap: 0;
+  padding: 2px;
+  background: var(--color-bg-app);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.toolbar__sep {
+  width: 1px;
+  height: 20px;
+  background: var(--color-border);
+}
+
+.toolbar__spacer {
+  flex: 1;
+  min-width: var(--space-2);
+}
+
+/* A fiók-nyitó gombok csak keskeny nézeten kellenek. */
+.toolbar__group--mobile {
+  display: none;
+}
+
+.zoom__value {
+  min-width: 52px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Túlcsorduló műveletek menüje --- */
+
+.menu {
+  position: relative;
+}
+
+.menu__panel {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  z-index: var(--z-menu);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 220px;
+  max-height: min(60vh, 420px);
+  padding: var(--space-1);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-2);
+}
+
+.menu__panel[hidden] {
+  display: none;
+}
+
+.menu__item {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-md);
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+}
+
+.menu__item:hover {
+  background: var(--color-bg-hover);
+}
+
+@media (width <= 900px) {
+  /* Keskeny nézeten csak az ikon marad, a felirat elfér nélküle is. */
+  .btn__label {
+    display: none;
+  }
+
+  .toolbar__brand-sub {
+    display: none;
+  }
+}
+
+@media (width <= 768px) {
+  .toolbar__group--mobile {
+    display: flex;
+  }
+}
