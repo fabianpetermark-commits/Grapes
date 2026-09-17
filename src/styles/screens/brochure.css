@@ -1,0 +1,131 @@
+/* A Fabric brossúra-szerkesztő héja. Korábban egymásba ágyazott flexbox
+   és egy JS-ből mért --toolbar-h CSS-változó tartotta össze; most a
+   rács-sorok maguk adják a magasságot, bárhány sorba törik a toolbar. */
+
+.editor {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100dvh;
+}
+
+.editor__body {
+  display: grid;
+  grid-template-columns: var(--rail-width) minmax(0, 1fr) var(--inspector-width);
+  min-height: 0;
+}
+
+.editor__rail {
+  border-right: 1px solid var(--color-border);
+}
+
+.editor__inspector {
+  border-left: 1px solid var(--color-border);
+}
+
+.editor__canvas {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--color-bg-sunken);
+}
+
+.editor__viewport {
+  flex: 1;
+  min-height: 0;
+  padding: var(--space-6);
+  overflow: auto;
+
+  /* A középre igazítás és a görgethetőség együtt: sima `center` esetén a
+     bal/felső irányú túlcsordulás levágódik és nem lehet odagörgetni —
+     nagyított lapnál a bal felső sarok elérhetetlen volt. A `safe`
+     kulcsszó ilyenkor a kezdethez igazít. Az első sor a tartalék. */
+  display: grid;
+  place-content: center;
+  place-content: safe center;
+}
+
+.editor__sheet {
+  box-shadow: var(--shadow-3);
+}
+
+.editor__sheet canvas {
+  display: block;
+}
+
+/* --- Kontextuális objektum-sáv --- */
+
+.objectbar {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-bg-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.objectbar[hidden] {
+  display: none;
+}
+
+.objectbar__group {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.objectbar__sep {
+  width: 1px;
+  height: 18px;
+  margin: 0 var(--space-1);
+  background: var(--color-border);
+}
+
+/* --- Keskeny nézet: a két oldalsó panel fiókká válik --- */
+
+@media (width <= 768px) {
+  .editor__body {
+    position: relative;
+    grid-template-columns: minmax(0, 1fr);
+
+    /* A zárt fiókok a törzsön kívülre vannak tolva; enélkül a jobb oldali
+       panel megnövelné a dokumentum görgethető szélességét. */
+    overflow: hidden;
+  }
+
+  .editor__rail,
+  .editor__inspector {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: var(--z-drawer);
+    width: min(88vw, 340px);
+    box-shadow: var(--shadow-3);
+    transition: transform var(--dur-base) var(--ease-out);
+  }
+
+  .editor__rail {
+    left: 0;
+    transform: translateX(-100%);
+  }
+
+  .editor__inspector {
+    right: 0;
+    border-right: 0;
+    border-left: 1px solid var(--color-border);
+    transform: translateX(100%);
+  }
+
+  .editor__rail.is-open,
+  .editor__inspector.is-open {
+    transform: translateX(0);
+  }
+
+  .editor__viewport {
+    padding: var(--space-3);
+  }
+}

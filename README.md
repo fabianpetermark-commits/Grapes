@@ -1,28 +1,39 @@
 # Grapes Stúdió
 
-Magyar nyelvű, böngészőben futó szerkesztőcsomag két modullal: egy GrapesJS
+Magyar nyelvű, böngészőben futó szerkesztőcsomag két modullal: egy Fabric.js
 és Vite alapú brossúraszerkesztővel, valamint egy Three.js alapú
 parametrikus 3D-szerkesztővel. Nyitáskor egy modulválasztó képernyő jelenik
 meg, ahonnan bármelyik modul elérhető, és onnan is vissza lehet lépni.
+
+Mindkét modul ugyanazt a sötét design systemet használja
+(`src/styles/tokens.css`), és a szerkesztőmotorok dinamikus importtal
+töltődnek be, így a nyitóképernyő nem fizeti meg egyikük indítását sem.
 
 ## Modulok
 
 ### Brossúra Szerkesztő
 
-- GrapesJS vizuális szerkesztő
-- A4 fekvő, hárompaneles brossúra-sablon
-- Többoldalas projektstruktúra
-- Alap blokkok, rétegek és stíluskezelés
-- Szabadon pozicionálható, átméretezhető alakzatok (téglalap, kör, vonal,
-  nyíl, csillag) saját szín/körvonal beállítással
-- QR-kód generátor és beillesztés
+- Fabric.js alapú, szabad pozicionálású vászon (A4 fekvő)
+- Alakzatok (téglalap, kör, vonal, nyíl, csillag) és szöveg
+- Kitöltés: egyszínű, színátmenet vagy mintakép; körvonal, átlátszóság,
+  elforgatás, vetett árnyék
+- Méret px/cm/inch mértékegységben
+- Betűtípus (rendszer- és Google-fontok) és betűméret
+- Kijelöléskor megjelenő objektum-sáv: igazítás, rétegsorrend,
+  csoportosítás, törlés
+- Rétegek panel átrendezéssel és törléssel
+- QR-kód generátor élő előnézettel
 - Ingyenes képtár (Unsplash) tallózása és beillesztése (API-kulcs szükséges)
-- Igazítás, rács (snap-to-grid) és réteg-sorrend (előre/hátra hozás)
-- HTML-fájl megnyitása és szerkesztése
+- Rács (snap-to-grid) és okos segédvonalak
+- HTML- és SVG-fájl importálása
 - Projekt mentése és betöltése JSON formátumban
 - Visszavonás és ismétlés
-- Böngészős PDF-nyomtatás és mentés
-- Helyi automatikus mentés
+- Kódnézet (CodeMirror), HTML-export és böngészős PDF-nyomtatás
+- Nagyítás, lapra illesztés; billentyűzettel teljesen bejárható
+
+A korábbi GrapesJS-motor a `?engine=grapes` URL-paraméterrel továbbra is
+elérhető a régi projektekhez, de már nem az alapértelmezett, és nem kap
+további fejlesztést.
 
 ### 3D Nyomtatási Stúdió
 

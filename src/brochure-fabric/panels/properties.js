@@ -2,22 +2,22 @@ import { Gradient, Pattern, Shadow } from 'fabric'
 import { populateFontSelect } from '../fonts.js'
 
 const SWATCH_COLORS = [
-  '#000000',
-  '#ffffff',
-  '#ef4444',
-  '#f97316',
-  '#f59e0b',
-  '#eab308',
-  '#84cc16',
-  '#22c55e',
-  '#10b981',
-  '#06b6d4',
-  '#3b82f6',
-  '#6366f1',
-  '#8b5cf6',
-  '#d946ef',
-  '#ec4899',
-  '#00e5ff',
+  { value: '#000000', name: 'Fekete' },
+  { value: '#4b5563', name: 'Sötétszürke' },
+  { value: '#9ca3af', name: 'Szürke' },
+  { value: '#ffffff', name: 'Fehér' },
+  { value: '#ef4444', name: 'Piros' },
+  { value: '#f97316', name: 'Narancs' },
+  { value: '#f59e0b', name: 'Borostyán' },
+  { value: '#eab308', name: 'Sárga' },
+  { value: '#84cc16', name: 'Lime' },
+  { value: '#22c55e', name: 'Zöld' },
+  { value: '#10b981', name: 'Smaragd' },
+  { value: '#06b6d4', name: 'Türkiz' },
+  { value: '#3b82f6', name: 'Kék' },
+  { value: '#6366f1', name: 'Indigó' },
+  { value: '#8b5cf6', name: 'Lila' },
+  { value: '#ec4899', name: 'Rózsaszín' },
 ]
 
 // px <-> cm/inch átváltás 96 DPI-vel számolva (ez a szokásos böngésző
@@ -31,11 +31,53 @@ const UNIT_TO_PX = { px: 1, cm: 96 / 2.54, in: 96 }
 // "shape-style" StyleManager sectort, most már a Fabric.js teljes
 // kitöltés-/effekt-készletét kihasználva.
 
+const TEXT_TYPES = new Set(['textbox', 'text', 'i-text'])
+
+// A `<input type="color">` csak `#rrggbb`-t fogad el. A korábbi változat
+// minden más formátumra feketét adott vissza, így az SVG- és HTML-importból
+// érkező objektumok (ezek `rgb(...)` sztringet hordoznak) mindig feketének
+// látszottak a panelen, függetlenül a tényleges színüktől.
 function toHex(value) {
-  if (!value || typeof value !== 'string' || !value.startsWith('#')) {
+  if (typeof value !== 'string' || value.length === 0) return '#000000'
+
+  const trimmed = value.trim()
+
+  if (trimmed.startsWith('#')) {
+    if (trimmed.length === 7) return trimmed.toLowerCase()
+    // #rgb -> #rrggbb
+    if (trimmed.length === 4) {
+      const [, r, g, b] = trimmed
+      return `#${r}${r}${g}${g}${b}${b}`.toLowerCase()
+    }
+    // #rrggbbaa -> az alfát a színmező nem tudja megjeleníteni
+    if (trimmed.length === 9) return trimmed.slice(0, 7).toLowerCase()
     return '#000000'
   }
-  return value.length === 7 ? value : '#000000'
+
+  const channels = trimmed.match(/^rgba?\(([^)]+)\)$/i)
+  if (channels) {
+    const parts = channels[1].split(/[\s,/]+/).filter(Boolean).slice(0, 3)
+    if (parts.length === 3) {
+      const hex = parts
+        .map((part) => {
+          const numeric = part.endsWith('%')
+            ? Math.round((Number.parseFloat(part) / 100) * 255)
+            : Number.parseInt(part, 10)
+          return Math.max(0, Math.min(255, numeric || 0))
+            .toString(16)
+            .padStart(2, '0')
+        })
+        .join('')
+      return `#${hex}`
+    }
+  }
+
+  // Elnevezett szín (pl. "red"): a böngészővel számoltatjuk ki.
+  const probe = document.createElement('canvas').getContext('2d')
+  probe.fillStyle = '#000000'
+  probe.fillStyle = trimmed
+  const resolved = probe.fillStyle
+  return typeof resolved === 'string' && resolved.startsWith('#') ? resolved.toLowerCase() : '#000000'
 }
 
 function isGradient(fill) {
@@ -100,14 +142,17 @@ export function initPropertiesPanel(canvas) {
   const sizeUnitSelect = document.querySelector('#fabric-prop-size-unit')
 
   const swatchRow = document.querySelector('#fabric-prop-fill-swatches')
-  SWATCH_COLORS.forEach((color) => {
+  SWATCH_COLORS.forEach(({ value, name }) => {
     const swatch = document.createElement('button')
     swatch.type = 'button'
-    swatch.title = color
-    swatch.style.background = color
+    swatch.className = 'swatch'
+    // Korábban a gomb egyetlen "neve" a nyers hexkód volt a title-ben.
+    swatch.setAttribute('aria-label', `Kitöltés: ${name}`)
+    swatch.title = name
+    swatch.style.background = value
     swatch.addEventListener('click', () => {
-      fillInput.value = color
-      applyAndRender('fill', color)
+      fillInput.value = value
+      applyAndRender('fill', value)
     })
     swatchRow.append(swatch)
   })
@@ -156,7 +201,9 @@ export function initPropertiesPanel(canvas) {
       shadowOffsetYInput.value = active.shadow.offsetY ?? 5
     }
 
-    const isText = active.type === 'textbox'
+    // Az SVG-importból `text`/`i-text` típusú objektumok jönnek, nem
+    // `textbox` — korábban ezeknél a betűtípus-vezérlők rejtve maradtak.
+    const isText = TEXT_TYPES.has(active.type)
     fontGroup.classList.toggle('hidden', !isText)
     if (isText) {
       fontSizeInput.value = active.fontSize ?? 28
@@ -168,10 +215,21 @@ export function initPropertiesPanel(canvas) {
     heightInput.value = (active.getScaledHeight() / unitToPx).toFixed(2)
   }
 
+  // Több elem kijelölésekor a Fabric egy ActiveSelection burkolót ad vissza.
+  // A stílus-property-ket korábban erre a burkolóra írtuk, így a kitöltés,
+  // a körvonal és az árnyék nem jutott el a tagokig.
+  function targetsOf(active) {
+    return active.type === 'activeselection' && typeof active.getObjects === 'function'
+      ? active.getObjects()
+      : [active]
+  }
+
   function applyAndRender(property, value) {
     const active = canvas.getActiveObject()
     if (!active) return
-    active.set(property, value)
+    for (const target of targetsOf(active)) {
+      target.set(property, value)
+    }
     canvas.requestRenderAll()
   }
 
@@ -217,17 +275,21 @@ export function initPropertiesPanel(canvas) {
   })
 
   strokeInput.addEventListener('input', () => applyAndRender('stroke', strokeInput.value))
-  strokeWidthInput.addEventListener('input', () =>
+  // A számmezők `change`-re alkalmaznak, nem minden leütésre — gépelés
+  // közben a részleges érték (pl. "4" a "40"-ből) nem ugrasztja az elemet.
+  strokeWidthInput.addEventListener('change', () =>
     applyAndRender('strokeWidth', Number(strokeWidthInput.value) || 0),
   )
   opacityInput.addEventListener('input', () => applyAndRender('opacity', Number(opacityInput.value) / 100))
-  angleInput.addEventListener('input', () => {
+  angleInput.addEventListener('change', () => {
     const active = canvas.getActiveObject()
     if (!active) return
-    active.rotate(Number(angleInput.value) || 0)
+    for (const target of targetsOf(active)) {
+      target.rotate(Number(angleInput.value) || 0)
+    }
     canvas.requestRenderAll()
   })
-  fontSizeInput.addEventListener('input', () => applyAndRender('fontSize', Number(fontSizeInput.value) || 1))
+  fontSizeInput.addEventListener('change', () => applyAndRender('fontSize', Number(fontSizeInput.value) || 1))
   fontFamilySelect.addEventListener('change', () => applyAndRender('fontFamily', fontFamilySelect.value))
 
   function applySize() {
@@ -241,8 +303,16 @@ export function initPropertiesPanel(canvas) {
     active.setCoords()
     canvas.requestRenderAll()
   }
-  widthInput.addEventListener('input', applySize)
-  heightInput.addEventListener('input', applySize)
+  // A méretmezők korábban `input`-ra alkalmaztak: az "500" beírása 5px-re,
+  // majd 50px-re, végül 500px-re méretezte az elemet, és egy mező közbeni
+  // kiürítése is torzított. A `change` (fókuszvesztés / Enter) a helyes
+  // pillanat, Enterre azonnali visszajelzéssel.
+  for (const input of [widthInput, heightInput]) {
+    input.addEventListener('change', applySize)
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') applySize()
+    })
+  }
   sizeUnitSelect.addEventListener('change', refresh)
 
   function applyShadow() {

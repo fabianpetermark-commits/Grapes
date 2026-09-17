@@ -1,0 +1,132 @@
+/* 3D Nyomtatási Stúdió. Ez volt az egyetlen képernyő, amely Tailwind
+   utility-osztályokkal készült (a saját `zinc-*` skáláján), miközben a
+   többi kézzel írt neon CSS-t használt — a kettő sosem találkozott.
+   Most ugyanazokból a komponensekből és tokenekből épül, mint a
+   brossúra-szerkesztő. */
+
+.studio__body {
+  grid-template-columns: minmax(0, 1fr) var(--inspector-width);
+}
+
+.studio__viewport {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  cursor: grab;
+  background: var(--color-bg-sunken);
+}
+
+.studio__viewport:active {
+  cursor: grabbing;
+}
+
+.studio__viewport canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.studio__overlay {
+  position: absolute;
+  top: var(--space-4);
+  left: var(--space-4);
+  z-index: var(--z-sticky);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 132px;
+  padding: var(--space-1);
+  background: var(--color-bg-floating);
+  backdrop-filter: blur(4px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-2);
+}
+
+.studio__overlay-sep {
+  height: 1px;
+  margin: var(--space-1) 0;
+  background: var(--color-border);
+}
+
+.studio__hint {
+  position: absolute;
+  bottom: var(--space-4);
+  left: var(--space-4);
+  z-index: var(--z-sticky);
+  max-width: 300px;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  background: var(--color-bg-floating);
+  backdrop-filter: blur(4px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-2);
+}
+
+.studio__inspector {
+  border-left: 1px solid var(--color-border);
+}
+
+.palette__grid--three {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.field__value {
+  float: right;
+  font-family: var(--font-mono);
+  color: var(--color-accent);
+}
+
+.studio__stats {
+  margin: var(--space-6) 0 0;
+  padding: var(--space-3);
+  background: var(--color-bg-app);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.studio__stat {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: space-between;
+  font-size: var(--text-sm);
+}
+
+.studio__stat dt {
+  color: var(--color-text-muted);
+}
+
+.studio__stat dd {
+  margin: 0;
+  font-weight: var(--weight-semibold);
+  color: var(--color-accent);
+}
+
+/* A stúdió elemlistájában a sorok teljes szélességű gombok. */
+.studio__inspector .layer {
+  width: 100%;
+  font: inherit;
+  text-align: left;
+  background: var(--color-bg-app);
+  border-color: var(--color-border);
+}
+
+@media (width <= 768px) {
+  .studio__body {
+    grid-template-rows: minmax(45vh, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .studio__inspector {
+    max-height: 45vh;
+    border-top: 1px solid var(--color-border);
+    border-left: 0;
+  }
+
+  .studio__hint {
+    display: none;
+  }
+}

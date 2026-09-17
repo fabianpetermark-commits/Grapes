@@ -1,89 +1,122 @@
 // Rétegek panel: a canvas objektumainak listája z-sorrend szerint (felül a
 // legfelső), kattintásra kijelölés, törlés és fel/le mozgatás soronként.
-// Ez váltja a GrapesJS-es Layer Managert.
+//
+// Korábban a teljes lista minden canvas-eseményre újraépült (innerHTML = ''
+// plusz három friss eseményfigyelő soronként) — a puszta kattintgatás a
+// vásznon is újrarajzolta az egészet, elveszítve a görgetési pozíciót.
+// Most a kijelölésváltás csak egy osztályt cserél.
+
+import { create } from '../../ui/dom.js'
+
+const TYPE_LABELS = {
+  rect: 'Téglalap',
+  circle: 'Kör',
+  line: 'Vonal',
+  path: 'Alakzat',
+  polygon: 'Sokszög',
+  group: 'Csoport',
+  textbox: 'Szöveg',
+  text: 'Szöveg',
+  'i-text': 'Szöveg',
+  image: 'Kép',
+}
 
 function labelFor(object, index) {
-  const typeLabels = {
-    rect: 'Téglalap',
-    circle: 'Kör',
-    line: 'Vonal',
-    path: 'Alakzat',
-    textbox: 'Szöveg',
-    image: 'Kép',
-  }
-  return `${typeLabels[object.type] || object.type} #${index + 1}`
+  return `${TYPE_LABELS[object.type] || object.type} #${index + 1}`
+}
+
+function iconButton(name, label, onClick) {
+  const button = create('button', {
+    type: 'button',
+    class: 'btn btn--icon btn--ghost btn--sm',
+    'aria-label': label,
+    title: label,
+  })
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+  svg.setAttribute('class', 'icon icon--sm')
+  svg.setAttribute('viewBox', '0 0 24 24')
+  svg.setAttribute('aria-hidden', 'true')
+  const use = document.createElementNS('http://www.w3.org/2000/svg', 'use')
+  use.setAttribute('href', `#i-${name}`)
+  svg.append(use)
+  button.append(svg)
+  button.addEventListener('click', (event) => {
+    event.stopPropagation()
+    onClick()
+  })
+  return button
 }
 
 export function initLayersPanel(canvas) {
   const listEl = document.querySelector('#fabric-layers-list')
+  // Objektum -> sor, hogy a kijelölés jelzéséhez ne kelljen újraépíteni.
+  const rows = new Map()
+
+  function syncActive() {
+    const active = canvas.getActiveObject()
+    for (const [object, row] of rows) {
+      row.classList.toggle('is-active', object === active)
+    }
+  }
 
   function render() {
     const objects = canvas.getObjects()
-    listEl.innerHTML = ''
+    rows.clear()
+    listEl.replaceChildren()
 
-    // Felül a legfelső z-index-ű elem (a tömb végén van a canvas.getObjects()-ben).
-    for (let i = objects.length - 1; i >= 0; i -= 1) {
-      const object = objects[i]
-      const row = document.createElement('div')
-      row.className = 'fabric-layer-row'
-      if (object === canvas.getActiveObject()) {
-        row.classList.add('active')
-      }
+    if (objects.length === 0) {
+      listEl.append(
+        create('p', {
+          class: 'empty-state empty-state--inline',
+          textContent: 'Még nincs elem a lapon.',
+        }),
+      )
+      return
+    }
 
-      const nameEl = document.createElement('span')
-      nameEl.className = 'fabric-layer-name'
-      nameEl.textContent = labelFor(object, i)
-      row.append(nameEl)
+    // Felül a legfelső z-indexű elem (a tömb végén van a getObjects()-ben).
+    for (let index = objects.length - 1; index >= 0; index -= 1) {
+      const object = objects[index]
+      const name = labelFor(object, index)
 
-      const upBtn = document.createElement('button')
-      upBtn.type = 'button'
-      upBtn.textContent = '↑'
-      upBtn.title = 'Előrébb'
-      upBtn.addEventListener('click', (event) => {
-        event.stopPropagation()
-        canvas.bringObjectForward(object)
-        canvas.requestRenderAll()
-        render()
-      })
-      row.append(upBtn)
-
-      const downBtn = document.createElement('button')
-      downBtn.type = 'button'
-      downBtn.textContent = '↓'
-      downBtn.title = 'Hátrébb'
-      downBtn.addEventListener('click', (event) => {
-        event.stopPropagation()
-        canvas.sendObjectBackwards(object)
-        canvas.requestRenderAll()
-        render()
-      })
-      row.append(downBtn)
-
-      const deleteBtn = document.createElement('button')
-      deleteBtn.type = 'button'
-      deleteBtn.textContent = '🗑️'
-      deleteBtn.title = 'Törlés'
-      deleteBtn.addEventListener('click', (event) => {
-        event.stopPropagation()
-        canvas.remove(object)
-        canvas.requestRenderAll()
-      })
-      row.append(deleteBtn)
+      const row = create('div', { class: 'layer' }, [
+        create('span', { class: 'layer__name', textContent: name }),
+        create('div', { class: 'layer__actions' }, [
+          iconButton('layer-up', `${name} előrébb`, () => {
+            canvas.bringObjectForward(object)
+            canvas.requestRenderAll()
+            render()
+          }),
+          iconButton('layer-down', `${name} hátrébb`, () => {
+            canvas.sendObjectBackwards(object)
+            canvas.requestRenderAll()
+            render()
+          }),
+          iconButton('trash', `${name} törlése`, () => {
+            canvas.remove(object)
+            canvas.requestRenderAll()
+          }),
+        ]),
+      ])
 
       row.addEventListener('click', () => {
         canvas.setActiveObject(object)
         canvas.requestRenderAll()
       })
 
+      rows.set(object, row)
       listEl.append(row)
     }
+
+    syncActive()
   }
 
   canvas.on('object:added', render)
   canvas.on('object:removed', render)
-  canvas.on('selection:created', render)
-  canvas.on('selection:updated', render)
-  canvas.on('selection:cleared', render)
+  // A kijelölés változása nem indokol újraépítést — elég az aktív sor jelzése.
+  canvas.on('selection:created', syncActive)
+  canvas.on('selection:updated', syncActive)
+  canvas.on('selection:cleared', syncActive)
 
   render()
 

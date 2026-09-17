@@ -2,8 +2,11 @@ import { Rect, Circle, Line, Path, Textbox, FabricImage } from 'fabric'
 
 const GRID_SIZE = 10
 
-const DEFAULT_FILL = '#00e5ff'
-const DEFAULT_STROKE = '#0891b2'
+// A lap fehér, nyomtatásra készül: az alapértelmezett alakzat legyen
+// semleges, ne a szerkesztő felületének akcentszíne. A korábbi neon cián
+// (#00e5ff) papíron használhatatlan kiindulás volt.
+const DEFAULT_FILL = '#94a3b8'
+const DEFAULT_STROKE = '#475569'
 const DEFAULT_STROKE_WIDTH = 2
 
 export function createRect() {

@@ -1,14 +1,53 @@
+import { notifyError } from '../ui/toast.js'
+
 // PDF export/nyomtatás: a canvas-t nagyobb felbontású PNG-vé rendereljük
 // (multiplier: 2), majd egy nyomtatható ablakba fecskendezzük @page A4
 // fekvő CSS-sel — ugyanazt a print-window mintát követi, mint a GrapesJS-es
 // #pdf-btn logika (main.js), csak editor.getHtml()/getCss() helyett képet
 // rendereket.
+// A nyomtatást csak akkor indítjuk, ha a beágyazott kép ténylegesen betöltött.
+// A `load` eseményre feliratkozni a document.close() után késő: a legtöbb
+// böngészőben ilyenkor már lefutott, és a print() sosem hívódott meg.
+function printOnceReady(printWindow) {
+  const start = () => {
+    try {
+      printWindow.print()
+    } catch (error) {
+      console.error('A nyomtatás indítása sikertelen:', error)
+    }
+  }
+
+  const image = printWindow.document.querySelector('img')
+  if (!image) {
+    start()
+    return
+  }
+  if (image.complete) {
+    start()
+    return
+  }
+  image.addEventListener('load', start, { once: true })
+  image.addEventListener('error', start, { once: true })
+}
+
 export function exportToPdf(canvas) {
-  const dataUrl = canvas.toDataURL({ format: 'png', multiplier: 2 })
+  let dataUrl
+  try {
+    dataUrl = canvas.toDataURL({ format: 'png', multiplier: 2 })
+  } catch (error) {
+    // Egyetlen CORS-hibás kép is "megmérgezi" a vásznat, és ilyenkor a
+    // toDataURL SecurityError-t dob. Korábban ez lekezeletlen volt: a PDF
+    // gomb egyszerűen nem csinált semmit.
+    console.error('A vászon képpé alakítása sikertelen:', error)
+    notifyError(
+      'A lap nem exportálható, mert külső forrásból származó kép van rajta. Töltsd fel a képet fájlként, majd próbáld újra.',
+    )
+    return
+  }
 
   const printWindow = window.open('', '_blank')
   if (!printWindow) {
-    window.alert('A felugró ablakot a böngésző letiltotta. Engedélyezd a felugró ablakokat a PDF-exporthoz.')
+    notifyError('A felugró ablakot a böngésző letiltotta. Engedélyezd a felugró ablakokat a PDF-exporthoz.')
     return
   }
 
@@ -31,7 +70,5 @@ export function exportToPdf(canvas) {
   `)
   printWindow.document.close()
   printWindow.focus()
-  printWindow.addEventListener('load', () => {
-    printWindow.print()
-  })
+  printOnceReady(printWindow)
 }
