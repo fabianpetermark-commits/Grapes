@@ -99,6 +99,13 @@
           <span class="card__title">3D Nyomtatási Stúdió</span>
           <span class="card__text">Parametrikus 3D-szerkesztő és STL-export</span>
         </button>
+        <button id="pick-qr" class="card" type="button">
+          <span class="card__icon">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-qr" /></svg>
+          </span>
+          <span class="card__title">QR Stúdió</span>
+          <span class="card__text">Testreszabható QR-kódok generálása</span>
+        </button>
       </div>
     </div>
 
@@ -592,6 +599,64 @@
                 <dd id="studio-element-count">0</dd>
               </div>
             </dl>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <div id="qr-app" class="editor hidden">
+      <header class="toolbar" id="qr-toolbar">
+        <div class="toolbar__brand">
+          <span class="toolbar__brand-name">Grapes</span>
+          <span class="toolbar__brand-sub">QR Stúdió</span>
+        </div>
+        <span class="toolbar__spacer"></span>
+        <button id="qr-back-to-menu-btn" class="btn btn--ghost" type="button">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-home" /></svg>
+          <span class="btn__label">Főmenü</span>
+        </button>
+      </header>
+      <div class="editor__body studio__body" style="display: grid; grid-template-columns: 1fr 400px; gap: 24px; padding: 24px;">
+        <div class="panel" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px;">
+          <div id="qr-canvas-container" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.2);">
+            <canvas id="qr-canvas"></canvas>
+          </div>
+          <div style="display: flex; gap: 12px; margin-top: 24px;">
+            <button id="qr-download-png" class="btn btn--primary" type="button">Letöltés PNG-ként</button>
+            <button id="qr-copy-btn" class="btn btn--ghost" type="button">Tartalom másolása</button>
+          </div>
+        </div>
+        <aside class="panel studio__inspector" aria-label="QR Beállítások">
+          <div class="panel__body">
+            <p class="panel__group-label">Adat típusa</p>
+            <div class="field">
+              <label class="field__label" for="qr-type">Típus</label>
+              <select id="qr-type" class="select">
+                <option value="url">Weboldal / URL</option>
+                <option value="text">Egyszerű szöveg</option>
+                <option value="wifi">WiFi hálózat</option>
+                <option value="vcard">Névjegy (vCard)</option>
+              </select>
+            </div>
+            <div id="qr-dynamic-inputs" class="field" style="margin-top: 16px;"></div>
+            <p class="panel__group-label" style="margin-top: 24px;">Vizuális stílus</p>
+            <div class="field">
+              <label class="field__label" for="qr-fg-color">QR kód színe</label>
+              <input id="qr-fg-color" class="color-input" type="color" value="#0f172a" />
+            </div>
+            <div class="field">
+              <label class="field__label" for="qr-bg-color">Háttérszín</label>
+              <input id="qr-bg-color" class="color-input" type="color" value="#ffffff" />
+            </div>
+            <div class="field">
+              <label class="field__label" for="qr-error-level">Hibatűrés</label>
+              <select id="qr-error-level" class="select">
+                <option value="L">Alacsony (7%)</option>
+                <option value="M" selected>Közepes (15%)</option>
+                <option value="Q">Jó (25%)</option>
+                <option value="H">Magas (30%)</option>
+              </select>
+            </div>
           </div>
         </aside>
       </div>
