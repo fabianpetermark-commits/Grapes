@@ -18,6 +18,10 @@ let studioModule = null
 
 const SCREENS = {
   splash: { id: '#splash-screen' },
+  qr: {
+    id: '#qr-app',
+    load: () => import('./qr-studio.js').then((module) => module.initQrStudio()),
+  },
   studio: {
     id: '#studio-app',
     load: () =>
@@ -39,7 +43,7 @@ const SCREENS = {
 
 // A GrapesJS-es #app mindig jelen van a markupban, de ha nem az a motor
 // fut, akkor is rejtve kell maradnia.
-const ALL_SCREEN_IDS = ['#splash-screen', '#app', '#fabric-app', '#studio-app']
+const ALL_SCREEN_IDS = ['#splash-screen', '#app', '#fabric-app', '#studio-app', '#qr-app']
 
 export function showScreen(name) {
   const screen = SCREENS[name]
