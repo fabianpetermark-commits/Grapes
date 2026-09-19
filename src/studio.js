@@ -30,6 +30,25 @@ function dimensionsFromSize(type, size) {
   return { x: size, y: size, z: size }
 }
 
+function setInputValue(selector, value) {
+  const input = document.querySelector(selector)
+  if (input) input.value = String(value)
+}
+
+function refreshTransformInputs(element) {
+  if (selectedId !== element.id) return
+
+  setInputValue('#studio-pos-x', element.position.x.toFixed(1))
+  setInputValue('#studio-pos-y', element.position.y.toFixed(1))
+  setInputValue('#studio-pos-z', element.position.z.toFixed(1))
+  setInputValue('#studio-rot-x', THREE.MathUtils.radToDeg(element.rotation.x).toFixed(1))
+  setInputValue('#studio-rot-y', THREE.MathUtils.radToDeg(element.rotation.y).toFixed(1))
+  setInputValue('#studio-rot-z', THREE.MathUtils.radToDeg(element.rotation.z).toFixed(1))
+  setInputValue('#studio-dim-x', element.dimensions.x.toFixed(1))
+  setInputValue('#studio-dim-y', element.dimensions.y.toFixed(1))
+  setInputValue('#studio-dim-z', element.dimensions.z.toFixed(1))
+}
+
 function syncElementState(element) {
   const { mesh } = element
   element.position = mesh.position.clone()
@@ -40,6 +59,26 @@ function syncElementState(element) {
     y: element.baseDimensions.y * mesh.scale.y,
     z: element.baseDimensions.z * mesh.scale.z,
   }
+  refreshTransformInputs(element)
+}
+
+function applyNumericTransform(axis, value) {
+  const element = elements.find((item) => item.id === selectedId)
+  if (!element || !Number.isFinite(value)) return
+
+  if (axis.startsWith('pos-')) {
+    element.mesh.position[axis.slice(4)] = value
+  } else if (axis.startsWith('rot-')) {
+    element.mesh.rotation[axis.slice(4)] = THREE.MathUtils.degToRad(value)
+  } else if (axis.startsWith('dim-')) {
+    const dimensionAxis = axis.slice(4)
+    const base = element.baseDimensions[dimensionAxis]
+    if (!Number.isFinite(base) || base <= 0 || value <= 0) return
+    element.mesh.scale[dimensionAxis] = value / base
+  }
+
+  element.mesh.updateMatrixWorld(true)
+  syncElementState(element)
 }
 
 // A korábbi, csak ezen a képernyőn létező #toast elem helyett a közös
@@ -106,6 +145,7 @@ function selectElement(id) {
   el('#studio-param-size').value = element.size
   el('#studio-val-size').textContent = `${element.size} mm`
   el('#studio-param-color').value = element.color
+  refreshTransformInputs(element)
   renderElementList()
 }
 
@@ -348,6 +388,17 @@ function bindUI() {
   el('#studio-transform-rotate').addEventListener('click', () => setTransformMode('rotate'))
   el('#studio-transform-scale').addEventListener('click', () => setTransformMode('scale'))
   el('#studio-toggle-wireframe').addEventListener('click', toggleWireframe)
+
+  for (const [selector, axis] of [
+    ['#studio-pos-x', 'pos-x'], ['#studio-pos-y', 'pos-y'], ['#studio-pos-z', 'pos-z'],
+    ['#studio-rot-x', 'rot-x'], ['#studio-rot-y', 'rot-y'], ['#studio-rot-z', 'rot-z'],
+    ['#studio-dim-x', 'dim-x'], ['#studio-dim-y', 'dim-y'], ['#studio-dim-z', 'dim-z'],
+  ]) {
+    el(selector).addEventListener('change', (event) => {
+      const value = Number(event.target.value)
+      applyNumericTransform(axis, value)
+    })
+  }
 
   document.addEventListener('keydown', (event) => {
     if (event.target.closest('input, textarea, select, button')) return
