@@ -154,6 +154,7 @@ function restoreHistory(index) {
   elements = history[index].map(createElementFromState)
   historyIndex = index
   selectedId = elements[0]?.id ?? null
+  selectedIds = selectedId ? new Set([selectedId]) : new Set()
   if (selectedId) {
     const selected = elements.find((element) => element.id === selectedId)
     transformControls.attach(selected.mesh)
@@ -747,7 +748,7 @@ function bindUI() {
         return
       }
     }
-    if (event.key.toLowerCase() === 'd' && event.shiftKey) {
+    if (event.key.toLowerCase() === 'd' && (event.ctrlKey || event.metaKey)) {
       event.preventDefault()
       duplicateSelected()
       return
