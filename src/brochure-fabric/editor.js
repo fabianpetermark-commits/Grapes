@@ -229,7 +229,10 @@ function setupLayerOrderButtons(layersPanel, history) {
   const reorder = (apply) => {
     const active = canvas.getActiveObject()
     if (!active) return
-    history.batch(() => apply(active))
+    history.batch(() => {
+      apply(active)
+      history.record()
+    })
     canvas.requestRenderAll()
     layersPanel.render()
   }
@@ -244,7 +247,10 @@ function setupAlignment(history) {
   const align = (fn) => {
     const active = canvas.getActiveObject()
     if (!active) return
-    history.batch(() => fn(active))
+    history.batch(() => {
+      fn(active)
+      history.record()
+    })
     active.setCoords()
     canvas.requestRenderAll()
   }
