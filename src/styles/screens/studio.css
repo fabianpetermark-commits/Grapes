@@ -1,290 +1,38 @@
-/* 3D Nyomtatási Stúdió. Ez volt az egyetlen képernyő, amely Tailwind
-   utility-osztályokkal készült (a saját `zinc-*` skáláján), miközben a
-   többi kézzel írt neon CSS-t használt — a kettő sosem találkozott.
-   Most ugyanazokból a komponensekből és tokenekből épül, mint a
-   brossúra-szerkesztő. */
+[object Object]
 
-.studio__body {
-  grid-template-columns: minmax(0, 1fr) var(--inspector-width);
-}
-
-.studio__viewport {
-  position: relative;
-  min-width: 0;
-  min-height: 0;
-  cursor: grab;
-  background: var(--color-bg-sunken);
-}
-
-.studio__viewport:active {
-  cursor: grabbing;
-}
-
-.studio__viewport canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.studio__overlay {
-  position: absolute;
-  top: var(--space-4);
-  left: var(--space-4);
-  z-index: var(--z-sticky);
-  display: grid;
-  grid-template-columns: repeat(3, auto);
-  gap: 6px;
+.studio__section-label {
+  display: flex;
   align-items: center;
-  max-width: min(760px, calc(100% - 32px));
-  padding: 6px;
-  background: var(--color-bg-floating);
-  backdrop-filter: blur(6px);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-2);
-}
-
-.studio__control-group {
-  display: flex;
-  gap: 2px;
-  padding: 2px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-}
-
-.studio__control-group--transform {
-  grid-column: 1 / -1;
-}
-
-.studio__control-group--primary {
-  order: -1;
-}
-
-.studio__control-group .btn {
-  min-width: 0;
-}
-
-.studio__object-actions {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-2);
-  margin-top: var(--space-3);
-}
-
-.studio__object-actions .btn {
-  min-width: 0;
-}
-
-.studio__overlay-sep {
-  height: 1px;
-  margin: var(--space-1) 0;
-  background: var(--color-border);
-}
-
-.studio__hint {
-  position: absolute;
-  bottom: var(--space-4);
-  left: var(--space-4);
-  z-index: var(--z-sticky);
-  max-width: 300px;
-  margin: 0;
-  padding: var(--space-2) var(--space-3);
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  background: var(--color-bg-floating);
-  backdrop-filter: blur(4px);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-2);
-}
-
-.studio__inspector {
-  border-left: 1px solid var(--color-border);
-}
-
-.palette__grid--three {
-  grid-template-columns: repeat(3, 1fr);
-}
-
-.field__value {
-  float: right;
-  font-family: var(--font-mono);
-  color: var(--color-accent);
-}
-
-.studio__stats {
-  margin: var(--space-6) 0 0;
-  padding: var(--space-3);
-  background: var(--color-bg-app);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-
-.studio__stat {
-  display: flex;
-  gap: var(--space-2);
   justify-content: space-between;
-  font-size: var(--text-sm);
-}
-
-.studio__stat dt {
-  color: var(--color-text-muted);
-}
-
-.studio__stat dd {
-  margin: 0;
-  font-weight: var(--weight-semibold);
-  color: var(--color-accent);
-}
-
-/* A stúdió elemlistájában a sorok teljes szélességű gombok. */
-.studio__inspector .layer {
-  width: 100%;
-  font: inherit;
-  text-align: left;
-  background: var(--color-bg-app);
-  border-color: var(--color-border);
-}
-
-@media (width <= 768px) {
-  .studio__body {
-    grid-template-rows: minmax(45vh, 1fr) auto;
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .studio__inspector {
-    max-height: 45vh;
-    border-top: 1px solid var(--color-border);
-    border-left: 0;
-  }
-
-  .studio__overlay {
-    top: var(--space-2);
-    left: var(--space-2);
-    max-width: calc(100% - 16px);
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .studio__control-group {
-    min-width: 0;
-  }
-
-  .studio__control-group--transform {
-    grid-column: 1 / -1;
-  }
-
-  .studio__control-group--primary {
-    order: -1;
-  }
-
-  .studio__control-group .btn {
-    flex: 1;
-    padding-inline: 7px;
-  }
-
-  .studio__hint {
-    display: none;
-  }
-
-  .studio__object-actions {
-    grid-template-columns: 1fr;
-  }
-}
-
-
-.studio__transform-grid {
-  display: grid;
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
-}
-
-.studio__transform-group {
-  display: grid;
   gap: var(--space-2);
 }
 
-.studio__transform-title {
-  font-size: var(--text-sm);
-  font-weight: var(--weight-semibold);
-  color: var(--color-text-muted);
-}
-
-.studio__axis-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-2);
-}
-
-.studio__axis-field {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
+.studio__selection-count {
   font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
   color: var(--color-text-muted);
 }
 
-.studio__axis-field .input {
-  width: 100%;
-  min-width: 0;
-  padding-inline: var(--space-2);
-  font-family: var(--font-mono);
-}
-
-
-/* Alignment and grid-snap controls */
-
-.studio__align-grid {
-  display: grid;
-  gap: 6px;
-  margin-top: 14px;
-}
-.studio__align-row {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-}
-.studio__align-row .btn {
-  min-width: 0;
-  padding-inline: 6px;
-}
-.studio__snap-controls {
-  display: grid;
-  grid-template-columns: 1fr 92px;
-  gap: 8px;
+.studio__inspector .layer {
+  display: flex;
   align-items: center;
-  margin-top: 10px;
-}
-.studio__snap-size {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 6px;
-  align-items: center;
-  font-size: 0.72rem;
-  color: var(--color-text-muted);
-}
-.studio__snap-size .select {
-  min-width: 0;
+  gap: var(--space-2);
+  min-height: 38px;
 }
 
-
-.studio__overlay .btn[aria-pressed="true"] {
+.studio__inspector .layer.is-active {
   border-color: var(--color-accent);
-  color: var(--color-accent);
-  background: var(--color-bg-app);
+  background: var(--color-bg-floating);
+  color: var(--color-text);
 }
 
-@media (width <= 520px) {
-  .studio__overlay {
-    right: var(--space-2);
-    max-width: none;
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .studio__overlay .btn {
-    min-height: 34px;
-  }
-
-  .studio__hint {
-    display: none;
-  }
+.studio__layer-badge {
+  margin-left: auto;
+  padding: 2px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  font-size: var(--text-xs);
+  line-height: 1.2;
+  color: var(--color-text-muted);
+  white-space: nowrap;
 }
