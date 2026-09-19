@@ -47,7 +47,7 @@ function iconButton(name, label, onClick) {
   return button
 }
 
-export function initLayersPanel(canvas) {
+export function initLayersPanel(canvas, history) {
   const listEl = document.querySelector('#fabric-layers-list')
   // Objektum -> sor, hogy a kijelölés jelzéséhez ne kelljen újraépíteni.
   const rows = new Map()
@@ -85,11 +85,13 @@ export function initLayersPanel(canvas) {
           iconButton('layer-up', `${name} előrébb`, () => {
             canvas.bringObjectForward(object)
             canvas.requestRenderAll()
+            history?.record()
             render()
           }),
           iconButton('layer-down', `${name} hátrébb`, () => {
             canvas.sendObjectBackwards(object)
             canvas.requestRenderAll()
+            history?.record()
             render()
           }),
           iconButton('trash', `${name} törlése`, () => {
