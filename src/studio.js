@@ -300,13 +300,13 @@ function applyNumericTransform(axis, value) {
     const base = element.baseDimensions[dimensionAxis]
     if (!Number.isFinite(base) || base <= 0 || value <= 0) return
 
-    if (dimensionAxis === 'x' && ['cylinder', 'sphere', 'cone', 'pyramid'].includes(element.type)) {
+    if (dimensionAxis === 'x' && element.type === 'sphere') {
+      const scale = value / base
+      element.mesh.scale.set(scale, scale, scale)
+    } else if (dimensionAxis === 'x' && ['cylinder', 'cone', 'pyramid'].includes(element.type)) {
       const scale = value / base
       element.mesh.scale.x = scale
       element.mesh.scale.z = scale
-    } else if (dimensionAxis === 'x' && element.type === 'sphere') {
-      const scale = value / base
-      element.mesh.scale.set(scale, scale, scale)
     } else {
       element.mesh.scale[dimensionAxis] = value / base
     }
