@@ -95,7 +95,7 @@ export function initLayersPanel(canvas, history) {
             render()
           }),
           iconButton('trash', `${name} törlése`, () => {
-            canvas.remove(object)
+            history?.batch(() => canvas.remove(object))
             canvas.requestRenderAll()
           }),
         ]),
