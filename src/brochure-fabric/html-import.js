@@ -206,8 +206,7 @@ async function rasterizeFallback(contentEl, contentWidth, contentHeight) {
   return [img]
 }
 
-export async function importHtmlFile(file, canvas) {
-  const text = await file.text()
+export async function importHtmlText(text, canvas, { replace = false } = {}) {
   const parser = new DOMParser()
   const doc = parser.parseFromString(text, 'text/html')
   const bodyMarkup = doc.body?.innerHTML.trim() || ''
@@ -258,10 +257,20 @@ export async function importHtmlFile(file, canvas) {
 
     const finalObjects = objects.length ? objects : await rasterizeFallback(contentEl, contentWidth, contentHeight)
 
+    if (replace) {
+      canvas.clear()
+      canvas.backgroundColor = '#ffffff'
+    }
+
     finalObjects.forEach((object) => canvas.add(object))
     canvas.setActiveObject(finalObjects[finalObjects.length - 1])
     canvas.requestRenderAll()
   } finally {
     sandbox.remove()
   }
+}
+
+
+export async function importHtmlFile(file, canvas) {
+  return importHtmlText(await file.text(), canvas)
 }
