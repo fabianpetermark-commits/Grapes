@@ -152,6 +152,7 @@ function disposeElementMesh(element) {
 function restoreHistory(index) {
   if (index < 0 || index >= history.length) return
   historyBusy = true
+  detachTransformTarget()
   transformControls.detach()
   elements.forEach(disposeElementMesh)
   elements = history[index].map(createElementFromState)
@@ -389,6 +390,8 @@ function selectElements(ids) {
 
 function deselect() {
   if (selectedId === null && selectedIds.size === 0) return
+  detachTransformTarget()
+  transformControls.detach()
   selectedId = null
   selectedIds.clear()
   transformControls.detach()
