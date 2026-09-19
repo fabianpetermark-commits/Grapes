@@ -17,6 +17,7 @@ let history = []
 let historyIndex = -1
 let historyBusy = false
 let transformHistorySnapshot = null
+let transformPivot = null
 
 const SHAPE_DEFAULTS = {
   box: { label: 'Kocka', icon: 'cube', color: '#7c9cbf' },
@@ -70,6 +71,7 @@ function syncElementState(element) {
 function captureSceneState() {
   return elements.map((element) => ({
     id: element.id,
+    groupId: element.groupId ?? null,
     type: element.type,
     size: element.size,
     color: element.color,
@@ -127,6 +129,7 @@ function createElementFromState(state) {
   scene.add(mesh)
   return {
     ...state,
+    groupId: state.groupId ?? null,
     baseDimensions: { ...state.baseDimensions },
     position: mesh.position.clone(),
     rotation: mesh.rotation.clone(),
@@ -154,10 +157,10 @@ function restoreHistory(index) {
   elements = history[index].map(createElementFromState)
   historyIndex = index
   selectedId = elements[0]?.id ?? null
-  selectedIds = selectedId ? new Set([selectedId]) : new Set()
+  selectedIds = selectedId ? new Set(getGroupMemberIds(selectedId)) : new Set()
   if (selectedId) {
     const selected = elements.find((element) => element.id === selectedId)
-    transformControls.attach(selected.mesh)
+    attachTransformTarget()
     syncElementState(selected)
     el('#studio-selected-props').classList.remove('hidden')
     el('#studio-param-size').value = selected.size
@@ -225,6 +228,7 @@ function addElement(type) {
 
   elements.push({
     id,
+    groupId: null,
     type,
     size,
     color: defaults.color,
@@ -266,36 +270,96 @@ function updateSelectionVisuals() {
   }
 }
 
+function getGroupMemberIds(id) {
+  const element = elements.find((item) => item.id === id)
+  if (!element?.groupId) return [id]
+  return elements.filter((item) => item.groupId === element.groupId).map((item) => item.id)
+}
+
+function detachTransformTarget() {
+  if (!transformPivot) return
+
+  for (const element of elements) {
+    if (transformPivot.children.includes(element.mesh)) {
+      scene.attach(element.mesh)
+      syncElementState(element)
+    }
+  }
+  scene.remove(transformPivot)
+  transformPivot = null
+}
+
+function attachTransformTarget() {
+  detachTransformTarget()
+  if (!selectedId) {
+    transformControls.detach()
+    return
+  }
+
+  if (selectedIds.size <= 1) {
+    const primary = elements.find((item) => item.id === selectedId)
+    if (primary) transformControls.attach(primary.mesh)
+    return
+  }
+
+  const selected = elements.filter((element) => selectedIds.has(element.id))
+  if (!selected.length) return
+
+  const bounds = new THREE.Box3()
+  selected.forEach((element) => bounds.expandByObject(element.mesh))
+  const center = bounds.getCenter(new THREE.Vector3())
+
+  transformPivot = new THREE.Group()
+  transformPivot.position.copy(center)
+  scene.add(transformPivot)
+
+  selected.forEach((element) => transformPivot.attach(element.mesh))
+  transformPivot.updateMatrixWorld(true)
+  transformControls.attach(transformPivot)
+}
+
+function syncSelectedTransformInputs() {
+  if (!selectedId) return
+  const primary = elements.find((item) => item.id === selectedId)
+  if (primary) syncElementState(primary)
+}
+
 function selectElement(id, { additive = false } = {}) {
   const element = elements.find((item) => item.id === id)
   if (!element) return
 
+  const groupIds = new Set(getGroupMemberIds(id))
+
   if (additive) {
-    if (selectedIds.has(id)) {
-      selectedIds.delete(id)
-      if (selectedId === id) selectedId = [...selectedIds][0] ?? null
+    const alreadySelected = groupIds.size > 0 && [...groupIds].every((memberId) => selectedIds.has(memberId))
+    if (alreadySelected) {
+      groupIds.forEach((memberId) => selectedIds.delete(memberId))
     } else {
-      selectedIds.add(id)
+      groupIds.forEach((memberId) => selectedIds.add(memberId))
       selectedId = id
     }
   } else {
-    selectedIds = new Set([id])
+    selectedIds = new Set(groupIds)
     selectedId = id
   }
 
-  if (selectedId) {
-    const primary = elements.find((item) => item.id === selectedId)
-    transformControls.attach(primary.mesh)
-    syncElementState(primary)
-    el('#studio-selected-props').classList.remove('hidden')
-    el('#studio-param-size').value = primary.size
-    el('#studio-val-size').textContent = `${primary.size} mm`
-    el('#studio-param-color').value = primary.color
-    refreshTransformInputs(primary)
-  } else {
+  if (!selectedIds.size) {
+    selectedId = null
     transformControls.detach()
-    el('#studio-selected-props').classList.add('hidden')
+  } else {
+    if (!selectedIds.has(selectedId)) selectedId = [...selectedIds][0]
+    attachTransformTarget()
+    syncSelectedTransformInputs()
+    el('#studio-selected-props').classList.remove('hidden')
+    const primary = elements.find((item) => item.id === selectedId)
+    if (primary) {
+      el('#studio-param-size').value = primary.size
+      el('#studio-val-size').textContent = `${primary.size} mm`
+      el('#studio-param-color').value = primary.color
+      refreshTransformInputs(primary)
+    }
   }
+
   updateSelectionVisuals()
   renderElementList()
 }
@@ -305,27 +369,21 @@ function selectElements(ids) {
   selectedIds = new Set(validIds)
   selectedId = validIds[0] ?? null
   if (selectedId) {
-    const primary = elements.find((item) => item.id === selectedId)
-    transformControls.attach(primary.mesh)
-    syncElementState(primary)
+    attachTransformTarget()
+    syncSelectedTransformInputs()
     el('#studio-selected-props').classList.remove('hidden')
-    el('#studio-param-size').value = primary.size
-    el('#studio-val-size').textContent = `${primary.size} mm`
-    el('#studio-param-color').value = primary.color
-    refreshTransformInputs(primary)
+    const primary = elements.find((item) => item.id === selectedId)
+    if (primary) {
+      el('#studio-param-size').value = primary.size
+      el('#studio-val-size').textContent = `${primary.size} mm`
+      el('#studio-param-color').value = primary.color
+      refreshTransformInputs(primary)
+    }
   } else {
     transformControls.detach()
     el('#studio-selected-props').classList.add('hidden')
   }
   updateSelectionVisuals()
-  renderElementList()
-}
-
-  el('#studio-selected-props').classList.remove('hidden')
-  el('#studio-param-size').value = element.size
-  el('#studio-val-size').textContent = `${element.size} mm`
-  el('#studio-param-color').value = element.color
-  refreshTransformInputs(element)
   renderElementList()
 }
 
@@ -343,12 +401,59 @@ function createElementId() {
   return `el-${Date.now()}-${Math.floor(Math.random() * 1000000)}`
 }
 
+function createGroupId() {
+  return `group-${Date.now()}-${Math.floor(Math.random() * 1000000)}`
+}
+
+function groupSelection() {
+  if (selectedIds.size < 2) {
+    notify('Jelölj ki legalább két elemet a csoportosításhoz.')
+    return
+  }
+
+  const groupId = createGroupId()
+  elements.forEach((element) => {
+    if (selectedIds.has(element.id)) element.groupId = groupId
+  })
+  selectElements([...selectedIds])
+  recordHistory()
+  notifySuccess('Az elemek csoportba kerültek.')
+}
+
+function ungroupSelection() {
+  const groupIds = new Set(
+    elements
+      .filter((element) => selectedIds.has(element.id) && element.groupId)
+      .map((element) => element.groupId),
+  )
+
+  if (!groupIds.size) {
+    notify('A kijelölt elemek nem tartoznak csoporthoz.')
+    return
+  }
+
+  elements.forEach((element) => {
+    if (element.groupId && groupIds.has(element.groupId)) element.groupId = null
+  })
+  selectElements([...selectedIds])
+  recordHistory()
+  notifySuccess('A csoport felbontva.')
+}
+
 function duplicateSelected() {
   if (!selectedIds.size) return
   const selected = elements.filter((element) => selectedIds.has(element.id))
+  const sourceGroups = new Map()
+  for (const element of selected) {
+    if (element.groupId && !sourceGroups.has(element.groupId)) {
+      sourceGroups.set(element.groupId, createGroupId())
+    }
+  }
+
   const duplicates = selected.map((element, index) => {
     const state = {
       id: createElementId(),
+      groupId: element.groupId ? sourceGroups.get(element.groupId) : null,
       type: element.type,
       size: element.size,
       color: element.color,
@@ -394,7 +499,7 @@ function renderElementList() {
       type: 'button',
       class: `layer${element.id === selectedId ? ' is-active' : ''}`,
     })
-    row.append(create('span', { class: 'layer__name', textContent: SHAPE_DEFAULTS[element.type].label }))
+    row.append(create('span', { class: 'layer__name', textContent: `${SHAPE_DEFAULTS[element.type].label}${element.groupId ? ' · Csoport' : ''}` }))
     row.addEventListener('click', (event) => selectElement(element.id, { additive: event.ctrlKey || event.metaKey }))
     list.append(row)
   }
@@ -428,12 +533,30 @@ function initThree() {
   transformControls.setSize(0.85)
   transformControls.addEventListener('dragging-changed', (event) => {
     controls.enabled = !event.value
+
     if (event.value && selectedId) {
       transformHistorySnapshot = captureSceneState()
     }
+
     if (!event.value && selectedId) {
-      const element = elements.find((item) => item.id === selectedId)
-      if (element) syncElementState(element)
+      if (transformPivot) {
+        const pivot = transformPivot
+        for (const element of elements) {
+          if (pivot.children.includes(element.mesh)) {
+            scene.attach(element.mesh)
+          }
+        }
+        scene.remove(pivot)
+        transformPivot = null
+      }
+
+      for (const id of selectedIds) {
+        const element = elements.find((item) => item.id === id)
+        if (element) syncElementState(element)
+      }
+
+      attachTransformTarget()
+
       if (transformHistorySnapshot) {
         const before = JSON.stringify(transformHistorySnapshot)
         const after = JSON.stringify(captureSceneState())
@@ -444,10 +567,11 @@ function initThree() {
   })
 
   transformControls.addEventListener('objectChange', () => {
-    if (!selectedId) return
+    if (!selectedId || transformPivot) return
     const element = elements.find((item) => item.id === selectedId)
     if (element) syncElementState(element)
   })
+
   scene.add(transformControls)
 
   scene.add(new THREE.AmbientLight(0xffffff, 0.7))
@@ -668,6 +792,7 @@ function bindUI() {
   document.querySelector('#studio-add-sphere').addEventListener('click', () => addElement('sphere'))
 
   document.querySelector('#studio-delete-selected').addEventListener('click', () => {
+    detachTransformTarget()
     if (selectedIds.size > 1) {
       const ids = [...selectedIds]
       ids.forEach(removeElement)
@@ -720,6 +845,8 @@ function bindUI() {
   el('#studio-transform-move').addEventListener('click', () => setTransformMode('translate'))
   el('#studio-transform-rotate').addEventListener('click', () => setTransformMode('rotate'))
   el('#studio-transform-scale').addEventListener('click', () => setTransformMode('scale'))
+  el('#studio-group-selected').addEventListener('click', groupSelection)
+  el('#studio-ungroup-selected').addEventListener('click', ungroupSelection)
   el('#studio-toggle-wireframe').addEventListener('click', toggleWireframe)
 
   for (const [selector, axis] of [
@@ -760,6 +887,7 @@ function bindUI() {
     if (event.key.toLowerCase() === 'f') focusSelected({ fit: true })
     if (event.key === 'Delete' || event.key === 'Backspace') {
       event.preventDefault()
+      detachTransformTarget()
       const ids = [...selectedIds]
       ids.forEach(removeElement)
       selectedIds.clear()
