@@ -187,7 +187,7 @@ function setupPalette() {
     const [file] = htmlInput.files ?? []
     htmlInput.value = ''
     if (!file) return
-    importHtmlFile(file, canvas).catch((error) => {
+    history.batch(() => importHtmlFile(file, canvas)).catch((error) => {
       console.error('HTML-import sikertelen:', error)
       notifyError(`A HTML-fájl importálása sikertelen: ${error.message}`)
     })
@@ -199,7 +199,7 @@ function setupPalette() {
     const [file] = svgInput.files ?? []
     svgInput.value = ''
     if (!file) return
-    importSvgFile(file, canvas).catch((error) => {
+    history.batch(() => importSvgFile(file, canvas)).catch((error) => {
       console.error('SVG-import sikertelen:', error)
       notifyError(`Az SVG-fájl importálása sikertelen: ${error.message}`)
     })
@@ -208,7 +208,7 @@ function setupPalette() {
   document.querySelector('#fabric-delete-btn').addEventListener('click', () => {
     const active = canvas.getActiveObject()
     if (!active) return
-    canvas.remove(active)
+    history.batch(() => canvas.remove(active))
     canvas.requestRenderAll()
   })
 
@@ -218,7 +218,7 @@ function setupPalette() {
     if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') return
     const active = canvas.getActiveObject()
     if (!active || active.isEditing) return
-    canvas.remove(active)
+    history.batch(() => canvas.remove(active))
     canvas.requestRenderAll()
   })
 }
