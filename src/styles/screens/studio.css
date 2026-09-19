@@ -56,6 +56,10 @@
   grid-column: 1 / -1;
 }
 
+.studio__control-group--primary {
+  order: -1;
+}
+
 .studio__control-group .btn {
   min-width: 0;
 }
@@ -169,6 +173,10 @@
     grid-column: 1 / -1;
   }
 
+  .studio__control-group--primary {
+    order: -1;
+  }
+
   .studio__control-group .btn {
     flex: 1;
     padding-inline: 7px;
@@ -256,4 +264,27 @@
 }
 .studio__snap-size .select {
   min-width: 0;
+}
+
+
+.studio__overlay .btn[aria-pressed="true"] {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: var(--color-bg-app);
+}
+
+@media (width <= 520px) {
+  .studio__overlay {
+    right: var(--space-2);
+    max-width: none;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .studio__overlay .btn {
+    min-height: 34px;
+  }
+
+  .studio__hint {
+    display: none;
+  }
 }
