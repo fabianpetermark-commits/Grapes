@@ -62,3 +62,9 @@
 .studio__context-item { display: block; width: 100%; padding: 8px 10px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--color-text); text-align: left; cursor: pointer; }
 .studio__context-item:hover:not(:disabled), .studio__context-item:focus-visible:not(:disabled) { background: var(--color-bg-sunken); outline: none; }
 .studio__context-item:disabled { opacity: .45; cursor: not-allowed; }
+
+.studio__model-info { margin-top: 12px; padding: 10px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg-sunken); }
+.studio__model-info-text { margin: 0; font-size: var(--text-xs); color: var(--color-text-muted); line-height: 1.5; }
+.studio__model-status { margin: 6px 0 0; font-size: var(--text-sm); font-weight: var(--weight-semibold); }
+.studio__model-status[data-state="ok"] { color: var(--color-success); }
+.studio__model-status[data-state="warning"] { color: var(--color-warning); }
