@@ -13,6 +13,7 @@ export function initHistory(canvas) {
   let isRestoring = false
   let batchDepth = 0
   let batchDirty = false
+  let debounceTimer = null
 
   function snapshot() {
     return JSON.stringify(canvas.toJSON())
@@ -29,12 +30,29 @@ export function initHistory(canvas) {
   }
 
   function record() {
+    if (debounceTimer) {
+      clearTimeout(debounceTimer)
+      debounceTimer = null
+    }
     if (isRestoring) return
     if (batchDepth > 0) {
       batchDirty = true
       return
     }
     pushSnapshot()
+  }
+
+  function recordDebounced(delay = 250) {
+    if (isRestoring) return
+    if (batchDepth > 0) {
+      batchDirty = true
+      return
+    }
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+      debounceTimer = null
+      pushSnapshot()
+    }, delay)
   }
 
   function finishBatch() {
@@ -84,6 +102,10 @@ export function initHistory(canvas) {
   canvas.on('object:modified', record)
 
   function reset() {
+    if (debounceTimer) {
+      clearTimeout(debounceTimer)
+      debounceTimer = null
+    }
     stack.length = 0
     index = -1
     batchDepth = 0
@@ -106,5 +128,5 @@ export function initHistory(canvas) {
     await restore(stack[index])
   }
 
-  return { undo, redo, record, batch, reset }
+  return { undo, redo, record, recordDebounced, batch, reset }
 }
