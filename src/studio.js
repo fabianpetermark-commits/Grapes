@@ -19,10 +19,27 @@ const SHAPE_DEFAULTS = {
   sphere: { label: 'Gömb', icon: 'circle', color: '#8fa9c7' },
 }
 
-function createGeometry(type, size) {
-  if (type === 'cylinder') return new THREE.CylinderGeometry(size / 2, size / 2, size, 32)
-  if (type === 'sphere') return new THREE.SphereGeometry(size / 2, 32, 24)
-  return new THREE.BoxGeometry(size, size, size)
+function createGeometry(type, dimensions) {
+  const { x, y, z } = dimensions
+  if (type === 'cylinder') return new THREE.CylinderGeometry(x / 2, x / 2, y, 32)
+  if (type === 'sphere') return new THREE.SphereGeometry(x / 2, 32, 24)
+  return new THREE.BoxGeometry(x, y, z)
+}
+
+function dimensionsFromSize(type, size) {
+  return { x: size, y: size, z: size }
+}
+
+function syncElementState(element) {
+  const { mesh } = element
+  element.position = mesh.position.clone()
+  element.rotation = mesh.rotation.clone()
+  element.scale = mesh.scale.clone()
+  element.dimensions = {
+    x: element.baseDimensions.x * mesh.scale.x,
+    y: element.baseDimensions.y * mesh.scale.y,
+    z: element.baseDimensions.z * mesh.scale.z,
+  }
 }
 
 // A korábbi, csak ezen a képernyőn létező #toast elem helyett a közös
@@ -33,7 +50,8 @@ function addElement(type) {
   const defaults = SHAPE_DEFAULTS[type]
   const size = 60
   const id = `el-${Date.now()}-${Math.floor(Math.random() * 1000)}`
-  const geometry = createGeometry(type, size)
+  const dimensions = dimensionsFromSize(type, size)
+  const geometry = createGeometry(type, dimensions)
   const material = new THREE.MeshStandardMaterial({
     color: defaults.color,
     roughness: 0.35,
@@ -46,7 +64,18 @@ function addElement(type) {
   mesh.userData.elementId = id
   scene.add(mesh)
 
-  elements.push({ id, type, size, color: defaults.color, mesh })
+  elements.push({
+    id,
+    type,
+    size,
+    color: defaults.color,
+    baseDimensions: dimensions,
+    position: mesh.position.clone(),
+    rotation: mesh.rotation.clone(),
+    scale: mesh.scale.clone(),
+    dimensions: { ...dimensions },
+    mesh,
+  })
   renderElementList()
   selectElement(id)
 }
@@ -71,6 +100,7 @@ function selectElement(id) {
   if (!element) return
   selectedId = id
   transformControls.attach(element.mesh)
+  syncElementState(element)
 
   el('#studio-selected-props').classList.remove('hidden')
   el('#studio-param-size').value = element.size
@@ -139,6 +169,16 @@ function initThree() {
   transformControls.setSize(0.85)
   transformControls.addEventListener('dragging-changed', (event) => {
     controls.enabled = !event.value
+    if (!event.value && selectedId) {
+      const element = elements.find((item) => item.id === selectedId)
+      if (element) syncElementState(element)
+    }
+  })
+
+  transformControls.addEventListener('objectChange', () => {
+    if (!selectedId) return
+    const element = elements.find((item) => item.id === selectedId)
+    if (element) syncElementState(element)
   })
   scene.add(transformControls)
 
@@ -283,16 +323,15 @@ function bindUI() {
     if (!element) return
     const size = parseInt(event.target.value, 10)
     element.size = size
+    element.baseDimensions = dimensionsFromSize(element.type, size)
     el('#studio-val-size').textContent = `${size} mm`
 
     const position = element.mesh.position.clone()
     element.mesh.geometry.dispose()
-    element.mesh.geometry = createGeometry(element.type, size)
+    element.mesh.geometry = createGeometry(element.type, element.baseDimensions)
     element.mesh.position.copy(position)
-    // Az elem eredetileg y = size/2 magasságban áll a tárgyasztalon. A régi
-    // kód a nyers korábbi pozíciót állította vissza, ezért egy megnövelt
-    // elem félig besüllyedt a rácsba, egy lekicsinyített pedig lebegett.
     element.mesh.position.y = size / 2
+    syncElementState(element)
   })
 
   el('#studio-param-color').addEventListener('input', (event) => {
