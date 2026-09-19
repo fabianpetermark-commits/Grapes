@@ -246,7 +246,7 @@ export function initPropertiesPanel(canvas, history) {
     if (mode === 'solid') {
       applyAndRender('fill', fillInput.value)
     } else if (mode === 'gradient') {
-      applyAndRender('fill', buildGradient(active, gradientTypeSelect.value, gradientFromInput.value, gradientToInput.value), { debounceHistory })
+      applyAndRender('fill', buildGradient(active, gradientTypeSelect.value, gradientFromInput.value, gradientToInput.value))
     }
     // A 'pattern' mód a fájl-feltöltésre vár, addig a korábbi fill marad.
   })
@@ -256,7 +256,7 @@ export function initPropertiesPanel(canvas, history) {
   function applyGradientFromInputs(debounceHistory = false) {
     const active = canvas.getActiveObject()
     if (!active) return
-    applyAndRender('fill', buildGradient(active, gradientTypeSelect.value, gradientFromInput.value, gradientToInput.value))
+    applyAndRender('fill', buildGradient(active, gradientTypeSelect.value, gradientFromInput.value, gradientToInput.value), { debounceHistory })
   }
   gradientTypeSelect.addEventListener('change', applyGradientFromInputs)
   gradientFromInput.addEventListener('input', () => applyGradientFromInputs(true))
