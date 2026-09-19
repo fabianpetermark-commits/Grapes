@@ -178,6 +178,10 @@
   white-space: nowrap;
 }
 
+.qr-studio__eyedropper[hidden] {
+  display: none;
+}
+
 .qr-studio__palette {
   display: grid;
   grid-template-columns: repeat(12, minmax(18px, 1fr));
