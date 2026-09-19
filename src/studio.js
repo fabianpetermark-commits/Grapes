@@ -98,6 +98,9 @@ function captureSceneState() {
       y: element.mesh.scale.y,
       z: element.mesh.scale.z,
     },
+    ...(element.type === 'stl'
+      ? { geometry: Array.from(element.mesh.geometry.attributes.position.array) }
+      : {}),
   }))
 }
 
@@ -121,7 +124,14 @@ function recordHistory() {
 }
 
 function createElementFromState(state) {
-  const geometry = createGeometry(state.type, state.baseDimensions)
+  let geometry = createGeometry(state.type, state.baseDimensions)
+  if (state.type === 'stl' && state.geometry?.length) {
+    geometry.dispose()
+    geometry = new THREE.BufferGeometry()
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(state.geometry, 3))
+    geometry.computeVertexNormals()
+    geometry.computeBoundingBox()
+  }
   const material = new THREE.MeshStandardMaterial({
     color: state.color,
     roughness: 0.35,
@@ -675,7 +685,7 @@ function renderElementList() {
       type: 'button',
       class: `layer${isSelected ? ' is-active' : ''}`,
       'aria-pressed': String(isSelected),
-      title: `${SHAPE_DEFAULTS[element.type].label}${element.groupId ? ' · Csoport' : ''}`,
+      title: `${element.type === 'stl' ? element.name : SHAPE_DEFAULTS[element.type].label}${element.groupId ? ' · Csoport' : ''}`,
     })
     row.append(create('span', { class: 'layer__name', textContent: element.type === 'stl' ? element.name : SHAPE_DEFAULTS[element.type].label }))
     if (element.groupId) row.append(create('span', { class: 'studio__layer-badge', textContent: 'Csoport' }))
