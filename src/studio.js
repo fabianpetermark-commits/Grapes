@@ -745,19 +745,20 @@ function getSceneBounds() {
 }
 
 function getFocusTarget() {
-  if (selectedId) {
-    const element = elements.find((item) => item.id === selectedId)
-    if (element) return new THREE.Box3().setFromObject(element.mesh).getCenter(new THREE.Vector3())
+  const selected = elements.filter((element) => selectedIds.has(element.id))
+  if (selected.length) {
+    const box = new THREE.Box3()
+    selected.forEach((element) => box.expandByObject(element.mesh))
+    return box.getCenter(new THREE.Vector3())
   }
+
   const sceneBox = getSceneBounds()
   if (!sceneBox.isEmpty()) return sceneBox.getCenter(new THREE.Vector3())
   return new THREE.Vector3(0, 0, 0)
 }
 
-function focusObject(object, { fit = false } = {}) {
-  if (!object || !camera || !controls) return
-  const box = new THREE.Box3().setFromObject(object)
-  if (box.isEmpty()) return
+function focusBox(box, { fit = false } = {}) {
+  if (box.isEmpty() || !camera || !controls) return
 
   const center = box.getCenter(new THREE.Vector3())
   const size = box.getSize(new THREE.Vector3())
@@ -781,10 +782,18 @@ function focusObject(object, { fit = false } = {}) {
   controls.update()
 }
 
+function focusObject(object, { fit = false } = {}) {
+  if (!object) return
+  focusBox(new THREE.Box3().setFromObject(object), { fit })
+}
+
 function focusSelected({ fit = false } = {}) {
-  if (!selectedId) return
-  const element = elements.find((item) => item.id === selectedId)
-  if (element) focusObject(element.mesh, { fit })
+  if (!selectedIds.size) return
+  const box = new THREE.Box3()
+  elements
+    .filter((element) => selectedIds.has(element.id))
+    .forEach((element) => box.expandByObject(element.mesh))
+  focusBox(box, { fit })
 }
 
 function focusAll() {
