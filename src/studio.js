@@ -53,6 +53,31 @@ function setInputValue(selector, value) {
   if (input) input.value = String(value)
 }
 
+function refreshDimensionFields(element) {
+  const fields = {
+    x: document.querySelector('#studio-dim-x')?.closest('.studio__axis-field'),
+    y: document.querySelector('#studio-dim-y')?.closest('.studio__axis-field'),
+    z: document.querySelector('#studio-dim-z')?.closest('.studio__axis-field'),
+  }
+  if (!fields.x || !fields.y || !fields.z) return
+
+  const labels = {
+    box: ['X', 'Y', 'Z'],
+    cylinder: ['Átmérő', 'Magasság', null],
+    sphere: ['Átmérő', null, null],
+    cone: ['Alapátmérő', 'Magasság', null],
+    pyramid: ['Alapméret', 'Magasság', null],
+    stl: ['X', 'Y', 'Z'],
+  }[element.type] ?? ['X', 'Y', 'Z']
+
+  ;['x', 'y', 'z'].forEach((axis, index) => {
+    const field = fields[axis]
+    field.classList.toggle('hidden', !labels[index])
+    const label = field.querySelector('span')
+    if (label) label.textContent = labels[index] ?? axis.toUpperCase()
+  })
+}
+
 function refreshTransformInputs(element) {
   if (selectedId !== element.id) return
 
@@ -65,6 +90,7 @@ function refreshTransformInputs(element) {
   setInputValue('#studio-dim-x', element.dimensions.x.toFixed(1))
   setInputValue('#studio-dim-y', element.dimensions.y.toFixed(1))
   setInputValue('#studio-dim-z', element.dimensions.z.toFixed(1))
+  refreshDimensionFields(element)
 }
 
 function syncElementState(element) {
@@ -273,7 +299,17 @@ function applyNumericTransform(axis, value) {
     const dimensionAxis = axis.slice(4)
     const base = element.baseDimensions[dimensionAxis]
     if (!Number.isFinite(base) || base <= 0 || value <= 0) return
-    element.mesh.scale[dimensionAxis] = value / base
+
+    if (dimensionAxis === 'x' && ['cylinder', 'sphere', 'cone', 'pyramid'].includes(element.type)) {
+      const scale = value / base
+      element.mesh.scale.x = scale
+      element.mesh.scale.z = scale
+    } else if (dimensionAxis === 'x' && element.type === 'sphere') {
+      const scale = value / base
+      element.mesh.scale.set(scale, scale, scale)
+    } else {
+      element.mesh.scale[dimensionAxis] = value / base
+    }
   }
 
   element.mesh.updateMatrixWorld(true)
@@ -362,23 +398,7 @@ async function importSTLFile(file) {
 }
 
 function ensurePrimitivePalette() {
-  const palette = document.querySelector('#studio-add-box')?.parentElement
-  if (!palette) return
-
-  for (const type of ['cone', 'pyramid']) {
-    if (document.querySelector(`#studio-add-${type}`)) continue
-
-    const defaults = SHAPE_DEFAULTS[type]
-    const button = create('button', {
-      id: `studio-add-${type}`,
-      class: 'palette__item',
-      type: 'button',
-      title: `${defaults.label} hozzáadása`,
-    }, [defaults.label])
-
-    palette.append(button)
-  }
-}
+  return
 
 function addElement(type) {
   const defaults = SHAPE_DEFAULTS[type]
