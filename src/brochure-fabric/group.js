@@ -11,7 +11,7 @@ export function groupSelection(canvas) {
   const canvasObjects = canvas.getObjects()
   const selectedIndices = objects.map((object) => canvasObjects.indexOf(object)).filter((index) => index >= 0)
   const groupIndex = selectedIndices.length
-    ? Math.max(...selectedIndices) - (selectedIndices.length - 1)
+    ? Math.min(...selectedIndices)
     : canvasObjects.length
 
   canvas.remove(...objects)
