@@ -616,49 +616,105 @@
           <span class="btn__label">Főmenü</span>
         </button>
       </header>
-      <div class="editor__body studio__body" style="display: grid; grid-template-columns: 1fr 400px; gap: 24px; padding: 24px;">
-        <div class="panel" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px;">
-          <div id="qr-canvas-container" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.2);">
-            <canvas id="qr-canvas"></canvas>
-          </div>
-          <div style="display: flex; gap: 12px; margin-top: 24px;">
-            <button id="qr-download-png" class="btn btn--primary" type="button">Letöltés PNG-ként</button>
-            <button id="qr-copy-btn" class="btn btn--ghost" type="button">Tartalom másolása</button>
-          </div>
-        </div>
-        <aside class="panel studio__inspector" aria-label="QR Beállítások">
-          <div class="panel__body">
-            <p class="panel__group-label">Adat típusa</p>
-            <div class="field">
-              <label class="field__label" for="qr-type">Típus</label>
-              <select id="qr-type" class="select">
-                <option value="url">Weboldal / URL</option>
-                <option value="text">Egyszerű szöveg</option>
-                <option value="wifi">WiFi hálózat</option>
-                <option value="vcard">Névjegy (vCard)</option>
-              </select>
+
+      <div class="editor__body qr-studio__body">
+        <main class="qr-studio__preview" aria-label="QR-kód előnézet">
+          <div class="qr-studio__preview-card">
+            <div id="qr-canvas-container" class="qr-studio__canvas-wrap">
+              <canvas id="qr-canvas" class="qr-studio__canvas" aria-label="QR-kód előnézet"></canvas>
             </div>
-            <div id="qr-dynamic-inputs" class="field" style="margin-top: 16px;"></div>
-            <p class="panel__group-label" style="margin-top: 24px;">Vizuális stílus</p>
-            <div class="field">
-              <label class="field__label" for="qr-fg-color">QR kód színe</label>
-              <input id="qr-fg-color" class="color-input" type="color" value="#0f172a" />
-            </div>
-            <div class="field">
-              <label class="field__label" for="qr-bg-color">Háttérszín</label>
-              <input id="qr-bg-color" class="color-input" type="color" value="#ffffff" />
-            </div>
-            <div class="field">
-              <label class="field__label" for="qr-error-level">Hibatűrés</label>
-              <select id="qr-error-level" class="select">
-                <option value="L">Alacsony (7%)</option>
-                <option value="M" selected>Közepes (15%)</option>
-                <option value="Q">Jó (25%)</option>
-                <option value="H">Magas (30%)</option>
-              </select>
+            <div class="qr-studio__actions">
+              <button id="qr-download-png" class="btn btn--primary" type="button">Letöltés PNG-ként</button>
+              <button id="qr-copy-btn" class="btn btn--ghost" type="button">Tartalom másolása</button>
             </div>
           </div>
-        </aside>
+        </main>
+
+        <section class="qr-studio__tabs" aria-label="QR beállítások">
+          <div class="qr-studio__tab-list" role="tablist" aria-label="QR munkalap fülek">
+            <button id="qr-tab-link" class="qr-studio__tab" type="button" role="tab" aria-selected="true" data-tab="link">Link</button>
+            <button id="qr-tab-color" class="qr-studio__tab" type="button" role="tab" aria-selected="false" data-tab="color">Szín</button>
+          </div>
+
+          <div id="qr-panel-link" class="qr-studio__panel" data-panel="link" role="tabpanel">
+            <div class="qr-studio__panel-inner">
+              <div class="qr-studio__field-grid">
+                <div class="field qr-studio__field">
+                  <label class="field__label" for="qr-url">Link</label>
+                  <input id="qr-url" class="input" type="url" value="https://" placeholder="https://pelda.hu/oldal" autocomplete="url" />
+                </div>
+                <div class="field qr-studio__field">
+                  <label class="field__label" for="qr-utm-source">UTM Source</label>
+                  <input id="qr-utm-source" class="input" type="text" placeholder="pl. facebook" />
+                </div>
+                <div class="field qr-studio__field">
+                  <label class="field__label" for="qr-utm-medium">UTM Medium</label>
+                  <input id="qr-utm-medium" class="input" type="text" placeholder="pl. social" />
+                </div>
+                <div class="field qr-studio__field">
+                  <label class="field__label" for="qr-utm-campaign">UTM Campaign</label>
+                  <input id="qr-utm-campaign" class="input" type="text" placeholder="pl. tavaszi-kampany" />
+                </div>
+              </div>
+              <p class="qr-studio__hint">A kitöltött UTM mezők automatikusan hozzáadódnak a QR-kódban tárolt linkhez.</p>
+
+              <div class="field-row" style="margin-top: 14px; max-width: 260px;">
+                <label class="field__label" for="qr-type">Speciális adattípus</label>
+                <select id="qr-type" class="select">
+                  <option value="url">Link</option>
+                  <option value="text">Szöveg</option>
+                  <option value="wifi">WiFi</option>
+                  <option value="vcard">Névjegy</option>
+                </select>
+              </div>
+              <div id="qr-dynamic-inputs" class="field hidden"></div>
+            </div>
+          </div>
+
+          <div id="qr-panel-color" class="qr-studio__panel" data-panel="color" role="tabpanel" hidden>
+            <div class="qr-studio__panel-inner">
+              <div class="qr-studio__color-layout">
+                <div class="qr-studio__color-card">
+                  <div class="qr-studio__color-head">
+                    <p class="qr-studio__color-title">QR-kód színe</p>
+                    <button class="btn btn--ghost btn--sm qr-studio__eyedropper" type="button" data-qr-eyedropper="fg">Szín mintavétele</button>
+                  </div>
+                  <div class="qr-studio__color-controls">
+                    <input id="qr-fg-color" class="color-input qr-studio__color-input" type="color" value="#0f172a" aria-label="QR-kód színe" />
+                    <input id="qr-fg-hex" class="input" type="text" value="#0f172a" maxlength="7" aria-label="QR-kód színe HEX" />
+                  </div>
+                  <div class="qr-studio__palette" aria-label="QR-kód színpaletta">
+                    <button class="qr-studio__swatch" type="button" data-qr-color="#000000" data-qr-target="fg" style="--swatch:#000000" aria-label="#000000"></button><button class="qr-studio__swatch" type="button" data-qr-color="#1f2937" data-qr-target="fg" style="--swatch:#1f2937" aria-label="#1f2937"></button><button class="qr-studio__swatch" type="button" data-qr-color="#475569" data-qr-target="fg" style="--swatch:#475569" aria-label="#475569"></button><button class="qr-studio__swatch" type="button" data-qr-color="#64748b" data-qr-target="fg" style="--swatch:#64748b" aria-label="#64748b"></button><button class="qr-studio__swatch" type="button" data-qr-color="#94a3b8" data-qr-target="fg" style="--swatch:#94a3b8" aria-label="#94a3b8"></button><button class="qr-studio__swatch" type="button" data-qr-color="#cbd5e1" data-qr-target="fg" style="--swatch:#cbd5e1" aria-label="#cbd5e1"></button><button class="qr-studio__swatch" type="button" data-qr-color="#e2e8f0" data-qr-target="fg" style="--swatch:#e2e8f0" aria-label="#e2e8f0"></button><button class="qr-studio__swatch" type="button" data-qr-color="#ffffff" data-qr-target="fg" style="--swatch:#ffffff" aria-label="#ffffff"></button><button class="qr-studio__swatch" type="button" data-qr-color="#7f1d1d" data-qr-target="fg" style="--swatch:#7f1d1d" aria-label="#7f1d1d"></button><button class="qr-studio__swatch" type="button" data-qr-color="#dc2626" data-qr-target="fg" style="--swatch:#dc2626" aria-label="#dc2626"></button><button class="qr-studio__swatch" type="button" data-qr-color="#f97316" data-qr-target="fg" style="--swatch:#f97316" aria-label="#f97316"></button><button class="qr-studio__swatch" type="button" data-qr-color="#eab308" data-qr-target="fg" style="--swatch:#eab308" aria-label="#eab308"></button><button class="qr-studio__swatch" type="button" data-qr-color="#16a34a" data-qr-target="fg" style="--swatch:#16a34a" aria-label="#16a34a"></button><button class="qr-studio__swatch" type="button" data-qr-color="#10b981" data-qr-target="fg" style="--swatch:#10b981" aria-label="#10b981"></button><button class="qr-studio__swatch" type="button" data-qr-color="#06b6d4" data-qr-target="fg" style="--swatch:#06b6d4" aria-label="#06b6d4"></button><button class="qr-studio__swatch" type="button" data-qr-color="#0ea5e9" data-qr-target="fg" style="--swatch:#0ea5e9" aria-label="#0ea5e9"></button><button class="qr-studio__swatch" type="button" data-qr-color="#2563eb" data-qr-target="fg" style="--swatch:#2563eb" aria-label="#2563eb"></button><button class="qr-studio__swatch" type="button" data-qr-color="#4f46e5" data-qr-target="fg" style="--swatch:#4f46e5" aria-label="#4f46e5"></button><button class="qr-studio__swatch" type="button" data-qr-color="#7c3aed" data-qr-target="fg" style="--swatch:#7c3aed" aria-label="#7c3aed"></button><button class="qr-studio__swatch" type="button" data-qr-color="#a855f7" data-qr-target="fg" style="--swatch:#a855f7" aria-label="#a855f7"></button><button class="qr-studio__swatch" type="button" data-qr-color="#db2777" data-qr-target="fg" style="--swatch:#db2777" aria-label="#db2777"></button><button class="qr-studio__swatch" type="button" data-qr-color="#ec4899" data-qr-target="fg" style="--swatch:#ec4899" aria-label="#ec4899"></button><button class="qr-studio__swatch" type="button" data-qr-color="#f43f5e" data-qr-target="fg" style="--swatch:#f43f5e" aria-label="#f43f5e"></button>
+                  </div>
+                </div>
+
+                <div class="qr-studio__color-card">
+                  <div class="qr-studio__color-head">
+                    <p class="qr-studio__color-title">Háttérszín</p>
+                    <button class="btn btn--ghost btn--sm qr-studio__eyedropper" type="button" data-qr-eyedropper="bg">Szín mintavétele</button>
+                  </div>
+                  <div class="qr-studio__color-controls">
+                    <input id="qr-bg-color" class="color-input qr-studio__color-input" type="color" value="#ffffff" aria-label="Háttérszín" />
+                    <input id="qr-bg-hex" class="input" type="text" value="#ffffff" maxlength="7" aria-label="Háttérszín HEX" />
+                  </div>
+                  <div class="qr-studio__palette" aria-label="Háttér színpaletta">
+                    <button class="qr-studio__swatch" type="button" data-qr-color="#ffffff" data-qr-target="bg" style="--swatch:#ffffff" aria-label="#ffffff"></button><button class="qr-studio__swatch" type="button" data-qr-color="#f8fafc" data-qr-target="bg" style="--swatch:#f8fafc" aria-label="#f8fafc"></button><button class="qr-studio__swatch" type="button" data-qr-color="#e2e8f0" data-qr-target="bg" style="--swatch:#e2e8f0" aria-label="#e2e8f0"></button><button class="qr-studio__swatch" type="button" data-qr-color="#cbd5e1" data-qr-target="bg" style="--swatch:#cbd5e1" aria-label="#cbd5e1"></button><button class="qr-studio__swatch" type="button" data-qr-color="#94a3b8" data-qr-target="bg" style="--swatch:#94a3b8" aria-label="#94a3b8"></button><button class="qr-studio__swatch" type="button" data-qr-color="#64748b" data-qr-target="bg" style="--swatch:#64748b" aria-label="#64748b"></button><button class="qr-studio__swatch" type="button" data-qr-color="#475569" data-qr-target="bg" style="--swatch:#475569" aria-label="#475569"></button><button class="qr-studio__swatch" type="button" data-qr-color="#1f2937" data-qr-target="bg" style="--swatch:#1f2937" aria-label="#1f2937"></button><button class="qr-studio__swatch" type="button" data-qr-color="#000000" data-qr-target="bg" style="--swatch:#000000" aria-label="#000000"></button><button class="qr-studio__swatch" type="button" data-qr-color="#fef2f2" data-qr-target="bg" style="--swatch:#fef2f2" aria-label="#fef2f2"></button><button class="qr-studio__swatch" type="button" data-qr-color="#fee2e2" data-qr-target="bg" style="--swatch:#fee2e2" aria-label="#fee2e2"></button><button class="qr-studio__swatch" type="button" data-qr-color="#fecaca" data-qr-target="bg" style="--swatch:#fecaca" aria-label="#fecaca"></button><button class="qr-studio__swatch" type="button" data-qr-color="#ffedd5" data-qr-target="bg" style="--swatch:#ffedd5" aria-label="#ffedd5"></button><button class="qr-studio__swatch" type="button" data-qr-color="#fed7aa" data-qr-target="bg" style="--swatch:#fed7aa" aria-label="#fed7aa"></button><button class="qr-studio__swatch" type="button" data-qr-color="#fef3c7" data-qr-target="bg" style="--swatch:#fef3c7" aria-label="#fef3c7"></button><button class="qr-studio__swatch" type="button" data-qr-color="#fef9c3" data-qr-target="bg" style="--swatch:#fef9c3" aria-label="#fef9c3"></button><button class="qr-studio__swatch" type="button" data-qr-color="#ecfccb" data-qr-target="bg" style="--swatch:#ecfccb" aria-label="#ecfccb"></button><button class="qr-studio__swatch" type="button" data-qr-color="#dcfce7" data-qr-target="bg" style="--swatch:#dcfce7" aria-label="#dcfce7"></button><button class="qr-studio__swatch" type="button" data-qr-color="#d1fae5" data-qr-target="bg" style="--swatch:#d1fae5" aria-label="#d1fae5"></button><button class="qr-studio__swatch" type="button" data-qr-color="#ccfbf1" data-qr-target="bg" style="--swatch:#ccfbf1" aria-label="#ccfbf1"></button><button class="qr-studio__swatch" type="button" data-qr-color="#cffafe" data-qr-target="bg" style="--swatch:#cffafe" aria-label="#cffafe"></button><button class="qr-studio__swatch" type="button" data-qr-color="#dbeafe" data-qr-target="bg" style="--swatch:#dbeafe" aria-label="#dbeafe"></button><button class="qr-studio__swatch" type="button" data-qr-color="#e0e7ff" data-qr-target="bg" style="--swatch:#e0e7ff" aria-label="#e0e7ff"></button><button class="qr-studio__swatch" type="button" data-qr-color="#ede9fe" data-qr-target="bg" style="--swatch:#ede9fe" aria-label="#ede9fe"></button><button class="qr-studio__swatch" type="button" data-qr-color="#fae8ff" data-qr-target="bg" style="--swatch:#fae8ff" aria-label="#fae8ff"></button><button class="qr-studio__swatch" type="button" data-qr-color="#fce7f3" data-qr-target="bg" style="--swatch:#fce7f3" aria-label="#fce7f3"></button><button class="qr-studio__swatch" type="button" data-qr-color="#ffe4e6" data-qr-target="bg" style="--swatch:#ffe4e6" aria-label="#ffe4e6"></button>
+                  </div>
+                </div>
+              </div>
+              <p id="qr-contrast" class="qr-studio__contrast"></p>
+              <div class="field qr-studio__error">
+                <label class="field__label" for="qr-error-level">Hibatűrés</label>
+                <select id="qr-error-level" class="select">
+                  <option value="L">Alacsony (7%)</option>
+                  <option value="M" selected>Közepes (15%)</option>
+                  <option value="Q">Jó (25%)</option>
+                  <option value="H">Magas (30%)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
 
