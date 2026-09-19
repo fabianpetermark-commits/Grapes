@@ -569,9 +569,20 @@
               <button id="studio-fit-selected" class="btn btn--ghost btn--sm" type="button" title="Kijelölt elem keretbe illesztése">Keret</button>
               <button id="studio-focus-all" class="btn btn--ghost btn--sm" type="button" title="Összes elem keretbe illesztése">Összes</button>
             </div>
-                        <div class="studio__control-group" role="group" aria-label="Asztal">
+                        <div class="studio__control-group studio__control-group--bed" role="group" aria-label="Asztal">
               <button id="studio-place-on-bed" class="btn btn--ghost btn--sm" type="button" title="Kijelölt elem(ek) az építőasztalra helyezése">Asztalra</button>
               <button id="studio-center-on-bed" class="btn btn--ghost btn--sm" type="button" title="Kijelölt elem(ek) középre helyezése">Középre</button>
+              <label class="studio__bed-size">
+                <span>Asztal</span>
+                <select id="studio-build-plate-size" class="select" aria-label="Nyomtatóasztal mérete">
+                  <option value="180">180 × 180 mm</option>
+                  <option value="220" selected>220 × 220 mm</option>
+                  <option value="256">256 × 256 mm</option>
+                  <option value="300">300 × 300 mm</option>
+                  <option value="320">320 × 320 mm</option>
+                  <option value="400">400 × 400 mm</option>
+                </select>
+              </label>
             </div>
 <div class="studio__control-group" role="group" aria-label="Előzmények">
               <button id="studio-undo" class="btn btn--ghost btn--sm" type="button" title="Visszavonás" disabled>Vissza</button>
