@@ -558,25 +558,26 @@
         <main id="studio-viewport-container" class="studio__viewport">
           <canvas id="studio-three-canvas"></canvas>
 
-          <div class="studio__overlay" role="group" aria-label="Nézetek">
-            <button id="studio-view-front" class="btn btn--ghost btn--sm btn--block" type="button">Elölnézet</button>
-            <button id="studio-view-back" class="btn btn--ghost btn--sm btn--block" type="button">Hátulnézet</button>
-            <button id="studio-view-iso" class="btn btn--ghost btn--sm btn--block" type="button">Izometrikus</button>
-            <button id="studio-focus-selected" class="btn btn--ghost btn--sm btn--block" type="button">Fókusz</button>
-            <button id="studio-fit-selected" class="btn btn--ghost btn--sm btn--block" type="button">Keretbe</button>
-            <button id="studio-focus-all" class="btn btn--ghost btn--sm btn--block" type="button">Összes</button>
-            <span class="studio__overlay-sep"></span>
-            <button id="studio-undo" class="btn btn--ghost btn--sm btn--block" type="button" disabled>Vissza</button>
-            <button id="studio-redo" class="btn btn--ghost btn--sm btn--block" type="button" disabled>Ismét</button>
-            <span class="studio__overlay-sep"></span>
-            <button id="studio-transform-move" class="btn btn--ghost btn--sm btn--block" type="button" aria-pressed="true">Mozgatás</button>
-            <button id="studio-transform-rotate" class="btn btn--ghost btn--sm btn--block" type="button" aria-pressed="false">Forgatás</button>
-            <button id="studio-transform-scale" class="btn btn--ghost btn--sm btn--block" type="button" aria-pressed="false">Méretezés</button>
-            <span class="studio__overlay-sep"></span>
-            <button id="studio-group-selected" class="btn btn--ghost btn--sm btn--block" type="button">Csoport</button>
-            <button id="studio-ungroup-selected" class="btn btn--ghost btn--sm btn--block" type="button">Szétbontás</button>
-            <span class="studio__overlay-sep"></span>
-            <button id="studio-toggle-wireframe" class="btn btn--ghost btn--sm btn--block" type="button" aria-pressed="false">Drótváz</button>
+          <div class="studio__overlay" aria-label="3D nézet vezérlők">
+            <div class="studio__control-group" role="group" aria-label="Nézet">
+              <button id="studio-view-front" class="btn btn--ghost btn--sm" type="button" title="Elölnézet">Elöl</button>
+              <button id="studio-view-back" class="btn btn--ghost btn--sm" type="button" title="Hátulnézet">Hátul</button>
+              <button id="studio-view-iso" class="btn btn--ghost btn--sm" type="button" title="Izometrikus nézet">Izometrikus</button>
+            </div>
+            <div class="studio__control-group" role="group" aria-label="Fókusz">
+              <button id="studio-focus-selected" class="btn btn--ghost btn--sm" type="button" title="Kijelölt elem fókuszálása">Fókusz</button>
+              <button id="studio-fit-selected" class="btn btn--ghost btn--sm" type="button" title="Kijelölt elem keretbe illesztése">Keret</button>
+              <button id="studio-focus-all" class="btn btn--ghost btn--sm" type="button" title="Összes elem keretbe illesztése">Összes</button>
+            </div>
+            <div class="studio__control-group" role="group" aria-label="Előzmények">
+              <button id="studio-undo" class="btn btn--ghost btn--sm" type="button" title="Visszavonás" disabled>Vissza</button>
+              <button id="studio-redo" class="btn btn--ghost btn--sm" type="button" title="Ismét" disabled>Ismét</button>
+            </div>
+            <div class="studio__control-group studio__control-group--transform" role="group" aria-label="Transzformáció">
+              <button id="studio-transform-move" class="btn btn--ghost btn--sm" type="button" aria-pressed="true" title="Mozgatás (W)">Mozgatás</button>
+              <button id="studio-transform-rotate" class="btn btn--ghost btn--sm" type="button" aria-pressed="false" title="Forgatás (E)">Forgatás</button>
+              <button id="studio-transform-scale" class="btn btn--ghost btn--sm" type="button" aria-pressed="false" title="Méretezés (R)">Méretezés</button>
+            </div>
           </div>
 
           <p class="studio__hint">
@@ -671,6 +672,11 @@
                     <option value="25">25 mm</option>
                   </select>
                 </label>
+              </div>
+              <div class="studio__object-actions" aria-label="Objektum műveletek">
+                <button id="studio-group-selected" class="btn btn--ghost" type="button">Csoport</button>
+                <button id="studio-ungroup-selected" class="btn btn--ghost" type="button">Szétbontás</button>
+                <button id="studio-toggle-wireframe" class="btn btn--ghost" type="button" aria-pressed="false">Drótváz</button>
               </div>
               <button id="studio-duplicate-selected" class="btn btn--ghost btn--block" type="button">Duplikálás</button>
               <button id="studio-delete-selected" class="btn btn--danger btn--block" type="button">
