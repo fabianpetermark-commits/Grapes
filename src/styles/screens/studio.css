@@ -36,3 +36,11 @@
   color: var(--color-text-muted);
   white-space: nowrap;
 }
+
+.studio__subsection-label { margin-top: 14px; }
+.studio__inspector-section { margin-top: 14px; border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; }
+.studio__inspector-section > summary { cursor: pointer; padding: 9px 10px; font-size: var(--text-sm); font-weight: var(--weight-semibold); list-style: none; }
+.studio__inspector-section > summary::-webkit-details-marker { display: none; }
+.studio__inspector-section > summary::after { content: '＋'; float: right; color: var(--color-text-muted); }
+.studio__inspector-section[open] > summary::after { content: '−'; }
+.studio__inspector-section-body { padding: 0 10px 10px; }
