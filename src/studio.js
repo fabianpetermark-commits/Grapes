@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js'
 import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js'
+import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import './styles/screens/studio.css'
 import { create, el } from './ui/dom.js'
 import { notify, notifyError, notifySuccess } from './ui/toast.js'
@@ -214,6 +215,82 @@ function applyNumericTransform(axis, value) {
 // A korábbi, csak ezen a képernyőn létező #toast elem helyett a közös
 // értesítő réteget használjuk (aria-live régióval).
 const showToast = (message) => notify(message)
+
+function addImportedMesh(geometry, name = 'STL modell') {
+  if (!geometry?.attributes?.position) {
+    notifyError('Az STL fájl nem tartalmaz érvényes geometriát.')
+    return
+  }
+
+  geometry.computeVertexNormals()
+  geometry.computeBoundingBox()
+
+  const box = geometry.boundingBox
+  const size = box.getSize(new THREE.Vector3())
+  const center = box.getCenter(new THREE.Vector3())
+  const maxDimension = Math.max(size.x, size.y, size.z)
+
+  if (!Number.isFinite(maxDimension) || maxDimension <= 0) {
+    geometry.dispose()
+    notifyError('Az STL geometria mérete nem értelmezhető.')
+    return
+  }
+
+  const material = new THREE.MeshStandardMaterial({
+    color: '#7c9cbf',
+    roughness: 0.35,
+    metalness: 0.4,
+    wireframe: isWireframe,
+  })
+  const mesh = new THREE.Mesh(geometry, material)
+
+  // Az STL koordinátáit középre tesszük, majd a modell alját a build plate fölé helyezzük.
+  mesh.geometry.translate(-center.x, -center.y, -center.z)
+  mesh.position.set(0, size.y / 2, 0)
+  mesh.userData.elementId = createElementId()
+
+  const id = mesh.userData.elementId
+  const baseDimensions = { x: size.x, y: size.y, z: size.z }
+
+  scene.add(mesh)
+  elements.push({
+    id,
+    groupId: null,
+    type: 'stl',
+    name,
+    size: maxDimension,
+    color: '#7c9cbf',
+    baseDimensions,
+    position: mesh.position.clone(),
+    rotation: mesh.rotation.clone(),
+    scale: mesh.scale.clone(),
+    dimensions: { ...baseDimensions },
+    mesh,
+  })
+
+  renderElementList()
+  selectElement(id)
+  recordHistory()
+  notifySuccess(`STL betöltve: ${name}`)
+}
+
+async function importSTLFile(file) {
+  if (!file) return
+  if (!file.name.toLowerCase().endsWith('.stl')) {
+    notifyError('Csak .stl fájl importálható.')
+    return
+  }
+
+  try {
+    const buffer = await file.arrayBuffer()
+    const loader = new STLLoader()
+    const geometry = loader.parse(buffer)
+    addImportedMesh(geometry, file.name)
+  } catch (error) {
+    console.error('STL import failed', error)
+    notifyError('Az STL fájl beolvasása nem sikerült.')
+  }
+}
 
 function addElement(type) {
   const defaults = SHAPE_DEFAULTS[type]
@@ -600,7 +677,7 @@ function renderElementList() {
       'aria-pressed': String(isSelected),
       title: `${SHAPE_DEFAULTS[element.type].label}${element.groupId ? ' · Csoport' : ''}`,
     })
-    row.append(create('span', { class: 'layer__name', textContent: SHAPE_DEFAULTS[element.type].label }))
+    row.append(create('span', { class: 'layer__name', textContent: element.type === 'stl' ? element.name : SHAPE_DEFAULTS[element.type].label }))
     if (element.groupId) row.append(create('span', { class: 'studio__layer-badge', textContent: 'Csoport' }))
     row.addEventListener('click', (event) => selectElement(element.id, { additive: event.ctrlKey || event.metaKey }))
     list.append(row)
