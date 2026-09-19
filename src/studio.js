@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js'
 import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
+import { export3MF, import3MF } from './studio-3mf.js'
 import './styles/screens/studio.css'
 import { create, el } from './ui/dom.js'
 import { notify, notifyError, notifySuccess } from './ui/toast.js'
@@ -1169,6 +1170,64 @@ function toggleWireframe() {
   el('#studio-toggle-wireframe').setAttribute('aria-pressed', String(isWireframe))
 }
 
+async function import3MFFile(file) {
+  if (!file) return
+  if (!file.name.toLowerCase().endsWith('.3mf')) {
+    notifyError('Csak .3mf fájl importálható.')
+    return
+  }
+  try {
+    const states = await import3MF(file)
+    if (!states.length) throw new Error('A 3MF fájl nem tartalmaz importálható modellt.')
+    const importedIds = []
+    for (const state of states) {
+      const mesh = new THREE.Mesh(state.geometry, new THREE.MeshStandardMaterial({
+        color: '#7c9cbf', roughness: 0.35, metalness: 0.4, wireframe: isWireframe,
+      }))
+      const id = createElementId()
+      mesh.position.set(state.position.x, state.position.y, state.position.z)
+      mesh.userData.elementId = id
+      scene.add(mesh)
+      elements.push({
+        id, groupId: null, type: 'stl', name: state.name,
+        size: Math.max(state.baseDimensions.x, state.baseDimensions.y, state.baseDimensions.z),
+        color: '#7c9cbf', baseDimensions: { ...state.baseDimensions },
+        position: mesh.position.clone(), rotation: mesh.rotation.clone(), scale: mesh.scale.clone(),
+        dimensions: { ...state.baseDimensions }, mesh,
+      })
+      importedIds.push(id)
+    }
+    selectElements(importedIds)
+    recordHistory()
+    notifySuccess(`3MF betöltve: ${file.name}`)
+  } catch (error) {
+    console.error('3MF import failed', error)
+    notifyError(`A 3MF import sikertelen: ${error.message}`)
+  }
+}
+
+function download3MF() {
+  if (!elements.length) {
+    notifyError('Adj hozzá legalább egy elemet a jelenethez az exportálás előtt.')
+    return
+  }
+  try {
+    const blob = export3MF(elements)
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'studio-model.3mf'
+    document.body.append(link)
+    link.click()
+    link.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 0)
+    notifySuccess('3MF sikeresen letöltve.')
+  } catch (error) {
+    console.error('A 3MF-export sikertelen:', error)
+    notifyError(`A 3MF-export sikertelen: ${error.message}`)
+  }
+}
+
 function downloadSTL() {
   if (!elements.length) {
     notifyError('Adj hozzá legalább egy elemet a jelenethez az exportálás előtt.')
@@ -1331,6 +1390,12 @@ function bindUI() {
     }
   })
   el('#studio-download-stl-btn').addEventListener('click', downloadSTL)
+  el('#studio-download-3mf-btn').addEventListener('click', download3MF)
+  el('#studio-import-3mf').addEventListener('click', () => el('#studio-3mf-file')?.click())
+  el('#studio-3mf-file').addEventListener('change', async (event) => {
+    await import3MFFile(event.target.files?.[0])
+    event.target.value = ''
+  })
 }
 
 export function initStudio() {
