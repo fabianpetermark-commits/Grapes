@@ -8,9 +8,15 @@ export function groupSelection(canvas) {
   if (!active || active.type !== 'activeselection') return
 
   const objects = active.getObjects()
+  const canvasObjects = canvas.getObjects()
+  const selectedIndices = objects.map((object) => canvasObjects.indexOf(object)).filter((index) => index >= 0)
+  const groupIndex = selectedIndices.length
+    ? Math.max(...selectedIndices) - (selectedIndices.length - 1)
+    : canvasObjects.length
+
   canvas.remove(...objects)
   const group = new Group(objects)
-  canvas.add(group)
+  canvas.insertAt(groupIndex, group)
   canvas.setActiveObject(group)
   canvas.requestRenderAll()
 }
@@ -27,6 +33,7 @@ export function ungroupSelection(canvas) {
     matrix: object.calcTransformMatrix(),
   }))
 
+  const groupIndex = canvas.getObjects().indexOf(active)
   const items = active.removeAll()
   canvas.remove(active)
 
@@ -47,7 +54,7 @@ export function ungroupSelection(canvas) {
     object.setCoords()
   })
 
-  canvas.add(...items)
+  canvas.insertAt(Math.max(0, groupIndex), ...items)
   canvas.setActiveObject(new ActiveSelection(items, { canvas }))
   canvas.requestRenderAll()
 }
