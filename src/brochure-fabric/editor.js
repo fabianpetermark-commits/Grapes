@@ -1,4 +1,4 @@
-import { Canvas } from 'fabric'
+import { ActiveSelection, Canvas } from 'fabric'
 import {
   createRect,
   createCircle,
@@ -299,6 +299,97 @@ function setupSnapToGrid() {
 function setupHistory(history) {
   document.querySelector('#fabric-undo-btn').addEventListener('click', () => history.undo())
   document.querySelector('#fabric-redo-btn').addEventListener('click', () => history.redo())
+
+  let clipboard = null
+  const MOVE_STEP = 1
+  const MOVE_STEP_LARGE = 10
+
+  const isTextInput = (target) => {
+    if (!(target instanceof HTMLElement)) return false
+    if (target.isContentEditable) return true
+    return ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
+  }
+
+  const moveActive = (dx, dy) => {
+    const active = canvas.getActiveObject()
+    if (!active || active.isEditing) return
+
+    history.batch(() => {
+      active.set({
+        left: active.left + dx,
+        top: active.top + dy,
+      })
+      active.setCoords()
+      history.record()
+    })
+    canvas.requestRenderAll()
+  }
+
+  const cloneAndAdd = async (source) => {
+    const clone = await source.clone()
+    const offset = MOVE_STEP_LARGE
+
+    if (clone.type === 'activeselection') {
+      const objects = clone.getObjects()
+      objects.forEach((object) => {
+        object.set({
+          left: object.left + offset,
+          top: object.top + offset,
+        })
+        object.setCoords()
+      })
+      canvas.add(...objects)
+      canvas.setActiveObject(new ActiveSelection(objects, { canvas }))
+    } else {
+      clone.set({
+        left: (clone.left ?? 0) + offset,
+        top: (clone.top ?? 0) + offset,
+      })
+      clone.setCoords()
+      canvas.add(clone)
+      canvas.setActiveObject(clone)
+    }
+
+    canvas.requestRenderAll()
+  }
+
+  document.addEventListener('keydown', async (event) => {
+    if (document.querySelector('#fabric-app').classList.contains('hidden')) return
+    if (isTextInput(event.target)) return
+
+    const active = canvas.getActiveObject()
+    const modifier = event.ctrlKey || event.metaKey
+
+    if (modifier && event.key.toLowerCase() === 'c') {
+      if (!active || active.isEditing) return
+      event.preventDefault()
+      clipboard = await active.clone()
+      return
+    }
+
+    if (modifier && event.key.toLowerCase() === 'v') {
+      if (!clipboard) return
+      event.preventDefault()
+      await history.batch(() => cloneAndAdd(clipboard))
+      return
+    }
+
+    if (modifier && event.key.toLowerCase() === 'd') {
+      if (!active || active.isEditing) return
+      event.preventDefault()
+      await history.batch(() => cloneAndAdd(active))
+      return
+    }
+
+    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
+      if (!active || active.isEditing) return
+      event.preventDefault()
+      const step = event.shiftKey ? MOVE_STEP_LARGE : MOVE_STEP
+      const dx = event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0
+      const dy = event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0
+      moveActive(dx, dy)
+    }
+  })
 }
 
 function setupProjectIO(history) {
