@@ -37,18 +37,36 @@ export function initHistory(canvas) {
     pushSnapshot()
   }
 
+  function finishBatch() {
+    batchDepth -= 1
+    if (batchDepth === 0 && batchDirty) {
+      batchDirty = false
+      pushSnapshot()
+    }
+  }
+
   function batch(fn) {
     if (isRestoring) return fn()
+
     batchDepth += 1
+
+    let result
     try {
-      return fn()
-    } finally {
-      batchDepth -= 1
-      if (batchDepth === 0 && batchDirty) {
-        batchDirty = false
-        pushSnapshot()
-      }
+      result = fn()
+    } catch (error) {
+      finishBatch()
+      throw error
     }
+
+    // Import operations are async. Keep the batch open until their promise
+    // settles, otherwise object:added events would create separate history
+    // entries while the import is still running.
+    if (result && typeof result.then === 'function') {
+      return result.finally(finishBatch)
+    }
+
+    finishBatch()
+    return result
   }
 
   async function restore(snapshotText) {
@@ -68,6 +86,8 @@ export function initHistory(canvas) {
   function reset() {
     stack.length = 0
     index = -1
+    batchDepth = 0
+    batchDirty = false
     pushSnapshot()
   }
 
