@@ -20,6 +20,8 @@ let transformHistorySnapshot = null
 let transformPivot = null
 let snapEnabled = true
 let snapSize = 5
+let buildPlate = null
+const BUILD_PLATE_SIZE = 220
 
 const SHAPE_DEFAULTS = {
   box: { label: 'Kocka', icon: 'cube', color: '#7c9cbf' },
@@ -718,9 +720,11 @@ function initThree() {
   mainLight.castShadow = true
   scene.add(mainLight)
 
+  createBuildPlate()
+
   // A tengelyvonal az akcentszín (--color-accent), a rács a keret színe.
-  const grid = new THREE.GridHelper(260, 26, 0x4c8dfd, 0x252d38)
-  grid.position.y = 0.02
+  const grid = new THREE.GridHelper(BUILD_PLATE_SIZE, 22, 0x4c8dfd, 0x252d38)
+  grid.position.y = 0.025
   scene.add(grid)
 
   // A korábbi resize-figyelő egyszerűen kilépett, ha a stúdió épp rejtve
@@ -791,6 +795,81 @@ export function stopStudio() {
     cancelAnimationFrame(animationHandle)
     animationHandle = null
   }
+}
+
+function createBuildPlate() {
+  buildPlate = new THREE.Group()
+  buildPlate.name = 'Build Plate'
+
+  const surface = new THREE.Mesh(
+    new THREE.BoxGeometry(BUILD_PLATE_SIZE, 0.8, BUILD_PLATE_SIZE),
+    new THREE.MeshStandardMaterial({
+      color: 0x171c24,
+      roughness: 0.8,
+      metalness: 0.1,
+      transparent: true,
+      opacity: 0.72,
+    }),
+  )
+  surface.position.y = -0.4
+  surface.receiveShadow = true
+  surface.userData.isBuildPlate = true
+  buildPlate.add(surface)
+
+  const edge = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(BUILD_PLATE_SIZE, 0.8, BUILD_PLATE_SIZE)),
+    new THREE.LineBasicMaterial({ color: 0x4c8dfd, transparent: true, opacity: 0.8 }),
+  )
+  edge.position.y = -0.4
+  edge.userData.isBuildPlate = true
+  buildPlate.add(edge)
+
+  scene.add(buildPlate)
+}
+
+function getSelectedBounds() {
+  const bounds = new THREE.Box3()
+  elements
+    .filter((element) => selectedIds.has(element.id))
+    .forEach((element) => bounds.expandByObject(element.mesh))
+  return bounds
+}
+
+function moveSelectedBy(delta) {
+  if (!selectedIds.size) return
+  detachTransformTarget()
+  transformControls.detach()
+  elements
+    .filter((element) => selectedIds.has(element.id))
+    .forEach((element) => {
+      element.mesh.position.add(delta)
+      syncElementState(element)
+    })
+  attachTransformTarget()
+  updateSelectionVisuals()
+  recordHistory()
+}
+
+function placeSelectedOnBuildPlate() {
+  const bounds = getSelectedBounds()
+  if (bounds.isEmpty()) {
+    notify('Jelölj ki legalább egy elemet.')
+    return
+  }
+  const delta = new THREE.Vector3(0, -bounds.min.y, 0)
+  moveSelectedBy(delta)
+  notifySuccess('A kijelölt elem(ek) az asztalra kerültek.')
+}
+
+function centerSelectedOnBuildPlate() {
+  const bounds = getSelectedBounds()
+  if (bounds.isEmpty()) {
+    notify('Jelölj ki legalább egy elemet.')
+    return
+  }
+  const center = bounds.getCenter(new THREE.Vector3())
+  moveSelectedBy(new THREE.Vector3(-center.x, 0, -center.z))
+  notifySuccess('A kijelölt elem(ek) középre kerültek.')
 }
 
 function getSceneBounds() {
@@ -1001,6 +1080,8 @@ function bindUI() {
   el('#studio-focus-selected').addEventListener('click', () => focusSelected())
   el('#studio-fit-selected').addEventListener('click', () => focusSelected({ fit: true }))
   el('#studio-focus-all').addEventListener('click', focusAll)
+  el('#studio-place-on-bed').addEventListener('click', placeSelectedOnBuildPlate)
+  el('#studio-center-on-bed').addEventListener('click', centerSelectedOnBuildPlate)
   el('#studio-transform-move').addEventListener('click', () => setTransformMode('translate'))
   el('#studio-transform-rotate').addEventListener('click', () => setTransformMode('rotate'))
   el('#studio-transform-scale').addEventListener('click', () => setTransformMode('scale'))
