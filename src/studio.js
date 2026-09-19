@@ -604,6 +604,7 @@ function bindUI() {
   el('#studio-view-iso').addEventListener('click', () => setCameraView('iso'))
   el('#studio-focus-selected').addEventListener('click', () => focusSelected())
   el('#studio-fit-selected').addEventListener('click', () => focusSelected({ fit: true }))
+  el('#studio-focus-all').addEventListener('click', focusAll)
   el('#studio-transform-move').addEventListener('click', () => setTransformMode('translate'))
   el('#studio-transform-rotate').addEventListener('click', () => setTransformMode('rotate'))
   el('#studio-transform-scale').addEventListener('click', () => setTransformMode('scale'))
