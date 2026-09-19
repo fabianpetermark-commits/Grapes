@@ -15,6 +15,7 @@ const useGrapesEngine = new URLSearchParams(window.location.search).get('engine'
 // A betöltött stúdió-modulra hivatkozunk, hogy a render-ciklust le tudjuk
 // állítani anélkül, hogy a modult emiatt be kellene tölteni.
 let studioModule = null
+let activeScreenName = null
 
 const SCREENS = {
   splash: { id: '#splash-screen' },
@@ -49,18 +50,35 @@ export function showScreen(name) {
   const screen = SCREENS[name]
   if (!screen) throw new Error(`Ismeretlen képernyő: ${name}`)
 
+  // A képernyőváltás egyetlen forrása ez a függvény. Az aktív névvel azt is
+  // megjegyezzük, melyik dinamikus betöltés tartozik a jelenlegi nézethez.
+  // Így egy későn befejeződő modulbetöltés nem tud egy korábbi nézetet
+  // visszaállítani vagy a stúdiót véletlenül elrejteni.
+  activeScreenName = name
+
   for (const id of ALL_SCREEN_IDS) {
     el(id).classList.toggle('hidden', id !== screen.id)
   }
 
-  // A 3D stúdió render-ciklusa nem futhat tovább rejtett jelenetre. Csak
-  // akkor nyúlunk a modulhoz, ha már betöltődött — különben a leállítás
-  // maga húzná be a Three.js-t minden képernyőváltáskor.
   if (name !== 'studio' && studioModule) {
     studioModule.stopStudio()
   }
 
-  return screen.load?.()
+  const loadResult = screen.load?.()
+  if (loadResult && typeof loadResult.then === 'function') {
+    return loadResult.then((result) => {
+      // A modul betöltése közben történhetett másik képernyőváltás.
+      // Ilyenkor nem nyúlunk a jelenlegi nézethez.
+      if (activeScreenName === name) {
+        for (const id of ALL_SCREEN_IDS) {
+          el(id).classList.toggle('hidden', id !== screen.id)
+        }
+      }
+      return result
+    })
+  }
+
+  return loadResult
 }
 
 export const showModulePicker = () => showScreen('splash')
