@@ -318,7 +318,7 @@ function setupProjectIO(history) {
 
   document.querySelector('#fabric-pdf-btn').addEventListener('click', () => exportToPdf(canvas))
   document.querySelector('#fabric-html-export-btn').addEventListener('click', () => exportToHtml(canvas))
-  document.querySelector('#fabric-code-view-btn').addEventListener('click', () => openCodeView(canvas))
+  document.querySelector('#fabric-code-view-btn').addEventListener('click', () => openCodeView(canvas, history))
 }
 
 // Keskeny nézeten az "Elemek" paletta és a "Tulajdonságok/Rétegek" panel
