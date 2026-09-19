@@ -290,13 +290,12 @@ function setupSnapToGrid() {
   })
 }
 
-function setupHistory() {
-  const history = initHistory(canvas)
+function setupHistory(history) {
   document.querySelector('#fabric-undo-btn').addEventListener('click', () => history.undo())
   document.querySelector('#fabric-redo-btn').addEventListener('click', () => history.redo())
 }
 
-function setupProjectIO() {
+function setupProjectIO(history) {
   document.querySelector('#fabric-save-btn').addEventListener('click', () => saveProject(canvas))
 
   const projectInput = document.querySelector('#fabric-project-input')
@@ -305,7 +304,7 @@ function setupProjectIO() {
     const [file] = projectInput.files ?? []
     projectInput.value = ''
     if (!file) return
-    loadProject(file, canvas).catch((error) => {
+    loadProject(file, canvas).then(() => history.reset()).catch((error) => {
       console.error('Projekt betöltése sikertelen:', error)
       notifyError(`A projekt betöltése sikertelen: ${error.message}`)
     })
@@ -403,7 +402,8 @@ export function initBrochureFabric() {
     backgroundColor: '#ffffff',
   })
 
-  const layersPanel = initLayersPanel(canvas)
+  const history = initHistory(canvas)
+  const layersPanel = initLayersPanel(canvas, history)
 
   setupZoom()
   setupPalette()
@@ -412,10 +412,10 @@ export function initBrochureFabric() {
   setupLayerOrderButtons(layersPanel)
   setupAlignment()
   setupSnapToGrid()
-  setupHistory()
-  setupProjectIO()
+  setupHistory(history)
+  setupProjectIO(history)
   setupMobilePanels()
-  initPropertiesPanel(canvas)
+  initPropertiesPanel(canvas, history)
 
   return canvas
 }
