@@ -223,28 +223,28 @@ function setupPalette() {
   })
 }
 
-function setupLayerOrderButtons(layersPanel) {
+function setupLayerOrderButtons(layersPanel, history) {
   // A z-sorrend változása nem vált ki Fabric-eseményt, amire a rétegpanel
   // magától feliratkozhatna, ezért itt kérjük az újrarajzolását.
   const reorder = (apply) => {
     const active = canvas.getActiveObject()
     if (!active) return
-    apply(active)
+    history.batch(() => apply(active))
     canvas.requestRenderAll()
     layersPanel.render()
   }
 
   el('#fabric-bring-front-btn').addEventListener('click', () => reorder((o) => canvas.bringObjectToFront(o)))
   el('#fabric-send-back-btn').addEventListener('click', () => reorder((o) => canvas.sendObjectToBack(o)))
-  el('#fabric-group-btn').addEventListener('click', () => groupSelection(canvas))
-  el('#fabric-ungroup-btn').addEventListener('click', () => ungroupSelection(canvas))
+  el('#fabric-group-btn').addEventListener('click', () => history.batch(() => groupSelection(canvas)))
+  el('#fabric-ungroup-btn').addEventListener('click', () => history.batch(() => ungroupSelection(canvas)))
 }
 
-function setupAlignment() {
+function setupAlignment(history) {
   const align = (fn) => {
     const active = canvas.getActiveObject()
     if (!active) return
-    fn(active)
+    history.batch(() => fn(active))
     active.setCoords()
     canvas.requestRenderAll()
   }
@@ -409,8 +409,8 @@ export function initBrochureFabric() {
   setupPalette()
   setupObjectBar()
   setupOverflowMenu()
-  setupLayerOrderButtons(layersPanel)
-  setupAlignment()
+  setupLayerOrderButtons(layersPanel, history)
+  setupAlignment(history)
   setupSnapToGrid()
   setupHistory(history)
   setupProjectIO(history)
