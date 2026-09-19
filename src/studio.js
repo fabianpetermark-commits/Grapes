@@ -1375,6 +1375,24 @@ function bindUI() {
     if (event.key.toLowerCase() === 'e') setTransformMode('rotate')
     if (event.key.toLowerCase() === 'r') setTransformMode('scale')
     if (event.key.toLowerCase() === 'f') focusSelected({ fit: true })
+
+    // Alap CAD-mozgatás billentyűzetről: nyilak X/Z tengelyen, PageUp/PageDown Y tengelyen.
+    // Shift 5× nagyobb lépést használ; a lépés a kiválasztott Snap méretéhez igazodik.
+    const step = snapSize * (event.shiftKey ? 5 : 1)
+    const keyMoves = {
+      ArrowLeft: new THREE.Vector3(-step, 0, 0),
+      ArrowRight: new THREE.Vector3(step, 0, 0),
+      ArrowUp: new THREE.Vector3(0, 0, -step),
+      ArrowDown: new THREE.Vector3(0, 0, step),
+      PageUp: new THREE.Vector3(0, step, 0),
+      PageDown: new THREE.Vector3(0, -step, 0),
+    }
+    if (keyMoves[event.key]) {
+      event.preventDefault()
+      moveSelectedBy(keyMoves[event.key])
+      return
+    }
+
     if (event.key === 'Delete' || event.key === 'Backspace') {
       event.preventDefault()
       detachTransformTarget()
