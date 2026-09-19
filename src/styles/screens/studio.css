@@ -169,3 +169,39 @@
   padding-inline: var(--space-2);
   font-family: var(--font-mono);
 }
+
+
+/* Alignment and grid-snap controls */
+
+.studio__align-grid {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+}
+.studio__align-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.studio__align-row .btn {
+  min-width: 0;
+  padding-inline: 6px;
+}
+.studio__snap-controls {
+  display: grid;
+  grid-template-columns: 1fr 92px;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+}
+.studio__snap-size {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px;
+  align-items: center;
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+}
+.studio__snap-size .select {
+  min-width: 0;
+}
