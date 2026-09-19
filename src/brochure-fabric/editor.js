@@ -151,7 +151,7 @@ function setupOverflowMenu() {
   })
 }
 
-function setupPalette() {
+function setupPalette(history) {
   const addAndSelect = (object) => {
     canvas.add(object)
     canvas.setActiveObject(object)
@@ -412,7 +412,7 @@ export function initBrochureFabric() {
   const layersPanel = initLayersPanel(canvas, history)
 
   setupZoom()
-  setupPalette()
+  setupPalette(history)
   setupObjectBar()
   setupOverflowMenu()
   setupLayerOrderButtons(layersPanel, history)
