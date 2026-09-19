@@ -569,7 +569,11 @@
               <button id="studio-fit-selected" class="btn btn--ghost btn--sm" type="button" title="Kijelölt elem keretbe illesztése">Keret</button>
               <button id="studio-focus-all" class="btn btn--ghost btn--sm" type="button" title="Összes elem keretbe illesztése">Összes</button>
             </div>
-                        <div class="studio__control-group studio__control-group--bed" role="group" aria-label="Asztal">
+                        <div class="studio__control-group" role="group" aria-label="Modellek">
+              <button id="studio-import-stl" class="btn btn--ghost btn--sm" type="button" title="STL fájl importálása">STL import</button>
+              <input id="studio-stl-file" type="file" accept=".stl,model/stl" hidden />
+            </div>
+            <div class="studio__control-group studio__control-group--bed" role="group" aria-label="Asztal">
               <button id="studio-place-on-bed" class="btn btn--ghost btn--sm" type="button" title="Kijelölt elem(ek) az építőasztalra helyezése">Asztalra</button>
               <button id="studio-center-on-bed" class="btn btn--ghost btn--sm" type="button" title="Kijelölt elem(ek) középre helyezése">Középre</button>
               <label class="studio__bed-size">
