@@ -224,14 +224,15 @@ export function initPropertiesPanel(canvas, history) {
       : [active]
   }
 
-  function applyAndRender(property, value) {
+  function applyAndRender(property, value, { debounceHistory = false } = {}) {
     const active = canvas.getActiveObject()
     if (!active) return
     for (const target of targetsOf(active)) {
       target.set(property, value)
     }
     canvas.requestRenderAll()
-    history?.record()
+    if (debounceHistory) history?.recordDebounced()
+    else history?.record()
   }
 
   fillModeSelect.addEventListener('change', () => {
@@ -245,21 +246,21 @@ export function initPropertiesPanel(canvas, history) {
     if (mode === 'solid') {
       applyAndRender('fill', fillInput.value)
     } else if (mode === 'gradient') {
-      applyAndRender('fill', buildGradient(active, gradientTypeSelect.value, gradientFromInput.value, gradientToInput.value))
+      applyAndRender('fill', buildGradient(active, gradientTypeSelect.value, gradientFromInput.value, gradientToInput.value), { debounceHistory })
     }
     // A 'pattern' mód a fájl-feltöltésre vár, addig a korábbi fill marad.
   })
 
-  fillInput.addEventListener('input', () => applyAndRender('fill', fillInput.value))
+  fillInput.addEventListener('input', () => applyAndRender('fill', fillInput.value, { debounceHistory: true }))
 
-  function applyGradientFromInputs() {
+  function applyGradientFromInputs(debounceHistory = false) {
     const active = canvas.getActiveObject()
     if (!active) return
     applyAndRender('fill', buildGradient(active, gradientTypeSelect.value, gradientFromInput.value, gradientToInput.value))
   }
   gradientTypeSelect.addEventListener('change', applyGradientFromInputs)
-  gradientFromInput.addEventListener('input', applyGradientFromInputs)
-  gradientToInput.addEventListener('input', applyGradientFromInputs)
+  gradientFromInput.addEventListener('input', () => applyGradientFromInputs(true))
+  gradientToInput.addEventListener('input', () => applyGradientFromInputs(true))
 
   patternInput.addEventListener('change', () => {
     const [file] = patternInput.files ?? []
@@ -275,18 +276,21 @@ export function initPropertiesPanel(canvas, history) {
     reader.readAsDataURL(file)
   })
 
-  strokeInput.addEventListener('input', () => applyAndRender('stroke', strokeInput.value))
+  strokeInput.addEventListener('input', () => applyAndRender('stroke', strokeInput.value, { debounceHistory: true }))
   // A számmezők `change`-re alkalmaznak, nem minden leütésre — gépelés
   // közben a részleges érték (pl. "4" a "40"-ből) nem ugrasztja az elemet.
   strokeWidthInput.addEventListener('change', () =>
     applyAndRender('strokeWidth', Number(strokeWidthInput.value) || 0),
   )
-  opacityInput.addEventListener('input', () => applyAndRender('opacity', Number(opacityInput.value) / 100))
+  opacityInput.addEventListener('input', () => applyAndRender('opacity', Number(opacityInput.value) / 100, { debounceHistory: true }))
   angleInput.addEventListener('change', () => {
     const active = canvas.getActiveObject()
     if (!active) return
+    const angle = Number(angleInput.value)
+    if (!Number.isFinite(angle)) return
     for (const target of targetsOf(active)) {
-      target.rotate(Number(angleInput.value) || 0)
+      target.set('angle', angle)
+      target.setCoords()
     }
     canvas.requestRenderAll()
     history?.record()
@@ -318,11 +322,11 @@ export function initPropertiesPanel(canvas, history) {
   }
   sizeUnitSelect.addEventListener('change', refresh)
 
-  function applyShadow() {
+  function applyShadow(debounceHistory = false) {
     const active = canvas.getActiveObject()
     if (!active) return
     if (!shadowEnabledInput.checked) {
-      applyAndRender('shadow', null)
+      applyAndRender('shadow', null, { debounceHistory })
       return
     }
     applyAndRender(
@@ -333,16 +337,17 @@ export function initPropertiesPanel(canvas, history) {
         offsetX: Number(shadowOffsetXInput.value) || 0,
         offsetY: Number(shadowOffsetYInput.value) || 0,
       }),
+      { debounceHistory },
     )
   }
   shadowEnabledInput.addEventListener('change', () => {
     shadowGroup.classList.toggle('hidden', !shadowEnabledInput.checked)
     applyShadow()
   })
-  shadowColorInput.addEventListener('input', applyShadow)
-  shadowBlurInput.addEventListener('input', applyShadow)
-  shadowOffsetXInput.addEventListener('input', applyShadow)
-  shadowOffsetYInput.addEventListener('input', applyShadow)
+  shadowColorInput.addEventListener('input', () => applyShadow(true))
+  shadowBlurInput.addEventListener('input', () => applyShadow(true))
+  shadowOffsetXInput.addEventListener('input', () => applyShadow(true))
+  shadowOffsetYInput.addEventListener('input', () => applyShadow(true))
 
   canvas.on('selection:created', refresh)
   canvas.on('selection:updated', refresh)
