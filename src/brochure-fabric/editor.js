@@ -255,6 +255,48 @@ function setupAlignment(history) {
     canvas.requestRenderAll()
   }
 
+  const distribute = (axis) => {
+    const active = canvas.getActiveObject()
+    if (!active || active.type !== 'activeselection') return
+
+    const objects = active.getObjects()
+    if (objects.length < 3) return
+
+    const sorted = [...objects].sort((a, b) => {
+      const aCenter = a.getCenterPoint()
+      const bCenter = b.getCenterPoint()
+      return axis === 'x' ? aCenter.x - bCenter.x : aCenter.y - bCenter.y
+    })
+
+    const first = sorted[0].getCenterPoint()
+    const last = sorted[sorted.length - 1].getCenterPoint()
+    const step = axis === 'x'
+      ? (last.x - first.x) / (sorted.length - 1)
+      : (last.y - first.y) / (sorted.length - 1)
+
+    history.batch(() => {
+      sorted.forEach((object, index) => {
+        if (index === 0 || index === sorted.length - 1) return
+
+        const current = object.getCenterPoint()
+        const x = axis === 'x' ? first.x + step * index : current.x
+        const y = axis === 'y' ? first.y + step * index : current.y
+
+        object.setPositionByOrigin(
+          { x, y },
+          'center',
+          'center',
+        )
+        object.setCoords()
+      })
+      history.record()
+    })
+
+    canvas.discardActiveObject()
+    canvas.setActiveObject(new ActiveSelection(objects, { canvas }))
+    canvas.requestRenderAll()
+  }
+
   document.querySelector('#fabric-align-left-btn').addEventListener('click', () =>
     align((object) => object.set('left', 0)),
   )
@@ -273,6 +315,8 @@ function setupAlignment(history) {
   document.querySelector('#fabric-align-bottom-btn').addEventListener('click', () =>
     align((object) => object.set('top', SHEET_HEIGHT - object.getScaledHeight())),
   )
+  document.querySelector('#fabric-distribute-horizontal-btn').addEventListener('click', () => distribute('x'))
+  document.querySelector('#fabric-distribute-vertical-btn').addEventListener('click', () => distribute('y'))
 }
 
 function setupSnapToGrid() {
