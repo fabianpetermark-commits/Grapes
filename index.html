@@ -601,6 +601,33 @@
                 </label>
                 <input id="studio-param-size" class="range" type="range" min="10" max="200" value="60" />
               </div>
+              <p class="panel__group-label">Pontos transzformáció</p>
+              <div class="studio__transform-grid" aria-label="Pontos transzformáció">
+                <div class="studio__transform-group">
+                  <span class="studio__transform-title">Pozíció (mm)</span>
+                  <div class="studio__axis-grid">
+                    <label class="studio__axis-field"><span>X</span><input id="studio-pos-x" class="input" type="number" step="0.1" inputmode="decimal" aria-label="Pozíció X milliméterben" /></label>
+                    <label class="studio__axis-field"><span>Y</span><input id="studio-pos-y" class="input" type="number" step="0.1" inputmode="decimal" aria-label="Pozíció Y milliméterben" /></label>
+                    <label class="studio__axis-field"><span>Z</span><input id="studio-pos-z" class="input" type="number" step="0.1" inputmode="decimal" aria-label="Pozíció Z milliméterben" /></label>
+                  </div>
+                </div>
+                <div class="studio__transform-group">
+                  <span class="studio__transform-title">Forgatás (°)</span>
+                  <div class="studio__axis-grid">
+                    <label class="studio__axis-field"><span>X</span><input id="studio-rot-x" class="input" type="number" step="1" inputmode="decimal" aria-label="Forgatás X fokban" /></label>
+                    <label class="studio__axis-field"><span>Y</span><input id="studio-rot-y" class="input" type="number" step="1" inputmode="decimal" aria-label="Forgatás Y fokban" /></label>
+                    <label class="studio__axis-field"><span>Z</span><input id="studio-rot-z" class="input" type="number" step="1" inputmode="decimal" aria-label="Forgatás Z fokban" /></label>
+                  </div>
+                </div>
+                <div class="studio__transform-group">
+                  <span class="studio__transform-title">Méret (mm)</span>
+                  <div class="studio__axis-grid">
+                    <label class="studio__axis-field"><span>X</span><input id="studio-dim-x" class="input" type="number" min="0.1" step="0.1" inputmode="decimal" aria-label="Méret X milliméterben" /></label>
+                    <label class="studio__axis-field"><span>Y</span><input id="studio-dim-y" class="input" type="number" min="0.1" step="0.1" inputmode="decimal" aria-label="Méret Y milliméterben" /></label>
+                    <label class="studio__axis-field"><span>Z</span><input id="studio-dim-z" class="input" type="number" min="0.1" step="0.1" inputmode="decimal" aria-label="Méret Z milliméterben" /></label>
+                  </div>
+                </div>
+              </div>
               <div class="field">
                 <label class="field__label" for="studio-param-color">Szín</label>
                 <input id="studio-param-color" class="color-input" type="color" value="#4c8dfd" />
