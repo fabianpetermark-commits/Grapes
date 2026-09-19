@@ -289,6 +289,7 @@ export function initPropertiesPanel(canvas, history) {
       target.rotate(Number(angleInput.value) || 0)
     }
     canvas.requestRenderAll()
+    history?.record()
   })
   fontSizeInput.addEventListener('change', () => applyAndRender('fontSize', Number(fontSizeInput.value) || 1))
   fontFamilySelect.addEventListener('change', () => applyAndRender('fontFamily', fontFamilySelect.value))
