@@ -106,7 +106,7 @@ function buildGradient(object, type, fromColor, toColor) {
   })
 }
 
-export function initPropertiesPanel(canvas) {
+export function initPropertiesPanel(canvas, history) {
   const emptyEl = document.querySelector('#fabric-properties-empty')
   const fieldsEl = document.querySelector('#fabric-properties-fields')
 
@@ -231,6 +231,7 @@ export function initPropertiesPanel(canvas) {
       target.set(property, value)
     }
     canvas.requestRenderAll()
+    history?.record()
   }
 
   fillModeSelect.addEventListener('change', () => {
@@ -302,6 +303,7 @@ export function initPropertiesPanel(canvas) {
     if (heightPx > 0 && active.height) active.set('scaleY', heightPx / active.height)
     active.setCoords()
     canvas.requestRenderAll()
+    history?.record()
   }
   // A méretmezők korábban `input`-ra alkalmaztak: az "500" beírása 5px-re,
   // majd 50px-re, végül 500px-re méretezte az elemet, és egy mező közbeni
