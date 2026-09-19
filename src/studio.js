@@ -1389,10 +1389,10 @@ function bindUI() {
       recordHistory()
     }
   })
-  el('#studio-download-stl-btn').addEventListener('click', downloadSTL)
-  el('#studio-download-3mf-btn').addEventListener('click', download3MF)
-  el('#studio-import-3mf').addEventListener('click', () => el('#studio-3mf-file')?.click())
-  el('#studio-3mf-file').addEventListener('change', async (event) => {
+  el('#studio-download-stl-btn')?.addEventListener('click', downloadSTL)
+  el('#studio-download-3mf-btn')?.addEventListener('click', download3MF)
+  el('#studio-import-3mf')?.addEventListener('click', () => el('#studio-3mf-file')?.click())
+  el('#studio-3mf-file')?.addEventListener('change', async (event) => {
     await import3MFFile(event.target.files?.[0])
     event.target.value = ''
   })
