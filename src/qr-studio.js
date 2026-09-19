@@ -196,11 +196,13 @@ export function initQrStudio() {
   });
 
   document.querySelectorAll('[data-qr-eyedropper]').forEach((button) => {
+    if (!window.EyeDropper) {
+      button.hidden = true;
+      button.setAttribute('aria-hidden', 'true');
+      return;
+    }
+
     button.addEventListener('click', async () => {
-      if (!window.EyeDropper) {
-        notifyError('A színmintavételhez használj EyeDropper-t támogató böngészőt (pl. friss Chrome/Edge).');
-        return;
-      }
       try {
         const picker = new window.EyeDropper();
         const result = await picker.open();
