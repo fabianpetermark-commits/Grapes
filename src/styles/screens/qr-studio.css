@@ -229,8 +229,21 @@
 }
 
 @media (max-width: 640px) {
-  .qr-studio__body {
+  /* A QR képernyő mobilon valódi oldal-görgetést használ. A közös editor
+     héj alapból 100dvh + overflow:hidden, ami ennél a hosszabb munkalapnál
+     levágta a felső/alsó tartalmat. */
+  body:has(#qr-app:not(.hidden)) {
+    overflow-x: hidden;
     overflow-y: auto;
+  }
+
+  #qr-app:not(.hidden) {
+    height: auto;
+    min-height: 100dvh;
+  }
+
+  #qr-app .qr-studio__body {
+    overflow: visible;
   }
 
   .qr-studio__preview {
