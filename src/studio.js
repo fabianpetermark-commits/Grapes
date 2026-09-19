@@ -420,11 +420,49 @@ export function stopStudio() {
   }
 }
 
+function focusObject(object, { fit = false } = {}) {
+  if (!object || !camera || !controls) return
+  const box = new THREE.Box3().setFromObject(object)
+  if (box.isEmpty()) return
+
+  const center = box.getCenter(new THREE.Vector3())
+  const size = box.getSize(new THREE.Vector3())
+  const maxSize = Math.max(size.x, size.y, size.z, 1)
+  const distance = fit
+    ? (maxSize / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) * 1.5)
+    : Math.max(maxSize * 2.2, 120)
+
+  const direction = camera.position.clone().sub(controls.target).normalize()
+  if (direction.lengthSq() < 0.01) direction.set(0.5, 0.45, 0.7).normalize()
+
+  controls.target.copy(center)
+  camera.position.copy(center).add(direction.multiplyScalar(distance))
+  camera.near = Math.max(0.1, distance / 1000)
+  camera.far = Math.max(3000, distance * 20)
+  camera.updateProjectionMatrix()
+  controls.update()
+}
+
+function focusSelected({ fit = false } = {}) {
+  if (!selectedId) return
+  const element = elements.find((item) => item.id === selectedId)
+  if (element) focusObject(element.mesh, { fit })
+}
+
 function setCameraView(view) {
   const dist = 340
   if (view === 'front') camera.position.set(0, 120, dist)
   else if (view === 'back') camera.position.set(0, 120, -dist)
   else if (view === 'iso') camera.position.set(dist * 0.7, 200, dist * 0.7)
+
+  if (selectedId) {
+    const element = elements.find((item) => item.id === selectedId)
+    if (element) {
+      controls.target.copy(new THREE.Box3().setFromObject(element.mesh).getCenter(new THREE.Vector3()))
+    }
+  } else {
+    controls.target.set(0, 0, 0)
+  }
   controls.update()
 }
 
@@ -517,6 +555,8 @@ function bindUI() {
   el('#studio-view-front').addEventListener('click', () => setCameraView('front'))
   el('#studio-view-back').addEventListener('click', () => setCameraView('back'))
   el('#studio-view-iso').addEventListener('click', () => setCameraView('iso'))
+  el('#studio-focus-selected').addEventListener('click', () => focusSelected())
+  el('#studio-fit-selected').addEventListener('click', () => focusSelected({ fit: true }))
   el('#studio-transform-move').addEventListener('click', () => setTransformMode('translate'))
   el('#studio-transform-rotate').addEventListener('click', () => setTransformMode('rotate'))
   el('#studio-transform-scale').addEventListener('click', () => setTransformMode('scale'))
