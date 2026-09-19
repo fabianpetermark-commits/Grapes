@@ -57,3 +57,8 @@
   .studio__control-group { flex-wrap: nowrap; }
   .studio__control-group .btn { flex: 0 0 auto; }
 }
+
+.studio__context-menu { position: absolute; z-index: var(--z-popover); min-width: 190px; padding: 6px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg-floating); box-shadow: var(--shadow-lg); }
+.studio__context-item { display: block; width: 100%; padding: 8px 10px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--color-text); text-align: left; cursor: pointer; }
+.studio__context-item:hover:not(:disabled), .studio__context-item:focus-visible:not(:disabled) { background: var(--color-bg-sunken); outline: none; }
+.studio__context-item:disabled { opacity: .45; cursor: not-allowed; }
