@@ -580,7 +580,16 @@
             </div>
           </div>
 
-          <p class="studio__hint">
+          <div id="studio-context-menu" class="studio__context-menu hidden" role="menu" aria-hidden="true" aria-label="Objektum műveletek">
+  <button type="button" class="studio__context-item" data-context-action="focus" role="menuitem">Fókusz</button>
+  <button type="button" class="studio__context-item" data-context-action="fit" role="menuitem">Keretbe illesztés</button>
+  <button type="button" class="studio__context-item" data-context-action="duplicate" role="menuitem">Duplikálás</button>
+  <button type="button" class="studio__context-item" data-context-action="group" role="menuitem">Csoportosítás</button>
+  <button type="button" class="studio__context-item" data-context-action="ungroup" role="menuitem">Szétbontás</button>
+  <button type="button" class="studio__context-item" data-context-action="delete" role="menuitem">Törlés</button>
+</div>
+
+<p class="studio__hint">
             W / E / R: mozgatás, forgatás, méretezés · F: keretbe illesztés · Ctrl/Cmd + D: duplikálás. Húzd a kijelölt elem gizmóját, vagy kattints rá a 3D-nézetben.
           </p>
         </main>
