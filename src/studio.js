@@ -31,12 +31,16 @@ const SHAPE_DEFAULTS = {
   box: { label: 'Kocka', icon: 'cube', color: '#7c9cbf' },
   cylinder: { label: 'Henger', icon: 'rect', color: '#6b8fb5' },
   sphere: { label: 'Gömb', icon: 'circle', color: '#8fa9c7' },
+  cone: { label: 'Kúp', icon: 'triangle', color: '#8da7c5' },
+  pyramid: { label: 'Gúla', icon: 'triangle', color: '#a08fbe' },
 }
 
 function createGeometry(type, dimensions) {
   const { x, y, z } = dimensions
   if (type === 'cylinder') return new THREE.CylinderGeometry(x / 2, x / 2, y, 32)
   if (type === 'sphere') return new THREE.SphereGeometry(x / 2, 32, 24)
+  if (type === 'cone') return new THREE.ConeGeometry(x / 2, y, 32)
+  if (type === 'pyramid') return new THREE.ConeGeometry(x / 2, y, 4)
   return new THREE.BoxGeometry(x, y, z)
 }
 
@@ -354,6 +358,25 @@ async function importSTLFile(file) {
   } catch (error) {
     console.error('STL import failed', error)
     notifyError('Az STL fájl beolvasása nem sikerült.')
+  }
+}
+
+function ensurePrimitivePalette() {
+  const palette = document.querySelector('#studio-add-box')?.parentElement
+  if (!palette) return
+
+  for (const type of ['cone', 'pyramid']) {
+    if (document.querySelector(`#studio-add-${type}`)) continue
+
+    const defaults = SHAPE_DEFAULTS[type]
+    const button = create('button', {
+      id: `studio-add-${type}`,
+      class: 'palette__item',
+      type: 'button',
+      title: `${defaults.label} hozzáadása`,
+    }, [defaults.label])
+
+    palette.append(button)
   }
 }
 
@@ -1260,9 +1283,13 @@ function downloadSTL() {
 }
 
 function bindUI() {
+  ensurePrimitivePalette()
+
   document.querySelector('#studio-add-box').addEventListener('click', () => addElement('box'))
   document.querySelector('#studio-add-cylinder').addEventListener('click', () => addElement('cylinder'))
   document.querySelector('#studio-add-sphere').addEventListener('click', () => addElement('sphere'))
+  document.querySelector('#studio-add-cone').addEventListener('click', () => addElement('cone'))
+  document.querySelector('#studio-add-pyramid').addEventListener('click', () => addElement('pyramid'))
 
   document.querySelector('#studio-delete-selected').addEventListener('click', () => {
     detachTransformTarget()
