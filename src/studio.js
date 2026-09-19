@@ -21,7 +21,9 @@ let transformPivot = null
 let snapEnabled = true
 let snapSize = 5
 let buildPlate = null
-const BUILD_PLATE_SIZE = 220
+let buildPlateGrid = null
+let buildPlateSize = 220
+const BUILD_PLATE_SIZES = [180, 220, 256, 300, 320, 400]
 
 const SHAPE_DEFAULTS = {
   box: { label: 'Kocka', icon: 'cube', color: '#7c9cbf' },
@@ -722,10 +724,10 @@ function initThree() {
 
   createBuildPlate()
 
-  // A tengelyvonal az akcentszín (--color-accent), a rács a keret színe.
-  const grid = new THREE.GridHelper(BUILD_PLATE_SIZE, 22, 0x4c8dfd, 0x252d38)
-  grid.position.y = 0.025
-  scene.add(grid)
+  // A tengelyvonal az akcentusszín, a rács a keret színe.
+  buildPlateGrid = new THREE.GridHelper(buildPlateSize, Math.max(18, buildPlateSize / 10), 0x4c8dfd, 0x252d38)
+  buildPlateGrid.position.y = 0.025
+  scene.add(buildPlateGrid)
 
   // A korábbi resize-figyelő egyszerűen kilépett, ha a stúdió épp rejtve
   // volt, és megjelenítéskor semmi nem szinkronizálta újra — egy rejtett
@@ -797,12 +799,14 @@ export function stopStudio() {
   }
 }
 
-function createBuildPlate() {
+function createBuildPlate(size = buildPlateSize) {
+  buildPlateSize = size
   buildPlate = new THREE.Group()
   buildPlate.name = 'Build Plate'
 
+  const surfaceGeometry = new THREE.BoxGeometry(buildPlateSize, 0.8, buildPlateSize)
   const surface = new THREE.Mesh(
-    new THREE.BoxGeometry(BUILD_PLATE_SIZE, 0.8, BUILD_PLATE_SIZE),
+    surfaceGeometry,
     new THREE.MeshStandardMaterial({
       color: 0x171c24,
       roughness: 0.8,
@@ -817,7 +821,7 @@ function createBuildPlate() {
   buildPlate.add(surface)
 
   const edge = new THREE.LineSegments(
-    new THREE.EdgesGeometry(new THREE.BoxGeometry(BUILD_PLATE_SIZE, 0.8, BUILD_PLATE_SIZE)),
+    new THREE.EdgesGeometry(surfaceGeometry),
     new THREE.LineBasicMaterial({ color: 0x4c8dfd, transparent: true, opacity: 0.8 }),
   )
   edge.position.y = -0.4
@@ -825,6 +829,35 @@ function createBuildPlate() {
   buildPlate.add(edge)
 
   scene.add(buildPlate)
+}
+
+function updateBuildPlateSize(size) {
+  const next = Number(size)
+  if (!BUILD_PLATE_SIZES.includes(next) || next === buildPlateSize) return
+
+  if (buildPlate) {
+    buildPlate.traverse((object) => {
+      if (object.geometry) object.geometry.dispose()
+      if (object.material) object.material.dispose()
+    })
+    scene.remove(buildPlate)
+  }
+
+  if (buildPlateGrid) {
+    scene.remove(buildPlateGrid)
+    buildPlateGrid.geometry.dispose()
+    buildPlateGrid.material.dispose()
+    buildPlateGrid = null
+  }
+
+  createBuildPlate(next)
+  buildPlateGrid = new THREE.GridHelper(buildPlateSize, Math.max(18, buildPlateSize / 10), 0x4c8dfd, 0x252d38)
+  buildPlateGrid.position.y = 0.025
+  scene.add(buildPlateGrid)
+
+  const select = el('#studio-build-plate-size')
+  if (select) select.value = String(buildPlateSize)
+  notifySuccess(`Nyomtatóasztal: ${buildPlateSize} × ${buildPlateSize} mm.`)
 }
 
 function getSelectedBounds() {
