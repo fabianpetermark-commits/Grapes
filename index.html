@@ -641,6 +641,37 @@
                 <label class="field__label" for="studio-param-color">Szín</label>
                 <input id="studio-param-color" class="color-input" type="color" value="#4c8dfd" />
               </div>
+
+              <div class="studio__align-grid" aria-label="Igazítás">
+                <span class="studio__transform-title">Igazítás</span>
+                <div class="studio__align-row">
+                  <button id="studio-align-x-min" class="btn btn--ghost btn--sm" type="button" title="Balra, X minimum">X bal</button>
+                  <button id="studio-align-x-center" class="btn btn--ghost btn--sm" type="button" title="Középre, X tengely">X közép</button>
+                  <button id="studio-align-x-max" class="btn btn--ghost btn--sm" type="button" title="Jobbra, X maximum">X jobb</button>
+                </div>
+                <div class="studio__align-row">
+                  <button id="studio-align-y-min" class="btn btn--ghost btn--sm" type="button" title="Alulra, Y minimum">Y alul</button>
+                  <button id="studio-align-y-center" class="btn btn--ghost btn--sm" type="button" title="Középre, Y tengely">Y közép</button>
+                  <button id="studio-align-y-max" class="btn btn--ghost btn--sm" type="button" title="Felülre, Y maximum">Y felül</button>
+                </div>
+                <div class="studio__align-row">
+                  <button id="studio-align-z-min" class="btn btn--ghost btn--sm" type="button" title="Előre, Z minimum">Z elöl</button>
+                  <button id="studio-align-z-center" class="btn btn--ghost btn--sm" type="button" title="Középre, Z tengely">Z közép</button>
+                  <button id="studio-align-z-max" class="btn btn--ghost btn--sm" type="button" title="Hátra, Z maximum">Z hátul</button>
+                </div>
+              </div>
+              <div class="studio__snap-controls">
+                <button id="studio-snap-toggle" class="btn btn--ghost btn--sm" type="button" aria-pressed="true">Snap: 5 mm</button>
+                <label class="studio__snap-size">
+                  <span>Rács</span>
+                  <select id="studio-snap-size" class="select" aria-label="Snap rácsméret">
+                    <option value="1">1 mm</option>
+                    <option value="5" selected>5 mm</option>
+                    <option value="10">10 mm</option>
+                    <option value="25">25 mm</option>
+                  </select>
+                </label>
+              </div>
               <button id="studio-duplicate-selected" class="btn btn--ghost btn--block" type="button">Duplikálás</button>
               <button id="studio-delete-selected" class="btn btn--danger btn--block" type="button">
                 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-trash" /></svg>Elem törlése
