@@ -420,6 +420,22 @@ export function stopStudio() {
   }
 }
 
+function getSceneBounds() {
+  const box = new THREE.Box3()
+  for (const element of elements) box.expandByObject(element.mesh)
+  return box
+}
+
+function getFocusTarget() {
+  if (selectedId) {
+    const element = elements.find((item) => item.id === selectedId)
+    if (element) return new THREE.Box3().setFromObject(element.mesh).getCenter(new THREE.Vector3())
+  }
+  const sceneBox = getSceneBounds()
+  if (!sceneBox.isEmpty()) return sceneBox.getCenter(new THREE.Vector3())
+  return new THREE.Vector3(0, 0, 0)
+}
+
 function focusObject(object, { fit = false } = {}) {
   if (!object || !camera || !controls) return
   const box = new THREE.Box3().setFromObject(object)
@@ -429,11 +445,15 @@ function focusObject(object, { fit = false } = {}) {
   const size = box.getSize(new THREE.Vector3())
   const maxSize = Math.max(size.x, size.y, size.z, 1)
   const distance = fit
-    ? (maxSize / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) * 1.5)
+    ? Math.max(
+        maxSize / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) * 1.5,
+        120,
+      )
     : Math.max(maxSize * 2.2, 120)
 
-  const direction = camera.position.clone().sub(controls.target).normalize()
-  if (direction.lengthSq() < 0.01) direction.set(0.5, 0.45, 0.7).normalize()
+  const direction = camera.position.clone().sub(controls.target)
+  if (direction.lengthSq() < 0.01) direction.set(0.5, 0.45, 0.7)
+  direction.normalize()
 
   controls.target.copy(center)
   camera.position.copy(center).add(direction.multiplyScalar(distance))
@@ -449,20 +469,47 @@ function focusSelected({ fit = false } = {}) {
   if (element) focusObject(element.mesh, { fit })
 }
 
-function setCameraView(view) {
-  const dist = 340
-  if (view === 'front') camera.position.set(0, 120, dist)
-  else if (view === 'back') camera.position.set(0, 120, -dist)
-  else if (view === 'iso') camera.position.set(dist * 0.7, 200, dist * 0.7)
+function focusAll() {
+  const box = getSceneBounds()
+  if (box.isEmpty()) return
 
-  if (selectedId) {
-    const element = elements.find((item) => item.id === selectedId)
-    if (element) {
-      controls.target.copy(new THREE.Box3().setFromObject(element.mesh).getCenter(new THREE.Vector3()))
-    }
-  } else {
-    controls.target.set(0, 0, 0)
-  }
+  const center = box.getCenter(new THREE.Vector3())
+  const size = box.getSize(new THREE.Vector3())
+  const maxSize = Math.max(size.x, size.y, size.z, 1)
+  const distance = Math.max(
+    maxSize / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) * 1.7,
+    160,
+  )
+  const direction = camera.position.clone().sub(controls.target)
+  if (direction.lengthSq() < 0.01) direction.set(0.5, 0.45, 0.7)
+  direction.normalize()
+
+  controls.target.copy(center)
+  camera.position.copy(center).add(direction.multiplyScalar(distance))
+  camera.near = Math.max(0.1, distance / 1000)
+  camera.far = Math.max(3000, distance * 20)
+  camera.updateProjectionMatrix()
+  controls.update()
+}
+
+function setCameraView(view) {
+  const target = getFocusTarget()
+  const direction = view === 'front'
+    ? new THREE.Vector3(0, 0.18, 1)
+    : view === 'back'
+      ? new THREE.Vector3(0, 0.18, -1)
+      : new THREE.Vector3(0.7, 0.55, 0.7)
+
+  const sceneBox = getSceneBounds()
+  const size = sceneBox.isEmpty() ? 120 : sceneBox.getSize(new THREE.Vector3()).length()
+  const distance = Math.max(size * 1.4, 260)
+
+  direction.normalize()
+  controls.target.copy(target)
+  camera.position.copy(target).add(direction.multiplyScalar(distance))
+  camera.near = Math.max(0.1, distance / 1000)
+  camera.far = Math.max(3000, distance * 20)
+  camera.updateProjectionMatrix()
   controls.update()
 }
 
@@ -592,6 +639,7 @@ function bindUI() {
     if (event.key.toLowerCase() === 'w') setTransformMode('translate')
     if (event.key.toLowerCase() === 'e') setTransformMode('rotate')
     if (event.key.toLowerCase() === 'r') setTransformMode('scale')
+    if (event.key.toLowerCase() === 'f') focusSelected({ fit: true })
   })
   el('#studio-download-stl-btn').addEventListener('click', downloadSTL)
 }
