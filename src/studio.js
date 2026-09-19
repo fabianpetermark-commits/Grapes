@@ -73,6 +73,7 @@ function syncElementState(element) {
     z: element.baseDimensions.z * mesh.scale.z,
   }
   refreshTransformInputs(element)
+  renderSelectedModelInfo()
 }
 
 function captureSceneState() {
@@ -102,6 +103,57 @@ function captureSceneState() {
       ? { geometry: Array.from(element.mesh.geometry.attributes.position.array) }
       : {}),
   }))
+}
+
+function renderSelectedModelInfo() {
+  const info = el('#studio-model-info')
+  const status = el('#studio-model-status')
+  if (!info || !status) return
+
+  if (!selectedIds.size) {
+    info.textContent = 'Nincs kijelölt modell.'
+    status.textContent = '—'
+    status.removeAttribute('data-state')
+    return
+  }
+
+  const selected = elements.filter((element) => selectedIds.has(element.id))
+  const bounds = getSelectedBounds()
+  const plateHalf = buildPlateSize / 2
+  const epsilon = 0.1
+  const triangleCount = selected.reduce((sum, element) => {
+    if (element.type !== 'stl') return sum
+    const position = element.mesh.geometry.attributes.position
+    return sum + (position ? Math.floor(position.count / 3) : 0)
+  }, 0)
+
+  const dimensions = bounds.getSize(new THREE.Vector3())
+  const dimensionText = dimensions.x.toFixed(1) + ' × ' + dimensions.y.toFixed(1) + ' × ' + dimensions.z.toFixed(1) + ' mm'
+  const infoParts = ['Méret: ' + dimensionText]
+  if (selected.length === 1 && selected[0].type === 'stl') {
+    infoParts.push('Háromszögek: ' + triangleCount.toLocaleString('hu-HU'))
+  }
+  if (selected.length > 1) infoParts.push('Kijelölve: ' + selected.length + ' elem')
+  info.textContent = infoParts.join(' · ')
+
+  const overX = bounds.min.x < -plateHalf - epsilon || bounds.max.x > plateHalf + epsilon
+  const overZ = bounds.min.z < -plateHalf - epsilon || bounds.max.z > plateHalf + epsilon
+  const belowPlate = bounds.min.y < -epsilon
+  const abovePlate = bounds.min.y > epsilon
+
+  if (overX || overZ) {
+    status.textContent = 'Lelóg az asztalról'
+    status.dataset.state = 'warning'
+  } else if (belowPlate) {
+    status.textContent = 'Beleér az asztalba'
+    status.dataset.state = 'warning'
+  } else if (abovePlate) {
+    status.textContent = 'Lebeg az asztal felett'
+    status.dataset.state = 'warning'
+  } else {
+    status.textContent = 'Az asztal területén'
+    status.dataset.state = 'ok'
+  }
 }
 
 function updateHistoryUI() {
@@ -694,6 +746,7 @@ function renderElementList() {
   }
 
   el('#studio-element-count').textContent = String(elements.length)
+  renderSelectedModelInfo()
   const selectionCount = selectedIds.size
   const selectionLabel = selectionCount === 1 ? '1 kijelölve' : `${selectionCount} kijelölve`
   const selectionSummary = el('#studio-selection-count')
@@ -945,6 +998,7 @@ function updateBuildPlateSize(size) {
   const select = el('#studio-build-plate-size')
   if (select) select.value = String(buildPlateSize)
   notifySuccess(`Nyomtatóasztal: ${buildPlateSize} × ${buildPlateSize} mm.`)
+  renderSelectedModelInfo()
 }
 
 function getSelectedBounds() {
@@ -1192,6 +1246,10 @@ function bindUI() {
     element.color = event.target.value
     element.mesh.material.color.set(event.target.value)
     recordHistory()
+  })
+
+  el('#studio-build-plate-size').addEventListener('change', (event) => {
+    updateBuildPlateSize(event.target.value)
   })
 
   el('#studio-view-front').addEventListener('click', () => setCameraView('front'))
