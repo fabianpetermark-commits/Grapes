@@ -1,1043 +1,825 @@
-import * as THREE from 'three'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js'
-import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js'
-import './styles/screens/studio.css'
-import { create, el } from './ui/dom.js'
-import { notify, notifyError, notifySuccess } from './ui/toast.js'
-
-let scene, camera, renderer, controls, transformControls
-let elements = []
-let selectedId = null
-let selectedIds = new Set()
-let isWireframe = false
-let initialized = false
-let animationHandle = null
-let history = []
-let historyIndex = -1
-let historyBusy = false
-let transformHistorySnapshot = null
-let transformPivot = null
-let snapEnabled = true
-let snapSize = 5
-
-const SHAPE_DEFAULTS = {
-  box: { label: 'Kocka', icon: 'cube', color: '#7c9cbf' },
-  cylinder: { label: 'Henger', icon: 'rect', color: '#6b8fb5' },
-  sphere: { label: 'Gömb', icon: 'circle', color: '#8fa9c7' },
-}
-
-function createGeometry(type, dimensions) {
-  const { x, y, z } = dimensions
-  if (type === 'cylinder') return new THREE.CylinderGeometry(x / 2, x / 2, y, 32)
-  if (type === 'sphere') return new THREE.SphereGeometry(x / 2, 32, 24)
-  return new THREE.BoxGeometry(x, y, z)
-}
-
-function dimensionsFromSize(type, size) {
-  return { x: size, y: size, z: size }
-}
-
-function setInputValue(selector, value) {
-  const input = document.querySelector(selector)
-  if (input) input.value = String(value)
-}
-
-function refreshTransformInputs(element) {
-  if (selectedId !== element.id) return
-
-  setInputValue('#studio-pos-x', element.position.x.toFixed(1))
-  setInputValue('#studio-pos-y', element.position.y.toFixed(1))
-  setInputValue('#studio-pos-z', element.position.z.toFixed(1))
-  setInputValue('#studio-rot-x', THREE.MathUtils.radToDeg(element.rotation.x).toFixed(1))
-  setInputValue('#studio-rot-y', THREE.MathUtils.radToDeg(element.rotation.y).toFixed(1))
-  setInputValue('#studio-rot-z', THREE.MathUtils.radToDeg(element.rotation.z).toFixed(1))
-  setInputValue('#studio-dim-x', element.dimensions.x.toFixed(1))
-  setInputValue('#studio-dim-y', element.dimensions.y.toFixed(1))
-  setInputValue('#studio-dim-z', element.dimensions.z.toFixed(1))
-}
-
-function syncElementState(element) {
-  const { mesh } = element
-  element.position = mesh.position.clone()
-  element.rotation = mesh.rotation.clone()
-  element.scale = mesh.scale.clone()
-  element.dimensions = {
-    x: element.baseDimensions.x * mesh.scale.x,
-    y: element.baseDimensions.y * mesh.scale.y,
-    z: element.baseDimensions.z * mesh.scale.z,
-  }
-  refreshTransformInputs(element)
-}
-
-function captureSceneState() {
-  return elements.map((element) => ({
-    id: element.id,
-    groupId: element.groupId ?? null,
-    type: element.type,
-    size: element.size,
-    color: element.color,
-    baseDimensions: { ...element.baseDimensions },
-    position: {
-      x: element.mesh.position.x,
-      y: element.mesh.position.y,
-      z: element.mesh.position.z,
-    },
-    rotation: {
-      x: element.mesh.rotation.x,
-      y: element.mesh.rotation.y,
-      z: element.mesh.rotation.z,
-    },
-    scale: {
-      x: element.mesh.scale.x,
-      y: element.mesh.scale.y,
-      z: element.mesh.scale.z,
-    },
-  }))
-}
-
-function updateHistoryUI() {
-  const undoButton = document.querySelector('#studio-undo')
-  const redoButton = document.querySelector('#studio-redo')
-  if (undoButton) undoButton.disabled = historyIndex <= 0
-  if (redoButton) redoButton.disabled = historyIndex >= history.length - 1
-}
-
-function recordHistory() {
-  if (historyBusy) return
-  const snapshot = captureSceneState()
-  const serialized = JSON.stringify(snapshot)
-  if (historyIndex >= 0 && JSON.stringify(history[historyIndex]) === serialized) return
-  history = history.slice(0, historyIndex + 1)
-  history.push(snapshot)
-  if (history.length > 50) history.shift()
-  historyIndex = history.length - 1
-  updateHistoryUI()
-}
-
-function createElementFromState(state) {
-  const geometry = createGeometry(state.type, state.baseDimensions)
-  const material = new THREE.MeshStandardMaterial({
-    color: state.color,
-    roughness: 0.35,
-    metalness: 0.4,
-    wireframe: isWireframe,
-  })
-  const mesh = new THREE.Mesh(geometry, material)
-  mesh.userData.elementId = state.id
-  mesh.position.set(state.position.x, state.position.y, state.position.z)
-  mesh.rotation.set(state.rotation.x, state.rotation.y, state.rotation.z)
-  mesh.scale.set(state.scale.x, state.scale.y, state.scale.z)
-  scene.add(mesh)
-  return {
-    ...state,
-    groupId: state.groupId ?? null,
-    baseDimensions: { ...state.baseDimensions },
-    position: mesh.position.clone(),
-    rotation: mesh.rotation.clone(),
-    scale: mesh.scale.clone(),
-    dimensions: {
-      x: state.baseDimensions.x * state.scale.x,
-      y: state.baseDimensions.y * state.scale.y,
-      z: state.baseDimensions.z * state.scale.z,
-    },
-    mesh,
-  }
-}
-
-function disposeElementMesh(element) {
-  scene.remove(element.mesh)
-  element.mesh.geometry.dispose()
-  element.mesh.material.dispose()
-}
-
-function restoreHistory(index) {
-  if (index < 0 || index >= history.length) return
-  historyBusy = true
-  detachTransformTarget()
-  transformControls.detach()
-  elements.forEach(disposeElementMesh)
-  elements = history[index].map(createElementFromState)
-  historyIndex = index
-  selectedId = elements[0]?.id ?? null
-  selectedIds = selectedId ? new Set(getGroupMemberIds(selectedId)) : new Set()
-  if (selectedId) {
-    const selected = elements.find((element) => element.id === selectedId)
-    attachTransformTarget()
-    syncElementState(selected)
-    el('#studio-selected-props').classList.remove('hidden')
-    el('#studio-param-size').value = selected.size
-    el('#studio-val-size').textContent = `${selected.size} mm`
-    el('#studio-param-color').value = selected.color
-  } else {
-    el('#studio-selected-props').classList.add('hidden')
-  }
-  renderElementList()
-  updateHistoryUI()
-  historyBusy = false
-}
-
-function undoStudio() {
-  if (historyIndex <= 0) return
-  restoreHistory(historyIndex - 1)
-}
-
-function redoStudio() {
-  if (historyIndex >= history.length - 1) return
-  restoreHistory(historyIndex + 1)
-}
-
-function applyNumericTransform(axis, value) {
-  const element = elements.find((item) => item.id === selectedId)
-  if (!element || !Number.isFinite(value)) return
-
-  if (axis.startsWith('pos-')) {
-    element.mesh.position[axis.slice(4)] = value
-  } else if (axis.startsWith('rot-')) {
-    element.mesh.rotation[axis.slice(4)] = THREE.MathUtils.degToRad(value)
-  } else if (axis.startsWith('dim-')) {
-    const dimensionAxis = axis.slice(4)
-    const base = element.baseDimensions[dimensionAxis]
-    if (!Number.isFinite(base) || base <= 0 || value <= 0) return
-    element.mesh.scale[dimensionAxis] = value / base
-  }
-
-  element.mesh.updateMatrixWorld(true)
-  syncElementState(element)
-  recordHistory()
-}
-
-// A korábbi, csak ezen a képernyőn létező #toast elem helyett a közös
-// értesítő réteget használjuk (aria-live régióval).
-const showToast = (message) => notify(message)
-
-function addElement(type) {
-  const defaults = SHAPE_DEFAULTS[type]
-  const size = 60
-  const id = `el-${Date.now()}-${Math.floor(Math.random() * 1000)}`
-  const dimensions = dimensionsFromSize(type, size)
-  const geometry = createGeometry(type, dimensions)
-  const material = new THREE.MeshStandardMaterial({
-    color: defaults.color,
-    roughness: 0.35,
-    metalness: 0.4,
-    wireframe: isWireframe,
-  })
-  const mesh = new THREE.Mesh(geometry, material)
-  const offset = elements.length * 20
-  mesh.position.set(offset, size / 2, offset)
-  mesh.userData.elementId = id
-  scene.add(mesh)
-
-  elements.push({
-    id,
-    groupId: null,
-    type,
-    size,
-    color: defaults.color,
-    baseDimensions: dimensions,
-    position: mesh.position.clone(),
-    rotation: mesh.rotation.clone(),
-    scale: mesh.scale.clone(),
-    dimensions: { ...dimensions },
-    mesh,
-  })
-  renderElementList()
-  selectElement(id)
-  recordHistory()
-}
-
-function removeElement(id) {
-  const index = elements.findIndex((element) => element.id === id)
-  if (index === -1) return
-  const [element] = elements.splice(index, 1)
-  selectedIds.delete(id)
-  if (selectedId === id) {
-    selectedId = [...selectedIds][0] ?? null
-    transformControls.detach()
-    if (selectedId) selectElement(selectedId)
-    else document.querySelector('#studio-selected-props').classList.add('hidden')
-  }
-  updateSelectionVisuals()
-  scene.remove(element.mesh)
-  element.mesh.geometry.dispose()
-  element.mesh.material.dispose()
-  renderElementList()
-  recordHistory()
-}
-
-function updateSelectionVisuals() {
-  for (const element of elements) {
-    element.mesh.material.emissive.set(selectedIds.has(element.id) ? 0x335577 : 0x000000)
-    element.mesh.material.emissiveIntensity = selectedIds.has(element.id) ? 0.45 : 0
-  }
-}
-
-function getGroupMemberIds(id) {
-  const element = elements.find((item) => item.id === id)
-  if (!element?.groupId) return [id]
-  return elements.filter((item) => item.groupId === element.groupId).map((item) => item.id)
-}
-
-function detachTransformTarget() {
-  if (!transformPivot) return
-
-  for (const element of elements) {
-    if (transformPivot.children.includes(element.mesh)) {
-      scene.attach(element.mesh)
-      syncElementState(element)
-    }
-  }
-  scene.remove(transformPivot)
-  transformPivot = null
-}
-
-function attachTransformTarget() {
-  detachTransformTarget()
-  if (!selectedId) {
-    transformControls.detach()
-    return
-  }
-
-  if (selectedIds.size <= 1) {
-    const primary = elements.find((item) => item.id === selectedId)
-    if (primary) transformControls.attach(primary.mesh)
-    return
-  }
-
-  const selected = elements.filter((element) => selectedIds.has(element.id))
-  if (!selected.length) return
-
-  const bounds = new THREE.Box3()
-  selected.forEach((element) => bounds.expandByObject(element.mesh))
-  const center = bounds.getCenter(new THREE.Vector3())
-
-  transformPivot = new THREE.Group()
-  transformPivot.position.copy(center)
-  scene.add(transformPivot)
-
-  selected.forEach((element) => transformPivot.attach(element.mesh))
-  transformPivot.updateMatrixWorld(true)
-  transformControls.attach(transformPivot)
-}
-
-function syncSelectedTransformInputs() {
-  if (!selectedId) return
-  const primary = elements.find((item) => item.id === selectedId)
-  if (primary) syncElementState(primary)
-}
-
-function selectElement(id, { additive = false } = {}) {
-  const element = elements.find((item) => item.id === id)
-  if (!element) return
-
-  const groupIds = new Set(getGroupMemberIds(id))
-
-  if (additive) {
-    const alreadySelected = groupIds.size > 0 && [...groupIds].every((memberId) => selectedIds.has(memberId))
-    if (alreadySelected) {
-      groupIds.forEach((memberId) => selectedIds.delete(memberId))
-    } else {
-      groupIds.forEach((memberId) => selectedIds.add(memberId))
-      selectedId = id
-    }
-  } else {
-    selectedIds = new Set(groupIds)
-    selectedId = id
-  }
-
-  if (!selectedIds.size) {
-    selectedId = null
-    transformControls.detach()
-  } else {
-    if (!selectedIds.has(selectedId)) selectedId = [...selectedIds][0]
-    attachTransformTarget()
-    syncSelectedTransformInputs()
-    el('#studio-selected-props').classList.remove('hidden')
-    const primary = elements.find((item) => item.id === selectedId)
-    if (primary) {
-      el('#studio-param-size').value = primary.size
-      el('#studio-val-size').textContent = `${primary.size} mm`
-      el('#studio-param-color').value = primary.color
-      refreshTransformInputs(primary)
-    }
-  }
-
-  updateSelectionVisuals()
-  renderElementList()
-}
-
-function selectElements(ids) {
-  const validIds = ids.filter((id) => elements.some((element) => element.id === id))
-  selectedIds = new Set(validIds)
-  selectedId = validIds[0] ?? null
-  if (selectedId) {
-    attachTransformTarget()
-    syncSelectedTransformInputs()
-    el('#studio-selected-props').classList.remove('hidden')
-    const primary = elements.find((item) => item.id === selectedId)
-    if (primary) {
-      el('#studio-param-size').value = primary.size
-      el('#studio-val-size').textContent = `${primary.size} mm`
-      el('#studio-param-color').value = primary.color
-      refreshTransformInputs(primary)
-    }
-  } else {
-    transformControls.detach()
-    el('#studio-selected-props').classList.add('hidden')
-  }
-  updateSelectionVisuals()
-  renderElementList()
-}
-
-function deselect() {
-  if (selectedId === null && selectedIds.size === 0) return
-  detachTransformTarget()
-  transformControls.detach()
-  selectedId = null
-  selectedIds.clear()
-  transformControls.detach()
-  el('#studio-selected-props').classList.add('hidden')
-  updateSelectionVisuals()
-  renderElementList()
-}
-
-function createElementId() {
-  return `el-${Date.now()}-${Math.floor(Math.random() * 1000000)}`
-}
-
-function createGroupId() {
-  return `group-${Date.now()}-${Math.floor(Math.random() * 1000000)}`
-}
-
-function groupSelection() {
-  if (selectedIds.size < 2) {
-    notify('Jelölj ki legalább két elemet a csoportosításhoz.')
-    return
-  }
-
-  const groupId = createGroupId()
-  elements.forEach((element) => {
-    if (selectedIds.has(element.id)) element.groupId = groupId
-  })
-  selectElements([...selectedIds])
-  recordHistory()
-  notifySuccess('Az elemek csoportba kerültek.')
-}
-
-function ungroupSelection() {
-  const groupIds = new Set(
-    elements
-      .filter((element) => selectedIds.has(element.id) && element.groupId)
-      .map((element) => element.groupId),
-  )
-
-  if (!groupIds.size) {
-    notify('A kijelölt elemek nem tartoznak csoporthoz.')
-    return
-  }
-
-  elements.forEach((element) => {
-    if (element.groupId && groupIds.has(element.groupId)) element.groupId = null
-  })
-  selectElements([...selectedIds])
-  recordHistory()
-  notifySuccess('A csoport felbontva.')
-}
-
-
-function getSelectedTransformUnits() {
-  const units = []
-  const seenGroups = new Set()
-
-  for (const element of elements) {
-    if (!selectedIds.has(element.id)) continue
-
-    if (element.groupId) {
-      if (seenGroups.has(element.groupId)) continue
-      seenGroups.add(element.groupId)
-      units.push(elements.filter((item) => item.groupId === element.groupId && selectedIds.has(item.id)))
-    } else {
-      units.push([element])
-    }
-  }
-
-  return units
-}
-
-function getUnitBounds(unit) {
-  const bounds = new THREE.Box3()
-  unit.forEach((element) => bounds.expandByObject(element.mesh))
-  return bounds
-}
-
-function moveUnit(unit, delta) {
-  unit.forEach((element) => {
-    element.mesh.position.add(delta)
-    element.mesh.updateMatrixWorld(true)
-    syncElementState(element)
-  })
-}
-
-function alignSelected(axis, edge) {
-  const units = getSelectedTransformUnits()
-  if (units.length < 2) {
-    notify('Az igazításhoz jelölj ki legalább két külön elemet vagy csoportot.')
-    return
-  }
-
-  detachTransformTarget()
-  transformControls.detach()
-
-  const reference = getUnitBounds(units[0])
-  const referenceValue = edge === 'min'
-    ? reference.min[axis]
-    : edge === 'max'
-      ? reference.max[axis]
-      : reference.getCenter(new THREE.Vector3())[axis]
-
-  for (const unit of units.slice(1)) {
-    const bounds = getUnitBounds(unit)
-    const currentValue = edge === 'min'
-      ? bounds.min[axis]
-      : edge === 'max'
-        ? bounds.max[axis]
-        : bounds.getCenter(new THREE.Vector3())[axis]
-
-    const delta = new THREE.Vector3()
-    delta[axis] = referenceValue - currentValue
-    moveUnit(unit, delta)
-  }
-
-  attachTransformTarget()
-  updateSelectionVisuals()
-  recordHistory()
-  notifySuccess('Az elemek igazítva.')
-}
-
-function setSnapEnabled(enabled) {
-  snapEnabled = enabled
-  transformControls.setTranslationSnap(snapEnabled ? snapSize : null)
-  const button = el('#studio-snap-toggle')
-  if (button) {
-    button.setAttribute('aria-pressed', String(snapEnabled))
-    button.textContent = snapEnabled ? `Snap: ${snapSize} mm` : 'Snap: ki'
-  }
-}
-
-function setSnapSize(value) {
-  const next = Number(value)
-  if (!Number.isFinite(next) || next <= 0) return
-  snapSize = next
-  transformControls.setTranslationSnap(snapEnabled ? snapSize : null)
-  const button = el('#studio-snap-toggle')
-  if (button && snapEnabled) button.textContent = `Snap: ${snapSize} mm`
-}
-
-function duplicateSelected() {
-  if (!selectedIds.size) return
-  const selected = elements.filter((element) => selectedIds.has(element.id))
-  const sourceGroups = new Map()
-  for (const element of selected) {
-    if (element.groupId && !sourceGroups.has(element.groupId)) {
-      sourceGroups.set(element.groupId, createGroupId())
-    }
-  }
-
-  const duplicates = selected.map((element, index) => {
-    const state = {
-      id: createElementId(),
-      groupId: element.groupId ? sourceGroups.get(element.groupId) : null,
-      type: element.type,
-      size: element.size,
-      color: element.color,
-      baseDimensions: { ...element.baseDimensions },
-      position: {
-        x: element.mesh.position.x + 20,
-        y: element.mesh.position.y,
-        z: element.mesh.position.z + 20 + index * 4,
-      },
-      rotation: {
-        x: element.mesh.rotation.x,
-        y: element.mesh.rotation.y,
-        z: element.mesh.rotation.z,
-      },
-      scale: {
-        x: element.mesh.scale.x,
-        y: element.mesh.scale.y,
-        z: element.mesh.scale.z,
-      },
-    }
-    return createElementFromState(state)
-  })
-  elements.push(...duplicates)
-  selectElements(duplicates.map((element) => element.id))
-  recordHistory()
-}
-
-function renderElementList() {
-  const list = el('#studio-element-list')
-  list.replaceChildren()
-
-  if (elements.length === 0) {
-    list.append(
-      create('p', {
-        class: 'empty-state empty-state--inline',
-        textContent: 'Nincs még elem. Adj hozzá egyet fent.',
-      }),
-    )
-  }
-
-  for (const element of elements) {
-    const isSelected = selectedIds.has(element.id)
-    const row = create('button', {
-      type: 'button',
-      class: `layer${isSelected ? ' is-active' : ''}`,
-      'aria-pressed': String(isSelected),
-      title: `${SHAPE_DEFAULTS[element.type].label}${element.groupId ? ' · Csoport' : ''}`,
-    })
-    row.append(create('span', { class: 'layer__name', textContent: SHAPE_DEFAULTS[element.type].label }))
-    if (element.groupId) row.append(create('span', { class: 'studio__layer-badge', textContent: 'Csoport' }))
-    row.addEventListener('click', (event) => selectElement(element.id, { additive: event.ctrlKey || event.metaKey }))
-    list.append(row)
-  }
-
-  el('#studio-element-count').textContent = String(elements.length)
-  const selectionCount = selectedIds.size
-  const selectionLabel = selectionCount === 1 ? '1 kijelölve' : `${selectionCount} kijelölve`
-  const selectionSummary = el('#studio-selection-count')
-  if (selectionSummary) selectionSummary.textContent = selectionLabel
-  const selectedCount = el('#studio-selected-count')
-  if (selectedCount) selectedCount.textContent = selectionCount === 1 ? '1 elem' : `${selectionCount} elem`
-}
-
-function initThree() {
-  const container = document.querySelector('#studio-viewport-container')
-  const canvas = document.querySelector('#studio-three-canvas')
-
-  scene = new THREE.Scene()
-  // Ugyanaz a felület, mint a --color-bg-sunken token.
-  scene.background = new THREE.Color(0x080a0d)
-
-  camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 1, 3000)
-  camera.position.set(180, 160, 300)
-
-  renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
-  renderer.setSize(container.clientWidth, container.clientHeight)
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-  renderer.shadowMap.enabled = true
-
-  controls = new OrbitControls(camera, renderer.domElement)
-  controls.enableDamping = true
-  controls.dampingFactor = 0.06
-  controls.target.set(0, 60, 0)
-
-  transformControls = new TransformControls(camera, renderer.domElement)
-  transformControls.setMode('translate')
-  transformControls.setSize(0.85)
-  transformControls.setTranslationSnap(snapSize)
-  transformControls.addEventListener('dragging-changed', (event) => {
-    controls.enabled = !event.value
-
-    if (event.value && selectedId) {
-      transformHistorySnapshot = captureSceneState()
-    }
-
-    if (!event.value && selectedId) {
-      if (transformPivot) {
-        const pivot = transformPivot
-        for (const element of elements) {
-          if (pivot.children.includes(element.mesh)) {
-            scene.attach(element.mesh)
-          }
-        }
-        scene.remove(pivot)
-        transformPivot = null
-      }
-
-      for (const id of selectedIds) {
-        const element = elements.find((item) => item.id === id)
-        if (element) syncElementState(element)
-      }
-
-      attachTransformTarget()
-
-      if (transformHistorySnapshot) {
-        const before = JSON.stringify(transformHistorySnapshot)
-        const after = JSON.stringify(captureSceneState())
-        if (before !== after) recordHistory()
-        transformHistorySnapshot = null
-      }
-    }
-  })
-
-  transformControls.addEventListener('objectChange', () => {
-    if (!selectedId || transformPivot) return
-    const element = elements.find((item) => item.id === selectedId)
-    if (element) syncElementState(element)
-  })
-
-  scene.add(transformControls)
-
-  scene.add(new THREE.AmbientLight(0xffffff, 0.7))
-  const mainLight = new THREE.DirectionalLight(0xffffff, 0.95)
-  mainLight.position.set(160, 280, 200)
-  mainLight.castShadow = true
-  scene.add(mainLight)
-
-  // A tengelyvonal az akcentszín (--color-accent), a rács a keret színe.
-  const grid = new THREE.GridHelper(260, 26, 0x4c8dfd, 0x252d38)
-  grid.position.y = 0.02
-  scene.add(grid)
-
-  // A korábbi resize-figyelő egyszerűen kilépett, ha a stúdió épp rejtve
-  // volt, és megjelenítéskor semmi nem szinkronizálta újra — egy rejtett
-  // állapotban történt átméretezés után a nézet torzan jött vissza. A
-  // ResizeObserver a konténert figyeli, ami a megjelenítéskori
-  // méretváltozásra is lefut.
-  new ResizeObserver(syncViewportSize).observe(container)
-
-  const raycaster = new THREE.Raycaster()
-  const pointer = new THREE.Vector2()
-  renderer.domElement.addEventListener('pointerdown', (event) => {
-    // A gizmóval húzás közben ne jelöljünk ki mögötte lévő elemet.
-    if (transformControls.dragging) return
-
-    const rect = renderer.domElement.getBoundingClientRect()
-    pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
-    pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
-    raycaster.setFromCamera(pointer, camera)
-    const meshes = elements.map((element) => element.mesh)
-    const hits = raycaster.intersectObjects(meshes, false)
-    if (hits.length) {
-      selectElement(hits[0].object.userData.elementId, { additive: event.ctrlKey || event.metaKey })
-    } else {
-      // Üres területre kattintva a kijelölés megszűnik. Korábban a
-      // gizmó és a tulajdonságpanel ilyenkor is az előző elemen maradt.
-      deselect()
-    }
-  })
-
-  startRenderLoop()
-}
-
-function syncViewportSize() {
-  const container = el('#studio-viewport-container')
-  if (container.clientWidth === 0 || container.clientHeight === 0) return
-  camera.aspect = container.clientWidth / container.clientHeight
-  camera.updateProjectionMatrix()
-  renderer.setSize(container.clientWidth, container.clientHeight)
-}
-
-function animate() {
-  animationHandle = requestAnimationFrame(animate)
-  controls.update()
-  renderer.render(scene, camera)
-}
-
-function startRenderLoop() {
-  if (animationHandle === null) animate()
-}
-
-// A főmenübe visszalépve a WebGL-ciklus korábban tovább futott a rejtett
-// jelenetre — feleslegesen fogyasztotta a CPU-t és az akkumulátort.
-export function stopStudio() {
-  if (animationHandle !== null) {
-    cancelAnimationFrame(animationHandle)
-    animationHandle = null
-  }
-}
-
-function getSceneBounds() {
-  const box = new THREE.Box3()
-  for (const element of elements) box.expandByObject(element.mesh)
-  return box
-}
-
-function getFocusTarget() {
-  const selected = elements.filter((element) => selectedIds.has(element.id))
-  if (selected.length) {
-    const box = new THREE.Box3()
-    selected.forEach((element) => box.expandByObject(element.mesh))
-    return box.getCenter(new THREE.Vector3())
-  }
-
-  const sceneBox = getSceneBounds()
-  if (!sceneBox.isEmpty()) return sceneBox.getCenter(new THREE.Vector3())
-  return new THREE.Vector3(0, 0, 0)
-}
-
-function focusBox(box, { fit = false } = {}) {
-  if (box.isEmpty() || !camera || !controls) return
-
-  const center = box.getCenter(new THREE.Vector3())
-  const size = box.getSize(new THREE.Vector3())
-  const maxSize = Math.max(size.x, size.y, size.z, 1)
-  const distance = fit
-    ? Math.max(
-        maxSize / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) * 1.5,
-        120,
-      )
-    : Math.max(maxSize * 2.2, 120)
-
-  const direction = camera.position.clone().sub(controls.target)
-  if (direction.lengthSq() < 0.01) direction.set(0.5, 0.45, 0.7)
-  direction.normalize()
-
-  controls.target.copy(center)
-  camera.position.copy(center).add(direction.multiplyScalar(distance))
-  camera.near = Math.max(0.1, distance / 1000)
-  camera.far = Math.max(3000, distance * 20)
-  camera.updateProjectionMatrix()
-  controls.update()
-}
-
-function focusObject(object, { fit = false } = {}) {
-  if (!object) return
-  focusBox(new THREE.Box3().setFromObject(object), { fit })
-}
-
-function focusSelected({ fit = false } = {}) {
-  if (!selectedIds.size) return
-  const box = new THREE.Box3()
-  elements
-    .filter((element) => selectedIds.has(element.id))
-    .forEach((element) => box.expandByObject(element.mesh))
-  focusBox(box, { fit })
-}
-
-function focusAll() {
-  const box = getSceneBounds()
-  if (box.isEmpty()) return
-
-  const center = box.getCenter(new THREE.Vector3())
-  const size = box.getSize(new THREE.Vector3())
-  const maxSize = Math.max(size.x, size.y, size.z, 1)
-  const distance = Math.max(
-    maxSize / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) * 1.7,
-    160,
-  )
-  const direction = camera.position.clone().sub(controls.target)
-  if (direction.lengthSq() < 0.01) direction.set(0.5, 0.45, 0.7)
-  direction.normalize()
-
-  controls.target.copy(center)
-  camera.position.copy(center).add(direction.multiplyScalar(distance))
-  camera.near = Math.max(0.1, distance / 1000)
-  camera.far = Math.max(3000, distance * 20)
-  camera.updateProjectionMatrix()
-  controls.update()
-}
-
-function setCameraView(view) {
-  const target = getFocusTarget()
-  const direction = view === 'front'
-    ? new THREE.Vector3(0, 0.18, 1)
-    : view === 'back'
-      ? new THREE.Vector3(0, 0.18, -1)
-      : new THREE.Vector3(0.7, 0.55, 0.7)
-
-  const sceneBox = getSceneBounds()
-  const size = sceneBox.isEmpty() ? 120 : sceneBox.getSize(new THREE.Vector3()).length()
-  const distance = Math.max(size * 1.4, 260)
-
-  direction.normalize()
-  controls.target.copy(target)
-  camera.position.copy(target).add(direction.multiplyScalar(distance))
-  camera.near = Math.max(0.1, distance / 1000)
-  camera.far = Math.max(3000, distance * 20)
-  camera.updateProjectionMatrix()
-  controls.update()
-}
-
-function setTransformMode(mode) {
-  transformControls.setMode(mode)
-  for (const [id, value] of [
-    ['#studio-transform-move', mode === 'translate'],
-    ['#studio-transform-rotate', mode === 'rotate'],
-    ['#studio-transform-scale', mode === 'scale'],
-  ]) {
-    el(id).setAttribute('aria-pressed', String(value))
-  }
-}
-
-function toggleWireframe() {
-  isWireframe = !isWireframe
-  elements.forEach((element) => {
-    element.mesh.material.wireframe = isWireframe
-  })
-  el('#studio-toggle-wireframe').setAttribute('aria-pressed', String(isWireframe))
-}
-
-function downloadSTL() {
-  if (!elements.length) {
-    notifyError('Adj hozzá legalább egy elemet a jelenethez az exportálás előtt.')
-    return
-  }
-
-  try {
-    const group = new THREE.Group()
-    elements.forEach((element) => group.add(element.mesh.clone()))
-
-    const exporter = new STLExporter()
-    const result = exporter.parse(group, { binary: true })
-    const blob = new Blob([result], { type: 'application/octet-stream' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = 'studio-model.stl'
-    // A linket be kell fűzni a dokumentumba, és az objektum-URL-t csak a
-    // kattintás után szabad felszabadítani — enélkül a letöltés
-    // Firefoxban és Safariban esetlegesen elmarad.
-    document.body.append(link)
-    link.click()
-    link.remove()
-    setTimeout(() => URL.revokeObjectURL(url), 0)
-    notifySuccess('STL sikeresen letöltve.')
-  } catch (error) {
-    console.error('Az STL-export sikertelen:', error)
-    notifyError(`Az STL-export sikertelen: ${error.message}`)
-  }
-}
-
-function bindUI() {
-  document.querySelector('#studio-add-box').addEventListener('click', () => addElement('box'))
-  document.querySelector('#studio-add-cylinder').addEventListener('click', () => addElement('cylinder'))
-  document.querySelector('#studio-add-sphere').addEventListener('click', () => addElement('sphere'))
-
-  document.querySelector('#studio-delete-selected').addEventListener('click', () => {
-    detachTransformTarget()
-    if (selectedIds.size > 1) {
-      const ids = [...selectedIds]
-      ids.forEach(removeElement)
-      selectedIds.clear()
-      selectedId = null
-      transformControls.detach()
-      el('#studio-selected-props').classList.add('hidden')
-      updateSelectionVisuals()
-      renderElementList()
-      recordHistory()
-    } else if (selectedId) {
-      removeElement(selectedId)
-    }
-  })
-  el('#studio-undo').addEventListener('click', undoStudio)
-  el('#studio-duplicate-selected').addEventListener('click', duplicateSelected)
-  el('#studio-redo').addEventListener('click', redoStudio)
-
-  el('#studio-param-size').addEventListener('input', (event) => {
-    const element = elements.find((item) => item.id === selectedId)
-    if (!element) return
-    const size = parseInt(event.target.value, 10)
-    element.size = size
-    element.baseDimensions = dimensionsFromSize(element.type, size)
-    el('#studio-val-size').textContent = `${size} mm`
-
-    const position = element.mesh.position.clone()
-    element.mesh.geometry.dispose()
-    element.mesh.geometry = createGeometry(element.type, element.baseDimensions)
-    element.mesh.position.copy(position)
-    element.mesh.position.y = size / 2
-    syncElementState(element)
-    recordHistory()
-  })
-
-  el('#studio-param-color').addEventListener('input', (event) => {
-    const element = elements.find((item) => item.id === selectedId)
-    if (!element) return
-    element.color = event.target.value
-    element.mesh.material.color.set(event.target.value)
-    recordHistory()
-  })
-
-  el('#studio-view-front').addEventListener('click', () => setCameraView('front'))
-  el('#studio-view-back').addEventListener('click', () => setCameraView('back'))
-  el('#studio-view-iso').addEventListener('click', () => setCameraView('iso'))
-  el('#studio-focus-selected').addEventListener('click', () => focusSelected())
-  el('#studio-fit-selected').addEventListener('click', () => focusSelected({ fit: true }))
-  el('#studio-focus-all').addEventListener('click', focusAll)
-  el('#studio-transform-move').addEventListener('click', () => setTransformMode('translate'))
-  el('#studio-transform-rotate').addEventListener('click', () => setTransformMode('rotate'))
-  el('#studio-transform-scale').addEventListener('click', () => setTransformMode('scale'))
-  el('#studio-group-selected').addEventListener('click', groupSelection)
-  el('#studio-ungroup-selected').addEventListener('click', ungroupSelection)
-  el('#studio-toggle-wireframe').addEventListener('click', toggleWireframe)
-  el('#studio-align-x-min').addEventListener('click', () => alignSelected('x', 'min'))
-  el('#studio-align-x-center').addEventListener('click', () => alignSelected('x', 'center'))
-  el('#studio-align-x-max').addEventListener('click', () => alignSelected('x', 'max'))
-  el('#studio-align-y-min').addEventListener('click', () => alignSelected('y', 'min'))
-  el('#studio-align-y-center').addEventListener('click', () => alignSelected('y', 'center'))
-  el('#studio-align-y-max').addEventListener('click', () => alignSelected('y', 'max'))
-  el('#studio-align-z-min').addEventListener('click', () => alignSelected('z', 'min'))
-  el('#studio-align-z-center').addEventListener('click', () => alignSelected('z', 'center'))
-  el('#studio-align-z-max').addEventListener('click', () => alignSelected('z', 'max'))
-  el('#studio-snap-toggle').addEventListener('click', () => setSnapEnabled(!snapEnabled))
-  el('#studio-snap-size').addEventListener('change', (event) => setSnapSize(event.target.value))
-
-  for (const [selector, axis] of [
-    ['#studio-pos-x', 'pos-x'], ['#studio-pos-y', 'pos-y'], ['#studio-pos-z', 'pos-z'],
-    ['#studio-rot-x', 'rot-x'], ['#studio-rot-y', 'rot-y'], ['#studio-rot-z', 'rot-z'],
-    ['#studio-dim-x', 'dim-x'], ['#studio-dim-y', 'dim-y'], ['#studio-dim-z', 'dim-z'],
-  ]) {
-    el(selector).addEventListener('change', (event) => {
-      const value = Number(event.target.value)
-      applyNumericTransform(axis, value)
-    })
-  }
-
-  document.addEventListener('keydown', (event) => {
-    if (event.target.closest('input, textarea, select, button')) return
-    if (event.ctrlKey || event.metaKey) {
-      if (event.key.toLowerCase() === 'z') {
-        event.preventDefault()
-        if (event.shiftKey) redoStudio()
-        else undoStudio()
-        return
-      }
-      if (event.key.toLowerCase() === 'y') {
-        event.preventDefault()
-        redoStudio()
-        return
-      }
-    }
-    if (event.key.toLowerCase() === 'd' && (event.ctrlKey || event.metaKey)) {
-      event.preventDefault()
-      duplicateSelected()
-      return
-    }
-    if (!selectedId) return
-    if (event.key.toLowerCase() === 'w') setTransformMode('translate')
-    if (event.key.toLowerCase() === 'e') setTransformMode('rotate')
-    if (event.key.toLowerCase() === 'r') setTransformMode('scale')
-    if (event.key.toLowerCase() === 'f') focusSelected({ fit: true })
-    if (event.key === 'Delete' || event.key === 'Backspace') {
-      event.preventDefault()
-      detachTransformTarget()
-      const ids = [...selectedIds]
-      ids.forEach(removeElement)
-      selectedIds.clear()
-      selectedId = null
-      transformControls.detach()
-      el('#studio-selected-props').classList.add('hidden')
-      updateSelectionVisuals()
-      renderElementList()
-      recordHistory()
-    }
-  })
-  el('#studio-download-stl-btn').addEventListener('click', downloadSTL)
-}
-
-export function initStudio() {
-  if (initialized) {
-    // Visszatéréskor újraindítjuk a ciklust, és újraszinkronizáljuk a
-    // méretet arra az esetre, ha rejtett állapotban változott az ablak.
-    startRenderLoop()
-    syncViewportSize()
-    return
-  }
-  initialized = true
-  bindUI()
-  initThree()
-  addElement('box')
-  recordHistory()
-}
+<!DOCTYPE html>
+<html lang="hu">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Grapes Stúdió</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body>
+    <!-- Ikon-sprite. Beágyazva, hogy ne legyen külön hálózati kérés, és hogy
+         a hivatkozás ne függjön a Vite `base` beállításától. A gombok
+         korábbi emoji-feliratait váltja ki. -->
+    <svg id="icon-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <!-- alakzatok -->
+      <symbol id="i-rect" viewBox="0 0 24 24"><rect x="3.5" y="6" width="17" height="12" rx="1.5" /></symbol>
+      <symbol id="i-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" /></symbol>
+      <symbol id="i-line" viewBox="0 0 24 24"><path d="M4.5 19.5 19.5 4.5" /></symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4.5 19.5 19 5" /><path d="M11.5 5H19v7.5" /></symbol>
+      <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3.5 2.6 5.5 5.9.8-4.3 4.2 1 6-5.2-2.8-5.2 2.8 1-6L3.5 9.8l5.9-.8Z" /></symbol>
+      <symbol id="i-text" viewBox="0 0 24 24"><path d="M5 7V5h14v2" /><path d="M12 5v14" /><path d="M9 19h6" /></symbol>
+      <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="8.5" cy="10" r="1.5" /><path d="m21 15.5-4.5-4.5L7 20.5" /></symbol>
+      <symbol id="i-qr" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="6" height="6" rx="1" /><rect x="14.5" y="3.5" width="6" height="6" rx="1" /><rect x="3.5" y="14.5" width="6" height="6" rx="1" /><path d="M14.5 14.5h3v3M20.5 17.5v3h-3" /></symbol>
+      <symbol id="i-gallery" viewBox="0 0 24 24"><rect x="7" y="3.5" width="13.5" height="13.5" rx="2" /><path d="M3.5 7v11.5a2 2 0 0 0 2 2H17" /><path d="m20.5 13-3.5-3.5-5 5" /></symbol>
+      <symbol id="i-file-html" viewBox="0 0 24 24"><path d="M13.5 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9Z" /><path d="M13.5 3.5V9H19" /><path d="m10 12.5-1.5 2 1.5 2M14 12.5l1.5 2-1.5 2" /></symbol>
+      <symbol id="i-file-svg" viewBox="0 0 24 24"><path d="M13.5 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9Z" /><path d="M13.5 3.5V9H19" /><path d="m12 11.5 3 5H9Z" /></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.5 6.5h15" /><path d="M9.5 6.5V5a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 14.5 5v1.5" /><path d="M6.5 6.5 7.4 19a1.5 1.5 0 0 0 1.5 1.4h6.2a1.5 1.5 0 0 0 1.5-1.4l.9-12.5" /><path d="M10.5 10.5v6M13.5 10.5v6" /></symbol>
+
+      <!-- előzmények, fájl -->
+      <symbol id="i-undo" viewBox="0 0 24 24"><path d="M4 9.5h9.5a5.5 5.5 0 0 1 0 11H8" /><path d="m7.5 5.5-3.5 4 3.5 4" /></symbol>
+      <symbol id="i-redo" viewBox="0 0 24 24"><path d="M20 9.5h-9.5a5.5 5.5 0 0 0 0 11H16" /><path d="m16.5 5.5 3.5 4-3.5 4" /></symbol>
+      <symbol id="i-save" viewBox="0 0 24 24"><path d="M5.5 3.5h11L20.5 7.5v13a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1v-16a1 1 0 0 1 1-1Z" /><path d="M7.5 3.5v6h9v-6" /><rect x="7.5" y="13.5" width="9" height="8" rx="1" /></symbol>
+      <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 19.5v-14a1 1 0 0 1 1-1h4.3l2 2.5h8.7a1 1 0 0 1 1 1v2" /><path d="m3.5 19.5 2.6-8h15.4l-2.6 8Z" /></symbol>
+      <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V3.5h10V9" /><path d="M7 17.5H5a1.5 1.5 0 0 1-1.5-1.5v-5A1.5 1.5 0 0 1 5 9.5h14a1.5 1.5 0 0 1 1.5 1.5v5a1.5 1.5 0 0 1-1.5 1.5h-2" /><rect x="7" y="14.5" width="10" height="6" rx="1" /></symbol>
+      <symbol id="i-code" viewBox="0 0 24 24"><path d="m8.5 8.5-5 3.5 5 3.5" /><path d="m15.5 8.5 5 3.5-5 3.5" /><path d="m13.5 4.5-3 15" /></symbol>
+      <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="M3.5 12h17" /><path d="M12 3.5c2.2 2.3 3.4 5.3 3.4 8.5S14.2 18.2 12 20.5c-2.2-2.3-3.4-5.3-3.4-8.5S9.8 5.8 12 3.5Z" /></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3.5v11" /><path d="m7.5 10.5 4.5 4 4.5-4" /><path d="M4.5 18.5v1a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-1" /></symbol>
+
+      <!-- rétegsorrend, csoport -->
+      <symbol id="i-bring-front" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="10" height="10" rx="1.5" /><path d="M5.5 15.5h-1a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v1" stroke-dasharray="2.5 2.5" /></symbol>
+      <symbol id="i-send-back" viewBox="0 0 24 24"><rect x="5.5" y="5.5" width="10" height="10" rx="1.5" stroke-dasharray="2.5 2.5" /><path d="M18.5 8.5h1a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1v-1" /></symbol>
+      <symbol id="i-layer-up" viewBox="0 0 24 24"><path d="m6.5 13.5 5.5-5 5.5 5" /><path d="M6.5 19.5h11" /></symbol>
+      <symbol id="i-layer-down" viewBox="0 0 24 24"><path d="m6.5 10.5 5.5 5 5.5-5" /><path d="M6.5 4.5h11" /></symbol>
+      <symbol id="i-group" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="2" stroke-dasharray="3 2.5" /><rect x="6.5" y="6.5" width="5.5" height="5.5" rx="1" /><rect x="12" y="12" width="5.5" height="5.5" rx="1" /></symbol>
+      <symbol id="i-ungroup" viewBox="0 0 24 24"><rect x="3" y="3" width="9" height="9" rx="1.5" /><rect x="12" y="12" width="9" height="9" rx="1.5" /></symbol>
+
+      <!-- igazítás -->
+      <symbol id="i-align-left" viewBox="0 0 24 24"><path d="M4 3.5v17" /><rect x="7.5" y="6" width="12" height="4" rx="1" /><rect x="7.5" y="14" width="7.5" height="4" rx="1" /></symbol>
+      <symbol id="i-align-center-h" viewBox="0 0 24 24"><path d="M12 3.5v17" /><rect x="4" y="6" width="16" height="4" rx="1" /><rect x="7.5" y="14" width="9" height="4" rx="1" /></symbol>
+      <symbol id="i-align-right" viewBox="0 0 24 24"><path d="M20 3.5v17" /><rect x="4.5" y="6" width="12" height="4" rx="1" /><rect x="9" y="14" width="7.5" height="4" rx="1" /></symbol>
+      <symbol id="i-align-top" viewBox="0 0 24 24"><path d="M3.5 4h17" /><rect x="6" y="7.5" width="4" height="12" rx="1" /><rect x="14" y="7.5" width="4" height="7.5" rx="1" /></symbol>
+      <symbol id="i-align-center-v" viewBox="0 0 24 24"><path d="M3.5 12h17" /><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="7.5" width="4" height="9" rx="1" /></symbol>
+      <symbol id="i-align-bottom" viewBox="0 0 24 24"><path d="M3.5 20h17" /><rect x="6" y="4.5" width="4" height="12" rx="1" /><rect x="14" y="9" width="4" height="7.5" rx="1" /></symbol>
+      <symbol id="i-distribute-horizontal" viewBox="0 0 24 24"><path d="M5 4v16M19 4v16" /><rect x="8" y="6" width="3" height="12" rx="1" /><rect x="13" y="6" width="3" height="12" rx="1" /></symbol>
+      <symbol id="i-distribute-vertical" viewBox="0 0 24 24"><path d="M4 5h16M4 19h16" /><rect x="6" y="8" width="12" height="3" rx="1" /><rect x="6" y="13" width="12" height="3" rx="1" /></symbol>
+
+      <!-- nagyítás, felület -->
+      <symbol id="i-zoom-in" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m15.5 15.5 5 5" /><path d="M8 10.5h5M10.5 8v5" /></symbol>
+      <symbol id="i-zoom-out" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m15.5 15.5 5 5" /><path d="M8 10.5h5" /></symbol>
+      <symbol id="i-fit" viewBox="0 0 24 24"><path d="M9 3.5H4.5a1 1 0 0 0-1 1V9" /><path d="M15 3.5h4.5a1 1 0 0 1 1 1V9" /><path d="M9 20.5H4.5a1 1 0 0 1-1-1V15" /><path d="M15 20.5h4.5a1 1 0 0 0 1-1V15" /></symbol>
+      <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4" /><circle cx="12" cy="12" r="1.4" /><circle cx="12" cy="19" r="1.4" /></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18" /></symbol>
+      <symbol id="i-home" viewBox="0 0 24 24"><path d="m3.5 11 8.5-7.5 8.5 7.5" /><path d="M6 9.5v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-10" /></symbol>
+      <symbol id="i-panel-left" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2" /><path d="M9.5 4.5v15" /></symbol>
+      <symbol id="i-panel-right" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2" /><path d="M14.5 4.5v15" /></symbol>
+      <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6.5 9.5 5.5 5.5 5.5-5.5" /></symbol>
+      <symbol id="i-cube" viewBox="0 0 24 24"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9Z" /><path d="m4 7.5 8 4.5 8-4.5M12 12v9" /></symbol>
+      <symbol id="i-layout" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2" /><path d="M3.5 9.5h17M9.5 9.5v10" /></symbol>
+    </svg>
+
+    <div id="splash-screen" class="splash">
+      <svg class="splash__logo" width="72" height="72" viewBox="0 0 96 96" fill="none" aria-hidden="true">
+        <path d="M48 8v12" stroke="currentColor" stroke-width="4" stroke-linecap="round" />
+        <path d="M48 18c-6-6-16-4-16 4 6 4 12 2 16-4z" fill="currentColor" />
+        <circle cx="48" cy="32" r="8" fill="currentColor" />
+        <circle cx="36" cy="46" r="9" fill="currentColor" />
+        <circle cx="60" cy="46" r="9" fill="currentColor" />
+        <circle cx="24" cy="60" r="9" fill="currentColor" />
+        <circle cx="48" cy="60" r="9" fill="currentColor" />
+        <circle cx="72" cy="60" r="9" fill="currentColor" />
+        <circle cx="36" cy="74" r="9" fill="currentColor" />
+        <circle cx="60" cy="74" r="9" fill="currentColor" />
+        <circle cx="48" cy="86" r="8" fill="currentColor" />
+      </svg>
+      <h1 class="splash__title">Grapes Stúdió</h1>
+      <p class="splash__subtitle">Válassz modult a folytatáshoz</p>
+
+      <!-- A két kártya korábban <div> volt kattintásfigyelővel: az app
+           belépőpontja nem volt billentyűzettel elérhető. -->
+      <div class="splash__cards">
+        <button id="pick-brochure" class="card" type="button">
+          <span class="card__icon">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-layout" /></svg>
+          </span>
+          <span class="card__title">Brossúra Szerkesztő</span>
+          <span class="card__text">Vizuális brossúra- és PDF-szerkesztő</span>
+        </button>
+        <button id="pick-studio" class="card" type="button">
+          <span class="card__icon">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cube" /></svg>
+          </span>
+          <span class="card__title">3D Nyomtatási Stúdió</span>
+          <span class="card__text">Parametrikus 3D-szerkesztő és STL-export</span>
+        </button>
+        <button id="pick-qr" class="card" type="button">
+          <span class="card__icon">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-qr" /></svg>
+          </span>
+          <span class="card__title">QR Stúdió</span>
+          <span class="card__text">Testreszabható QR-kódok generálása</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="app">
+      <div id="toolbar">
+        <div class="brand">
+          <svg width="24" height="24" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M48 8v12" stroke="#00e5ff" stroke-width="6" stroke-linecap="round" />
+            <path d="M48 18c-6-6-16-4-16 4 6 4 12 2 16-4z" fill="#00e5ff" />
+            <circle cx="48" cy="32" r="8" fill="#00e5ff" />
+            <circle cx="36" cy="46" r="9" fill="#00e5ff" />
+            <circle cx="60" cy="46" r="9" fill="#00e5ff" />
+            <circle cx="24" cy="60" r="9" fill="#00e5ff" />
+            <circle cx="48" cy="60" r="9" fill="#00e5ff" />
+            <circle cx="72" cy="60" r="9" fill="#00e5ff" />
+            <circle cx="36" cy="74" r="9" fill="#00e5ff" />
+            <circle cx="60" cy="74" r="9" fill="#00e5ff" />
+            <circle cx="48" cy="86" r="8" fill="#00e5ff" />
+          </svg>
+          <span>GRAPES</span>
+        </div>
+
+        <div id="main-menu-wrapper">
+          <button id="main-menu-btn" class="tb-btn primary" type="button">☰ Menü</button>
+          <div id="main-menu" class="hidden">
+            <div class="menu-section-title">Fájl</div>
+            <button id="load-file-btn" class="tb-btn" type="button">📁 HTML megnyitása</button>
+            <button id="load-project-btn" class="tb-btn" type="button">📂 Projekt betöltés</button>
+            <button id="save-project-btn" class="tb-btn" type="button">💾 Projekt mentés</button>
+            <hr />
+            <div class="menu-section-title">Szerkesztés</div>
+            <button id="undo-btn" class="tb-btn" type="button">↩ Vissza</button>
+            <button id="redo-btn" class="tb-btn" type="button">↪ Ismét</button>
+            <hr />
+            <div class="menu-section-title">Nézet</div>
+            <button id="code-btn" class="tb-btn" type="button">&lt;/&gt; Kódnézet</button>
+            <button id="preview-btn" class="tb-btn" type="button">👁️ Előnézet</button>
+            <hr />
+            <div class="menu-section-title">Export</div>
+            <button id="pdf-btn" class="tb-btn success" type="button">📄 PDF nyomtatás / mentés</button>
+            <hr />
+            <button id="app-back-to-menu-btn" class="tb-btn" type="button">🏠 Vissza a főmenübe</button>
+            <div class="menu-footer">© 2026 Fábián Péter. Minden jog fenntartva.</div>
+          </div>
+        </div>
+
+        <input id="html-file-input" type="file" accept=".html,.htm,text/html" hidden />
+        <input id="json-file-input" type="file" accept=".json,application/json" hidden />
+
+        <div class="toolbar-spacer"></div>
+
+        <div id="zoom-controls">
+          <span class="zoom-group-label">Lap</span>
+          <button id="zoom-out-btn" class="tb-btn" type="button" title="Kicsinyítés">−</button>
+          <button id="zoom-reset-btn" class="tb-btn" type="button" title="100%-ra állítás">
+            <span id="zoom-level">100%</span>
+          </button>
+          <button id="zoom-in-btn" class="tb-btn" type="button" title="Nagyítás">+</button>
+          <button id="zoom-fit-btn" class="tb-btn" type="button" title="Teljes lap illesztése">⛶</button>
+        </div>
+
+        <div id="content-zoom-controls">
+          <span class="zoom-group-label">Tartalom</span>
+          <button id="content-zoom-out-btn" class="tb-btn" type="button" title="Tartalom kicsinyítése (nézet)">−</button>
+          <button id="content-zoom-reset-btn" class="tb-btn" type="button" title="Tartalom 100%-ra állítása">
+            <span id="content-zoom-level">100%</span>
+          </button>
+          <button id="content-zoom-in-btn" class="tb-btn" type="button" title="Tartalom nagyítása (nézet)">+</button>
+        </div>
+      </div>
+      <div id="gjs"></div>
+    </div>
+
+    <!-- Kísérleti Fabric.js-alapú brossúra-motor (?engine=fabric), a GrapesJS-es
+         #app mellett, azzal párhuzamosan, attól függetlenül. Lásd a migrációs
+         tervet: a GrapesJS visszatérő pozicionálási hibái (importált fix-pixel
+         grafikák ütközése a canvas DOM/CSS-modelljével) egy szabad-pozicionálású
+         canvas-objektum motorral (Fabric.js) a gyökerénél szűnnek meg. -->
+    <div id="fabric-app" class="editor hidden">
+      <!-- A toolbar korábban ~20 gombot sorolt fel egyetlen sorban, vegyesen:
+           fájlműveletek, előzmények, rétegsorrend, csoportosítás, hat igazítás
+           és nagyítás. Az elemhez kötött műveletek innen a vászon fölötti
+           kontextuális sávba (#fabric-objectbar) kerültek — ezek mobilon
+           korábban egyszerűen display:none-nal eltűntek, vagyis elérhetetlenek
+           voltak. -->
+      <header class="toolbar" id="fabric-toolbar">
+        <div class="toolbar__brand">
+          <span class="toolbar__brand-name">Grapes</span>
+          <span class="toolbar__brand-sub">Brossúra</span>
+        </div>
+
+        <div class="toolbar__group toolbar__group--mobile">
+          <button id="fabric-mobile-palette-btn" class="btn btn--icon btn--ghost" type="button" aria-label="Elemek panel" aria-expanded="false">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-panel-left" /></svg>
+          </button>
+          <button id="fabric-mobile-props-btn" class="btn btn--icon btn--ghost" type="button" aria-label="Tulajdonságok és rétegek panel" aria-expanded="false">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-panel-right" /></svg>
+          </button>
+        </div>
+
+        <div class="toolbar__group" role="group" aria-label="Előzmények">
+          <button id="fabric-undo-btn" class="btn btn--icon btn--ghost" type="button" aria-label="Visszavonás" title="Visszavonás">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-undo" /></svg>
+          </button>
+          <button id="fabric-redo-btn" class="btn btn--icon btn--ghost" type="button" aria-label="Ismét" title="Ismét">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-redo" /></svg>
+          </button>
+        </div>
+
+        <span class="toolbar__sep"></span>
+
+        <div class="toolbar__group" role="group" aria-label="Fájl">
+          <button id="fabric-save-btn" class="btn btn--icon btn--ghost" type="button" aria-label="Projekt mentése" title="Projekt mentése">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-save" /></svg>
+          </button>
+          <button id="fabric-load-btn" class="btn btn--icon btn--ghost" type="button" aria-label="Projekt betöltése" title="Projekt betöltése">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-folder" /></svg>
+          </button>
+          <input id="fabric-project-input" type="file" accept="application/json" hidden />
+          <button id="fabric-pdf-btn" class="btn btn--primary" type="button">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-print" /></svg>
+            <span class="btn__label">PDF</span>
+          </button>
+        </div>
+
+        <span class="toolbar__spacer"></span>
+
+        <div class="toolbar__group toolbar__group--boxed" role="group" aria-label="Nagyítás">
+          <button id="fabric-zoom-out-btn" class="btn btn--icon btn--ghost btn--sm" type="button" aria-label="Kicsinyítés" title="Kicsinyítés">
+            <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-zoom-out" /></svg>
+          </button>
+          <button id="fabric-zoom-reset-btn" class="btn btn--ghost btn--sm zoom__value" type="button" aria-label="Nagyítás visszaállítása 100%-ra" title="100%">
+            <span id="fabric-zoom-level">100%</span>
+          </button>
+          <button id="fabric-zoom-in-btn" class="btn btn--icon btn--ghost btn--sm" type="button" aria-label="Nagyítás" title="Nagyítás">
+            <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-zoom-in" /></svg>
+          </button>
+          <button id="fabric-zoom-fit-btn" class="btn btn--icon btn--ghost btn--sm" type="button" aria-label="Lapra illesztés" title="Lapra illesztés">
+            <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-fit" /></svg>
+          </button>
+        </div>
+
+        <div class="menu" id="fabric-overflow">
+          <button id="fabric-overflow-btn" class="btn btn--icon btn--ghost" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="fabric-overflow-menu" aria-label="További műveletek">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-more" /></svg>
+          </button>
+          <div class="menu__panel" id="fabric-overflow-menu" role="menu" hidden>
+            <button id="fabric-html-export-btn" class="menu__item" type="button" role="menuitem">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-globe" /></svg>
+              Exportálás HTML-ként
+            </button>
+            <button id="fabric-code-view-btn" class="menu__item" type="button" role="menuitem">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-code" /></svg>
+              Kódnézet
+            </button>
+          </div>
+        </div>
+
+        <button id="fabric-back-to-menu-btn" class="btn btn--ghost" type="button">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-home" /></svg>
+          <span class="btn__label">Főmenü</span>
+        </button>
+      </header>
+      <div id="fabric-body" class="editor__body">
+        <div id="fabric-mobile-backdrop" class="drawer__backdrop" hidden></div>
+
+        <aside id="fabric-palette" class="panel editor__rail" aria-label="Elemek">
+          <div class="panel__header">
+            <h2 class="panel__title">Elemek</h2>
+            <button id="fabric-palette-close-btn" class="btn btn--icon btn--ghost btn--sm drawer__close" type="button" aria-label="Panel bezárása">
+              <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-close" /></svg>
+            </button>
+          </div>
+          <div class="panel__body">
+            <p class="panel__group-label">Alakzatok</p>
+            <div class="palette__grid">
+              <button id="fabric-add-rect-btn" class="palette__item" type="button">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-rect" /></svg>Téglalap
+              </button>
+              <button id="fabric-add-circle-btn" class="palette__item" type="button">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-circle" /></svg>Kör
+              </button>
+              <button id="fabric-add-line-btn" class="palette__item" type="button">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-line" /></svg>Vonal
+              </button>
+              <button id="fabric-add-arrow-btn" class="palette__item" type="button">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow" /></svg>Nyíl
+              </button>
+              <button id="fabric-add-star-btn" class="palette__item" type="button">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-star" /></svg>Csillag
+              </button>
+              <button id="fabric-add-text-btn" class="palette__item" type="button">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-text" /></svg>Szöveg
+              </button>
+            </div>
+
+            <p class="panel__group-label">Tartalom</p>
+            <button id="fabric-add-image-btn" class="btn btn--block" type="button">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-image" /></svg>Kép feltöltése
+            </button>
+            <input id="fabric-image-input" type="file" accept="image/*" hidden />
+            <button id="fabric-qr-btn" class="btn btn--block" type="button">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-qr" /></svg>QR-kód
+            </button>
+            <button id="fabric-unsplash-btn" class="btn btn--block" type="button">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-gallery" /></svg>Unsplash képtár
+            </button>
+
+            <p class="panel__group-label">Importálás</p>
+            <button id="fabric-html-import-btn" class="btn btn--block" type="button">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-file-html" /></svg>HTML-fájl
+            </button>
+            <input id="fabric-html-input" type="file" accept=".html,.htm,text/html" hidden />
+            <button id="fabric-svg-import-btn" class="btn btn--block" type="button">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-file-svg" /></svg>SVG-fájl
+            </button>
+            <input id="fabric-svg-input" type="file" accept=".svg,image/svg+xml" hidden />
+          </div>
+        </aside>
+
+        <main id="fabric-canvas-wrapper" class="editor__canvas">
+          <!-- Kontextuális sáv: csak akkor látszik, ha van kijelölt elem.
+               Így a felső toolbar nem zsúfolódik tele, és ezek a műveletek
+               mobilon is elérhetők. -->
+          <div id="fabric-objectbar" class="objectbar" role="toolbar" aria-label="A kijelölt elem műveletei" hidden>
+            <div class="objectbar__group" role="group" aria-label="Igazítás">
+              <button id="fabric-align-left-btn" class="btn btn--icon btn--ghost btn--sm" type="button" aria-label="Balra igazítás" title="Balra igazítás">
+                <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-align-left" /></svg>
+              </button>
+              <button id="fabric-align-center-btn" class="btn btn--icon btn--ghost btn--sm" type="button" aria-label="Vízszintesen középre" title="Vízszintesen középre">
+                <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-align-center-h" /></svg>
+              </button>
+              <button id="fabric-align-right-btn" class="btn btn--icon btn--ghost btn--sm" type="button" aria-label="Jobbra igazítás" title="Jobbra igazítás">
+                <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-align-right" /></svg>
+              </button>
+              <button id="fabric-align-top-btn" class="btn btn--icon btn--ghost btn--sm" type="button" aria-label="Felülre igazítás" title="Felülre igazítás">
+                <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-align-top" /></svg>
+              </button>
+              <button id="fabric-align-middle-btn" class="btn btn--icon btn--ghost btn--sm" type="button" aria-label="Függőlegesen középre" title="Függőlegesen középre">
+                <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-align-center-v" /></svg>
+              </button>
+              <button id="fabric-align-bottom-btn" class="btn btn--icon btn--ghost btn--sm" type="button" aria-label="Alulra igazítás" title="Alulra igazítás">
+                <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-align-bottom" /></svg>
+              </button>
+            </div>
+
+            <span class="objectbar__sep"></span>
+
+            <div class="objectbar__group" role="group" aria-label="Egyenletes elosztás">
+              <button id="fabric-distribute-horizontal-btn" class="btn btn--icon btn--ghost btn--sm" type="button" aria-label="Vízszintes elosztás" title="Vízszintes elosztás">
+                <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-distribute-horizontal" /></svg>
+              </button>
+              <button id="fabric-distribute-vertical-btn" class="btn btn--icon btn--ghost btn--sm" type="button" aria-label="Függőleges elosztás" title="Függőleges elosztás">
+                <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-distribute-vertical" /></svg>
+              </button>
+            </div>
+
+            <span class="objectbar__sep"></span>
+
+            <div class="objectbar__group" role="group" aria-label="Rétegsorrend">
+              <button id="fabric-bring-front-btn" class="btn btn--icon btn--ghost btn--sm" type="button" aria-label="Előre hozás" title="Előre hozás">
+                <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-bring-front" /></svg>
+              </button>
+              <button id="fabric-send-back-btn" class="btn btn--icon btn--ghost btn--sm" type="button" aria-label="Háttérbe küldés" title="Háttérbe küldés">
+                <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-send-back" /></svg>
+              </button>
+            </div>
+
+            <span class="objectbar__sep"></span>
+
+            <div class="objectbar__group" role="group" aria-label="Csoportosítás">
+              <button id="fabric-group-btn" class="btn btn--icon btn--ghost btn--sm" type="button" aria-label="Csoportosítás" title="Csoportosítás">
+                <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-group" /></svg>
+              </button>
+              <button id="fabric-ungroup-btn" class="btn btn--icon btn--ghost btn--sm" type="button" aria-label="Csoport szétválasztása" title="Csoport szétválasztása">
+                <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-ungroup" /></svg>
+              </button>
+            </div>
+
+            <span class="objectbar__sep"></span>
+
+            <button id="fabric-delete-btn" class="btn btn--icon btn--ghost btn--sm btn--danger" type="button" aria-label="Törlés" title="Törlés (Delete)">
+              <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-trash" /></svg>
+            </button>
+          </div>
+
+          <!-- A görgethető terület külön réteg, hogy az objektum-sáv a
+               vászon görgetésekor a helyén maradjon. -->
+          <div class="editor__viewport">
+            <div class="editor__sheet">
+              <canvas id="fabric-canvas"></canvas>
+            </div>
+          </div>
+        </main>
+
+        <aside id="fabric-side-panel" class="panel editor__inspector" aria-label="Tulajdonságok és rétegek">
+          <div class="panel__header">
+            <h2 class="panel__title">Panel</h2>
+            <button id="fabric-side-panel-close-btn" class="btn btn--icon btn--ghost btn--sm drawer__close" type="button" aria-label="Panel bezárása">
+              <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-close" /></svg>
+            </button>
+          </div>
+          <div class="panel__body">
+            <details class="accordion" open>
+              <summary class="accordion__summary">Tulajdonságok</summary>
+              <div class="accordion__body">
+                <div id="fabric-properties-empty" class="empty-state empty-state--inline">
+                  Jelölj ki egy elemet a vásznon a szerkesztéshez.
+                </div>
+                <div id="fabric-properties-fields" class="hidden">
+                  <details class="accordion accordion--nested" open>
+                    <summary class="accordion__summary">Kitöltés</summary>
+                    <div class="accordion__body">
+                      <div class="field">
+                        <label class="field__label" for="fabric-prop-fill-mode">Kitöltés típusa</label>
+                        <select id="fabric-prop-fill-mode" class="select">
+                          <option value="solid">Egyszínű</option>
+                          <option value="gradient">Színátmenet (gradiens)</option>
+                          <option value="pattern">Mintás (kép)</option>
+                        </select>
+                      </div>
+
+                      <div id="fabric-prop-fill-solid-group" class="field">
+                        <label class="field__label" for="fabric-prop-fill">Kitöltés / betűszín</label>
+                        <input id="fabric-prop-fill" class="color-input" type="color" />
+                        <div id="fabric-prop-fill-swatches" class="swatch-grid"></div>
+                      </div>
+
+                      <div id="fabric-prop-fill-gradient-group" class="field hidden">
+                        <label class="field__label" for="fabric-prop-gradient-type">Gradiens típusa</label>
+                        <select id="fabric-prop-gradient-type" class="select">
+                          <option value="linear">Lineáris</option>
+                          <option value="radial">Radiális</option>
+                        </select>
+                        <label class="field__label" for="fabric-prop-gradient-from">Kezdőszín</label>
+                        <input id="fabric-prop-gradient-from" class="color-input" type="color" />
+                        <label class="field__label" for="fabric-prop-gradient-to">Végszín</label>
+                        <input id="fabric-prop-gradient-to" class="color-input" type="color" />
+                      </div>
+
+                      <div id="fabric-prop-fill-pattern-group" class="field hidden">
+                        <label class="field__label" for="fabric-prop-pattern-input">Mintakép feltöltése</label>
+                        <input id="fabric-prop-pattern-input" class="input input--file" type="file" accept="image/*" />
+                      </div>
+
+                      <div class="field">
+                        <label class="field__label" for="fabric-prop-stroke">Körvonal</label>
+                        <input id="fabric-prop-stroke" class="color-input" type="color" />
+                      </div>
+                      <div class="field">
+                        <label class="field__label" for="fabric-prop-stroke-width">Körvonal vastagsága</label>
+                        <input id="fabric-prop-stroke-width" class="input" type="number" min="0" max="40" />
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="accordion accordion--nested" open>
+                    <summary class="accordion__summary">Elrendezés &amp; effektek</summary>
+                    <div class="accordion__body">
+                      <div class="field">
+                        <label class="field__label" for="fabric-prop-opacity">Átlátszóság</label>
+                        <input id="fabric-prop-opacity" class="range" type="range" min="0" max="100" />
+                      </div>
+                      <div class="field">
+                        <label class="field__label" for="fabric-prop-angle">Elfordítás (fok)</label>
+                        <input id="fabric-prop-angle" class="input" type="number" min="-360" max="360" />
+                      </div>
+
+                      <div class="field">
+                        <span class="field__label">Méret</span>
+                        <div class="field-row">
+                          <input id="fabric-prop-width" class="input" type="number" min="0" step="0.1" aria-label="Szélesség" />
+                          <input id="fabric-prop-height" class="input" type="number" min="0" step="0.1" aria-label="Magasság" />
+                          <select id="fabric-prop-size-unit" class="select select--unit" aria-label="Mértékegység">
+                            <option value="px">px</option>
+                            <option value="cm">cm</option>
+                            <option value="in">inch</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <label class="field-checkbox">
+                        <input id="fabric-prop-shadow-enabled" type="checkbox" />
+                        Vetett árnyék
+                      </label>
+                      <div id="fabric-prop-shadow-group" class="field hidden">
+                        <label class="field__label" for="fabric-prop-shadow-color">Árnyék színe</label>
+                        <input id="fabric-prop-shadow-color" class="color-input" type="color" />
+                        <label class="field__label" for="fabric-prop-shadow-blur">Árnyék elmosása</label>
+                        <input id="fabric-prop-shadow-blur" class="input" type="number" min="0" max="60" />
+                        <span class="field__label">Árnyék eltolása (x / y)</span>
+                        <div class="field-row">
+                          <input id="fabric-prop-shadow-offset-x" class="input" type="number" min="-40" max="40" aria-label="Árnyék eltolása vízszintesen" />
+                          <input id="fabric-prop-shadow-offset-y" class="input" type="number" min="-40" max="40" aria-label="Árnyék eltolása függőlegesen" />
+                        </div>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details id="fabric-prop-font-group" class="accordion accordion--nested hidden" open>
+                    <summary class="accordion__summary">Betűtípus</summary>
+                    <div class="accordion__body">
+                      <div class="field">
+                        <label class="field__label" for="fabric-prop-font-family">Betűtípus</label>
+                        <select id="fabric-prop-font-family" class="select"></select>
+                      </div>
+                      <div class="field">
+                        <label class="field__label" for="fabric-prop-font-size">Betűméret (px)</label>
+                        <input id="fabric-prop-font-size" class="input" type="number" min="6" max="400" />
+                      </div>
+                    </div>
+                  </details>
+                </div>
+              </div>
+            </details>
+
+            <details class="accordion" open>
+              <summary class="accordion__summary">Rétegek</summary>
+              <div class="accordion__body accordion__body--flush">
+                <div id="fabric-layers-list" class="layers"></div>
+              </div>
+            </details>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <div id="studio-app" class="editor hidden">
+      <header class="toolbar">
+        <div class="toolbar__brand">
+          <span class="toolbar__brand-name">3D Stúdió</span>
+          <span class="toolbar__brand-sub">Parametrikus modellezés és STL-export</span>
+        </div>
+
+        <span class="toolbar__spacer"></span>
+
+        <button id="studio-download-stl-btn" class="btn btn--primary" type="button">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-download" /></svg>
+          <span class="btn__label">STL letöltése</span>
+        </button>
+        <button id="studio-back-to-menu-btn" class="btn btn--ghost" type="button">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-home" /></svg>
+          <span class="btn__label">Főmenü</span>
+        </button>
+      </header>
+
+      <div class="editor__body studio__body">
+        <main id="studio-viewport-container" class="studio__viewport">
+          <canvas id="studio-three-canvas"></canvas>
+
+          <div class="studio__overlay" aria-label="3D nézet vezérlők">
+            <div class="studio__control-group" role="group" aria-label="Nézet">
+              <button id="studio-view-front" class="btn btn--ghost btn--sm" type="button" title="Elölnézet">Elöl</button>
+              <button id="studio-view-back" class="btn btn--ghost btn--sm" type="button" title="Hátulnézet">Hátul</button>
+              <button id="studio-view-iso" class="btn btn--ghost btn--sm" type="button" title="Izometrikus nézet">Izometrikus</button>
+            </div>
+            <div class="studio__control-group" role="group" aria-label="Fókusz">
+              <button id="studio-focus-selected" class="btn btn--ghost btn--sm" type="button" title="Kijelölt elem fókuszálása">Fókusz</button>
+              <button id="studio-fit-selected" class="btn btn--ghost btn--sm" type="button" title="Kijelölt elem keretbe illesztése">Keret</button>
+              <button id="studio-focus-all" class="btn btn--ghost btn--sm" type="button" title="Összes elem keretbe illesztése">Összes</button>
+            </div>
+            <div class="studio__control-group" role="group" aria-label="Előzmények">
+              <button id="studio-undo" class="btn btn--ghost btn--sm" type="button" title="Visszavonás" disabled>Vissza</button>
+              <button id="studio-redo" class="btn btn--ghost btn--sm" type="button" title="Ismét" disabled>Ismét</button>
+            </div>
+            <div class="studio__control-group studio__control-group--transform studio__control-group--primary" role="group" aria-label="Transzformáció">
+              <button id="studio-transform-move" class="btn btn--ghost btn--sm" type="button" aria-pressed="true" title="Mozgatás (W)">Mozgatás</button>
+              <button id="studio-transform-rotate" class="btn btn--ghost btn--sm" type="button" aria-pressed="false" title="Forgatás (E)">Forgatás</button>
+              <button id="studio-transform-scale" class="btn btn--ghost btn--sm" type="button" aria-pressed="false" title="Méretezés (R)">Méretezés</button>
+            </div>
+          </div>
+
+          <div id="studio-context-menu" class="studio__context-menu hidden" role="menu" aria-hidden="true" aria-label="Objektum műveletek">
+  <button type="button" class="studio__context-item" data-context-action="focus" role="menuitem">Fókusz</button>
+  <button type="button" class="studio__context-item" data-context-action="fit" role="menuitem">Keretbe illesztés</button>
+  <button type="button" class="studio__context-item" data-context-action="duplicate" role="menuitem">Duplikálás</button>
+  <button type="button" class="studio__context-item" data-context-action="group" role="menuitem">Csoportosítás</button>
+  <button type="button" class="studio__context-item" data-context-action="ungroup" role="menuitem">Szétbontás</button>
+  <button type="button" class="studio__context-item" data-context-action="delete" role="menuitem">Törlés</button>
+</div>
+
+<p class="studio__hint">
+            W / E / R: mozgatás, forgatás, méretezés · F: keretbe illesztés · Ctrl/Cmd + D: duplikálás. Húzd a kijelölt elem gizmóját, vagy kattints rá a 3D-nézetben.
+          </p>
+        </main>
+
+        <aside class="panel studio__inspector" aria-label="3D eszközök">
+          <div class="panel__body">
+            <p class="panel__group-label">Elem hozzáadása</p>
+            <div class="palette__grid palette__grid--three">
+              <button id="studio-add-box" class="palette__item" type="button">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cube" /></svg>Kocka
+              </button>
+              <button id="studio-add-cylinder" class="palette__item" type="button">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-rect" /></svg>Henger
+              </button>
+              <button id="studio-add-sphere" class="palette__item" type="button">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-circle" /></svg>Gömb
+              </button>
+            </div>
+
+            <p class="panel__group-label studio__section-label"><span>Elemek</span><span id="studio-selection-count" class="studio__selection-count">0 kijelölve</span></p>
+            <div id="studio-element-list" class="layers" aria-label="3D objektumok"></div>
+            <p class="studio__list-hint">Ctrl/Cmd + kattintás: több kijelölés</p>
+
+            <div id="studio-selected-props" class="hidden">
+              <p id="studio-selected-label" class="panel__group-label studio__section-label"><span>Kijelölés</span><span id="studio-selected-count" class="studio__selection-count">1 elem</span></p>
+              <div class="field">
+                <label class="field__label" for="studio-param-size">
+                  Méret <span id="studio-val-size" class="field__value">—</span>
+                </label>
+                <input id="studio-param-size" class="range" type="range" min="10" max="200" value="60" />
+              </div>
+              <p class="panel__group-label studio__subsection-label">Pontos transzformáció</p>
+              <div class="studio__transform-grid" aria-label="Pontos transzformáció">
+                <div class="studio__transform-group">
+                  <span class="studio__transform-title">Pozíció (mm)</span>
+                  <div class="studio__axis-grid">
+                    <label class="studio__axis-field"><span>X</span><input id="studio-pos-x" class="input" type="number" step="0.1" inputmode="decimal" aria-label="Pozíció X milliméterben" /></label>
+                    <label class="studio__axis-field"><span>Y</span><input id="studio-pos-y" class="input" type="number" step="0.1" inputmode="decimal" aria-label="Pozíció Y milliméterben" /></label>
+                    <label class="studio__axis-field"><span>Z</span><input id="studio-pos-z" class="input" type="number" step="0.1" inputmode="decimal" aria-label="Pozíció Z milliméterben" /></label>
+                  </div>
+                </div>
+                <div class="studio__transform-group">
+                  <span class="studio__transform-title">Forgatás (°)</span>
+                  <div class="studio__axis-grid">
+                    <label class="studio__axis-field"><span>X</span><input id="studio-rot-x" class="input" type="number" step="1" inputmode="decimal" aria-label="Forgatás X fokban" /></label>
+                    <label class="studio__axis-field"><span>Y</span><input id="studio-rot-y" class="input" type="number" step="1" inputmode="decimal" aria-label="Forgatás Y fokban" /></label>
+                    <label class="studio__axis-field"><span>Z</span><input id="studio-rot-z" class="input" type="number" step="1" inputmode="decimal" aria-label="Forgatás Z fokban" /></label>
+                  </div>
+                </div>
+                <div class="studio__transform-group">
+                  <span class="studio__transform-title">Méret (mm)</span>
+                  <div class="studio__axis-grid">
+                    <label class="studio__axis-field"><span>X</span><input id="studio-dim-x" class="input" type="number" min="0.1" step="0.1" inputmode="decimal" aria-label="Méret X milliméterben" /></label>
+                    <label class="studio__axis-field"><span>Y</span><input id="studio-dim-y" class="input" type="number" min="0.1" step="0.1" inputmode="decimal" aria-label="Méret Y milliméterben" /></label>
+                    <label class="studio__axis-field"><span>Z</span><input id="studio-dim-z" class="input" type="number" min="0.1" step="0.1" inputmode="decimal" aria-label="Méret Z milliméterben" /></label>
+                  </div>
+                </div>
+              </div>
+              <div class="field">
+                <label class="field__label" for="studio-param-color">Szín</label>
+                <input id="studio-param-color" class="color-input" type="color" value="#4c8dfd" />
+              </div>
+
+              <details class="studio__inspector-section" open><summary>Igazítás és Snap</summary><div class="studio__inspector-section-body"><div class="studio__align-grid" aria-label="Igazítás">
+                <span class="studio__transform-title">Igazítás</span>
+                <div class="studio__align-row">
+                  <button id="studio-align-x-min" class="btn btn--ghost btn--sm" type="button" title="Balra, X minimum">X bal</button>
+                  <button id="studio-align-x-center" class="btn btn--ghost btn--sm" type="button" title="Középre, X tengely">X közép</button>
+                  <button id="studio-align-x-max" class="btn btn--ghost btn--sm" type="button" title="Jobbra, X maximum">X jobb</button>
+                </div>
+                <div class="studio__align-row">
+                  <button id="studio-align-y-min" class="btn btn--ghost btn--sm" type="button" title="Alulra, Y minimum">Y alul</button>
+                  <button id="studio-align-y-center" class="btn btn--ghost btn--sm" type="button" title="Középre, Y tengely">Y közép</button>
+                  <button id="studio-align-y-max" class="btn btn--ghost btn--sm" type="button" title="Felülre, Y maximum">Y felül</button>
+                </div>
+                <div class="studio__align-row">
+                  <button id="studio-align-z-min" class="btn btn--ghost btn--sm" type="button" title="Előre, Z minimum">Z elöl</button>
+                  <button id="studio-align-z-center" class="btn btn--ghost btn--sm" type="button" title="Középre, Z tengely">Z közép</button>
+                  <button id="studio-align-z-max" class="btn btn--ghost btn--sm" type="button" title="Hátra, Z maximum">Z hátul</button>
+                </div>
+              </div>
+              <div class="studio__snap-controls">
+                <button id="studio-snap-toggle" class="btn btn--ghost btn--sm" type="button" aria-pressed="true">Snap: 5 mm</button>
+                <label class="studio__snap-size">
+                  <span>Rács</span>
+                  <select id="studio-snap-size" class="select" aria-label="Snap rácsméret">
+                    <option value="1">1 mm</option>
+                    <option value="5" selected>5 mm</option>
+                    <option value="10">10 mm</option>
+                    <option value="25">25 mm</option>
+                  </select>
+                </label>
+              </div>
+              </div></details>
+              <details class="studio__inspector-section"><summary>Objektum műveletek</summary><div class="studio__inspector-section-body"><div class="studio__object-actions" aria-label="Objektum műveletek">
+                <button id="studio-group-selected" class="btn btn--ghost" type="button">Csoport</button>
+                <button id="studio-ungroup-selected" class="btn btn--ghost" type="button">Szétbontás</button>
+                <button id="studio-toggle-wireframe" class="btn btn--ghost" type="button" aria-pressed="false">Drótváz</button>
+              </div>
+              <button id="studio-duplicate-selected" class="btn btn--ghost btn--block" type="button">Duplikálás</button>
+              <button id="studio-delete-selected" class="btn btn--danger btn--block" type="button">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-trash" /></svg>Elem törlése
+              </button></div></details>
+            </div>
+
+            <dl class="studio__stats">
+              <div class="studio__stat">
+                <dt>Elemek száma</dt>
+                <dd id="studio-element-count">0</dd>
+              </div>
+            </dl>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <div id="qr-app" class="editor hidden">
+      <header class="toolbar" id="qr-toolbar">
+        <div class="toolbar__brand">
+          <span class="toolbar__brand-name">Grapes</span>
+          <span class="toolbar__brand-sub">QR Stúdió</span>
+        </div>
+        <span class="toolbar__spacer"></span>
+        <button id="qr-back-to-menu-btn" class="btn btn--ghost" type="button">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-home" /></svg>
+          <span class="btn__label">Főmenü</span>
+        </button>
+      </header>
+
+      <div class="editor__body qr-studio__body">
+        <main class="qr-studio__preview" aria-label="QR-kód előnézet">
+          <div class="qr-studio__preview-card">
+            <div id="qr-canvas-container" class="qr-studio__canvas-wrap">
+              <canvas id="qr-canvas" class="qr-studio__canvas" aria-label="QR-kód előnézet"></canvas>
+            </div>
+            <div class="qr-studio__actions">
+              <button id="qr-download-png" class="btn btn--primary" type="button">Letöltés PNG-ként</button>
+              <button id="qr-copy-btn" class="btn btn--ghost" type="button">Tartalom másolása</button>
+            </div>
+          </div>
+        </main>
+
+        <section class="qr-studio__tabs" aria-label="QR beállítások">
+          <div class="qr-studio__tab-list" role="tablist" aria-label="QR munkalap fülek">
+            <button id="qr-tab-link" class="qr-studio__tab" type="button" role="tab" aria-selected="true" data-tab="link">Link</button>
+            <button id="qr-tab-color" class="qr-studio__tab" type="button" role="tab" aria-selected="false" data-tab="color">Szín</button>
+          </div>
+
+          <div id="qr-panel-link" class="qr-studio__panel" data-panel="link" role="tabpanel">
+            <div class="qr-studio__panel-inner">
+              <div class="qr-studio__field-grid">
+                <div class="field qr-studio__field">
+                  <label class="field__label" for="qr-url">Link</label>
+                  <input id="qr-url" class="input" type="url" value="https://" placeholder="https://pelda.hu/oldal" autocomplete="url" />
+                </div>
+                <div class="field qr-studio__field">
+                  <label class="field__label" for="qr-utm-source">UTM Source</label>
+                  <input id="qr-utm-source" class="input" type="text" placeholder="pl. facebook" />
+                </div>
+                <div class="field qr-studio__field">
+                  <label class="field__label" for="qr-utm-medium">UTM Medium</label>
+                  <input id="qr-utm-medium" class="input" type="text" placeholder="pl. social" />
+                </div>
+                <div class="field qr-studio__field">
+                  <label class="field__label" for="qr-utm-campaign">UTM Campaign</label>
+                  <input id="qr-utm-campaign" class="input" type="text" placeholder="pl. tavaszi-kampany" />
+                </div>
+              </div>
+              <p class="qr-studio__hint">A kitöltött UTM mezők automatikusan hozzáadódnak a QR-kódban tárolt linkhez.</p>
+
+              <div class="field-row" style="margin-top: 14px; max-width: 260px;">
+                <label class="field__label" for="qr-type">Speciális adattípus</label>
+                <select id="qr-type" class="select">
+                  <option value="url">Link</option>
+                  <option value="text">Szöveg</option>
+                  <option value="wifi">WiFi</option>
+                  <option value="vcard">Névjegy</option>
+                </select>
+              </div>
+              <div id="qr-dynamic-inputs" class="field hidden"></div>
+            </div>
+          </div>
+
+          <div id="qr-panel-color" class="qr-studio__panel" data-panel="color" role="tabpanel" hidden>
+            <div class="qr-studio__panel-inner">
+              <div class="qr-studio__color-layout">
+                <div class="qr-studio__color-card">
+                  <div class="qr-studio__color-head">
+                    <p class="qr-studio__color-title">QR-kód színe</p>
+                    <button class="btn btn--ghost btn--sm qr-studio__eyedropper" type="button" data-qr-eyedropper="fg">Szín mintavétele</button>
+                  </div>
+                  <div class="qr-studio__color-controls">
+                    <input id="qr-fg-color" class="color-input qr-studio__color-input" type="color" value="#0f172a" aria-label="QR-kód színe" />
+                    <input id="qr-fg-hex" class="input" type="text" value="#0f172a" maxlength="7" aria-label="QR-kód színe HEX" />
+                  </div>
+                  <div class="qr-studio__palette" aria-label="QR-kód színpaletta">
+                    <button class="qr-studio__swatch" type="button" data-qr-color="#000000" data-qr-target="fg" style="--swatch:#000000" aria-label="#000000"></button><button class="qr-studio__swatch" type="button" data-qr-color="#1f2937" data-qr-target="fg" style="--swatch:#1f2937" aria-label="#1f2937"></button><button class="qr-studio__swatch" type="button" data-qr-color="#475569" data-qr-target="fg" style="--swatch:#475569" aria-label="#475569"></button><button class="qr-studio__swatch" type="button" data-qr-color="#64748b" data-qr-target="fg" style="--swatch:#64748b" aria-label="#64748b"></button><button class="qr-studio__swatch" type="button" data-qr-color="#94a3b8" data-qr-target="fg" style="--swatch:#94a3b8" aria-label="#94a3b8"></button><button class="qr-studio__swatch" type="button" data-qr-color="#cbd5e1" data-qr-target="fg" style="--swatch:#cbd5e1" aria-label="#cbd5e1"></button><button class="qr-studio__swatch" type="button" data-qr-color="#e2e8f0" data-qr-target="fg" style="--swatch:#e2e8f0" aria-label="#e2e8f0"></button><button class="qr-studio__swatch" type="button" data-qr-color="#ffffff" data-qr-target="fg" style="--swatch:#ffffff" aria-label="#ffffff"></button><button class="qr-studio__swatch" type="button" data-qr-color="#7f1d1d" data-qr-target="fg" style="--swatch:#7f1d1d" aria-label="#7f1d1d"></button><button class="qr-studio__swatch" type="button" data-qr-color="#dc2626" data-qr-target="fg" style="--swatch:#dc2626" aria-label="#dc2626"></button><button class="qr-studio__swatch" type="button" data-qr-color="#f97316" data-qr-target="fg" style="--swatch:#f97316" aria-label="#f97316"></button><button class="qr-studio__swatch" type="button" data-qr-color="#eab308" data-qr-target="fg" style="--swatch:#eab308" aria-label="#eab308"></button><button class="qr-studio__swatch" type="button" data-qr-color="#16a34a" data-qr-target="fg" style="--swatch:#16a34a" aria-label="#16a34a"></button><button class="qr-studio__swatch" type="button" data-qr-color="#10b981" data-qr-target="fg" style="--swatch:#10b981" aria-label="#10b981"></button><button class="qr-studio__swatch" type="button" data-qr-color="#06b6d4" data-qr-target="fg" style="--swatch:#06b6d4" aria-label="#06b6d4"></button><button class="qr-studio__swatch" type="button" data-qr-color="#0ea5e9" data-qr-target="fg" style="--swatch:#0ea5e9" aria-label="#0ea5e9"></button><button class="qr-studio__swatch" type="button" data-qr-color="#2563eb" data-qr-target="fg" style="--swatch:#2563eb" aria-label="#2563eb"></button><button class="qr-studio__swatch" type="button" data-qr-color="#4f46e5" data-qr-target="fg" style="--swatch:#4f46e5" aria-label="#4f46e5"></button><button class="qr-studio__swatch" type="button" data-qr-color="#7c3aed" data-qr-target="fg" style="--swatch:#7c3aed" aria-label="#7c3aed"></button><button class="qr-studio__swatch" type="button" data-qr-color="#a855f7" data-qr-target="fg" style="--swatch:#a855f7" aria-label="#a855f7"></button><button class="qr-studio__swatch" type="button" data-qr-color="#db2777" data-qr-target="fg" style="--swatch:#db2777" aria-label="#db2777"></button><button class="qr-studio__swatch" type="button" data-qr-color="#ec4899" data-qr-target="fg" style="--swatch:#ec4899" aria-label="#ec4899"></button><button class="qr-studio__swatch" type="button" data-qr-color="#f43f5e" data-qr-target="fg" style="--swatch:#f43f5e" aria-label="#f43f5e"></button>
+                  </div>
+                </div>
+
+                <div class="qr-studio__color-card">
+                  <div class="qr-studio__color-head">
+                    <p class="qr-studio__color-title">Háttérszín</p>
+                    <button class="btn btn--ghost btn--sm qr-studio__eyedropper" type="button" data-qr-eyedropper="bg">Szín mintavétele</button>
+                  </div>
+                  <div class="qr-studio__color-controls">
+                    <input id="qr-bg-color" class="color-input qr-studio__color-input" type="color" value="#ffffff" aria-label="Háttérszín" />
+                    <input id="qr-bg-hex" class="input" type="text" value="#ffffff" maxlength="7" aria-label="Háttérszín HEX" />
+                  </div>
+                  <div class="qr-studio__palette" aria-label="Háttér színpaletta">
+                    <button class="qr-studio__swatch" type="button" data-qr-color="#ffffff" data-qr-target="bg" style="--swatch:#ffffff" aria-label="#ffffff"></button><button class="qr-studio__swatch" type="button" data-qr-color="#f8fafc" data-qr-target="bg" style="--swatch:#f8fafc" aria-label="#f8fafc"></button><button class="qr-studio__swatch" type="button" data-qr-color="#e2e8f0" data-qr-target="bg" style="--swatch:#e2e8f0" aria-label="#e2e8f0"></button><button class="qr-studio__swatch" type="button" data-qr-color="#cbd5e1" data-qr-target="bg" style="--swatch:#cbd5e1" aria-label="#cbd5e1"></button><button class="qr-studio__swatch" type="button" data-qr-color="#94a3b8" data-qr-target="bg" style="--swatch:#94a3b8" aria-label="#94a3b8"></button><button class="qr-studio__swatch" type="button" data-qr-color="#64748b" data-qr-target="bg" style="--swatch:#64748b" aria-label="#64748b"></button><button class="qr-studio__swatch" type="button" data-qr-color="#475569" data-qr-target="bg" style="--swatch:#475569" aria-label="#475569"></button><button class="qr-studio__swatch" type="button" data-qr-color="#1f2937" data-qr-target="bg" style="--swatch:#1f2937" aria-label="#1f2937"></button><button class="qr-studio__swatch" type="button" data-qr-color="#000000" data-qr-target="bg" style="--swatch:#000000" aria-label="#000000"></button><button class="qr-studio__swatch" type="button" data-qr-color="#fef2f2" data-qr-target="bg" style="--swatch:#fef2f2" aria-label="#fef2f2"></button><button class="qr-studio__swatch" type="button" data-qr-color="#fee2e2" data-qr-target="bg" style="--swatch:#fee2e2" aria-label="#fee2e2"></button><button class="qr-studio__swatch" type="button" data-qr-color="#fecaca" data-qr-target="bg" style="--swatch:#fecaca" aria-label="#fecaca"></button><button class="qr-studio__swatch" type="button" data-qr-color="#ffedd5" data-qr-target="bg" style="--swatch:#ffedd5" aria-label="#ffedd5"></button><button class="qr-studio__swatch" type="button" data-qr-color="#fed7aa" data-qr-target="bg" style="--swatch:#fed7aa" aria-label="#fed7aa"></button><button class="qr-studio__swatch" type="button" data-qr-color="#fef3c7" data-qr-target="bg" style="--swatch:#fef3c7" aria-label="#fef3c7"></button><button class="qr-studio__swatch" type="button" data-qr-color="#fef9c3" data-qr-target="bg" style="--swatch:#fef9c3" aria-label="#fef9c3"></button><button class="qr-studio__swatch" type="button" data-qr-color="#ecfccb" data-qr-target="bg" style="--swatch:#ecfccb" aria-label="#ecfccb"></button><button class="qr-studio__swatch" type="button" data-qr-color="#dcfce7" data-qr-target="bg" style="--swatch:#dcfce7" aria-label="#dcfce7"></button><button class="qr-studio__swatch" type="button" data-qr-color="#d1fae5" data-qr-target="bg" style="--swatch:#d1fae5" aria-label="#d1fae5"></button><button class="qr-studio__swatch" type="button" data-qr-color="#ccfbf1" data-qr-target="bg" style="--swatch:#ccfbf1" aria-label="#ccfbf1"></button><button class="qr-studio__swatch" type="button" data-qr-color="#cffafe" data-qr-target="bg" style="--swatch:#cffafe" aria-label="#cffafe"></button><button class="qr-studio__swatch" type="button" data-qr-color="#dbeafe" data-qr-target="bg" style="--swatch:#dbeafe" aria-label="#dbeafe"></button><button class="qr-studio__swatch" type="button" data-qr-color="#e0e7ff" data-qr-target="bg" style="--swatch:#e0e7ff" aria-label="#e0e7ff"></button><button class="qr-studio__swatch" type="button" data-qr-color="#ede9fe" data-qr-target="bg" style="--swatch:#ede9fe" aria-label="#ede9fe"></button><button class="qr-studio__swatch" type="button" data-qr-color="#fae8ff" data-qr-target="bg" style="--swatch:#fae8ff" aria-label="#fae8ff"></button><button class="qr-studio__swatch" type="button" data-qr-color="#fce7f3" data-qr-target="bg" style="--swatch:#fce7f3" aria-label="#fce7f3"></button><button class="qr-studio__swatch" type="button" data-qr-color="#ffe4e6" data-qr-target="bg" style="--swatch:#ffe4e6" aria-label="#ffe4e6"></button>
+                  </div>
+                </div>
+              </div>
+              <p id="qr-contrast" class="qr-studio__contrast"></p>
+              <div class="field qr-studio__error">
+                <label class="field__label" for="qr-error-level">Hibatűrés</label>
+                <select id="qr-error-level" class="select">
+                  <option value="L">Alacsony (7%)</option>
+                  <option value="M" selected>Közepes (15%)</option>
+                  <option value="Q">Jó (25%)</option>
+                  <option value="H">Magas (30%)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
