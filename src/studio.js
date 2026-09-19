@@ -823,3 +823,48 @@
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
+function closeStudioContextMenu() {
+  const menu = el('#studio-context-menu')
+  if (!menu) return
+  menu.classList.add('hidden')
+  menu.setAttribute('aria-hidden', 'true')
+}
+function openStudioContextMenu(event) {
+  const menu = el('#studio-context-menu')
+  if (!menu) return
+  const rect = renderer.domElement.getBoundingClientRect()
+  const x = Math.min(Math.max(event.clientX - rect.left, 8), rect.width - 200)
+  const y = Math.min(Math.max(event.clientY - rect.top, 8), rect.height - 230)
+  menu.style.left = `${x}px`
+  menu.style.top = `${y}px`
+  menu.classList.remove('hidden')
+  menu.setAttribute('aria-hidden', 'false')
+  menu.querySelectorAll('[data-context-action]').forEach((button) => {
+    button.disabled = selectedIds.size === 0
+  })
+}
+function handleStudioContextAction(action) {
+  closeStudioContextMenu()
+  if (action === 'focus') focusSelected({ fit: false })
+  if (action === 'fit') focusSelected({ fit: true })
+  if (action === 'duplicate') duplicateSelected()
+  if (action === 'group') groupSelection()
+  if (action === 'ungroup') ungroupSelection()
+  if (action === 'delete') deleteSelected()
+}
+function deleteSelected() {
+  if (!selectedIds.size) return
+  const ids = new Set(selectedIds)
+  detachTransformTarget()
+  transformControls.detach()
+  const removed = elements.filter((element) => ids.has(element.id))
+  removed.forEach((element) => disposeElementMesh(element))
+  elements = elements.filter((element) => !ids.has(element.id))
+  selectedIds.clear()
+  selectedId = null
+  el('#studio-selected-props').classList.add('hidden')
+  updateSelectionVisuals()
+  renderElementList()
+  recordHistory()
+}
+
