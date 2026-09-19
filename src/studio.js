@@ -129,9 +129,11 @@ function renderSelectedModelInfo() {
 
   const dimensions = bounds.getSize(new THREE.Vector3())
   const dimensionText = dimensions.x.toFixed(1) + ' × ' + dimensions.y.toFixed(1) + ' × ' + dimensions.z.toFixed(1) + ' mm'
-  const infoParts = ['Méret: ' + dimensionText]
+  const infoParts = ['Befoglaló méret: ' + dimensionText]
   if (selected.length === 1 && selected[0].type === 'stl') {
+    infoParts.push('Fájl: ' + selected[0].name)
     infoParts.push('Háromszögek: ' + triangleCount.toLocaleString('hu-HU'))
+    infoParts.push('STL-egység: mm')
   }
   if (selected.length > 1) infoParts.push('Kijelölve: ' + selected.length + ' elem')
   info.textContent = infoParts.join(' · ')
@@ -151,7 +153,7 @@ function renderSelectedModelInfo() {
     status.textContent = 'Lebeg az asztal felett'
     status.dataset.state = 'warning'
   } else {
-    status.textContent = 'Az asztal területén'
+    status.textContent = 'Nyomtatható pozíció'
     status.dataset.state = 'ok'
   }
 }
