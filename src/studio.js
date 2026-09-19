@@ -12,6 +12,10 @@ let selectedId = null
 let isWireframe = false
 let initialized = false
 let animationHandle = null
+let history = []
+let historyIndex = -1
+let historyBusy = false
+let transformHistorySnapshot = null
 
 const SHAPE_DEFAULTS = {
   box: { label: 'Kocka', icon: 'cube', color: '#7c9cbf' },
@@ -62,6 +66,119 @@ function syncElementState(element) {
   refreshTransformInputs(element)
 }
 
+function captureSceneState() {
+  return elements.map((element) => ({
+    id: element.id,
+    type: element.type,
+    size: element.size,
+    color: element.color,
+    baseDimensions: { ...element.baseDimensions },
+    position: {
+      x: element.mesh.position.x,
+      y: element.mesh.position.y,
+      z: element.mesh.position.z,
+    },
+    rotation: {
+      x: element.mesh.rotation.x,
+      y: element.mesh.rotation.y,
+      z: element.mesh.rotation.z,
+    },
+    scale: {
+      x: element.mesh.scale.x,
+      y: element.mesh.scale.y,
+      z: element.mesh.scale.z,
+    },
+  }))
+}
+
+function updateHistoryUI() {
+  const undoButton = document.querySelector('#studio-undo')
+  const redoButton = document.querySelector('#studio-redo')
+  if (undoButton) undoButton.disabled = historyIndex <= 0
+  if (redoButton) redoButton.disabled = historyIndex >= history.length - 1
+}
+
+function recordHistory() {
+  if (historyBusy) return
+  const snapshot = captureSceneState()
+  const serialized = JSON.stringify(snapshot)
+  if (historyIndex >= 0 && JSON.stringify(history[historyIndex]) === serialized) return
+  history = history.slice(0, historyIndex + 1)
+  history.push(snapshot)
+  if (history.length > 50) history.shift()
+  historyIndex = history.length - 1
+  updateHistoryUI()
+}
+
+function createElementFromState(state) {
+  const geometry = createGeometry(state.type, state.baseDimensions)
+  const material = new THREE.MeshStandardMaterial({
+    color: state.color,
+    roughness: 0.35,
+    metalness: 0.4,
+    wireframe: isWireframe,
+  })
+  const mesh = new THREE.Mesh(geometry, material)
+  mesh.userData.elementId = state.id
+  mesh.position.set(state.position.x, state.position.y, state.position.z)
+  mesh.rotation.set(state.rotation.x, state.rotation.y, state.rotation.z)
+  mesh.scale.set(state.scale.x, state.scale.y, state.scale.z)
+  scene.add(mesh)
+  return {
+    ...state,
+    baseDimensions: { ...state.baseDimensions },
+    position: mesh.position.clone(),
+    rotation: mesh.rotation.clone(),
+    scale: mesh.scale.clone(),
+    dimensions: {
+      x: state.baseDimensions.x * state.scale.x,
+      y: state.baseDimensions.y * state.scale.y,
+      z: state.baseDimensions.z * state.scale.z,
+    },
+    mesh,
+  }
+}
+
+function disposeElementMesh(element) {
+  scene.remove(element.mesh)
+  element.mesh.geometry.dispose()
+  element.mesh.material.dispose()
+}
+
+function restoreHistory(index) {
+  if (index < 0 || index >= history.length) return
+  historyBusy = true
+  transformControls.detach()
+  elements.forEach(disposeElementMesh)
+  elements = history[index].map(createElementFromState)
+  historyIndex = index
+  selectedId = elements[0]?.id ?? null
+  if (selectedId) {
+    const selected = elements.find((element) => element.id === selectedId)
+    transformControls.attach(selected.mesh)
+    syncElementState(selected)
+    el('#studio-selected-props').classList.remove('hidden')
+    el('#studio-param-size').value = selected.size
+    el('#studio-val-size').textContent = `${selected.size} mm`
+    el('#studio-param-color').value = selected.color
+  } else {
+    el('#studio-selected-props').classList.add('hidden')
+  }
+  renderElementList()
+  updateHistoryUI()
+  historyBusy = false
+}
+
+function undoStudio() {
+  if (historyIndex <= 0) return
+  restoreHistory(historyIndex - 1)
+}
+
+function redoStudio() {
+  if (historyIndex >= history.length - 1) return
+  restoreHistory(historyIndex + 1)
+}
+
 function applyNumericTransform(axis, value) {
   const element = elements.find((item) => item.id === selectedId)
   if (!element || !Number.isFinite(value)) return
@@ -79,6 +196,7 @@ function applyNumericTransform(axis, value) {
 
   element.mesh.updateMatrixWorld(true)
   syncElementState(element)
+  recordHistory()
 }
 
 // A korábbi, csak ezen a képernyőn létező #toast elem helyett a közös
@@ -117,6 +235,7 @@ function addElement(type) {
   })
   renderElementList()
   selectElement(id)
+  recordHistory()
 }
 
 function removeElement(id) {
@@ -132,6 +251,7 @@ function removeElement(id) {
   element.mesh.geometry.dispose()
   element.mesh.material.dispose()
   renderElementList()
+  recordHistory()
 }
 
 function selectElement(id) {
@@ -209,9 +329,18 @@ function initThree() {
   transformControls.setSize(0.85)
   transformControls.addEventListener('dragging-changed', (event) => {
     controls.enabled = !event.value
+    if (event.value && selectedId) {
+      transformHistorySnapshot = captureSceneState()
+    }
     if (!event.value && selectedId) {
       const element = elements.find((item) => item.id === selectedId)
       if (element) syncElementState(element)
+      if (transformHistorySnapshot) {
+        const before = JSON.stringify(transformHistorySnapshot)
+        const after = JSON.stringify(captureSceneState())
+        if (before !== after) recordHistory()
+        transformHistorySnapshot = null
+      }
     }
   })
 
@@ -357,6 +486,8 @@ function bindUI() {
   document.querySelector('#studio-delete-selected').addEventListener('click', () => {
     if (selectedId) removeElement(selectedId)
   })
+  el('#studio-undo').addEventListener('click', undoStudio)
+  el('#studio-redo').addEventListener('click', redoStudio)
 
   el('#studio-param-size').addEventListener('input', (event) => {
     const element = elements.find((item) => item.id === selectedId)
@@ -372,6 +503,7 @@ function bindUI() {
     element.mesh.position.copy(position)
     element.mesh.position.y = size / 2
     syncElementState(element)
+    recordHistory()
   })
 
   el('#studio-param-color').addEventListener('input', (event) => {
@@ -379,6 +511,7 @@ function bindUI() {
     if (!element) return
     element.color = event.target.value
     element.mesh.material.color.set(event.target.value)
+    recordHistory()
   })
 
   el('#studio-view-front').addEventListener('click', () => setCameraView('front'))
@@ -402,6 +535,19 @@ function bindUI() {
 
   document.addEventListener('keydown', (event) => {
     if (event.target.closest('input, textarea, select, button')) return
+    if (event.ctrlKey || event.metaKey) {
+      if (event.key.toLowerCase() === 'z') {
+        event.preventDefault()
+        if (event.shiftKey) redoStudio()
+        else undoStudio()
+        return
+      }
+      if (event.key.toLowerCase() === 'y') {
+        event.preventDefault()
+        redoStudio()
+        return
+      }
+    }
     if (!selectedId) return
     if (event.key.toLowerCase() === 'w') setTransformMode('translate')
     if (event.key.toLowerCase() === 'e') setTransformMode('rotate')
@@ -422,4 +568,5 @@ export function initStudio() {
   bindUI()
   initThree()
   addElement('box')
+  recordHistory()
 }
