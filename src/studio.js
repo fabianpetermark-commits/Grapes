@@ -18,6 +18,8 @@ let historyIndex = -1
 let historyBusy = false
 let transformHistorySnapshot = null
 let transformPivot = null
+let snapEnabled = true
+let snapSize = 5
 
 const SHAPE_DEFAULTS = {
   box: { label: 'Kocka', icon: 'cube', color: '#7c9cbf' },
@@ -443,6 +445,95 @@ function ungroupSelection() {
   notifySuccess('A csoport felbontva.')
 }
 
+
+function getSelectedTransformUnits() {
+  const units = []
+  const seenGroups = new Set()
+
+  for (const element of elements) {
+    if (!selectedIds.has(element.id)) continue
+
+    if (element.groupId) {
+      if (seenGroups.has(element.groupId)) continue
+      seenGroups.add(element.groupId)
+      units.push(elements.filter((item) => item.groupId === element.groupId && selectedIds.has(item.id)))
+    } else {
+      units.push([element])
+    }
+  }
+
+  return units
+}
+
+function getUnitBounds(unit) {
+  const bounds = new THREE.Box3()
+  unit.forEach((element) => bounds.expandByObject(element.mesh))
+  return bounds
+}
+
+function moveUnit(unit, delta) {
+  unit.forEach((element) => {
+    element.mesh.position.add(delta)
+    element.mesh.updateMatrixWorld(true)
+    syncElementState(element)
+  })
+}
+
+function alignSelected(axis, edge) {
+  const units = getSelectedTransformUnits()
+  if (units.length < 2) {
+    notify('Az igazításhoz jelölj ki legalább két külön elemet vagy csoportot.')
+    return
+  }
+
+  detachTransformTarget()
+  transformControls.detach()
+
+  const reference = getUnitBounds(units[0])
+  const referenceValue = edge === 'min'
+    ? reference.min[axis]
+    : edge === 'max'
+      ? reference.max[axis]
+      : reference.getCenter(new THREE.Vector3())[axis]
+
+  for (const unit of units.slice(1)) {
+    const bounds = getUnitBounds(unit)
+    const currentValue = edge === 'min'
+      ? bounds.min[axis]
+      : edge === 'max'
+        ? bounds.max[axis]
+        : bounds.getCenter(new THREE.Vector3())[axis]
+
+    const delta = new THREE.Vector3()
+    delta[axis] = referenceValue - currentValue
+    moveUnit(unit, delta)
+  }
+
+  attachTransformTarget()
+  updateSelectionVisuals()
+  recordHistory()
+  notifySuccess('Az elemek igazítva.')
+}
+
+function setSnapEnabled(enabled) {
+  snapEnabled = enabled
+  transformControls.setTranslationSnap(snapEnabled ? snapSize : null)
+  const button = el('#studio-snap-toggle')
+  if (button) {
+    button.setAttribute('aria-pressed', String(snapEnabled))
+    button.textContent = snapEnabled ? `Snap: ${snapSize} mm` : 'Snap: ki'
+  }
+}
+
+function setSnapSize(value) {
+  const next = Number(value)
+  if (!Number.isFinite(next) || next <= 0) return
+  snapSize = next
+  transformControls.setTranslationSnap(snapEnabled ? snapSize : null)
+  const button = el('#studio-snap-toggle')
+  if (button && snapEnabled) button.textContent = `Snap: ${snapSize} mm`
+}
+
 function duplicateSelected() {
   if (!selectedIds.size) return
   const selected = elements.filter((element) => selectedIds.has(element.id))
@@ -534,6 +625,7 @@ function initThree() {
   transformControls = new TransformControls(camera, renderer.domElement)
   transformControls.setMode('translate')
   transformControls.setSize(0.85)
+  transformControls.setTranslationSnap(snapSize)
   transformControls.addEventListener('dragging-changed', (event) => {
     controls.enabled = !event.value
 
@@ -851,6 +943,17 @@ function bindUI() {
   el('#studio-group-selected').addEventListener('click', groupSelection)
   el('#studio-ungroup-selected').addEventListener('click', ungroupSelection)
   el('#studio-toggle-wireframe').addEventListener('click', toggleWireframe)
+  el('#studio-align-x-min').addEventListener('click', () => alignSelected('x', 'min'))
+  el('#studio-align-x-center').addEventListener('click', () => alignSelected('x', 'center'))
+  el('#studio-align-x-max').addEventListener('click', () => alignSelected('x', 'max'))
+  el('#studio-align-y-min').addEventListener('click', () => alignSelected('y', 'min'))
+  el('#studio-align-y-center').addEventListener('click', () => alignSelected('y', 'center'))
+  el('#studio-align-y-max').addEventListener('click', () => alignSelected('y', 'max'))
+  el('#studio-align-z-min').addEventListener('click', () => alignSelected('z', 'min'))
+  el('#studio-align-z-center').addEventListener('click', () => alignSelected('z', 'center'))
+  el('#studio-align-z-max').addEventListener('click', () => alignSelected('z', 'max'))
+  el('#studio-snap-toggle').addEventListener('click', () => setSnapEnabled(!snapEnabled))
+  el('#studio-snap-size').addEventListener('change', (event) => setSnapSize(event.target.value))
 
   for (const [selector, axis] of [
     ['#studio-pos-x', 'pos-x'], ['#studio-pos-y', 'pos-y'], ['#studio-pos-z', 'pos-z'],
