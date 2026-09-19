@@ -22,20 +22,52 @@ function isSolidColor(colorString) {
 // kimaradó CSS-gradiensek is átjöjjenek az importnál, ne csak az
 // egyszínű hátterek.
 function parseLinearGradient(backgroundImage, width, height) {
-  const match = backgroundImage?.match(/^linear-gradient\(([^)]+)\)$/)
+  const match = backgroundImage?.match(/^linear-gradient\\((.*)\\)$/)
   if (!match) return null
 
-  const parts = match[1].split(/,(?![^(]*\))/).map((part) => part.trim())
-  let angleDeg = 180 // a CSS-ben az "irány nélküli" gradiens alapból felülről lefelé megy
+  const parts = match[1].split(/,(?![^()]*\\))/).map((part) => part.trim())
+  if (parts.length < 2) return null
+
+  let direction = 'to bottom'
   let colorParts = parts
-  const angleMatch = parts[0].match(/^(-?[\d.]+)deg$/)
-  if (angleMatch) {
-    angleDeg = parseFloat(angleMatch[1])
+
+  const first = parts[0]
+  if (/^-?[\\d.]+deg$/.test(first) || /^to (?:top|bottom|left|right)(?:\\s+(?:top|bottom|left|right))?$/.test(first)) {
+    direction = first
     colorParts = parts.slice(1)
   }
 
-  const colors = colorParts.map((part) => part.split(/\s+/)[0])
+  if (colorParts.length < 2) return null
+
+  function colorStopValue(part) {
+    // Strip an optional trailing CSS stop position while preserving commas
+    // inside rgb()/rgba()/hsl()/hsla() color functions.
+    return part.replace(/\\s+[-+]?(?:\\d*\\.)?\\d+%?$/, '').trim()
+  }
+
+  const colors = colorParts.map(colorStopValue).filter(Boolean)
   if (colors.length < 2) return null
+
+  let angleDeg = 180
+  if (/^-?[\\d.]+deg$/.test(direction)) {
+    angleDeg = parseFloat(direction)
+  } else {
+    const directions = {
+      'to top': 0,
+      'to right': 90,
+      'to bottom': 180,
+      'to left': 270,
+      'to top right': 45,
+      'to right top': 45,
+      'to bottom right': 135,
+      'to right bottom': 135,
+      'to bottom left': 225,
+      'to left bottom': 225,
+      'to top left': 315,
+      'to left top': 315,
+    }
+    angleDeg = directions[direction] ?? 180
+  }
 
   // CSS gradiens-szög: 0deg felfelé mutat, óramutató járása szerint nő —
   // ezt irányvektorra váltjuk, majd a doboz közepéhez képest húzzuk ki a
