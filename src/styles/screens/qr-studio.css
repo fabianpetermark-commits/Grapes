@@ -3,12 +3,14 @@
   flex-direction: column;
   min-height: 0;
   padding: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .qr-studio__preview {
   flex: 1 1 auto;
   min-height: 300px;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -37,10 +39,10 @@
 
 .qr-studio__canvas {
   display: block;
-  width: 280px;
-  height: 280px;
-  max-width: min(70vw, 280px);
-  max-height: min(70vw, 280px);
+  width: min(280px, calc(100vw - 72px));
+  height: auto;
+  aspect-ratio: 1;
+  max-width: 100%;
   image-rendering: pixelated;
 }
 
@@ -227,9 +229,14 @@
 }
 
 @media (max-width: 640px) {
+  .qr-studio__body {
+    overflow-y: auto;
+  }
+
   .qr-studio__preview {
-    min-height: 260px;
-    padding: 22px 16px;
+    flex: 0 0 auto;
+    min-height: 0;
+    padding: 24px 12px;
   }
 
   .qr-studio__canvas-wrap {
