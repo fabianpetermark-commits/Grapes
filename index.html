@@ -611,7 +611,7 @@
                 </label>
                 <input id="studio-param-size" class="range" type="range" min="10" max="200" value="60" />
               </div>
-              <p class="panel__group-label">Pontos transzformáció</p>
+              <p class="panel__group-label studio__subsection-label">Pontos transzformáció</p>
               <div class="studio__transform-grid" aria-label="Pontos transzformáció">
                 <div class="studio__transform-group">
                   <span class="studio__transform-title">Pozíció (mm)</span>
@@ -643,7 +643,7 @@
                 <input id="studio-param-color" class="color-input" type="color" value="#4c8dfd" />
               </div>
 
-              <div class="studio__align-grid" aria-label="Igazítás">
+              <details class="studio__inspector-section" open><summary>Igazítás és Snap</summary><div class="studio__inspector-section-body"><div class="studio__align-grid" aria-label="Igazítás">
                 <span class="studio__transform-title">Igazítás</span>
                 <div class="studio__align-row">
                   <button id="studio-align-x-min" class="btn btn--ghost btn--sm" type="button" title="Balra, X minimum">X bal</button>
@@ -673,7 +673,8 @@
                   </select>
                 </label>
               </div>
-              <div class="studio__object-actions" aria-label="Objektum műveletek">
+              </div></details>
+              <details class="studio__inspector-section"><summary>Objektum műveletek</summary><div class="studio__inspector-section-body"><div class="studio__object-actions" aria-label="Objektum műveletek">
                 <button id="studio-group-selected" class="btn btn--ghost" type="button">Csoport</button>
                 <button id="studio-ungroup-selected" class="btn btn--ghost" type="button">Szétbontás</button>
                 <button id="studio-toggle-wireframe" class="btn btn--ghost" type="button" aria-pressed="false">Drótváz</button>
@@ -681,7 +682,7 @@
               <button id="studio-duplicate-selected" class="btn btn--ghost btn--block" type="button">Duplikálás</button>
               <button id="studio-delete-selected" class="btn btn--danger btn--block" type="button">
                 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-trash" /></svg>Elem törlése
-              </button>
+              </button></div></details>
             </div>
 
             <dl class="studio__stats">
