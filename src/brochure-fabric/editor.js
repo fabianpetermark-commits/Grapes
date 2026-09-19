@@ -345,6 +345,7 @@ function setupHistory(history) {
   document.querySelector('#fabric-redo-btn').addEventListener('click', () => history.redo())
 
   let clipboard = null
+  let clipboardPasteCount = 0
   const MOVE_STEP = 1
   const MOVE_STEP_LARGE = 10
 
@@ -369,9 +370,8 @@ function setupHistory(history) {
     canvas.requestRenderAll()
   }
 
-  const cloneAndAdd = async (source) => {
+  const cloneAndAdd = async (source, offset = MOVE_STEP_LARGE) => {
     const clone = await source.clone()
-    const offset = MOVE_STEP_LARGE
 
     if (clone.type === 'activeselection') {
       const objects = clone.getObjects()
@@ -408,13 +408,17 @@ function setupHistory(history) {
       if (!active || active.isEditing) return
       event.preventDefault()
       clipboard = await active.clone()
+      clipboardPasteCount = 0
       return
     }
 
     if (modifier && event.key.toLowerCase() === 'v') {
       if (!clipboard) return
       event.preventDefault()
-      await history.batch(() => cloneAndAdd(clipboard))
+      await history.batch(async () => {
+        clipboardPasteCount += 1
+        await cloneAndAdd(clipboard, MOVE_STEP_LARGE * clipboardPasteCount)
+      })
       return
     }
 
