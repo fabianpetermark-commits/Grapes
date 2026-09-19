@@ -116,14 +116,23 @@ export function initHistory(canvas) {
   // Kezdeti (üres lap) állapot mentése.
   reset()
 
+  function cancelPendingRecord() {
+    if (debounceTimer) {
+      clearTimeout(debounceTimer)
+      debounceTimer = null
+    }
+  }
+
   async function undo() {
     if (isRestoring || index <= 0) return
+    cancelPendingRecord()
     index -= 1
     await restore(stack[index])
   }
 
   async function redo() {
     if (isRestoring || index >= stack.length - 1) return
+    cancelPendingRecord()
     index += 1
     await restore(stack[index])
   }
