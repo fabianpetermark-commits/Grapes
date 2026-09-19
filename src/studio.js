@@ -136,6 +136,7 @@ function initThree() {
 
   transformControls = new TransformControls(camera, renderer.domElement)
   transformControls.setMode('translate')
+  transformControls.setSize(0.85)
   transformControls.addEventListener('dragging-changed', (event) => {
     controls.enabled = !event.value
   })
@@ -218,6 +219,17 @@ function setCameraView(view) {
   controls.update()
 }
 
+function setTransformMode(mode) {
+  transformControls.setMode(mode)
+  for (const [id, value] of [
+    ['#studio-transform-move', mode === 'translate'],
+    ['#studio-transform-rotate', mode === 'rotate'],
+    ['#studio-transform-scale', mode === 'scale'],
+  ]) {
+    el(id).setAttribute('aria-pressed', String(value))
+  }
+}
+
 function toggleWireframe() {
   isWireframe = !isWireframe
   elements.forEach((element) => {
@@ -293,7 +305,18 @@ function bindUI() {
   el('#studio-view-front').addEventListener('click', () => setCameraView('front'))
   el('#studio-view-back').addEventListener('click', () => setCameraView('back'))
   el('#studio-view-iso').addEventListener('click', () => setCameraView('iso'))
+  el('#studio-transform-move').addEventListener('click', () => setTransformMode('translate'))
+  el('#studio-transform-rotate').addEventListener('click', () => setTransformMode('rotate'))
+  el('#studio-transform-scale').addEventListener('click', () => setTransformMode('scale'))
   el('#studio-toggle-wireframe').addEventListener('click', toggleWireframe)
+
+  document.addEventListener('keydown', (event) => {
+    if (event.target.closest('input, textarea, select, button')) return
+    if (!selectedId) return
+    if (event.key.toLowerCase() === 'w') setTransformMode('translate')
+    if (event.key.toLowerCase() === 'e') setTransformMode('rotate')
+    if (event.key.toLowerCase() === 'r') setTransformMode('scale')
+  })
   el('#studio-download-stl-btn').addEventListener('click', downloadSTL)
 }
 
