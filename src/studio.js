@@ -589,16 +589,26 @@ function renderElementList() {
   }
 
   for (const element of elements) {
+    const isSelected = selectedIds.has(element.id)
     const row = create('button', {
       type: 'button',
-      class: `layer${element.id === selectedId ? ' is-active' : ''}`,
+      class: `layer${isSelected ? ' is-active' : ''}`,
+      'aria-pressed': String(isSelected),
+      title: `${SHAPE_DEFAULTS[element.type].label}${element.groupId ? ' · Csoport' : ''}`,
     })
-    row.append(create('span', { class: 'layer__name', textContent: `${SHAPE_DEFAULTS[element.type].label}${element.groupId ? ' · Csoport' : ''}` }))
+    row.append(create('span', { class: 'layer__name', textContent: SHAPE_DEFAULTS[element.type].label }))
+    if (element.groupId) row.append(create('span', { class: 'studio__layer-badge', textContent: 'Csoport' }))
     row.addEventListener('click', (event) => selectElement(element.id, { additive: event.ctrlKey || event.metaKey }))
     list.append(row)
   }
 
   el('#studio-element-count').textContent = String(elements.length)
+  const selectionCount = selectedIds.size
+  const selectionLabel = selectionCount === 1 ? '1 kijelölve' : `${selectionCount} kijelölve`
+  const selectionSummary = el('#studio-selection-count')
+  if (selectionSummary) selectionSummary.textContent = selectionLabel
+  const selectedCount = el('#studio-selected-count')
+  if (selectedCount) selectedCount.textContent = selectionCount === 1 ? '1 elem' : `${selectionCount} elem`
 }
 
 function initThree() {
