@@ -1,10 +1,9 @@
-// Undo/redo history stack. A Fabric-nak (ellentétben a GrapesJS
-// UndoManager-rel) nincs beépített visszavonás/mégis — minden módosító
-// esemény után pillanatképet (`canvas.toJSON()`) veszünk, és
-// `canvas.loadFromJSON()`-nel ugrunk a megfelelő indexre. A
-// `loadFromJSON` maga is triggereli a módosító eseményeket, ezért a
-// history-push logikát ideiglenesen kikapcsoljuk betöltés alatt
-// (`isRestoring`), különben végtelen ciklus/duplikált bejegyzés lenne.
+// Undo/redo history stack for the Fabric editor.
+//
+// A snapshot is recorded after direct Fabric modifications and explicitly
+// from property-panel operations (Fabric's set() does not emit
+// object:modified). Compound operations can be wrapped in batch(), so one
+// user action creates one history entry instead of several intermediate ones.
 
 const MAX_HISTORY = 50
 
@@ -12,44 +11,80 @@ export function initHistory(canvas) {
   const stack = []
   let index = -1
   let isRestoring = false
+  let batchDepth = 0
+  let batchDirty = false
+
+  function snapshot() {
+    return JSON.stringify(canvas.toJSON())
+  }
 
   function pushSnapshot() {
     if (isRestoring) return
-    const snapshot = JSON.stringify(canvas.toJSON())
+    const current = snapshot()
+    if (stack[index] === current) return
     stack.splice(index + 1)
-    stack.push(snapshot)
-    if (stack.length > MAX_HISTORY) {
-      stack.shift()
-    }
+    stack.push(current)
+    if (stack.length > MAX_HISTORY) stack.shift()
     index = stack.length - 1
   }
 
-  function restore(snapshot) {
+  function record() {
+    if (isRestoring) return
+    if (batchDepth > 0) {
+      batchDirty = true
+      return
+    }
+    pushSnapshot()
+  }
+
+  function batch(fn) {
+    if (isRestoring) return fn()
+    batchDepth += 1
+    try {
+      return fn()
+    } finally {
+      batchDepth -= 1
+      if (batchDepth === 0 && batchDirty) {
+        batchDirty = false
+        pushSnapshot()
+      }
+    }
+  }
+
+  async function restore(snapshotText) {
     isRestoring = true
-    canvas.loadFromJSON(JSON.parse(snapshot)).then(() => {
+    try {
+      await canvas.loadFromJSON(JSON.parse(snapshotText))
       canvas.requestRenderAll()
+    } finally {
       isRestoring = false
-    })
+    }
   }
 
-  canvas.on('object:added', pushSnapshot)
-  canvas.on('object:removed', pushSnapshot)
-  canvas.on('object:modified', pushSnapshot)
+  canvas.on('object:added', record)
+  canvas.on('object:removed', record)
+  canvas.on('object:modified', record)
 
-  // Kezdő (üres lap) állapot mentése.
-  pushSnapshot()
+  function reset() {
+    stack.length = 0
+    index = -1
+    pushSnapshot()
+  }
 
-  function undo() {
-    if (index <= 0) return
+  // Kezdeti (üres lap) állapot mentése.
+  reset()
+
+  async function undo() {
+    if (isRestoring || index <= 0) return
     index -= 1
-    restore(stack[index])
+    await restore(stack[index])
   }
 
-  function redo() {
-    if (index >= stack.length - 1) return
+  async function redo() {
+    if (isRestoring || index >= stack.length - 1) return
     index += 1
-    restore(stack[index])
+    await restore(stack[index])
   }
 
-  return { undo, redo }
+  return { undo, redo, record, batch, reset }
 }
