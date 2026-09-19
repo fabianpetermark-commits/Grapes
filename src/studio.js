@@ -9,6 +9,7 @@ import { notify, notifyError, notifySuccess } from './ui/toast.js'
 let scene, camera, renderer, controls, transformControls
 let elements = []
 let selectedId = null
+let selectedIds = new Set()
 let isWireframe = false
 let initialized = false
 let animationHandle = null
@@ -242,11 +243,14 @@ function removeElement(id) {
   const index = elements.findIndex((element) => element.id === id)
   if (index === -1) return
   const [element] = elements.splice(index, 1)
+  selectedIds.delete(id)
   if (selectedId === id) {
+    selectedId = [...selectedIds][0] ?? null
     transformControls.detach()
-    selectedId = null
-    document.querySelector('#studio-selected-props').classList.add('hidden')
+    if (selectedId) selectElement(selectedId)
+    else document.querySelector('#studio-selected-props').classList.add('hidden')
   }
+  updateSelectionVisuals()
   scene.remove(element.mesh)
   element.mesh.geometry.dispose()
   element.mesh.material.dispose()
@@ -254,12 +258,67 @@ function removeElement(id) {
   recordHistory()
 }
 
-function selectElement(id) {
+function updateSelectionVisuals() {
+  for (const element of elements) {
+    element.mesh.material.emissive.set(selectedIds.has(element.id) ? 0x335577 : 0x000000)
+    element.mesh.material.emissiveIntensity = selectedIds.has(element.id) ? 0.45 : 0
+  }
+}
+
+function selectElement(id, { additive = false } = {}) {
   const element = elements.find((item) => item.id === id)
   if (!element) return
-  selectedId = id
-  transformControls.attach(element.mesh)
-  syncElementState(element)
+
+  if (additive) {
+    if (selectedIds.has(id)) {
+      selectedIds.delete(id)
+      if (selectedId === id) selectedId = [...selectedIds][0] ?? null
+    } else {
+      selectedIds.add(id)
+      selectedId = id
+    }
+  } else {
+    selectedIds = new Set([id])
+    selectedId = id
+  }
+
+  if (selectedId) {
+    const primary = elements.find((item) => item.id === selectedId)
+    transformControls.attach(primary.mesh)
+    syncElementState(primary)
+    el('#studio-selected-props').classList.remove('hidden')
+    el('#studio-param-size').value = primary.size
+    el('#studio-val-size').textContent = `${primary.size} mm`
+    el('#studio-param-color').value = primary.color
+    refreshTransformInputs(primary)
+  } else {
+    transformControls.detach()
+    el('#studio-selected-props').classList.add('hidden')
+  }
+  updateSelectionVisuals()
+  renderElementList()
+}
+
+function selectElements(ids) {
+  const validIds = ids.filter((id) => elements.some((element) => element.id === id))
+  selectedIds = new Set(validIds)
+  selectedId = validIds[0] ?? null
+  if (selectedId) {
+    const primary = elements.find((item) => item.id === selectedId)
+    transformControls.attach(primary.mesh)
+    syncElementState(primary)
+    el('#studio-selected-props').classList.remove('hidden')
+    el('#studio-param-size').value = primary.size
+    el('#studio-val-size').textContent = `${primary.size} mm`
+    el('#studio-param-color').value = primary.color
+    refreshTransformInputs(primary)
+  } else {
+    transformControls.detach()
+    el('#studio-selected-props').classList.add('hidden')
+  }
+  updateSelectionVisuals()
+  renderElementList()
+}
 
   el('#studio-selected-props').classList.remove('hidden')
   el('#studio-param-size').value = element.size
@@ -270,11 +329,50 @@ function selectElement(id) {
 }
 
 function deselect() {
-  if (selectedId === null) return
+  if (selectedId === null && selectedIds.size === 0) return
   selectedId = null
+  selectedIds.clear()
   transformControls.detach()
   el('#studio-selected-props').classList.add('hidden')
+  updateSelectionVisuals()
   renderElementList()
+}
+
+function createElementId() {
+  return `el-${Date.now()}-${Math.floor(Math.random() * 1000000)}`
+}
+
+function duplicateSelected() {
+  if (!selectedIds.size) return
+  const selected = elements.filter((element) => selectedIds.has(element.id))
+  const duplicates = selected.map((element, index) => {
+    const state = {
+      id: createElementId(),
+      type: element.type,
+      size: element.size,
+      color: element.color,
+      baseDimensions: { ...element.baseDimensions },
+      position: {
+        x: element.mesh.position.x + 20,
+        y: element.mesh.position.y,
+        z: element.mesh.position.z + 20 + index * 4,
+      },
+      rotation: {
+        x: element.mesh.rotation.x,
+        y: element.mesh.rotation.y,
+        z: element.mesh.rotation.z,
+      },
+      scale: {
+        x: element.mesh.scale.x,
+        y: element.mesh.scale.y,
+        z: element.mesh.scale.z,
+      },
+    }
+    return createElementFromState(state)
+  })
+  elements.push(...duplicates)
+  selectElements(duplicates.map((element) => element.id))
+  recordHistory()
 }
 
 function renderElementList() {
@@ -296,7 +394,7 @@ function renderElementList() {
       class: `layer${element.id === selectedId ? ' is-active' : ''}`,
     })
     row.append(create('span', { class: 'layer__name', textContent: SHAPE_DEFAULTS[element.type].label }))
-    row.addEventListener('click', () => selectElement(element.id))
+    row.addEventListener('click', (event) => selectElement(element.id, { additive: event.ctrlKey || event.metaKey }))
     list.append(row)
   }
 
@@ -382,7 +480,7 @@ function initThree() {
     const meshes = elements.map((element) => element.mesh)
     const hits = raycaster.intersectObjects(meshes, false)
     if (hits.length) {
-      selectElement(hits[0].object.userData.elementId)
+      selectElement(hits[0].object.userData.elementId, { additive: event.ctrlKey || event.metaKey })
     } else {
       // Üres területre kattintva a kijelölés megszűnik. Korábban a
       // gizmó és a tulajdonságpanel ilyenkor is az előző elemen maradt.
@@ -569,9 +667,22 @@ function bindUI() {
   document.querySelector('#studio-add-sphere').addEventListener('click', () => addElement('sphere'))
 
   document.querySelector('#studio-delete-selected').addEventListener('click', () => {
-    if (selectedId) removeElement(selectedId)
+    if (selectedIds.size > 1) {
+      const ids = [...selectedIds]
+      ids.forEach(removeElement)
+      selectedIds.clear()
+      selectedId = null
+      transformControls.detach()
+      el('#studio-selected-props').classList.add('hidden')
+      updateSelectionVisuals()
+      renderElementList()
+      recordHistory()
+    } else if (selectedId) {
+      removeElement(selectedId)
+    }
   })
   el('#studio-undo').addEventListener('click', undoStudio)
+  el('#studio-duplicate-selected').addEventListener('click', duplicateSelected)
   el('#studio-redo').addEventListener('click', redoStudio)
 
   el('#studio-param-size').addEventListener('input', (event) => {
@@ -636,11 +747,28 @@ function bindUI() {
         return
       }
     }
+    if (event.key.toLowerCase() === 'd' && event.shiftKey) {
+      event.preventDefault()
+      duplicateSelected()
+      return
+    }
     if (!selectedId) return
     if (event.key.toLowerCase() === 'w') setTransformMode('translate')
     if (event.key.toLowerCase() === 'e') setTransformMode('rotate')
     if (event.key.toLowerCase() === 'r') setTransformMode('scale')
     if (event.key.toLowerCase() === 'f') focusSelected({ fit: true })
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      event.preventDefault()
+      const ids = [...selectedIds]
+      ids.forEach(removeElement)
+      selectedIds.clear()
+      selectedId = null
+      transformControls.detach()
+      el('#studio-selected-props').classList.add('hidden')
+      updateSelectionVisuals()
+      renderElementList()
+      recordHistory()
+    }
   })
   el('#studio-download-stl-btn').addEventListener('click', downloadSTL)
 }
