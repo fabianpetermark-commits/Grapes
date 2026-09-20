@@ -131,14 +131,30 @@ async function downloadBook(fileId) {
 }
 async function sendBook(fileId) {
   if (!accessToken) return setStatus('Előbb csatlakoztasd a Google Drive-ot.', 'error')
+  if (!TRANSFER_BROKER_URL) return setStatus('Az E-book Transfer broker nincs konfigurálva.', 'error')
   const transferWindow = window.open('about:blank', '_blank')
   try {
     const meta = await (await driveRequest(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=name`)).json()
-    if (transferWindow) transferWindow.location.href = buildBrokerUrl({ action: 'create', fileId, returnUrl: new URL(window.location.href).toString().split('?')[0] })
-    else await renderTransferQr(fileId, meta.name)
+    await driveRequest(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'anyone', role: 'reader', allowFileDiscovery: false }),
+    }).catch((error) => {
+      if (!String(error.message).toLowerCase().includes('already')) throw error
+    })
+    const returnUrl = new URL(window.location.href)
+    returnUrl.search = ''
+    returnUrl.hash = ''
+    const brokerUrl = buildBrokerUrl({ action: 'create', fileId, returnUrl: returnUrl.toString() })
+    if (transferWindow) transferWindow.location.href = brokerUrl
+    else window.location.href = brokerUrl
+    $('#ebook-transfer-name').textContent = meta.name
+    $('#ebook-transfer-url').value = brokerUrl
+    $('#ebook-transfer-panel').hidden = false
+    setStatus('Az átvitel előkészítése megnyílt új lapon. Ott jelenik meg a 6 karakteres kód és a QR-kód.', 'success')
   } catch {
     if (transferWindow) transferWindow.close()
-    setStatus('Az átvitel előkészítése nem sikerült.', 'error')
+    setStatus('Az átvitel előkészítése nem sikerült. Ellenőrizd a Drive-hozzáférést.', 'error')
   }
 }
 export function initEbookLibrary() {
