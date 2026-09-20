@@ -26,7 +26,7 @@ jobs:
       - run: npm ci
       - run: npm run build
         env:
-          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
           VITE_EBOOK_TRANSFER_BROKER_URL: https://script.google.com/macros/s/AKfycbyzbrHT5efr_skQUw_ipSsEwwdtt9TyvZb45uqSsY5UUUuwEwjISKr2bQdhoK9MZU_S/exec
       - uses: actions/upload-pages-artifact@v3
         with:
