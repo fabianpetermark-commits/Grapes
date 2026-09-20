@@ -1,3 +1,4 @@
+import QRCode from 'qrcode'
 import './styles/screens/ebook-library.css'
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
@@ -12,6 +13,53 @@ const ext = (name = '') => name.split('.').pop().toLowerCase()
 const formatSize = (bytes) => !Number.isFinite(bytes) ? '—' : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
 function setStatus(message, kind = '') { const node = $('#ebook-status'); if (node) { node.textContent = message; node.dataset.kind = kind } }
+function makeTransferCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+}
+function buildTransferUrl(fileId, code) {
+  const url = new URL(window.location.href)
+  url.search = ''
+  url.hash = ''
+  url.searchParams.set('ebook-transfer', fileId)
+  url.searchParams.set('code', code)
+  return url.toString()
+}
+async function createPublicTransfer(fileId, name) {
+  try {
+    await driveRequest(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'anyone', role: 'reader', allowFileDiscovery: false }),
+    })
+  } catch (error) {
+    if (!String(error.message).includes('already')) throw error
+  }
+  const code = makeTransferCode()
+  const url = buildTransferUrl(fileId, code)
+  const canvas = $('#ebook-transfer-qr')
+  if (canvas) await QRCode.toCanvas(canvas, url, { width: 260, margin: 2, errorCorrectionLevel: 'M' })
+  $('#ebook-transfer-name').textContent = name
+  $('#ebook-transfer-code').textContent = code
+  $('#ebook-transfer-url').value = url
+  $('#ebook-transfer-panel').hidden = false
+  setStatus('Átvitel kész. Az e-olvasóval olvasd be a QR-kódot.', 'success')
+}
+function closeTransfer() { const panel = $('#ebook-transfer-panel'); if (panel) panel.hidden = true }
+function handleTransferLink() {
+  const params = new URLSearchParams(window.location.search)
+  const fileId = params.get('ebook-transfer')
+  const code = params.get('code')
+  if (!fileId || !code) return
+  const panel = $('#ebook-receiver-panel'); if (!panel) return
+  $('#ebook-receiver-code').textContent = code
+  $('#ebook-receiver-download').href = `https://drive.usercontent.google.com/download?id=${encodeURIComponent(fileId)}&export=download`
+  panel.hidden = false
+  $('#ebook-receiver-open').href = `https://drive.google.com/file/d/${encodeURIComponent(fileId)}/view`
+}
+async function renderTransferQr(fileId, name) {
+  if (!accessToken) return setStatus('Előbb csatlakoztasd a Google Drive-ot.', 'error')
+  try { await createPublicTransfer(fileId, name) } catch { setStatus('Az e-olvasó megosztási linkjének létrehozása nem sikerült. Ellenőrizd a Drive-hozzáférést.', 'error') }
+}
 function renderBooks(books = []) {
   const list = $('#ebook-list'); const empty = $('#ebook-empty'); if (!list || !empty) return
   list.replaceChildren(); empty.hidden = books.length > 0
@@ -77,8 +125,11 @@ async function downloadBook(fileId) {
   try { const meta=await(await driveRequest(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=name`)).json(); const blob=await(await driveRequest(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`)).blob(); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=meta.name; a.click(); URL.revokeObjectURL(url) } catch { setStatus('A letöltés nem sikerült.','error') }
 }
 async function sendBook(fileId) {
-  const meta=await(await driveRequest(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=name`)).json()
-  setStatus(`${meta.name} kijelölve átvitelre. Az e-olvasó párosítás a következő lépésben készül el.`,'success')
+  if (!accessToken) return setStatus('Előbb csatlakoztasd a Google Drive-ot.', 'error')
+  try {
+    const meta = await (await driveRequest(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=name`)).json()
+    await renderTransferQr(fileId, meta.name)
+  } catch { setStatus('Az átvitel előkészítése nem sikerült.', 'error') }
 }
 export function initEbookLibrary() {
   if(initialized) return refreshLibrary(); initialized=true
@@ -86,5 +137,8 @@ export function initEbookLibrary() {
   $('#ebook-file-input')?.addEventListener('change',(e)=>{const file=e.target.files?.[0];if(file)uploadBook(file);e.target.value=''})
   $('#ebook-upload-btn')?.addEventListener('click',()=>$('#ebook-file-input')?.click())
   $('#ebook-refresh-btn')?.addEventListener('click',refreshLibrary)
+  $('#ebook-transfer-close')?.addEventListener('click', closeTransfer)
+  $('#ebook-transfer-copy')?.addEventListener('click', async () => { try { await navigator.clipboard.writeText($('#ebook-transfer-url').value); setStatus('Átviteli link kimásolva.', 'success') } catch { setStatus('A link másolása nem sikerült.', 'error') } })
+  handleTransferLink()
   setStatus(CLIENT_ID?'Csatlakoztasd a saját Google Drive-odat.':'Drive nincs konfigurálva. Állítsd be a VITE_GOOGLE_CLIENT_ID értéket.',CLIENT_ID?'':'error')
 }

@@ -786,6 +786,16 @@
           <span class="btn__label">Főmenü</span>
         </button>
       </header>
+      <section id="ebook-receiver-panel" class="ebook-library__transfer ebook-library__receiver" hidden>
+        <div class="ebook-library__transfer-card">
+          <p class="ebook-library__eyebrow">E-olvasó mód</p>
+          <h2>Átvétel kész</h2>
+          <p>Az átvitel kódja:</p>
+          <strong id="ebook-receiver-code" class="ebook-library__receiver-code"></strong>
+          <a id="ebook-receiver-download" class="btn btn--primary btn--block" href="#" download>📖 E-book letöltése</a>
+          <a id="ebook-receiver-open" class="btn btn--ghost btn--block" href="#" target="_blank" rel="noopener">Drive megnyitása</a>
+        </div>
+      </section>
       <main class="ebook-library__body">
         <section class="ebook-library__hero">
           <div>
@@ -799,6 +809,26 @@
           </div>
         </section>
         <div id="ebook-status" class="ebook-library__status" role="status">Drive kapcsolat ellenőrzése…</div>
+      <section id="ebook-transfer-panel" class="ebook-library__transfer" hidden aria-label="E-olvasó átvitel">
+        <div class="ebook-library__transfer-card">
+          <div class="ebook-library__transfer-head">
+            <div><p class="ebook-library__eyebrow">E-olvasó párosítás</p><h2 id="ebook-transfer-name">E-book</h2></div>
+            <button id="ebook-transfer-close" class="btn btn--ghost btn--sm" type="button">Bezárás</button>
+          </div>
+          <div class="ebook-library__transfer-grid">
+            <div><canvas id="ebook-transfer-qr" width="260" height="260" aria-label="E-olvasó átvitel QR-kód"></canvas></div>
+            <div class="ebook-library__transfer-info">
+              <p>Nyisd meg a Grapes E-book Könyvtárat az e-olvasón, majd olvasd be ezt a QR-kódot telefonról vagy másik kijelzőről.</p>
+              <span>Átviteli kód</span>
+              <strong id="ebook-transfer-code" class="ebook-library__receiver-code"></strong>
+              <label class="field__label" for="ebook-transfer-url">Átviteli link</label>
+              <input id="ebook-transfer-url" class="input" type="text" readonly />
+              <button id="ebook-transfer-copy" class="btn btn--ghost btn--block" type="button">Link másolása</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
         <div class="ebook-library__grid">
           <section class="ebook-library__panel" aria-labelledby="ebook-list-title">
             <div class="ebook-library__panel-head"><h2 id="ebook-list-title">Könyvtár</h2></div>
