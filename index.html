@@ -792,8 +792,11 @@
           <h2>Átvétel kész</h2>
           <p>Az átvitel kódja:</p>
           <strong id="ebook-receiver-code" class="ebook-library__receiver-code"></strong>
-          <a id="ebook-receiver-download" class="btn btn--primary btn--block" href="#" download>📖 E-book letöltése</a>
-          <a id="ebook-receiver-open" class="btn btn--ghost btn--block" href="#" target="_blank" rel="noopener">Drive megnyitása</a>
+          <label class="field__label" for="ebook-receiver-input">6 karakteres kód</label>
+          <input id="ebook-receiver-input" class="input" type="text" inputmode="text" autocomplete="one-time-code" maxlength="6" spellcheck="false" aria-label="6 karakteres átvételi kód" />
+          <button id="ebook-receiver-submit" class="btn btn--primary btn--block" type="button">Párosítás és letöltés</button>
+          <a id="ebook-receiver-download" class="btn btn--ghost btn--block" href="#" download>📖 E-book letöltése</a>
+          <a id="ebook-receiver-open" class="btn btn--ghost btn--block" href="#" target="_blank" rel="noopener">Transfer megnyitása</a>
         </div>
       </section>
       <main class="ebook-library__body">
