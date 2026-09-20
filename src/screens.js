@@ -23,6 +23,10 @@ const SCREENS = {
     id: '#qr-app',
     load: () => import('./qr-studio.js').then((module) => module.initQrStudio()),
   },
+  ebook: {
+    id: '#ebook-app',
+    load: () => import('./ebook-library.js').then((module) => module.initEbookLibrary()),
+  },
   studio: {
     id: '#studio-app',
     load: () =>
@@ -44,7 +48,7 @@ const SCREENS = {
 
 // A GrapesJS-es #app mindig jelen van a markupban, de ha nem az a motor
 // fut, akkor is rejtve kell maradnia.
-const ALL_SCREEN_IDS = ['#splash-screen', '#app', '#fabric-app', '#studio-app', '#qr-app']
+const ALL_SCREEN_IDS = ['#splash-screen', '#app', '#fabric-app', '#studio-app', '#qr-app', '#ebook-app']
 
 export function showScreen(name) {
   const screen = SCREENS[name]
