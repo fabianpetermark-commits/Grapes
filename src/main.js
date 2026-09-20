@@ -14,8 +14,9 @@ import { showScreen, showModulePicker } from './screens.js'
 el('#pick-brochure').addEventListener('click', () => showScreen('brochure'))
 el('#pick-studio').addEventListener('click', () => showScreen('studio'))
 el('#pick-qr').addEventListener('click', () => showScreen('qr'))
+el('#pick-ebook').addEventListener('click', () => showScreen('ebook'))
 
-for (const selector of ['#app-back-to-menu-btn', '#studio-back-to-menu-btn', '#fabric-back-to-menu-btn', '#qr-back-to-menu-btn']) {
+for (const selector of ['#app-back-to-menu-btn', '#studio-back-to-menu-btn', '#fabric-back-to-menu-btn', '#qr-back-to-menu-btn', '#ebook-back-to-menu-btn']) {
   el(selector).addEventListener('click', showModulePicker)
 }
 
