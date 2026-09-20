@@ -45,3 +45,7 @@ No live account mutations, commits, pushes or deployments were performed during 
 - Added `?ebook-reader=1` as a permanent bookmarkable receiver entry point. It requires no Drive connection; users enter a fresh six-character code for each transfer. Input errors appear inside the receiver panel. Incoming pairing URLs prefill the code.
 - Browser screenshot confirmed the receiver card is opaque and readable. Twelve automated tests passed, including stable receiver and QR-failure fallback. The production build passed after stopping the preview and limiting Rayon to one thread; the first concurrent attempt ran out of memory.
 - Frontend changes still require Pages deployment. Broker changes from the earlier audit additionally require Apps Script redeployment. Live Google/device validation remains outstanding.
+
+## Live return URL fix
+
+Apps Script deployment version 2 now replaces unsupported new URL() validation with an exact comparison to the canonical Grapes return URL. Verified live code creation, visible QR, and code submission through the permanent receiver page to the correct download link. This deployment applies only the return URL fix to the previously deployed source; repository-only locking/cleanup/revocation enhancements remain pending a separate broker update. No sharing or OAuth settings changed.

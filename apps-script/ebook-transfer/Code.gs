@@ -2,7 +2,7 @@ const CODE_LENGTH = 6;
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const TTL_MS = 20 * 60 * 1000;
 const STORE_PREFIX = 'ebook_transfer_';
-const ALLOWED_RETURN_PREFIX = 'https://fabianpetermark-commits.github.io/Grapes/';
+const ALLOWED_RETURN_URL = 'https://fabianpetermark-commits.github.io/Grapes/';
 
 function doGet(e) {
   const action = String((e && e.parameter && e.parameter.action) || '').toLowerCase();
@@ -15,7 +15,8 @@ function createTransferPage(p) {
   const fileId = String(p.fileId || '').trim();
   const returnUrl = String(p.returnUrl || '').trim();
   if (!fileId || !returnUrl) return HtmlService.createHtmlOutput('<h2>Hiányzó adatok</h2><p>A fileId és returnUrl kötelező.</p>');
-  if (returnUrl.indexOf(ALLOWED_RETURN_PREFIX) !== 0) {
+  // Apps Script does not provide the browser URL constructor.
+  if (returnUrl !== ALLOWED_RETURN_URL) {
     return HtmlService.createHtmlOutput('<h2>Érvénytelen visszatérési cím</h2><p>Az átvitel csak a hivatalos Grapes oldalra térhet vissza.</p>');
   }
 

@@ -182,10 +182,14 @@ test('broker rejects private files and foreign return URLs, expires codes and re
     ScriptApp: { getService: () => ({ getUrl: () => 'https://broker.example/exec' }) },
   })
   vm.runInContext(brokerSource, c)
+  assert.equal(vm.runInContext('typeof URL', c), 'undefined')
   const create = () => c.createTransferPage({ fileId: 'book', returnUrl: 'https://fabianpetermark-commits.github.io/Grapes/' })
   assert.match(create(), /nincs megosztva/); assert.equal(records.size, 0)
   sharing = 'public'
   assert.match(c.createTransferPage({ fileId: 'book', returnUrl: 'https://evil.example/Grapes/' }), /Érvénytelen/)
+  for (const returnUrl of ['https://fabianpetermark-commits.github.io/Grapes/../other/', 'https://fabianpetermark-commits.github.io.evil.example/Grapes/', 'https://fabianpetermark-commits.github.io/Grapes/#fragment']) {
+    assert.match(c.createTransferPage({ fileId: 'book', returnUrl }), /Érvénytelen/)
+  }
   records.set('ebook_transfer_OLDOLD', JSON.stringify({ expiresAt: 0 }))
   assert.match(create(), /&lt;book&gt;/); assert.equal(records.size, 1); assert.equal(locked, false)
   const [key, raw] = [...records][0]; const code = key.slice('ebook_transfer_'.length); const record = JSON.parse(raw)
