@@ -2,6 +2,8 @@ const CODE_LENGTH = 6;
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const TTL_MS = 20 * 60 * 1000;
 const STORE_PREFIX = 'ebook_transfer_';
+const ALLOWED_RETURN_ORIGIN = 'https://fabianpetermark-commits.github.io';
+const ALLOWED_RETURN_PATH = '/Grapes/';
 
 function doGet(e) {
   const action = String((e && e.parameter && e.parameter.action) || '').toLowerCase();
@@ -14,6 +16,14 @@ function createTransferPage(p) {
   const fileId = String(p.fileId || '').trim();
   const returnUrl = String(p.returnUrl || '').trim();
   if (!fileId || !returnUrl) return HtmlService.createHtmlOutput('<h2>Hiányzó adatok</h2><p>A fileId és returnUrl kötelező.</p>');
+  try {
+    const parsedReturnUrl = new URL(returnUrl);
+    if (parsedReturnUrl.protocol !== 'https:' || parsedReturnUrl.origin !== ALLOWED_RETURN_ORIGIN || !parsedReturnUrl.pathname.startsWith(ALLOWED_RETURN_PATH)) {
+      return HtmlService.createHtmlOutput('<h2>Érvénytelen visszatérési cím</h2><p>Az átvitel csak a hivatalos Grapes oldalra térhet vissza.</p>');
+    }
+  } catch (err) {
+    return HtmlService.createHtmlOutput('<h2>Érvénytelen visszatérési cím</h2><p>A returnUrl nem érvényes URL.</p>');
+  }
 
   let file;
   try { file = DriveApp.getFileById(fileId); }
