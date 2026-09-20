@@ -724,6 +724,14 @@
                 <button id="studio-ungroup-selected" class="btn btn--ghost" type="button">Szétbontás</button>
                 <button id="studio-toggle-wireframe" class="btn btn--ghost" type="button" aria-pressed="false">Drótváz</button>
               </div>
+              <div class="studio__extrude" aria-label="Vágás">
+                <span class="studio__transform-title">Vágás (felső rész)</span>
+                <div class="field-row">
+                  <input id="studio-cut-distance" class="input" type="number" step="0.1" value="10" aria-label="Vágás milliméterben" />
+                  <button id="studio-cut-selected" class="btn btn--ghost" type="button">Vágás</button>
+                </div>
+                <p class="studio__list-hint">Kockán és hengeren működik; a tetejéből levágja a megadott mm-t.</p>
+              </div>
               <button id="studio-duplicate-selected" class="btn btn--ghost btn--block" type="button">Duplikálás</button>
               <button id="studio-delete-selected" class="btn btn--danger btn--block" type="button">
                 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-trash" /></svg>Elem törlése

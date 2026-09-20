@@ -4,7 +4,7 @@ import { TransformControls } from 'three/examples/jsm/controls/TransformControls
 import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import { export3MF, import3MF } from './studio-3mf.js'
-import { extrudeElement } from './studio-operations.js'
+import { cutTopElement, extrudeElement } from './studio-operations.js'
 import './styles/screens/studio.css'
 import { create, el } from './ui/dom.js'
 import { notify, notifyError, notifySuccess } from './ui/toast.js'
@@ -1401,6 +1401,25 @@ function bindUI() {
     element.scale = element.mesh.scale.clone()
     element.position = element.mesh.position.clone()
     element.rotation = element.mesh.rotation.clone()
+    element.size = Math.max(element.dimensions.x, element.dimensions.y, element.dimensions.z)
+    refreshTransformInputs(element)
+    renderElementList()
+    recordHistory()
+    notifySuccess(result.message)
+  })
+  el('#studio-cut-selected').addEventListener('click', () => {
+    if (selectedIds.size !== 1 || !selectedId) { notify('A vágáshoz pontosan egy kockát vagy hengert jelölj ki.'); return }
+    const element = elements.find((item) => item.id === selectedId)
+    if (!element) return
+    const distance = Number(el('#studio-cut-distance').value)
+    if (!Number.isFinite(distance) || distance <= 0) { notify('Adj meg pozitív vágási értéket milliméterben.'); return }
+    const result = cutTopElement(element, distance)
+    if (!result.ok) { notify(result.message); return }
+    element.baseDimensions = { ...result.baseDimensions }
+    element.dimensions = { ...result.dimensions }
+    element.position = element.mesh.position.clone()
+    element.rotation = element.mesh.rotation.clone()
+    element.scale = element.mesh.scale.clone()
     element.size = Math.max(element.dimensions.x, element.dimensions.y, element.dimensions.z)
     refreshTransformInputs(element)
     renderElementList()
