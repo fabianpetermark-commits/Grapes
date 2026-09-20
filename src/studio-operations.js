@@ -66,3 +66,31 @@ export function cutTopElement(element, distance) {
   element.mesh.updateMatrixWorld(true)
   return { ok: true, baseDimensions: { ...nextDimensions }, dimensions: { ...nextDimensions }, message: `Vágás alkalmazva: -${distance.toFixed(1)} mm.` }
 }
+
+export function mirrorElement(element, axis) {
+  if (!element?.mesh || !['x', 'y', 'z'].includes(axis)) {
+    return { ok: false, message: 'Érvénytelen tükrözési tengely.' }
+  }
+
+  const geometry = element.mesh.geometry.clone()
+  const scale = new THREE.Matrix4().makeScale(
+    axis === 'x' ? -1 : 1,
+    axis === 'y' ? -1 : 1,
+    axis === 'z' ? -1 : 1,
+  )
+
+  geometry.applyMatrix4(scale)
+  geometry.computeVertexNormals()
+  geometry.computeBoundingBox()
+  geometry.computeBoundingSphere()
+
+  const oldGeometry = element.mesh.geometry
+  element.mesh.geometry = geometry
+  oldGeometry.dispose()
+  element.mesh.updateMatrixWorld(true)
+
+  return {
+    ok: true,
+    message: `Tükrözés alkalmazva a(z) ${axis.toUpperCase()} tengelyen.`,
+  }
+}
