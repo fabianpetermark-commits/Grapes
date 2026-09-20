@@ -3,12 +3,15 @@ import './styles/screens/ebook-library.css'
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 const TRANSFER_BROKER_URL = import.meta.env.VITE_EBOOK_TRANSFER_BROKER_URL || ''
+const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || ''
+const GOOGLE_APP_ID = import.meta.env.VITE_GOOGLE_APP_ID || CLIENT_ID.split('-')[0] || ''
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file'
 const FOLDER_NAME = 'Grapes E-book Library'
 const ALLOWED = ['epub', 'pdf', 'mobi', 'azw', 'azw3', 'txt', 'cbz', 'cbr']
 
 let accessToken = null
 let initialized = false
+let pickerPromise = null
 const $ = (selector) => document.querySelector(selector)
 const ext = (name = '') => name.split('.').pop().toLowerCase()
 const formatSize = (bytes) => !Number.isFinite(bytes) ? '—' : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`
@@ -76,6 +79,93 @@ function renderBooks(books = []) {
   list.querySelectorAll('[data-download]').forEach((b) => b.addEventListener('click', () => downloadBook(b.dataset.download)))
   list.querySelectorAll('[data-send]').forEach((b) => b.addEventListener('click', () => sendBook(b.dataset.send)))
 }
+async function loadGooglePicker() {
+  if (window.google?.picker) return
+  if (!GOOGLE_API_KEY || !GOOGLE_APP_ID) throw new Error('A Google Picker nincs konfigurálva.')
+  if (pickerPromise) return pickerPromise
+
+  pickerPromise = new Promise((resolve, reject) => {
+    const loadPicker = () => {
+      if (!window.gapi?.load) return reject(new Error('A Google API kliens nem érhető el.'))
+      window.gapi.load('picker', {
+        callback: resolve,
+        onerror: () => reject(new Error('A Google Picker betöltése nem sikerült.')),
+        timeout: 10000,
+        ontimeout: () => reject(new Error('A Google Picker betöltése túllépte az időkorlátot.')),
+      })
+    }
+
+    if (window.gapi?.load) return loadPicker()
+    const script = document.createElement('script')
+    script.src = 'https://apis.google.com/js/api.js'
+    script.async = true
+    script.defer = true
+    script.onload = loadPicker
+    script.onerror = () => reject(new Error('A Google API kliens betöltése nem sikerült.'))
+    document.head.append(script)
+  })
+
+  return pickerPromise
+}
+
+async function importDriveBook(fileId) {
+  const folderId = await ensureLibraryFolder()
+  const response = await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?fields=id,name,size,parents`)
+  const file = await response.json()
+
+  if (!ALLOWED.includes(ext(file.name))) {
+    throw new Error('Ez a fájltípus jelenleg nem támogatott.')
+  }
+
+  if (!file.parents?.includes(folderId)) {
+    await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.id)}/copy?fields=id,name,size,parents`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: file.name, parents: [folderId] }),
+    })
+  }
+
+  await refreshLibrary()
+  setStatus(`${file.name} hozzáadva a Grapes könyvtárhoz.`, 'success')
+}
+
+async function openDrivePicker() {
+  if (!accessToken) return setStatus('Előbb csatlakoztasd a Google Drive-ot.', 'error')
+  if (!GOOGLE_API_KEY) return setStatus('A Google Picker API-kulcs még nincs beállítva.', 'error')
+
+  try {
+    await loadGooglePicker()
+    const picker = window.google.picker
+    const view = new picker.DocsView(picker.ViewId.DOCS)
+      .setIncludeFolders(true)
+      .setSelectFolderEnabled(false)
+
+    new picker.PickerBuilder()
+      .setOAuthToken(accessToken)
+      .setDeveloperKey(GOOGLE_API_KEY)
+      .setAppId(GOOGLE_APP_ID)
+      .setOrigin(window.location.origin)
+      .addView(view)
+      .setCallback(async (data) => {
+        if (data[picker.Response.ACTION] !== picker.Action.PICKED) return
+        const file = data[picker.Response.DOCUMENTS]?.[0]
+        const fileId = file?.[picker.Document.ID]
+        if (!fileId) return
+
+        setStatus('A kiválasztott könyv hozzáadása…')
+        try {
+          await importDriveBook(fileId)
+        } catch (error) {
+          setStatus(error.message || 'A Drive-ból választott könyv hozzáadása nem sikerült.', 'error')
+        }
+      })
+      .build()
+      .setVisible(true)
+  } catch (error) {
+    setStatus(error.message || 'A Google Picker megnyitása nem sikerült.', 'error')
+  }
+}
+
 async function loadGoogleIdentity() {
   if (window.google?.accounts?.oauth2) return
   await new Promise((resolve, reject) => { const s=document.createElement('script'); s.src='https://accounts.google.com/gsi/client'; s.async=true; s.defer=true; s.onload=resolve; s.onerror=reject; document.head.append(s) })
@@ -162,6 +252,7 @@ export function initEbookLibrary() {
   $('#ebook-drive-connect')?.addEventListener('click',connectDrive)
   $('#ebook-file-input')?.addEventListener('change',(e)=>{const file=e.target.files?.[0];if(file)uploadBook(file);e.target.value=''})
   $('#ebook-upload-btn')?.addEventListener('click',()=>$('#ebook-file-input')?.click())
+  $('#ebook-drive-picker-btn')?.addEventListener('click', openDrivePicker)
   $('#ebook-refresh-btn')?.addEventListener('click',refreshLibrary)
   $('#ebook-transfer-close')?.addEventListener('click', closeTransfer)
   $('#ebook-transfer-copy')?.addEventListener('click', async () => { try { await navigator.clipboard.writeText($('#ebook-transfer-url').value); setStatus('Átviteli link kimásolva.', 'success') } catch { setStatus('A link másolása nem sikerült.', 'error') } })
