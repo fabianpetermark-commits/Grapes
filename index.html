@@ -108,6 +108,13 @@
           <span class="card__title">QR Stúdió</span>
           <span class="card__text">Testreszabható QR-kódok generálása</span>
         </button>
+        <button id="pick-ebook" class="card" type="button">
+          <span class="card__icon">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-folder" /></svg>
+          </span>
+          <span class="card__title">E-book Könyvtár</span>
+          <span class="card__text">Saját Google Drive-könyvtár és e-olvasó átvitel</span>
+        </button>
       </div>
     </div>
 
@@ -765,6 +772,48 @@
           </div>
         </aside>
       </div>
+    </div>
+
+    <div id="ebook-app" class="editor hidden ebook-library">
+      <header class="toolbar" id="ebook-toolbar">
+        <div class="toolbar__brand">
+          <span class="toolbar__brand-name">Grapes</span>
+          <span class="toolbar__brand-sub">E-book Könyvtár</span>
+        </div>
+        <span class="toolbar__spacer"></span>
+        <button id="ebook-back-to-menu-btn" class="btn btn--ghost" type="button">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-home" /></svg>
+          <span class="btn__label">Főmenü</span>
+        </button>
+      </header>
+      <main class="ebook-library__body">
+        <section class="ebook-library__hero">
+          <div>
+            <p class="ebook-library__eyebrow">Saját könyvtár</p>
+            <h1 class="ebook-library__title">E-book Könyvtár</h1>
+            <p class="ebook-library__subtitle">A könyvek a saját Google Drive-od dedikált könyvtárában maradnak. Innen később közvetlenül az e-olvasóra küldhetők.</p>
+          </div>
+          <div class="ebook-library__actions">
+            <button id="ebook-refresh-btn" class="btn btn--ghost" type="button">Frissítés</button>
+            <button id="ebook-drive-connect" class="btn btn--primary" type="button">Google Drive csatlakoztatása</button>
+          </div>
+        </section>
+        <div id="ebook-status" class="ebook-library__status" role="status">Drive kapcsolat ellenőrzése…</div>
+        <div class="ebook-library__grid">
+          <section class="ebook-library__panel" aria-labelledby="ebook-list-title">
+            <div class="ebook-library__panel-head"><h2 id="ebook-list-title">Könyvtár</h2></div>
+            <div id="ebook-list" class="ebook-library__list"></div>
+            <div id="ebook-empty" class="ebook-library__empty">Még nincs könyv a könyvtárban.</div>
+          </section>
+          <aside class="ebook-library__panel ebook-library__side">
+            <h2>Új könyv</h2>
+            <p>Tölts fel EPUB, PDF, MOBI, AZW, TXT, CBZ vagy CBR fájlt a saját könyvtáradba.</p>
+            <div class="ebook-library__drop"><strong>Google Drive</strong><br />A fájl a „Grapes E-book Library” mappába kerül.</div>
+            <button id="ebook-upload-btn" class="btn btn--primary btn--block" type="button">Könyv hozzáadása</button>
+            <input id="ebook-file-input" type="file" accept=".epub,.pdf,.mobi,.azw,.azw3,.txt,.cbz,.cbr" hidden />
+          </aside>
+        </div>
+      </main>
     </div>
 
     <div id="qr-app" class="editor hidden">
