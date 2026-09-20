@@ -1476,6 +1476,9 @@ function bindUI() {
   el('#studio-boolean-union').addEventListener('click', () => applyBooleanOperation(ADDITION, 'Unió'))
   el('#studio-boolean-difference').addEventListener('click', () => applyBooleanOperation(SUBTRACTION, 'Kivonás'))
   el('#studio-boolean-intersection').addEventListener('click', () => applyBooleanOperation(INTERSECTION, 'Metszet'))
+  el('#studio-mirror-x').addEventListener('click', () => mirrorSelected('x'))
+  el('#studio-mirror-y').addEventListener('click', () => mirrorSelected('y'))
+  el('#studio-mirror-z').addEventListener('click', () => mirrorSelected('z'))
   el('#studio-extrude-selected').addEventListener('click', () => {
     if (selectedIds.size !== 1 || !selectedId) {
       notify('A kihúzáshoz pontosan egy kockát vagy hengert jelölj ki.')
