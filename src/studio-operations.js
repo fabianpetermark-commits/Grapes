@@ -1,4 +1,6 @@
-import * as THREE from 'three'\n\nexport function extrudeElement(element, distance) {
+import * as THREE from 'three'
+
+export function extrudeElement(element, distance) {
   if (!element?.mesh || !Number.isFinite(distance) || distance === 0) {
     return { ok: false, message: 'Érvénytelen kihúzási érték.' }
   }
