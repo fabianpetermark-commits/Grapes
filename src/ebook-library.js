@@ -131,10 +131,15 @@ async function downloadBook(fileId) {
 }
 async function sendBook(fileId) {
   if (!accessToken) return setStatus('Előbb csatlakoztasd a Google Drive-ot.', 'error')
+  const transferWindow = window.open('about:blank', '_blank')
   try {
     const meta = await (await driveRequest(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=name`)).json()
-    await renderTransferQr(fileId, meta.name)
-  } catch { setStatus('Az átvitel előkészítése nem sikerült.', 'error') }
+    if (transferWindow) transferWindow.location.href = buildBrokerUrl({ action: 'create', fileId, returnUrl: new URL(window.location.href).toString().split('?')[0] })
+    else await renderTransferQr(fileId, meta.name)
+  } catch {
+    if (transferWindow) transferWindow.close()
+    setStatus('Az átvitel előkészítése nem sikerült.', 'error')
+  }
 }
 export function initEbookLibrary() {
   if(initialized) return refreshLibrary(); initialized=true
