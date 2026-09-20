@@ -20,4 +20,6 @@ for (const selector of ['#app-back-to-menu-btn', '#studio-back-to-menu-btn', '#f
   el(selector).addEventListener('click', showModulePicker)
 }
 
-showModulePicker()
+const hasEbookPair = new URLSearchParams(window.location.search).has('ebook-pair')
+if (hasEbookPair) showScreen('ebook')
+else showModulePicker()
