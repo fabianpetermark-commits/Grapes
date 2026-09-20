@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { ADDITION, SUBTRACTION, INTERSECTION, Brush, Evaluator } from 'three-bvh-csg'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js'
 import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js'
@@ -131,7 +132,7 @@ function captureSceneState() {
       y: element.mesh.scale.y,
       z: element.mesh.scale.z,
     },
-    ...(element.type === 'stl'
+    ...(['stl', 'boolean'].includes(element.type)
       ? { geometry: Array.from(element.mesh.geometry.attributes.position.array) }
       : {}),
   }))
@@ -210,8 +211,8 @@ function recordHistory() {
 }
 
 function createElementFromState(state) {
-  let geometry = createGeometry(state.type, state.baseDimensions)
-  if (state.type === 'stl' && state.geometry?.length) {
+  let geometry = createGeometry(state.type === 'boolean' ? 'box' : state.type, state.baseDimensions)
+  if (['stl', 'boolean'].includes(state.type) && state.geometry?.length) {
     geometry.dispose()
     geometry = new THREE.BufferGeometry()
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(state.geometry, 3))
@@ -1251,6 +1252,70 @@ async function import3MFFile(file) {
   }
 }
 
+function applyBooleanOperation(operation, label) {
+  if (selectedIds.size !== 2) {
+    notify('A Boolean művelethez pontosan két objektumot jelölj ki.')
+    return
+  }
+  const selected = elements.filter((element) => selectedIds.has(element.id))
+  if (selected.length !== 2) return
+
+  try {
+    const brushes = selected.map((element) => {
+      element.mesh.updateMatrixWorld(true)
+      const geometry = element.mesh.geometry.clone()
+      geometry.applyMatrix4(element.mesh.matrixWorld)
+      const brush = new Brush(geometry)
+      brush.updateMatrixWorld(true)
+      return brush
+    })
+
+    const result = new Evaluator().evaluate(brushes[0], brushes[1], operation)
+    if (!result?.geometry?.attributes?.position) throw new Error('A Boolean eredmény üres lett.')
+
+    const geometry = result.geometry.clone()
+    geometry.computeVertexNormals()
+    geometry.computeBoundingBox()
+    geometry.computeBoundingSphere()
+
+    const bounds = new THREE.Box3().setFromBufferAttribute(geometry.attributes.position)
+    const size = bounds.getSize(new THREE.Vector3())
+    const material = new THREE.MeshStandardMaterial({
+      color: selected[0].color,
+      roughness: 0.35,
+      metalness: 0.4,
+      wireframe: isWireframe,
+    })
+    const mesh = new THREE.Mesh(geometry, material)
+    const id = createElementId()
+    mesh.userData.elementId = id
+    scene.add(mesh)
+
+    selected.forEach(disposeElementMesh)
+    elements = elements.filter((element) => !selectedIds.has(element.id))
+    elements.push({
+      id,
+      groupId: null,
+      type: 'boolean',
+      name: `Boolean – ${label}`,
+      size: Math.max(size.x, size.y, size.z),
+      color: selected[0].color,
+      baseDimensions: { x: size.x, y: size.y, z: size.z },
+      position: mesh.position.clone(),
+      rotation: mesh.rotation.clone(),
+      scale: mesh.scale.clone(),
+      dimensions: { x: size.x, y: size.y, z: size.z },
+      mesh,
+    })
+    selectElements([id])
+    recordHistory()
+    notifySuccess(`Boolean ${label} elkészült.`)
+  } catch (error) {
+    console.error('Boolean művelet sikertelen:', error)
+    notifyError(`A Boolean művelet sikertelen: ${error.message}`)
+  }
+}
+
 function download3MF() {
   if (!elements.length) {
     notifyError('Adj hozzá legalább egy elemet a jelenethez az exportálás előtt.')
@@ -1375,6 +1440,9 @@ function bindUI() {
   el('#studio-transform-scale').addEventListener('click', () => setTransformMode('scale'))
   el('#studio-group-selected').addEventListener('click', groupSelection)
   el('#studio-ungroup-selected').addEventListener('click', ungroupSelection)
+  el('#studio-boolean-union').addEventListener('click', () => applyBooleanOperation(ADDITION, 'Unió'))
+  el('#studio-boolean-difference').addEventListener('click', () => applyBooleanOperation(SUBTRACTION, 'Kivonás'))
+  el('#studio-boolean-intersection').addEventListener('click', () => applyBooleanOperation(INTERSECTION, 'Metszet'))
   el('#studio-extrude-selected').addEventListener('click', () => {
     if (selectedIds.size !== 1 || !selectedId) {
       notify('A kihúzáshoz pontosan egy kockát vagy hengert jelölj ki.')

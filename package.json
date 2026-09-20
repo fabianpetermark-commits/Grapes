@@ -29,6 +29,8 @@
     "grapesjs-tooltip": "^0.1.8",
     "html2canvas": "^1.4.1",
     "qrcode": "^1.5.4",
-    "three": "^0.128.0"
+    "three": "^0.185.1",
+    "three-bvh-csg": "^0.0.18",
+    "three-mesh-bvh": "^0.9.7"
   }
 }
