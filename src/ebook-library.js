@@ -2,6 +2,7 @@ import QRCode from 'qrcode'
 import './styles/screens/ebook-library.css'
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
+const TRANSFER_BROKER_URL = import.meta.env.VITE_EBOOK_TRANSFER_BROKER_URL || ''
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file'
 const FOLDER_NAME = 'Grapes E-book Library'
 const ALLOWED = ['epub', 'pdf', 'mobi', 'azw', 'azw3', 'txt', 'cbz', 'cbr']
@@ -13,48 +14,52 @@ const ext = (name = '') => name.split('.').pop().toLowerCase()
 const formatSize = (bytes) => !Number.isFinite(bytes) ? '—' : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
 function setStatus(message, kind = '') { const node = $('#ebook-status'); if (node) { node.textContent = message; node.dataset.kind = kind } }
-function makeTransferCode() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-  return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
-}
-function buildTransferUrl(fileId, code) {
+function buildTransferUrl(code) {
   const url = new URL(window.location.href)
   url.search = ''
   url.hash = ''
-  url.searchParams.set('ebook-transfer', fileId)
-  url.searchParams.set('code', code)
+  url.searchParams.set('ebook-pair', code)
+  return url.toString()
+}
+function buildBrokerUrl(params = {}) {
+  if (!TRANSFER_BROKER_URL) return ''
+  const url = new URL(TRANSFER_BROKER_URL)
+  Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value))
   return url.toString()
 }
 async function createPublicTransfer(fileId, name) {
+  if (!TRANSFER_BROKER_URL) throw new Error('Az E-book Transfer broker nincs konfigurálva.')
   try {
     await driveRequest(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'anyone', role: 'reader', allowFileDiscovery: false }),
     })
   } catch (error) {
-    if (!String(error.message).includes('already')) throw error
+    if (!String(error.message).toLowerCase().includes('already')) throw error
   }
-  const code = makeTransferCode()
-  const url = buildTransferUrl(fileId, code)
-  const canvas = $('#ebook-transfer-qr')
-  if (canvas) await QRCode.toCanvas(canvas, url, { width: 260, margin: 2, errorCorrectionLevel: 'M' })
+  const returnUrl = new URL(window.location.href)
+  returnUrl.search = ''
+  returnUrl.hash = ''
+  const brokerUrl = buildBrokerUrl({ action: 'create', fileId, returnUrl: returnUrl.toString() })
+  window.open(brokerUrl, '_blank', 'noopener,noreferrer')
   $('#ebook-transfer-name').textContent = name
-  $('#ebook-transfer-code').textContent = code
-  $('#ebook-transfer-url').value = url
+  $('#ebook-transfer-url').value = brokerUrl
   $('#ebook-transfer-panel').hidden = false
-  setStatus('Átvitel kész. Az e-olvasóval olvasd be a QR-kódot.', 'success')
+  setStatus('Az átvitel előkészítése megnyílt új lapon. Ott jelenik meg a 6 karakteres kód és a QR-kód.', 'success')
 }
 function closeTransfer() { const panel = $('#ebook-transfer-panel'); if (panel) panel.hidden = true }
 function handleTransferLink() {
   const params = new URLSearchParams(window.location.search)
-  const fileId = params.get('ebook-transfer')
-  const code = params.get('code')
-  if (!fileId || !code) return
+  const code = (params.get('ebook-pair') || '').trim().toUpperCase()
+  if (!code || !/^[A-Z0-9]{6}$/.test(code)) return
   const panel = $('#ebook-receiver-panel'); if (!panel) return
   $('#ebook-receiver-code').textContent = code
-  $('#ebook-receiver-download').href = `https://drive.usercontent.google.com/download?id=${encodeURIComponent(fileId)}&export=download`
+  const downloadUrl = buildBrokerUrl({ action: 'download', code })
+  $('#ebook-receiver-download').href = downloadUrl || '#'
+  $('#ebook-receiver-open').href = downloadUrl || '#'
   panel.hidden = false
-  $('#ebook-receiver-open').href = `https://drive.google.com/file/d/${encodeURIComponent(fileId)}/view`
+  if (downloadUrl) setStatus('A párosítási kód érvényes. Az e-book letöltése indítható.', 'success')
+  else setStatus('A Transfer broker nincs konfigurálva ezen a builden.', 'error')
 }
 async function renderTransferQr(fileId, name) {
   if (!accessToken) return setStatus('Előbb csatlakoztasd a Google Drive-ot.', 'error')
@@ -139,6 +144,14 @@ export function initEbookLibrary() {
   $('#ebook-refresh-btn')?.addEventListener('click',refreshLibrary)
   $('#ebook-transfer-close')?.addEventListener('click', closeTransfer)
   $('#ebook-transfer-copy')?.addEventListener('click', async () => { try { await navigator.clipboard.writeText($('#ebook-transfer-url').value); setStatus('Átviteli link kimásolva.', 'success') } catch { setStatus('A link másolása nem sikerült.', 'error') } })
+  $('#ebook-receiver-submit')?.addEventListener('click', () => {
+    const code = $('#ebook-receiver-input')?.value.trim().toUpperCase()
+    if (!/^[A-Z0-9]{6}$/.test(code || '')) return setStatus('Adj meg egy 6 karakteres párosítási kódot.', 'error')
+    const url = buildBrokerUrl({ action: 'download', code })
+    if (!url) return setStatus('A Transfer broker nincs konfigurálva.', 'error')
+    window.location.href = url
+  })
+  $('#ebook-receiver-input')?.addEventListener('keydown', (event) => { if (event.key === 'Enter') $('#ebook-receiver-submit')?.click() })
   handleTransferLink()
   setStatus(CLIENT_ID?'Csatlakoztasd a saját Google Drive-odat.':'Drive nincs konfigurálva. Állítsd be a VITE_GOOGLE_CLIENT_ID értéket.',CLIENT_ID?'':'error')
 }
