@@ -32,14 +32,24 @@ function createTransferPage(p) {
     return HtmlService.createHtmlOutput('<h2>Megosztási állapot nem ellenőrizhető</h2><p>A fájl nem használható átvitelhez.</p>');
   }
 
-  const code = createUniqueCode();
-  const expiresAt = Date.now() + TTL_MS;
-  PropertiesService.getScriptProperties().setProperty(STORE_PREFIX + code, JSON.stringify({
-    fileId: fileId,
-    name: file.getName(),
-    returnUrl: returnUrl,
-    expiresAt: expiresAt
-  }));
+  // Reserve codes atomically and remove expired records so the store stays bounded.
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  let code;
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const records = props.getProperties();
+    Object.keys(records).forEach(function (key) {
+      if (key.indexOf(STORE_PREFIX) === 0 && Number(JSON.parse(records[key]).expiresAt) <= Date.now()) props.deleteProperty(key);
+    });
+    code = createUniqueCode();
+    props.setProperty(STORE_PREFIX + code, JSON.stringify({
+      fileId: fileId,
+      name: file.getName(),
+      returnUrl: returnUrl,
+      expiresAt: Date.now() + TTL_MS
+    }));
+  } finally { lock.releaseLock(); }
 
   const base = ScriptApp.getService().getUrl();
   const pairUrl = returnUrl + (returnUrl.indexOf('?') >= 0 ? '&' : '?') + 'ebook-pair=' + encodeURIComponent(code);
@@ -66,10 +76,17 @@ function resolveTransfer(p) {
   if (!raw) return HtmlService.createHtmlOutput('<h2>A kód nem található</h2><p>Lehet, hogy lejárt vagy már felhasználták.</p>');
 
   const record = JSON.parse(raw);
-  if (Date.now() > Number(record.expiresAt)) {
+  if (Date.now() >= Number(record.expiresAt)) {
     PropertiesService.getScriptProperties().deleteProperty(key);
     return HtmlService.createHtmlOutput('<h2>Lejárt kód</h2><p>Kérj új párosítási kódot.</p>');
   }
+
+  // Re-check sharing: a pairing code must not outlive the owner's public access grant.
+  try {
+    if (DriveApp.getFileById(record.fileId).getSharingAccess() !== DriveApp.Access.ANYONE_WITH_LINK) {
+      return HtmlService.createHtmlOutput('<h2>A fájl már nincs megosztva.</h2>');
+    }
+  } catch (err) { return HtmlService.createHtmlOutput('<h2>A fájl nem érhető el.</h2>'); }
 
   const downloadUrl = 'https://drive.usercontent.google.com/download?id=' + encodeURIComponent(record.fileId) + '&export=download&confirm=t';
   return HtmlService.createHtmlOutput('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Letöltés</title><style>body{font-family:system-ui,sans-serif;max-width:620px;margin:0 auto;padding:32px;text-align:center}a{display:inline-block;padding:14px 20px;border-radius:10px;background:#111;color:#fff;text-decoration:none}</style></head><body><h1>Grapes E-book Transfer</h1><p>' + escapeHtml(record.name) + '</p><p><a href="' + escapeHtml(downloadUrl) + '">E-book letöltése</a></p><p><a href="' + escapeHtml(record.returnUrl) + '">Vissza a Grapeshez</a></p></body></html>');

@@ -5,6 +5,7 @@
   "description": "Magyar nyelvű, GrapesJS-alapú brossúra- és PDF-szerkesztő Vite-tal.",
   "type": "module",
   "scripts": {
+    "test:ebook": "node --test tests/ebook-library.test.js",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"

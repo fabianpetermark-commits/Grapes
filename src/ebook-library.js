@@ -30,43 +30,21 @@ function buildBrokerUrl(params = {}) {
   Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value))
   return url.toString()
 }
-async function createPublicTransfer(fileId, name) {
-  if (!TRANSFER_BROKER_URL) throw new Error('Az E-book Transfer broker nincs konfigurálva.')
-  try {
-    await driveRequest(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'anyone', role: 'reader', allowFileDiscovery: false }),
-    })
-  } catch (error) {
-    if (!String(error.message).toLowerCase().includes('already')) throw error
-  }
-  const returnUrl = new URL(window.location.href)
-  returnUrl.search = ''
-  returnUrl.hash = ''
-  const brokerUrl = buildBrokerUrl({ action: 'create', fileId, returnUrl: returnUrl.toString() })
-  window.open(brokerUrl, '_blank', 'noopener,noreferrer')
-  $('#ebook-transfer-name').textContent = name
-  $('#ebook-transfer-url').value = brokerUrl
-  $('#ebook-transfer-panel').hidden = false
-  setStatus('Az átvitel előkészítése megnyílt új lapon. Ott jelenik meg a 6 karakteres kód és a QR-kód.', 'success')
-}
 function closeTransfer() { const panel = $('#ebook-transfer-panel'); if (panel) panel.hidden = true }
 function handleTransferLink() {
   const params = new URLSearchParams(window.location.search)
   const code = (params.get('ebook-pair') || '').trim().toUpperCase()
-  if (!code || !/^[A-Z0-9]{6}$/.test(code)) return
+  if (!params.has('ebook-reader') && !/^[A-Z0-9]{6}$/.test(code)) return
   const panel = $('#ebook-receiver-panel'); if (!panel) return
-  $('#ebook-receiver-code').textContent = code
-  const downloadUrl = buildBrokerUrl({ action: 'download', code })
+  const validCode = /^[A-Z0-9]{6}$/.test(code)
+  $('#ebook-receiver-code').textContent = validCode ? code : ''
+  $('#ebook-receiver-input').value = validCode ? code : ''
+  const downloadUrl = validCode ? buildBrokerUrl({ action: 'download', code }) : ''
   $('#ebook-receiver-download').href = downloadUrl || '#'
-  $('#ebook-receiver-open').href = downloadUrl || '#'
+  $('#ebook-receiver-download').hidden = !downloadUrl
   panel.hidden = false
-  if (downloadUrl) setStatus('A párosítási kód érvényes. Az e-book letöltése indítható.', 'success')
-  else setStatus('A Transfer broker nincs konfigurálva ezen a builden.', 'error')
-}
-async function renderTransferQr(fileId, name) {
-  if (!accessToken) return setStatus('Előbb csatlakoztasd a Google Drive-ot.', 'error')
-  try { await createPublicTransfer(fileId, name) } catch { setStatus('Az e-olvasó megosztási linkjének létrehozása nem sikerült. Ellenőrizd a Drive-hozzáférést.', 'error') }
+  if (downloadUrl) setStatus('A párosítási kód ellenőrzése a letöltés megnyitásakor történik.')
+  else if (!TRANSFER_BROKER_URL) $('#ebook-receiver-status').textContent = 'Az átvétel még nincs konfigurálva.'
 }
 function renderBooks(books = []) {
   const list = $('#ebook-list'); const empty = $('#ebook-empty'); if (!list || !empty) return
@@ -105,7 +83,7 @@ async function loadGooglePicker() {
     document.head.append(script)
   })
 
-  return pickerPromise
+  try { return await pickerPromise } catch (error) { pickerPromise = null; throw error }
 }
 
 async function importDriveBook(fileId) {
@@ -125,8 +103,7 @@ async function importDriveBook(fileId) {
     })
   }
 
-  await refreshLibrary()
-  setStatus(`${file.name} hozzáadva a Grapes könyvtárhoz.`, 'success')
+  if (await refreshLibrary()) setStatus(`${file.name} hozzáadva a Grapes könyvtárhoz.`, 'success')
 }
 
 async function openDrivePicker() {
@@ -147,6 +124,9 @@ async function openDrivePicker() {
       .setOrigin(window.location.origin)
       .addView(view)
       .setCallback(async (data) => {
+        if (data[picker.Response.ACTION] === picker.Action.ERROR) {
+          return setStatus('Google Picker hiba. Ellenőrizd az API-kulcsot, a projektazonosítót és az engedélyezett webhelyeket.', 'error')
+        }
         if (data[picker.Response.ACTION] !== picker.Action.PICKED) return
         const file = data[picker.Response.DOCUMENTS]?.[0]
         const fileId = file?.[picker.Document.ID]
@@ -176,6 +156,7 @@ async function connectDrive() {
     await loadGoogleIdentity()
     const tokenClient = window.google.accounts.oauth2.initTokenClient({
       client_id: CLIENT_ID, scope: DRIVE_SCOPE,
+      error_callback: (error) => setStatus(`Google bejelentkezési hiba: ${error.type || 'A bejelentkezési ablak nem nyílt meg.'}`, 'error'),
       callback: async (response) => {
         if (response.error) return setStatus('A Google Drive engedélyezése nem sikerült.', 'error')
         accessToken=response.access_token; $('#ebook-drive-connect').textContent='Google Drive csatlakoztatva'; $('#ebook-drive-connect').disabled=true
@@ -187,7 +168,16 @@ async function connectDrive() {
 }
 async function driveRequest(url, options = {}) {
   const response=await fetch(url,{...options,headers:{...(options.headers||{}),Authorization:`Bearer ${accessToken}`}})
-  if (!response.ok) throw new Error(await response.text())
+  if (response.status === 401) {
+    accessToken = null
+    const connect = $('#ebook-drive-connect')
+    if (connect) { connect.disabled = false; connect.textContent = 'Google Drive csatlakoztatása' }
+    throw new Error('A Google Drive kapcsolat lejárt. Csatlakoztasd újra a Drive-ot.')
+  }
+  if (!response.ok) {
+    const detail = await response.json().catch(() => null)
+    throw new Error(`Drive ${response.status}: ${detail?.error?.message || response.statusText || 'Sikertelen kérés.'}`)
+  }
   return response
 }
 async function ensureLibraryFolder() {
@@ -201,20 +191,27 @@ async function refreshLibrary() {
   if(!accessToken) return
   try {
     const folderId=await ensureLibraryFolder(); const query=`'${folderId}' in parents and trashed = false`
-    const response=await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,size,modifiedTime)&orderBy=modifiedTime desc&pageSize=100`)
-    const data=await response.json(); const books=(data.files||[]).filter((f)=>ALLOWED.includes(ext(f.name)))
+    const books = []
+    let pageToken = ''
+    do {
+      const response=await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=nextPageToken,files(id,name,size,modifiedTime)&orderBy=modifiedTime desc&pageSize=100&pageToken=${encodeURIComponent(pageToken)}`)
+      const data=await response.json()
+      books.push(...(data.files||[]).filter((f)=>ALLOWED.includes(ext(f.name))))
+      pageToken = data.nextPageToken || ''
+    } while (pageToken)
     renderBooks(books); setStatus(`${books.length} könyv a könyvtárban.`,'success')
-  } catch { setStatus('A könyvtár betöltése nem sikerült. Ellenőrizd a Drive-hozzáférést.','error') }
+    return true
+  } catch (error) { setStatus(`A könyvtár betöltése nem sikerült. ${error.message}`,'error'); return false }
 }
 async function uploadBook(file) {
   if(!accessToken) return setStatus('Előbb csatlakoztasd a Google Drive-ot.','error')
   if(!ALLOWED.includes(ext(file.name))) return setStatus('Ez a fájltípus jelenleg nem támogatott.','error')
   try {
-    const folderId=await ensureLibraryFolder(); const boundary='grapes-ebook-boundary'
-    const body=new Blob([`--${boundary}\\r\\nContent-Type: application/json; charset=UTF-8\\r\\n\\r\\n`,JSON.stringify({name:file.name,parents:[folderId]}),`\\r\\n--${boundary}\\r\\nContent-Type: ${file.type||'application/octet-stream'}\\r\\n\\r\\n`,file,`\\r\\n--${boundary}--`])
+    const folderId=await ensureLibraryFolder(); const boundary=`grapes-ebook-${crypto.randomUUID()}`
+    const body=new Blob([`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n`,JSON.stringify({name:file.name,parents:[folderId]}),`\r\n--${boundary}\r\nContent-Type: ${file.type||'application/octet-stream'}\r\n\r\n`,file,`\r\n--${boundary}--\r\n`])
     await driveRequest('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{'Content-Type':`multipart/related; boundary=${boundary}`},body})
-    setStatus(`${file.name} hozzáadva a könyvtárhoz.`,'success'); await refreshLibrary()
-  } catch { setStatus('A feltöltés nem sikerült.','error') }
+    if (await refreshLibrary()) setStatus(`${file.name} hozzáadva a könyvtárhoz.`,'success')
+  } catch (error) { setStatus(`A feltöltés nem sikerült. ${error.message}`,'error') }
 }
 async function downloadBook(fileId) {
   try { const meta=await(await driveRequest(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=name`)).json(); const blob=await(await driveRequest(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`)).blob(); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=meta.name; a.click(); URL.revokeObjectURL(url) } catch { setStatus('A letöltés nem sikerült.','error') }
@@ -222,7 +219,6 @@ async function downloadBook(fileId) {
 async function sendBook(fileId) {
   if (!accessToken) return setStatus('Előbb csatlakoztasd a Google Drive-ot.', 'error')
   if (!TRANSFER_BROKER_URL) return setStatus('Az E-book Transfer broker nincs konfigurálva.', 'error')
-  const transferWindow = window.open('about:blank', '_blank')
   try {
     const meta = await (await driveRequest(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=name`)).json()
     await driveRequest(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
@@ -236,15 +232,24 @@ async function sendBook(fileId) {
     returnUrl.search = ''
     returnUrl.hash = ''
     const brokerUrl = buildBrokerUrl({ action: 'create', fileId, returnUrl: returnUrl.toString() })
-    if (transferWindow) transferWindow.location.href = brokerUrl
-    else window.location.href = brokerUrl
+    const downloadUrl = `https://drive.usercontent.google.com/download?id=${encodeURIComponent(fileId)}&export=download&confirm=t`
+    const readerUrl = new URL(returnUrl)
+    readerUrl.searchParams.set('ebook-reader', '1')
     $('#ebook-transfer-name').textContent = meta.name
-    $('#ebook-transfer-url').value = brokerUrl
+    $('#ebook-transfer-url').value = downloadUrl
+    $('#ebook-transfer-pair').href = brokerUrl
+    $('#ebook-reader-url').value = readerUrl.toString()
     $('#ebook-transfer-panel').hidden = false
-    setStatus('Az átvitel előkészítése megnyílt új lapon. Ott jelenik meg a 6 karakteres kód és a QR-kód.', 'success')
-  } catch {
-    if (transferWindow) transferWindow.close()
-    setStatus('Az átvitel előkészítése nem sikerült. Ellenőrizd a Drive-hozzáférést.', 'error')
+    const canvas = $('#ebook-transfer-qr')
+    canvas.hidden = true
+    $('#ebook-qr-status').textContent = ''
+    try {
+      await QRCode.toCanvas(canvas, downloadUrl, { width: 260, margin: 4, color: { dark: '#000000', light: '#ffffff' } })
+      canvas.hidden = false
+    } catch { $('#ebook-qr-status').textContent = 'A QR-kód nem készült el. Használd a letöltési linket vagy kérj párosítási kódot.' }
+    setStatus('A könyv küldésre kész. Olvasd be a QR-kódot, vagy kérj 6 karakteres kódot.', 'success')
+  } catch (error) {
+    setStatus(`Az átvitel előkészítése nem sikerült. ${error.message}`, 'error')
   }
 }
 export function initEbookLibrary() {
@@ -258,12 +263,12 @@ export function initEbookLibrary() {
   $('#ebook-transfer-copy')?.addEventListener('click', async () => { try { await navigator.clipboard.writeText($('#ebook-transfer-url').value); setStatus('Átviteli link kimásolva.', 'success') } catch { setStatus('A link másolása nem sikerült.', 'error') } })
   $('#ebook-receiver-submit')?.addEventListener('click', () => {
     const code = $('#ebook-receiver-input')?.value.trim().toUpperCase()
-    if (!/^[A-Z0-9]{6}$/.test(code || '')) return setStatus('Adj meg egy 6 karakteres párosítási kódot.', 'error')
+    if (!/^[A-Z0-9]{6}$/.test(code || '')) { $('#ebook-receiver-status').textContent = 'Adj meg egy 6 karakteres párosítási kódot.'; return }
     const url = buildBrokerUrl({ action: 'download', code })
-    if (!url) return setStatus('A Transfer broker nincs konfigurálva.', 'error')
+    if (!url) { $('#ebook-receiver-status').textContent = 'Az átvétel még nincs konfigurálva.'; return }
     window.location.href = url
   })
   $('#ebook-receiver-input')?.addEventListener('keydown', (event) => { if (event.key === 'Enter') $('#ebook-receiver-submit')?.click() })
-  handleTransferLink()
   setStatus(CLIENT_ID?'Csatlakoztasd a saját Google Drive-odat.':'Drive nincs konfigurálva. Állítsd be a VITE_GOOGLE_CLIENT_ID értéket.',CLIENT_ID?'':'error')
+  handleTransferLink()
 }

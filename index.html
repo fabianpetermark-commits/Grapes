@@ -789,14 +789,15 @@
       <section id="ebook-receiver-panel" class="ebook-library__transfer ebook-library__receiver" hidden>
         <div class="ebook-library__transfer-card">
           <p class="ebook-library__eyebrow">E-olvasó mód</p>
-          <h2>Átvétel kész</h2>
-          <p>Az átvitel kódja:</p>
+          <h2>Könyv átvétele</h2>
+          <p>Mentsd könyvjelzőként ezt az oldalt. Új könyvhöz csak a telefonon vagy számítógépen kapott kódot kell beírnod.</p>
           <strong id="ebook-receiver-code" class="ebook-library__receiver-code"></strong>
           <label class="field__label" for="ebook-receiver-input">6 karakteres kód</label>
           <input id="ebook-receiver-input" class="input" type="text" inputmode="text" autocomplete="one-time-code" maxlength="6" spellcheck="false" aria-label="6 karakteres átvételi kód" />
           <button id="ebook-receiver-submit" class="btn btn--primary btn--block" type="button">Párosítás és letöltés</button>
-          <a id="ebook-receiver-download" class="btn btn--ghost btn--block" href="#" download>📖 E-book letöltése</a>
-          <a id="ebook-receiver-open" class="btn btn--ghost btn--block" href="#" target="_blank" rel="noopener">Transfer megnyitása</a>
+          <p id="ebook-receiver-status" class="ebook-library__receiver-status" role="status"></p>
+          <a id="ebook-receiver-download" class="btn btn--ghost btn--block" href="#" hidden>E-book letöltése</a>
+          <a id="ebook-receiver-home" class="btn btn--ghost btn--block" href="?ebook-reader=1">Új kód megadása</a>
         </div>
       </section>
       <main class="ebook-library__body">
@@ -819,12 +820,14 @@
             <button id="ebook-transfer-close" class="btn btn--ghost btn--sm" type="button">Bezárás</button>
           </div>
           <div class="ebook-library__transfer-grid">
-            <div><canvas id="ebook-transfer-qr" width="260" height="260" aria-label="E-olvasó átvitel QR-kód"></canvas></div>
+            <div><canvas id="ebook-transfer-qr" width="260" height="260" aria-label="A könyv közvetlen letöltésének QR-kódja"></canvas><p id="ebook-qr-status" role="status"></p></div>
             <div class="ebook-library__transfer-info">
-              <p>Nyisd meg a Grapes E-book Könyvtárat az e-olvasón, majd olvasd be ezt a QR-kódot telefonról vagy másik kijelzőről.</p>
-              <span>Átviteli kód</span>
-              <strong id="ebook-transfer-code" class="ebook-library__receiver-code"></strong>
-              <label class="field__label" for="ebook-transfer-url">Átviteli link</label>
+              <p>A QR-kód a könyv letöltését nyitja meg. Ha az e-olvasón nincs kamera, kérj hatkarakteres kódot, majd írd be az állandó átvételi oldalon.</p>
+              <a id="ebook-transfer-pair" class="btn btn--primary" target="_blank" rel="noopener">6 karakteres kód kérése</a>
+              <label for="ebook-reader-url">E-olvasón könyvjelzőként menthető cím</label>
+              <input id="ebook-reader-url" class="input" readonly />
+              <p>A Küldés nyilvános olvasási linket engedélyez a könyvhöz. A kód lejárata nem szünteti meg a Drive-megosztást.</p>
+              <label class="field__label" for="ebook-transfer-url">Közvetlen letöltési link</label>
               <input id="ebook-transfer-url" class="input" type="text" readonly />
               <button id="ebook-transfer-copy" class="btn btn--ghost btn--block" type="button">Link másolása</button>
             </div>
@@ -844,6 +847,8 @@
             <div class="ebook-library__drop"><strong>Google Drive</strong><br />A fájl a „Grapes E-book Library” mappába kerül.</div>
             <button id="ebook-upload-btn" class="btn btn--primary btn--block" type="button">Könyv feltöltése</button>
             <button id="ebook-drive-picker-btn" class="btn btn--ghost btn--block" type="button">Könyv hozzáadása Drive-ból</button>
+            <p>A Drive-ba kézzel feltöltött könyveket egyszer ezzel a gombbal kell kiválasztanod, akkor is, ha már a könyvtármappában vannak.</p>
+            <a class="ebook-library__reader-link" href="?ebook-reader=1">Állandó e-olvasós átvételi oldal</a>
             <input id="ebook-file-input" type="file" accept=".epub,.pdf,.mobi,.azw,.azw3,.txt,.cbz,.cbr" hidden />
           </aside>
         </div>
