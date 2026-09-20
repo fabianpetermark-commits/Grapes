@@ -400,6 +400,7 @@ async function importSTLFile(file) {
 
 function ensurePrimitivePalette() {
   return
+}
 
 function addElement(type) {
   const defaults = SHAPE_DEFAULTS[type]
