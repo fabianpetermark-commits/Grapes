@@ -19,8 +19,14 @@ function createTransferPage(p) {
   try { file = DriveApp.getFileById(fileId); }
   catch (err) { return HtmlService.createHtmlOutput('<h2>Nem sikerült elérni a fájlt.</h2><p>Drive hozzáférési hiba.</p>'); }
 
-  try { file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); }
-  catch (err) { return HtmlService.createHtmlOutput('<h2>Megosztási hiba</h2><p>A fájl nem tehető linkkel elérhetővé.</p>'); }
+  try {
+    const access = file.getSharingAccess();
+    if (access !== DriveApp.Access.ANYONE_WITH_LINK) {
+      return HtmlService.createHtmlOutput('<h2>A fájl nincs megosztva</h2><p>A Grapes csak már nyilvános linkkel megosztott e-bookot tud átvinni.</p>');
+    }
+  } catch (err) {
+    return HtmlService.createHtmlOutput('<h2>Megosztási állapot nem ellenőrizhető</h2><p>A fájl nem használható átvitelhez.</p>');
+  }
 
   const code = createUniqueCode();
   const expiresAt = Date.now() + TTL_MS;
