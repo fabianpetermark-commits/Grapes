@@ -5,7 +5,7 @@ import { TransformControls } from 'three/examples/jsm/controls/TransformControls
 import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import { export3MF, import3MF } from './studio-3mf.js'
-import { cutTopElement, extrudeElement } from './studio-operations.js'
+import { cutTopElement, extrudeElement, mirrorElement } from './studio-operations.js'
 import './styles/screens/studio.css'
 import { create, el } from './ui/dom.js'
 import { notify, notifyError, notifySuccess } from './ui/toast.js'
@@ -1250,6 +1250,39 @@ async function import3MFFile(file) {
     console.error('3MF import failed', error)
     notifyError(`A 3MF import sikertelen: ${error.message}`)
   }
+}
+
+function mirrorSelected(axis) {
+  if (!selectedIds.size) {
+    notify('A tükrözéshez jelölj ki legalább egy objektumot.')
+    return
+  }
+
+  const selected = elements.filter((element) => selectedIds.has(element.id))
+  let changed = 0
+
+  for (const element of selected) {
+    const result = mirrorElement(element, axis)
+    if (result.ok) changed += 1
+  }
+
+  if (!changed) return
+
+  selected.forEach((element) => {
+    element.position = element.mesh.position.clone()
+    element.rotation = element.mesh.rotation.clone()
+    element.scale = element.mesh.scale.clone()
+    element.dimensions = {
+      x: Math.abs(element.baseDimensions.x * element.mesh.scale.x),
+      y: Math.abs(element.baseDimensions.y * element.mesh.scale.y),
+      z: Math.abs(element.baseDimensions.z * element.mesh.scale.z),
+    }
+  })
+
+  syncSelectedTransformInputs()
+  renderElementList()
+  recordHistory()
+  notifySuccess(`Tükrözés: ${axis.toUpperCase()} tengely · ${changed} elem.`)
 }
 
 function applyBooleanOperation(operation, label) {
