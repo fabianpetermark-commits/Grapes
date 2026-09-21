@@ -4,4 +4,22 @@
 
 .ebook-library [hidden]{display:none!important}
 
-.ebook-library__hub{width:min(980px,100%);margin:0 auto;padding:48px 28px}.ebook-library__hub-intro{text-align:center;max-width:720px;margin:0 auto 28px}.ebook-library__hub-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}.ebook-library__hub-card{display:flex;flex-direction:column;gap:12px;padding:26px;background:var(--color-bg-surface);border:1px solid var(--color-border);border-radius:16px;box-shadow:var(--shadow-1)}.ebook-library__hub-card h2{margin:0}.ebook-library__hub-card p{margin:0 0 10px;color:var(--color-text-muted);line-height:1.55;flex:1}.ebook-library__hub-icon{width:48px;height:48px;display:grid;place-items:center;border-radius:12px;background:var(--color-bg-raised);border:1px solid var(--color-border);color:var(--color-accent);font-weight:800}.ebook-library__reader-setup{margin-top:22px;padding-top:18px;border-top:1px solid var(--color-border);display:grid;gap:10px}.ebook-library__reader-setup h3{margin:0;font-size:15px}.ebook-library__reader-setup p{margin:0}.ebook-library__reader-link{display:block;margin-top:4px;overflow-wrap:anywhere}@media(max-width:700px){.ebook-library__hub{padding:30px 14px}.ebook-library__hub-grid{grid-template-columns:1fr}}
+.ebook-library__hub{width:min(980px,100%);margin:0 auto;padding:48px 28px}.ebook-library__hub-intro{text-align:center;max-width:720px;margin:0 auto 28px}.ebook-library__hub-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}.ebook-library__hub-card{display:flex;flex-direction:column;gap:12px;padding:26px;background:var(--color-bg-surface);border:1px solid var(--color-border);border-radius:16px;box-shadow:var(--shadow-1)}.ebook-library__hub-card h2{margin:0}.ebook-library__hub-card p{margin:0 0 10px;color:var(--color-text-muted);line-height:1.55;flex:1}.ebook-library__hub-icon{width:48px;height:48px;display:grid;place-items:center;border-radius:12px;background:var(--color-bg-raised);border:1px solid var(--color-border);color:var(--color-accent);font-weight:800}.ebook-library__reader-setup{margin-top:22px;padding-top:18px;border-top:1px solid var(--color-border);display:grid;gap:10px}.ebook-library__reader-setup h3{margin:0;font-size:15px}.ebook-library__reader-setup p{margin:0}.ebook-library__reader-link{display:block;margin-top:4px;overflow-wrap:anywhere}@media(max-width:700px){
+  .ebook-library__hub{padding:14px}
+  .ebook-library__hub-intro{margin-bottom:14px}
+  .ebook-library__hub-intro .ebook-library__eyebrow{margin-bottom:3px}
+  .ebook-library__hub-intro .ebook-library__title{font-size:24px}
+  .ebook-library__hub-intro .ebook-library__subtitle{margin-top:5px;font-size:12px;line-height:1.35}
+  .ebook-library__hub-grid{grid-template-columns:1fr;gap:10px}
+  .ebook-library__hub-card{
+    display:grid;
+    grid-template-columns:38px minmax(0,1fr);
+    gap:5px 10px;
+    padding:12px 14px;
+    border-radius:12px
+  }
+  .ebook-library__hub-icon{grid-row:1 / 3;width:38px;height:38px;border-radius:9px}
+  .ebook-library__hub-card h2{font-size:16px;line-height:1.2}
+  .ebook-library__hub-card p{margin:0;font-size:12px;line-height:1.35}
+  .ebook-library__hub-card .btn{grid-column:1 / -1;margin-top:3px;min-height:38px}
+}
