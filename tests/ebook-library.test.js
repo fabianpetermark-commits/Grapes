@@ -249,7 +249,8 @@ test('paired reader syncs manually added private books from the Grapes Drive fol
     DriveApp: {
       Access: { ANYONE_WITH_LINK: 'public' },
       Permission: { VIEW: 'view' },
-      getFolderById: () => ({ getFiles: () => iterator }),
+      getFolderById: () => ({ getId: () => 'folder', getFiles: () => iterator }),
+      getFoldersByName: () => ({ hasNext: () => false }),
     },
     ScriptApp: { getService: () => ({ getUrl: () => 'https://broker.example/exec' }) },
   })
