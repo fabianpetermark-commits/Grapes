@@ -18,7 +18,7 @@
     <h1>Grapes E-book olvasó</h1>
     <p class="muted">Könnyített oldal e-book olvasókhoz. Az első párosítás után ez a böngésző megjegyzi az olvasót.</p>
     <div class="card">
-      <form id="pair-form" method="get" action="https://script.google.com/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec">
+      <form id="pair-form" method="get" action="https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec">
         <input type="hidden" name="action" value="pair-reader">
         <label for="code">6 karakteres párosítási kód</label>
         <input id="code" name="code" type="text" maxlength="6" autocomplete="one-time-code">
@@ -29,7 +29,7 @@
   </div>
   <script>
   (function () {
-    var BROKER = 'https://script.google.com/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec';
+    var BROKER = 'https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec';
     var KEY = 'grapes-ebook-reader-token';
     function param(name) {
       var query = window.location.search ? window.location.search.substring(1).split('&') : [];
