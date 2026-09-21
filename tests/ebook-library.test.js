@@ -212,3 +212,50 @@ test('standalone e-reader page stays non-module and broker exposes persistent re
   assert.match(brokerSource, /revoke-reader/)
   assert.match(brokerSource, /READER_TOKEN_TTL_MS/)
 })
+
+
+test('paired reader syncs manually added private books from the Grapes Drive folder', () => {
+  const records = new Map()
+  const token = 'A'.repeat(64)
+  records.set('ebook_reader_token_' + token, JSON.stringify({
+    folderId: 'folder',
+    createdAt: Date.now(),
+    lastSeenAt: Date.now(),
+  }))
+  let sharing = 'private'
+  let shared = 0
+  const file = {
+    getName: () => 'manual.epub',
+    getId: () => 'manual-book',
+    getSize: () => 1234,
+    getSharingAccess: () => sharing,
+    setSharing(access, permission) {
+      assert.equal(access, 'public')
+      assert.equal(permission, 'view')
+      sharing = access
+      shared++
+    },
+  }
+  const iterator = { used: false, hasNext() { return !this.used }, next() { this.used = true; return file } }
+  const props = {
+    getProperty: key => records.get(key),
+    setProperty: (key, value) => records.set(key, value),
+    getProperties: () => Object.fromEntries(records),
+    deleteProperty: key => records.delete(key),
+  }
+  const c = vm.createContext({
+    HtmlService: { createHtmlOutput: value => value },
+    PropertiesService: { getScriptProperties: () => props },
+    DriveApp: {
+      Access: { ANYONE_WITH_LINK: 'public' },
+      Permission: { VIEW: 'view' },
+      getFolderById: () => ({ getFiles: () => iterator }),
+    },
+    ScriptApp: { getService: () => ({ getUrl: () => 'https://broker.example/exec' }) },
+  })
+  vm.runInContext(brokerSource, c)
+  const page = c.readerLibraryPage({ token })
+  assert.equal(shared, 1)
+  assert.match(page, /manual\.epub/)
+  assert.match(page, /drive\.usercontent\.google\.com/)
+})
