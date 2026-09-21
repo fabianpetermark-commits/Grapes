@@ -128,7 +128,7 @@ function createReaderPairingPage(p) {
     // létrehozott azonos nevű mappát. A broker ezért a hitelesített mappa mellett
     // az összes "Grapes E-book Library" mappát összefogja.
     const readerFolders = getReaderLibraryFolders(verifiedFolder);
-    for (let i = 0; i < readerFolders.length; i++) syncReaderLibrarySharing(readerFolders[i]);
+    scanReaderLibraryFolders(readerFolders);
 
     const lock = LockService.getScriptLock();
     lock.waitLock(10000);
@@ -226,17 +226,8 @@ function readerLibraryPage(p) {
   // A Drive-on lehet több azonos nevű mappa (pl. egy régi, kézzel létrehozott
   // és egy drive.file által létrehozott). Ezeket egy közös olvasói listává fűzzük.
   const folders = getReaderLibraryFolders(folder);
-  const books = [];
-  const seenFileIds = {};
-  for (let folderIndex = 0; folderIndex < folders.length; folderIndex++) {
-    const folderBooks = syncReaderLibrarySharing(folders[folderIndex]);
-    for (let bookIndex = 0; bookIndex < folderBooks.length; bookIndex++) {
-      const book = folderBooks[bookIndex];
-      if (seenFileIds[book.id]) continue;
-      seenFileIds[book.id] = true;
-      books.push(book);
-    }
-  }
+  const scan = scanReaderLibraryFolders(folders);
+  const books = scan.books;
   books.sort(function (a, b) { return a.name.toLowerCase().localeCompare(b.name.toLowerCase()); });
 
   const base = ScriptApp.getService().getUrl();
@@ -253,7 +244,7 @@ function readerLibraryPage(p) {
   return HtmlService.createHtmlOutput(
     '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Grapes E-book Könyvtár</title>' +
     '<style>body{font-family:Arial,sans-serif;max-width:720px;margin:0 auto;padding:18px;background:#fff;color:#111}h1{font-size:24px}ul{list-style:none;padding:0;margin:20px 0}.book{display:block;border:1px solid #999;padding:14px;margin:0 0 10px;text-decoration:none;color:#111}.book strong{display:block;font-size:17px;word-break:break-word}.book span{display:block;margin-top:5px;font-size:12px;color:#555}.empty{padding:18px;border:1px solid #bbb}.nav a{display:inline-block;margin:4px 12px 4px 0;color:#111}</style></head><body>' +
-    '<h1>Grapes E-book Könyvtár</h1><p>' + books.length + ' könyv érhető el.</p><div class="nav"><a href="' + escapeHtml(refreshUrl) + '">Frissítés</a><a href="' + escapeHtml(READER_RETURN_URL) + '">Olvasóoldal</a><a href="' + escapeHtml(revokeUrl) + '">Eszköz leválasztása</a></div><ul>' + items + '</ul></body></html>'
+    '<h1>Grapes E-book Könyvtár</h1><p>' + books.length + ' könyv érhető el.' + (scan.skippedCount ? ' ' + scan.skippedCount + ' támogatott fájlt nem sikerült elérhetővé tenni.' : '') + '</p><div class="nav"><a href="' + escapeHtml(refreshUrl) + '">Frissítés</a><a href="' + escapeHtml(READER_RETURN_URL) + '">Olvasóoldal</a><a href="' + escapeHtml(revokeUrl) + '">Eszköz leválasztása</a></div><ul>' + items + '</ul>' + (scan.skippedNames.length ? '<p class="empty">Nem hozzáférhető: ' + escapeHtml(scan.skippedNames.join(', ')) + '</p>' : '') + '</body></html>'
   );
 }
 
@@ -281,24 +272,63 @@ function getReaderLibraryFolders(primaryFolder) {
   return folders;
 }
 
-function syncReaderLibrarySharing(folder) {
-  const books = [];
+function scanReaderLibraryFolders(rootFolders) {
+  const state = {
+    books: [],
+    seenFolderIds: {},
+    seenFileIds: {},
+    skippedCount: 0,
+    skippedNames: []
+  };
+
+  for (let i = 0; i < rootFolders.length; i++) {
+    scanReaderFolderRecursive(rootFolders[i], state);
+  }
+  return state;
+}
+
+function scanReaderFolderRecursive(folder, state) {
+  let folderId;
+  try { folderId = folder.getId(); }
+  catch (err) { return; }
+  if (state.seenFolderIds[folderId]) return;
+  state.seenFolderIds[folderId] = true;
+
   const files = folder.getFiles();
   while (files.hasNext()) {
     const file = files.next();
     const name = file.getName();
     if (!isAllowedBook(name)) continue;
 
+    let fileId;
+    try { fileId = file.getId(); }
+    catch (err) { continue; }
+    if (state.seenFileIds[fileId]) continue;
+    state.seenFileIds[fileId] = true;
+
     try {
       if (file.getSharingAccess() !== DriveApp.Access.ANYONE_WITH_LINK) {
         file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
       }
-      books.push({ id: file.getId(), name: name, size: file.getSize() });
+      state.books.push({ id: fileId, name: name, size: file.getSize() });
     } catch (err) {
-      // Egyetlen problémás fájl ne rejtse el a teljes könyvtárat.
+      state.skippedCount++;
+      if (state.skippedNames.length < 8) state.skippedNames.push(name);
     }
   }
-  return books;
+
+  // A könyvek lehetnek szerző/sorozat szerinti almappákban is.
+  // Ezeket rekurzívan bejárjuk, nem csak a könyvtár gyökerét.
+  try {
+    const children = folder.getFolders();
+    while (children.hasNext()) scanReaderFolderRecursive(children.next(), state);
+  } catch (err) {
+    // Egy problémás almappa ne akadályozza a többi könyv listázását.
+  }
+}
+
+function syncReaderLibrarySharing(folder) {
+  return scanReaderLibraryFolders([folder]).books;
 }
 
 function revokeReaderPage(p) {
