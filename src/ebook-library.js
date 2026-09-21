@@ -9,7 +9,7 @@ const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file'
 const FOLDER_NAME = 'Grapes E-book Library'
 const READER_PAGE_URL = new URL('ebook-reader.html', window.location.href).toString()
 const READER_SHARING_KEY = 'grapes-reader-library-enabled'
-const ALLOWED = ['epub', 'pdf', 'mobi', 'azw', 'azw3', 'txt', 'cbz', 'cbr']
+const ALLOWED = ['epub', 'pdf', 'mobi', 'azw', 'azw3', 'prc', 'txt', 'cbz', 'cbr']
 
 let accessToken = null
 let initialized = false
