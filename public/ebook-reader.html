@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Grapes E-book olvasó</title>
+  <style>
+    body{margin:0;background:#fff;color:#111;font-family:Arial,sans-serif;font-size:18px;line-height:1.45}
+    .wrap{max-width:620px;margin:0 auto;padding:24px 18px}
+    h1{font-size:28px;margin:0 0 10px}.muted{color:#555}.card{border:1px solid #888;padding:20px;margin-top:24px}
+    label{display:block;font-weight:bold;margin-bottom:8px}input{box-sizing:border-box;width:100%;font:inherit;font-size:28px;letter-spacing:.14em;text-transform:uppercase;padding:12px;border:1px solid #555}
+    button,a.button{display:block;box-sizing:border-box;width:100%;margin-top:12px;padding:13px;border:1px solid #111;background:#111;color:#fff;font:inherit;font-weight:bold;text-align:center;text-decoration:none}
+    .small{font-size:14px;margin-top:22px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Grapes E-book olvasó</h1>
+    <p class="muted">Könnyített oldal e-book olvasókhoz. Az első párosítás után ez a böngésző megjegyzi az olvasót.</p>
+    <div class="card">
+      <form id="pair-form" method="get" action="https://script.google.com/macros/s/AKfycbyzbrHT5efr_skQUw_ipSsEwwdtt9TyvZb45uqSsY5UUUuwEwjISKr2bQdhoK9MZU_S/exec">
+        <input type="hidden" name="action" value="pair-reader">
+        <label for="code">6 karakteres párosítási kód</label>
+        <input id="code" name="code" type="text" maxlength="6" autocomplete="one-time-code">
+        <button type="submit">Párosítás és könyvtár megnyitása</button>
+      </form>
+    </div>
+    <p class="small">A kódot a Grapes → E-book → Könyvtár kezelése → E-olvasó párosítása résznél kapod meg.</p>
+  </div>
+  <script>
+  (function () {
+    var BROKER = 'https://script.google.com/macros/s/AKfycbyzbrHT5efr_skQUw_ipSsEwwdtt9TyvZb45uqSsY5UUUuwEwjISKr2bQdhoK9MZU_S/exec';
+    var KEY = 'grapes-ebook-reader-token';
+    function param(name) {
+      var query = window.location.search ? window.location.search.substring(1).split('&') : [];
+      for (var i = 0; i < query.length; i++) {
+        var pair = query[i].split('=');
+        if (decodeURIComponent(pair[0]) === name) return decodeURIComponent((pair[1] || '').replace(/\+/g, ' '));
+      }
+      return '';
+    }
+    function valid(token) { return /^[A-F0-9]{64}$/i.test(token || ''); }
+    function openLibrary(token) {
+      window.location.replace(BROKER + '?action=reader&token=' + encodeURIComponent(token));
+    }
+    if (param('forget') === '1') {
+      try { window.localStorage.removeItem(KEY); } catch (e) {}
+    }
+    var incoming = param('reader-token');
+    if (valid(incoming)) {
+      try { window.localStorage.setItem(KEY, incoming.toUpperCase()); } catch (e) {}
+      openLibrary(incoming);
+      return;
+    }
+    var saved = '';
+    try { saved = window.localStorage.getItem(KEY) || ''; } catch (e) {}
+    if (valid(saved)) openLibrary(saved);
+  }());
+  </script>
+</body>
+</html>

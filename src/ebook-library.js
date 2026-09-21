@@ -7,6 +7,8 @@ const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || ''
 const GOOGLE_APP_ID = import.meta.env.VITE_GOOGLE_APP_ID || CLIENT_ID.split('-')[0] || ''
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file'
 const FOLDER_NAME = 'Grapes E-book Library'
+const READER_PAGE_URL = new URL('ebook-reader.html', window.location.href).toString()
+const READER_SHARING_KEY = 'grapes-reader-library-enabled'
 const ALLOWED = ['epub', 'pdf', 'mobi', 'azw', 'azw3', 'txt', 'cbz', 'cbr']
 
 let accessToken = null
@@ -17,6 +19,21 @@ const ext = (name = '') => name.split('.').pop().toLowerCase()
 const formatSize = (bytes) => !Number.isFinite(bytes) ? '—' : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
 function setStatus(message, kind = '') { const node = $('#ebook-status'); if (node) { node.textContent = message; node.dataset.kind = kind } }
+function readerLibraryEnabled() {
+  try { return window.localStorage && window.localStorage.getItem(READER_SHARING_KEY) === '1' } catch { return false }
+}
+function setReaderLibraryEnabled(value) {
+  try {
+    if (!window.localStorage) return
+    if (value) window.localStorage.setItem(READER_SHARING_KEY, '1')
+    else window.localStorage.removeItem(READER_SHARING_KEY)
+  } catch {}
+}
+function createReaderNonce() {
+  const bytes = new Uint8Array(24)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes, (value) => value.toString(16).padStart(2, '0')).join('')
+}
 function buildTransferUrl(code) {
   const url = new URL(window.location.href)
   url.search = ''
@@ -95,14 +112,17 @@ async function importDriveBook(fileId) {
     throw new Error('Ez a fájltípus jelenleg nem támogatott.')
   }
 
+  let libraryFileId = file.id
   if (!file.parents?.includes(folderId)) {
-    await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.id)}/copy?fields=id,name,size,parents`, {
+    const copiedResponse = await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.id)}/copy?fields=id,name,size,parents`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: file.name, parents: [folderId] }),
     })
+    libraryFileId = (await copiedResponse.json()).id
   }
 
+  if (readerLibraryEnabled()) await ensurePublicRead(libraryFileId)
   if (await refreshLibrary()) setStatus(`${file.name} hozzáadva a Grapes könyvtárhoz.`, 'success')
 }
 
@@ -187,6 +207,97 @@ async function ensureLibraryFolder() {
   const created=await driveRequest('https://www.googleapis.com/drive/v3/files',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:FOLDER_NAME,mimeType:'application/vnd.google-apps.folder'})})
   return (await created.json()).id
 }
+async function getReaderLibraryBooks() {
+  const folderId = await ensureLibraryFolder()
+  const query = `'${folderId}' in parents and trashed = false`
+  const books = []
+  let pageToken = ''
+  do {
+    const response = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=nextPageToken,files(id,name,size,modifiedTime)&orderBy=modifiedTime desc&pageSize=100&pageToken=${encodeURIComponent(pageToken)}`)
+    const data = await response.json()
+    books.push(...(data.files || []).filter((file) => ALLOWED.includes(ext(file.name))))
+    pageToken = data.nextPageToken || ''
+  } while (pageToken)
+  return { folderId, books }
+}
+async function ensurePublicRead(fileId) {
+  try {
+    await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/permissions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'anyone', role: 'reader', allowFileDiscovery: false }),
+    })
+  } catch (error) {
+    if (!String(error.message || '').toLowerCase().includes('already')) throw error
+  }
+}
+async function createReaderMarker(folderId) {
+  const nonce = createReaderNonce()
+  const payload = JSON.stringify({
+    kind: 'grapes-reader-pairing',
+    nonce,
+    createdAt: Date.now(),
+    folderId,
+  })
+  const boundary = `grapes-reader-${crypto.randomUUID()}`
+  const body = new Blob([
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n`,
+    JSON.stringify({
+      name: `.grapes-reader-pairing-${Date.now()}.json`,
+      parents: [folderId],
+      mimeType: 'application/json',
+    }),
+    `\r\n--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n`,
+    payload,
+    `\r\n--${boundary}--\r\n`,
+  ])
+  const response = await driveRequest('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+    method: 'POST',
+    headers: { 'Content-Type': `multipart/related; boundary=${boundary}` },
+    body,
+  })
+  return { markerId: (await response.json()).id, nonce }
+}
+async function createReaderPairing() {
+  if (!accessToken) return setStatus('Előbb csatlakoztasd a Google Drive-ot.', 'error')
+  if (!TRANSFER_BROKER_URL) return setStatus('Az E-book Transfer broker nincs konfigurálva.', 'error')
+
+  let popup = null
+  try {
+    popup = window.open('about:blank', 'grapes-reader-pairing')
+    if (popup) popup.opener = null
+  } catch {}
+
+  try {
+    setStatus('Az e-olvasó könyvtár előkészítése…')
+    const { folderId, books } = await getReaderLibraryBooks()
+    for (let index = 0; index < books.length; index++) {
+      setStatus(`E-olvasó megosztás: ${index + 1}/${books.length} könyv…`)
+      await ensurePublicRead(books[index].id)
+    }
+    setReaderLibraryEnabled(true)
+
+    const marker = await createReaderMarker(folderId)
+    const brokerUrl = buildBrokerUrl({
+      action: 'create-reader-pairing',
+      markerId: marker.markerId,
+      nonce: marker.nonce,
+      returnUrl: READER_PAGE_URL,
+    })
+
+    const fallback = $('#ebook-reader-pair-fallback')
+    if (fallback) {
+      fallback.href = brokerUrl
+      fallback.hidden = false
+    }
+
+    if (popup && !popup.closed) popup.location.href = brokerUrl
+    setStatus(`${books.length} könyv előkészítve. A párosítási kód külön oldalon nyílik meg.`, 'success')
+  } catch (error) {
+    if (popup && !popup.closed) popup.close()
+    setStatus(`Az e-olvasó párosítása nem sikerült. ${error.message}`, 'error')
+  }
+}
 async function refreshLibrary() {
   if(!accessToken) return
   try {
@@ -209,7 +320,9 @@ async function uploadBook(file) {
   try {
     const folderId=await ensureLibraryFolder(); const boundary=`grapes-ebook-${crypto.randomUUID()}`
     const body=new Blob([`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n`,JSON.stringify({name:file.name,parents:[folderId]}),`\r\n--${boundary}\r\nContent-Type: ${file.type||'application/octet-stream'}\r\n\r\n`,file,`\r\n--${boundary}--\r\n`])
-    await driveRequest('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',headers:{'Content-Type':`multipart/related; boundary=${boundary}`},body})
+    const uploadResponse = await driveRequest('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{'Content-Type':`multipart/related; boundary=${boundary}`},body})
+    const created = await uploadResponse.json()
+    if (readerLibraryEnabled() && created.id) await ensurePublicRead(created.id)
     if (await refreshLibrary()) setStatus(`${file.name} hozzáadva a könyvtárhoz.`,'success')
   } catch (error) { setStatus(`A feltöltés nem sikerült. ${error.message}`,'error') }
 }
@@ -252,8 +365,32 @@ async function sendBook(fileId) {
     setStatus(`Az átvitel előkészítése nem sikerült. ${error.message}`, 'error')
   }
 }
+function showEbookHub() {
+  const hub = $('#ebook-hub-view')
+  const manager = $('#ebook-manager-view')
+  if (hub) hub.hidden = false
+  if (manager) manager.hidden = true
+}
+function showEbookManager() {
+  const hub = $('#ebook-hub-view')
+  const manager = $('#ebook-manager-view')
+  if (hub) hub.hidden = true
+  if (manager) manager.hidden = false
+  if (accessToken) refreshLibrary()
+}
 export function initEbookLibrary() {
-  if(initialized) return refreshLibrary(); initialized=true
+  const params = new URLSearchParams(window.location.search)
+  const directReceiver = params.has('ebook-pair') || params.has('ebook-reader')
+  if (initialized) {
+    if (directReceiver) showEbookManager()
+    else showEbookHub()
+    handleTransferLink()
+    return
+  }
+  initialized=true
+  $('#ebook-open-manager')?.addEventListener('click', showEbookManager)
+  $('#ebook-manager-back')?.addEventListener('click', showEbookHub)
+  $('#ebook-reader-pair-btn')?.addEventListener('click', createReaderPairing)
   $('#ebook-drive-connect')?.addEventListener('click',connectDrive)
   $('#ebook-file-input')?.addEventListener('change',(e)=>{const file=e.target.files?.[0];if(file)uploadBook(file);e.target.value=''})
   $('#ebook-upload-btn')?.addEventListener('click',()=>$('#ebook-file-input')?.click())
@@ -270,5 +407,7 @@ export function initEbookLibrary() {
   })
   $('#ebook-receiver-input')?.addEventListener('keydown', (event) => { if (event.key === 'Enter') $('#ebook-receiver-submit')?.click() })
   setStatus(CLIENT_ID?'Csatlakoztasd a saját Google Drive-odat.':'Drive nincs konfigurálva. Állítsd be a VITE_GOOGLE_CLIENT_ID értéket.',CLIENT_ID?'':'error')
+  if (directReceiver) showEbookManager()
+  else showEbookHub()
   handleTransferLink()
 }

@@ -786,6 +786,28 @@
           <span class="btn__label">Főmenü</span>
         </button>
       </header>
+      <main id="ebook-hub-view" class="ebook-library__hub">
+        <div class="ebook-library__hub-intro">
+          <p class="ebook-library__eyebrow">E-book központ</p>
+          <h1 class="ebook-library__title">Hogyan szeretnéd használni?</h1>
+          <p class="ebook-library__subtitle">A teljes könyvtárkezelő modern böngészőre készült. Az e-olvasó mód külön, könnyű oldalt használ régebbi böngészőkhöz.</p>
+        </div>
+        <div class="ebook-library__hub-grid">
+          <article class="ebook-library__hub-card">
+            <div class="ebook-library__hub-icon" aria-hidden="true">K</div>
+            <h2>Könyvtár kezelése</h2>
+            <p>Google Drive csatlakozás, feltöltés, Drive Picker, könyvek kezelése és e-olvasó párosítása.</p>
+            <button id="ebook-open-manager" class="btn btn--primary btn--block" type="button">Könyvtár megnyitása</button>
+          </article>
+          <article class="ebook-library__hub-card">
+            <div class="ebook-library__hub-icon" aria-hidden="true">O</div>
+            <h2>E-book olvasó</h2>
+            <p>Könnyített oldal e-ink és régebbi böngészőkhöz. Párosítás után automatikusan megjegyzi az olvasót.</p>
+            <a class="btn btn--ghost btn--block" href="ebook-reader.html">E-olvasó oldal megnyitása</a>
+          </article>
+        </div>
+      </main>
+      <div id="ebook-manager-view" hidden>
       <section id="ebook-receiver-panel" class="ebook-library__transfer ebook-library__receiver" hidden>
         <div class="ebook-library__transfer-card">
           <p class="ebook-library__eyebrow">E-olvasó mód</p>
@@ -808,6 +830,7 @@
             <p class="ebook-library__subtitle">A könyvek a saját Google Drive-od dedikált könyvtárában maradnak. Innen később közvetlenül az e-olvasóra küldhetők.</p>
           </div>
           <div class="ebook-library__actions">
+            <button id="ebook-manager-back" class="btn btn--ghost" type="button">E-book választó</button>
             <button id="ebook-refresh-btn" class="btn btn--ghost" type="button">Frissítés</button>
             <button id="ebook-drive-connect" class="btn btn--primary" type="button">Google Drive csatlakoztatása</button>
           </div>
@@ -848,11 +871,18 @@
             <button id="ebook-upload-btn" class="btn btn--primary btn--block" type="button">Könyv feltöltése</button>
             <button id="ebook-drive-picker-btn" class="btn btn--ghost btn--block" type="button">Könyv hozzáadása Drive-ból</button>
             <p>A Drive-ba kézzel feltöltött könyveket egyszer ezzel a gombbal kell kiválasztanod, akkor is, ha már a könyvtármappában vannak.</p>
-            <a class="ebook-library__reader-link" href="?ebook-reader=1">Állandó e-olvasós átvételi oldal</a>
+            <div class="ebook-library__reader-setup">
+              <h3>E-book olvasó</h3>
+              <p>A párosításkor a könyvtár támogatott könyvei linkkel olvasható megosztást kapnak. Az olvasó ezután saját, tartós azonosítóval éri el a listát.</p>
+              <button id="ebook-reader-pair-btn" class="btn btn--primary btn--block" type="button">E-olvasó párosítása</button>
+              <a id="ebook-reader-pair-fallback" class="ebook-library__reader-link" href="#" target="_blank" rel="noopener" hidden>Párosítási kód megnyitása</a>
+              <a class="ebook-library__reader-link" href="ebook-reader.html">Könnyített e-olvasó oldal</a>
+            </div>
             <input id="ebook-file-input" type="file" accept=".epub,.pdf,.mobi,.azw,.azw3,.txt,.cbz,.cbr" hidden />
           </aside>
         </div>
       </main>
+      </div>
     </div>
 
     <div id="qr-app" class="editor hidden">

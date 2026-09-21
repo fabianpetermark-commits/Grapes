@@ -200,3 +200,15 @@ test('broker rejects private files and foreign return URLs, expires codes and re
   records.set(key, JSON.stringify({ ...record, expiresAt: 0 }))
   assert.match(c.resolveTransfer({ code }), /Lejárt/); assert.equal(records.size, 0)
 })
+
+
+test('standalone e-reader page stays non-module and broker exposes persistent reader actions', () => {
+  const reader = readFileSync(new URL('../public/ebook-reader.html', import.meta.url), 'utf8')
+  assert.doesNotMatch(reader, /type=["']module["']/)
+  assert.match(reader, /name="action" value="pair-reader"/)
+  assert.match(reader, /grapes-ebook-reader-token/)
+  assert.match(brokerSource, /create-reader-pairing/)
+  assert.match(brokerSource, /pair-reader/)
+  assert.match(brokerSource, /revoke-reader/)
+  assert.match(brokerSource, /READER_TOKEN_TTL_MS/)
+})
