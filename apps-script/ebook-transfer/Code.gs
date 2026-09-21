@@ -124,6 +124,11 @@ function createReaderPairingPage(p) {
     }
     if (!verifiedFolder) return readerMessagePage('Érvénytelen könyvtár', 'A párosítási fájl nem a Grapes E-book Library mappában található.');
 
+    // A böngészős drive.file scope csak a Grapes által létrehozott/kiválasztott
+    // fájlokat látja. A hitelesített reader-párosítás után a broker a saját
+    // Drive-jogosultságával előkészíti a mappában lévő összes támogatott könyvet.
+    syncReaderLibrarySharing(verifiedFolder);
+
     const lock = LockService.getScriptLock();
     lock.waitLock(10000);
     let code;
@@ -216,17 +221,10 @@ function readerLibraryPage(p) {
   try { folder = DriveApp.getFolderById(record.folderId); }
   catch (err) { return readerMessagePage('A könyvtár nem érhető el', 'Párosítsd újra az e-book olvasót.'); }
 
-  const books = [];
-  const files = folder.getFiles();
-  while (files.hasNext()) {
-    const file = files.next();
-    const name = file.getName();
-    if (!isAllowedBook(name)) continue;
-    try {
-      if (file.getSharingAccess() !== DriveApp.Access.ANYONE_WITH_LINK) continue;
-    } catch (err) { continue; }
-    books.push({ id: file.getId(), name: name, size: file.getSize() });
-  }
+  // A reader-token már egy ellenőrzött Grapes könyvtárhoz tartozik.
+  // Frissítéskor az új, kézzel Drive-ba tett könyveket is bekapcsoljuk,
+  // így nem kell őket egyenként a Grapesen keresztül importálni.
+  const books = syncReaderLibrarySharing(folder);
   books.sort(function (a, b) { return a.name.toLowerCase().localeCompare(b.name.toLowerCase()); });
 
   const base = ScriptApp.getService().getUrl();
@@ -245,6 +243,26 @@ function readerLibraryPage(p) {
     '<style>body{font-family:Arial,sans-serif;max-width:720px;margin:0 auto;padding:18px;background:#fff;color:#111}h1{font-size:24px}ul{list-style:none;padding:0;margin:20px 0}.book{display:block;border:1px solid #999;padding:14px;margin:0 0 10px;text-decoration:none;color:#111}.book strong{display:block;font-size:17px;word-break:break-word}.book span{display:block;margin-top:5px;font-size:12px;color:#555}.empty{padding:18px;border:1px solid #bbb}.nav a{display:inline-block;margin:4px 12px 4px 0;color:#111}</style></head><body>' +
     '<h1>Grapes E-book Könyvtár</h1><p>' + books.length + ' könyv érhető el.</p><div class="nav"><a href="' + escapeHtml(refreshUrl) + '">Frissítés</a><a href="' + escapeHtml(READER_RETURN_URL) + '">Olvasóoldal</a><a href="' + escapeHtml(revokeUrl) + '">Eszköz leválasztása</a></div><ul>' + items + '</ul></body></html>'
   );
+}
+
+function syncReaderLibrarySharing(folder) {
+  const books = [];
+  const files = folder.getFiles();
+  while (files.hasNext()) {
+    const file = files.next();
+    const name = file.getName();
+    if (!isAllowedBook(name)) continue;
+
+    try {
+      if (file.getSharingAccess() !== DriveApp.Access.ANYONE_WITH_LINK) {
+        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      }
+      books.push({ id: file.getId(), name: name, size: file.getSize() });
+    } catch (err) {
+      // Egyetlen problémás fájl ne rejtse el a teljes könyvtárat.
+    }
+  }
+  return books;
 }
 
 function revokeReaderPage(p) {
