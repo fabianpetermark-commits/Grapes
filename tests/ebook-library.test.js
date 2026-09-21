@@ -259,3 +259,52 @@ test('paired reader syncs manually added private books from the Grapes Drive fol
   assert.match(page, /manual\.epub/)
   assert.match(page, /drive\.usercontent\.google\.com/)
 })
+
+
+test('paired reader merges duplicate Grapes library folders', () => {
+  const records = new Map()
+  const token = 'B'.repeat(64)
+  records.set('ebook_reader_token_' + token, JSON.stringify({
+    folderId: 'new-folder',
+    createdAt: Date.now(),
+    lastSeenAt: Date.now(),
+  }))
+
+  const makeFile = (id, name) => ({
+    getName: () => name,
+    getId: () => id,
+    getSize: () => 2048,
+    getSharingAccess: () => 'public',
+  })
+  const iterator = (items) => {
+    let index = 0
+    return { hasNext: () => index < items.length, next: () => items[index++] }
+  }
+
+  const newFolder = { getId: () => 'new-folder', getFiles: () => iterator([makeFile('new-book', 'new.epub')]) }
+  const oldFolder = { getId: () => 'old-folder', getFiles: () => iterator([makeFile('old-book', 'old.pdf')]) }
+
+  const props = {
+    getProperty: key => records.get(key),
+    setProperty: (key, value) => records.set(key, value),
+    getProperties: () => Object.fromEntries(records),
+    deleteProperty: key => records.delete(key),
+  }
+
+  const c = vm.createContext({
+    HtmlService: { createHtmlOutput: value => value },
+    PropertiesService: { getScriptProperties: () => props },
+    DriveApp: {
+      Access: { ANYONE_WITH_LINK: 'public' },
+      Permission: { VIEW: 'view' },
+      getFolderById: () => newFolder,
+      getFoldersByName: () => iterator([oldFolder, newFolder]),
+    },
+    ScriptApp: { getService: () => ({ getUrl: () => 'https://broker.example/exec' }) },
+  })
+  vm.runInContext(brokerSource, c)
+  const page = c.readerLibraryPage({ token })
+  assert.match(page, /new\.epub/)
+  assert.match(page, /old\.pdf/)
+  assert.match(page, /2 könyv érhető el/)
+})
