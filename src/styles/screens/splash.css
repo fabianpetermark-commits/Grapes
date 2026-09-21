@@ -96,7 +96,27 @@
 }
 
 @media (width <= 768px) {
+  .splash {
+    justify-content: flex-start;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .splash__logo {
+    flex: 0 0 auto;
+    margin-top: var(--space-2);
+  }
+
+  .splash__cards {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    width: 100%;
+    align-items: center;
+    padding-bottom: var(--space-6);
+  }
+
   .card {
+    flex: 0 0 auto;
     width: min(85vw, 320px);
   }
 }
