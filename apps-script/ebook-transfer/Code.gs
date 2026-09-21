@@ -9,7 +9,7 @@ const READER_MARKER_TTL_MS = 10 * 60 * 1000;
 const FOLDER_NAME = 'Grapes E-book Library';
 const ALLOWED_RETURN_URL = 'https://fabianpetermark-commits.github.io/Grapes/';
 const READER_RETURN_URL = 'https://fabianpetermark-commits.github.io/Grapes/ebook-reader.html';
-const ALLOWED_BOOK_EXTENSIONS = ['epub', 'pdf', 'mobi', 'azw', 'azw3', 'txt', 'cbz', 'cbr'];
+const ALLOWED_BOOK_EXTENSIONS = ['epub', 'pdf', 'mobi', 'azw', 'azw3', 'prc', 'txt', 'cbz', 'cbr'];
 
 function doGet(e) {
   const action = String((e && e.parameter && e.parameter.action) || '').toLowerCase();
