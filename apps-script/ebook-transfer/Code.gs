@@ -271,7 +271,7 @@ function cleanupExpiredRecords() {
     if (key.indexOf(STORE_PREFIX) !== 0 && key.indexOf(READER_PAIR_PREFIX) !== 0 && key.indexOf(READER_TOKEN_PREFIX) !== 0) return;
     try {
       const record = JSON.parse(records[key]);
-      if ((record.expiresAt && Number(record.expiresAt) <= now) ||
+      if ((record.expiresAt !== undefined && Number(record.expiresAt) <= now) ||
           (key.indexOf(READER_TOKEN_PREFIX) === 0 && now - Number(record.lastSeenAt || record.createdAt || 0) > READER_TOKEN_TTL_MS)) {
         props.deleteProperty(key);
       }
