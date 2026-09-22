@@ -10,11 +10,34 @@
 import './styles/index.css'
 import { el } from './ui/dom.js'
 import { showScreen, showModulePicker } from './screens.js'
+import { connectGrapesDrive, isGrapesDriveConnected } from './storage/grapes-drive.js'
 
 el('#pick-brochure').addEventListener('click', () => showScreen('brochure'))
 el('#pick-studio').addEventListener('click', () => showScreen('studio'))
 el('#pick-qr').addEventListener('click', () => showScreen('qr'))
 el('#pick-ebook').addEventListener('click', () => showScreen('ebook'))
+
+const driveButton = el('#grapes-drive-connect')
+const driveStatus = el('#grapes-drive-status')
+function renderDriveStatus() {
+  const connected = isGrapesDriveConnected()
+  driveButton.textContent = connected ? 'Google Drive csatlakoztatva' : 'Google Drive csatlakoztatása'
+  driveButton.disabled = connected
+  driveStatus.textContent = connected ? 'Közös Grapes Drive aktív' : 'Nincs csatlakoztatva'
+  driveStatus.dataset.connected = connected ? 'true' : 'false'
+}
+driveButton.addEventListener('click', async () => {
+  driveButton.disabled = true
+  driveStatus.textContent = 'Csatlakozás…'
+  try {
+    await connectGrapesDrive()
+    renderDriveStatus()
+  } catch (error) {
+    driveButton.disabled = false
+    driveStatus.textContent = error.message || 'A Drive csatlakoztatása nem sikerült.'
+  }
+})
+renderDriveStatus()
 
 for (const selector of ['#app-back-to-menu-btn', '#studio-back-to-menu-btn', '#fabric-back-to-menu-btn', '#qr-back-to-menu-btn', '#ebook-back-to-menu-btn']) {
   el(selector).addEventListener('click', showModulePicker)
