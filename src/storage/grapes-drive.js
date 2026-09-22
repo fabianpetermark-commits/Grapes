@@ -30,6 +30,14 @@ export function isGrapesDriveConnected() {
   return Boolean(accessToken)
 }
 
+export function getGrapesDriveAccessToken() {
+  return accessToken
+}
+
+export async function grapesDriveRequest(url, options = {}) {
+  return driveRequest(url, options)
+}
+
 export async function connectGrapesDrive() {
   if (!CLIENT_ID) throw new Error('A Google Drive kliensazonosító nincs konfigurálva.')
   await loadGoogleIdentity()
