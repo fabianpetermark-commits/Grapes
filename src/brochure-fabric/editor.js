@@ -15,8 +15,8 @@ import { openQrModal } from './qr.js'
 import { openUnsplashModal } from './unsplash.js'
 import { importHtmlFile } from './html-import.js'
 import { initHistory } from './history.js'
-import { saveProject, loadProject, serializeProject } from './project-io.js'
-import { isGrapesDriveConnected, saveGrapesProject } from '../storage/grapes-drive.js'
+import { saveProject, loadProject, loadProjectData, serializeProject } from './project-io.js'
+import { isGrapesDriveConnected, saveGrapesProject, listGrapesProjects, loadGrapesProject } from '../storage/grapes-drive.js'
 import { exportToPdf } from './pdf-export.js'
 import { exportToHtml } from './html-export.js'
 import { openCodeView } from './code-view.js'
@@ -468,7 +468,38 @@ function setupProjectIO(history) {
   })
 
   const projectInput = document.querySelector('#fabric-project-input')
-  document.querySelector('#fabric-load-btn').addEventListener('click', () => projectInput.click())
+  document.querySelector('#fabric-load-btn').addEventListener('click', async () => {
+    if (!isGrapesDriveConnected()) {
+      projectInput.click()
+      return
+    }
+    try {
+      const projects = await listGrapesProjects('2D Studio')
+      if (!projects.length) {
+        projectInput.click()
+        return
+      }
+      const choices = projects.slice(0, 20).map((project, index) =>
+        `${index + 1}. ${project.name.replace(/\\.grapes\\.json$/, '')}`
+      ).join('\n')
+      const selected = window.prompt(`Drive projektek:\n\n${choices}\n\nÍrd be a megnyitandó projekt sorszámát.\n(Helyi fájlhoz nyomj Mégse gombot.)`)
+      if (selected === null) {
+        projectInput.click()
+        return
+      }
+      const index = Number.parseInt(selected, 10) - 1
+      if (!Number.isInteger(index) || !projects[index]) throw new Error('Érvénytelen projektsorszám.')
+      const file = projects[index]
+      const wrapper = await loadGrapesProject(file.id)
+      await loadProjectData(wrapper.data, canvas)
+      driveProjectFileId = file.id
+      driveProjectName = wrapper.name || file.name.replace(/\.grapes\.json$/, '')
+      history.reset()
+    } catch (error) {
+      console.error('Drive projekt betöltése sikertelen:', error)
+      notifyError(`A Drive projekt betöltése sikertelen: ${error.message}`)
+    }
+  })
   projectInput.addEventListener('change', () => {
     const [file] = projectInput.files ?? []
     projectInput.value = ''
