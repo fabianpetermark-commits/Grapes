@@ -17,6 +17,7 @@ import { importHtmlFile } from './html-import.js'
 import { initHistory } from './history.js'
 import { saveProject, loadProject, loadProjectData, serializeProject } from './project-io.js'
 import { isGrapesDriveConnected, saveGrapesProject, listGrapesProjects, loadGrapesProject } from '../storage/grapes-drive.js'
+import { saveLocalProject, loadLocalProject } from '../storage/local-project-store.js'
 import { exportToPdf } from './pdf-export.js'
 import { exportToHtml } from './html-export.js'
 import { openCodeView } from './code-view.js'
@@ -49,6 +50,8 @@ let zoomValue = 100
 let isFitMode = true
 let driveProjectFileId = null
 let driveProjectName = 'Brossúra projekt'
+const LOCAL_BACKUP_ID = '2d-studio-current'
+let autosaveTimer = null
 
 function applyZoom(value) {
   const clamped = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(value)))
@@ -443,6 +446,49 @@ function setupHistory(history) {
   })
 }
 
+function scheduleProjectAutosave() {
+  clearTimeout(autosaveTimer)
+  autosaveTimer = setTimeout(async () => {
+    const data = serializeProject(canvas)
+    await saveLocalProject({
+      id: LOCAL_BACKUP_ID,
+      module: '2D Studio',
+      name: driveProjectName,
+      data,
+      driveFileId: driveProjectFileId,
+    })
+    if (isGrapesDriveConnected() && driveProjectFileId) {
+      driveProjectFileId = await saveGrapesProject({
+        module: '2D Studio',
+        name: driveProjectName,
+        data,
+        fileId: driveProjectFileId,
+      })
+    }
+  }, 4000)
+}
+
+function setupAutosave() {
+  for (const eventName of ['object:added', 'object:removed', 'object:modified']) {
+    canvas.on(eventName, scheduleProjectAutosave)
+  }
+}
+
+async function restoreLocalBackup(history) {
+  try {
+    const backup = await loadLocalProject(LOCAL_BACKUP_ID)
+    if (!backup?.data) return
+    const shouldRestore = window.confirm('Találtam egy helyi biztonsági mentést a legutóbbi 2D projektből. Visszaállítsam?')
+    if (!shouldRestore) return
+    await loadProjectData(backup.data, canvas)
+    driveProjectFileId = backup.driveFileId || null
+    driveProjectName = backup.name || driveProjectName
+    history.reset()
+  } catch (error) {
+    console.warn('Helyi projektmentés visszaállítása sikertelen:', error)
+  }
+}
+
 function setupProjectIO(history) {
   document.querySelector('#fabric-save-btn').addEventListener('click', async () => {
     if (!isGrapesDriveConnected()) {
@@ -614,6 +660,8 @@ export function initBrochureFabric() {
   setupSnapToGrid()
   setupHistory(history)
   setupProjectIO(history)
+  setupAutosave()
+  restoreLocalBackup(history)
   setupMobilePanels()
   initPropertiesPanel(canvas, history)
 
