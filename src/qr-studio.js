@@ -1,6 +1,10 @@
 import QRCode from 'qrcode';
 import { el } from './ui/dom.js';
 import { notifySuccess, notifyError } from './ui/toast.js';
+import { saveLocalProject, loadLocalProject } from './storage/local-project-store.js';
+import { isGrapesDriveConnected, saveGrapesProject, loadGrapesProject } from './storage/grapes-drive.js';
+
+const QR_BACKUP_ID = 'qr-studio-current';
 
 const PALETTE = [
   '#000000','#1f2937','#475569','#64748b','#94a3b8','#cbd5e1','#e2e8f0','#ffffff',
@@ -93,6 +97,88 @@ export function initQrStudio() {
     return getLegacyData();
   }
 
+  let driveProjectFileId = null;
+  let autosaveTimer = null;
+
+  function serializeQrProject() {
+    const dynamic = {};
+    dynamicContainer?.querySelectorAll('input, textarea, select').forEach((input) => { dynamic[input.id] = input.value; });
+    return {
+      format: 'grapes-qr',
+      version: 1,
+      type: typeSelect?.value || 'url',
+      url: urlInput?.value || '',
+      utmSource: utmSource?.value || '',
+      utmMedium: utmMedium?.value || '',
+      utmCampaign: utmCampaign?.value || '',
+      foreground: fgColorInput?.value || '#000000',
+      background: bgColorInput?.value || '#ffffff',
+      errorLevel: errorLevelSelect?.value || 'M',
+      dynamic,
+    };
+  }
+
+  async function restoreQrProject(data) {
+    if (!data || data.format !== 'grapes-qr') return;
+    if (typeSelect) typeSelect.value = data.type || 'url';
+    renderLegacyInputs();
+    if (urlInput) urlInput.value = data.url || '';
+    if (utmSource) utmSource.value = data.utmSource || '';
+    if (utmMedium) utmMedium.value = data.utmMedium || '';
+    if (utmCampaign) utmCampaign.value = data.utmCampaign || '';
+    if (fgColorInput) fgColorInput.value = data.foreground || '#000000';
+    if (bgColorInput) bgColorInput.value = data.background || '#ffffff';
+    if (errorLevelSelect) errorLevelSelect.value = data.errorLevel || 'M';
+    for (const [id, value] of Object.entries(data.dynamic || {})) {
+      const input = document.getElementById(id);
+      if (input) input.value = value;
+    }
+    syncHexInputs();
+    generateQR();
+  }
+
+  function scheduleAutosave() {
+    clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(async () => {
+      const data = serializeQrProject();
+      try {
+        await saveLocalProject({ id: QR_BACKUP_ID, module: 'QR & Barcode', name: 'QR projekt', data, driveFileId: driveProjectFileId });
+        if (isGrapesDriveConnected() && driveProjectFileId) {
+          driveProjectFileId = await saveGrapesProject({ module: 'QR & Barcode', name: 'QR projekt', data, fileId: driveProjectFileId });
+        }
+      } catch (error) {
+        console.warn('QR automatikus mentés sikertelen:', error);
+      }
+    }, 4000);
+  }
+
+  async function restoreLastProject() {
+    try {
+      const raw = sessionStorage.getItem('grapes-open-project');
+      if (raw) {
+        const target = JSON.parse(raw);
+        if (target.module === 'QR & Barcode') {
+          sessionStorage.removeItem('grapes-open-project');
+          if (target.source === 'Drive') {
+            const wrapper = await loadGrapesProject(target.id);
+            driveProjectFileId = target.id;
+            await restoreQrProject(wrapper.data);
+            return;
+          }
+          const local = await loadLocalProject(target.id);
+          if (local?.data) { driveProjectFileId = local.driveFileId || null; await restoreQrProject(local.data); return; }
+        }
+      }
+      const backup = await loadLocalProject(QR_BACKUP_ID);
+      if (backup?.data) {
+        driveProjectFileId = backup.driveFileId || null;
+        await restoreQrProject(backup.data);
+      }
+    } catch (error) {
+      console.warn('QR projekt visszaállítása sikertelen:', error);
+    }
+  }
+
   function generateQR() {
     const text = getQRData();
     if (!text) {
@@ -164,8 +250,8 @@ export function initQrStudio() {
     }
     dynamicContainer.innerHTML = html;
     dynamicContainer.querySelectorAll('input, textarea, select').forEach((input) => {
-      input.addEventListener('input', generateQR);
-      input.addEventListener('change', generateQR);
+      input.addEventListener('input', () => { generateQR(); scheduleAutosave(); });
+      input.addEventListener('change', () => { generateQR(); scheduleAutosave(); });
     });
     generateQR();
   }
@@ -175,8 +261,8 @@ export function initQrStudio() {
   });
 
   [urlInput, utmSource, utmMedium, utmCampaign].filter(Boolean).forEach((input) => {
-    input.addEventListener('input', generateQR);
-    input.addEventListener('change', generateQR);
+    input.addEventListener('input', () => { generateQR(); scheduleAutosave(); });
+    input.addEventListener('change', () => { generateQR(); scheduleAutosave(); });
   });
 
   fgColorInput?.addEventListener('input', () => {
@@ -213,7 +299,7 @@ export function initQrStudio() {
     });
   });
 
-  errorLevelSelect?.addEventListener('change', generateQR);
+  errorLevelSelect?.addEventListener('change', () => { generateQR(); scheduleAutosave(); });
 
   downloadBtn?.addEventListener('click', () => {
     const link = document.createElement('a');
@@ -234,4 +320,5 @@ export function initQrStudio() {
   syncHexInputs();
   activateTab('link');
   renderLegacyInputs();
+  restoreLastProject();
 }
