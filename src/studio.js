@@ -9,6 +9,8 @@ import { cutTopElement, extrudeElement, mirrorElement } from './studio-operation
 import './styles/screens/studio.css'
 import { create, el } from './ui/dom.js'
 import { notify, notifyError, notifySuccess } from './ui/toast.js'
+import { saveLocalProject, loadLocalProject } from './storage/local-project-store.js'
+import { isGrapesDriveConnected, saveGrapesProject, loadGrapesProject } from './storage/grapes-drive.js'
 
 let scene, camera, renderer, controls, transformControls
 let elements = []
@@ -28,6 +30,9 @@ let buildPlate = null
 let buildPlateGrid = null
 let buildPlateSize = 220
 const BUILD_PLATE_SIZES = [180, 220, 256, 300, 320, 400]
+const STUDIO_BACKUP_ID = '3d-studio-current'
+let studioDriveFileId = null
+let studioAutosaveTimer = null
 
 const SHAPE_DEFAULTS = {
   box: { label: 'Kocka', icon: 'cube', color: '#7c9cbf' },
@@ -208,6 +213,91 @@ function recordHistory() {
   if (history.length > 50) history.shift()
   historyIndex = history.length - 1
   updateHistoryUI()
+  scheduleStudioAutosave()
+}
+
+function serializeStudioProject() {
+  return {
+    format: 'grapes-3d',
+    version: 1,
+    buildPlateSize,
+    snapEnabled,
+    snapSize,
+    wireframe: isWireframe,
+    elements: captureSceneState(),
+  }
+}
+
+function scheduleStudioAutosave() {
+  if (historyBusy || !initialized) return
+  clearTimeout(studioAutosaveTimer)
+  studioAutosaveTimer = setTimeout(async () => {
+    const data = serializeStudioProject()
+    try {
+      await saveLocalProject({ id: STUDIO_BACKUP_ID, module: '3D Studio', name: '3D projekt', data, driveFileId: studioDriveFileId })
+      if (isGrapesDriveConnected() && studioDriveFileId) {
+        studioDriveFileId = await saveGrapesProject({ module: '3D Studio', name: '3D projekt', data, fileId: studioDriveFileId })
+      }
+    } catch (error) {
+      console.warn('3D automatikus mentés sikertelen:', error)
+    }
+  }, 4000)
+}
+
+async function restoreStudioProject(data) {
+  if (!data || data.format !== 'grapes-3d') return false
+  historyBusy = true
+  try {
+    detachTransformTarget()
+    transformControls.detach()
+    elements.forEach(disposeElementMesh)
+    buildPlateSize = data.buildPlateSize || buildPlateSize
+    snapEnabled = data.snapEnabled ?? snapEnabled
+    snapSize = data.snapSize || snapSize
+    isWireframe = data.wireframe ?? isWireframe
+    elements = (data.elements || []).map(createElementFromState)
+    selectedId = elements[0]?.id ?? null
+    selectedIds = selectedId ? new Set(getGroupMemberIds(selectedId)) : new Set()
+    renderElementList()
+    if (selectedId) selectElement(selectedId)
+    history = []
+    historyIndex = -1
+    historyBusy = false
+    recordHistory()
+    return true
+  } finally {
+    historyBusy = false
+  }
+}
+
+async function restoreLastStudioProject() {
+  try {
+    const raw = sessionStorage.getItem('grapes-open-project')
+    if (raw) {
+      const target = JSON.parse(raw)
+      if (target.module === '3D Studio') {
+        sessionStorage.removeItem('grapes-open-project')
+        if (target.source === 'Drive') {
+          const wrapper = await loadGrapesProject(target.id)
+          studioDriveFileId = target.id
+          return restoreStudioProject(wrapper.data)
+        }
+        const local = await loadLocalProject(target.id)
+        if (local?.data) {
+          studioDriveFileId = local.driveFileId || null
+          return restoreStudioProject(local.data)
+        }
+      }
+    }
+    const backup = await loadLocalProject(STUDIO_BACKUP_ID)
+    if (backup?.data) {
+      studioDriveFileId = backup.driveFileId || null
+      return restoreStudioProject(backup.data)
+    }
+  } catch (error) {
+    console.warn('3D projekt visszaállítása sikertelen:', error)
+  }
+  return false
 }
 
 function createElementFromState(state) {
@@ -1631,6 +1721,10 @@ export function initStudio() {
   initialized = true
   bindUI()
   initThree()
-  addElement('box')
-  recordHistory()
+  restoreLastStudioProject().then((restored) => {
+    if (!restored) {
+      addElement('box')
+      recordHistory()
+    }
+  })
 }
