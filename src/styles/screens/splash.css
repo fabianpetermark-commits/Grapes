@@ -120,3 +120,32 @@
     width: min(85vw, 320px);
   }
 }
+
+
+.splash__drive {
+  position: absolute;
+  top: var(--space-5);
+  right: var(--space-5);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.splash__drive-status {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.splash__drive-status[data-connected="true"] {
+  color: var(--color-accent);
+}
+
+@media (width <= 768px) {
+  .splash__drive {
+    position: static;
+    flex: 0 0 auto;
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+}
