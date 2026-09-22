@@ -1,0 +1,65 @@
+name: Deploy Grapes ebook Apps Script
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps-script/ebook-transfer/**'
+      - '.github/workflows/deploy-ebook-apps-script.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-ebook-apps-script
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install clasp
+        run: npm install --global @google/clasp
+      - name: Configure clasp authentication
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          test -n "$CLASPRC_JSON" || (echo "Missing CLASPRC_JSON secret" && exit 1)
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+      - name: Configure Apps Script project
+        working-directory: apps-script/ebook-transfer
+        run: |
+          cat > .clasp.json <<'EOF'
+          {
+            "scriptId": "1gOO_sMbmkdOXsyZ-zcvTnXQczsIkCAFPKlRemkFH1gaKvFzeNqgNAfCu",
+            "rootDir": "."
+          }
+          EOF
+      - name: Push source
+        working-directory: apps-script/ebook-transfer
+        run: clasp push --force
+      - name: Create immutable version
+        id: version
+        working-directory: apps-script/ebook-transfer
+        run: |
+          OUTPUT="$(clasp version "GitHub ${GITHUB_SHA}")"
+          echo "$OUTPUT"
+          VERSION="$(printf '%s' "$OUTPUT" | grep -Eo '[0-9]+' | tail -1)"
+          test -n "$VERSION" || (echo "Could not determine Apps Script version" && exit 1)
+          echo "number=$VERSION" >> "$GITHUB_OUTPUT"
+      - name: Update existing web app deployment
+        working-directory: apps-script/ebook-transfer
+        env:
+          DEPLOYMENT_ID: AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb
+          VERSION: ${{ steps.version.outputs.number }}
+        run: clasp deploy --deploymentId "$DEPLOYMENT_ID" --versionNumber "$VERSION" --description "GitHub ${GITHUB_SHA}"
+      - name: Verify deployment id
+        working-directory: apps-script/ebook-transfer
+        env:
+          DEPLOYMENT_ID: AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb
+        run: clasp deployments | grep -F "$DEPLOYMENT_ID"
