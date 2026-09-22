@@ -5,12 +5,21 @@
 
 const FORMAT_VERSION = 1
 
-export function saveProject(canvas) {
-  const project = {
+export function serializeProject(canvas) {
+  return {
     format: 'grapes-fabric',
     version: FORMAT_VERSION,
     canvas: canvas.toJSON(),
   }
+}
+
+export async function loadProjectData(project, canvas) {
+  if (project.format !== 'grapes-fabric') throw new Error('Ez a projekt nem kompatibilis az új brossúra-szerkesztővel.')
+  await loadProjectData(project, canvas)
+}
+
+export function saveProject(canvas) {
+  const project = serializeProject(canvas)
   const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
