@@ -33,3 +33,19 @@ export async function loadLocalProject(id) {
     request.onerror = () => { const error = request.error; db.close(); reject(error) }
   })
 }
+
+export async function listLocalProjects(limit = 5) {
+  const db = await openDb()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readonly')
+    const request = tx.objectStore(STORE).getAll()
+    request.onsuccess = () => {
+      db.close()
+      const projects = (request.result || [])
+        .sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')))
+        .slice(0, limit)
+      resolve(projects)
+    }
+    request.onerror = () => { const error = request.error; db.close(); reject(error) }
+  })
+}
