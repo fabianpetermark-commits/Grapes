@@ -15,7 +15,8 @@ export function serializeProject(canvas) {
 
 export async function loadProjectData(project, canvas) {
   if (project.format !== 'grapes-fabric') throw new Error('Ez a projekt nem kompatibilis az új brossúra-szerkesztővel.')
-  await loadProjectData(project, canvas)
+  await canvas.loadFromJSON(project.canvas)
+  canvas.requestRenderAll()
 }
 
 export function saveProject(canvas) {
