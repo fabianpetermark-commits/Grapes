@@ -474,6 +474,34 @@ function setupAutosave() {
   }
 }
 
+async function openDashboardProject(history) {
+  const raw = sessionStorage.getItem('grapes-open-project')
+  if (!raw) return false
+  sessionStorage.removeItem('grapes-open-project')
+  try {
+    const target = JSON.parse(raw)
+    if (target.module !== '2D Studio') return false
+    if (target.source === 'Drive') {
+      const wrapper = await loadGrapesProject(target.id)
+      await loadProjectData(wrapper.data, canvas)
+      driveProjectFileId = target.id
+      driveProjectName = wrapper.name || driveProjectName
+    } else {
+      const backup = await loadLocalProject(target.id)
+      if (!backup?.data) throw new Error('A helyi projekt nem található.')
+      await loadProjectData(backup.data, canvas)
+      driveProjectFileId = backup.driveFileId || null
+      driveProjectName = backup.name || driveProjectName
+    }
+    history.reset()
+    return true
+  } catch (error) {
+    console.error('Dashboard projekt megnyitása sikertelen:', error)
+    notifyError(`A projekt megnyitása sikertelen: ${error.message}`)
+    return false
+  }
+}
+
 async function restoreLocalBackup(history) {
   try {
     const backup = await loadLocalProject(LOCAL_BACKUP_ID)
@@ -661,7 +689,9 @@ export function initBrochureFabric() {
   setupHistory(history)
   setupProjectIO(history)
   setupAutosave()
-  restoreLocalBackup(history)
+  openDashboardProject(history).then((opened) => {
+    if (!opened) restoreLocalBackup(history)
+  })
   setupMobilePanels()
   initPropertiesPanel(canvas, history)
 
