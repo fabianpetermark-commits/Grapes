@@ -58,7 +58,14 @@ async function renderRecentProjects() {
       const date = project.updatedAt ? new Date(project.updatedAt).toLocaleString('hu-HU') : ''
       meta.textContent = `${project.module || '2D Studio'} · ${date} · ${project.source}`
       button.append(title, meta)
-      button.addEventListener('click', () => showScreen('brochure'))
+      button.addEventListener('click', () => {
+        sessionStorage.setItem('grapes-open-project', JSON.stringify({
+          module: project.module || '2D Studio',
+          source: project.source,
+          id: project.id,
+        }))
+        showScreen('brochure')
+      })
       list.append(button)
     }
   } catch (error) {
