@@ -1,17 +1,16 @@
 import QRCode from 'qrcode'
 import './styles/screens/ebook-library.css'
+import { connectGrapesDrive, getGrapesDriveAccessToken, grapesDriveRequest, isGrapesDriveConnected } from './storage/grapes-drive.js'
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 const TRANSFER_BROKER_URL = import.meta.env.VITE_EBOOK_TRANSFER_BROKER_URL || ''
 const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || ''
 const GOOGLE_APP_ID = import.meta.env.VITE_GOOGLE_APP_ID || CLIENT_ID.split('-')[0] || ''
-const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file'
 const FOLDER_NAME = 'Grapes E-book Library'
 const READER_PAGE_URL = new URL('ebook-reader.html', window.location.href).toString()
 const READER_SHARING_KEY = 'grapes-reader-library-enabled'
 const ALLOWED = ['epub', 'pdf', 'mobi', 'azw', 'azw3', 'prc', 'txt', 'cbz', 'cbr']
 
-let accessToken = null
 let initialized = false
 let pickerPromise = null
 const $ = (selector) => document.querySelector(selector)
@@ -127,7 +126,7 @@ async function importDriveBook(fileId) {
 }
 
 async function openDrivePicker() {
-  if (!accessToken) return setStatus('Előbb csatlakoztasd a Google Drive-ot.', 'error')
+  if (!accessTokenAvailable()) return setStatus('Előbb csatlakoztasd a Google Drive-ot.', 'error')
   if (!GOOGLE_API_KEY) return setStatus('A Google Picker API-kulcs még nincs beállítva.', 'error')
 
   try {
@@ -138,7 +137,7 @@ async function openDrivePicker() {
       .setSelectFolderEnabled(false)
 
     new picker.PickerBuilder()
-      .setOAuthToken(accessToken)
+      .setOAuthToken(getGrapesDriveAccessToken())
       .setDeveloperKey(GOOGLE_API_KEY)
       .setAppId(GOOGLE_APP_ID)
       .setOrigin(window.location.origin)
@@ -166,40 +165,19 @@ async function openDrivePicker() {
   }
 }
 
-async function loadGoogleIdentity() {
-  if (window.google?.accounts?.oauth2) return
-  await new Promise((resolve, reject) => { const s=document.createElement('script'); s.src='https://accounts.google.com/gsi/client'; s.async=true; s.defer=true; s.onload=resolve; s.onerror=reject; document.head.append(s) })
-}
 async function connectDrive() {
-  if (!CLIENT_ID) return setStatus('A Google Drive használatához VITE_GOOGLE_CLIENT_ID szükséges.', 'error')
   try {
-    await loadGoogleIdentity()
-    const tokenClient = window.google.accounts.oauth2.initTokenClient({
-      client_id: CLIENT_ID, scope: DRIVE_SCOPE,
-      error_callback: (error) => setStatus(`Google bejelentkezési hiba: ${error.type || 'A bejelentkezési ablak nem nyílt meg.'}`, 'error'),
-      callback: async (response) => {
-        if (response.error) return setStatus('A Google Drive engedélyezése nem sikerült.', 'error')
-        accessToken=response.access_token; $('#ebook-drive-connect').textContent='Google Drive csatlakoztatva'; $('#ebook-drive-connect').disabled=true
-        setStatus('Google Drive csatlakoztatva.', 'success'); await refreshLibrary()
-      },
-    })
-    tokenClient.requestAccessToken({ prompt: '' })
-  } catch (error) { setStatus(`Google bejelentkezési hiba: ${error.message}`, 'error') }
-}
-async function driveRequest(url, options = {}) {
-  const response=await fetch(url,{...options,headers:{...(options.headers||{}),Authorization:`Bearer ${accessToken}`}})
-  if (response.status === 401) {
-    accessToken = null
+    await connectGrapesDrive()
     const connect = $('#ebook-drive-connect')
-    if (connect) { connect.disabled = false; connect.textContent = 'Google Drive csatlakoztatása' }
-    throw new Error('A Google Drive kapcsolat lejárt. Csatlakoztasd újra a Drive-ot.')
+    if (connect) { connect.textContent = 'Google Drive csatlakoztatva'; connect.disabled = true }
+    setStatus('A közös Grapes Drive kapcsolat aktív.', 'success')
+    await refreshLibrary()
+  } catch (error) {
+    setStatus(`Google bejelentkezési hiba: ${error.message}`, 'error')
   }
-  if (!response.ok) {
-    const detail = await response.json().catch(() => null)
-    throw new Error(`Drive ${response.status}: ${detail?.error?.message || response.statusText || 'Sikertelen kérés.'}`)
-  }
-  return response
 }
+const driveRequest = grapesDriveRequest
+function accessTokenAvailable() { return isGrapesDriveConnected() }
 async function ensureLibraryFolder() {
   const query=`name = 'Grapes E-book Library' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`
   const response=await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)&pageSize=1`)
@@ -259,7 +237,7 @@ async function createReaderMarker(folderId) {
   return { markerId: (await response.json()).id, nonce }
 }
 async function createReaderPairing() {
-  if (!accessToken) return setStatus('Előbb csatlakoztasd a Google Drive-ot.', 'error')
+  if (!accessTokenAvailable()) return setStatus('Előbb csatlakoztasd a Google Drive-ot.', 'error')
   if (!TRANSFER_BROKER_URL) return setStatus('Az E-book Transfer broker nincs konfigurálva.', 'error')
 
   let popup = null
@@ -299,7 +277,7 @@ async function createReaderPairing() {
   }
 }
 async function refreshLibrary() {
-  if(!accessToken) return
+  if(!accessTokenAvailable()) return
   try {
     const folderId=await ensureLibraryFolder(); const query=`'${folderId}' in parents and trashed = false`
     const books = []
@@ -315,7 +293,7 @@ async function refreshLibrary() {
   } catch (error) { setStatus(`A könyvtár betöltése nem sikerült. ${error.message}`,'error'); return false }
 }
 async function uploadBook(file) {
-  if(!accessToken) return setStatus('Előbb csatlakoztasd a Google Drive-ot.','error')
+  if(!accessTokenAvailable()) return setStatus('Előbb csatlakoztasd a Google Drive-ot.','error')
   if(!ALLOWED.includes(ext(file.name))) return setStatus('Ez a fájltípus jelenleg nem támogatott.','error')
   try {
     const folderId=await ensureLibraryFolder(); const boundary=`grapes-ebook-${crypto.randomUUID()}`
@@ -330,7 +308,7 @@ async function downloadBook(fileId) {
   try { const meta=await(await driveRequest(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=name`)).json(); const blob=await(await driveRequest(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`)).blob(); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=meta.name; a.click(); URL.revokeObjectURL(url) } catch { setStatus('A letöltés nem sikerült.','error') }
 }
 async function sendBook(fileId) {
-  if (!accessToken) return setStatus('Előbb csatlakoztasd a Google Drive-ot.', 'error')
+  if (!accessTokenAvailable()) return setStatus('Előbb csatlakoztasd a Google Drive-ot.', 'error')
   if (!TRANSFER_BROKER_URL) return setStatus('Az E-book Transfer broker nincs konfigurálva.', 'error')
   try {
     const meta = await (await driveRequest(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=name`)).json()
@@ -376,7 +354,7 @@ function showEbookManager() {
   const manager = $('#ebook-manager-view')
   if (hub) hub.hidden = true
   if (manager) manager.hidden = false
-  if (accessToken) refreshLibrary()
+  if (accessTokenAvailable()) refreshLibrary()
 }
 export function initEbookLibrary() {
   const params = new URLSearchParams(window.location.search)
@@ -406,7 +384,14 @@ export function initEbookLibrary() {
     window.location.href = url
   })
   $('#ebook-receiver-input')?.addEventListener('keydown', (event) => { if (event.key === 'Enter') $('#ebook-receiver-submit')?.click() })
-  setStatus(CLIENT_ID?'Csatlakoztasd a saját Google Drive-odat.':'Drive nincs konfigurálva. Állítsd be a VITE_GOOGLE_CLIENT_ID értéket.',CLIENT_ID?'':'error')
+  const sharedConnected = accessTokenAvailable()
+  const connectButton = $('#ebook-drive-connect')
+  if (connectButton && sharedConnected) {
+    connectButton.textContent = 'Google Drive csatlakoztatva'
+    connectButton.disabled = true
+  }
+  setStatus(sharedConnected ? 'A közös Grapes Drive kapcsolat aktív.' : (CLIENT_ID ? 'A Google Drive-ot a főmenüben vagy itt csatlakoztathatod.' : 'Drive nincs konfigurálva. Állítsd be a VITE_GOOGLE_CLIENT_ID értéket.'), sharedConnected ? 'success' : (CLIENT_ID ? '' : 'error'))
+  if (sharedConnected) refreshLibrary()
   if (directReceiver) showEbookManager()
   else showEbookHub()
   handleTransferLink()
