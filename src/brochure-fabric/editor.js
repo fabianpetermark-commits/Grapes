@@ -15,7 +15,8 @@ import { openQrModal } from './qr.js'
 import { openUnsplashModal } from './unsplash.js'
 import { importHtmlFile } from './html-import.js'
 import { initHistory } from './history.js'
-import { saveProject, loadProject } from './project-io.js'
+import { saveProject, loadProject, serializeProject } from './project-io.js'
+import { isGrapesDriveConnected, saveGrapesProject } from '../storage/grapes-drive.js'
 import { exportToPdf } from './pdf-export.js'
 import { exportToHtml } from './html-export.js'
 import { openCodeView } from './code-view.js'
@@ -46,6 +47,8 @@ let zoomValue = 100
 // álló területhez igazodik — így ablakátméretezés és eszközforgatás után is
 // használható marad. Korábban ez egyetlen, indításkori számítás volt.
 let isFitMode = true
+let driveProjectFileId = null
+let driveProjectName = 'Brossúra projekt'
 
 function applyZoom(value) {
   const clamped = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(value)))
@@ -441,7 +444,28 @@ function setupHistory(history) {
 }
 
 function setupProjectIO(history) {
-  document.querySelector('#fabric-save-btn').addEventListener('click', () => saveProject(canvas))
+  document.querySelector('#fabric-save-btn').addEventListener('click', async () => {
+    if (!isGrapesDriveConnected()) {
+      saveProject(canvas)
+      return
+    }
+    try {
+      if (!driveProjectFileId) {
+        const requested = window.prompt('Projekt neve a Google Drive-on:', driveProjectName)
+        if (!requested?.trim()) return
+        driveProjectName = requested.trim()
+      }
+      driveProjectFileId = await saveGrapesProject({
+        module: '2D Studio',
+        name: driveProjectName,
+        data: serializeProject(canvas),
+        fileId: driveProjectFileId,
+      })
+    } catch (error) {
+      console.error('Drive projektmentés sikertelen:', error)
+      notifyError(`A Drive mentés sikertelen: ${error.message}`)
+    }
+  })
 
   const projectInput = document.querySelector('#fabric-project-input')
   document.querySelector('#fabric-load-btn').addEventListener('click', () => projectInput.click())
