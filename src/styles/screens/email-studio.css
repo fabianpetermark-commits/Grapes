@@ -29,6 +29,7 @@
 .email-studio__save-status { font-size: var(--text-xs); padding-left: var(--space-2); border-left: 1px solid var(--color-border); }
 .email-studio__toolbar-group { display: flex; gap: var(--space-1); }
 .email-studio .btn.is-active { color: var(--color-text); background: var(--color-bg-active); border-color: var(--color-accent); }
+.email-studio__mobile-nav { display: none; }
 
 .email-studio__body {
   display: grid;
@@ -169,23 +170,89 @@
 .email-studio__issue span, .email-studio__quality-empty { color: var(--color-text-muted); font-size: var(--text-xs); }
 
 @media (max-width: 1050px) {
-  .email-studio { height: auto; min-height: 100dvh; }
-  .email-studio__body { grid-template-columns: 1fr; }
-  .email-studio__rail, .email-studio__inspector { border: 0; overflow: visible; }
-  .email-studio__rail { order: 2; }
-  .email-studio__workspace { order: 1; min-height: 760px; padding: var(--space-3); }
-  .email-studio__inspector { order: 3; }
+  .email-studio { height: 100dvh; min-height: 0; }
+  .email-studio__toolbar {
+    flex: 0 0 auto;
+    max-height: 116px;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  .email-studio__mobile-nav {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    flex: 0 0 auto;
+    padding: var(--space-2);
+    gap: var(--space-1);
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-bg-surface);
+  }
+  .email-studio__mobile-nav button {
+    min-height: 42px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-muted);
+    background: var(--color-bg-raised);
+    font-weight: var(--weight-semibold);
+  }
+  .email-studio__mobile-nav button.is-active {
+    color: var(--color-text);
+    border-color: var(--color-accent);
+    background: var(--color-accent-soft);
+  }
+  .email-studio__body {
+    display: block;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .email-studio__body > * { display: none; }
+  .email-studio[data-mobile-pane="content"] .email-studio__rail,
+  .email-studio[data-mobile-pane="preview"] .email-studio__workspace,
+  .email-studio[data-mobile-pane="settings"] .email-studio__inspector { display: block; }
+  .email-studio__rail,
+  .email-studio__inspector {
+    height: 100%;
+    border: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+  .email-studio__workspace {
+    height: 100%;
+    min-height: 0;
+    padding: var(--space-3);
+    overflow: auto;
+  }
+  .email-studio__preview-shell {
+    height: calc(100dvh - 190px);
+    min-height: 420px;
+  }
+  .email-studio__preview-shell iframe {
+    height: 100%;
+    min-height: 420px;
+  }
   .email-studio__palette { grid-template-columns: repeat(4, 1fr); }
 }
 
 @media (max-width: 620px) {
-  .email-studio__toolbar { align-items: stretch; padding: var(--space-2); }
-  .email-studio__brand { width: 100%; }
-  .email-studio__toolbar-group { flex: 1 1 auto; overflow-x: auto; }
+  .email-studio__toolbar {
+    align-items: stretch;
+    flex-wrap: nowrap;
+    min-height: 52px;
+    max-height: 52px;
+    padding: var(--space-1) var(--space-2);
+  }
+  .email-studio__brand { flex: 0 0 auto; align-items: center; }
+  .email-studio__brand > span:not(.email-studio__save-status),
+  .email-studio__save-status { display: none; }
+  .email-studio__toolbar-group { flex: 0 0 auto; overflow: visible; }
   .email-studio__toolbar-group .btn { flex: 0 0 auto; min-height: 42px; }
-  .email-studio__workspace { min-height: 620px; }
-  .email-studio__preview-shell, .email-studio__preview-shell iframe { min-height: 590px; }
+  .email-studio__mobile-nav { padding: var(--space-1) var(--space-2); }
+  .email-studio__preview-shell {
+    height: calc(100dvh - 118px);
+    min-height: 360px;
+  }
+  .email-studio__preview-shell iframe { min-height: 360px; }
   .email-studio__palette { grid-template-columns: 1fr 1fr; }
   .email-studio__code-head { align-items: flex-start; flex-direction: column; }
-  #email-code-editor { min-height: 540px; }
+  .email-studio__code { height: 100%; }
+  #email-code-editor { min-height: 0; height: calc(100% - 92px); }
 }

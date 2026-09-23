@@ -234,8 +234,14 @@
         </div>
       </header>
 
+      <nav class="email-studio__mobile-nav" role="tablist" aria-label="Mobil szerkesztőnézet">
+        <button id="email-mobile-content-pane" class="is-active" role="tab" type="button" aria-controls="email-palette" aria-selected="true">Elemek</button>
+        <button id="email-mobile-preview-pane" role="tab" type="button" aria-controls="email-preview-shell" aria-selected="false">Előnézet</button>
+        <button id="email-mobile-settings-pane" role="tab" type="button" aria-controls="email-inspector" aria-selected="false">Beállítások</button>
+      </nav>
+
       <div class="email-studio__body">
-        <aside class="email-studio__rail" aria-label="E-mail elemek">
+        <aside id="email-palette" class="email-studio__rail" role="tabpanel" aria-labelledby="email-mobile-content-pane">
           <details open>
             <summary>Elem hozzáadása</summary>
             <div class="email-studio__palette">
@@ -254,7 +260,7 @@
           </details>
         </aside>
 
-        <main class="email-studio__workspace">
+        <main class="email-studio__workspace" role="tabpanel" aria-labelledby="email-mobile-preview-pane">
           <div id="email-preview-shell" class="email-studio__preview-shell">
             <iframe id="email-preview-frame" title="E-mail előnézet" sandbox=""></iframe>
           </div>
@@ -267,7 +273,11 @@
           </div>
         </main>
 
-        <aside class="email-studio__inspector" aria-label="Beállítások és minőség">
+        <aside id="email-inspector" class="email-studio__inspector" role="tabpanel" aria-labelledby="email-mobile-settings-pane">
+          <details id="email-selected-details" open>
+            <summary>Kijelölt elem</summary>
+            <div id="email-block-fields" class="email-studio__block-fields"></div>
+          </details>
           <details open>
             <summary>Levél adatai</summary>
             <label>Projekt neve<input id="email-name" type="text"></label>
@@ -290,10 +300,6 @@
           <details>
             <summary>Közösségi linkek</summary>
             <div id="email-social-fields"></div>
-          </details>
-          <details open>
-            <summary>Kijelölt elem</summary>
-            <div id="email-block-fields" class="email-studio__block-fields"></div>
           </details>
           <details open>
             <summary>Minőségellenőrzés</summary>

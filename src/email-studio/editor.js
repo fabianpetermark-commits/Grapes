@@ -22,6 +22,28 @@ let sourceHtml = ''
 let customCode = false
 let initialized = false
 let saveTimer = null
+let mobilePane = 'content'
+
+function isCompactEditor() {
+  return window.matchMedia('(max-width: 1050px)').matches
+}
+
+function setMobilePane(pane, { focus = false } = {}) {
+  mobilePane = pane
+  const app = el('#email-app')
+  app.dataset.mobilePane = pane
+  for (const [name, selector] of [
+    ['content', '#email-mobile-content-pane'],
+    ['preview', '#email-mobile-preview-pane'],
+    ['settings', '#email-mobile-settings-pane'],
+  ]) {
+    const button = el(selector)
+    const active = name === pane
+    button.classList.toggle('is-active', active)
+    button.setAttribute('aria-selected', String(active))
+    if (active && focus) button.focus({ preventScroll: true })
+  }
+}
 
 function selectedBlock() {
   return documentState.blocks.find((block) => block.id === selectedId) || null
@@ -180,6 +202,10 @@ function renderBlockList() {
       selectedId = block.id
       renderBlockList()
       renderBlockFields()
+      if (isCompactEditor()) {
+        el('#email-selected-details').open = true
+        setMobilePane('settings')
+      }
     })
     const up = create('button', { type: 'button', title: 'Feljebb', textContent: '↑', disabled: index === 0 })
     const down = create('button', { type: 'button', title: 'Lejjebb', textContent: '↓', disabled: index === documentState.blocks.length - 1 })
@@ -263,6 +289,10 @@ function bindControls() {
       renderBlockList()
       renderBlockFields()
       updateFromVisual()
+      if (isCompactEditor()) {
+        el('#email-selected-details').open = true
+        setMobilePane('settings')
+      }
     })
   }
   for (const [id, key] of [['#email-name', 'name'], ['#email-subject', 'subject'], ['#email-preheader', 'preheader']]) {
@@ -283,6 +313,7 @@ function bindControls() {
     el('#email-preview-shell').classList.toggle('hidden', code)
     el('#email-code-mode').classList.toggle('is-active', code)
     el('#email-visual-mode').classList.toggle('is-active', !code)
+    if (isCompactEditor()) setMobilePane('preview')
   }
   el('#email-code-mode').addEventListener('click', () => setMode(true))
   el('#email-visual-mode').addEventListener('click', () => setMode(false))
@@ -340,6 +371,12 @@ function bindControls() {
       event.target.value = ''
     }
   })
+  el('#email-mobile-content-pane').addEventListener('click', () => setMobilePane('content'))
+  el('#email-mobile-preview-pane').addEventListener('click', () => setMobilePane('preview'))
+  el('#email-mobile-settings-pane').addEventListener('click', () => setMobilePane('settings'))
+  window.matchMedia('(max-width: 1050px)').addEventListener('change', (event) => {
+    if (event.matches) setMobilePane(mobilePane)
+  })
 }
 
 export async function initEmailStudio() {
@@ -362,4 +399,5 @@ export async function initEmailStudio() {
     console.warn('Az E-mail Stúdió mentése nem tölthető be:', error)
   }
   renderAll()
+  setMobilePane(isCompactEditor() ? 'content' : mobilePane)
 }
