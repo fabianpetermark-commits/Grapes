@@ -14,13 +14,26 @@ const ALLOWED_BOOK_EXTENSIONS = ['epub', 'pdf', 'mobi', 'azw', 'azw3', 'prc', 't
 function doGet(e) {
   const action = String((e && e.parameter && e.parameter.action) || '').toLowerCase();
   const p = (e && e.parameter) || {};
-  if (action === 'create') return createTransferPage(p);
+  if (action === 'create') return pairingOutput(createTransferPage(p), p);
   if (action === 'download') return resolveTransfer(p);
-  if (action === 'create-reader-pairing') return createReaderPairingPage(p);
+  if (action === 'create-reader-pairing') return pairingOutput(createReaderPairingPage(p), p);
   if (action === 'pair-reader') return pairReader(p);
   if (action === 'reader') return readerLibraryPage(p);
   if (action === 'revoke-reader') return revokeReaderPage(p);
   return HtmlService.createHtmlOutput('<h2>Grapes E-book Transfer</h2><p>Missing action.</p>');
+}
+
+// Only code-creation pages can be embedded. Private reader pages retain the
+// default frame protection; creation still verifies public sharing or a marker.
+function pairingOutput(output, p) {
+  if (p.embed === '1') output.setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  return output;
+}
+
+function embeddedCodePage(code, label, singleUse) {
+  return HtmlService.createHtmlOutput('<!doctype html><html lang="hu"><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Párosítási kód</title>' +
+    '<style>body{margin:0;padding:24px 12px;background:#fff;color:#111;font:16px Arial,sans-serif;text-align:center;overflow-wrap:anywhere}.code{font-size:36px;font-weight:bold;letter-spacing:.12em;margin:24px 0}</style></head><body>' +
+    '<p>' + escapeHtml(label) + '</p><div class="code">' + code + '</div><p>A kód 20 percig érvényes' + (singleUse ? ' és egyszer használható' : '') + '.</p></body></html>');
 }
 
 function createTransferPage(p) {
@@ -57,6 +70,7 @@ function createTransferPage(p) {
     }));
   } finally { lock.releaseLock(); }
 
+  if (p.embed === '1') return embeddedCodePage(code, file.getName(), false);
   const base = ScriptApp.getService().getUrl();
   const pairUrl = returnUrl + '?ebook-pair=' + encodeURIComponent(code);
   const downloadUrl = base + '?action=download&code=' + encodeURIComponent(code);
@@ -144,6 +158,7 @@ function createReaderPairingPage(p) {
       marker.setTrashed(true);
     } finally { lock.releaseLock(); }
 
+    if (p.embed === '1') return embeddedCodePage(code, 'Írd be ezt a kódot az e-book olvasón:', true);
     return HtmlService.createHtmlOutput(
       '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>E-olvasó párosítás</title>' +
       '<style>body{font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:28px;text-align:center}.code{font-size:42px;font-weight:bold;letter-spacing:.18em;margin:24px 0}.box{border:1px solid #bbb;padding:22px;border-radius:8px}a{color:#111}</style></head><body>' +

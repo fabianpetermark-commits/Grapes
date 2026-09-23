@@ -10,7 +10,7 @@
 import './styles/index.css'
 import { el } from './ui/dom.js'
 import { showScreen, showModulePicker } from './screens.js'
-import { connectGrapesDrive, isGrapesDriveConnected, listGrapesProjects } from './storage/grapes-drive.js'
+import { connectGrapesDrive, isGrapesDriveConnected, listGrapesProjects, onGrapesDriveChange } from './storage/grapes-drive.js'
 import { listLocalProjects } from './storage/local-project-store.js'
 
 el('#pick-brochure').addEventListener('click', () => showScreen('brochure'))
@@ -64,7 +64,8 @@ async function renderRecentProjects() {
           source: project.source,
           id: project.id,
         }))
-        showScreen('brochure')
+        const screen = { '2D Studio': 'brochure', '3D Studio': 'studio', 'QR & Barcode': 'qr' }[project.module || '2D Studio']
+        if (screen) showScreen(screen)
       })
       list.append(button)
     }
@@ -95,6 +96,7 @@ driveButton.addEventListener('click', async () => {
   }
 })
 renderDriveStatus()
+onGrapesDriveChange(renderDriveStatus)
 renderRecentProjects()
 
 for (const selector of ['#app-back-to-menu-btn', '#studio-back-to-menu-btn', '#fabric-back-to-menu-btn', '#qr-back-to-menu-btn', '#ebook-back-to-menu-btn']) {

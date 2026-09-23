@@ -1,6 +1,6 @@
 import QRCode from 'qrcode'
 import './styles/screens/ebook-library.css'
-import { connectGrapesDrive, getGrapesDriveAccessToken, grapesDriveRequest, isGrapesDriveConnected } from './storage/grapes-drive.js'
+import { connectGrapesDrive, getGrapesDriveAccessToken, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange } from './storage/grapes-drive.js'
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 const TRANSFER_BROKER_URL = import.meta.env.VITE_EBOOK_TRANSFER_BROKER_URL || ''
@@ -46,7 +46,22 @@ function buildBrokerUrl(params = {}) {
   Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value))
   return url.toString()
 }
-function closeTransfer() { const panel = $('#ebook-transfer-panel'); if (panel) panel.hidden = true }
+function closeTransfer() {
+  const panel = $('#ebook-transfer-panel'); if (panel) panel.hidden = true
+  const frame = $('#ebook-transfer-code'); if (frame) { frame.hidden = true; frame.removeAttribute('src') }
+}
+function showPairingFrame(selector, url) {
+  const frame = $(selector)
+  const embeddedUrl = new URL(url)
+  embeddedUrl.searchParams.set('embed', '1')
+  frame.src = embeddedUrl.toString()
+  frame.hidden = false
+}
+function renderDriveConnection() {
+  const connected = isGrapesDriveConnected()
+  const button = $('#ebook-drive-connect')
+  if (button) { button.disabled = connected; button.textContent = connected ? 'Google Drive csatlakoztatva' : 'Google Drive csatlakoztatása' }
+}
 function handleTransferLink() {
   const params = new URLSearchParams(window.location.search)
   const code = (params.get('ebook-pair') || '').trim().toUpperCase()
@@ -240,12 +255,10 @@ async function createReaderPairing() {
   if (!accessTokenAvailable()) return setStatus('Előbb csatlakoztasd a Google Drive-ot.', 'error')
   if (!TRANSFER_BROKER_URL) return setStatus('Az E-book Transfer broker nincs konfigurálva.', 'error')
 
-  let popup = null
-  try {
-    popup = window.open('about:blank', 'grapes-reader-pairing')
-    if (popup) popup.opener = null
-  } catch {}
-
+  const button = $('#ebook-reader-pair-btn')
+  if (button.disabled) return
+  button.disabled = true
+  $('#ebook-reader-pair-code').hidden = true
   try {
     setStatus('Az e-olvasó könyvtár előkészítése…')
     const { folderId, books } = await getReaderLibraryBooks()
@@ -263,18 +276,11 @@ async function createReaderPairing() {
       returnUrl: READER_PAGE_URL,
     })
 
-    const fallback = $('#ebook-reader-pair-fallback')
-    if (fallback) {
-      fallback.href = brokerUrl
-      fallback.hidden = false
-    }
-
-    if (popup && !popup.closed) popup.location.href = brokerUrl
-    setStatus(`${books.length} könyv előkészítve. A párosítási kód külön oldalon nyílik meg.`, 'success')
+    showPairingFrame('#ebook-reader-pair-code', brokerUrl)
+    setStatus(`${books.length} könyv előkészítve. A párosítási kód alább jelenik meg.`, 'success')
   } catch (error) {
-    if (popup && !popup.closed) popup.close()
     setStatus(`Az e-olvasó párosítása nem sikerült. ${error.message}`, 'error')
-  }
+  } finally { button.disabled = false }
 }
 async function refreshLibrary() {
   if(!accessTokenAvailable()) return
@@ -328,7 +334,9 @@ async function sendBook(fileId) {
     readerUrl.searchParams.set('ebook-reader', '1')
     $('#ebook-transfer-name').textContent = meta.name
     $('#ebook-transfer-url').value = downloadUrl
-    $('#ebook-transfer-pair').href = brokerUrl
+    $('#ebook-transfer-pair').dataset.brokerUrl = brokerUrl
+    $('#ebook-transfer-code').hidden = true
+    $('#ebook-transfer-code').removeAttribute('src')
     $('#ebook-reader-url').value = readerUrl.toString()
     $('#ebook-transfer-panel').hidden = false
     const canvas = $('#ebook-transfer-qr')
@@ -366,6 +374,7 @@ export function initEbookLibrary() {
     return
   }
   initialized=true
+  onGrapesDriveChange(renderDriveConnection)
   $('#ebook-open-manager')?.addEventListener('click', showEbookManager)
   $('#ebook-manager-back')?.addEventListener('click', showEbookHub)
   $('#ebook-reader-pair-btn')?.addEventListener('click', createReaderPairing)
@@ -375,6 +384,10 @@ export function initEbookLibrary() {
   $('#ebook-drive-picker-btn')?.addEventListener('click', openDrivePicker)
   $('#ebook-refresh-btn')?.addEventListener('click',refreshLibrary)
   $('#ebook-transfer-close')?.addEventListener('click', closeTransfer)
+  $('#ebook-transfer-pair')?.addEventListener('click', () => {
+    const url = $('#ebook-transfer-pair').dataset.brokerUrl
+    if (url) showPairingFrame('#ebook-transfer-code', url)
+  })
   $('#ebook-transfer-copy')?.addEventListener('click', async () => { try { await navigator.clipboard.writeText($('#ebook-transfer-url').value); setStatus('Átviteli link kimásolva.', 'success') } catch { setStatus('A link másolása nem sikerült.', 'error') } })
   $('#ebook-receiver-submit')?.addEventListener('click', () => {
     const code = $('#ebook-receiver-input')?.value.trim().toUpperCase()
@@ -385,11 +398,7 @@ export function initEbookLibrary() {
   })
   $('#ebook-receiver-input')?.addEventListener('keydown', (event) => { if (event.key === 'Enter') $('#ebook-receiver-submit')?.click() })
   const sharedConnected = accessTokenAvailable()
-  const connectButton = $('#ebook-drive-connect')
-  if (connectButton && sharedConnected) {
-    connectButton.textContent = 'Google Drive csatlakoztatva'
-    connectButton.disabled = true
-  }
+  renderDriveConnection()
   setStatus(sharedConnected ? 'A közös Grapes Drive kapcsolat aktív.' : (CLIENT_ID ? 'A Google Drive-ot a főmenüben vagy itt csatlakoztathatod.' : 'Drive nincs konfigurálva. Állítsd be a VITE_GOOGLE_CLIENT_ID értéket.'), sharedConnected ? 'success' : (CLIENT_ID ? '' : 'error'))
   if (sharedConnected) refreshLibrary()
   if (directReceiver) showEbookManager()

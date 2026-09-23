@@ -23,14 +23,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Install clasp
-        run: npm install --global @google/clasp
       - name: Configure clasp authentication
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
         run: |
-          test -n "$CLASPRC_JSON" || (echo "Missing CLASPRC_JSON secret" && exit 1)
+          if [ -z "$CLASPRC_JSON" ]; then
+            echo "::error::Missing CLASPRC_JSON repository secret. Follow apps-script/ebook-transfer/README.md before deploying."
+            exit 1
+          fi
+          umask 077
           printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+      - name: Install clasp
+        run: npm install --global @google/clasp
       - name: Configure Apps Script project
         working-directory: apps-script/ebook-transfer
         run: |
