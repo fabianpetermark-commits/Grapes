@@ -119,6 +119,13 @@
           <span class="card__title">E-book Könyvtár</span>
           <span class="card__text">Saját Google Drive-könyvtár és e-olvasó átvitel</span>
         </button>
+        <button id="pick-email" class="card" type="button">
+          <span class="card__icon">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-file-html" /></svg>
+          </span>
+          <span class="card__title">E-mail Stúdió</span>
+          <span class="card__text">Kompatibilis hírlevelek, brandprofil és kódellenőrzés</span>
+        </button>
       </div>
 
       <section class="recent-projects" aria-labelledby="recent-projects-title">
@@ -200,6 +207,104 @@
         </div>
       </div>
       <div id="gjs"></div>
+    </div>
+
+    <div id="email-app" class="email-studio hidden">
+      <header class="email-studio__toolbar">
+        <div class="email-studio__brand">
+          <strong>Grapes</strong><span>E-mail Stúdió</span>
+          <span id="email-save-status" class="email-studio__save-status">Automatikus mentés</span>
+        </div>
+        <div class="email-studio__toolbar-group" role="group" aria-label="Szerkesztési mód">
+          <button id="email-visual-mode" class="btn btn--secondary is-active" type="button">Vizuális</button>
+          <button id="email-code-mode" class="btn btn--secondary" type="button">HTML kód</button>
+        </div>
+        <div class="email-studio__toolbar-group">
+          <button id="email-desktop-preview" class="btn btn--ghost is-active" type="button">Asztali</button>
+          <button id="email-mobile-preview" class="btn btn--ghost" type="button">Mobil</button>
+          <button id="email-images-toggle" class="btn btn--ghost" type="button">Képek ki</button>
+        </div>
+        <div class="email-studio__toolbar-group">
+          <button id="email-import-btn" class="btn btn--ghost" type="button">Projekt megnyitása</button>
+          <input id="email-import-input" type="file" accept=".json,application/json" hidden>
+          <button id="email-export-project" class="btn btn--ghost" type="button">Projekt</button>
+          <button id="email-export-text" class="btn btn--ghost" type="button">TXT</button>
+          <button id="email-export-html" class="btn btn--primary" type="button">HTML export</button>
+          <button id="email-back-to-menu-btn" class="btn btn--ghost" type="button">Főmenü</button>
+        </div>
+      </header>
+
+      <div class="email-studio__body">
+        <aside class="email-studio__rail" aria-label="E-mail elemek">
+          <details open>
+            <summary>Elem hozzáadása</summary>
+            <div class="email-studio__palette">
+              <button type="button" data-email-add="heading">Címsor</button>
+              <button type="button" data-email-add="text">Szöveg</button>
+              <button type="button" data-email-add="image">Kép</button>
+              <button type="button" data-email-add="button">Gomb</button>
+              <button type="button" data-email-add="divider">Elválasztó</button>
+              <button type="button" data-email-add="social">Social ikonok</button>
+              <button type="button" data-email-add="footer">Lábléc</button>
+            </div>
+          </details>
+          <details open>
+            <summary>Levél felépítése</summary>
+            <div id="email-block-list" class="email-studio__blocks"></div>
+          </details>
+        </aside>
+
+        <main class="email-studio__workspace">
+          <div id="email-preview-shell" class="email-studio__preview-shell">
+            <iframe id="email-preview-frame" title="E-mail előnézet" sandbox=""></iframe>
+          </div>
+          <div id="email-code-panel" class="email-studio__code hidden">
+            <div class="email-studio__code-head">
+              <div><strong>Exportálható HTML</strong><span> Az egyedi módosítások az előnézetben és az ellenőrzőben azonnal megjelennek.</span></div>
+              <button id="email-reset-code" class="btn btn--ghost" type="button">Generált kód visszaállítása</button>
+            </div>
+            <textarea id="email-code-editor" spellcheck="false" aria-label="E-mail HTML kód"></textarea>
+          </div>
+        </main>
+
+        <aside class="email-studio__inspector" aria-label="Beállítások és minőség">
+          <details open>
+            <summary>Levél adatai</summary>
+            <label>Projekt neve<input id="email-name" type="text"></label>
+            <label>Tárgy<input id="email-subject" type="text"></label>
+            <label>Előnézeti sor<textarea id="email-preheader" rows="2"></textarea></label>
+          </details>
+          <details open>
+            <summary>Brand profil</summary>
+            <div id="email-brand-fields" class="email-studio__colors"></div>
+            <label>Betűcsalád
+              <select id="email-font">
+                <option value="Arial, Helvetica, sans-serif">Arial</option>
+                <option value="Verdana, Geneva, sans-serif">Verdana</option>
+                <option value="Georgia, Times New Roman, serif">Georgia</option>
+                <option value="Tahoma, Geneva, sans-serif">Tahoma</option>
+              </select>
+            </label>
+            <label>Levél szélessége<input id="email-width" type="range" min="480" max="720" step="10"><output id="email-width-output"></output></label>
+          </details>
+          <details>
+            <summary>Közösségi linkek</summary>
+            <div id="email-social-fields"></div>
+          </details>
+          <details open>
+            <summary>Kijelölt elem</summary>
+            <div id="email-block-fields" class="email-studio__block-fields"></div>
+          </details>
+          <details open>
+            <summary>Minőségellenőrzés</summary>
+            <div class="email-studio__score-row">
+              <strong id="email-quality-score" class="email-studio__score">100</strong>
+              <div><strong id="email-quality-label">Kiváló</strong><span id="email-quality-meta"></span></div>
+            </div>
+            <div id="email-quality-list" class="email-studio__quality-list"></div>
+          </details>
+        </aside>
+      </div>
     </div>
 
     <!-- Kísérleti Fabric.js-alapú brossúra-motor (?engine=fabric), a GrapesJS-es
