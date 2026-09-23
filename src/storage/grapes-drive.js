@@ -10,12 +10,47 @@ export const GRAPES_PROJECT_VERSION = 1
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 let accessToken = null
-let tokenClient = null
+let expiresAt = 0
+let connecting = null
+let identityPromise = null
+let expiryTimer = null
+const SESSION_KEY = 'grapes-drive-session'
+const ACCOUNT_KEY = 'grapes-drive-account'
+const listeners = new Set()
 const folderCache = new Map()
+
+function clearSession() {
+  window.clearTimeout?.(expiryTimer)
+  accessToken = null
+  expiresAt = 0
+  folderCache.clear()
+  try { window.sessionStorage.removeItem(SESSION_KEY) } catch {}
+  for (const listener of listeners) listener(false)
+}
+
+function scheduleExpiry() {
+  window.clearTimeout?.(expiryTimer)
+  if (accessToken) expiryTimer = window.setTimeout?.(clearSession, Math.max(0, expiresAt - Date.now() - 30000))
+}
+
+try {
+  const saved = JSON.parse(window.sessionStorage.getItem(SESSION_KEY))
+  if (saved?.clientId === CLIENT_ID && typeof saved.accessToken === 'string' && saved.expiresAt > Date.now() + 30000) {
+    accessToken = saved.accessToken
+    expiresAt = saved.expiresAt
+  } else { window.sessionStorage.removeItem(SESSION_KEY) }
+} catch {}
+scheduleExpiry()
+
+export function onGrapesDriveChange(listener) {
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}
 
 async function loadGoogleIdentity() {
   if (window.google?.accounts?.oauth2) return
-  await new Promise((resolve, reject) => {
+  if (identityPromise) return identityPromise
+  identityPromise = new Promise((resolve, reject) => {
     const script = document.createElement('script')
     script.src = 'https://accounts.google.com/gsi/client'
     script.async = true
@@ -24,14 +59,16 @@ async function loadGoogleIdentity() {
     script.onerror = () => reject(new Error('A Google Identity betöltése nem sikerült.'))
     document.head.append(script)
   })
+  try { await identityPromise } catch (error) { identityPromise = null; throw error }
 }
 
 export function isGrapesDriveConnected() {
+  if (accessToken && expiresAt <= Date.now() + 30000) clearSession()
   return Boolean(accessToken)
 }
 
 export function getGrapesDriveAccessToken() {
-  return accessToken
+  return isGrapesDriveConnected() ? accessToken : null
 }
 
 export async function grapesDriveRequest(url, options = {}) {
@@ -40,30 +77,56 @@ export async function grapesDriveRequest(url, options = {}) {
 
 export async function connectGrapesDrive() {
   if (!CLIENT_ID) throw new Error('A Google Drive kliensazonosító nincs konfigurálva.')
+  if (isGrapesDriveConnected()) return accessToken
   await loadGoogleIdentity()
-  return new Promise((resolve, reject) => {
-    tokenClient ||= window.google.accounts.oauth2.initTokenClient({
+  if (connecting) return connecting
+  let loginHint = ''
+  try { loginHint = window.localStorage.getItem(ACCOUNT_KEY) || '' } catch {}
+  connecting = new Promise((resolve, reject) => {
+    // Each attempt owns its callbacks; a cached client would resolve an old promise.
+    const tokenClient = window.google.accounts.oauth2.initTokenClient({
       client_id: CLIENT_ID,
       scope: GRAPES_DRIVE_SCOPE,
+      login_hint: loginHint,
       error_callback: (error) => reject(new Error(error?.type || 'Google Drive bejelentkezési hiba.')),
       callback: (response) => {
         if (response.error) return reject(new Error(response.error_description || response.error))
+        if (!response.access_token) return reject(new Error('A Google nem adott hozzáférési tokent.'))
         accessToken = response.access_token
+        expiresAt = Date.now() + (Number(response.expires_in) || 3600) * 1000
+        scheduleExpiry()
+        folderCache.clear()
+        try { window.sessionStorage.setItem(SESSION_KEY, JSON.stringify({ clientId: CLIENT_ID, accessToken, expiresAt })) } catch {}
+        rememberAccount(accessToken)
+        for (const listener of listeners) listener(true)
         resolve(accessToken)
       },
     })
     tokenClient.requestAccessToken({ prompt: '' })
   })
+  try { return await connecting } finally { connecting = null }
+}
+
+async function rememberAccount(token) {
+  try {
+    const response = await fetch('https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!response.ok) return
+    const email = (await response.json()).user?.emailAddress
+    if (email && accessToken === token) window.localStorage.setItem(ACCOUNT_KEY, email)
+  } catch { /* Remembering the account is optional, including when storage is blocked. */ }
 }
 
 async function driveRequest(url, options = {}) {
-  if (!accessToken) throw new Error('A Google Drive nincs csatlakoztatva.')
+  if (!isGrapesDriveConnected()) throw new Error('A Google Drive nincs csatlakoztatva. Csatlakoztasd újra.')
+  const requestToken = accessToken
   const response = await fetch(url, {
     ...options,
     headers: { ...(options.headers || {}), Authorization: `Bearer ${accessToken}` },
   })
   if (response.status === 401) {
-    accessToken = null
+    if (accessToken === requestToken) clearSession()
     throw new Error('A Google Drive kapcsolat lejárt. Csatlakoztasd újra.')
   }
   if (!response.ok) {

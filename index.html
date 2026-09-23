@@ -860,7 +860,8 @@
             <div><canvas id="ebook-transfer-qr" width="260" height="260" aria-label="A könyv közvetlen letöltésének QR-kódja"></canvas><p id="ebook-qr-status" role="status"></p></div>
             <div class="ebook-library__transfer-info">
               <p>A QR-kód a könyv letöltését nyitja meg. Ha az e-olvasón nincs kamera, kérj hatkarakteres kódot, majd írd be az állandó átvételi oldalon.</p>
-              <a id="ebook-transfer-pair" class="btn btn--primary" target="_blank" rel="noopener">6 karakteres kód kérése</a>
+              <button id="ebook-transfer-pair" class="btn btn--primary" type="button">6 karakteres kód kérése</button>
+              <iframe id="ebook-transfer-code" class="ebook-library__pair-frame" title="A könyv párosítási kódja" referrerpolicy="no-referrer" hidden></iframe>
               <label for="ebook-reader-url">E-olvasón könyvjelzőként menthető cím</label>
               <input id="ebook-reader-url" class="input" readonly />
               <p>A Küldés nyilvános olvasási linket engedélyez a könyvhöz. A kód lejárata nem szünteti meg a Drive-megosztást.</p>
@@ -889,7 +890,7 @@
               <h3>E-book olvasó</h3>
               <p>A párosításkor a könyvtár támogatott könyvei linkkel olvasható megosztást kapnak. Az olvasó ezután saját, tartós azonosítóval éri el a listát.</p>
               <button id="ebook-reader-pair-btn" class="btn btn--primary btn--block" type="button">E-olvasó párosítása</button>
-              <a id="ebook-reader-pair-fallback" class="ebook-library__reader-link" href="#" target="_blank" rel="noopener" hidden>Párosítási kód megnyitása</a>
+              <iframe id="ebook-reader-pair-code" class="ebook-library__pair-frame" title="Az e-olvasó párosítási kódja" referrerpolicy="no-referrer" hidden></iframe>
               <a class="ebook-library__reader-link" href="e/">Könnyített e-olvasó oldal</a>
             </div>
             <input id="ebook-file-input" type="file" accept=".epub,.pdf,.mobi,.azw,.azw3,.prc,.txt,.cbz,.cbr" hidden />

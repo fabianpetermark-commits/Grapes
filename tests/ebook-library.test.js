@@ -7,28 +7,94 @@ import { webcrypto } from 'node:crypto'
 // Exercise the browser module with isolated DOM/Google/HTTP boundaries.
 const source = readFileSync(new URL('../src/ebook-library.js', import.meta.url), 'utf8')
   .replace(/^import .*\r?\n/gm, '').replaceAll('import.meta.env', 'env').replace('export function', 'function')
-function app(fetch) {
+const driveSource = readFileSync(new URL('../src/storage/grapes-drive.js', import.meta.url), 'utf8')
+  .replaceAll('export ', '').replaceAll('import.meta.env', 'env')
+function app(fetch, { connected = true, session = new Map(), local = new Map() } = {}) {
   const nodes = new Map()
-  const element = () => ({ dataset: {}, children: [], addEventListener() {}, replaceChildren() { this.children = [] }, append(row) { this.children.push(row) }, querySelectorAll: () => [] })
+  const element = () => ({ dataset: {}, children: [], listeners: {}, addEventListener(type, fn) { this.listeners[type] = fn }, removeAttribute(key) { delete this[key] }, replaceChildren() { this.children = [] }, append(row) { this.children.push(row) }, querySelectorAll: () => [] })
   const document = { querySelector(id) { if (!nodes.has(id)) nodes.set(id, element()); return nodes.get(id) }, createElement: element, head: { append() {} } }
+  const storage = map => ({ getItem: key => map.get(key) ?? null, setItem: (key, value) => map.set(key, value), removeItem: key => map.delete(key) })
+  if (connected && !session.has('grapes-drive-session')) session.set('grapes-drive-session', JSON.stringify({ clientId: '123-client', accessToken: 'test-token', expiresAt: Date.now() + 3600000 }))
   const context = vm.createContext({ document, fetch, Blob, URL, URLSearchParams, crypto: webcrypto, QRCode: { async toCanvas(canvas, value) { canvas.qrValue = value } },
     env: { VITE_GOOGLE_CLIENT_ID: '123-client', VITE_GOOGLE_API_KEY: 'test-key', VITE_EBOOK_TRANSFER_BROKER_URL: 'https://broker.example/exec' },
-    window: { location: { href: 'https://fabianpetermark-commits.github.io/Grapes/', origin: 'https://fabianpetermark-commits.github.io', search: '' } } })
-  vm.runInContext(source + '\naccessToken = "test-token"', context)
-  return { context, nodes, run: (code) => vm.runInContext(code, context) }
+    window: { sessionStorage: storage(session), localStorage: storage(local), location: { href: 'https://fabianpetermark-commits.github.io/Grapes/', origin: 'https://fabianpetermark-commits.github.io', search: '' } } })
+  const driveContext = vm.createContext({ window: context.window, document, fetch, env: context.env, Blob, crypto: webcrypto })
+  const api = vm.runInContext(driveSource + '\n({ connectGrapesDrive, getGrapesDriveAccessToken, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange })', driveContext)
+  Object.assign(context, api)
+  vm.runInContext(source + '\nonGrapesDriveChange(renderDriveConnection)', context)
+  return { context, nodes, session, local, run: (code) => vm.runInContext(code, context) }
 }
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status })
 const folder = () => json({ files: [{ id: 'folder' }] })
 
+test('Drive session survives refresh without another account prompt and ignores expired sessions', () => {
+  const session = new Map()
+  const first = app(undefined, { session })
+  const refreshed = app(undefined, { session, connected: false })
+  assert.equal(refreshed.run('getGrapesDriveAccessToken()'), first.run('getGrapesDriveAccessToken()'))
+  session.set('grapes-drive-session', JSON.stringify({ clientId: '123-client', accessToken: 'old', expiresAt: Date.now() - 1 }))
+  const expired = app(undefined, { session, connected: false })
+  assert.equal(expired.run('isGrapesDriveConnected()'), false)
+  assert.equal(session.has('grapes-drive-session'), false)
+})
+
+test('Drive reconnect resolves a fresh attempt after 401 and passes the remembered account', async () => {
+  const local = new Map([['grapes-drive-account', 'reader@example.com']])
+  const a = app(async url => url.includes('/about?') ? json({ user: { emailAddress: 'reader@example.com' } }) : json({}, 401), { connected: false, local })
+  const configs = []
+  a.context.window.google = { accounts: { oauth2: { initTokenClient(options) {
+    configs.push(options)
+    return { requestAccessToken(request) { assert.equal(request.prompt, ''); options.callback({ access_token: 'token-' + configs.length, expires_in: 3600 }) } }
+  } } } }
+  assert.equal(await a.run('connectGrapesDrive()'), 'token-1')
+  await assert.rejects(a.run('grapesDriveRequest("https://www.googleapis.com/drive/v3/files")'), /Csatlakoztasd újra/)
+  assert.equal(a.session.has('grapes-drive-session'), false)
+  assert.equal(await a.run('connectGrapesDrive()'), 'token-2')
+  assert.equal(configs.length, 2)
+  assert.equal(configs[1].login_hint, 'reader@example.com')
+})
+
+test('closing the Google popup permits retry and simultaneous connects share one attempt', async () => {
+  const a = app(async () => json({}), { connected: false })
+  let config; let attempts = 0
+  a.context.window.google = { accounts: { oauth2: { initTokenClient(options) {
+    config = options; attempts++
+    return { requestAccessToken() {} }
+  } } } }
+  const first = a.run('connectGrapesDrive()')
+  const concurrent = a.run('connectGrapesDrive()')
+  await Promise.resolve()
+  config.error_callback({ type: 'popup_closed' })
+  await Promise.all([assert.rejects(first, /popup_closed/), assert.rejects(concurrent, /popup_closed/)])
+  assert.equal(attempts, 1)
+  const retry = a.run('connectGrapesDrive()')
+  await Promise.resolve()
+  config.callback({ access_token: 'retry-token', expires_in: 3600 })
+  assert.equal(await retry, 'retry-token')
+})
+
+test('token expiry updates the reconnect button even while the app is idle', async () => {
+  const a = app(async () => json({ user: { emailAddress: 'reader@example.com' } }), { connected: false })
+  let expire
+  a.context.window.setTimeout = (callback, delay) => { assert.ok(delay > 3500000); expire = callback }
+  a.context.window.google = { accounts: { oauth2: { initTokenClient: options => ({ requestAccessToken: () => options.callback({ access_token: 'token', expires_in: 3600 }) }) } } }
+  await a.run('connectGrapesDrive()')
+  await new Promise(setImmediate)
+  assert.equal(a.local.get('grapes-drive-account'), 'reader@example.com')
+  assert.equal(a.nodes.get('#ebook-drive-connect').disabled, true)
+  expire()
+  assert.equal(a.nodes.get('#ebook-drive-connect').disabled, false)
+  assert.equal(a.run('getGrapesDriveAccessToken()'), null)
+})
+
 test('Connect requests only drive.file and loads the library after consent', async () => {
-  const a = app(async url => url.includes('orderBy=') ? json({ files: [] }) : folder())
+  const a = app(async url => url.includes('orderBy=') ? json({ files: [] }) : folder(), { connected: false })
   let config; let requested = false
-  a.context.window.google = { accounts: { oauth2: { initTokenClient(options) { config = options; return { requestAccessToken() { requested = true } } } } } }
+  a.context.window.google = { accounts: { oauth2: { initTokenClient(options) { config = options; return { requestAccessToken() { requested = true; config.callback({ access_token: 'new-token', expires_in: 3600 }) } } } } } }
   await a.run('connectDrive()')
   assert.ok(requested)
   assert.equal(config.scope, 'https://www.googleapis.com/auth/drive.file')
-  await config.callback({ access_token: 'new-token' })
-  assert.equal(a.run('accessToken'), 'new-token')
+  assert.equal(a.run('getGrapesDriveAccessToken()'), 'new-token')
   assert.equal(a.nodes.get('#ebook-drive-connect').disabled, true)
   assert.equal(a.nodes.get('#ebook-status').dataset.kind, 'success')
 })
@@ -89,7 +155,7 @@ test('Picker import copies external books and does not copy an existing library 
 test('expired token enables reconnect and reports actionable error', async () => {
   const a = app(async () => json({ error: { message: 'Expired' } }, 401))
   await a.run('refreshLibrary()')
-  assert.equal(a.run('accessToken'), null)
+  assert.equal(a.run('getGrapesDriveAccessToken()'), null)
   assert.equal(a.nodes.get('#ebook-drive-connect').disabled, false)
   assert.match(a.nodes.get('#ebook-status').textContent, /Csatlakoztasd újra/)
 })
@@ -140,7 +206,7 @@ test('transfer renders a download QR and offers a code plus a stable reader addr
   const a = app(async (url, options) => { calls.push({ url, options }); return json(url.includes('permissions') ? {} : { name: 'book.pdf' }) })
   await a.run('sendBook("book")')
   assert.deepEqual(JSON.parse(calls[1].options.body), { type: 'anyone', role: 'reader', allowFileDiscovery: false })
-  const broker = new URL(a.nodes.get('#ebook-transfer-pair').href)
+  const broker = new URL(a.nodes.get('#ebook-transfer-pair').dataset.brokerUrl)
   assert.equal(broker.searchParams.get('fileId'), 'book')
   assert.equal(broker.searchParams.get('returnUrl'), 'https://fabianpetermark-commits.github.io/Grapes/')
   assert.equal(a.nodes.get('#ebook-reader-url').value, 'https://fabianpetermark-commits.github.io/Grapes/?ebook-reader=1')
@@ -167,10 +233,57 @@ test('QR generation failure keeps link and pairing alternatives available', asyn
   assert.equal(a.nodes.get('#ebook-transfer-panel').hidden, false)
   assert.equal(a.nodes.get('#ebook-transfer-qr').hidden, true)
   assert.match(a.nodes.get('#ebook-qr-status').textContent, /QR-kód nem készült el/)
-  assert.ok(a.nodes.get('#ebook-transfer-pair').href)
+  assert.ok(a.nodes.get('#ebook-transfer-pair').dataset.brokerUrl)
+})
+
+test('single-book code appears in Grapes without opening a window and resets on close', async () => {
+  const a = app(async url => url.includes('orderBy=') ? json({ files: [] }) : json({ name: 'book.pdf' }))
+  a.context.window.open = () => { throw new Error('must not open a new window') }
+  a.run('initEbookLibrary()')
+  await a.run('sendBook("book")')
+  a.nodes.get('#ebook-transfer-pair').listeners.click()
+  const frame = a.nodes.get('#ebook-transfer-code')
+  assert.equal(frame.hidden, false)
+  assert.equal(new URL(frame.src).searchParams.get('embed'), '1')
+  assert.equal(new URL(frame.src).searchParams.get('fileId'), 'book')
+  a.run('closeTransfer()')
+  assert.equal(frame.hidden, true)
+  assert.equal(frame.src, undefined)
+})
+
+test('persistent reader pairing uses an inline frame with the verified marker', async () => {
+  const a = app(async url => {
+    if (url.includes('/upload/')) return json({ id: 'marker' })
+    if (url.includes('orderBy=')) return json({ files: [] })
+    return folder()
+  })
+  a.context.window.open = () => { throw new Error('must not open a new window') }
+  await a.run('createReaderPairing()')
+  const frame = a.nodes.get('#ebook-reader-pair-code')
+  const url = new URL(frame.src)
+  assert.equal(frame.hidden, false)
+  assert.equal(url.searchParams.get('action'), 'create-reader-pairing')
+  assert.equal(url.searchParams.get('embed'), '1')
+  assert.equal(url.searchParams.get('markerId'), 'marker')
+  assert.match(url.searchParams.get('nonce'), /^[a-f0-9]{48}$/)
+  assert.equal(a.nodes.get('#ebook-reader-pair-btn').disabled, false)
 })
 
 const brokerSource = readFileSync(new URL('../apps-script/ebook-transfer/Code.gs', import.meta.url), 'utf8')
+
+test('only explicit embedded creation pages allow framing, including readable errors', () => {
+  const c = vm.createContext({ HtmlService: { XFrameOptionsMode: { ALLOWALL: 'ALLOWALL' }, createHtmlOutput: html => ({ html, setXFrameOptionsMode(mode) { this.frameMode = mode; return this } }) } })
+  vm.runInContext(brokerSource, c)
+  const embedded = c.doGet({ parameter: { action: 'create', embed: '1' } })
+  assert.equal(embedded.frameMode, 'ALLOWALL')
+  assert.match(embedded.html, /Hiányzó adatok/)
+  assert.equal(c.doGet({ parameter: { action: 'create' } }).frameMode, undefined)
+  assert.equal(c.doGet({ parameter: { action: 'reader', embed: '1' } }).frameMode, undefined)
+  const compact = c.embeddedCodePage('ABC234', '<book>.pdf', false)
+  assert.match(compact.html, /ABC234/)
+  assert.match(compact.html, /&lt;book&gt;/)
+  assert.doesNotMatch(compact.html, /quickchart|<iframe|<script/)
+})
 test('broker rejects private files and foreign return URLs, expires codes and rechecks sharing', () => {
   const records = new Map()
   let sharing = 'private'; let locked = false
