@@ -993,7 +993,7 @@ function initThree() {
     if (element) syncElementState(element)
   })
 
-  scene.add(transformControls)
+  scene.add(transformControls.getHelper())
 
   scene.add(new THREE.AmbientLight(0xffffff, 0.7))
   const mainLight = new THREE.DirectionalLight(0xffffff, 0.95)
