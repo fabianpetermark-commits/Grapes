@@ -22,17 +22,17 @@ function isSolidColor(colorString) {
 // kimaradó CSS-gradiensek is átjöjjenek az importnál, ne csak az
 // egyszínű hátterek.
 function parseLinearGradient(backgroundImage, width, height) {
-  const match = backgroundImage?.match(/^linear-gradient\\((.*)\\)$/)
+  const match = backgroundImage?.match(/^linear-gradient\((.*)\)$/)
   if (!match) return null
 
-  const parts = match[1].split(/,(?![^()]*\\))/).map((part) => part.trim())
+  const parts = match[1].split(/,(?![^()]*\))/).map((part) => part.trim())
   if (parts.length < 2) return null
 
   let direction = 'to bottom'
   let colorParts = parts
 
   const first = parts[0]
-  if (/^-?[\\d.]+deg$/.test(first) || /^to (?:top|bottom|left|right)(?:\\s+(?:top|bottom|left|right))?$/.test(first)) {
+  if (/^-?[\d.]+deg$/.test(first) || /^to (?:top|bottom|left|right)(?:\s+(?:top|bottom|left|right))?$/.test(first)) {
     direction = first
     colorParts = parts.slice(1)
   }
@@ -42,14 +42,14 @@ function parseLinearGradient(backgroundImage, width, height) {
   function colorStopValue(part) {
     // Strip an optional trailing CSS stop position while preserving commas
     // inside rgb()/rgba()/hsl()/hsla() color functions.
-    return part.replace(/\\s+[-+]?(?:\\d*\\.)?\\d+%?$/, '').trim()
+    return part.replace(/\s+[-+]?(?:\d*\.)?\d+%?$/, '').trim()
   }
 
   const colors = colorParts.map(colorStopValue).filter(Boolean)
   if (colors.length < 2) return null
 
   let angleDeg = 180
-  if (/^-?[\\d.]+deg$/.test(direction)) {
+  if (/^-?[\d.]+deg$/.test(direction)) {
     angleDeg = parseFloat(direction)
   } else {
     const directions = {
