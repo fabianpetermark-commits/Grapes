@@ -1569,7 +1569,9 @@ function bindUI() {
   el('#studio-mirror-x').addEventListener('click', () => mirrorSelected('x'))
   el('#studio-mirror-y').addEventListener('click', () => mirrorSelected('y'))
   el('#studio-mirror-z').addEventListener('click', () => mirrorSelected('z'))
-  el('#studio-extrude-selected').addEventListener('click', () => {
+  const extrudeButton = document.querySelector('#studio-extrude-selected')
+  const extrudeDistanceInput = document.querySelector('#studio-extrude-distance')
+  extrudeButton?.addEventListener('click', () => {
     if (selectedIds.size !== 1 || !selectedId) {
       notify('A kihúzáshoz pontosan egy kockát vagy hengert jelölj ki.')
       return
@@ -1578,7 +1580,7 @@ function bindUI() {
     const element = elements.find((item) => item.id === selectedId)
     if (!element) return
 
-    const distance = Number(el('#studio-extrude-distance').value)
+    const distance = Number(extrudeDistanceInput?.value)
     if (!Number.isFinite(distance) || distance === 0) {
       notify('Adj meg nem nulla kihúzási értéket milliméterben.')
       return
