@@ -2,6 +2,9 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { analyzeEmailHtml, contrastRatio } from '../src/email-studio/quality.js'
 import { compileEmail, createDefaultEmailDocument, emailToPlainText } from '../src/email-studio/compiler.js'
+import {
+  applyMetadataToHtml, assertSafeMjml, createTemplateMjml, formatMarkup, legacyDocumentToMjml,
+} from '../src/email-studio/mjml.js'
 
 test('the default project compiles to portable email HTML', () => {
   const document = createDefaultEmailDocument()
@@ -47,4 +50,42 @@ test('plain text export keeps essential content and unsubscribe route', () => {
 test('contrast calculation follows accessibility thresholds', () => {
   assert.ok(contrastRatio('#000000', '#ffffff') > 20)
   assert.equal(contrastRatio('#ffffff', '#ffffff'), 1)
+})
+
+test('professional templates contain portable MJML sections and accessible social icons', () => {
+  for (const kind of ['newsletter', 'promotion', 'announcement']) {
+    const mjml = createTemplateMjml(kind)
+    assert.match(mjml, /^<mjml>/)
+    assert.match(mjml, /<mj-body[^>]+width="600px">/)
+    assert.match(mjml, /<mj-section/)
+    assert.doesNotMatch(mjml, /<script|javascript:/i)
+  }
+  const newsletter = createTemplateMjml('newsletter')
+  assert.match(newsletter, /mj-social-element[^>]+alt="Facebook"/)
+  assert.match(newsletter, /<mj-column width="50%">/)
+})
+
+test('legacy visual projects migrate to MJML without executable content', () => {
+  const document = createDefaultEmailDocument()
+  document.blocks[0].text = '<script>alert(1)</script>'
+  document.blocks.find((block) => block.type === 'button').href = 'javascript:alert(1)'
+  const mjml = legacyDocumentToMjml(document)
+  assert.match(mjml, /&lt;script&gt;alert/)
+  assert.doesNotMatch(mjml, /href="javascript:/)
+  assert.match(mjml, /href="#"/)
+})
+
+test('MJML source validation rejects active content and metadata decorates the compiled HTML', () => {
+  assert.throws(() => assertSafeMjml('<mjml><mj-body><mj-raw><script>x()</script></mj-raw></mj-body></mjml>'), /biztonságos/)
+  const html = applyMetadataToHtml('<html><head></head><body><p>Tartalom</p></body></html>', {
+    name: 'Projekt', subject: 'Teszt tárgy', preheader: 'Rövid előnézet',
+  })
+  assert.match(html, /<title>Teszt tárgy<\/title>/)
+  assert.match(html, /display:none;max-height:0[^>]+>Rövid előnézet/)
+})
+
+test('MJML code view formats the serialized one-line source', () => {
+  const formatted = formatMarkup('<mjml><mj-body><mj-section><mj-column><mj-text>Szöveg</mj-text></mj-column></mj-section></mj-body></mjml>')
+  assert.match(formatted, /\n  <mj-body>/)
+  assert.match(formatted, /\n        <mj-text>Szöveg<\/mj-text>/)
 })

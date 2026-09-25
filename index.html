@@ -217,7 +217,11 @@
         </div>
         <div class="email-studio__toolbar-group" role="group" aria-label="Szerkesztési mód">
           <button id="email-visual-mode" class="btn btn--secondary is-active" type="button">Vizuális</button>
-          <button id="email-code-mode" class="btn btn--secondary" type="button">HTML kód</button>
+          <button id="email-code-mode" class="btn btn--secondary" type="button">Kód</button>
+        </div>
+        <div class="email-studio__toolbar-group" role="group" aria-label="Előzmények">
+          <button id="email-undo" class="btn btn--ghost" type="button" title="Visszavonás (Ctrl+Z)">↶</button>
+          <button id="email-redo" class="btn btn--ghost" type="button" title="Újra (Ctrl+Shift+Z)">↷</button>
         </div>
         <div class="email-studio__toolbar-group">
           <button id="email-desktop-preview" class="btn btn--ghost is-active" type="button">Asztali</button>
@@ -243,40 +247,49 @@
       <div class="email-studio__body">
         <aside id="email-palette" class="email-studio__rail" role="tabpanel" aria-labelledby="email-mobile-content-pane">
           <details open>
-            <summary>Elem hozzáadása</summary>
-            <div class="email-studio__palette">
-              <button type="button" data-email-add="heading">Címsor</button>
-              <button type="button" data-email-add="text">Szöveg</button>
-              <button type="button" data-email-add="image">Kép</button>
-              <button type="button" data-email-add="button">Gomb</button>
-              <button type="button" data-email-add="divider">Elválasztó</button>
-              <button type="button" data-email-add="social">Social ikonok</button>
-              <button type="button" data-email-add="footer">Lábléc</button>
+            <summary>Gyors sablonok</summary>
+            <div class="email-studio__templates">
+              <button type="button" data-email-template="newsletter"><strong>Hírlevél</strong><span>Hírek és tartalmi blokkok</span></button>
+              <button type="button" data-email-template="promotion"><strong>Promóció</strong><span>Kép, ajánlat és CTA</span></button>
+              <button type="button" data-email-template="announcement"><strong>Bejelentés</strong><span>Rövid, fókuszált üzenet</span></button>
             </div>
           </details>
           <details open>
+            <summary>Elemek</summary>
+            <div id="email-mjml-blocks" class="email-studio__gjs-blocks"></div>
+          </details>
+          <details>
             <summary>Levél felépítése</summary>
-            <div id="email-block-list" class="email-studio__blocks"></div>
+            <div id="email-mjml-layers" class="email-studio__gjs-layers"></div>
           </details>
         </aside>
 
         <main class="email-studio__workspace" role="tabpanel" aria-labelledby="email-mobile-preview-pane">
-          <div id="email-preview-shell" class="email-studio__preview-shell">
-            <iframe id="email-preview-frame" title="E-mail előnézet" sandbox=""></iframe>
+          <div id="email-preview-shell" class="email-studio__preview-shell email-studio__preview-shell--editor">
+            <div id="email-mjml-editor" aria-label="Vizuális e-mail szerkesztő"></div>
           </div>
           <div id="email-code-panel" class="email-studio__code hidden">
             <div class="email-studio__code-head">
-              <div><strong>Exportálható HTML</strong><span> Az egyedi módosítások az előnézetben és az ellenőrzőben azonnal megjelennek.</span></div>
-              <button id="email-reset-code" class="btn btn--ghost" type="button">Generált kód visszaállítása</button>
+              <div><strong id="email-code-title">MJML forrás</strong><span id="email-code-description"> A módosítást az Alkalmazás gomb tölti vissza a vizuális szerkesztőbe.</span></div>
+              <div class="email-studio__code-actions">
+                <button id="email-show-mjml" class="btn btn--ghost is-active" type="button">MJML</button>
+                <button id="email-show-html" class="btn btn--ghost" type="button">Kész HTML</button>
+                <button id="email-apply-code" class="btn btn--secondary" type="button">Alkalmazás</button>
+              </div>
             </div>
             <textarea id="email-code-editor" spellcheck="false" aria-label="E-mail HTML kód"></textarea>
+            <p id="email-code-errors" class="email-studio__code-errors" role="status"></p>
           </div>
         </main>
 
         <aside id="email-inspector" class="email-studio__inspector" role="tabpanel" aria-labelledby="email-mobile-settings-pane">
           <details id="email-selected-details" open>
             <summary>Kijelölt elem</summary>
-            <div id="email-block-fields" class="email-studio__block-fields"></div>
+            <div id="email-mjml-traits" class="email-studio__gjs-traits"></div>
+          </details>
+          <details open>
+            <summary>Megjelenés</summary>
+            <div id="email-mjml-styles" class="email-studio__gjs-styles"></div>
           </details>
           <details open>
             <summary>Levél adatai</summary>
