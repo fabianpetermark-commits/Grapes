@@ -33,7 +33,7 @@
 
 .email-studio__body {
   display: grid;
-  grid-template-columns: 250px minmax(360px, 1fr) 320px;
+  grid-template-columns: 280px minmax(520px, 1fr) 340px;
   flex: 1;
   min-height: 0;
 }
@@ -89,6 +89,24 @@
 }
 .email-studio__palette button:hover { border-color: var(--color-accent); background: var(--color-bg-hover); }
 
+.email-studio__templates {
+  display: grid;
+  gap: var(--space-2);
+  padding: 0 var(--space-3) var(--space-4);
+}
+.email-studio__templates button {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  text-align: left;
+  background: var(--color-bg-raised);
+}
+.email-studio__templates button:hover { border-color: var(--color-accent); background: var(--color-bg-hover); }
+.email-studio__templates span { color: var(--color-text-muted); font-size: var(--text-xs); }
+
 .email-studio__blocks { display: grid; gap: var(--space-1); padding: 0 var(--space-3) var(--space-4); }
 .email-studio__block-row { display: grid; grid-template-columns: 1fr 30px 30px 30px; gap: 2px; }
 .email-studio__block-row button {
@@ -117,7 +135,7 @@
   background-position: 0 0, 0 12px, 12px -12px, -12px 0;
 }
 .email-studio__preview-shell {
-  width: min(100%, 760px);
+  width: 100%;
   height: 100%;
   min-height: 680px;
   margin: 0 auto;
@@ -130,12 +148,53 @@
 }
 .email-studio__preview-shell.is-mobile { width: min(100%, 390px); }
 .email-studio__preview-shell iframe { display: block; width: 100%; height: 100%; min-height: 680px; border: 0; background: var(--color-paper); }
+.email-studio__preview-shell--editor { border-radius: var(--radius-md); background: var(--color-bg-surface); }
+#email-mjml-editor,
+#email-mjml-editor > .gjs-editor-cont { width: 100%; height: 100%; min-height: 680px; }
+#email-mjml-editor .gjs-cv-canvas { top: 0; width: 100%; height: 100%; }
+
+.email-studio .gjs-one-bg { background-color: var(--color-bg-surface); }
+.email-studio .gjs-two-color { color: var(--color-text-muted); }
+.email-studio .gjs-three-bg { background-color: var(--color-accent); color: #fff; }
+.email-studio .gjs-four-color,
+.email-studio .gjs-four-color-h:hover { color: var(--color-accent); }
+.email-studio .gjs-blocks-c { padding: 0 var(--space-2) var(--space-3); }
+.email-studio .gjs-block {
+  width: calc(50% - 8px);
+  min-height: 78px;
+  margin: 4px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: none;
+  color: var(--color-text-muted);
+  background: var(--color-bg-raised);
+}
+.email-studio .gjs-block:hover { color: var(--color-text); border-color: var(--color-accent); }
+.email-studio .gjs-block-label { font-size: var(--text-xs); }
+.email-studio .gjs-block-category .gjs-title,
+.email-studio .gjs-layer-title,
+.email-studio .gjs-sm-sector-title {
+  border-bottom-color: var(--color-border);
+  background: var(--color-bg-raised);
+}
+.email-studio .gjs-trt-trait,
+.email-studio .gjs-sm-property { padding-inline: var(--space-3); }
+.email-studio .gjs-field,
+.email-studio .gjs-sm-field { background: var(--color-bg-raised); }
+.email-studio__gjs-traits:empty::before {
+  display: block;
+  padding: 0 var(--space-4) var(--space-4);
+  color: var(--color-text-muted);
+  content: 'Kattints egy elemre a levélben a beállításaihoz.';
+}
 
 .email-studio__code { width: min(100%, 1040px); height: 100%; margin: 0 auto; }
 .email-studio__code-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-3); color: var(--color-text-muted); }
 .email-studio__code-head strong { color: var(--color-text); }
+.email-studio__code-actions { display: flex; gap: var(--space-1); }
+.email-studio__code-errors { min-height: 20px; margin: var(--space-2) 0 0; color: var(--color-danger); font-size: var(--text-xs); }
 #email-code-editor {
-  height: calc(100% - 54px);
+  height: calc(100% - 76px);
   min-height: 620px;
   resize: none;
   padding: var(--space-4);
@@ -143,6 +202,7 @@
   tab-size: 2;
   white-space: pre;
 }
+#email-code-editor[readonly] { color: var(--color-text-muted); }
 
 .email-studio__colors { display: grid; gap: var(--space-2); padding: 0 var(--space-4) var(--space-3); }
 .email-studio__colors label { display: grid; grid-template-columns: 1fr 36px 68px; align-items: center; gap: var(--space-2); color: var(--color-text-muted); font-size: var(--text-sm); }
