@@ -353,7 +353,7 @@ async function refreshLibrary() {
     if (!folderIds.length) folderIds.push(await ensureLibraryFolder())
     const foundBooks = (await Promise.all(folderIds.map(listLibraryTree))).flat()
     const books = [...new Map(foundBooks.map((file) => [file.id, file])).values()]
-    renderBooks(books); setStatus(`${books.length} könyv a könyvtárban.`,'success')
+    renderBooks(books); setStatus(`${books.length} könyv látható. A többi Drive-könyvhöz használd a jobb oldali „Hiányzó Drive-könyvek kiválasztása” gombot.`,'success')
     return true
   } catch (error) { setStatus(`A könyvtár betöltése nem sikerült. ${error.message}`,'error'); return false }
 }
