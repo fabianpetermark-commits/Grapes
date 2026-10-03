@@ -10,7 +10,8 @@ Finish and debug the E-book Library.
 ## Current design
 - Frontend: Vite, main module: src/ebook-library.js
 - UI: index.html
-- OAuth scope must stay: https://www.googleapis.com/auth/drive.file
+- Default OAuth scope: https://www.googleapis.com/auth/drive.file
+- The user explicitly authorized an optional full-Drive read mode. Its separate button requests `https://www.googleapis.com/auth/drive.readonly` alongside `drive.file`; project writes remain limited to app-authorized files. The restricted read scope must be configured and verified in Google Cloud before production use.
 - Google Drive API enabled
 - Google Picker integration added
 - Picker API key comes from GitHub Actions secret VITE_GOOGLE_API_KEY
@@ -18,7 +19,7 @@ Finish and debug the E-book Library.
 - Pages workflow: .github/workflows/deploy-pages.yml
 
 ## Current bugs
-1. Files manually uploaded from phone do not appear automatically. This is expected with drive.file. Intended fix is explicit selection with Google Picker.
+1. With the default `drive.file` mode, files manually uploaded from a phone require explicit selection with Google Picker. The optional full-Drive read mode scans recognizable book formats after separate Google consent.
 2. Uploading a new book directly from Grapes currently fails.
 3. Picker flow has not yet been validated end-to-end.
 
@@ -34,7 +35,7 @@ Prefer either:
 - correct multipart/related with real CRLF, or
 - a more robust Drive upload flow.
 
-Do not broaden Drive scope.
+Do not broaden write access beyond `drive.file`; the separately authorized `drive.readonly` mode is read-only.
 
 ## Picker validation
 Verify:

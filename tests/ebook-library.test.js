@@ -19,7 +19,7 @@ function app(fetch, { connected = true, session = new Map(), local = new Map() }
     env: { VITE_GOOGLE_CLIENT_ID: '123-client', VITE_GOOGLE_API_KEY: 'test-key', VITE_EBOOK_TRANSFER_BROKER_URL: 'https://broker.example/exec' },
     window: { sessionStorage: storage(session), localStorage: storage(local), location: { href: 'https://fabianpetermark-commits.github.io/Grapes/', origin: 'https://fabianpetermark-commits.github.io', search: '' } } })
   const driveContext = vm.createContext({ window: context.window, document, fetch, env: context.env, Blob, crypto: webcrypto })
-  const api = vm.runInContext(driveSource + '\n({ connectGrapesDrive, disconnectGrapesDrive, getGrapesDriveAccessToken, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange })', driveContext)
+  const api = vm.runInContext(driveSource + '\n({ connectGrapesDrive, disconnectGrapesDrive, getGrapesDriveAccessToken, grapesDriveHasFullReadAccess, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange })', driveContext)
   Object.assign(context, api)
   vm.runInContext(source + '\nonGrapesDriveChange(renderDriveConnection)', context)
   return { context, nodes, session, local, run: (code) => vm.runInContext(code, context) }
@@ -99,6 +99,46 @@ test('Connect requests only drive.file and loads the library after consent', asy
   assert.equal(a.nodes.get('#ebook-status').dataset.kind, 'success')
 })
 
+test('full Drive reading asks for both scopes and preserves the previous token if denied', async () => {
+  const a = app(async () => json({ files: [] }))
+  let config
+  a.context.window.google = { accounts: { oauth2: { initTokenClient(options) {
+    config = options
+    return { requestAccessToken() { config.callback({ access_token: 'broad-token', expires_in: 3600, scope: 'https://www.googleapis.com/auth/drive.file' }) } }
+  } } } }
+  await assert.rejects(a.run('connectGrapesDrive({ fullRead: true })'), /mindkét szükséges/)
+  assert.equal(a.run('getGrapesDriveAccessToken()'), 'test-token')
+  assert.equal(a.run('grapesDriveHasFullReadAccess()'), false)
+  assert.equal(a.local.has('grapes-drive-full-read'), false)
+
+  a.context.window.google.accounts.oauth2.initTokenClient = (options) => {
+    config = options
+    return { requestAccessToken() { config.callback({ access_token: 'broad-token', expires_in: 3600, scope: `${config.scope}` }) } }
+  }
+  await a.run('connectGrapesDrive({ fullRead: true })')
+  assert.match(config.scope, /drive\.file/)
+  assert.match(config.scope, /drive\.readonly/)
+  assert.equal(a.run('grapesDriveHasFullReadAccess()'), true)
+  assert.equal(a.local.get('grapes-drive-full-read'), '1')
+  assert.equal(JSON.parse(a.session.get('grapes-drive-session')).scopes, config.scope)
+})
+
+test('previously granted full read is requested again on reconnect and cleared on disconnect', async () => {
+  const local = new Map([['grapes-drive-full-read', '1']])
+  const a = app(async () => json({}), { connected: false, local })
+  let scope
+  a.context.window.google = { accounts: { oauth2: {
+    initTokenClient(options) { scope = options.scope; return { requestAccessToken() { options.callback({ access_token: 'full-token', expires_in: 3600, scope }) } } },
+    revoke(_token, done) { done() },
+  } } }
+  await a.run('connectGrapesDrive()')
+  assert.match(scope, /drive\.readonly/)
+  assert.equal(a.run('grapesDriveHasFullReadAccess()'), true)
+  await a.run('disconnectGrapesDrive()')
+  assert.equal(local.has('grapes-drive-full-read'), false)
+  assert.equal(a.run('grapesDriveHasFullReadAccess()'), false)
+})
+
 test('global Drive disconnect revokes the token and clears the visible library', async () => {
   const a = app(async () => json({}))
   let revoked
@@ -153,6 +193,34 @@ test('refresh merges every accessible Grapes library folder and removes duplicat
   await a.run('refreshLibrary()')
   assert.equal(a.nodes.get('#ebook-list').children.length, 3)
   assert.match(a.nodes.get('#ebook-status').textContent, /3 könyv/)
+})
+
+test('full read scans paginated Drive books without showing unrelated files or duplicate ids', async () => {
+  const session = new Map([['grapes-drive-session', JSON.stringify({
+    clientId: '123-client', accessToken: 'broad-token', expiresAt: Date.now() + 3600000,
+    scopes: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly',
+  })]])
+  const a = app(async url => {
+    const request = new URL(url)
+    const query = request.searchParams.get('q') || ''
+    if (query.includes("name = 'Grapes E-book Library'")) return folder()
+    if (query.includes("'folder' in parents")) return json({ files: [{ id: 'in-library', name: 'first.epub', mimeType: 'application/epub+zip', isAppAuthorized: true }] })
+    if (request.searchParams.get('pageToken') === 'next') return json({ files: [
+      { id: 'outside-fb2', name: 'second.fb2.zip', mimeType: 'application/zip', isAppAuthorized: false },
+      { id: 'unrelated', name: 'photo.jpg', mimeType: 'image/jpeg' },
+    ] })
+    return json({ nextPageToken: 'next', files: [
+      { id: 'in-library', name: 'first.epub', mimeType: 'application/epub+zip', isAppAuthorized: true },
+      { id: 'outside-pdf', name: 'third.pdf', mimeType: 'application/pdf', isAppAuthorized: false },
+      { id: 'marker', name: '.grapes-reader-pairing.json', mimeType: 'application/json' },
+    ] })
+  }, { session })
+  await a.run('refreshLibrary()')
+  assert.equal(a.nodes.get('#ebook-list').children.length, 3)
+  assert.match(a.nodes.get('#ebook-status').textContent, /teljes Google Drive/)
+  const external = a.nodes.get('#ebook-list').children.find((row) => row.innerHTML.includes('second.fb2.zip'))
+  assert.match(external.innerHTML, /Drive, csak olvasás/)
+  assert.doesNotMatch(external.innerHTML, /data-send/)
 })
 
 test('multipart upload has real CRLF, preserves binary bytes, and refreshes immediately', async () => {

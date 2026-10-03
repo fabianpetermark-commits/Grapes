@@ -1,6 +1,6 @@
 import QRCode from 'qrcode'
 import './styles/screens/ebook-library.css'
-import { connectGrapesDrive, disconnectGrapesDrive, getGrapesDriveAccessToken, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange } from './storage/grapes-drive.js'
+import { connectGrapesDrive, disconnectGrapesDrive, getGrapesDriveAccessToken, grapesDriveHasFullReadAccess, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange } from './storage/grapes-drive.js'
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 const TRANSFER_BROKER_URL = import.meta.env.VITE_EBOOK_TRANSFER_BROKER_URL || ''
@@ -11,6 +11,7 @@ const READER_PAGE_URL = new URL('ebook-reader.html', window.location.href).toStr
 const READER_SHARING_KEY = 'grapes-reader-library-enabled'
 const INTERNAL_PAIRING_FILE = /^\.grapes-reader-pairing(?:-\d+)?\.json$/i
 const SHAREABLE_BOOK_EXTENSIONS = new Set(['epub', 'pdf', 'mobi', 'azw', 'azw3', 'prc', 'txt', 'cbz', 'cbr'])
+const DRIVE_BOOK_EXTENSIONS = new Set(['epub', 'pdf', 'mobi', 'azw', 'azw3', 'azw4', 'kfx', 'prc', 'fb2', 'djvu', 'djv', 'cbz', 'cbr', 'cb7', 'cbt', 'txt', 'rtf', 'doc', 'docx', 'odt', 'html', 'htm', 'xhtml', 'chm', 'lit', 'lrf', 'lrx', 'pdb', 'pml', 'pmlz', 'rb', 'snb', 'tcr', 'tr2', 'tr3', 'xps', 'oxps'])
 
 let initialized = false
 let pickerPromise = null
@@ -22,6 +23,7 @@ const isBookFile = (file) => Boolean(file?.name)
   && !INTERNAL_PAIRING_FILE.test(file.name)
   && file.mimeType !== 'application/vnd.google-apps.folder'
   && !String(file.mimeType || '').startsWith('application/vnd.google-apps.')
+const isDriveBook = (file) => isBookFile(file) && (DRIVE_BOOK_EXTENSIONS.has(ext(file.name)) || /\.fb2\.zip$/i.test(file.name))
 const formatSize = (bytes) => !Number.isFinite(bytes) ? '—' : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
 function setStatus(message, kind = '') { const node = $('#ebook-status'); if (node) { node.textContent = message; node.dataset.kind = kind } }
@@ -70,6 +72,11 @@ function renderDriveConnection() {
   if (button) { button.disabled = connected; button.textContent = connected ? 'Google Drive csatlakoztatva' : 'Google Drive csatlakoztatása' }
   const disconnect = $('#ebook-drive-disconnect')
   if (disconnect) disconnect.disabled = !connected
+  const fullRead = $('#ebook-drive-full-read')
+  if (fullRead) {
+    fullRead.disabled = !connected || grapesDriveHasFullReadAccess()
+    fullRead.textContent = grapesDriveHasFullReadAccess() ? 'Automatikus Drive-beolvasás aktív' : 'Automatikus Drive-beolvasás engedélyezése'
+  }
 }
 function handleTransferLink() {
   const params = new URLSearchParams(window.location.search)
@@ -91,7 +98,9 @@ function renderBooks(books = []) {
   list.replaceChildren(); empty.hidden = books.length > 0
   for (const book of books) {
     const row = document.createElement('article'); row.className = 'ebook-library__book'
-    row.innerHTML = `<div class="ebook-library__book-icon" aria-hidden="true">E</div><div class="ebook-library__book-main"><strong>${escapeHtml(book.name)}</strong><span>${ext(book.name).toUpperCase()} · ${formatSize(Number(book.size))}</span></div><div class="ebook-library__book-actions"><button class="btn btn--ghost btn--sm" type="button" data-download="${book.id}">Letöltés</button><button class="btn btn--primary btn--sm" type="button" data-send="${book.id}">Küldés</button></div>`
+    const sendAction = book.isAppAuthorized === false ? '' : `<button class="btn btn--primary btn--sm" type="button" data-send="${book.id}">Küldés</button>`
+    const accessLabel = book.isAppAuthorized === false ? ' · Drive, csak olvasás' : ''
+    row.innerHTML = `<div class="ebook-library__book-icon" aria-hidden="true">E</div><div class="ebook-library__book-main"><strong>${escapeHtml(book.name)}</strong><span>${ext(book.name).toUpperCase()} · ${formatSize(Number(book.size))}${accessLabel}</span></div><div class="ebook-library__book-actions"><button class="btn btn--ghost btn--sm" type="button" data-download="${book.id}">Letöltés</button>${sendAction}</div>`
     list.append(row)
   }
   list.querySelectorAll('[data-download]').forEach((b) => b.addEventListener('click', () => downloadBook(b.dataset.download)))
@@ -220,6 +229,16 @@ async function disconnectDrive() {
   renderBooks([])
   setStatus('A Google Drive kapcsolat leválasztva. A Drive-on lévő fájlok nem változtak.', 'success')
 }
+async function enableFullDriveRead() {
+  try {
+    setStatus('A teljes Drive olvasási engedélyének kérése…')
+    await connectGrapesDrive({ fullRead: true })
+    renderDriveConnection()
+    await refreshLibrary()
+  } catch (error) {
+    setStatus(`Az automatikus beolvasás nem indult el. ${error.message}`, 'error')
+  }
+}
 const driveRequest = grapesDriveRequest
 function accessTokenAvailable() { return isGrapesDriveConnected() }
 async function findLibraryFolderIds() {
@@ -251,7 +270,7 @@ async function listLibraryTree(rootFolderId) {
     const query = `'${folderId}' in parents and trashed = false`
     let pageToken = ''
     do {
-      const response = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=nextPageToken,files(id,name,size,modifiedTime,mimeType,parents)&orderBy=modifiedTime desc&pageSize=100&pageToken=${encodeURIComponent(pageToken)}`)
+      const response = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=nextPageToken,files(id,name,size,modifiedTime,mimeType,parents,isAppAuthorized)&orderBy=modifiedTime desc&pageSize=100&pageToken=${encodeURIComponent(pageToken)}`)
       const data = await response.json()
       for (const file of data.files || []) {
         if (file.mimeType === 'application/vnd.google-apps.folder') pending.push(file.id)
@@ -260,6 +279,18 @@ async function listLibraryTree(rootFolderId) {
       pageToken = data.nextPageToken || ''
     } while (pageToken)
   }
+  return books
+}
+async function listAllDriveBooks() {
+  const books = []
+  const query = "trashed = false and mimeType != 'application/vnd.google-apps.folder'"
+  let pageToken = ''
+  do {
+    const response = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=nextPageToken,files(id,name,size,modifiedTime,mimeType,parents,isAppAuthorized)&pageSize=1000&pageToken=${encodeURIComponent(pageToken)}`)
+    const data = await response.json()
+    for (const file of data.files || []) if (isDriveBook(file)) books.push(file)
+    pageToken = data.nextPageToken || ''
+  } while (pageToken)
   return books
 }
 async function getReaderLibraryBooks() {
@@ -328,7 +359,7 @@ async function createReaderPairing() {
     const { folderId, books } = await getReaderLibraryBooks()
     for (let index = 0; index < books.length; index++) {
       setStatus(`E-olvasó megosztás: ${index + 1}/${books.length} könyv…`)
-      await ensurePublicRead(books[index].id)
+      if (books[index].isAppAuthorized !== false) await ensurePublicRead(books[index].id)
     }
     setReaderLibraryEnabled(true)
 
@@ -349,11 +380,16 @@ async function createReaderPairing() {
 async function refreshLibrary() {
   if(!accessTokenAvailable()) return
   try {
+    setStatus('Drive-könyvek beolvasása…')
     const folderIds = await findLibraryFolderIds()
     if (!folderIds.length) folderIds.push(await ensureLibraryFolder())
     const foundBooks = (await Promise.all(folderIds.map(listLibraryTree))).flat()
+    if (grapesDriveHasFullReadAccess()) foundBooks.push(...await listAllDriveBooks())
     const books = [...new Map(foundBooks.map((file) => [file.id, file])).values()]
-    renderBooks(books); setStatus(`${books.length} könyv látható. A többi Drive-könyvhöz használd a jobb oldali „Hiányzó Drive-könyvek kiválasztása” gombot.`,'success')
+    renderBooks(books)
+    setStatus(grapesDriveHasFullReadAccess()
+      ? `${books.length} könyv a teljes Google Drive-ban. Az új könyvek a Frissítés gombbal megjelennek.`
+      : `${books.length} könyv látható. A többi Drive-könyvhöz használd a jobb oldali „Hiányzó Drive-könyvek kiválasztása” gombot.`, 'success')
     return true
   } catch (error) { setStatus(`A könyvtár betöltése nem sikerült. ${error.message}`,'error'); return false }
 }
@@ -439,6 +475,7 @@ export function initEbookLibrary() {
   $('#ebook-reader-pair-btn')?.addEventListener('click', createReaderPairing)
   $('#ebook-drive-connect')?.addEventListener('click',connectDrive)
   $('#ebook-drive-disconnect')?.addEventListener('click',disconnectDrive)
+  $('#ebook-drive-full-read')?.addEventListener('click',enableFullDriveRead)
   $('#ebook-file-input')?.addEventListener('change',(e)=>{const file=e.target.files?.[0];if(file)uploadBook(file);e.target.value=''})
   $('#ebook-upload-btn')?.addEventListener('click',()=>$('#ebook-file-input')?.click())
   $('#ebook-drive-picker-btn')?.addEventListener('click', openDrivePicker)

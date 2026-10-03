@@ -42,7 +42,9 @@ app, but does not configure future GitHub deployments.
   Once the token expires, reconnect from a user click; the remembered account is
   supplied as Google's `login_hint`, but Google can still require interaction.
 - Access tokens are stored only for their remaining lifetime in sessionStorage.
-  Closing the tab is not a permanent offline Google login. No refresh token or
-  broader Drive permission is requested by the frontend.
+  Closing the tab is not a permanent offline Google login. No refresh token is
+  requested by the frontend. Its optional full-Drive scan requests the restricted
+  `drive.readonly` scope after separate Google consent and requires Google Cloud
+  OAuth consent configuration and verification.
 
 The reader's persistent device token is separate from the browser's Drive token.
