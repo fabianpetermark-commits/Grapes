@@ -137,6 +137,24 @@ test('refresh reads nested folders and shows unknown binary ebook formats', asyn
   assert.equal(a.nodes.get('#ebook-list').children.length, 2)
 })
 
+test('refresh merges every accessible Grapes library folder and removes duplicate file ids', async () => {
+  const a = app(async url => {
+    if (!url.includes('orderBy=')) return json({ files: [{ id: 'folder-a' }, { id: 'folder-b' }] })
+    const query = new URL(url).searchParams.get('q')
+    if (query.includes("'folder-a' in parents")) return json({ files: [
+      { id: 'shared', name: 'shared.epub' },
+      { id: 'a', name: 'first.mobi' },
+    ] })
+    return json({ files: [
+      { id: 'shared', name: 'shared.epub' },
+      { id: 'b', name: 'second.fb2' },
+    ] })
+  })
+  await a.run('refreshLibrary()')
+  assert.equal(a.nodes.get('#ebook-list').children.length, 3)
+  assert.match(a.nodes.get('#ebook-status').textContent, /3 könyv/)
+})
+
 test('multipart upload has real CRLF, preserves binary bytes, and refreshes immediately', async () => {
   let uploaded = false
   const a = app(async (url, options) => {
@@ -216,14 +234,15 @@ test('Picker receives token, developer key, project number, origin and reports d
     setAppId(v) { settings.app = v; return this }
     setOrigin(v) { settings.origin = v; return this }
     addView() { return this }
+    enableFeature(v) { settings.feature = v; return this }
     setCallback(v) { settings.callback = v; return this }
     build() { return this }
     setVisible(v) { settings.visible = v }
   }
-  a.context.window.google = { picker: { PickerBuilder: Builder, DocsView: class { setIncludeFolders() { return this } setSelectFolderEnabled() { return this } }, ViewId: { DOCS: 'docs' }, Response: { ACTION: 'action' }, Action: { ERROR: 'error', PICKED: 'picked' } } }
+  a.context.window.google = { picker: { PickerBuilder: Builder, DocsView: class { setIncludeFolders() { return this } setSelectFolderEnabled() { return this } }, ViewId: { DOCS: 'docs' }, Feature: { MULTISELECT_ENABLED: 'multiselect' }, Response: { ACTION: 'action' }, Action: { ERROR: 'error', PICKED: 'picked' } } }
   await a.run('openDrivePicker()')
   assert.equal(settings.token, 'test-token'); assert.equal(settings.key, 'test-key'); assert.equal(settings.app, '123')
-  assert.equal(settings.origin, 'https://fabianpetermark-commits.github.io'); assert.equal(settings.visible, true)
+  assert.equal(settings.origin, 'https://fabianpetermark-commits.github.io'); assert.equal(settings.visible, true); assert.equal(settings.feature, 'multiselect')
   await settings.callback({ action: 'error' })
   assert.equal(a.nodes.get('#ebook-status').dataset.kind, 'error')
 })

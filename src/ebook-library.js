@@ -126,15 +126,17 @@ async function loadGooglePicker() {
   try { return await pickerPromise } catch (error) { pickerPromise = null; throw error }
 }
 
-async function importDriveBook(fileId) {
-  const folderId = await ensureLibraryFolder()
+async function importDriveBook(fileId, { refresh = true, libraryFolderIds = null } = {}) {
+  const folderIds = libraryFolderIds || await findLibraryFolderIds()
+  const folderId = folderIds[0] || await ensureLibraryFolder()
+  if (!folderIds.length) folderIds.push(folderId)
   const response = await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?fields=id,name,size,parents`)
   const file = await response.json()
 
   if (!isBookFile(file)) throw new Error('Ez a fájl nem vehető fel a könyvtárba.')
 
   let libraryFileId = file.id
-  if (!file.parents?.includes(folderId)) {
+  if (!file.parents?.some((parentId) => folderIds.includes(parentId))) {
     const copiedResponse = await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.id)}/copy?fields=id,name,size,parents`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -144,7 +146,8 @@ async function importDriveBook(fileId) {
   }
 
   if (readerLibraryEnabled() && isShareableBook(file.name)) await ensurePublicRead(libraryFileId)
-  if (await refreshLibrary()) setStatus(`${file.name} hozzáadva a Grapes könyvtárhoz.`, 'success')
+  if (refresh && await refreshLibrary()) setStatus(`${file.name} hozzáadva a Grapes könyvtárhoz.`, 'success')
+  return file.name
 }
 
 async function openDrivePicker() {
@@ -158,26 +161,40 @@ async function openDrivePicker() {
       .setIncludeFolders(true)
       .setSelectFolderEnabled(false)
 
-    new picker.PickerBuilder()
+    const builder = new picker.PickerBuilder()
       .setOAuthToken(getGrapesDriveAccessToken())
       .setDeveloperKey(GOOGLE_API_KEY)
       .setAppId(GOOGLE_APP_ID)
       .setOrigin(window.location.origin)
       .addView(view)
+    if (picker.Feature?.MULTISELECT_ENABLED && builder.enableFeature) {
+      builder.enableFeature(picker.Feature.MULTISELECT_ENABLED)
+    }
+    builder
       .setCallback(async (data) => {
         if (data[picker.Response.ACTION] === picker.Action.ERROR) {
           return setStatus('Google Picker hiba. Ellenőrizd az API-kulcsot, a projektazonosítót és az engedélyezett webhelyeket.', 'error')
         }
         if (data[picker.Response.ACTION] !== picker.Action.PICKED) return
-        const file = data[picker.Response.DOCUMENTS]?.[0]
-        const fileId = file?.[picker.Document.ID]
-        if (!fileId) return
+        const files = data[picker.Response.DOCUMENTS] || []
+        const fileIds = files.map((file) => file?.[picker.Document.ID]).filter(Boolean)
+        if (!fileIds.length) return
 
-        setStatus('A kiválasztott könyv hozzáadása…')
+        setStatus(`${fileIds.length} kiválasztott könyv hozzáadása…`)
         try {
-          await importDriveBook(fileId)
+          const libraryFolderIds = await findLibraryFolderIds()
+          if (!libraryFolderIds.length) libraryFolderIds.push(await ensureLibraryFolder())
+          const failures = []
+          for (let index = 0; index < fileIds.length; index++) {
+            setStatus(`Könyvek hozzáadása: ${index + 1}/${fileIds.length}…`)
+            try { await importDriveBook(fileIds[index], { refresh: false, libraryFolderIds }) }
+            catch (error) { failures.push(error.message || 'Ismeretlen hiba') }
+          }
+          const refreshed = await refreshLibrary()
+          if (refreshed && failures.length) setStatus(`${fileIds.length - failures.length} könyv hozzáadva, ${failures.length} sikertelen. ${failures[0]}`, 'error')
+          else if (refreshed) setStatus(`${fileIds.length} könyv hozzáadva a Grapes könyvtárhoz.`, 'success')
         } catch (error) {
-          setStatus(error.message || 'A Drive-ból választott könyv hozzáadása nem sikerült.', 'error')
+          setStatus(error.message || 'A Drive-ból választott könyvek hozzáadása nem sikerült.', 'error')
         }
       })
       .build()
@@ -205,10 +222,21 @@ async function disconnectDrive() {
 }
 const driveRequest = grapesDriveRequest
 function accessTokenAvailable() { return isGrapesDriveConnected() }
+async function findLibraryFolderIds() {
+  const query = `name = '${FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`
+  const folderIds = []
+  let pageToken = ''
+  do {
+    const response = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=nextPageToken,files(id,name)&pageSize=100&pageToken=${encodeURIComponent(pageToken)}`)
+    const data = await response.json()
+    for (const folder of data.files || []) if (folder.id) folderIds.push(folder.id)
+    pageToken = data.nextPageToken || ''
+  } while (pageToken)
+  return [...new Set(folderIds)]
+}
 async function ensureLibraryFolder() {
-  const query=`name = 'Grapes E-book Library' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`
-  const response=await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)&pageSize=1`)
-  const data=await response.json(); if(data.files?.[0]) return data.files[0].id
+  const folderIds = await findLibraryFolderIds()
+  if (folderIds[0]) return folderIds[0]
   const created=await driveRequest('https://www.googleapis.com/drive/v3/files',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:FOLDER_NAME,mimeType:'application/vnd.google-apps.folder'})})
   return (await created.json()).id
 }
@@ -235,8 +263,11 @@ async function listLibraryTree(rootFolderId) {
   return books
 }
 async function getReaderLibraryBooks() {
-  const folderId = await ensureLibraryFolder()
-  return { folderId, books: (await listLibraryTree(folderId)).filter((file) => isShareableBook(file.name)) }
+  const folderIds = await findLibraryFolderIds()
+  const folderId = folderIds[0] || await ensureLibraryFolder()
+  if (!folderIds.length) folderIds.push(folderId)
+  const books = (await Promise.all(folderIds.map(listLibraryTree))).flat()
+  return { folderId, books: [...new Map(books.map((file) => [file.id, file])).values()].filter((file) => isShareableBook(file.name)) }
 }
 async function ensurePublicRead(fileId) {
   try {
@@ -318,8 +349,10 @@ async function createReaderPairing() {
 async function refreshLibrary() {
   if(!accessTokenAvailable()) return
   try {
-    const folderId=await ensureLibraryFolder()
-    const books = await listLibraryTree(folderId)
+    const folderIds = await findLibraryFolderIds()
+    if (!folderIds.length) folderIds.push(await ensureLibraryFolder())
+    const foundBooks = (await Promise.all(folderIds.map(listLibraryTree))).flat()
+    const books = [...new Map(foundBooks.map((file) => [file.id, file])).values()]
     renderBooks(books); setStatus(`${books.length} könyv a könyvtárban.`,'success')
     return true
   } catch (error) { setStatus(`A könyvtár betöltése nem sikerült. ${error.message}`,'error'); return false }
