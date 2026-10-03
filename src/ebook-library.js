@@ -1,6 +1,6 @@
 import QRCode from 'qrcode'
 import './styles/screens/ebook-library.css'
-import { connectGrapesDrive, getGrapesDriveAccessToken, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange } from './storage/grapes-drive.js'
+import { connectGrapesDrive, disconnectGrapesDrive, getGrapesDriveAccessToken, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange } from './storage/grapes-drive.js'
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 const TRANSFER_BROKER_URL = import.meta.env.VITE_EBOOK_TRANSFER_BROKER_URL || ''
@@ -9,12 +9,19 @@ const GOOGLE_APP_ID = import.meta.env.VITE_GOOGLE_APP_ID || CLIENT_ID.split('-')
 const FOLDER_NAME = 'Grapes E-book Library'
 const READER_PAGE_URL = new URL('ebook-reader.html', window.location.href).toString()
 const READER_SHARING_KEY = 'grapes-reader-library-enabled'
-const ALLOWED = ['epub', 'pdf', 'mobi', 'azw', 'azw3', 'prc', 'txt', 'cbz', 'cbr']
+const INTERNAL_PAIRING_FILE = /^\.grapes-reader-pairing(?:-\d+)?\.json$/i
+const SHAREABLE_BOOK_EXTENSIONS = new Set(['epub', 'pdf', 'mobi', 'azw', 'azw3', 'prc', 'txt', 'cbz', 'cbr'])
 
 let initialized = false
 let pickerPromise = null
 const $ = (selector) => document.querySelector(selector)
-const ext = (name = '') => name.split('.').pop().toLowerCase()
+const ext = (name = '') => name.includes('.') ? name.split('.').pop().toLowerCase() : 'FILE'
+const isShareableBook = (name = '') => SHAREABLE_BOOK_EXTENSIONS.has(ext(name))
+const isBookFile = (file) => Boolean(file?.name)
+  && !file.name.startsWith('.')
+  && !INTERNAL_PAIRING_FILE.test(file.name)
+  && file.mimeType !== 'application/vnd.google-apps.folder'
+  && !String(file.mimeType || '').startsWith('application/vnd.google-apps.')
 const formatSize = (bytes) => !Number.isFinite(bytes) ? '—' : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
 function setStatus(message, kind = '') { const node = $('#ebook-status'); if (node) { node.textContent = message; node.dataset.kind = kind } }
@@ -61,6 +68,8 @@ function renderDriveConnection() {
   const connected = isGrapesDriveConnected()
   const button = $('#ebook-drive-connect')
   if (button) { button.disabled = connected; button.textContent = connected ? 'Google Drive csatlakoztatva' : 'Google Drive csatlakoztatása' }
+  const disconnect = $('#ebook-drive-disconnect')
+  if (disconnect) disconnect.disabled = !connected
 }
 function handleTransferLink() {
   const params = new URLSearchParams(window.location.search)
@@ -122,9 +131,7 @@ async function importDriveBook(fileId) {
   const response = await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?fields=id,name,size,parents`)
   const file = await response.json()
 
-  if (!ALLOWED.includes(ext(file.name))) {
-    throw new Error('Ez a fájltípus jelenleg nem támogatott.')
-  }
+  if (!isBookFile(file)) throw new Error('Ez a fájl nem vehető fel a könyvtárba.')
 
   let libraryFileId = file.id
   if (!file.parents?.includes(folderId)) {
@@ -136,7 +143,7 @@ async function importDriveBook(fileId) {
     libraryFileId = (await copiedResponse.json()).id
   }
 
-  if (readerLibraryEnabled()) await ensurePublicRead(libraryFileId)
+  if (readerLibraryEnabled() && isShareableBook(file.name)) await ensurePublicRead(libraryFileId)
   if (await refreshLibrary()) setStatus(`${file.name} hozzáadva a Grapes könyvtárhoz.`, 'success')
 }
 
@@ -191,6 +198,11 @@ async function connectDrive() {
     setStatus(`Google bejelentkezési hiba: ${error.message}`, 'error')
   }
 }
+async function disconnectDrive() {
+  await disconnectGrapesDrive()
+  renderBooks([])
+  setStatus('A Google Drive kapcsolat leválasztva. A Drive-on lévő fájlok nem változtak.', 'success')
+}
 const driveRequest = grapesDriveRequest
 function accessTokenAvailable() { return isGrapesDriveConnected() }
 async function ensureLibraryFolder() {
@@ -200,18 +212,31 @@ async function ensureLibraryFolder() {
   const created=await driveRequest('https://www.googleapis.com/drive/v3/files',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:FOLDER_NAME,mimeType:'application/vnd.google-apps.folder'})})
   return (await created.json()).id
 }
+async function listLibraryTree(rootFolderId) {
+  const books = []
+  const pending = [rootFolderId]
+  const visited = new Set()
+  while (pending.length) {
+    const folderId = pending.shift()
+    if (!folderId || visited.has(folderId)) continue
+    visited.add(folderId)
+    const query = `'${folderId}' in parents and trashed = false`
+    let pageToken = ''
+    do {
+      const response = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=nextPageToken,files(id,name,size,modifiedTime,mimeType,parents)&orderBy=modifiedTime desc&pageSize=100&pageToken=${encodeURIComponent(pageToken)}`)
+      const data = await response.json()
+      for (const file of data.files || []) {
+        if (file.mimeType === 'application/vnd.google-apps.folder') pending.push(file.id)
+        else if (isBookFile(file)) books.push(file)
+      }
+      pageToken = data.nextPageToken || ''
+    } while (pageToken)
+  }
+  return books
+}
 async function getReaderLibraryBooks() {
   const folderId = await ensureLibraryFolder()
-  const query = `'${folderId}' in parents and trashed = false`
-  const books = []
-  let pageToken = ''
-  do {
-    const response = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=nextPageToken,files(id,name,size,modifiedTime)&orderBy=modifiedTime desc&pageSize=100&pageToken=${encodeURIComponent(pageToken)}`)
-    const data = await response.json()
-    books.push(...(data.files || []).filter((file) => ALLOWED.includes(ext(file.name))))
-    pageToken = data.nextPageToken || ''
-  } while (pageToken)
-  return { folderId, books }
+  return { folderId, books: (await listLibraryTree(folderId)).filter((file) => isShareableBook(file.name)) }
 }
 async function ensurePublicRead(fileId) {
   try {
@@ -233,10 +258,18 @@ async function createReaderMarker(folderId) {
     folderId,
   })
   const boundary = `grapes-reader-${crypto.randomUUID()}`
+  const staleQuery = `'${folderId}' in parents and name contains '.grapes-reader-pairing' and trashed = false`
+  const stale = await (await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(staleQuery)}&fields=files(id,name)&pageSize=100`)).json()
+  for (const file of stale.files || []) {
+    if (!INTERNAL_PAIRING_FILE.test(file.name)) continue
+    await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.id)}?fields=id,trashed`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trashed: true }),
+    })
+  }
   const body = new Blob([
     `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n`,
     JSON.stringify({
-      name: `.grapes-reader-pairing-${Date.now()}.json`,
+      name: '.grapes-reader-pairing.json',
       parents: [folderId],
       mimeType: 'application/json',
     }),
@@ -285,28 +318,21 @@ async function createReaderPairing() {
 async function refreshLibrary() {
   if(!accessTokenAvailable()) return
   try {
-    const folderId=await ensureLibraryFolder(); const query=`'${folderId}' in parents and trashed = false`
-    const books = []
-    let pageToken = ''
-    do {
-      const response=await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=nextPageToken,files(id,name,size,modifiedTime)&orderBy=modifiedTime desc&pageSize=100&pageToken=${encodeURIComponent(pageToken)}`)
-      const data=await response.json()
-      books.push(...(data.files||[]).filter((f)=>ALLOWED.includes(ext(f.name))))
-      pageToken = data.nextPageToken || ''
-    } while (pageToken)
+    const folderId=await ensureLibraryFolder()
+    const books = await listLibraryTree(folderId)
     renderBooks(books); setStatus(`${books.length} könyv a könyvtárban.`,'success')
     return true
   } catch (error) { setStatus(`A könyvtár betöltése nem sikerült. ${error.message}`,'error'); return false }
 }
 async function uploadBook(file) {
   if(!accessTokenAvailable()) return setStatus('Előbb csatlakoztasd a Google Drive-ot.','error')
-  if(!ALLOWED.includes(ext(file.name))) return setStatus('Ez a fájltípus jelenleg nem támogatott.','error')
+  if(!isBookFile(file)) return setStatus('Ez a fájl nem vehető fel a könyvtárba.','error')
   try {
     const folderId=await ensureLibraryFolder(); const boundary=`grapes-ebook-${crypto.randomUUID()}`
     const body=new Blob([`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n`,JSON.stringify({name:file.name,parents:[folderId]}),`\r\n--${boundary}\r\nContent-Type: ${file.type||'application/octet-stream'}\r\n\r\n`,file,`\r\n--${boundary}--\r\n`])
     const uploadResponse = await driveRequest('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{'Content-Type':`multipart/related; boundary=${boundary}`},body})
     const created = await uploadResponse.json()
-    if (readerLibraryEnabled() && created.id) await ensurePublicRead(created.id)
+    if (readerLibraryEnabled() && created.id && isShareableBook(file.name)) await ensurePublicRead(created.id)
     if (await refreshLibrary()) setStatus(`${file.name} hozzáadva a könyvtárhoz.`,'success')
   } catch (error) { setStatus(`A feltöltés nem sikerült. ${error.message}`,'error') }
 }
@@ -379,6 +405,7 @@ export function initEbookLibrary() {
   $('#ebook-manager-back')?.addEventListener('click', showEbookHub)
   $('#ebook-reader-pair-btn')?.addEventListener('click', createReaderPairing)
   $('#ebook-drive-connect')?.addEventListener('click',connectDrive)
+  $('#ebook-drive-disconnect')?.addEventListener('click',disconnectDrive)
   $('#ebook-file-input')?.addEventListener('change',(e)=>{const file=e.target.files?.[0];if(file)uploadBook(file);e.target.value=''})
   $('#ebook-upload-btn')?.addEventListener('click',()=>$('#ebook-file-input')?.click())
   $('#ebook-drive-picker-btn')?.addEventListener('click', openDrivePicker)

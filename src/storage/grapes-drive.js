@@ -71,6 +71,14 @@ export function getGrapesDriveAccessToken() {
   return isGrapesDriveConnected() ? accessToken : null
 }
 
+export async function disconnectGrapesDrive() {
+  const token = accessToken
+  if (token && window.google?.accounts?.oauth2?.revoke) {
+    await new Promise((resolve) => window.google.accounts.oauth2.revoke(token, resolve)).catch(() => {})
+  }
+  clearSession()
+}
+
 export async function grapesDriveRequest(url, options = {}) {
   return driveRequest(url, options)
 }

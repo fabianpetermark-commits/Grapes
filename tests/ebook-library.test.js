@@ -19,7 +19,7 @@ function app(fetch, { connected = true, session = new Map(), local = new Map() }
     env: { VITE_GOOGLE_CLIENT_ID: '123-client', VITE_GOOGLE_API_KEY: 'test-key', VITE_EBOOK_TRANSFER_BROKER_URL: 'https://broker.example/exec' },
     window: { sessionStorage: storage(session), localStorage: storage(local), location: { href: 'https://fabianpetermark-commits.github.io/Grapes/', origin: 'https://fabianpetermark-commits.github.io', search: '' } } })
   const driveContext = vm.createContext({ window: context.window, document, fetch, env: context.env, Blob, crypto: webcrypto })
-  const api = vm.runInContext(driveSource + '\n({ connectGrapesDrive, getGrapesDriveAccessToken, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange })', driveContext)
+  const api = vm.runInContext(driveSource + '\n({ connectGrapesDrive, disconnectGrapesDrive, getGrapesDriveAccessToken, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange })', driveContext)
   Object.assign(context, api)
   vm.runInContext(source + '\nonGrapesDriveChange(renderDriveConnection)', context)
   return { context, nodes, session, local, run: (code) => vm.runInContext(code, context) }
@@ -99,12 +99,39 @@ test('Connect requests only drive.file and loads the library after consent', asy
   assert.equal(a.nodes.get('#ebook-status').dataset.kind, 'success')
 })
 
+test('global Drive disconnect revokes the token and clears the visible library', async () => {
+  const a = app(async () => json({}))
+  let revoked
+  a.context.window.google = { accounts: { oauth2: { revoke(token, callback) { revoked = token; callback() } } } }
+  a.run('renderBooks([{ id: "book", name: "book.epub", size: 1 }])')
+  await a.run('disconnectDrive()')
+  assert.equal(revoked, 'test-token')
+  assert.equal(a.run('isGrapesDriveConnected()'), false)
+  assert.equal(a.nodes.get('#ebook-list').children.length, 0)
+  assert.equal(a.nodes.get('#ebook-drive-disconnect').disabled, true)
+})
+
 test('refresh includes subsequent Drive pages', async () => {
   const a = app(async url => {
     if (!url.includes('orderBy=')) return folder()
     return new URL(url).searchParams.get('pageToken') === 'next'
       ? json({ files: [{ id: '2', name: 'second.pdf' }] })
       : json({ files: [{ id: '1', name: 'first.epub' }], nextPageToken: 'next' })
+  })
+  await a.run('refreshLibrary()')
+  assert.equal(a.nodes.get('#ebook-list').children.length, 2)
+})
+
+test('refresh reads nested folders and shows unknown binary ebook formats', async () => {
+  const a = app(async url => {
+    if (!url.includes('orderBy=')) return folder()
+    const query = new URL(url).searchParams.get('q')
+    if (query.includes("'folder' in parents")) return json({ files: [
+      { id: 'nested', name: 'Series', mimeType: 'application/vnd.google-apps.folder' },
+      { id: 'future', name: 'future.xyzbook', size: '10', mimeType: 'application/octet-stream' },
+      { id: 'marker', name: '.grapes-reader-pairing-123.json', mimeType: 'application/json' },
+    ] })
+    return json({ files: [{ id: 'child', name: 'nested.fb2.zip', size: '20', mimeType: 'application/zip' }] })
   })
   await a.run('refreshLibrary()')
   assert.equal(a.nodes.get('#ebook-list').children.length, 2)
@@ -267,6 +294,28 @@ test('persistent reader pairing uses an inline frame with the verified marker', 
   assert.equal(url.searchParams.get('markerId'), 'marker')
   assert.match(url.searchParams.get('nonce'), /^[a-f0-9]{48}$/)
   assert.equal(a.nodes.get('#ebook-reader-pair-btn').disabled, false)
+})
+
+test('reader pairing cleans old internal markers before creating one stable marker', async () => {
+  const patched = []
+  let uploadedMetadata
+  const a = app(async (url, options = {}) => {
+    if (url.includes('/upload/')) {
+      const text = await options.body.text()
+      uploadedMetadata = text
+      return json({ id: 'new-marker' })
+    }
+    if (options.method === 'PATCH') { patched.push(url); return json({ id: 'old-marker', trashed: true }) }
+    return json({ files: [
+      { id: 'old-marker', name: '.grapes-reader-pairing-1789994946554.json' },
+      { id: 'book', name: 'book.epub' },
+    ] })
+  })
+  const result = await a.run('createReaderMarker("folder")')
+  assert.equal(result.markerId, 'new-marker')
+  assert.equal(patched.length, 1)
+  assert.match(patched[0], /old-marker/)
+  assert.match(uploadedMetadata, /"name":"\.grapes-reader-pairing\.json"/)
 })
 
 const brokerSource = readFileSync(new URL('../apps-script/ebook-transfer/Code.gs', import.meta.url), 'utf8')
