@@ -13,43 +13,15 @@ Finish and debug the E-book Library.
 - Default OAuth scope: https://www.googleapis.com/auth/drive.file
 - The user explicitly authorized an optional full-Drive read mode. Its separate button requests `https://www.googleapis.com/auth/drive.readonly` alongside `drive.file`; project writes remain limited to app-authorized files. The restricted read scope must be configured and verified in Google Cloud before production use.
 - Google Drive API enabled
-- Google Picker integration added
-- Picker API key comes from GitHub Actions secret VITE_GOOGLE_API_KEY
+- The user confirmed that the full-Drive scan works and requested removal of the manual Google Picker import. The Picker button, loader, copy flow and browser API key configuration were removed.
 - Transfer broker: apps-script/ebook-transfer/Code.gs
 - Pages workflow: .github/workflows/deploy-pages.yml
 
-## Current bugs
-1. With the default `drive.file` mode, files manually uploaded from a phone require explicit selection with Google Picker. The optional full-Drive read mode scans recognizable book formats after separate Google consent.
-2. Uploading a new book directly from Grapes currently fails.
-3. Picker flow has not yet been validated end-to-end.
-
-## First thing to inspect
-Check uploadBook() in src/ebook-library.js.
-
-The multipart upload body currently uses escaped separators like:
-\\r\\n
-
-Verify whether these become literal backslash characters instead of real CRLF line endings. This is a likely cause of the failed Drive multipart upload.
-
-Prefer either:
-- correct multipart/related with real CRLF, or
-- a more robust Drive upload flow.
-
-Do not broaden write access beyond `drive.file`; the separately authorized `drive.readonly` mode is read-only.
-
-## Picker validation
-Verify:
-- gapi picker loading
-- PickerBuilder
-- OAuth token
-- developer key
-- app ID
-- origin
-- selected file access under drive.file
-- files.get/files.copy
-- useful errors in #ebook-status
-
-If a selected file is outside Grapes E-book Library, copy it into the folder. Do not move or delete the original.
+## Current behavior
+- `drive.file` remains the default scope for Grapes project writes and uploads.
+- The optional `drive.readonly` consent scans recognized e-book formats throughout Drive and all non-hidden binary files in Grapes E-book Library folders.
+- Books found only through read-only access can be downloaded. The app does not expose Send for those files because it cannot change their sharing permission.
+- The manual Picker import was removed at the user's request. Keep write access limited to `drive.file`.
 
 ## Security constraints
 - Public repository
@@ -63,11 +35,11 @@ If a selected file is outside Grapes E-book Library, copy it into the folder. Do
 - Connect Drive works
 - Direct upload works
 - Uploaded book appears immediately
-- Picker import works
-- Existing original file is untouched
+- Full-Drive scan works after separate Google consent
+- Existing Drive books remain untouched by scanning
 - E-reader transfer still works
 - npm run build succeeds
 - no secrets in diff
 
-## Task
-Audit the e-book module, fix direct upload first, then Picker import, then transfer flow. Make the smallest safe changes and report root causes, files changed, test/build results, and any remaining manual Google Cloud steps.
+## Release check
+Run `npm run test:ebook` and `npm run build`, then confirm the scan and manual upload buttons on the Pages deployment.

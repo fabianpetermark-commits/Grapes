@@ -942,7 +942,7 @@
           <article class="ebook-library__hub-card">
             <div class="ebook-library__hub-icon" aria-hidden="true">K</div>
             <h2>Könyvtár kezelése</h2>
-            <p>Google Drive csatlakozás, feltöltés, Drive Picker, könyvek kezelése és e-olvasó párosítása.</p>
+            <p>Google Drive csatlakozás, automatikus könyvbeolvasás, feltöltés és e-olvasó párosítása.</p>
             <button id="ebook-open-manager" class="btn btn--primary btn--block" type="button">Könyvtár megnyitása</button>
           </article>
           <article class="ebook-library__hub-card">
@@ -1017,10 +1017,8 @@
             <p>A könyvtár minden bináris e-book fájlt kezel, kiterjesztéstől függetlenül.</p>
             <div class="ebook-library__drop"><strong>Google Drive</strong><br />A fájl a „Grapes E-book Library” mappába kerül.</div>
             <button id="ebook-upload-btn" class="btn btn--ghost btn--block ebook-library__upload-btn" type="button">Fájl feltöltése a számítógépről</button>
-            <button id="ebook-drive-picker-btn" class="btn btn--primary btn--block ebook-library__picker-btn" type="button">Hiányzó Drive-könyvek kiválasztása</button>
-            <p>A Google fájlválasztóban több könyvet is kijelölhetsz egyszerre. A kiválasztott könyvek ezután megjelennek a listában.</p>
-            <button id="ebook-drive-full-read" class="btn btn--ghost btn--block ebook-library__upload-btn" type="button" disabled>Automatikus Drive-beolvasás engedélyezése</button>
-            <p>Ehhez a Google a teljes Drive olvasási és letöltési jogát kéri, nem csak a könyvekét. Az így talált könyvek letölthetők; e-olvasóra küldéshez válaszd ki őket a fenti Drive-gombbal.</p>
+            <button id="ebook-drive-full-read" class="btn btn--primary btn--block ebook-library__full-read-btn" type="button" disabled>Automatikus Drive-beolvasás engedélyezése</button>
+            <p>Engedélyezés után a Grapes külön kijelölés nélkül beolvassa a Drive-on talált könyveket. A Google ehhez a teljes Drive olvasási és letöltési jogát kéri.</p>
             <div class="ebook-library__reader-setup">
               <h3>E-book olvasó</h3>
               <p>A párosításkor a könyvtár támogatott könyvei linkkel olvasható megosztást kapnak. Az olvasó ezután saját, tartós azonosítóval éri el a listát.</p>

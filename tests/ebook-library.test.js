@@ -16,7 +16,7 @@ function app(fetch, { connected = true, session = new Map(), local = new Map() }
   const storage = map => ({ getItem: key => map.get(key) ?? null, setItem: (key, value) => map.set(key, value), removeItem: key => map.delete(key) })
   if (connected && !session.has('grapes-drive-session')) session.set('grapes-drive-session', JSON.stringify({ clientId: '123-client', accessToken: 'test-token', expiresAt: Date.now() + 3600000 }))
   const context = vm.createContext({ document, fetch, Blob, URL, URLSearchParams, crypto: webcrypto, QRCode: { async toCanvas(canvas, value) { canvas.qrValue = value } },
-    env: { VITE_GOOGLE_CLIENT_ID: '123-client', VITE_GOOGLE_API_KEY: 'test-key', VITE_EBOOK_TRANSFER_BROKER_URL: 'https://broker.example/exec' },
+    env: { VITE_GOOGLE_CLIENT_ID: '123-client', VITE_EBOOK_TRANSFER_BROKER_URL: 'https://broker.example/exec' },
     window: { sessionStorage: storage(session), localStorage: storage(local), location: { href: 'https://fabianpetermark-commits.github.io/Grapes/', origin: 'https://fabianpetermark-commits.github.io', search: '' } } })
   const driveContext = vm.createContext({ window: context.window, document, fetch, env: context.env, Blob, crypto: webcrypto })
   const api = vm.runInContext(driveSource + '\n({ connectGrapesDrive, disconnectGrapesDrive, getGrapesDriveAccessToken, grapesDriveHasFullReadAccess, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange })', driveContext)
@@ -246,73 +246,12 @@ test('multipart upload has real CRLF, preserves binary bytes, and refreshes imme
   assert.equal(a.nodes.get('#ebook-status').dataset.kind, 'success')
 })
 
-test('Picker import copies external books and does not copy an existing library book', async () => {
-  for (const parents of [['elsewhere'], ['folder']]) {
-    const mutations = []
-    const a = app(async (url, options) => {
-      if (options.method) { mutations.push({ url, options }); return json({ id: 'copy' }) }
-      if (url.includes('/files/original?')) return json({ id: 'original', name: 'phone.pdf', parents })
-      if (url.includes('orderBy=')) return json({ files: [{ id: 'copy', name: 'phone.pdf' }] })
-      return folder()
-    })
-    await a.run('importDriveBook("original")')
-    assert.equal(mutations.length, parents[0] === 'folder' ? 0 : 1)
-    if (mutations.length) {
-      assert.ok(mutations[0].url.includes('/original/copy?'))
-      assert.equal(mutations[0].options.method, 'POST')
-      assert.deepEqual(JSON.parse(mutations[0].options.body), { name: 'phone.pdf', parents: ['folder'] })
-    }
-  }
-})
-
 test('expired token enables reconnect and reports actionable error', async () => {
   const a = app(async () => json({ error: { message: 'Expired' } }, 401))
   await a.run('refreshLibrary()')
   assert.equal(a.run('getGrapesDriveAccessToken()'), null)
   assert.equal(a.nodes.get('#ebook-drive-connect').disabled, false)
   assert.match(a.nodes.get('#ebook-status').textContent, /Csatlakoztasd újra/)
-})
-
-test('failed refresh after import is not overwritten with success', async () => {
-  const a = app(async (url) => {
-    if (url.includes('/files/original?')) return json({ id: 'original', name: 'book.pdf', parents: ['folder'] })
-    if (url.includes('orderBy=')) return json({ error: { message: 'quota exceeded' } }, 403)
-    return folder()
-  })
-  await a.run('importDriveBook("original")')
-  assert.equal(a.nodes.get('#ebook-status').dataset.kind, 'error')
-  assert.match(a.nodes.get('#ebook-status').textContent, /quota exceeded/)
-})
-
-test('failed Picker load can be retried', async () => {
-  const a = app()
-  let loads = 0
-  a.context.window.gapi = { load(module, options) { assert.equal(module, 'picker'); ++loads === 1 ? options.onerror() : options.callback() } }
-  await assert.rejects(a.run('loadGooglePicker()'))
-  await a.run('loadGooglePicker()')
-  assert.equal(loads, 2)
-})
-
-test('Picker receives token, developer key, project number, origin and reports dialog errors', async () => {
-  const a = app()
-  const settings = {}
-  class Builder {
-    setOAuthToken(v) { settings.token = v; return this }
-    setDeveloperKey(v) { settings.key = v; return this }
-    setAppId(v) { settings.app = v; return this }
-    setOrigin(v) { settings.origin = v; return this }
-    addView() { return this }
-    enableFeature(v) { settings.feature = v; return this }
-    setCallback(v) { settings.callback = v; return this }
-    build() { return this }
-    setVisible(v) { settings.visible = v }
-  }
-  a.context.window.google = { picker: { PickerBuilder: Builder, DocsView: class { setIncludeFolders() { return this } setSelectFolderEnabled() { return this } }, ViewId: { DOCS: 'docs' }, Feature: { MULTISELECT_ENABLED: 'multiselect' }, Response: { ACTION: 'action' }, Action: { ERROR: 'error', PICKED: 'picked' } } }
-  await a.run('openDrivePicker()')
-  assert.equal(settings.token, 'test-token'); assert.equal(settings.key, 'test-key'); assert.equal(settings.app, '123')
-  assert.equal(settings.origin, 'https://fabianpetermark-commits.github.io'); assert.equal(settings.visible, true); assert.equal(settings.feature, 'multiselect')
-  await settings.callback({ action: 'error' })
-  assert.equal(a.nodes.get('#ebook-status').dataset.kind, 'error')
 })
 
 test('transfer renders a download QR and offers a code plus a stable reader address', async () => {

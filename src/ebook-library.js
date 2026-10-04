@@ -4,8 +4,6 @@ import { connectGrapesDrive, disconnectGrapesDrive, getGrapesDriveAccessToken, g
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 const TRANSFER_BROKER_URL = import.meta.env.VITE_EBOOK_TRANSFER_BROKER_URL || ''
-const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || ''
-const GOOGLE_APP_ID = import.meta.env.VITE_GOOGLE_APP_ID || CLIENT_ID.split('-')[0] || ''
 const FOLDER_NAME = 'Grapes E-book Library'
 const READER_PAGE_URL = new URL('ebook-reader.html', window.location.href).toString()
 const READER_SHARING_KEY = 'grapes-reader-library-enabled'
@@ -14,7 +12,6 @@ const SHAREABLE_BOOK_EXTENSIONS = new Set(['epub', 'pdf', 'mobi', 'azw', 'azw3',
 const DRIVE_BOOK_EXTENSIONS = new Set(['epub', 'pdf', 'mobi', 'azw', 'azw3', 'azw4', 'kfx', 'prc', 'fb2', 'djvu', 'djv', 'cbz', 'cbr', 'cb7', 'cbt', 'txt', 'rtf', 'doc', 'docx', 'odt', 'html', 'htm', 'xhtml', 'chm', 'lit', 'lrf', 'lrx', 'pdb', 'pml', 'pmlz', 'rb', 'snb', 'tcr', 'tr2', 'tr3', 'xps', 'oxps'])
 
 let initialized = false
-let pickerPromise = null
 const $ = (selector) => document.querySelector(selector)
 const ext = (name = '') => name.includes('.') ? name.split('.').pop().toLowerCase() : 'FILE'
 const isShareableBook = (name = '') => SHAREABLE_BOOK_EXTENSIONS.has(ext(name))
@@ -106,113 +103,6 @@ function renderBooks(books = []) {
   list.querySelectorAll('[data-download]').forEach((b) => b.addEventListener('click', () => downloadBook(b.dataset.download)))
   list.querySelectorAll('[data-send]').forEach((b) => b.addEventListener('click', () => sendBook(b.dataset.send)))
 }
-async function loadGooglePicker() {
-  if (window.google?.picker) return
-  if (!GOOGLE_API_KEY || !GOOGLE_APP_ID) throw new Error('A Google Picker nincs konfigurálva.')
-  if (pickerPromise) return pickerPromise
-
-  pickerPromise = new Promise((resolve, reject) => {
-    const loadPicker = () => {
-      if (!window.gapi?.load) return reject(new Error('A Google API kliens nem érhető el.'))
-      window.gapi.load('picker', {
-        callback: resolve,
-        onerror: () => reject(new Error('A Google Picker betöltése nem sikerült.')),
-        timeout: 10000,
-        ontimeout: () => reject(new Error('A Google Picker betöltése túllépte az időkorlátot.')),
-      })
-    }
-
-    if (window.gapi?.load) return loadPicker()
-    const script = document.createElement('script')
-    script.src = 'https://apis.google.com/js/api.js'
-    script.async = true
-    script.defer = true
-    script.onload = loadPicker
-    script.onerror = () => reject(new Error('A Google API kliens betöltése nem sikerült.'))
-    document.head.append(script)
-  })
-
-  try { return await pickerPromise } catch (error) { pickerPromise = null; throw error }
-}
-
-async function importDriveBook(fileId, { refresh = true, libraryFolderIds = null } = {}) {
-  const folderIds = libraryFolderIds || await findLibraryFolderIds()
-  const folderId = folderIds[0] || await ensureLibraryFolder()
-  if (!folderIds.length) folderIds.push(folderId)
-  const response = await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?fields=id,name,size,parents`)
-  const file = await response.json()
-
-  if (!isBookFile(file)) throw new Error('Ez a fájl nem vehető fel a könyvtárba.')
-
-  let libraryFileId = file.id
-  if (!file.parents?.some((parentId) => folderIds.includes(parentId))) {
-    const copiedResponse = await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.id)}/copy?fields=id,name,size,parents`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: file.name, parents: [folderId] }),
-    })
-    libraryFileId = (await copiedResponse.json()).id
-  }
-
-  if (readerLibraryEnabled() && isShareableBook(file.name)) await ensurePublicRead(libraryFileId)
-  if (refresh && await refreshLibrary()) setStatus(`${file.name} hozzáadva a Grapes könyvtárhoz.`, 'success')
-  return file.name
-}
-
-async function openDrivePicker() {
-  if (!accessTokenAvailable()) return setStatus('Előbb csatlakoztasd a Google Drive-ot.', 'error')
-  if (!GOOGLE_API_KEY) return setStatus('A Google Picker API-kulcs még nincs beállítva.', 'error')
-
-  try {
-    await loadGooglePicker()
-    const picker = window.google.picker
-    const view = new picker.DocsView(picker.ViewId.DOCS)
-      .setIncludeFolders(true)
-      .setSelectFolderEnabled(false)
-
-    const builder = new picker.PickerBuilder()
-      .setOAuthToken(getGrapesDriveAccessToken())
-      .setDeveloperKey(GOOGLE_API_KEY)
-      .setAppId(GOOGLE_APP_ID)
-      .setOrigin(window.location.origin)
-      .addView(view)
-    if (picker.Feature?.MULTISELECT_ENABLED && builder.enableFeature) {
-      builder.enableFeature(picker.Feature.MULTISELECT_ENABLED)
-    }
-    builder
-      .setCallback(async (data) => {
-        if (data[picker.Response.ACTION] === picker.Action.ERROR) {
-          return setStatus('Google Picker hiba. Ellenőrizd az API-kulcsot, a projektazonosítót és az engedélyezett webhelyeket.', 'error')
-        }
-        if (data[picker.Response.ACTION] !== picker.Action.PICKED) return
-        const files = data[picker.Response.DOCUMENTS] || []
-        const fileIds = files.map((file) => file?.[picker.Document.ID]).filter(Boolean)
-        if (!fileIds.length) return
-
-        setStatus(`${fileIds.length} kiválasztott könyv hozzáadása…`)
-        try {
-          const libraryFolderIds = await findLibraryFolderIds()
-          if (!libraryFolderIds.length) libraryFolderIds.push(await ensureLibraryFolder())
-          const failures = []
-          for (let index = 0; index < fileIds.length; index++) {
-            setStatus(`Könyvek hozzáadása: ${index + 1}/${fileIds.length}…`)
-            try { await importDriveBook(fileIds[index], { refresh: false, libraryFolderIds }) }
-            catch (error) { failures.push(error.message || 'Ismeretlen hiba') }
-          }
-          const refreshed = await refreshLibrary()
-          if (refreshed && failures.length) setStatus(`${fileIds.length - failures.length} könyv hozzáadva, ${failures.length} sikertelen. ${failures[0]}`, 'error')
-          else if (refreshed) setStatus(`${fileIds.length} könyv hozzáadva a Grapes könyvtárhoz.`, 'success')
-        } catch (error) {
-          setStatus(error.message || 'A Drive-ból választott könyvek hozzáadása nem sikerült.', 'error')
-        }
-      })
-      .build()
-      .setVisible(true)
-  } catch (error) {
-    setStatus(error.message || 'A Google Picker megnyitása nem sikerült.', 'error')
-  }
-}
-
 async function connectDrive() {
   try {
     await connectGrapesDrive()
@@ -389,7 +279,7 @@ async function refreshLibrary() {
     renderBooks(books)
     setStatus(grapesDriveHasFullReadAccess()
       ? `${books.length} könyv a teljes Google Drive-ban. Az új könyvek a Frissítés gombbal megjelennek.`
-      : `${books.length} könyv látható. A többi Drive-könyvhöz használd a jobb oldali „Hiányzó Drive-könyvek kiválasztása” gombot.`, 'success')
+      : `${books.length} könyv látható. A teljes Drive kereséséhez használd az „Automatikus Drive-beolvasás engedélyezése” gombot.`, 'success')
     return true
   } catch (error) { setStatus(`A könyvtár betöltése nem sikerült. ${error.message}`,'error'); return false }
 }
@@ -478,7 +368,6 @@ export function initEbookLibrary() {
   $('#ebook-drive-full-read')?.addEventListener('click',enableFullDriveRead)
   $('#ebook-file-input')?.addEventListener('change',(e)=>{const file=e.target.files?.[0];if(file)uploadBook(file);e.target.value=''})
   $('#ebook-upload-btn')?.addEventListener('click',()=>$('#ebook-file-input')?.click())
-  $('#ebook-drive-picker-btn')?.addEventListener('click', openDrivePicker)
   $('#ebook-refresh-btn')?.addEventListener('click',refreshLibrary)
   $('#ebook-transfer-close')?.addEventListener('click', closeTransfer)
   $('#ebook-transfer-pair')?.addEventListener('click', () => {
