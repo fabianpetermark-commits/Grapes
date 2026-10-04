@@ -73,12 +73,25 @@
         <button type="button" data-language="hu">HU</button><button type="button" data-language="en">EN</button>
       </div>
       <div class="login-card">
-        <div class="login-card__logo" aria-hidden="true">G</div>
+        <svg class="login-card__logo" viewBox="0 0 96 96" aria-hidden="true">
+          <rect width="96" height="96" rx="20" fill="#0b0f14" />
+          <path d="M48 12v11" stroke="#00e5ff" stroke-width="5" stroke-linecap="round" />
+          <path d="M48 21c-6-5-14-3-14 4 5 3 10 1 14-4z" fill="#00e5ff" />
+          <circle cx="48" cy="37" r="12" fill="#00e5ff" />
+          <circle cx="33" cy="58" r="13" fill="#00e5ff" />
+          <circle cx="63" cy="58" r="13" fill="#00e5ff" />
+          <circle cx="48" cy="78" r="12" fill="#00e5ff" />
+        </svg>
         <p class="login-card__eyebrow">GRAPES WORKSPACE</p>
         <h1 id="login-title" data-i18n="login.title">Minden eszközöd, egy helyen</h1>
         <p data-i18n="login.description">Lépj be Google-fiókoddal. A Grapes automatikusan csatlakoztatja a saját Drive-odat a projektek biztonságos mentéséhez.</p>
         <button id="google-sign-in" class="google-sign-in" type="button">
-          <span class="google-sign-in__mark" aria-hidden="true">G</span>
+          <svg class="google-sign-in__mark" viewBox="0 0 18 18" aria-hidden="true">
+            <path fill="#4285f4" d="M17.64 9.205c0-.638-.057-1.252-.164-1.841H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.909c1.703-1.568 2.683-3.88 2.683-6.615z" />
+            <path fill="#34a853" d="M9 18c2.43 0 4.468-.806 5.957-2.18l-2.909-2.259c-.806.54-1.835.859-3.048.859-2.344 0-4.328-1.585-5.037-3.715H.956v2.332A8.999 8.999 0 0 0 9 18z" />
+            <path fill="#fbbc05" d="M3.963 10.705A5.41 5.41 0 0 1 3.682 9c0-.592.102-1.168.281-1.705V4.963H.956A9 9 0 0 0 0 9c0 1.452.347 2.827.956 4.037l3.007-2.332z" />
+            <path fill="#ea4335" d="M9 3.58c1.322 0 2.508.454 3.441 1.346l2.581-2.581C13.464.892 11.43 0 9 0A8.999 8.999 0 0 0 .956 4.963l3.007 2.332C4.672 5.165 6.656 3.58 9 3.58z" />
+          </svg>
           <span data-i18n="login.button">Bejelentkezés Google-fiókkal</span>
         </button>
         <p id="login-status" class="login-card__status" role="status" aria-live="polite"></p>
