@@ -9,6 +9,7 @@ test('the app shell groups every module and starts with Google sign-in', async (
   assert.match(html, /id="login-screen"/)
   assert.match(html, /id="google-sign-in"/)
   assert.match(html, /class="login-card__logo"[\s\S]*#00e5ff/)
+  assert.match(html, /class="dashboard__brand-mark"[\s\S]*#00e5ff/)
   for (const color of ['#4285f4', '#34a853', '#fbbc05', '#ea4335']) assert.match(html, new RegExp(color))
   for (const category of ['marketing', 'printing', 'reading', 'finance']) {
     assert.match(html, new RegExp(`data-i18n="category\\.${category}"`))
