@@ -13,8 +13,8 @@
 .login-screen { display: grid; place-items: center; padding: clamp(20px, 5vw, 56px); }
 .login-screen__language { position: absolute; top: var(--space-5); right: var(--space-5); }
 .login-card { display: grid; justify-items: center; width: min(100%, 480px); padding: clamp(28px, 6vw, 52px); text-align: center; background: color-mix(in srgb, var(--color-bg-surface) 94%, transparent); border: 1px solid var(--color-border-strong); border-radius: var(--radius-xl); box-shadow: var(--shadow-3); }
-.dashboard__brand-mark { display: block; flex: 0 0 auto; border-radius: var(--radius-lg); }
-.login-card__logo { display: block; width: 64px; height: 64px; margin-bottom: var(--space-5); filter: drop-shadow(0 12px 20px var(--color-accent-soft)); }
+.dashboard__brand-mark { display: block; flex: 0 0 auto; border-radius: var(--radius-lg); background: #0b0f14; }
+.login-card__logo { display: block; width: 64px; height: 64px; margin-bottom: var(--space-5); border-radius: var(--radius-lg); background: #0b0f14; filter: drop-shadow(0 12px 20px var(--color-accent-soft)); }
 .login-card__eyebrow, .dashboard__eyebrow { margin: 0 0 var(--space-2); color: var(--color-accent); font-size: var(--text-xs); font-weight: var(--weight-semibold); letter-spacing: .13em; }
 .login-card h1 { max-width: 380px; margin: 0; font-size: clamp(28px, 6vw, 42px); line-height: 1.08; letter-spacing: -.035em; }
 .login-card > p:not(.login-card__eyebrow, .login-card__status) { max-width: 390px; margin: var(--space-4) 0 var(--space-6); color: var(--color-text-muted); }
