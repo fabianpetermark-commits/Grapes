@@ -345,6 +345,21 @@ test('reader pairing cleans old internal markers before creating one stable mark
 })
 
 const brokerSource = readFileSync(new URL('../apps-script/ebook-transfer/Code.gs', import.meta.url), 'utf8')
+const brokerWorkflowSource = readFileSync(new URL('../.github/workflows/deploy-ebook-apps-script.yml', import.meta.url), 'utf8')
+const pagesWorkflowSource = readFileSync(new URL('../.github/workflows/deploy-pages.yml', import.meta.url), 'utf8')
+const readerPageSource = readFileSync(new URL('../public/ebook-reader.html', import.meta.url), 'utf8')
+
+test('automatic broker deployment stays aligned with every live client URL', () => {
+  const deploymentId = (source) => source.match(/AKfyc[A-Za-z0-9_-]+/)?.[0]
+  const expected = deploymentId(brokerWorkflowSource)
+  assert.ok(expected)
+  assert.equal(deploymentId(pagesWorkflowSource), expected)
+  assert.equal(deploymentId(readerPageSource), expected)
+  assert.match(brokerWorkflowSource, /clasp push --force/)
+  assert.match(brokerWorkflowSource, /clasp deploy --deploymentId/)
+  assert.match(brokerSource, /BROKER_API_VERSION = 1/)
+  assert.match(brokerSource, /action === 'health'/)
+})
 
 test('only explicit embedded creation pages allow framing, including readable errors', () => {
   const c = vm.createContext({ HtmlService: { XFrameOptionsMode: { ALLOWALL: 'ALLOWALL' }, createHtmlOutput: html => ({ html, setXFrameOptionsMode(mode) { this.frameMode = mode; return this } }) } })
@@ -391,7 +406,7 @@ test('broker rejects private files and foreign return URLs, expires codes and re
 
 
 test('standalone e-reader page stays non-module and broker exposes persistent reader actions', () => {
-  const reader = readFileSync(new URL('../public/ebook-reader.html', import.meta.url), 'utf8')
+  const reader = readerPageSource
   assert.doesNotMatch(reader, /type=["']module["']/)
   assert.match(reader, /name="action" value="pair-reader"/)
   assert.match(reader, /grapes-ebook-reader-token/)

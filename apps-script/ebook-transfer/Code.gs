@@ -1,4 +1,5 @@
 const CODE_LENGTH = 6;
+const BROKER_API_VERSION = 1;
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const TTL_MS = 20 * 60 * 1000;
 const STORE_PREFIX = 'ebook_transfer_';
@@ -14,6 +15,11 @@ const ALLOWED_BOOK_EXTENSIONS = ['epub', 'pdf', 'mobi', 'azw', 'azw3', 'prc', 't
 function doGet(e) {
   const action = String((e && e.parameter && e.parameter.action) || '').toLowerCase();
   const p = (e && e.parameter) || {};
+  if (action === 'health') {
+    return ContentService
+      .createTextOutput(JSON.stringify({ ok: true, version: BROKER_API_VERSION }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
   if (action === 'create') return pairingOutput(createTransferPage(p), p);
   if (action === 'download') return resolveTransfer(p);
   if (action === 'create-reader-pairing') return pairingOutput(createReaderPairingPage(p), p);
