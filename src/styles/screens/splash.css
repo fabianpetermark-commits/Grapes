@@ -49,12 +49,13 @@
 .account-chip__text strong, .account-chip__text small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .account-chip__text small { color: var(--color-text-muted); font-size: var(--text-xs); }
 
-.dashboard__main { display: grid; gap: var(--space-8); width: min(960px, 100%); padding: clamp(28px, 5vw, 64px) clamp(16px, 4vw, 56px) 80px; margin: 0 auto; }
+.dashboard__main { display: grid; gap: var(--space-8); width: min(1180px, 100%); padding: clamp(28px, 5vw, 64px) clamp(16px, 4vw, 56px) 80px; margin: 0 auto; }
+.dashboard__hero, .dashboard__menu, .recent-projects { width: min(820px, 100%); margin-inline: auto; }
 .dashboard__hero { max-width: 720px; }
 .dashboard__hero h1 { margin: 0; font-size: clamp(32px, 5vw, 54px); line-height: 1.05; letter-spacing: -.035em; }
 .dashboard__hero > p:last-child { max-width: 650px; margin: var(--space-4) 0 0; color: var(--color-text-muted); font-size: var(--text-lg); }
-.dashboard__menu { display: grid; gap: var(--space-5); }
-.module-group { min-width: 0; overflow: hidden; background: color-mix(in srgb, var(--color-bg-surface) 80%, transparent); border: 1px solid var(--color-border-strong); border-radius: var(--radius-xl); box-shadow: 0 16px 40px rgb(0 0 0 / 12%); }
+.dashboard__menu { column-count: 2; column-gap: var(--space-5); }
+.module-group { display: inline-block; width: 100%; min-width: 0; margin: 0 0 var(--space-5); overflow: hidden; break-inside: avoid; vertical-align: top; background: color-mix(in srgb, var(--color-bg-surface) 80%, transparent); border: 1px solid var(--color-border-strong); border-radius: var(--radius-xl); box-shadow: 0 16px 40px rgb(0 0 0 / 12%); }
 .module-group__heading { display: flex; gap: var(--space-3); align-items: center; padding: var(--space-4) var(--space-5); background: var(--color-bg-raised); border-bottom: 1px solid var(--color-border); }
 .module-group__number { color: var(--color-accent); font: var(--text-xs)/1.8 var(--font-mono); }
 .module-group__heading h2, .module-group__heading p { margin: 0; }
@@ -99,6 +100,7 @@
   .dashboard__account .btn { width: 34px; padding: 0; overflow: hidden; font-size: 0; }
   .dashboard__account .btn::before { font-size: 18px; content: '↪'; }
   .dashboard__main { gap: var(--space-5); padding-top: var(--space-8); }
+  .dashboard__menu { column-count: 1; }
   .module-group__heading { padding: var(--space-4); }
   .module-group__cards { padding: 0 var(--space-4); }
   .card__text { white-space: normal; }

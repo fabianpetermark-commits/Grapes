@@ -1,0 +1,13 @@
+.billing { height: 100dvh; overflow-y: auto; overscroll-behavior: contain; padding: clamp(16px, 3vw, 40px); background: var(--bg, #10151e); color: var(--text, #e8edf5); }
+.billing__header, .billing__actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.billing__header { max-width: 1200px; margin: 0 auto 24px; }
+.billing__body { max-width: 1200px; margin: auto; display: grid; grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr); gap: 24px; }
+.billing__panel { padding: 24px; border: 1px solid #354052; border-radius: 16px; background: #19212e; min-width: 0; }
+.billing h1 { font-size: 26px; }.billing h2 { font-size: 19px; margin-bottom: 16px; }.billing p { margin: 12px 0; }
+.billing__fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-bottom: 20px; }
+.billing label { display: grid; gap: 6px; font-size: 13px; }.billing input, .billing select, .billing textarea { width: 100%; min-width: 0; padding: 10px; border: 1px solid #485468; border-radius: 8px; background: #101722; color: #edf3fa; font: inherit; }
+.billing textarea { min-height: 70px; resize: vertical; }.billing__line { display: grid; grid-template-columns: 2fr repeat(4, 1fr) auto; gap: 8px; margin: 12px 0; align-items: end; }
+.billing__total { text-align: right; font-size: 18px; margin: 20px 0; }.billing__list { display: grid; gap: 8px; margin: 12px 0; }.billing__list button { text-align: left; white-space: normal; }
+.billing__notice { color: #bac7d8; font-size: 13px; line-height: 1.5; }.billing__status { color: #79dfbe; min-height: 20px; }.billing details { margin-top: 20px; }.billing summary { cursor: pointer; padding: 12px 0; }.billing__catalog-form { display: grid; gap: 10px; }
+@media (max-width: 900px) { .billing__body { grid-template-columns: 1fr; }.billing__line { grid-template-columns: repeat(2, minmax(0, 1fr)); border-bottom: 1px solid #354052; padding-bottom: 16px; }.billing__line label:first-child { grid-column: 1 / -1; } }
+@media (max-width: 480px) { .billing__fields { grid-template-columns: 1fr; }.billing__panel { padding: 16px; } }

@@ -66,19 +66,6 @@
       <symbol id="i-cube" viewBox="0 0 24 24"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9Z" /><path d="m4 7.5 8 4.5 8-4.5M12 12v9" /></symbol>
       <symbol id="i-layout" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2" /><path d="M3.5 9.5h17M9.5 9.5v10" /></symbol>
       <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 19.5V11h4v8.5M10 19.5V5h4v14.5M16 19.5V8h4v11.5M3 19.5h18" /></symbol>
-      <symbol id="i-grapes-logo" viewBox="0 0 96 96">
-        <path d="M48 8v12" stroke="#00e5ff" stroke-width="6" stroke-linecap="round" />
-        <path d="M48 18c-6-6-16-4-16 4 6 4 12 2 16-4z" fill="#00e5ff" />
-        <circle cx="48" cy="32" r="8" fill="#00e5ff" />
-        <circle cx="36" cy="46" r="9" fill="#00e5ff" />
-        <circle cx="60" cy="46" r="9" fill="#00e5ff" />
-        <circle cx="24" cy="60" r="9" fill="#00e5ff" />
-        <circle cx="48" cy="60" r="9" fill="#00e5ff" />
-        <circle cx="72" cy="60" r="9" fill="#00e5ff" />
-        <circle cx="36" cy="74" r="9" fill="#00e5ff" />
-        <circle cx="60" cy="74" r="9" fill="#00e5ff" />
-        <circle cx="48" cy="86" r="8" fill="#00e5ff" />
-      </symbol>
     </svg>
 
     <section id="login-screen" class="login-screen" aria-labelledby="login-title">
@@ -86,9 +73,7 @@
         <button type="button" data-language="hu">HU</button><button type="button" data-language="en">EN</button>
       </div>
       <div class="login-card">
-        <svg class="login-card__logo" viewBox="0 0 96 96" aria-hidden="true">
-          <use href="#i-grapes-logo" />
-        </svg>
+        <img class="login-card__logo" src="./grapes-logo.svg" alt="Grapes" />
         <p class="login-card__eyebrow">GRAPES WORKSPACE</p>
         <h1 id="login-title" data-i18n="login.title">Minden eszközöd, egy helyen</h1>
         <p data-i18n="login.description">Lépj be Google-fiókoddal. A Grapes automatikusan csatlakoztatja a saját Drive-odat a projektek biztonságos mentéséhez.</p>
@@ -112,9 +97,7 @@
     <div id="splash-screen" class="splash dashboard hidden">
       <header class="dashboard__header">
         <div class="dashboard__brand">
-          <svg class="dashboard__brand-mark" viewBox="0 0 96 96" aria-hidden="true">
-            <use href="#i-grapes-logo" />
-          </svg>
+          <img class="dashboard__brand-mark" src="./grapes-logo.svg" alt="Grapes" />
           <div><strong>Grapes</strong><span data-i18n="dashboard.workspace">Workspace</span></div>
         </div>
         <div class="dashboard__account">
@@ -149,7 +132,13 @@
           </section>
           <section class="module-group" aria-labelledby="printing-title"><div class="module-group__heading"><span class="module-group__number">02</span><div><h2 id="printing-title" data-i18n="category.printing">3D nyomtatás</h2><p data-i18n="category.printing.description">Modellezés és gyártás</p></div></div><div class="module-group__cards"><button id="pick-studio" class="card" type="button"><span class="card__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cube" /></svg></span><span class="card__title" data-i18n="module.studio">3D Nyomtatási Stúdió</span><span class="card__text" data-i18n="module.studio.description">Parametrikus 3D-szerkesztő és STL-export</span><span class="card__open" aria-hidden="true">→</span></button></div></section>
           <section class="module-group" aria-labelledby="reading-title"><div class="module-group__heading"><span class="module-group__number">03</span><div><h2 id="reading-title" data-i18n="category.reading">Olvasás</h2><p data-i18n="category.reading.description">Könyvtár és e-olvasó</p></div></div><div class="module-group__cards"><button id="pick-ebook" class="card" type="button"><span class="card__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-folder" /></svg></span><span class="card__title" data-i18n="module.ebook">E-book Könyvtár</span><span class="card__text" data-i18n="module.ebook.description">Drive-könyvtár és e-olvasó átvitel</span><span class="card__open" aria-hidden="true">→</span></button></div></section>
-          <section class="module-group" aria-labelledby="finance-title"><div class="module-group__heading"><span class="module-group__number">04</span><div><h2 id="finance-title" data-i18n="category.finance">Pénzügy</h2><p data-i18n="category.finance.description">Átlátható személyes pénzügyek</p></div></div><div class="module-group__cards"><button id="pick-finance" class="card" type="button"><span class="card__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chart" /></svg></span><span class="card__title" data-i18n="module.finance">Pénzügyi Napló</span><span class="card__text" data-i18n="module.finance.description">Bevételek, kiadások és havi kimutatások</span><span class="card__open" aria-hidden="true">→</span></button></div></section>
+          <section class="module-group" aria-labelledby="finance-title">
+            <div class="module-group__heading"><span class="module-group__number">04</span><div><h2 id="finance-title" data-i18n="category.finance">Pénzügy</h2><p data-i18n="category.finance.description">Átlátható személyes pénzügyek</p></div></div>
+            <div class="module-group__cards">
+              <button id="pick-finance" class="card" type="button"><span class="card__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chart" /></svg></span><span class="card__title" data-i18n="module.finance">Pénzügyi Napló</span><span class="card__text" data-i18n="module.finance.description">Bevételek, kiadások és havi kimutatások</span><span class="card__open" aria-hidden="true">→</span></button>
+              <button id="pick-billing" class="card" type="button"><span class="card__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-file-html" /></svg></span><span class="card__title" data-i18n="module.billing">Számla és árajánlat</span><span class="card__text" data-i18n="module.billing.description">Ügyfelek, termékek és PDF-dokumentumok</span><span class="card__open" aria-hidden="true">→</span></button>
+            </div>
+          </section>
         </div>
 
         <section class="recent-projects" aria-labelledby="recent-projects-title">
@@ -162,9 +151,7 @@
     <div id="app">
       <div id="toolbar">
         <div class="brand">
-          <svg width="24" height="24" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <use href="#i-grapes-logo" />
-          </svg>
+          <img class="brand__logo" src="./grapes-logo.svg" alt="Grapes" />
           <span>GRAPES</span>
         </div>
 
@@ -219,6 +206,7 @@
       <div id="gjs"></div>
     </div>
 
+    <div id="billing-app" class="billing hidden"></div>
     <div id="finance-app" class="finance hidden">
       <header class="finance__header">
         <div>
@@ -266,7 +254,7 @@
               <label>Kategória<input id="finance-category" list="finance-categories" required placeholder="Válassz vagy írj be újat"></label>
               <datalist id="finance-categories"></datalist>
               <label class="finance__form-wide">Megjegyzés<input id="finance-note" type="text" maxlength="180" placeholder="Opcionális leírás"></label>
-              <label class="finance__receipt finance__form-wide"><span>Bizonylat <small>PDF vagy kép, legfeljebb 3 MB</small></span><input id="finance-receipt" type="file" accept="image/*,application/pdf"><strong id="finance-receipt-name">Nincs fájl kiválasztva</strong></label>
+              <label class="finance__receipt finance__form-wide"><span>Bizonylat <small>PDF, PNG, JPEG, GIF vagy WebP, legfeljebb 3 MB</small></span><input id="finance-receipt" type="file" accept="image/png,image/jpeg,image/gif,image/webp,application/pdf"><strong id="finance-receipt-name">Nincs fájl kiválasztva</strong></label>
               <button class="btn btn--primary finance__form-wide" type="submit">Tétel hozzáadása</button>
             </form>
           </article>

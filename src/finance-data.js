@@ -1,3 +1,5 @@
+import { validDate } from './billing-data.js'
+
 export const DEFAULT_CATEGORIES = {
   income: ['Munkabér', 'Értékesítés', 'Szolgáltatás', 'Visszatérítés', 'Egyéb bevétel'],
   expense: ['Lakhatás', 'Élelmiszer', 'Közlekedés', 'Számlák', 'Egészség', 'Szórakozás', 'Adó', 'Egyéb kiadás'],
@@ -6,15 +8,16 @@ export const DEFAULT_CATEGORIES = {
 export function normalizeTransaction(value = {}) {
   const type = value.type === 'income' ? 'income' : 'expense'
   const amount = Math.round(Number(value.amount) * 100) / 100
-  const date = /^\d{4}-\d{2}-\d{2}$/.test(String(value.date || '')) ? value.date : ''
+  const date = validDate(value.date) ? value.date : ''
   if (!Number.isFinite(amount) || amount <= 0) throw new Error('Az összegnek nullánál nagyobbnak kell lennie.')
   if (!date) throw new Error('Érvényes dátum szükséges.')
+  if (value.receipt && (!/^data:(?:image\/(?:png|jpeg|gif|webp)|application\/pdf);base64,[A-Za-z0-9+/=\r\n]+$/.test(String(value.receipt.data || '')) || !Number.isFinite(Number(value.receipt.size)) || Number(value.receipt.size) < 0 || Number(value.receipt.size) > 3 * 1024 * 1024)) throw new Error('Érvénytelen bizonylat.')
   return {
     id: String(value.id || crypto.randomUUID()),
     type,
     amount,
     date,
-    category: String(value.category || (type === 'income' ? 'Egyéb bevétel' : 'Egyéb kiadás')).trim(),
+    category: String(value.category || '').trim() || (type === 'income' ? 'Egyéb bevétel' : 'Egyéb kiadás'),
     note: String(value.note || '').trim(),
     receipt: value.receipt || null,
     createdAt: value.createdAt || new Date().toISOString(),
@@ -22,12 +25,12 @@ export function normalizeTransaction(value = {}) {
 }
 
 export function calculateSummary(transactions) {
-  return transactions.reduce((summary, transaction) => {
-    if (transaction.type === 'income') summary.income += Number(transaction.amount) || 0
-    else summary.expense += Number(transaction.amount) || 0
-    summary.balance = summary.income - summary.expense
+  const totals = transactions.reduce((summary, transaction) => {
+    if (transaction.type === 'income') summary.income += Math.round(Number(transaction.amount) * 100) || 0
+    else summary.expense += Math.round(Number(transaction.amount) * 100) || 0
     return summary
-  }, { income: 0, expense: 0, balance: 0 })
+  }, { income: 0, expense: 0 })
+  return { income: totals.income / 100, expense: totals.expense / 100, balance: (totals.income - totals.expense) / 100 }
 }
 
 export function filterTransactions(transactions, { month = '', type = 'all', search = '' } = {}) {
@@ -86,6 +89,7 @@ export function parseCsvRows(source, delimiter = ';') {
     else if (char === '\n') { row.push(cell.replace(/\r$/, '')); rows.push(row); row = []; cell = '' }
     else cell += char
   }
+  if (quoted) throw new Error('Lezáratlan idézőjel a CSV-ben.')
   if (cell || row.length) { row.push(cell.replace(/\r$/, '')); rows.push(row) }
   return rows.filter((cells) => cells.some((value) => value.trim()))
 }

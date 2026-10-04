@@ -41,7 +41,9 @@
   text-shadow: 0 0 8px rgba(0, 229, 255, 0.6);
 }
 
-.brand svg {
+.brand img {
+  width: 24px;
+  height: 24px;
   filter: drop-shadow(0 0 6px var(--neon-blue));
 }
 

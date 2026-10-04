@@ -12,6 +12,8 @@ const rows = [
 ]
 
 test('normalizes and validates financial transactions', () => {
+  assert.throws(() => normalizeTransaction({ amount: 1, date: '2026-02-30' }), /dátum/)
+  assert.equal(normalizeTransaction({ amount: 1, date: '2026-01-01', category: '   ' }).category, 'Egyéb kiadás')
   assert.equal(normalizeTransaction({ type: 'income', amount: '12.345', date: '2026-01-02' }).amount, 12.35)
   assert.throws(() => normalizeTransaction({ amount: 0, date: '2026-01-02' }), /nullánál nagyobbnak/)
   assert.throws(() => normalizeTransaction({ amount: 1, date: '02-01-2026' }), /dátum/)
@@ -44,6 +46,17 @@ test('CSV export and import preserve quoted Hungarian data', () => {
 })
 
 test('CSV parser supports commas and embedded newlines', () => {
+  assert.throws(() => parseCsvRows('Dátum;Összeg\n"2026-01-01;12'), /idézőjel/)
   const parsed = parseCsvRows('Dátum,Összeg,Megjegyzés\n2026-01-01,12,"két\nsor"', ',')
   assert.equal(parsed[1][2], 'két\nsor')
+})
+
+test('financial totals do not accumulate fractional currency errors', () => {
+  assert.deepEqual(calculateSummary([{type:'income',amount:0.1},{type:'income',amount:0.2},{type:'expense',amount:0.1}]), {income:0.3,expense:0.1,balance:0.2})
+})
+
+test('receipts retain safe attachments and reject executable imported URLs', () => {
+  const receipt = {name:'szamla.pdf',size:3,type:'application/pdf',data:'data:application/pdf;base64,YWJj'}
+  assert.deepEqual(normalizeTransaction({...rows[0],receipt}).receipt,receipt)
+  assert.throws(() => normalizeTransaction({...rows[0],receipt:{...receipt,data:'javascript:alert(1)'}}), /bizonylat/)
 })

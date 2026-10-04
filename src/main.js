@@ -14,10 +14,11 @@ import { applyTranslations, getLanguage, onLanguageChange, setLanguage, t } from
 const params = new URLSearchParams(window.location.search)
 const hasEbookPair = params.has('ebook-pair') || params.has('ebook-reader')
 const requestedModule = params.get('module')
-const moduleScreens = ['brochure', 'studio', 'qr', 'ebook', 'email', 'finance']
+const moduleScreens = ['brochure', 'studio', 'qr', 'ebook', 'email', 'finance', 'billing']
 const requestedScreen = moduleScreens.includes(requestedModule) ? requestedModule : null
 
 const projectModules = [
+  { drive: 'Számla és árajánlat', screen: 'billing' },
   { drive: '2D Studio', screen: 'brochure' },
   { drive: '3D Studio', screen: 'studio' },
   { drive: 'QR & Barcode', screen: 'qr' },
@@ -28,6 +29,7 @@ const projectModules = [
 for (const [selector, screen] of Object.entries({
   '#pick-brochure': 'brochure', '#pick-studio': 'studio', '#pick-qr': 'qr',
   '#pick-ebook': 'ebook', '#pick-email': 'email', '#pick-finance': 'finance',
+  '#pick-billing': 'billing',
 })) el(selector).addEventListener('click', () => showScreen(screen))
 
 function renderAccount() {

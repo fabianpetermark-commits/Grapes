@@ -20,6 +20,8 @@ let driveProjectFileId = null
 let localSaveTimer = null
 let driveSaveTimer = null
 let pendingReceipt = null
+let receiptLoading = false
+let receiptRequest = 0
 
 function today() {
   const date = new Date()
@@ -43,7 +45,12 @@ function serializeProject() {
 function applyProject(data = {}) {
   currency = ['HUF', 'EUR', 'USD'].includes(data.currency) ? data.currency : 'HUF'
   transactions = Array.isArray(data.transactions)
-    ? data.transactions.flatMap((item) => { try { return [normalizeTransaction(item)] } catch { return [] } })
+    ? data.transactions.flatMap((item) => {
+      try { return [normalizeTransaction(item)] } catch {
+        // A hibás csatolmány nem törölheti a hozzá tartozó pénzügyi tételt.
+        try { return [normalizeTransaction({ ...item, receipt: null })] } catch { return [] }
+      }
+    })
     : []
   el('#finance-currency').value = currency
 }
@@ -231,6 +238,7 @@ function fileToDataUrl(file) {
 
 async function prepareReceipt(file) {
   if (!file) return null
+  if (!['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'application/pdf'].includes(file.type)) throw new Error('PNG, JPEG, GIF, WebP vagy PDF csatolható.')
   if (file.size > RECEIPT_LIMIT) throw new Error('A bizonylat legfeljebb 3 MB lehet.')
   const total = transactions.reduce((sum, item) => sum + Number(item.receipt?.size || 0), 0)
   if (total + file.size > PROJECT_RECEIPT_LIMIT) throw new Error('A projekthez csatolt bizonylatok összmérete legfeljebb 15 MB lehet.')
@@ -270,18 +278,25 @@ function bindControls() {
     renderCategories()
   }))
   el('#finance-receipt').addEventListener('change', async (event) => {
+    const request = ++receiptRequest
+    receiptLoading = true
+    pendingReceipt = null
     try {
-      pendingReceipt = await prepareReceipt(event.target.files[0])
+      const receipt = await prepareReceipt(event.target.files[0])
+      if (request !== receiptRequest) return
+      pendingReceipt = receipt
       el('#finance-receipt-name').textContent = pendingReceipt?.name || 'Nincs fájl kiválasztva'
     } catch (error) {
+      if (request !== receiptRequest) return
       pendingReceipt = null; event.target.value = ''
       el('#finance-receipt-name').textContent = 'Nincs fájl kiválasztva'
       notifyError(error.message)
-    }
+    } finally { if (request === receiptRequest) receiptLoading = false }
   })
   el('#finance-form').addEventListener('submit', (event) => {
     event.preventDefault()
     try {
+      if (receiptLoading) throw new Error('Várd meg a bizonylat betöltését.')
       transactions.push(normalizeTransaction({
         type: el('#finance-type').value, amount: el('#finance-amount').value,
         date: el('#finance-date').value, category: el('#finance-category').value,
@@ -319,7 +334,14 @@ function bindControls() {
 }
 
 export async function initFinanceTracker() {
-  if (initialized) { render(); return }
+  if (initialized) {
+    const target = JSON.parse(sessionStorage.getItem('grapes-open-project') || 'null')
+    if (target?.module === MODULE_NAME) {
+      clearTimeout(localSaveTimer); clearTimeout(driveSaveTimer)
+      await loadInitialProject()
+    }
+    render(); return
+  }
   initialized = true
   bindControls()
   await loadInitialProject()

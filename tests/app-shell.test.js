@@ -5,12 +5,13 @@ import { readFile } from 'node:fs/promises'
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8')
 
 test('the app shell groups every module and starts with Google sign-in', async () => {
-  const [html, favicon] = await Promise.all([read('index.html'), read('public/favicon.svg')])
+  const [html, favicon, logo] = await Promise.all([read('index.html'), read('public/favicon.svg'), read('public/grapes-logo.svg')])
   assert.match(html, /id="login-screen"/)
   assert.match(html, /id="google-sign-in"/)
-  assert.match(html, /id="i-grapes-logo"[\s\S]*<circle cx="48" cy="86"/)
-  assert.equal((html.match(/href="#i-grapes-logo"/g) || []).length, 3)
-  assert.equal((favicon.match(/<circle /g) || []).length, 9)
+  assert.match(html, /src="\.\/grapes-logo\.svg"/)
+  assert.equal((html.match(/src="\.\/grapes-logo\.svg"/g) || []).length, 3)
+  assert.equal((favicon.match(/<circle /g) || []).length, 18)
+  assert.equal((logo.match(/<circle /g) || []).length, 18)
   for (const color of ['#4285f4', '#34a853', '#fbbc05', '#ea4335']) assert.match(html, new RegExp(color))
   for (const category of ['marketing', 'printing', 'reading', 'finance']) {
     assert.match(html, new RegExp(`data-i18n="category\\.${category}"`))
@@ -41,6 +42,8 @@ test('the workspace menu uses one vertical category list with menu-like module r
   assert.match(html, /class="dashboard__menu"/)
   assert.equal((html.match(/<section class="module-group"/g) || []).length, 4)
   assert.doesNotMatch(html, /class="dashboard__groups"/)
-  assert.match(css, /\.dashboard__menu\s*\{[^}]*display:\s*grid/)
+  assert.match(css, /\.dashboard__menu\s*\{[^}]*column-count:\s*2/)
+  assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.dashboard__menu\s*\{\s*column-count:\s*1/)
+  assert.match(css, /\.module-group\s*\{[^}]*break-inside:\s*avoid/)
   assert.match(css, /\.card\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto auto/)
 })
