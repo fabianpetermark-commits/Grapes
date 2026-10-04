@@ -3,6 +3,7 @@ import { el } from './ui/dom.js';
 import { notifySuccess, notifyError } from './ui/toast.js';
 import { saveLocalProject, loadLocalProject } from './storage/local-project-store.js';
 import { isGrapesDriveConnected, saveGrapesProject, loadGrapesProject } from './storage/grapes-drive.js';
+import { buildVCardData, buildWifiData, contrastRatio, normaliseHex, withUtm } from './qr-data.js';
 
 const QR_BACKUP_ID = 'qr-studio-current';
 
@@ -14,45 +15,6 @@ const PALETTE = [
   '#be185d','#db2777','#ec4899','#f43f5e','#7c2d12','#92400e','#a16207','#365314',
   '#14532d','#164e63','#0c4a6e','#172554','#312e81','#3b0764','#4c1d95','#831843'
 ];
-
-function normaliseHex(value) {
-  const raw = String(value || '').trim();
-  if (/^#[0-9a-fA-F]{6}$/.test(raw)) return raw.toLowerCase();
-  if (/^[0-9a-fA-F]{6}$/.test(raw)) return `#${raw.toLowerCase()}`;
-  return null;
-}
-
-function withUtm(url, fields) {
-  const value = String(url || '').trim();
-  if (!value) return '';
-  const params = new URLSearchParams();
-  for (const [key, field] of Object.entries(fields)) {
-    const item = String(field?.value || '').trim();
-    if (item) params.set(key, item);
-  }
-  if (!params.toString()) return value;
-  try {
-    const parsed = new URL(value);
-    for (const [key, item] of params) parsed.searchParams.set(key, item);
-    return parsed.toString();
-  } catch {
-    return `${value}${value.includes('?') ? '&' : '?'}${params.toString()}`;
-  }
-}
-
-function contrastRatio(foreground, background) {
-  const toRgb = (hex) => {
-    const value = hex.replace('#', '');
-    const rgb = [0, 2, 4].map((i) => parseInt(value.slice(i, i + 2), 16) / 255);
-    return rgb.map((c) => c <= .03928 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4);
-  };
-  const a = toRgb(foreground);
-  const b = toRgb(background);
-  const lumA = .2126 * a[0] + .7152 * a[1] + .0722 * a[2];
-  const lumB = .2126 * b[0] + .7152 * b[1] + .0722 * b[2];
-  const [light, dark] = lumA > lumB ? [lumA, lumB] : [lumB, lumA];
-  return (light + .05) / (dark + .05);
-}
 
 export function initQrStudio() {
   const canvas = el('#qr-canvas');
@@ -70,14 +32,16 @@ export function initQrStudio() {
   const errorLevelSelect = el('#qr-error-level');
   const downloadBtn = el('#qr-download-png');
   const copyBtn = el('#qr-copy-btn');
+  const generationStatus = el('#qr-generation-status');
   const dynamicContainer = el('#qr-dynamic-inputs');
   const typeSelect = el('#qr-type');
+  let generationId = 0;
 
   function getUrlData() {
     return withUtm(urlInput?.value, {
-      utm_source: utmSource,
-      utm_medium: utmMedium,
-      utm_campaign: utmCampaign
+      utm_source: utmSource?.value,
+      utm_medium: utmMedium?.value,
+      utm_campaign: utmCampaign?.value
     });
   }
 
@@ -85,10 +49,18 @@ export function initQrStudio() {
     const t = typeSelect?.value;
     if (t === 'text') return el('#qr-val-text')?.value || '';
     if (t === 'wifi') {
-      return `WIFI:T:${el('#qr-wifi-type')?.value || 'WPA'};S:${el('#qr-wifi-ssid')?.value || ''};P:${el('#qr-wifi-pass')?.value || ''};;`;
+      return buildWifiData({
+        type: el('#qr-wifi-type')?.value,
+        ssid: el('#qr-wifi-ssid')?.value,
+        password: el('#qr-wifi-pass')?.value
+      });
     }
     if (t === 'vcard') {
-      return `BEGIN:VCARD\\nVERSION:3.0\\nFN:${el('#qr-vc-name')?.value || ''}\\nTEL:${el('#qr-vc-phone')?.value || ''}\\nEMAIL:${el('#qr-vc-email')?.value || ''}\\nEND:VCARD`;
+      return buildVCardData({
+        name: el('#qr-vc-name')?.value,
+        phone: el('#qr-vc-phone')?.value,
+        email: el('#qr-vc-email')?.value
+      });
     }
     return getUrlData();
   }
@@ -181,20 +153,36 @@ export function initQrStudio() {
 
   function generateQR() {
     const text = getQRData();
+    const currentGeneration = ++generationId;
+    downloadBtn.disabled = true;
+    copyBtn.disabled = !text;
     if (!text) {
       canvas.width = 280;
       canvas.height = 280;
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      generationStatus.textContent = 'Adj meg tartalmat a QR-kód elkészítéséhez.';
+      generationStatus.dataset.state = 'empty';
       return;
     }
+    generationStatus.textContent = '';
+    generationStatus.dataset.state = 'ready';
     QRCode.toCanvas(canvas, text, {
       width: 280,
       margin: 2,
       color: { dark: fgColorInput.value, light: bgColorInput.value },
       errorCorrectionLevel: errorLevelSelect.value
     }, (error) => {
-      if (error) console.error(error);
+      if (currentGeneration !== generationId) return;
+      downloadBtn.disabled = Boolean(error);
+      if (error) {
+        console.error(error);
+        generationStatus.textContent = 'Ez a tartalom túl hosszú vagy nem kódolható. Rövidítsd le, majd próbáld újra.';
+        generationStatus.dataset.state = 'error';
+      } else {
+        generationStatus.textContent = 'A QR-kód elkészült.';
+        generationStatus.dataset.state = 'ready';
+      }
     });
   }
 
@@ -211,11 +199,18 @@ export function initQrStudio() {
 
   function updateColor(which, value) {
     const hex = normaliseHex(value);
-    if (!hex) return;
+    const hexInput = which === 'fg' ? fgHex : bgHex;
+    if (!hex) {
+      hexInput?.setCustomValidity('Adj meg egy hatjegyű HEX színkódot.');
+      hexInput?.reportValidity();
+      return;
+    }
+    hexInput?.setCustomValidity('');
     const input = which === 'fg' ? fgColorInput : bgColorInput;
     input.value = hex;
     syncHexInputs();
     generateQR();
+    scheduleAutosave();
   }
 
   function updateActiveSwatches() {
@@ -249,6 +244,7 @@ export function initQrStudio() {
       html = '<label class="field__label" for="qr-vc-name">Név</label><input id="qr-vc-name" class="input" type="text" placeholder="Kovács János" /><label class="field__label" for="qr-vc-phone" style="margin-top:8px;">Telefon</label><input id="qr-vc-phone" class="input" type="text" placeholder="+36 30 123 4567" /><label class="field__label" for="qr-vc-email" style="margin-top:8px;">E-mail</label><input id="qr-vc-email" class="input" type="email" placeholder="janos@pelda.hu" />';
     }
     dynamicContainer.innerHTML = html;
+    dynamicContainer.classList.toggle('hidden', typeSelect.value === 'url');
     dynamicContainer.querySelectorAll('input, textarea, select').forEach((input) => {
       input.addEventListener('input', () => { generateQR(); scheduleAutosave(); });
       input.addEventListener('change', () => { generateQR(); scheduleAutosave(); });
@@ -258,6 +254,17 @@ export function initQrStudio() {
 
   document.querySelectorAll('.qr-studio__tab').forEach((tab) => {
     tab.addEventListener('click', () => activateTab(tab.dataset.tab));
+    tab.addEventListener('keydown', (event) => {
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+      const tabs = [...document.querySelectorAll('.qr-studio__tab')];
+      const currentIndex = tabs.indexOf(tab);
+      const nextIndex = event.key === 'Home' ? 0
+        : event.key === 'End' ? tabs.length - 1
+          : (currentIndex + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+      event.preventDefault();
+      activateTab(tabs[nextIndex].dataset.tab);
+      tabs[nextIndex].focus();
+    });
   });
 
   [urlInput, utmSource, utmMedium, utmCampaign].filter(Boolean).forEach((input) => {
@@ -268,10 +275,12 @@ export function initQrStudio() {
   fgColorInput?.addEventListener('input', () => {
     syncHexInputs();
     generateQR();
+    scheduleAutosave();
   });
   bgColorInput?.addEventListener('input', () => {
     syncHexInputs();
     generateQR();
+    scheduleAutosave();
   });
 
   fgHex?.addEventListener('change', () => updateColor('fg', fgHex.value));
@@ -302,6 +311,7 @@ export function initQrStudio() {
   errorLevelSelect?.addEventListener('change', () => { generateQR(); scheduleAutosave(); });
 
   downloadBtn?.addEventListener('click', () => {
+    if (!getQRData()) return notifyError('Előbb adj meg tartalmat a QR-kódhoz.');
     const link = document.createElement('a');
     link.download = 'qrcode.png';
     link.href = canvas.toDataURL('image/png');
@@ -310,12 +320,13 @@ export function initQrStudio() {
   });
 
   copyBtn?.addEventListener('click', () => {
+    if (!getQRData()) return notifyError('Előbb adj meg tartalmat a QR-kódhoz.');
     navigator.clipboard.writeText(getQRData())
       .then(() => notifySuccess('A QR kód tartalma a vágólapra másolva!'))
       .catch(() => notifyError('Nem sikerült a vágólapra másolni.'));
   });
 
-  typeSelect?.addEventListener('change', renderLegacyInputs);
+  typeSelect?.addEventListener('change', () => { renderLegacyInputs(); scheduleAutosave(); });
 
   syncHexInputs();
   activateTab('link');
