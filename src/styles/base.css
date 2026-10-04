@@ -9,6 +9,20 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+.splash,
+.finance,
+#ebook-hub-view,
+#ebook-manager-view,
+.qr-studio__body,
+.editor__viewport,
+.panel__body,
+.email-studio__rail,
+.email-studio__workspace,
+.email-studio__inspector {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+}
+
 /* Korábban sehol nem volt fókuszjelzés — ez az egyetlen, globális szabály
    adja meg minden billentyűzettel elért elemnek. */
 :focus-visible {

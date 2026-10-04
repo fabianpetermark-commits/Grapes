@@ -263,6 +263,22 @@ function setImagesHidden(hidden) {
   el('#email-images-toggle').textContent = hidden ? 'Képek be' : 'Képek ki'
 }
 
+function setMobilePane(pane) {
+  const app = el('#email-app')
+  app.dataset.mobilePane = pane
+  const buttons = {
+    content: el('#email-mobile-content-pane'),
+    preview: el('#email-mobile-preview-pane'),
+    settings: el('#email-mobile-settings-pane'),
+  }
+  for (const [name, button] of Object.entries(buttons)) {
+    const active = name === pane
+    button.classList.toggle('is-active', active)
+    button.setAttribute('aria-selected', active ? 'true' : 'false')
+  }
+  if (pane === 'preview') setTimeout(() => editor?.refresh(), 0)
+}
+
 function bindControls() {
   if (controlsBound) return
   controlsBound = true
@@ -288,6 +304,9 @@ function bindControls() {
   el('#email-desktop-preview').addEventListener('click', () => setDevice(false))
   el('#email-mobile-preview').addEventListener('click', () => setDevice(true))
   el('#email-images-toggle').addEventListener('click', () => setImagesHidden(!imagesHidden))
+  el('#email-mobile-content-pane').addEventListener('click', () => setMobilePane('content'))
+  el('#email-mobile-preview-pane').addEventListener('click', () => setMobilePane('preview'))
+  el('#email-mobile-settings-pane').addEventListener('click', () => setMobilePane('settings'))
   for (const button of els('[data-email-template]')) {
     button.addEventListener('click', () => {
       editor.setComponents(createTemplateMjml(button.dataset.emailTemplate, metadata))

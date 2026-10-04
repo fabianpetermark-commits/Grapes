@@ -1,6 +1,7 @@
 .email-studio {
   display: flex;
   flex-direction: column;
+  height: 100vh;
   height: 100dvh;
   min-height: 0;
   background: var(--color-bg-app);
@@ -229,14 +230,18 @@
 .email-studio__issue--error { border-color: var(--color-danger); }
 .email-studio__issue span, .email-studio__quality-empty { color: var(--color-text-muted); font-size: var(--text-xs); }
 
-@media (max-width: 1050px) {
+@media (max-width: 1200px) {
   .email-studio { height: 100dvh; min-height: 0; }
   .email-studio__toolbar {
     flex: 0 0 auto;
-    max-height: 116px;
+    flex-wrap: nowrap;
     overflow-x: auto;
     overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scrollbar-gutter: auto;
+    -webkit-overflow-scrolling: touch;
   }
+  .email-studio__toolbar > * { flex: 0 0 auto; }
   .email-studio__mobile-nav {
     display: grid;
     grid-template-columns: repeat(3, 1fr);

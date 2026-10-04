@@ -67,6 +67,7 @@ export function showScreen(name) {
   // Így egy későn befejeződő modulbetöltés nem tud egy korábbi nézetet
   // visszaállítani vagy a stúdiót véletlenül elrejteni.
   activeScreenName = name
+  document.body.dataset.screen = name
 
   for (const id of ALL_SCREEN_IDS) {
     el(id).classList.toggle('hidden', id !== screen.id)

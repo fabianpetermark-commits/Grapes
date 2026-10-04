@@ -127,6 +127,23 @@
 }
 
 @media (width <= 768px) {
+  .toolbar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scrollbar-gutter: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .toolbar > * {
+    flex: 0 0 auto;
+  }
+
+  .toolbar__spacer {
+    min-width: var(--space-2);
+  }
+
   .toolbar__group--mobile {
     display: flex;
   }

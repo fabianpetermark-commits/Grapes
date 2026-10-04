@@ -107,6 +107,7 @@ for (const selector of ['#app-back-to-menu-btn', '#studio-back-to-menu-btn', '#f
 
 const ebookParams = new URLSearchParams(window.location.search)
 const hasEbookPair = ebookParams.has('ebook-pair') || ebookParams.has('ebook-reader')
+const requestedModule = ebookParams.get('module')
 if (hasEbookPair) showScreen('ebook')
-else if (ebookParams.get('module') === 'finance') showScreen('finance')
+else if (['brochure', 'studio', 'qr', 'ebook', 'email', 'finance'].includes(requestedModule)) showScreen(requestedModule)
 else showModulePicker()

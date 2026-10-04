@@ -11,7 +11,11 @@
   gap: var(--space-4);
   align-items: center;
   justify-content: center;
+  justify-content: safe center;
   padding: var(--space-6);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
   text-align: center;
   background:
     radial-gradient(60% 50% at 50% 35%, var(--color-accent-glow) 0%, transparent 70%),
@@ -98,8 +102,6 @@
 @media (width <= 768px) {
   .splash {
     justify-content: flex-start;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
   }
 
   .splash__logo {
