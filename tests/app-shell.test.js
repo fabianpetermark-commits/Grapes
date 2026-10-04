@@ -5,11 +5,12 @@ import { readFile } from 'node:fs/promises'
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8')
 
 test('the app shell groups every module and starts with Google sign-in', async () => {
-  const html = await read('index.html')
+  const [html, favicon] = await Promise.all([read('index.html'), read('public/favicon.svg')])
   assert.match(html, /id="login-screen"/)
   assert.match(html, /id="google-sign-in"/)
   assert.match(html, /id="i-grapes-logo"[\s\S]*<circle cx="48" cy="86"/)
-  assert.equal((html.match(/href="#i-grapes-logo"/g) || []).length, 2)
+  assert.equal((html.match(/href="#i-grapes-logo"/g) || []).length, 3)
+  assert.equal((favicon.match(/<circle /g) || []).length, 9)
   for (const color of ['#4285f4', '#34a853', '#fbbc05', '#ea4335']) assert.match(html, new RegExp(color))
   for (const category of ['marketing', 'printing', 'reading', 'finance']) {
     assert.match(html, new RegExp(`data-i18n="category\\.${category}"`))
