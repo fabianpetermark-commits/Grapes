@@ -35,3 +35,12 @@ test('sign-out returns to the login screen without deleting local project data',
   assert.match(main, /showLogin\(\)/)
   assert.doesNotMatch(drive, /localStorage\.clear\(/)
 })
+
+test('the workspace menu uses one vertical category list with menu-like module rows', async () => {
+  const [html, css] = await Promise.all([read('index.html'), read('src/styles/screens/splash.css')])
+  assert.match(html, /class="dashboard__menu"/)
+  assert.equal((html.match(/<section class="module-group"/g) || []).length, 4)
+  assert.doesNotMatch(html, /class="dashboard__groups"/)
+  assert.match(css, /\.dashboard__menu\s*\{[^}]*display:\s*grid/)
+  assert.match(css, /\.card\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto auto/)
+})
