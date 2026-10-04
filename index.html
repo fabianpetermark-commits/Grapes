@@ -65,6 +65,7 @@
       <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6.5 9.5 5.5 5.5 5.5-5.5" /></symbol>
       <symbol id="i-cube" viewBox="0 0 24 24"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9Z" /><path d="m4 7.5 8 4.5 8-4.5M12 12v9" /></symbol>
       <symbol id="i-layout" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2" /><path d="M3.5 9.5h17M9.5 9.5v10" /></symbol>
+      <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 19.5V11h4v8.5M10 19.5V5h4v14.5M16 19.5V8h4v11.5M3 19.5h18" /></symbol>
     </svg>
 
     <div id="splash-screen" class="splash">
@@ -125,6 +126,13 @@
           </span>
           <span class="card__title">E-mail Stúdió</span>
           <span class="card__text">Kompatibilis hírlevelek, brandprofil és kódellenőrzés</span>
+        </button>
+        <button id="pick-finance" class="card" type="button">
+          <span class="card__icon">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chart" /></svg>
+          </span>
+          <span class="card__title">Pénzügyi Napló</span>
+          <span class="card__text">Bevételek, kiadások, bizonylatok és havi kimutatások</span>
         </button>
       </div>
 
@@ -207,6 +215,78 @@
         </div>
       </div>
       <div id="gjs"></div>
+    </div>
+
+    <div id="finance-app" class="finance hidden">
+      <header class="finance__header">
+        <div>
+          <p class="finance__eyebrow">GRAPES · PÉNZÜGYI NAPLÓ</p>
+          <h1>Kiadás- és bevételkövető</h1>
+        </div>
+        <div class="finance__header-actions">
+          <span id="finance-save-status" class="finance__save-status" aria-live="polite">Betöltés…</span>
+          <label class="finance__currency">Pénznem
+            <select id="finance-currency"><option value="HUF">HUF</option><option value="EUR">EUR</option><option value="USD">USD</option></select>
+          </label>
+          <button id="finance-import-btn" class="btn" type="button">CSV import</button>
+          <button id="finance-export-btn" class="btn" type="button">CSV export</button>
+          <button id="finance-drive-save" class="btn btn--primary" type="button">Mentés Drive-ra</button>
+          <button id="finance-back-to-menu-btn" class="btn btn--ghost" type="button">Főmenü</button>
+        </div>
+        <input id="finance-csv-input" type="file" accept=".csv,text/csv" hidden>
+      </header>
+
+      <main class="finance__main">
+        <section class="finance__summary" aria-label="Pénzügyi összesítés">
+          <article class="finance__metric finance__metric--income"><span>Bevétel</span><strong id="finance-income">0 Ft</strong><small id="finance-income-count">0 tétel</small></article>
+          <article class="finance__metric finance__metric--expense"><span>Kiadás</span><strong id="finance-expense">0 Ft</strong><small id="finance-expense-count">0 tétel</small></article>
+          <article class="finance__metric finance__metric--balance"><span>Egyenleg</span><strong id="finance-balance">0 Ft</strong><small id="finance-balance-note">A kijelölt időszakban</small></article>
+        </section>
+
+        <section class="finance__grid">
+          <article class="finance__panel finance__chart-panel">
+            <div class="finance__panel-head"><div><p class="finance__eyebrow">ÁTTEKINTÉS</p><h2>Utolsó 6 hónap</h2></div><div class="finance__legend"><span><i class="is-income"></i>Bevétel</span><span><i class="is-expense"></i>Kiadás</span></div></div>
+            <div id="finance-chart" class="finance__chart" role="img" aria-label="Az utolsó hat hónap bevételei és kiadásai"></div>
+            <div class="finance__category-head"><strong>Kiadások kategóriánként</strong><span>A kijelölt időszakban</span></div>
+            <div id="finance-category-chart" class="finance__category-chart"></div>
+          </article>
+
+          <article class="finance__panel finance__form-panel">
+            <div class="finance__panel-head"><div><p class="finance__eyebrow">ÚJ TÉTEL</p><h2>Tranzakció rögzítése</h2></div></div>
+            <form id="finance-form" class="finance__form">
+              <div class="finance__type-switch" role="group" aria-label="Tranzakció típusa">
+                <button class="is-active" type="button" data-finance-type="expense">Kiadás</button>
+                <button type="button" data-finance-type="income">Bevétel</button>
+              </div>
+              <input id="finance-type" type="hidden" value="expense">
+              <label>Összeg<input id="finance-amount" type="number" min="0.01" step="0.01" inputmode="decimal" required placeholder="0"></label>
+              <label>Dátum<input id="finance-date" type="date" required></label>
+              <label>Kategória<input id="finance-category" list="finance-categories" required placeholder="Válassz vagy írj be újat"></label>
+              <datalist id="finance-categories"></datalist>
+              <label class="finance__form-wide">Megjegyzés<input id="finance-note" type="text" maxlength="180" placeholder="Opcionális leírás"></label>
+              <label class="finance__receipt finance__form-wide"><span>Bizonylat <small>PDF vagy kép, legfeljebb 3 MB</small></span><input id="finance-receipt" type="file" accept="image/*,application/pdf"><strong id="finance-receipt-name">Nincs fájl kiválasztva</strong></label>
+              <button class="btn btn--primary finance__form-wide" type="submit">Tétel hozzáadása</button>
+            </form>
+          </article>
+        </section>
+
+        <section class="finance__panel finance__transactions">
+          <div class="finance__panel-head finance__transactions-head">
+            <div><p class="finance__eyebrow">NAPLÓ</p><h2>Tranzakciók</h2></div>
+            <div class="finance__filters">
+              <input id="finance-filter-month" type="month" aria-label="Hónap szűrése">
+              <select id="finance-filter-type" aria-label="Típus szűrése"><option value="all">Minden típus</option><option value="income">Bevétel</option><option value="expense">Kiadás</option></select>
+              <input id="finance-filter-search" type="search" placeholder="Keresés…" aria-label="Keresés a tranzakciók között">
+              <button id="finance-filter-clear" class="btn btn--ghost" type="button">Szűrés törlése</button>
+            </div>
+          </div>
+          <div class="finance__table-wrap">
+            <table class="finance__table"><thead><tr><th>Dátum</th><th>Típus</th><th>Kategória</th><th>Megjegyzés</th><th>Bizonylat</th><th class="finance__amount-cell">Összeg</th><th></th></tr></thead><tbody id="finance-rows"></tbody></table>
+            <div id="finance-empty" class="finance__empty"><strong>Még nincs rögzített tétel.</strong><span>Add hozzá az első bevételt vagy kiadást.</span></div>
+          </div>
+          <footer class="finance__table-footer"><span id="finance-result-count">0 tétel</span><span id="finance-drive-status">A változtatások helyben automatikusan mentődnek.</span></footer>
+        </section>
+      </main>
     </div>
 
     <div id="email-app" class="email-studio hidden">

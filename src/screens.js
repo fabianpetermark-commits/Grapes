@@ -31,6 +31,10 @@ const SCREENS = {
     id: '#email-app',
     load: () => import('./email-studio/editor.js').then((module) => module.initEmailStudio()),
   },
+  finance: {
+    id: '#finance-app',
+    load: () => import('./finance-tracker.js').then((module) => module.initFinanceTracker()),
+  },
   studio: {
     id: '#studio-app',
     load: () =>
@@ -52,7 +56,7 @@ const SCREENS = {
 
 // A GrapesJS-es #app mindig jelen van a markupban, de ha nem az a motor
 // fut, akkor is rejtve kell maradnia.
-const ALL_SCREEN_IDS = ['#splash-screen', '#app', '#fabric-app', '#studio-app', '#qr-app', '#ebook-app', '#email-app']
+const ALL_SCREEN_IDS = ['#splash-screen', '#app', '#fabric-app', '#studio-app', '#qr-app', '#ebook-app', '#email-app', '#finance-app']
 
 export function showScreen(name) {
   const screen = SCREENS[name]
