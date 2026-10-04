@@ -28,12 +28,15 @@ test('mobile editor toolbars scroll horizontally without consuming the canvas he
   assert.doesNotMatch(studio, /\.studio__inspector\s*\{\s*max-height:\s*4[48]vh/)
 })
 
-test('every module can be opened directly for responsive smoke tests', async () => {
+test('every direct module route is preserved behind the authentication gate', async () => {
   const main = await read('src/main.js')
   for (const module of ['brochure', 'studio', 'qr', 'ebook', 'email', 'finance']) {
     assert.ok(main.includes(`'${module}'`), `${module} direct route is missing`)
   }
-  assert.match(main, /showScreen\(requestedModule\)/)
+  assert.match(main, /requestedScreen = moduleScreens\.includes\(requestedModule\)/)
+  assert.match(main, /showScreen\(requestedScreen \|\| 'splash'\)/)
+  assert.match(main, /isGrapesDriveConnected\(\)\) showAuthenticatedStart\(\)/)
+  assert.match(main, /hasEbookPair\) showScreen\('ebook'\)/)
 })
 
 test('email mobile panes have a default and working navigation handlers', async () => {

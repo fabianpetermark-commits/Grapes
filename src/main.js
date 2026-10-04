@@ -1,113 +1,156 @@
-// Belépőpont. Csak a stílusréteget tölti be és beköti a képernyőváltást —
-// maga a két szerkesztőmotor és a 3D stúdió dinamikus importtal érkezik,
-// amikor a felhasználó tényleg megnyitja őket.
-//
-// Korábban ez a fájl 1028 soros volt: a tetején statikusan importálta a
-// GrapesJS-t és nyolc pluginját, és top-level hívta a grapesjs.init()-et,
-// így minden oldalbetöltés megfizette a teljes szerkesztő indítását akkor
-// is, ha a cél a 3D stúdió volt.
-
 import './styles/index.css'
 import { el } from './ui/dom.js'
-import { showScreen, showModulePicker } from './screens.js'
-import { connectGrapesDrive, isGrapesDriveConnected, listGrapesProjects, onGrapesDriveChange } from './storage/grapes-drive.js'
-import { listLocalProjects } from './storage/local-project-store.js'
+import { showScreen } from './screens.js'
+import {
+  connectGrapesDrive,
+  disconnectGrapesDrive,
+  getGrapesAccount,
+  isGrapesDriveConnected,
+  listGrapesProjects,
+  onGrapesDriveChange,
+} from './storage/grapes-drive.js'
+import { applyTranslations, getLanguage, onLanguageChange, setLanguage, t } from './i18n.js'
 
-el('#pick-brochure').addEventListener('click', () => showScreen('brochure'))
-el('#pick-studio').addEventListener('click', () => showScreen('studio'))
-el('#pick-qr').addEventListener('click', () => showScreen('qr'))
-el('#pick-ebook').addEventListener('click', () => showScreen('ebook'))
-el('#pick-email').addEventListener('click', () => showScreen('email'))
-el('#pick-finance').addEventListener('click', () => showScreen('finance'))
+const params = new URLSearchParams(window.location.search)
+const hasEbookPair = params.has('ebook-pair') || params.has('ebook-reader')
+const requestedModule = params.get('module')
+const moduleScreens = ['brochure', 'studio', 'qr', 'ebook', 'email', 'finance']
+const requestedScreen = moduleScreens.includes(requestedModule) ? requestedModule : null
+
+const projectModules = [
+  { drive: '2D Studio', screen: 'brochure' },
+  { drive: '3D Studio', screen: 'studio' },
+  { drive: 'QR & Barcode', screen: 'qr' },
+  { drive: 'E-mail Stúdió', screen: 'email' },
+  { drive: 'Pénzügyi Napló', screen: 'finance' },
+]
+
+for (const [selector, screen] of Object.entries({
+  '#pick-brochure': 'brochure', '#pick-studio': 'studio', '#pick-qr': 'qr',
+  '#pick-ebook': 'ebook', '#pick-email': 'email', '#pick-finance': 'finance',
+})) el(selector).addEventListener('click', () => showScreen(screen))
+
+function renderAccount() {
+  const account = getGrapesAccount() || { name: 'Google', email: '', photo: '' }
+  el('#grapes-account-name').textContent = account.name || 'Google'
+  el('#grapes-account-email').textContent = account.email || ''
+  el('#grapes-account-initial').textContent = (account.name || account.email || 'G').trim().charAt(0).toUpperCase()
+  const photo = el('#grapes-account-photo')
+  photo.hidden = !account.photo
+  if (account.photo) photo.src = account.photo
+  else photo.removeAttribute('src')
+  photo.onerror = () => { photo.hidden = true }
+  el('#grapes-drive-status').dataset.connected = isGrapesDriveConnected() ? 'true' : 'false'
+}
+
+function openProject(project) {
+  sessionStorage.setItem('grapes-open-project', JSON.stringify({ module: project.module, source: 'Drive', id: project.id }))
+  const target = projectModules.find(item => item.drive === project.module)?.screen
+  if (target) showScreen(target)
+}
 
 async function renderRecentProjects() {
   const list = el('#recent-projects-list')
-  const source = el('#recent-projects-source')
+  el('#recent-projects-source').textContent = t('recent.drive')
+  list.innerHTML = `<p class="recent-projects__empty">${t('recent.loading')}</p>`
+  if (!isGrapesDriveConnected()) return
   try {
-    let projects = []
-    if (isGrapesDriveConnected()) {
-      source.textContent = 'Google Drive'
-      projects = (await listGrapesProjects('2D Studio')).slice(0, 5).map(project => ({
-        ...project,
-        module: '2D Studio',
-        displayName: project.name.replace(/\\.grapes\\.json$/, ''),
-        updatedAt: project.modifiedTime,
-        source: 'Drive',
-      }))
-    } else {
-      source.textContent = 'Helyi mentések'
-      projects = (await listLocalProjects(5)).map(project => ({
-        ...project,
-        displayName: project.name || 'Névtelen projekt',
-        source: 'Helyi',
-      }))
+    // Sorosan kérjük le a modulmappákat: teljesen új fióknál így a közös
+    // Grapes gyökérmappa biztosan csak egyszer jön létre.
+    const groups = []
+    for (const { drive } of projectModules) {
+      const moduleProjects = await listGrapesProjects(drive).catch(() => [])
+      groups.push(moduleProjects.map(project => ({ ...project, module: drive })))
     }
+    const projects = groups.flat().sort((a, b) => new Date(b.modifiedTime) - new Date(a.modifiedTime)).slice(0, 6)
     list.replaceChildren()
     if (!projects.length) {
       const empty = document.createElement('p')
       empty.className = 'recent-projects__empty'
-      empty.textContent = 'Még nincs legutóbbi projekt.'
+      empty.textContent = t('recent.empty')
       list.append(empty)
       return
     }
+    const locale = getLanguage() === 'en' ? 'en-US' : 'hu-HU'
     for (const project of projects) {
       const button = document.createElement('button')
       button.type = 'button'
       button.className = 'recent-project'
       const title = document.createElement('strong')
-      title.textContent = project.displayName
+      title.textContent = project.name?.replace(/\.grapes\.json$/, '') || t('recent.untitled')
       const meta = document.createElement('span')
-      const date = project.updatedAt ? new Date(project.updatedAt).toLocaleString('hu-HU') : ''
-      meta.textContent = `${project.module || '2D Studio'} · ${date} · ${project.source}`
+      const date = project.modifiedTime ? new Date(project.modifiedTime).toLocaleString(locale) : ''
+      meta.textContent = `${project.module} · ${date} · Drive`
       button.append(title, meta)
-      button.addEventListener('click', () => {
-        sessionStorage.setItem('grapes-open-project', JSON.stringify({
-          module: project.module || '2D Studio',
-          source: project.source,
-          id: project.id,
-        }))
-        const screen = { '2D Studio': 'brochure', '3D Studio': 'studio', 'QR & Barcode': 'qr', 'E-mail Stúdió': 'email', 'Pénzügyi Napló': 'finance' }[project.module || '2D Studio']
-        if (screen) showScreen(screen)
-      })
+      button.addEventListener('click', () => openProject(project))
       list.append(button)
     }
   } catch (error) {
     console.warn('A legutóbbi projektek nem tölthetők be:', error)
+    list.innerHTML = `<p class="recent-projects__empty">${t('recent.empty')}</p>`
   }
 }
 
-const driveButton = el('#grapes-drive-connect')
-const driveStatus = el('#grapes-drive-status')
-function renderDriveStatus() {
-  const connected = isGrapesDriveConnected()
-  driveButton.textContent = connected ? 'Google Drive csatlakoztatva' : 'Google Drive csatlakoztatása'
-  driveButton.disabled = connected
-  driveStatus.textContent = connected ? 'Közös Grapes Drive aktív' : 'Nincs csatlakoztatva'
-  driveStatus.dataset.connected = connected ? 'true' : 'false'
+function showAuthenticatedStart() {
+  renderAccount()
+  renderRecentProjects()
+  showScreen(requestedScreen || 'splash')
 }
-driveButton.addEventListener('click', async () => {
-  driveButton.disabled = true
-  driveStatus.textContent = 'Csatlakozás…'
+
+function showLogin(message = '') {
+  el('#login-status').textContent = message
+  showScreen('login')
+}
+
+el('#google-sign-in').addEventListener('click', async () => {
+  const button = el('#google-sign-in')
+  button.disabled = true
+  el('#login-status').textContent = t('login.connecting')
   try {
     await connectGrapesDrive()
-    renderDriveStatus()
-    renderRecentProjects()
+    el('#login-status').textContent = ''
+    showAuthenticatedStart()
   } catch (error) {
-    driveButton.disabled = false
-    driveStatus.textContent = error.message || 'A Drive csatlakoztatása nem sikerült.'
+    showLogin(error.message || 'Google sign-in failed.')
+  } finally {
+    button.disabled = false
   }
 })
-renderDriveStatus()
-onGrapesDriveChange(renderDriveStatus)
-renderRecentProjects()
 
-for (const selector of ['#app-back-to-menu-btn', '#studio-back-to-menu-btn', '#fabric-back-to-menu-btn', '#qr-back-to-menu-btn', '#ebook-back-to-menu-btn', '#email-back-to-menu-btn', '#finance-back-to-menu-btn']) {
-  el(selector).addEventListener('click', showModulePicker)
+el('#grapes-sign-out').addEventListener('click', async () => {
+  const button = el('#grapes-sign-out')
+  button.disabled = true
+  try { await disconnectGrapesDrive() } finally {
+    button.disabled = false
+    showLogin()
+  }
+})
+
+for (const button of document.querySelectorAll('[data-language]')) {
+  button.addEventListener('click', () => setLanguage(button.dataset.language))
+}
+applyTranslations()
+onLanguageChange(() => {
+  if (isGrapesDriveConnected()) renderRecentProjects()
+})
+
+onGrapesDriveChange((connected) => {
+  if (connected) renderAccount()
+  else if (!hasEbookPair) showLogin()
+})
+
+for (const selector of [
+  '#app-back-to-menu-btn', '#studio-back-to-menu-btn', '#fabric-back-to-menu-btn',
+  '#qr-back-to-menu-btn', '#ebook-back-to-menu-btn', '#email-back-to-menu-btn', '#finance-back-to-menu-btn',
+]) {
+  el(selector).addEventListener('click', () => {
+    if (isGrapesDriveConnected()) {
+      renderRecentProjects()
+      showScreen('splash')
+    } else showLogin()
+  })
 }
 
-const ebookParams = new URLSearchParams(window.location.search)
-const hasEbookPair = ebookParams.has('ebook-pair') || ebookParams.has('ebook-reader')
-const requestedModule = ebookParams.get('module')
 if (hasEbookPair) showScreen('ebook')
-else if (['brochure', 'studio', 'qr', 'ebook', 'email', 'finance'].includes(requestedModule)) showScreen(requestedModule)
-else showModulePicker()
+else if (isGrapesDriveConnected()) showAuthenticatedStart()
+else showLogin()

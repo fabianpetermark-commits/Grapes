@@ -16,6 +16,7 @@ let grantedScopes = GRAPES_DRIVE_SCOPE
 let connecting = null
 let identityPromise = null
 let expiryTimer = null
+let accountProfile = null
 const SESSION_KEY = 'grapes-drive-session'
 const ACCOUNT_KEY = 'grapes-drive-account'
 const FULL_READ_KEY = 'grapes-drive-full-read'
@@ -27,6 +28,7 @@ function clearSession() {
   accessToken = null
   expiresAt = 0
   grantedScopes = GRAPES_DRIVE_SCOPE
+  accountProfile = null
   folderCache.clear()
   try { window.sessionStorage.removeItem(SESSION_KEY) } catch {}
   for (const listener of listeners) listener(false)
@@ -43,6 +45,7 @@ try {
     accessToken = saved.accessToken
     expiresAt = saved.expiresAt
     grantedScopes = saved.scopes || GRAPES_DRIVE_SCOPE
+    accountProfile = saved.account || null
   } else { window.sessionStorage.removeItem(SESSION_KEY) }
 } catch {}
 scheduleExpiry()
@@ -74,6 +77,13 @@ export function isGrapesDriveConnected() {
 
 export function getGrapesDriveAccessToken() {
   return isGrapesDriveConnected() ? accessToken : null
+}
+
+export function getGrapesAccount() {
+  if (accountProfile) return { ...accountProfile }
+  let email = ''
+  try { email = window.localStorage.getItem(ACCOUNT_KEY) || '' } catch {}
+  return email ? { name: email.split('@')[0], email, photo: '' } : null
 }
 
 export function grapesDriveHasFullReadAccess() {
@@ -115,7 +125,7 @@ export async function connectGrapesDrive({ fullRead = false } = {}) {
       scope: requestedFullRead ? `${GRAPES_DRIVE_SCOPE} ${GRAPES_DRIVE_READ_SCOPE}` : GRAPES_DRIVE_SCOPE,
       login_hint: loginHint,
       error_callback: (error) => reject(new Error(error?.type || 'Google Drive bejelentkezési hiba.')),
-      callback: (response) => {
+      callback: async (response) => {
         if (response.error) return reject(new Error(response.error_description || response.error))
         if (!response.access_token) return reject(new Error('A Google nem adott hozzáférési tokent.'))
         const responseScopes = String(response.scope || '')
@@ -127,9 +137,9 @@ export async function connectGrapesDrive({ fullRead = false } = {}) {
         expiresAt = Date.now() + (Number(response.expires_in) || 3600) * 1000
         scheduleExpiry()
         folderCache.clear()
-        try { window.sessionStorage.setItem(SESSION_KEY, JSON.stringify({ clientId: CLIENT_ID, accessToken, expiresAt, scopes: grantedScopes })) } catch {}
         if (requestedFullRead) try { window.localStorage.setItem(FULL_READ_KEY, '1') } catch {}
-        rememberAccount(accessToken)
+        await rememberAccount(accessToken)
+        persistSession()
         for (const listener of listeners) listener(true)
         resolve(accessToken)
       },
@@ -141,13 +151,27 @@ export async function connectGrapesDrive({ fullRead = false } = {}) {
 
 async function rememberAccount(token) {
   try {
-    const response = await fetch('https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)', {
+    const response = await fetch('https://www.googleapis.com/drive/v3/about?fields=user(displayName,emailAddress,photoLink)', {
       headers: { Authorization: `Bearer ${token}` },
     })
     if (!response.ok) return
-    const email = (await response.json()).user?.emailAddress
-    if (email && accessToken === token) window.localStorage.setItem(ACCOUNT_KEY, email)
+    const user = (await response.json()).user
+    if (!user || accessToken !== token) return
+    accountProfile = {
+      name: user.displayName || user.emailAddress?.split('@')[0] || 'Google',
+      email: user.emailAddress || '',
+      photo: user.photoLink || '',
+    }
+    if (accountProfile.email) window.localStorage.setItem(ACCOUNT_KEY, accountProfile.email)
   } catch { /* Remembering the account is optional, including when storage is blocked. */ }
+}
+
+function persistSession() {
+  try {
+    window.sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+      clientId: CLIENT_ID, accessToken, expiresAt, scopes: grantedScopes, account: accountProfile,
+    }))
+  } catch {}
 }
 
 async function driveRequest(url, options = {}) {

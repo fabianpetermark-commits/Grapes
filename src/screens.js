@@ -18,6 +18,7 @@ let studioModule = null
 let activeScreenName = null
 
 const SCREENS = {
+  login: { id: '#login-screen' },
   splash: { id: '#splash-screen' },
   qr: {
     id: '#qr-app',
@@ -56,7 +57,7 @@ const SCREENS = {
 
 // A GrapesJS-es #app mindig jelen van a markupban, de ha nem az a motor
 // fut, akkor is rejtve kell maradnia.
-const ALL_SCREEN_IDS = ['#splash-screen', '#app', '#fabric-app', '#studio-app', '#qr-app', '#ebook-app', '#email-app', '#finance-app']
+const ALL_SCREEN_IDS = ['#login-screen', '#splash-screen', '#app', '#fabric-app', '#studio-app', '#qr-app', '#ebook-app', '#email-app', '#finance-app']
 
 export function showScreen(name) {
   const screen = SCREENS[name]
