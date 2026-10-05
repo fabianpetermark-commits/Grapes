@@ -18,6 +18,15 @@ const updateConnection = () => {
   const button = $('#ebook-reader-connect')
   if (button) button.textContent = readerRoot ? 'E-reader mappa módosítása' : 'E-reader csatlakoztatása'
 }
+function updateProgress(current, total, label = '') {
+  const progress = $('#ebook-sync-progress')
+  const text = $('#ebook-sync-progress-label')
+  if (!progress || !text) return
+  progress.hidden = total <= 0
+  progress.max = Math.max(1, total)
+  progress.value = Math.min(current, total)
+  text.textContent = total > 0 ? `${Math.round(current / total * 100)}% · ${label}` : ''
+}
 function openDb() { return new Promise((resolve, reject) => { const request = indexedDB.open(DB_NAME, 1); request.onupgradeneeded = () => request.result.createObjectStore('handles'); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error) }) }
 async function saveHandle(handle) { const db = await openDb(); await new Promise((resolve, reject) => { const request = db.transaction('handles', 'readwrite').objectStore('handles').put(handle, 'root'); request.onsuccess = resolve; request.onerror = () => reject(request.error) }); db.close() }
 async function loadHandle() { const db = await openDb(); const handle = await new Promise((resolve, reject) => { const request = db.transaction('handles').objectStore('handles').get('root'); request.onsuccess = () => resolve(request.result || null); request.onerror = () => reject(request.error) }); db.close(); return handle }
@@ -82,11 +91,18 @@ async function uploadFromReader(book, folderId) {
 async function synchronize() {
   if (!readerRoot) return status('Előbb csatlakoztasd az USB-kábellel az e-readert.', 'error')
   try {
-    await refreshInventory(); const folderId = await findLibraryFolder(); const byName = new Map(readerBooks.map(book => [normalize(book.name), book])); let toReader = 0, toDrive = 0
-    for (const book of driveBooks) { const reader = byName.get(normalize(book.name)); if (!reader) { await writeToReader(book); toReader++ } }
+    await refreshInventory(); const folderId = await findLibraryFolder(); let toReader = 0, toDrive = 0
+    const readerNames = new Set(readerBooks.map(book => normalize(book.name)))
     const driveNames = new Set(driveBooks.map(book => normalize(book.name)))
-    for (const book of readerBooks) if (!driveNames.has(normalize(book.name))) { await uploadFromReader(book, folderId); toDrive++ }
+    const readerQueue = driveBooks.filter(book => !readerNames.has(normalize(book.name)))
+    const driveQueue = readerBooks.filter(book => !driveNames.has(normalize(book.name)))
+    const total = readerQueue.length + driveQueue.length
+    updateProgress(0, total, total ? 'Előkészítés…' : 'Minden könyv szinkronban van')
+    let completed = 0
+    for (const book of readerQueue) { updateProgress(completed, total, `${book.name} → e-reader`); await writeToReader(book); toReader++; updateProgress(++completed, total, `${book.name} kész`) }
+    for (const book of driveQueue) { updateProgress(completed, total, `${book.name} → Drive`); await uploadFromReader(book, folderId); toDrive++; updateProgress(++completed, total, `${book.name} kész`) }
     await refreshInventory(); status(`Szinkronizálás kész: ${toReader} könyv az e-readerre, ${toDrive} könyv a Drive-ra.`, 'success')
+    updateProgress(total, total, 'Kész')
   } catch (error) { status(`A szinkronizálás nem sikerült. ${error.message}`, 'error') }
 }
 export function initReaderSync() {
