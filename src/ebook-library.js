@@ -8,16 +8,21 @@ const FOLDER_NAME = 'Grapes E-book Library'
 const READER_PAGE_URL = new URL('ebook-reader.html', window.location.href).toString()
 const READER_SHARING_KEY = 'grapes-reader-library-enabled'
 const INTERNAL_PAIRING_FILE = /^\.grapes-reader-pairing(?:-\d+)?\.json$/i
+const INTERNAL_METADATA_FILE = /^\.grapes-ebook-metadata\.json$/i
 const SHAREABLE_BOOK_EXTENSIONS = new Set(['epub', 'pdf', 'mobi', 'azw', 'azw3', 'prc', 'txt', 'cbz', 'cbr'])
 const DRIVE_BOOK_EXTENSIONS = new Set(['epub', 'pdf', 'mobi', 'azw', 'azw3', 'azw4', 'kfx', 'prc', 'fb2', 'djvu', 'djv', 'cbz', 'cbr', 'cb7', 'cbt', 'txt', 'rtf', 'doc', 'docx', 'odt', 'html', 'htm', 'xhtml', 'chm', 'lit', 'lrf', 'lrx', 'pdb', 'pml', 'pmlz', 'rb', 'snb', 'tcr', 'tr2', 'tr3', 'xps', 'oxps'])
 
 let initialized = false
+let currentBooks = []
+let ebookMetadata = {}
+let ebookMetadataFileId = null
 const $ = (selector) => document.querySelector(selector)
 const ext = (name = '') => name.includes('.') ? name.split('.').pop().toLowerCase() : 'FILE'
 const isShareableBook = (name = '') => SHAREABLE_BOOK_EXTENSIONS.has(ext(name))
 const isBookFile = (file) => Boolean(file?.name)
   && !file.name.startsWith('.')
   && !INTERNAL_PAIRING_FILE.test(file.name)
+  && !INTERNAL_METADATA_FILE.test(file.name)
   && file.mimeType !== 'application/vnd.google-apps.folder'
   && !String(file.mimeType || '').startsWith('application/vnd.google-apps.')
 const isDriveBook = (file) => isBookFile(file) && (DRIVE_BOOK_EXTENSIONS.has(ext(file.name)) || /\.fb2\.zip$/i.test(file.name))
@@ -93,15 +98,73 @@ function handleTransferLink() {
 function renderBooks(books = []) {
   const list = $('#ebook-list'); const empty = $('#ebook-empty'); if (!list || !empty) return
   list.replaceChildren(); empty.hidden = books.length > 0
+  currentBooks = books
   for (const book of books) {
     const row = document.createElement('article'); row.className = 'ebook-library__book'
     const sendAction = book.isAppAuthorized === false ? '' : `<button class="btn btn--primary btn--sm" type="button" data-send="${book.id}">Küldés</button>`
     const accessLabel = book.isAppAuthorized === false ? ' · Drive, csak olvasás' : ''
-    row.innerHTML = `<div class="ebook-library__book-icon" aria-hidden="true">E</div><div class="ebook-library__book-main" data-book-name="${escapeHtml(book.name)}"><strong>${escapeHtml(book.name)} <span class="ebook-library__location-badge" data-location-badge="Drive">Drive</span></strong><span>${ext(book.name).toUpperCase()} · ${formatSize(Number(book.size))}${accessLabel}</span></div><div class="ebook-library__book-actions"><button class="btn btn--ghost btn--sm" type="button" data-download="${book.id}">Letöltés</button>${sendAction}</div>`
+    const metadata = ebookMetadata[book.id] || {}
+    const displayName = metadata.title || book.name
+    row.innerHTML = `<div class="ebook-library__book-icon" aria-hidden="true">E</div><div class="ebook-library__book-main" data-book-name="${escapeHtml(book.name)}"><strong>${escapeHtml(displayName)} <span class="ebook-library__location-badge" data-location-badge="Drive">Drive</span></strong><span>${escapeHtml(metadata.author || ext(book.name).toUpperCase())} · ${formatSize(Number(book.size))}${accessLabel}</span></div><div class="ebook-library__book-actions"><button class="btn btn--ghost btn--sm" type="button" data-edit-book="${book.id}">Szerkesztés</button><button class="btn btn--ghost btn--sm" type="button" data-download="${book.id}">Letöltés</button>${sendAction}</div>`
     list.append(row)
   }
   list.querySelectorAll('[data-download]').forEach((b) => b.addEventListener('click', () => downloadBook(b.dataset.download)))
   list.querySelectorAll('[data-send]').forEach((b) => b.addEventListener('click', () => sendBook(b.dataset.send)))
+  list.querySelectorAll('[data-edit-book]').forEach((b) => b.addEventListener('click', () => openMetadataEditor(b.dataset.editBook)))
+  renderMetadataEditor()
+}
+
+function metadataFileName() { return '.grapes-ebook-metadata.json' }
+async function loadEbookMetadata(folderId) {
+  ebookMetadata = {}; ebookMetadataFileId = null
+  const query = `'${folderId}' in parents and name = '${metadataFileName()}' and trashed = false`
+  const found = await (await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id)&pageSize=1`)).json()
+  const file = found.files?.[0]
+  if (!file) return
+  ebookMetadataFileId = file.id
+  try { ebookMetadata = JSON.parse(await (await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.id)}?alt=media`)).text()) || {} } catch { ebookMetadata = {} }
+}
+async function saveEbookMetadata(folderId) {
+  const payload = JSON.stringify({ version: 1, updatedAt: new Date().toISOString(), books: ebookMetadata })
+  if (ebookMetadataFileId) {
+    await driveRequest(`https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(ebookMetadataFileId)}?uploadType=media`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: payload })
+    return
+  }
+  const boundary = `grapes-ebook-metadata-${crypto.randomUUID()}`
+  const body = new Blob([`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n`, JSON.stringify({ name: metadataFileName(), parents: [folderId], mimeType: 'application/json' }), `\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n`, payload, `\r\n--${boundary}--\r\n`])
+  ebookMetadataFileId = (await (await driveRequest('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', { method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${boundary}` }, body })).json()).id
+}
+function renderMetadataEditor() {
+  const select = $('#ebook-metadata-book'); if (!select) return
+  const previous = select.value
+  select.innerHTML = '<option value="">Válassz könyvet…</option>' + currentBooks.map((book) => `<option value="${escapeHtml(book.id)}">${escapeHtml(ebookMetadata[book.id]?.title || book.name)}</option>`).join('')
+  if (currentBooks.some((book) => book.id === previous)) select.value = previous
+  updateMetadataForm()
+}
+function updateMetadataForm() {
+  const id = $('#ebook-metadata-book')?.value
+  const data = ebookMetadata[id] || {}
+  if ($('#ebook-metadata-title')) $('#ebook-metadata-title').value = data.title || ''
+  if ($('#ebook-metadata-author')) $('#ebook-metadata-author').value = data.author || ''
+  if ($('#ebook-metadata-suggestion')) $('#ebook-metadata-suggestion').textContent = id ? `Javaslat: ${suggestMetadata(currentBooks.find((book) => book.id === id)?.name || '')}` : ''
+}
+function suggestMetadata(name = '') {
+  const clean = name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').trim()
+  const match = clean.match(/^(.+?)\s+-\s+(.+)$/)
+  return match ? `Szerző: ${match[1].trim()} · Cím: ${match[2].trim()}` : 'A fájlnévből nem azonosítható biztosan a szerző és a cím.'
+}
+function openMetadataEditor(id) { const select = $('#ebook-metadata-book'); if (select) { select.value = id; updateMetadataForm(); $('#ebook-metadata-panel')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }) } }
+async function saveMetadataFromForm() {
+  const id = $('#ebook-metadata-book')?.value
+  if (!id) return setStatus('Válassz ki egy könyvet a szerkesztéshez.', 'error')
+  try {
+    const { folderId } = await getReaderLibraryBooks()
+    ebookMetadata[id] = { title: $('#ebook-metadata-title')?.value.trim() || '', author: $('#ebook-metadata-author')?.value.trim() || '' }
+    await saveEbookMetadata(folderId)
+    renderBooks(currentBooks)
+    openMetadataEditor(id)
+    setStatus('A könyv metaadatai mentve a Drive-ba.', 'success')
+  } catch (error) { setStatus(`A metaadatok mentése nem sikerült. ${error.message}`, 'error') }
 }
 async function connectDrive() {
   try {
@@ -276,6 +339,8 @@ async function refreshLibrary() {
     const foundBooks = (await Promise.all(folderIds.map(listLibraryTree))).flat()
     if (grapesDriveHasFullReadAccess()) foundBooks.push(...await listAllDriveBooks())
     const books = [...new Map(foundBooks.map((file) => [file.id, file])).values()]
+    const libraryFolder = folderIds[0]
+    if (libraryFolder) await loadEbookMetadata(libraryFolder)
     renderBooks(books)
     setStatus(grapesDriveHasFullReadAccess()
       ? `${books.length} könyv a teljes Google Drive-ban. Az új könyvek a Frissítés gombbal megjelennek.`
@@ -370,6 +435,8 @@ export function initEbookLibrary() {
   $('#ebook-file-input')?.addEventListener('change',(e)=>{const file=e.target.files?.[0];if(file)uploadBook(file);e.target.value=''})
   $('#ebook-upload-btn')?.addEventListener('click',()=>$('#ebook-file-input')?.click())
   $('#ebook-refresh-btn')?.addEventListener('click',refreshLibrary)
+  $('#ebook-metadata-book')?.addEventListener('change', updateMetadataForm)
+  $('#ebook-metadata-save')?.addEventListener('click', saveMetadataFromForm)
   $('#ebook-transfer-close')?.addEventListener('click', closeTransfer)
   $('#ebook-transfer-pair')?.addEventListener('click', () => {
     const url = $('#ebook-transfer-pair').dataset.brokerUrl

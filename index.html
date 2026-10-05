@@ -1106,6 +1106,16 @@
             <input id="ebook-file-input" type="file" hidden />
           </aside>
         </div>
+        <section id="ebook-metadata-panel" class="ebook-library__panel ebook-library__metadata" aria-labelledby="ebook-metadata-title-heading">
+          <div class="ebook-library__panel-head"><div><p class="ebook-library__eyebrow">Könyvrendező</p><h2 id="ebook-metadata-title-heading">Metaadatok szerkesztése</h2></div><span class="ebook-library__metadata-note">A könyvfájl tartalma nem változik</span></div>
+          <div class="ebook-library__metadata-form">
+            <label class="field"><span class="field__label">Könyv</span><select id="ebook-metadata-book" class="input"><option value="">Válassz könyvet…</option></select></label>
+            <label class="field"><span class="field__label">Cím</span><input id="ebook-metadata-title" class="input" type="text" placeholder="Pl. Dűne" /></label>
+            <label class="field"><span class="field__label">Szerző</span><input id="ebook-metadata-author" class="input" type="text" placeholder="Pl. Frank Herbert" /></label>
+            <button id="ebook-metadata-save" class="btn btn--primary" type="button">Metaadatok mentése</button>
+          </div>
+          <p id="ebook-metadata-suggestion" class="ebook-library__metadata-suggestion" role="status"></p>
+        </section>
       </main>
       </div>
     </div>
