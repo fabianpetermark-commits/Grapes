@@ -28,3 +28,16 @@ test('responsive overflow keeps secondary actions in a keyboard-dismissible menu
   assert.match(source, /event\.key === 'Escape'/)
   assert.match(source, /marker\.parentNode\?\.insertBefore/)
 })
+
+test('finance and billing use responsive task-oriented layouts', async () => {
+  const [financeSource, financeCss, billingSource, billingCss] = await Promise.all([
+    read('src/finance-tracker.js'), read('src/styles/screens/finance-tracker.css'),
+    read('src/billing-studio.js'), read('src/styles/screens/billing.css'),
+  ])
+  assert.match(financeSource, /cell\.dataset\.label/)
+  assert.match(financeSource, /createResponsiveOverflow/)
+  assert.match(financeCss, /content:\s*attr\(data-label\)/)
+  assert.match(billingSource, /<fieldset class="billing__section"><legend>Alapadatok/)
+  assert.match(billingSource, /class="billing__document-footer"/)
+  assert.match(billingCss, /\.billing__document-footer\s*\{[^}]*position:sticky/)
+})

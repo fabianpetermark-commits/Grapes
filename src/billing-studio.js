@@ -3,6 +3,7 @@ import { loadLocalProject, saveLocalProject } from './storage/local-project-stor
 import { isGrapesDriveConnected, loadGrapesProject, saveGrapesProject } from './storage/grapes-drive.js'
 import { calculateDocument, prepareDocument, convertDocument, DOCUMENT_TYPES } from './billing-data.js'
 import { notifyError } from './ui/toast.js'
+import { setUxState } from './ui/status.js'
 
 const MODULE = 'Számla és árajánlat', STORAGE = 'billing-current'
 let state = { version: 1, seller: {}, customers: [], products: [], documents: [] }
@@ -22,30 +23,22 @@ function nextNumber(type) {
 function newDraft() {
   draft = { type: 'quote', number: nextNumber('quote'), date: dateNow(), dueDate: dateNow(), currency: 'HUF', customer: {}, seller: structuredClone(state.seller), lines: [line()], note: '' }
 }
-function status(text) { root().querySelector('#billing-status').textContent = text }
+function status(text, state = 'saved') { setUxState(root().querySelector('#billing-status'), state, text) }
 function persist() {
   const snapshot = structuredClone(state), driveFileId = fileId
   saving = saving.catch(() => {}).then(() => saveLocalProject({ id: STORAGE, module: MODULE, name: MODULE, data: snapshot, driveFileId }))
-  saving.then(() => status('Helyben mentve'), error => { status('A mentés sikertelen'); notifyError(error.message) })
+  saving.then(() => status('Helyben mentve'), error => { status('A mentés sikertelen', 'error'); notifyError(error.message) })
   return saving
 }
 const input = (name, title, value, type = 'text', attrs = '') => `<label>${title}<input name="${name}" type="${type}" value="${escape(value)}" ${attrs}></label>`
 function render() {
-  root().innerHTML = `<header class="billing__header"><div><h1>Számla- és árajánlatkészítő</h1><p class="billing__notice">Árajánlatok, díjbekérők és belső számlatervezetek</p></div><div class="billing__actions"><button class="btn" data-action="drive">Mentés Drive-ra</button><button class="btn" data-action="export">Biztonsági mentés</button><button class="btn" data-action="import">Mentés betöltése</button><button class="btn" data-action="menu">Főmenü</button></div></header>
-  <div class="billing__body"><section class="billing__panel"><h2>Dokumentum szerkesztése</h2><form id="billing-document"><div class="billing__fields">
-  <label>Típus<select name="type">${Object.entries(DOCUMENT_TYPES).map(([key, title]) => `<option value="${key}" ${draft.type === key ? 'selected' : ''}>${title}</option>`).join('')}</select></label>
-  ${input('number', 'Azonosító', draft.number, 'text', 'required')}${input('date', 'Kiállítás dátuma', draft.date, 'date', 'required')}${input('dueDate', 'Fizetési határidő', draft.dueDate, 'date', 'required')}
-  <label>Pénznem<select name="currency">${['HUF','EUR','USD'].map(key => `<option ${key === draft.currency ? 'selected' : ''}>${key}</option>`).join('')}</select></label>
-  <label>Ügyféltár<select name="customerId"><option value="">Egyedi ügyfél / válassz…</option>${state.customers.map(item => `<option value="${escape(item.id)}">${escape(item.name)}</option>`).join('')}</select></label>
-  ${input('sellerName', 'Kiállító neve', draft.seller.name, 'text', 'required')}${input('customerName', 'Ügyfél neve', draft.customer.name, 'text', 'required')}
-  ${input('sellerAddress', 'Kiállító címe', draft.seller.address)}${input('customerAddress', 'Ügyfél címe', draft.customer.address)}
-  ${input('sellerTax', 'Kiállító adószáma', draft.seller.tax)}${input('customerTax', 'Ügyfél adószáma', draft.customer.tax)}
-  ${input('sellerBank', 'Bankszámlaszám', draft.seller.bank)}${input('customerEmail', 'Ügyfél e-mail', draft.customer.email, 'email')}
-  </div><h2>Tételek</h2><div id="billing-lines"></div><div class="billing__actions"><button class="btn" type="button" data-action="line">+ Üres tétel</button><label>Terméktár<select name="productId"><option value="">Termék hozzáadása…</option>${state.products.map(item => `<option value="${escape(item.id)}">${escape(item.name)}</option>`).join('')}</select></label></div>
-  <p id="billing-total" class="billing__total" aria-live="polite"></p><label>Megjegyzés<textarea name="note">${escape(draft.note)}</textarea></label>
-  <p class="billing__notice">A számlatervezet belső dokumentum. Hivatalos számla kiállításához számlázóintegráció szükséges.</p><div class="billing__actions"><button class="btn btn--primary" type="submit">Dokumentum mentése</button><button class="btn" type="button" data-action="pdf">PDF / nyomtatás</button><button class="btn" type="button" data-action="new">Új dokumentum</button></div></form><p id="billing-status" class="billing__status" role="status"></p></section>
-  <aside class="billing__panel"><h2>Mentett dokumentumok</h2><div id="billing-documents" class="billing__list"></div><details><summary>Ügyféltár (${state.customers.length})</summary><form id="billing-customer" class="billing__catalog-form"><input name="id" type="hidden">${input('name','Név','','text','required')}${input('address','Cím','')}${input('tax','Adószám','')}${input('email','E-mail','','email')}<button class="btn" type="submit">Ügyfél mentése</button></form><div class="billing__list">${state.customers.map(item => catalogRow('customer', item)).join('')}</div></details>
-  <details><summary>Terméktár (${state.products.length})</summary><form id="billing-product" class="billing__catalog-form"><input name="id" type="hidden">${input('name','Megnevezés','','text','required')}${input('price','Nettó egységár',0,'number','min="0" step="0.01" required')}${input('vat','Áfa (%)',27,'number','min="0" max="100" step="0.01" required')}<button class="btn" type="submit">Termék mentése</button></form><div class="billing__list">${state.products.map(item => catalogRow('product', item)).join('')}</div></details></aside></div><input id="billing-import" type="file" accept="application/json,.json" hidden>`
+  root().innerHTML = `<header class="billing__header"><div class="module-brand"><img class="toolbar__brand-mark" src="./grapes-logo.svg" alt=""><div><h1>Számla- és árajánlatkészítő</h1><p class="billing__notice">Árajánlatok, díjbekérők és belső számlatervezetek</p></div></div><div class="billing__header-side"><span id="billing-status" class="billing__status" role="status"></span><details class="billing__more"><summary class="btn">Továbbiak</summary><div class="billing__more-panel"><button class="btn" data-action="export">Biztonsági mentés</button><button class="btn" data-action="import">Mentés betöltése</button></div></details><button class="btn btn--primary" data-action="drive">Mentés Drive-ra</button><button class="btn btn--ghost" data-action="menu">Főmenü</button></div></header>
+  <div class="billing__body"><section class="billing__panel billing__editor"><div class="billing__panel-head"><div><span class="billing__eyebrow">DOKUMENTUM</span><h2>Szerkesztés</h2></div><span class="billing__document-number">${escape(draft.number)}</span></div><form id="billing-document">
+  <fieldset class="billing__section"><legend>Alapadatok</legend><div class="billing__fields"><label>Típus<select name="type">${Object.entries(DOCUMENT_TYPES).map(([key, title]) => `<option value="${key}" ${draft.type === key ? 'selected' : ''}>${title}</option>`).join('')}</select></label>${input('number', 'Azonosító', draft.number, 'text', 'required')}${input('date', 'Kiállítás dátuma', draft.date, 'date', 'required')}${input('dueDate', 'Fizetési határidő', draft.dueDate, 'date', 'required')}<label>Pénznem<select name="currency">${['HUF','EUR','USD'].map(key => `<option ${key === draft.currency ? 'selected' : ''}>${key}</option>`).join('')}</select></label><label>Ügyféltár<select name="customerId"><option value="">Egyedi ügyfél / válassz…</option>${state.customers.map(item => `<option value="${escape(item.id)}">${escape(item.name)}</option>`).join('')}</select></label></div></fieldset>
+  <fieldset class="billing__section"><legend>Kiállító és ügyfél</legend><div class="billing__fields">${input('sellerName', 'Kiállító neve', draft.seller.name, 'text', 'required')}${input('customerName', 'Ügyfél neve', draft.customer.name, 'text', 'required')}${input('sellerAddress', 'Kiállító címe', draft.seller.address)}${input('customerAddress', 'Ügyfél címe', draft.customer.address)}${input('sellerTax', 'Kiállító adószáma', draft.seller.tax)}${input('customerTax', 'Ügyfél adószáma', draft.customer.tax)}${input('sellerBank', 'Bankszámlaszám', draft.seller.bank)}${input('customerEmail', 'Ügyfél e-mail', draft.customer.email, 'email')}</div></fieldset>
+  <fieldset class="billing__section"><legend>Tételek</legend><div id="billing-lines"></div><div class="billing__actions"><button class="btn" type="button" data-action="line">+ Üres tétel</button><label>Terméktár<select name="productId"><option value="">Termék hozzáadása…</option>${state.products.map(item => `<option value="${escape(item.id)}">${escape(item.name)}</option>`).join('')}</select></label></div></fieldset>
+  <label>Megjegyzés<textarea name="note">${escape(draft.note)}</textarea></label><p class="billing__notice">A számlatervezet belső dokumentum. Hivatalos számla kiállításához számlázóintegráció szükséges.</p><div class="billing__document-footer"><p id="billing-total" class="billing__total" aria-live="polite"></p><div class="billing__actions"><button class="btn btn--primary" type="submit">Dokumentum mentése</button><button class="btn" type="button" data-action="pdf">PDF / nyomtatás</button><button class="btn" type="button" data-action="new">Új dokumentum</button></div></div></form></section>
+  <aside class="billing__panel billing__sidebar"><details open><summary>Mentett dokumentumok (${state.documents.length})</summary><div id="billing-documents" class="billing__list"></div></details><details><summary>Ügyféltár (${state.customers.length})</summary><form id="billing-customer" class="billing__catalog-form"><input name="id" type="hidden">${input('name','Név','','text','required')}${input('address','Cím','')}${input('tax','Adószám','')}${input('email','E-mail','','email')}<button class="btn" type="submit">Ügyfél mentése</button></form><div class="billing__list">${state.customers.map(item => catalogRow('customer', item)).join('')}</div></details><details><summary>Terméktár (${state.products.length})</summary><form id="billing-product" class="billing__catalog-form"><input name="id" type="hidden">${input('name','Megnevezés','','text','required')}${input('price','Nettó egységár',0,'number','min="0" step="0.01" required')}${input('vat','Áfa (%)',27,'number','min="0" max="100" step="0.01" required')}<button class="btn" type="submit">Termék mentése</button></form><div class="billing__list">${state.products.map(item => catalogRow('product', item)).join('')}</div></details></aside></div><input id="billing-import" type="file" accept="application/json,.json" hidden>`
   renderLines(); renderDocuments(); bind()
 }
 function catalogRow(kind, item) { return `<div class="billing__actions"><button type="button" class="btn" data-edit="${kind}" data-id="${escape(item.id)}">${escape(item.name)}</button><button type="button" class="btn" data-delete="${kind}" data-id="${escape(item.id)}" aria-label="${escape(item.name)} törlése">×</button></div>` }
@@ -91,7 +84,7 @@ async function saveDrive() {
   if (!isGrapesDriveConnected()) throw new Error('Csatlakoztasd a Google Drive-ot a főmenüben.')
   saveDocument()
   await saving
-  status('Drive-mentés…')
+  status('Drive-mentés…', 'saving')
   fileId = await saveGrapesProject({ module: MODULE, name: MODULE, data: structuredClone(state), fileId })
   await persist(); status('Drive-ra mentve')
 }
@@ -134,7 +127,7 @@ function bind() {
         case 'export': { const url = URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:'application/json'})); const anchor = document.createElement('a'); anchor.href = url; anchor.download = `grapes-dokumentumok-${dateNow()}.json`; anchor.click(); setTimeout(() => URL.revokeObjectURL(url),1000); break }
         case 'import': root().querySelector('#billing-import').click(); break
       }
-    } catch (error) { notifyError(error.message); status('A művelet sikertelen') } finally { button.disabled = false }
+    } catch (error) { notifyError(error.message); status('A művelet sikertelen', 'error') } finally { button.disabled = false }
   }
   root().querySelector('#billing-import').onchange = async event => {
     try {

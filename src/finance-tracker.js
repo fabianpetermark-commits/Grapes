@@ -1,6 +1,8 @@
 import './styles/screens/finance-tracker.css'
 import { el, create } from './ui/dom.js'
 import { notifyError, notifySuccess } from './ui/toast.js'
+import { createResponsiveOverflow } from './ui/responsive-overflow.js'
+import { setUxState } from './ui/status.js'
 import { loadLocalProject, saveLocalProject } from './storage/local-project-store.js'
 import { isGrapesDriveConnected, loadGrapesProject, saveGrapesProject } from './storage/grapes-drive.js'
 import {
@@ -64,14 +66,14 @@ async function persistLocal() {
 function scheduleSave() {
   clearTimeout(localSaveTimer)
   clearTimeout(driveSaveTimer)
-  el('#finance-save-status').textContent = 'Mentés…'
+  setUxState('#finance-save-status', 'saving', 'Mentés…')
   localSaveTimer = setTimeout(async () => {
     try {
       await persistLocal()
-      el('#finance-save-status').textContent = 'Helyben mentve'
+      setUxState('#finance-save-status', 'saved', 'Helyben mentve')
     } catch (error) {
       console.error(error)
-      el('#finance-save-status').textContent = 'A helyi mentés sikertelen'
+      setUxState('#finance-save-status', 'error', 'A helyi mentés sikertelen')
     }
   }, 350)
   if (driveProjectFileId && isGrapesDriveConnected()) {
@@ -93,7 +95,7 @@ async function saveToDrive(showToast = true) {
     })
     await persistLocal()
     el('#finance-drive-status').textContent = 'Google Drive-szinkronizálás aktív.'
-    el('#finance-save-status').textContent = 'Drive-ra mentve'
+    setUxState('#finance-save-status', 'saved', 'Drive-ra mentve')
     button.textContent = 'Drive mentve'
     if (showToast) notifySuccess('A pénzügyi napló mentve a Google Drive-ra.')
   } catch (error) {
@@ -200,8 +202,10 @@ function renderRows(visible) {
       render(); scheduleSave()
     })
     const cells = [transaction.date, type, transaction.category, transaction.note || '—', receiptButton(transaction), amount, remove]
+    const labels = ['Dátum', 'Típus', 'Kategória', 'Megjegyzés', 'Bizonylat', 'Összeg', 'Művelet']
     cells.forEach((content, index) => {
       const cell = create('td', { class: index === 5 ? 'finance__amount-cell' : '' })
+      cell.dataset.label = labels[index]
       if (content instanceof Node) cell.append(content)
       else cell.textContent = content
       row.append(cell)
@@ -343,12 +347,17 @@ export async function initFinanceTracker() {
     render(); return
   }
   initialized = true
+  createResponsiveOverflow({
+    toolbar: el('.finance__header-actions'),
+    items: [...document.querySelectorAll('[data-finance-overflow]')],
+    label: 'Továbbiak',
+  })
   bindControls()
   await loadInitialProject()
   el('#finance-drive-status').textContent = driveProjectFileId
     ? 'Google Drive-szinkronizálás aktív.'
     : 'A változtatások helyben automatikusan mentődnek.'
   el('#finance-drive-save').textContent = driveProjectFileId ? 'Drive mentve' : 'Mentés Drive-ra'
-  el('#finance-save-status').textContent = 'Kész'
+  setUxState('#finance-save-status', 'saved', 'Kész')
   render()
 }
