@@ -177,6 +177,22 @@ function renderBooks(books = []) {
 }
 
 function metadataFileName() { return '.grapes-ebook-metadata.json' }
+function normalizeEbookMetadata(payload) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return {}
+  const normalized = payload.books && typeof payload.books === 'object'
+    ? normalizeEbookMetadata(payload.books)
+    : {}
+  for (const [id, value] of Object.entries(payload)) {
+    if (id === 'books' || id === 'version' || id === 'updatedAt') continue
+    if (!value || typeof value !== 'object' || Array.isArray(value)) continue
+    if (!Object.hasOwn(value, 'title') && !Object.hasOwn(value, 'author')) continue
+    normalized[id] = {
+      title: String(value.title || '').trim(),
+      author: String(value.author || '').trim(),
+    }
+  }
+  return normalized
+}
 async function loadEbookMetadata(folderId) {
   ebookMetadata = {}; ebookMetadataFileId = null
   const query = `'${folderId}' in parents and name = '${metadataFileName()}' and trashed = false`
@@ -184,7 +200,8 @@ async function loadEbookMetadata(folderId) {
   const file = found.files?.[0]
   if (!file) return
   ebookMetadataFileId = file.id
-  try { ebookMetadata = JSON.parse(await (await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.id)}?alt=media`)).text()) || {} } catch { ebookMetadata = {} }
+  const payload = JSON.parse(await (await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.id)}?alt=media`)).text())
+  ebookMetadata = normalizeEbookMetadata(payload)
 }
 async function saveEbookMetadata(folderId) {
   const payload = JSON.stringify({ version: 1, updatedAt: new Date().toISOString(), books: ebookMetadata })
@@ -399,11 +416,18 @@ function openMetadataEditor(id) { const select = $('#ebook-metadata-book'); if (
 async function saveMetadataFromForm() {
   const id = $('#ebook-metadata-book')?.value
   if (!id) return setStatus('Válassz ki egy könyvet a szerkesztéshez.', 'error')
+  const edited = {
+    title: $('#ebook-metadata-title')?.value.trim() || '',
+    author: $('#ebook-metadata-author')?.value.trim() || '',
+  }
   try {
     const save = $('#ebook-metadata-save'); if (save) save.disabled = true
     const indicator = $('#ebook-metadata-dirty'); if (indicator) indicator.textContent = 'Mentés a Drive-ra…'
     const { folderId } = await getReaderLibraryBooks()
-    ebookMetadata[id] = { title: $('#ebook-metadata-title')?.value.trim() || '', author: $('#ebook-metadata-author')?.value.trim() || '' }
+    // Mindig a Drive legfrissebb állapotához fűzzük a módosítást. Így egy
+    // másik eszközön mentett könyv nem tűnik el a következő mentéskor.
+    await loadEbookMetadata(folderId)
+    ebookMetadata[id] = edited
     await saveEbookMetadata(folderId)
     renderBooks(currentBooks)
     openMetadataEditor(id)

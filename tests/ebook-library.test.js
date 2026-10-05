@@ -344,6 +344,72 @@ test('metadata parser understands title-first library filenames and legacy autho
   assert.equal(a.run('extractIsbn("book -- 978-963-566-128-4.epub")'), '9789635661284')
 })
 
+test('Drive metadata reloads across devices and repairs previously nested saves', async () => {
+  const stored = {
+    version: 1,
+    updatedAt: '2026-10-05T12:00:00.000Z',
+    books: {
+      version: 1,
+      updatedAt: '2026-10-05T11:00:00.000Z',
+      books: { old: { title: 'Régi cím', author: 'Régi szerző' } },
+      editedEarlier: { title: 'Korábbi javítás', author: 'Szerző A' },
+    },
+    editedLatest: { title: 'Legújabb javítás', author: 'Szerző B' },
+  }
+  const a = app(async url => {
+    if (url.includes('alt=media')) return json(stored)
+    return json({ files: [{ id: 'metadata-file' }] })
+  })
+
+  await a.run('loadEbookMetadata("folder")')
+  assert.deepEqual(
+    JSON.parse(a.run('JSON.stringify(ebookMetadata)')),
+    {
+      old: { title: 'Régi cím', author: 'Régi szerző' },
+      editedEarlier: { title: 'Korábbi javítás', author: 'Szerző A' },
+      editedLatest: { title: 'Legújabb javítás', author: 'Szerző B' },
+    },
+  )
+  assert.equal(a.run('ebookMetadataFileId'), 'metadata-file')
+})
+
+test('legacy flat Drive metadata remains compatible', async () => {
+  const a = app(async url => url.includes('alt=media')
+    ? json({ book: { title: 'Dűne', author: 'Frank Herbert' } })
+    : json({ files: [{ id: 'metadata-file' }] }))
+  await a.run('loadEbookMetadata("folder")')
+  assert.equal(a.run('ebookMetadata.book.title'), 'Dűne')
+})
+
+test('saved metadata is visible in a fresh device session', async () => {
+  let stored = { version: 1, books: { first: { title: 'Első cím', author: 'Szerző A' } } }
+  const drive = async (url, options = {}) => {
+    if (options.method === 'PATCH') {
+      stored = JSON.parse(options.body)
+      return json({ id: 'metadata-file' })
+    }
+    if (url.includes('alt=media')) return json(stored)
+    return json({ files: [{ id: 'metadata-file' }] })
+  }
+  const first = app(drive)
+  await first.run('loadEbookMetadata("folder")')
+  first.run('ebookMetadata.second = { title: "Második cím", author: "Szerző B" }')
+  await first.run('saveEbookMetadata("folder")')
+
+  const second = app(drive)
+  await second.run('loadEbookMetadata("folder")')
+  assert.equal(second.run('ebookMetadata.first.title'), 'Első cím')
+  assert.equal(second.run('ebookMetadata.second.title'), 'Második cím')
+  assert.equal(second.run('ebookMetadata.second.author'), 'Szerző B')
+})
+
+test('unreadable Drive metadata cannot be silently overwritten', async () => {
+  const a = app(async url => url.includes('alt=media')
+    ? new Response('invalid JSON', { status: 200 })
+    : json({ files: [{ id: 'metadata-file' }] }))
+  await assert.rejects(a.run('loadEbookMetadata("folder")'), (error) => error.name === 'SyntaxError')
+})
+
 test('metadata lookup falls back to a verified author and preserves a Hungarian title', async () => {
   const calls = []
   const a = app(async url => {
