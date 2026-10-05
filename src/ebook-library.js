@@ -438,12 +438,33 @@ function showEbookHub() {
   if (hub) hub.hidden = false
   if (manager) manager.hidden = true
 }
+function setEbookMode(mode = 'library') {
+  const manager = $('#ebook-manager-view')
+  if (manager) manager.dataset.ebookMode = mode
+  const labels = { library: 'E-book Könyvtár', organizer: 'Könyvrendező', sync: 'USB-s szinkron' }
+  const sub = document.querySelector('#ebook-toolbar .toolbar__brand-sub')
+  if (sub) sub.textContent = labels[mode] || labels.library
+}
 function showEbookManager() {
   const hub = $('#ebook-hub-view')
   const manager = $('#ebook-manager-view')
   if (hub) hub.hidden = true
   if (manager) manager.hidden = false
+  setEbookMode('library')
   if (accessTokenAvailable()) refreshLibrary()
+}
+function showEbookOrganizer() {
+  const hub = $('#ebook-hub-view'); const manager = $('#ebook-manager-view')
+  if (hub) hub.hidden = true
+  if (manager) manager.hidden = false
+  setEbookMode('organizer')
+  if (accessTokenAvailable()) refreshLibrary()
+}
+function showEbookSync() {
+  const hub = $('#ebook-hub-view'); const manager = $('#ebook-manager-view')
+  if (hub) hub.hidden = true
+  if (manager) manager.hidden = false
+  setEbookMode('sync')
 }
 export function initEbookLibrary() {
   import('./ebook-reader-sync.js').then(({ initReaderSync }) => initReaderSync()).catch((error) => console.warn('Az USB-s e-reader modul nem tölthető be:', error))
@@ -458,6 +479,8 @@ export function initEbookLibrary() {
   initialized=true
   onGrapesDriveChange(renderDriveConnection)
   $('#ebook-open-manager')?.addEventListener('click', showEbookManager)
+  $('#ebook-open-organizer')?.addEventListener('click', showEbookOrganizer)
+  $('#ebook-open-sync')?.addEventListener('click', showEbookSync)
   $('#ebook-manager-back')?.addEventListener('click', showEbookHub)
   $('#ebook-reader-pair-btn')?.addEventListener('click', createReaderPairing)
   $('#ebook-drive-connect')?.addEventListener('click',connectDrive)
