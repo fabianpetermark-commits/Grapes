@@ -220,34 +220,95 @@ async function lookupBookMetadata() {
   const book = currentBooks.find((item) => item.id === id)
   const typedTitle = $('#ebook-metadata-title')?.value.trim() || ''
   const typedAuthor = $('#ebook-metadata-author')?.value.trim() || ''
-  const filename = (book?.name || '').replace(/\.[^.]+$/, '').replace(/[._]+/g, ' ').trim()
   const parsed = parseFilenameMetadata(book?.name || '')
   const title = typedTitle || parsed?.title || ''
   const author = typedAuthor || parsed?.author || ''
-  if (!title && !author && !filename) { setMetadataMessage('Adj meg címet vagy szerzőt a kereséshez.', 'error'); return }
+  const isbn = extractIsbn(book?.name || '')
+  if (!title && !author && !isbn) { setMetadataMessage('Adj meg címet vagy szerzőt a kereséshez.', 'error'); return }
   const button = $('#ebook-metadata-lookup'); if (button) button.disabled = true
   setMetadataMessage('Keresés az Open Library adatbázisában…')
-  let timeout
   try {
-    const search = new URLSearchParams({ fields: 'title,author_name,first_publish_year,cover_i,key', limit: '10', lang: 'hu' })
-    if (title) search.set('title', title)
-    if (author) search.set('author', author)
-    if (!title && !author) search.set('q', filename)
-    const controller = new AbortController()
-    timeout = window.setTimeout(() => controller.abort(), 12000)
-    const response = await fetch(`https://openlibrary.org/search.json?${search}`, { signal: controller.signal })
-    if (!response.ok) throw new Error(`Webes keresési hiba (${response.status})`)
-    const result = await response.json()
-    const first = result.docs?.[0]
-    if (!first?.title) throw new Error('Nem találtam biztos könyvtalálatot.')
-    pendingMetadataSuggestion = { title: first.title, author: first.author_name?.[0] || '' }
-    const year = first.first_publish_year ? ` · ${first.first_publish_year}` : ''
-    setMetadataMessage(`Találat: ${first.title}${pendingMetadataSuggestion.author ? ` — ${pendingMetadataSuggestion.author}` : ''}${year}`, 'success')
+    const match = await findBookMetadata({ title, author, isbn })
+    if (!match) throw new Error('Nem találtam elég biztos könyvtalálatot. A cím és a szerző kézzel továbbra is menthető.')
+    pendingMetadataSuggestion = match.suggestion
+    const year = match.year ? ` · ${match.year}` : ''
+    const note = match.kind === 'author'
+      ? 'A szerzőt megtaláltam; a megadott magyar címet megtartottam.'
+      : `Találat: ${pendingMetadataSuggestion.title}${pendingMetadataSuggestion.author ? ` — ${pendingMetadataSuggestion.author}` : ''}${year}`
+    setMetadataMessage(note, 'success')
     $('#ebook-metadata-apply').disabled = false
   } catch (error) {
     const message = error?.name === 'AbortError' ? 'A keresés túllépte az időkorlátot.' : error.message
     setMetadataMessage(`A webes keresés nem sikerült. ${message}`, 'error')
-  } finally { window.clearTimeout(timeout); if (button) button.disabled = false }
+  } finally { if (button) button.disabled = false }
+}
+
+async function queryOpenLibrary(parameters) {
+  const search = new URLSearchParams({ fields: 'title,author_name,first_publish_year,cover_i,key', limit: '20' })
+  Object.entries(parameters).forEach(([key, value]) => { if (value) search.set(key, value) })
+  const controller = new AbortController()
+  const timeout = window.setTimeout(() => controller.abort(), 12000)
+  try {
+    const response = await fetch(`https://openlibrary.org/search.json?${search}`, { signal: controller.signal })
+    if (!response.ok) throw new Error(`Webes keresési hiba (${response.status})`)
+    const result = await response.json()
+    return Array.isArray(result.docs) ? result.docs : []
+  } finally { window.clearTimeout(timeout) }
+}
+
+function normalizedWords(value = '') {
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('hu-HU').replace(/[^a-z0-9]+/g, ' ').trim().split(/\s+/).filter(Boolean)
+}
+
+function metadataSimilarity(left = '', right = '') {
+  const a = new Set(normalizedWords(left)); const b = new Set(normalizedWords(right))
+  if (!a.size || !b.size) return 0
+  const common = [...a].filter((word) => b.has(word)).length
+  return (2 * common) / (a.size + b.size)
+}
+
+function bestMetadataDocument(docs, { title = '', author = '' } = {}) {
+  let best = null
+  docs.forEach((doc) => {
+    if (!doc?.title) return
+    const titleScore = title ? metadataSimilarity(title, doc.title) : 0
+    const authorScore = author ? Math.max(0, ...(doc.author_name || []).map((name) => metadataSimilarity(author, name))) : 0
+    const score = title && author ? titleScore * 0.65 + authorScore * 0.35 : title ? titleScore : authorScore
+    if (!best || score > best.score) best = { doc, score, titleScore, authorScore }
+  })
+  return best
+}
+
+async function findBookMetadata({ title = '', author = '', isbn = '' } = {}) {
+  if (isbn) {
+    const isbnMatch = bestMetadataDocument(await queryOpenLibrary({ isbn }), { title, author })
+    if (isbnMatch?.doc) return metadataMatch(isbnMatch.doc, 'isbn')
+  }
+  if (title && author) {
+    const exact = bestMetadataDocument(await queryOpenLibrary({ title, author }), { title, author })
+    if (exact?.score >= 0.62) return metadataMatch(exact.doc, 'exact')
+  }
+  if (title) {
+    const byTitle = bestMetadataDocument(await queryOpenLibrary({ title }), { title, author })
+    if (byTitle?.titleScore >= 0.72 && (!author || byTitle.authorScore >= 0.5)) return metadataMatch(byTitle.doc, 'title')
+  }
+  if (author) {
+    const byAuthor = bestMetadataDocument(await queryOpenLibrary({ author }), { author })
+    if (byAuthor?.authorScore >= 0.72) {
+      return {
+        kind: 'author', year: '',
+        suggestion: { title, author: byAuthor.doc.author_name?.[0] || author },
+      }
+    }
+  }
+  return null
+}
+
+function metadataMatch(doc, kind) {
+  return {
+    kind, year: doc.first_publish_year || '',
+    suggestion: { title: doc.title || '', author: doc.author_name?.[0] || '' },
+  }
 }
 function applyMetadataSuggestion() {
   if (!pendingMetadataSuggestion) { setMetadataMessage('Nincs alkalmazható javaslat.', 'error'); return }
@@ -257,9 +318,29 @@ function applyMetadataSuggestion() {
   setMetadataMessage('A javaslat alkalmazva. A véglegesítéshez kattints a Metaadatok mentése gombra.', 'success')
 }
 function parseFilenameMetadata(name = '') {
-  const clean = name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').replace(/\s+/g, ' ').trim()
-  const match = clean.match(/^(.+?)\s+-\s+(.+)$/)
-  return match ? { author: match[1].trim(), title: match[2].trim() } : null
+  const clean = name.replace(/(?:\.(?:fb2\.zip|epub|mobi|azw3?|pdf|prc|fb2|djvu|txt))+$/i, '').replace(/[_]+/g, ' ').replace(/\s+/g, ' ').trim()
+  const doubleParts = clean.split(/\s+[-–—]{2,}\s+/).map((part) => part.trim()).filter(Boolean)
+  if (doubleParts.length >= 2) return cleanMetadataParts(doubleParts[0], doubleParts[1])
+  const match = clean.match(/^(.+?)\s+[-–—]\s+(.+)$/)
+  if (!match) return null
+  const left = match[1].trim(); const right = match[2].trim()
+  if (/,/.test(right) || (looksLikeAuthor(right) && !looksLikeAuthor(left))) return cleanMetadataParts(left, right)
+  return cleanMetadataParts(right, left)
+}
+function cleanMetadataParts(title, author) {
+  const cleanTitle = title.replace(/\s+[-–—]\s+\d+$/, '').trim()
+  const cleanAuthor = author.split(/\s*;\s*/)[0].replace(/\s+[-–—]\s+\d+$/, '').replace(/\s+\((?:auth\.?|author|szerző)\)$/i, '').replace(/(?<=\p{L})\d+$/u, '').trim()
+  return cleanTitle && cleanAuthor ? { title: cleanTitle, author: cleanAuthor } : null
+}
+function looksLikeAuthor(value = '') {
+  const clean = value.replace(/\([^)]*\)/g, '').replace(/\bdr\.?\s*/gi, '').trim()
+  if (/\b(?:19|20)\d{2}\b|\b(?:kiadó|publisher|press|isbn|budapest)\b/i.test(clean)) return false
+  const words = clean.split(/[\s,]+/).filter(Boolean)
+  return words.length >= 2 && words.length <= 5 && !/\d/.test(clean)
+}
+function extractIsbn(name = '') {
+  const matches = name.match(/(?:97[89][\s-]?)?(?:\d[\s-]?){9}[\dX]/gi) || []
+  return matches.map((value) => value.replace(/[^\dX]/gi, '')).find((value) => value.length === 10 || value.length === 13) || ''
 }
 function suggestMetadata(name = '') {
   const parsed = parseFilenameMetadata(name)

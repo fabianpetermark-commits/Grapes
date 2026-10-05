@@ -15,9 +15,10 @@ function app(fetch, { connected = true, session = new Map(), local = new Map() }
   const document = { querySelector(id) { if (!nodes.has(id)) nodes.set(id, element()); return nodes.get(id) }, createElement: element, head: { append() {} } }
   const storage = map => ({ getItem: key => map.get(key) ?? null, setItem: (key, value) => map.set(key, value), removeItem: key => map.delete(key) })
   if (connected && !session.has('grapes-drive-session')) session.set('grapes-drive-session', JSON.stringify({ clientId: '123-client', accessToken: 'test-token', expiresAt: Date.now() + 3600000 }))
-  const context = vm.createContext({ document, fetch, Blob, URL, URLSearchParams, crypto: webcrypto, QRCode: { async toCanvas(canvas, value) { canvas.qrValue = value } },
+  const testSetTimeout = (callback, delay) => { const timer = setTimeout(callback, delay); timer.unref?.(); return timer }
+  const context = vm.createContext({ document, fetch, Blob, URL, URLSearchParams, AbortController, crypto: webcrypto, QRCode: { async toCanvas(canvas, value) { canvas.qrValue = value } },
     env: { VITE_GOOGLE_CLIENT_ID: '123-client', VITE_EBOOK_TRANSFER_BROKER_URL: 'https://broker.example/exec' },
-    window: { sessionStorage: storage(session), localStorage: storage(local), location: { href: 'https://fabianpetermark-commits.github.io/Grapes/', origin: 'https://fabianpetermark-commits.github.io', search: '' } } })
+    window: { sessionStorage: storage(session), localStorage: storage(local), setTimeout: testSetTimeout, clearTimeout, location: { href: 'https://fabianpetermark-commits.github.io/Grapes/', origin: 'https://fabianpetermark-commits.github.io', search: '' } } })
   const driveContext = vm.createContext({ window: context.window, document, fetch, env: context.env, Blob, crypto: webcrypto })
   const api = vm.runInContext(driveSource + '\n({ connectGrapesDrive, disconnectGrapesDrive, getGrapesDriveAccessToken, grapesDriveHasFullReadAccess, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange })', driveContext)
   Object.assign(context, api)
@@ -320,6 +321,60 @@ test('persistent reader pairing uses an inline frame with the verified marker', 
   assert.equal(url.searchParams.get('markerId'), 'marker')
   assert.match(url.searchParams.get('nonce'), /^[a-f0-9]{48}$/)
   assert.equal(a.nodes.get('#ebook-reader-pair-btn').disabled, false)
+})
+
+test('metadata parser understands title-first library filenames and legacy author-first names', () => {
+  const a = app(async () => json({}))
+  assert.deepEqual(
+    { ...a.run('parseFilenameMetadata("az elme trükkjei -- albert moukheiber -- budapest, 2020 -- európa könyvkiadó.epub")') },
+    { title: 'az elme trükkjei', author: 'albert moukheiber' },
+  )
+  assert.deepEqual(
+    { ...a.run('parseFilenameMetadata("The Things We Water -- Mariana Zapata - 1.epub")') },
+    { title: 'The Things We Water', author: 'Mariana Zapata' },
+  )
+  assert.deepEqual(
+    { ...a.run('parseFilenameMetadata("Torony-6-Susannah dala - King, Stephen1.prc")') },
+    { title: 'Torony-6-Susannah dala', author: 'King, Stephen' },
+  )
+  assert.deepEqual(
+    { ...a.run('parseFilenameMetadata("King, Stephen - It.epub")') },
+    { title: 'It', author: 'King, Stephen' },
+  )
+  assert.equal(a.run('extractIsbn("book -- 978-963-566-128-4.epub")'), '9789635661284')
+})
+
+test('metadata lookup falls back to a verified author and preserves a Hungarian title', async () => {
+  const calls = []
+  const a = app(async url => {
+    const search = new URL(url).searchParams; calls.push(search)
+    if (search.has('author') && !search.has('title')) return json({ docs: [{ title: 'Your Brain Is Playing Tricks on You', author_name: ['Albert Moukheiber'], first_publish_year: 2019 }] })
+    return json({ docs: [] })
+  })
+  a.run('currentBooks = [{ id: "book", name: "az elme trükkjei -- albert moukheiber -- budapest, 2020.epub" }]')
+  a.run('$("#ebook-metadata-book"); $("#ebook-metadata-title"); $("#ebook-metadata-author")')
+  a.nodes.get('#ebook-metadata-book').value = 'book'
+  a.nodes.get('#ebook-metadata-title').value = 'Az elme trükkjei'
+  a.nodes.get('#ebook-metadata-author').value = 'Albert Moukheiber'
+  await a.run('lookupBookMetadata()')
+  assert.equal(calls.length, 3)
+  assert.equal(a.nodes.get('#ebook-metadata-suggestion').dataset.kind, 'success')
+  assert.match(a.nodes.get('#ebook-metadata-suggestion').textContent, /magyar címet megtartottam/)
+  a.run('applyMetadataSuggestion()')
+  assert.equal(a.nodes.get('#ebook-metadata-title').value, 'Az elme trükkjei')
+  assert.equal(a.nodes.get('#ebook-metadata-author').value, 'Albert Moukheiber')
+})
+
+test('metadata lookup accepts a strong exact catalogue match', async () => {
+  const a = app(async () => json({ docs: [{ title: 'Dune', author_name: ['Frank Herbert'], first_publish_year: 1965 }] }))
+  a.run('currentBooks = [{ id: "book", name: "Frank Herbert - Dune.epub" }]')
+  a.run('$("#ebook-metadata-book"); $("#ebook-metadata-title"); $("#ebook-metadata-author")')
+  a.nodes.get('#ebook-metadata-book').value = 'book'
+  a.nodes.get('#ebook-metadata-title').value = 'Dune'
+  a.nodes.get('#ebook-metadata-author').value = 'Frank Herbert'
+  await a.run('lookupBookMetadata()')
+  assert.equal(a.nodes.get('#ebook-metadata-suggestion').dataset.kind, 'success')
+  assert.match(a.nodes.get('#ebook-metadata-suggestion').textContent, /Dune — Frank Herbert · 1965/)
 })
 
 test('reader pairing code bridge accepts only the selected iframe and expires the code', () => {
