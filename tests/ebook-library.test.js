@@ -413,6 +413,7 @@ test('unreadable Drive metadata cannot be silently overwritten', async () => {
 test('metadata lookup falls back to a verified author and preserves a Hungarian title', async () => {
   const calls = []
   const a = app(async url => {
+    if (!url.startsWith('https://openlibrary.org/')) return json({ items: [] })
     const search = new URL(url).searchParams; calls.push(search)
     if (search.has('author') && !search.has('title')) return json({ docs: [{ title: 'Your Brain Is Playing Tricks on You', author_name: ['Albert Moukheiber'], first_publish_year: 2019 }] })
     return json({ docs: [] })
@@ -432,7 +433,9 @@ test('metadata lookup falls back to a verified author and preserves a Hungarian 
 })
 
 test('metadata lookup accepts a strong exact catalogue match', async () => {
-  const a = app(async () => json({ docs: [{ title: 'Dune', author_name: ['Frank Herbert'], first_publish_year: 1965 }] }))
+  const a = app(async url => url.startsWith('https://openlibrary.org/')
+    ? json({ docs: [{ title: 'Dune', author_name: ['Frank Herbert'], first_publish_year: 1965 }] })
+    : json({ items: [] }))
   a.run('currentBooks = [{ id: "book", name: "Frank Herbert - Dune.epub" }]')
   a.run('$("#ebook-metadata-book"); $("#ebook-metadata-title"); $("#ebook-metadata-author")')
   a.nodes.get('#ebook-metadata-book').value = 'book'
@@ -441,6 +444,55 @@ test('metadata lookup accepts a strong exact catalogue match', async () => {
   await a.run('lookupBookMetadata()')
   assert.equal(a.nodes.get('#ebook-metadata-suggestion').dataset.kind, 'success')
   assert.match(a.nodes.get('#ebook-metadata-suggestion').textContent, /Dune — Frank Herbert · 1965/)
+})
+
+test('Google Books can supply a missing Open Library result using the current Google token', async () => {
+  const a = app(async (url, options) => {
+    if (url.startsWith('https://openlibrary.org/')) return json({ docs: [] })
+    assert.match(url, /www\.googleapis\.com\/books\/v1\/volumes/)
+    assert.equal(options.headers.Authorization, 'Bearer test-token')
+    return json({ items: [{ volumeInfo: { title: 'Dune', authors: ['Frank Herbert'], publishedDate: '1965-08-01' } }] })
+  })
+  a.run('currentBooks = [{ id: "book", name: "Dune -- Frank Herbert.epub" }]')
+  a.run('$("#ebook-metadata-book"); $("#ebook-metadata-title"); $("#ebook-metadata-author")')
+  a.nodes.get('#ebook-metadata-book').value = 'book'
+  a.nodes.get('#ebook-metadata-title').value = 'Dune'
+  a.nodes.get('#ebook-metadata-author').value = 'Frank Herbert'
+  await a.run('lookupBookMetadata()')
+  assert.match(a.nodes.get('#ebook-metadata-suggestion').textContent, /Google Books/)
+  a.run('applyMetadataSuggestion()')
+  assert.equal(a.nodes.get('#ebook-metadata-author').value, 'Frank Herbert')
+})
+
+test('conflicting catalogues stay separate and the selected result is applied', async () => {
+  const a = app(async url => url.startsWith('https://openlibrary.org/')
+    ? json({ docs: [{ title: 'Dune', author_name: ['Frank Herbert'], first_publish_year: 1965 }] })
+    : json({ items: [{ volumeInfo: { title: 'Dune', authors: ['F. Herbert'], publishedDate: '2005' } }] }))
+  a.run('currentBooks = [{ id: "book", name: "Dune -- Frank Herbert.epub" }]')
+  a.run('$("#ebook-metadata-book"); $("#ebook-metadata-title"); $("#ebook-metadata-author")')
+  a.nodes.get('#ebook-metadata-book').value = 'book'
+  a.nodes.get('#ebook-metadata-title').value = 'Dune'
+  a.nodes.get('#ebook-metadata-author').value = 'Frank Herbert'
+  await a.run('lookupBookMetadata()')
+  assert.equal(a.nodes.get('#ebook-metadata-source-wrap').hidden, false)
+  assert.equal(a.nodes.get('#ebook-metadata-source').children.length, 2)
+  a.nodes.get('#ebook-metadata-source').value = '1'
+  a.run('selectMetadataSource(); applyMetadataSuggestion()')
+  assert.equal(a.nodes.get('#ebook-metadata-author').value, 'F. Herbert')
+})
+
+test('a failing Google Books lookup does not hide an Open Library match', async () => {
+  const a = app(async url => url.startsWith('https://openlibrary.org/')
+    ? json({ docs: [{ title: 'Dune', author_name: ['Frank Herbert'] }] })
+    : json({ error: 'API unavailable' }, 403))
+  a.run('currentBooks = [{ id: "book", name: "Dune -- Frank Herbert.epub" }]')
+  a.run('$("#ebook-metadata-book"); $("#ebook-metadata-title"); $("#ebook-metadata-author")')
+  a.nodes.get('#ebook-metadata-book').value = 'book'
+  a.nodes.get('#ebook-metadata-title').value = 'Dune'
+  a.nodes.get('#ebook-metadata-author').value = 'Frank Herbert'
+  await a.run('lookupBookMetadata()')
+  assert.match(a.nodes.get('#ebook-metadata-suggestion').textContent, /Nem elérhető: Google Books/)
+  assert.equal(a.nodes.get('#ebook-metadata-apply').disabled, false)
 })
 
 test('metadata editor exposes search, live preview and a protected dirty state', () => {
