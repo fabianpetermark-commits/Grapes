@@ -28,7 +28,7 @@ const projectModules = [
 
 for (const [selector, screen] of Object.entries({
   '#pick-brochure': 'brochure', '#pick-studio': 'studio', '#pick-qr': 'qr',
-  '#pick-ebook': 'ebook', '#pick-email': 'email', '#pick-finance': 'finance',
+  '#pick-ebook': 'ebook', '#pick-ebook-organizer': 'ebook', '#pick-email': 'email', '#pick-finance': 'finance',
   '#pick-billing': 'billing',
 })) el(selector).addEventListener('click', () => showScreen(screen))
 
