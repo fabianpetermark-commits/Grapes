@@ -6,6 +6,7 @@ let readerRoot = null
 let driveBooks = []
 let readerBooks = []
 let initialized = false
+let readerConnectionState = 'disconnected'
 
 const $ = selector => document.querySelector(selector)
 const status = (message, kind = '') => { const node = $('#ebook-sync-status'); if (node) { node.textContent = message; node.dataset.kind = kind } }
@@ -14,9 +15,36 @@ const candidate = name => Boolean(String(name || '').trim()) && !String(name).st
 const normalize = name => String(name || '').normalize('NFKC').trim().toLocaleLowerCase('hu-HU')
 const updateConnection = () => {
   const node = $('#ebook-reader-state')
-  if (node) node.textContent = readerRoot ? `● Csatlakoztatva – /${readerRoot.name}` : '○ Nincs csatlakoztatva'
+  if (node) {
+    node.textContent = readerConnectionState === 'connected'
+      ? `● Elérhető – /${readerRoot?.name || ''}`
+      : readerConnectionState === 'checking'
+        ? `◐ Ellenőrzés – /${readerRoot?.name || ''}`
+        : readerRoot
+          ? `○ Nem érhető el – /${readerRoot.name}`
+          : '○ Nincs csatlakoztatva'
+    node.dataset.kind = readerConnectionState === 'connected' ? 'success' : readerConnectionState === 'disconnected' && readerRoot ? 'error' : ''
+  }
   const button = $('#ebook-reader-connect')
-  if (button) button.textContent = readerRoot ? 'E-reader mappa módosítása' : 'E-reader csatlakoztatása'
+  if (button) button.textContent = readerConnectionState === 'connected' ? 'E-reader mappa módosítása' : 'E-reader csatlakoztatása'
+  const sync = $('#ebook-sync')
+  if (sync) sync.disabled = readerConnectionState !== 'connected'
+}
+async function verifyReaderAccess() {
+  if (!readerRoot) { readerConnectionState = 'disconnected'; updateConnection(); return false }
+  readerConnectionState = 'checking'; updateConnection()
+  try {
+    if (await readerRoot.queryPermission({ mode: 'readwrite' }) !== 'granted') throw new Error('Nincs mappaengedély.')
+    const iterator = readerRoot.values()
+    await iterator.next()
+    readerConnectionState = 'connected'
+    updateConnection()
+    return true
+  } catch {
+    readerConnectionState = 'disconnected'
+    updateConnection()
+    return false
+  }
 }
 function updateProgress(current, total, label = '') {
   const progress = $('#ebook-sync-progress')
@@ -76,12 +104,12 @@ async function refreshInventory() {
   if (!isGrapesDriveConnected()) throw new Error('Előbb csatlakoztasd a Google Drive-ot a főmenüben.')
   const folder = await findLibraryFolder()
   driveBooks = await listDriveBooks(folder)
-  readerBooks = readerRoot ? await scanDirectory(readerRoot) : []
+  readerBooks = await verifyReaderAccess() ? await scanDirectory(readerRoot) : []
   renderInventory()
 }
 async function connectReader() {
   if (!supports()) { status('Ez a böngésző nem támogatja az USB-s mappahozzáférést.', 'error'); return }
-  try { const handle = await showDirectoryPicker({ id: 'grapes-ebook-reader', mode: 'readwrite', startIn: 'documents' }); if (await handle.requestPermission({ mode: 'readwrite' }) !== 'granted') throw new Error('Az írási engedély nem lett megadva.'); readerRoot = handle; await saveHandle(handle); updateConnection(); await refreshInventory() }
+  try { const handle = await showDirectoryPicker({ id: 'grapes-ebook-reader', mode: 'readwrite', startIn: 'documents' }); if (await handle.requestPermission({ mode: 'readwrite' }) !== 'granted') throw new Error('Az írási engedély nem lett megadva.'); readerRoot = handle; await saveHandle(handle); if (!await verifyReaderAccess()) throw new Error('A kiválasztott mappa jelenleg nem érhető el.'); await refreshInventory() }
   catch (error) { if (error?.name !== 'AbortError') status(`Az e-reader csatlakoztatása nem sikerült. ${error.message}`, 'error') }
 }
 async function writeToReader(book) {
@@ -94,7 +122,7 @@ async function uploadFromReader(book, folderId) {
   await grapesDriveRequest('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', { method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${boundary}` }, body })
 }
 async function synchronize() {
-  if (!readerRoot) return status('Előbb csatlakoztasd az USB-kábellel az e-readert.', 'error')
+  if (!readerRoot || !await verifyReaderAccess()) return status('Az e-reader nem érhető el. Csatlakoztasd USB-kábellel, majd válaszd ki újra a mappáját.', 'error')
   try {
     await refreshInventory(); const folderId = await findLibraryFolder(); let toReader = 0, toDrive = 0
     const readerNames = new Set(readerBooks.map(book => normalize(book.name)))
@@ -116,6 +144,7 @@ export function initReaderSync() {
   $('#ebook-reader-connect')?.addEventListener('click', connectReader)
   $('#ebook-sync')?.addEventListener('click', synchronize)
   if (!supports()) { const note = $('#ebook-reader-support'); if (note) note.hidden = false }
-  loadHandle().then(async handle => { if (handle && await handle.queryPermission({ mode: 'readwrite' }) === 'granted') { readerRoot = handle; updateConnection() } }).catch(() => {})
+  loadHandle().then(async handle => { if (handle) { readerRoot = handle; await verifyReaderAccess() } }).catch(() => {})
+  window.setInterval?.(() => { if (readerRoot) verifyReaderAccess() }, 5000)
   updateConnection()
 }

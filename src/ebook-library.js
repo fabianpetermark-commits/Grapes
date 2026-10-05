@@ -7,6 +7,8 @@ const TRANSFER_BROKER_URL = import.meta.env.VITE_EBOOK_TRANSFER_BROKER_URL || ''
 const FOLDER_NAME = 'Grapes E-book Library'
 const READER_PAGE_URL = new URL('ebook-reader.html', window.location.href).toString()
 const READER_SHARING_KEY = 'grapes-reader-library-enabled'
+const LIBRARY_CACHE_KEY = 'grapes-ebook-library-cache-v1'
+const FULL_SCAN_CACHE_MS = 5 * 60 * 1000
 const INTERNAL_PAIRING_FILE = /^\.grapes-reader-pairing(?:-\d+)?\.json$/i
 const INTERNAL_METADATA_FILE = /^\.grapes-ebook-metadata\.json$/i
 const SHAREABLE_BOOK_EXTENSIONS = new Set(['epub', 'pdf', 'mobi', 'azw', 'azw3', 'prc', 'txt', 'cbz', 'cbr'])
@@ -17,6 +19,8 @@ let currentBooks = []
 let ebookMetadata = {}
 let ebookMetadataFileId = null
 let pendingMetadataSuggestion = null
+let cachedBooks = []
+let cachedAt = 0
 const $ = (selector) => document.querySelector(selector)
 const ext = (name = '') => name.includes('.') ? name.split('.').pop().toLowerCase() : 'FILE'
 const isShareableBook = (name = '') => SHAREABLE_BOOK_EXTENSIONS.has(ext(name))
@@ -30,6 +34,23 @@ const isDriveBook = (file) => isBookFile(file) && (DRIVE_BOOK_EXTENSIONS.has(ext
 const formatSize = (bytes) => !Number.isFinite(bytes) ? '—' : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
 function setStatus(message, kind = '') { const node = $('#ebook-status'); if (node) { node.textContent = message; node.dataset.kind = kind } }
+function setUploadState(message, kind = '') { const node = $('#ebook-upload-state'); if (node) { node.textContent = message; node.dataset.kind = kind } }
+function saveLibraryCache(books) {
+  cachedBooks = books
+  cachedAt = Date.now()
+  try { window.localStorage?.setItem(LIBRARY_CACHE_KEY, JSON.stringify({ savedAt: cachedAt, books })) } catch {}
+}
+function renderLibraryCache() {
+  try {
+    const cached = JSON.parse(window.localStorage?.getItem(LIBRARY_CACHE_KEY) || 'null')
+    if (!Array.isArray(cached?.books) || !cached.books.length) return false
+    cachedBooks = cached.books
+    cachedAt = Number(cached.savedAt) || 0
+    renderBooks(cachedBooks)
+    setStatus(`${cachedBooks.length} könyv betöltve a gyorsítótárból. Frissítés a háttérben…`)
+    return true
+  } catch { return false }
+}
 function readerLibraryEnabled() {
   try { return window.localStorage && window.localStorage.getItem(READER_SHARING_KEY) === '1' } catch { return false }
 }
@@ -80,6 +101,7 @@ function renderDriveConnection() {
     fullRead.disabled = !connected || grapesDriveHasFullReadAccess()
     fullRead.textContent = grapesDriveHasFullReadAccess() ? 'Automatikus Drive-beolvasás aktív' : 'Automatikus Drive-beolvasás engedélyezése'
   }
+  setUploadState(connected ? '● Drive csatlakoztatva · feltöltésre kész' : '○ A Drive nincs csatlakoztatva', connected ? 'success' : '')
 }
 function handleTransferLink() {
   const params = new URLSearchParams(window.location.search)
@@ -203,7 +225,7 @@ async function connectDrive() {
     const connect = $('#ebook-drive-connect')
     if (connect) { connect.textContent = 'Google Drive csatlakoztatva'; connect.disabled = true }
     setStatus('A közös Grapes Drive kapcsolat aktív.', 'success')
-    await refreshLibrary()
+    await refreshLibrary({ forceFullScan: true })
   } catch (error) {
     setStatus(`Google bejelentkezési hiba: ${error.message}`, 'error')
   }
@@ -218,7 +240,7 @@ async function enableFullDriveRead() {
     setStatus('A teljes Drive olvasási engedélyének kérése…')
     await connectGrapesDrive({ fullRead: true })
     renderDriveConnection()
-    await refreshLibrary()
+    await refreshLibrary({ forceFullScan: true })
   } catch (error) {
     setStatus(`Az automatikus beolvasás nem indult el. ${error.message}`, 'error')
   }
@@ -243,25 +265,32 @@ async function ensureLibraryFolder() {
   const created=await driveRequest('https://www.googleapis.com/drive/v3/files',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:FOLDER_NAME,mimeType:'application/vnd.google-apps.folder'})})
   return (await created.json()).id
 }
+async function listFolderChildren(folderId) {
+  const children = []
+  const query = `'${folderId}' in parents and trashed = false`
+  let pageToken = ''
+  do {
+    const response = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=nextPageToken,files(id,name,size,modifiedTime,mimeType,parents,isAppAuthorized)&orderBy=modifiedTime desc&pageSize=1000&pageToken=${encodeURIComponent(pageToken)}`)
+    const data = await response.json()
+    children.push(...(data.files || []))
+    pageToken = data.nextPageToken || ''
+  } while (pageToken)
+  return children
+}
 async function listLibraryTree(rootFolderId) {
-  const books = []
-  const pending = [rootFolderId]
-  const visited = new Set()
+  const books = [], visited = new Set()
+  let pending = [rootFolderId]
   while (pending.length) {
-    const folderId = pending.shift()
-    if (!folderId || visited.has(folderId)) continue
-    visited.add(folderId)
-    const query = `'${folderId}' in parents and trashed = false`
-    let pageToken = ''
-    do {
-      const response = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=nextPageToken,files(id,name,size,modifiedTime,mimeType,parents,isAppAuthorized)&orderBy=modifiedTime desc&pageSize=100&pageToken=${encodeURIComponent(pageToken)}`)
-      const data = await response.json()
-      for (const file of data.files || []) {
+    const level = pending.filter((folderId) => folderId && !visited.has(folderId))
+    pending = []
+    level.forEach((folderId) => visited.add(folderId))
+    for (let index = 0; index < level.length; index += 6) {
+      const groups = await Promise.all(level.slice(index, index + 6).map(listFolderChildren))
+      for (const files of groups) for (const file of files) {
         if (file.mimeType === 'application/vnd.google-apps.folder') pending.push(file.id)
         else if (isBookFile(file)) books.push(file)
       }
-      pageToken = data.nextPageToken || ''
-    } while (pageToken)
+    }
   }
   return books
 }
@@ -361,21 +390,36 @@ async function createReaderPairing() {
     setStatus(`Az e-olvasó párosítása nem sikerült. ${error.message}`, 'error')
   } finally { button.disabled = false }
 }
-async function refreshLibrary() {
+async function refreshLibrary({ forceFullScan = false } = {}) {
   if(!accessTokenAvailable()) return
   try {
-    setStatus('Drive-könyvek beolvasása…')
+    setStatus('A Grapes könyvtármappa frissítése…')
     const folderIds = await findLibraryFolderIds()
     if (!folderIds.length) folderIds.push(await ensureLibraryFolder())
     const foundBooks = (await Promise.all(folderIds.map(listLibraryTree))).flat()
-    if (grapesDriveHasFullReadAccess()) foundBooks.push(...await listAllDriveBooks())
-    const books = [...new Map(foundBooks.map((file) => [file.id, file])).values()]
     const libraryFolder = folderIds[0]
     if (libraryFolder) await loadEbookMetadata(libraryFolder)
+    let books = [...new Map(foundBooks.map((file) => [file.id, file])).values()]
+    if (grapesDriveHasFullReadAccess() && cachedBooks.length) books = [...new Map([...books, ...cachedBooks].map((file) => [file.id, file])).values()]
     renderBooks(books)
-    setStatus(grapesDriveHasFullReadAccess()
-      ? `${books.length} könyv a teljes Google Drive-ban. Az új könyvek a Frissítés gombbal megjelennek.`
-      : `${books.length} könyv látható. A teljes Drive kereséséhez használd az „Automatikus Drive-beolvasás engedélyezése” gombot.`, 'success')
+    setUploadState(`● ${foundBooks.length} könyv a Grapes mappában`, 'success')
+    if (grapesDriveHasFullReadAccess()) {
+      const cacheFresh = cachedAt > Date.now() - FULL_SCAN_CACHE_MS
+      if (!forceFullScan && cacheFresh) {
+        saveLibraryCache(books)
+        setStatus(`${books.length} könyv betöltve. A teljes Drive legutóbbi eredménye gyorsítótárból érkezett.`, 'success')
+        return true
+      }
+      setStatus(`${books.length} könyv már látható. A teljes Drive ellenőrzése a háttérben…`)
+      const allDriveBooks = await listAllDriveBooks()
+      books = [...new Map([...foundBooks, ...allDriveBooks].map((file) => [file.id, file])).values()]
+      renderBooks(books)
+      saveLibraryCache(books)
+      setStatus(`${books.length} könyv a teljes Google Drive-ban.`, 'success')
+    } else {
+      saveLibraryCache(books)
+      setStatus(`${books.length} könyv látható. A teljes Drive keresése külön engedélyezhető.`, 'success')
+    }
     return true
   } catch (error) { setStatus(`A könyvtár betöltése nem sikerült. ${error.message}`,'error'); return false }
 }
@@ -470,7 +514,7 @@ export function initEbookLibrary() {
   $('#ebook-drive-full-read')?.addEventListener('click',enableFullDriveRead)
   $('#ebook-file-input')?.addEventListener('change',(e)=>{const file=e.target.files?.[0];if(file)uploadBook(file);e.target.value=''})
   $('#ebook-upload-btn')?.addEventListener('click',()=>$('#ebook-file-input')?.click())
-  $('#ebook-refresh-btn')?.addEventListener('click',refreshLibrary)
+  $('#ebook-refresh-btn')?.addEventListener('click', () => refreshLibrary({ forceFullScan: true }))
   $('#ebook-metadata-book')?.addEventListener('change', updateMetadataForm)
   $('#ebook-metadata-lookup')?.addEventListener('click', lookupBookMetadata)
   $('#ebook-metadata-apply')?.addEventListener('click', applyMetadataSuggestion)
@@ -490,6 +534,7 @@ export function initEbookLibrary() {
   })
   $('#ebook-receiver-input')?.addEventListener('keydown', (event) => { if (event.key === 'Enter') $('#ebook-receiver-submit')?.click() })
   const sharedConnected = accessTokenAvailable()
+  renderLibraryCache()
   renderDriveConnection()
   setStatus(sharedConnected ? 'A közös Grapes Drive kapcsolat aktív.' : (CLIENT_ID ? 'A Google Drive-ot a főmenüben vagy itt csatlakoztathatod.' : 'Drive nincs konfigurálva. Állítsd be a VITE_GOOGLE_CLIENT_ID értéket.'), sharedConnected ? 'success' : (CLIENT_ID ? '' : 'error'))
   if (sharedConnected) refreshLibrary()

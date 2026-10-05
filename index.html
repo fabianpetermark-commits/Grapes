@@ -1055,6 +1055,18 @@
         </div>
       </section>
 
+        <section class="ebook-library__panel ebook-library__quick-add" aria-labelledby="ebook-quick-add-title">
+          <div class="ebook-library__quick-add-heading">
+            <h2 id="ebook-quick-add-title">Új könyv</h2>
+            <span id="ebook-upload-state" class="ebook-library__quick-status" role="status">Drive kapcsolat ellenőrzése…</span>
+          </div>
+          <div class="ebook-library__quick-add-actions">
+            <button id="ebook-upload-btn" class="btn btn--ghost ebook-library__upload-btn" type="button">Fájl feltöltése</button>
+            <button id="ebook-drive-full-read" class="btn btn--primary ebook-library__full-read-btn" type="button" disabled>Teljes Drive beolvasása</button>
+          </div>
+          <input id="ebook-file-input" type="file" hidden />
+        </section>
+
         <div class="ebook-library__grid">
           <section class="ebook-library__panel" aria-labelledby="ebook-list-title">
             <div class="ebook-library__panel-head"><h2 id="ebook-list-title">Könyvtár</h2></div>
@@ -1062,12 +1074,6 @@
             <div id="ebook-empty" class="ebook-library__empty">Még nincs könyv a könyvtárban.</div>
           </section>
           <aside class="ebook-library__panel ebook-library__side">
-            <h2>Új könyv</h2>
-            <p>A könyvtár minden bináris e-book fájlt kezel, kiterjesztéstől függetlenül.</p>
-            <div class="ebook-library__drop"><strong>Google Drive</strong><br />A fájl a „Grapes E-book Library” mappába kerül.</div>
-            <button id="ebook-upload-btn" class="btn btn--ghost btn--block ebook-library__upload-btn" type="button">Fájl feltöltése a számítógépről</button>
-            <button id="ebook-drive-full-read" class="btn btn--primary btn--block ebook-library__full-read-btn" type="button" disabled>Automatikus Drive-beolvasás engedélyezése</button>
-            <p>Engedélyezés után a Grapes külön kijelölés nélkül beolvassa a Drive-on talált könyveket. A Google ehhez a teljes Drive olvasási és letöltési jogát kéri.</p>
             <div class="ebook-library__reader-setup">
               <h3>E-book olvasó</h3>
               <p>A párosításkor a könyvtár támogatott könyvei linkkel olvasható megosztást kapnak. Az olvasó ezután saját, tartós azonosítóval éri el a listát.</p>
@@ -1082,7 +1088,6 @@
               <iframe id="ebook-reader-pair-code" class="ebook-library__pair-frame" title="Az e-olvasó párosítási kódja" referrerpolicy="no-referrer" hidden></iframe>
               <a class="ebook-library__reader-link" href="e/">Könnyített e-olvasó oldal</a>
             </div>
-            <input id="ebook-file-input" type="file" hidden />
           </aside>
         </div>
         <section id="ebook-metadata-panel" class="ebook-library__panel ebook-library__metadata" aria-labelledby="ebook-metadata-title-heading">
