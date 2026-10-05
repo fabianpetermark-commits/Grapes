@@ -36,8 +36,9 @@ app, but does not configure future GitHub deployments.
 ## Release checks
 
 - Run `npm run test:ebook` and `npm run build` from the repository root.
-- Request a book code and a reader-pairing code from Grapes. Each code must appear
-  inside the current page, without opening a new tab. Check an error response too.
+- Request a book code and a reader-pairing code from Grapes. The reader code must
+  arrive in the top control bar through the verified iframe message bridge,
+  without opening a new tab. Check an error response and code expiry too.
 - Refresh a connected Grapes tab: its unexpired Drive session should survive.
   Once the token expires, reconnect from a user click; the remembered account is
   supplied as Google's `login_hint`, but Google can still require interaction.

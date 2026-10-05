@@ -1,5 +1,5 @@
 const CODE_LENGTH = 6;
-const BROKER_API_VERSION = 1;
+const BROKER_API_VERSION = 2;
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const TTL_MS = 20 * 60 * 1000;
 const STORE_PREFIX = 'ebook_transfer_';
@@ -9,6 +9,7 @@ const READER_TOKEN_TTL_MS = 180 * 24 * 60 * 60 * 1000;
 const READER_MARKER_TTL_MS = 10 * 60 * 1000;
 const FOLDER_NAME = 'Grapes E-book Library';
 const ALLOWED_RETURN_URL = 'https://fabianpetermark-commits.github.io/Grapes/';
+const ALLOWED_PARENT_ORIGIN = 'https://fabianpetermark-commits.github.io';
 const READER_RETURN_URL = 'https://fabianpetermark-commits.github.io/Grapes/ebook-reader.html';
 const ALLOWED_BOOK_EXTENSIONS = ['epub', 'pdf', 'mobi', 'azw', 'azw3', 'prc', 'txt', 'cbz', 'cbr'];
 
@@ -36,10 +37,13 @@ function pairingOutput(output, p) {
   return output;
 }
 
-function embeddedCodePage(code, label, singleUse) {
+function embeddedCodePage(code, label, singleUse, messageType) {
+  const bridge = messageType
+    ? '<script>window.parent.postMessage(' + JSON.stringify({ type: messageType, code: code, expiresInSeconds: Math.round(TTL_MS / 1000) }) + ',' + JSON.stringify(ALLOWED_PARENT_ORIGIN) + ');</script>'
+    : '';
   return HtmlService.createHtmlOutput('<!doctype html><html lang="hu"><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Párosítási kód</title>' +
     '<style>body{margin:0;padding:24px 12px;background:#fff;color:#111;font:16px Arial,sans-serif;text-align:center;overflow-wrap:anywhere}.code{font-size:36px;font-weight:bold;letter-spacing:.12em;margin:24px 0}</style></head><body>' +
-    '<p>' + escapeHtml(label) + '</p><div class="code">' + code + '</div><p>A kód 20 percig érvényes' + (singleUse ? ' és egyszer használható' : '') + '.</p></body></html>');
+    '<p>' + escapeHtml(label) + '</p><div class="code">' + code + '</div><p>A kód 20 percig érvényes' + (singleUse ? ' és egyszer használható' : '') + '.</p>' + bridge + '</body></html>');
 }
 
 function createTransferPage(p) {
@@ -164,7 +168,7 @@ function createReaderPairingPage(p) {
       marker.setTrashed(true);
     } finally { lock.releaseLock(); }
 
-    if (p.embed === '1') return embeddedCodePage(code, 'Írd be ezt a kódot az e-book olvasón:', true);
+    if (p.embed === '1') return embeddedCodePage(code, 'Írd be ezt a kódot az e-book olvasón:', true, 'grapes-reader-pairing-code');
     return HtmlService.createHtmlOutput(
       '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>E-olvasó párosítás</title>' +
       '<style>body{font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:28px;text-align:center}.code{font-size:42px;font-weight:bold;letter-spacing:.18em;margin:24px 0}.box{border:1px solid #bbb;padding:22px;border-radius:8px}a{color:#111}</style></head><body>' +

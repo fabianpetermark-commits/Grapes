@@ -322,6 +322,29 @@ test('persistent reader pairing uses an inline frame with the verified marker', 
   assert.equal(a.nodes.get('#ebook-reader-pair-btn').disabled, false)
 })
 
+test('reader pairing code bridge accepts only the selected iframe and expires the code', () => {
+  const a = app()
+  const sourceWindow = {}
+  const frame = a.run('$("#ebook-reader-pair-code")')
+  frame.contentWindow = sourceWindow
+  let expire
+  a.context.window.setTimeout = (callback, delay) => { if (delay === 120000) expire = callback; return 1 }
+  a.context.window.clearTimeout = () => {}
+  a.context.message = { source: {}, data: { type: 'grapes-reader-pairing-code', code: 'BAD234', expiresInSeconds: 120 } }
+  a.run('handleReaderPairingMessage(message)')
+  assert.equal(a.nodes.has('#ebook-reader-pair-value'), false)
+
+  a.context.message = { source: sourceWindow, data: { type: 'grapes-reader-pairing-code', code: 'ABC234', expiresInSeconds: 120 } }
+  a.run('handleReaderPairingMessage(message)')
+  assert.equal(a.nodes.get('#ebook-reader-pair-value').value, 'ABC234')
+  assert.match(a.nodes.get('#ebook-reader-pair-status').textContent, /2 percig/)
+  assert.equal(frame.hidden, true)
+  assert.equal(typeof expire, 'function')
+  expire()
+  assert.equal(a.nodes.get('#ebook-reader-pair-value').value, '')
+  assert.match(a.nodes.get('#ebook-reader-pair-status').textContent, /lejárt/)
+})
+
 test('reader pairing cleans old internal markers before creating one stable marker', async () => {
   const patched = []
   let uploadedMetadata
@@ -357,7 +380,7 @@ test('automatic broker deployment stays aligned with every live client URL', () 
   assert.equal(deploymentId(readerPageSource), expected)
   assert.match(brokerWorkflowSource, /clasp push --force/)
   assert.match(brokerWorkflowSource, /clasp deploy --deploymentId/)
-  assert.match(brokerSource, /BROKER_API_VERSION = 1/)
+  assert.match(brokerSource, /BROKER_API_VERSION = 2/)
   assert.match(brokerSource, /action === 'health'/)
 })
 
@@ -373,6 +396,10 @@ test('only explicit embedded creation pages allow framing, including readable er
   assert.match(compact.html, /ABC234/)
   assert.match(compact.html, /&lt;book&gt;/)
   assert.doesNotMatch(compact.html, /quickchart|<iframe|<script/)
+  const bridged = c.embeddedCodePage('ABC234', 'Olvasó', true, 'grapes-reader-pairing-code')
+  assert.match(bridged.html, /window\.parent\.postMessage/)
+  assert.match(bridged.html, /grapes-reader-pairing-code/)
+  assert.match(bridged.html, /fabianpetermark-commits\.github\.io/)
 })
 test('broker rejects private files and foreign return URLs, expires codes and rechecks sharing', () => {
   const records = new Map()

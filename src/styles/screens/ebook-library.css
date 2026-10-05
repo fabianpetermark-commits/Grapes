@@ -26,15 +26,19 @@
 }
 .ebook-library__upload-btn{min-height:40px;border:1px solid var(--color-border-strong);white-space:normal}
 .ebook-library__full-read-btn{min-height:48px;white-space:normal;line-height:1.3}
-.ebook-library__quick-add{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:14px 18px;margin-bottom:18px}
+.ebook-library__quick-add{display:flex;align-items:center;justify-content:space-between;gap:12px 18px;padding:14px 18px;margin-bottom:18px;position:relative;flex-wrap:wrap}
 .ebook-library__quick-add-heading{display:flex;align-items:center;gap:14px;min-width:0}
 .ebook-library__quick-add-heading h2{margin:0;font-size:16px;white-space:nowrap}
 .ebook-library__quick-status{color:var(--color-text-muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ebook-library__quick-status[data-kind="success"]{color:var(--color-success)}
 .ebook-library__quick-status[data-kind="error"]{color:var(--color-danger)}
-.ebook-library__quick-add-actions{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.ebook-library__quick-add-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex:1 1 620px;flex-wrap:wrap}
 .ebook-library__quick-add .ebook-library__upload-btn,.ebook-library__quick-add .ebook-library__full-read-btn{min-height:40px}
-@media(max-width:700px){.ebook-library__quick-add{align-items:stretch;flex-direction:column}.ebook-library__quick-add-heading{justify-content:space-between}.ebook-library__quick-add-actions{display:grid;grid-template-columns:1fr}.ebook-library__quick-status{white-space:normal}.ebook-library__quick-add .btn{width:100%}}
+.ebook-library__pair-control{width:180px;min-height:40px}
+.ebook-library__pair-value{font-weight:800;letter-spacing:.14em;text-align:center;text-transform:uppercase}
+.ebook-library__pair-status{flex:1 0 100%;text-align:right}
+.ebook-library__pair-bridge{position:absolute;width:1px;height:1px;left:-10000px;top:-10000px;border:0;opacity:0;pointer-events:none}
+@media(max-width:700px){.ebook-library__quick-add{align-items:stretch;flex-direction:column}.ebook-library__quick-add-heading{justify-content:space-between}.ebook-library__quick-add-actions{display:grid;grid-template-columns:1fr}.ebook-library__quick-status{white-space:normal}.ebook-library__quick-add .btn,.ebook-library__pair-control{width:100%}.ebook-library__pair-status{text-align:left}}
 
 /* Az alkalmazás dokumentuma nem görget (a vászonalapú szerkesztők miatt),
    ezért az e-book nézeteknek saját, teljes magasságú scroll-root kell. */

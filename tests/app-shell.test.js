@@ -54,4 +54,9 @@ test('the e-book manager exposes the USB reader synchronization controls', async
   assert.match(html, /id="ebook-sync"/)
   assert.match(html, /USB-s e-reader szinkron/)
   assert.match(source, /ebook-reader-sync\.js/)
+  assert.match(html, /id="ebook-reader-pair-value"/)
+  assert.doesNotMatch(html, /id="ebook-drive-full-read"/)
+  const controls = ['ebook-upload-btn', 'ebook-reader-pair-btn', 'ebook-reader-pair-value', 'ebook-reader-connect', 'ebook-reader-state']
+  const positions = controls.map(id => html.indexOf(`id="${id}"`))
+  assert.ok(positions.every((position, index) => position >= 0 && (!index || position > positions[index - 1])))
 })

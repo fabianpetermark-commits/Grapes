@@ -21,6 +21,8 @@ let ebookMetadataFileId = null
 let pendingMetadataSuggestion = null
 let cachedBooks = []
 let cachedAt = 0
+let readerPairMessageTimer = null
+let readerPairExpiryTimer = null
 const $ = (selector) => document.querySelector(selector)
 const ext = (name = '') => name.includes('.') ? name.split('.').pop().toLowerCase() : 'FILE'
 const isShareableBook = (name = '') => SHAREABLE_BOOK_EXTENSIONS.has(ext(name))
@@ -90,17 +92,43 @@ function showPairingFrame(selector, url) {
   frame.src = embeddedUrl.toString()
   frame.hidden = false
 }
+function setReaderPairStatus(message, kind = '') {
+  const node = $('#ebook-reader-pair-status')
+  if (node) { node.textContent = message; node.dataset.kind = kind }
+}
+function clearReaderPairCode(message = '') {
+  window.clearTimeout?.(readerPairMessageTimer)
+  window.clearTimeout?.(readerPairExpiryTimer)
+  readerPairMessageTimer = null
+  readerPairExpiryTimer = null
+  const input = $('#ebook-reader-pair-value')
+  if (input) input.value = ''
+  setReaderPairStatus(message)
+}
+function handleReaderPairingMessage(event) {
+  const frame = $('#ebook-reader-pair-code')
+  if (!frame?.contentWindow || event.source !== frame.contentWindow) return
+  const code = String(event.data?.code || '').trim().toUpperCase()
+  if (event.data?.type !== 'grapes-reader-pairing-code' || !/^[A-Z0-9]{6}$/.test(code)) return
+  const input = $('#ebook-reader-pair-value')
+  if (input) input.value = code
+  window.clearTimeout?.(readerPairMessageTimer)
+  readerPairMessageTimer = null
+  const expiresInSeconds = Math.min(3600, Math.max(60, Number(event.data?.expiresInSeconds) || 1200))
+  setReaderPairStatus(`A kód ${Math.round(expiresInSeconds / 60)} percig érvényes.`, 'success')
+  readerPairExpiryTimer = window.setTimeout?.(() => {
+    if (input) input.value = ''
+    setReaderPairStatus('A párosítási kód lejárt. Kérj új kódot.', 'error')
+  }, expiresInSeconds * 1000)
+  frame.hidden = true
+  frame.removeAttribute('src')
+}
 function renderDriveConnection() {
   const connected = isGrapesDriveConnected()
   const button = $('#ebook-drive-connect')
   if (button) { button.disabled = connected; button.textContent = connected ? 'Google Drive csatlakoztatva' : 'Google Drive csatlakoztatása' }
   const disconnect = $('#ebook-drive-disconnect')
   if (disconnect) disconnect.disabled = !connected
-  const fullRead = $('#ebook-drive-full-read')
-  if (fullRead) {
-    fullRead.disabled = !connected || grapesDriveHasFullReadAccess()
-    fullRead.textContent = grapesDriveHasFullReadAccess() ? 'Automatikus Drive-beolvasás aktív' : 'Automatikus Drive-beolvasás engedélyezése'
-  }
   setUploadState(connected ? '● Drive csatlakoztatva · feltöltésre kész' : '○ A Drive nincs csatlakoztatva', connected ? 'success' : '')
 }
 function handleTransferLink() {
@@ -257,16 +285,6 @@ async function disconnectDrive() {
   renderBooks([])
   setStatus('A Google Drive kapcsolat leválasztva. A Drive-on lévő fájlok nem változtak.', 'success')
 }
-async function enableFullDriveRead() {
-  try {
-    setStatus('A teljes Drive olvasási engedélyének kérése…')
-    await connectGrapesDrive({ fullRead: true })
-    renderDriveConnection()
-    await refreshLibrary({ forceFullScan: true })
-  } catch (error) {
-    setStatus(`Az automatikus beolvasás nem indult el. ${error.message}`, 'error')
-  }
-}
 const driveRequest = grapesDriveRequest
 function accessTokenAvailable() { return isGrapesDriveConnected() }
 async function findLibraryFolderIds() {
@@ -388,6 +406,7 @@ async function createReaderPairing() {
   const button = $('#ebook-reader-pair-btn')
   if (button.disabled) return
   button.disabled = true
+  clearReaderPairCode('A párosítási kód előkészítése…')
   $('#ebook-reader-pair-code').hidden = true
   try {
     setStatus('Az e-olvasó könyvtár előkészítése…')
@@ -407,9 +426,13 @@ async function createReaderPairing() {
     })
 
     showPairingFrame('#ebook-reader-pair-code', brokerUrl)
-    setStatus(`${books.length} könyv előkészítve. A párosítási kód alább jelenik meg.`, 'success')
+    setReaderPairStatus(`${books.length} könyv előkészítve. A párosítási kód érkezésére várunk…`)
+    readerPairMessageTimer = window.setTimeout?.(() => {
+      const input = $('#ebook-reader-pair-value')
+      if (!input?.value) setReaderPairStatus('A párosítási kód nem érkezett meg. Próbáld újra.', 'error')
+    }, 20000)
   } catch (error) {
-    setStatus(`Az e-olvasó párosítása nem sikerült. ${error.message}`, 'error')
+    setReaderPairStatus(`Az e-olvasó párosítása nem sikerült. ${error.message}`, 'error')
   } finally { button.disabled = false }
 }
 async function refreshLibrary({ forceFullScan = false } = {}) {
@@ -531,9 +554,9 @@ export function initEbookLibrary() {
   initialized=true
   onGrapesDriveChange(renderDriveConnection)
   $('#ebook-reader-pair-btn')?.addEventListener('click', createReaderPairing)
+  $('#ebook-reader-pair-value')?.addEventListener('click', (event) => event.currentTarget.select())
   $('#ebook-drive-connect')?.addEventListener('click',connectDrive)
   $('#ebook-drive-disconnect')?.addEventListener('click',disconnectDrive)
-  $('#ebook-drive-full-read')?.addEventListener('click',enableFullDriveRead)
   $('#ebook-file-input')?.addEventListener('change',(e)=>{const file=e.target.files?.[0];if(file)uploadBook(file);e.target.value=''})
   $('#ebook-upload-btn')?.addEventListener('click',()=>$('#ebook-file-input')?.click())
   $('#ebook-refresh-btn')?.addEventListener('click', () => refreshLibrary({ forceFullScan: true }))
@@ -555,6 +578,7 @@ export function initEbookLibrary() {
     window.location.href = url
   })
   $('#ebook-receiver-input')?.addEventListener('keydown', (event) => { if (event.key === 'Enter') $('#ebook-receiver-submit')?.click() })
+  window.addEventListener?.('message', handleReaderPairingMessage)
   const sharedConnected = accessTokenAvailable()
   renderLibraryCache()
   renderDriveConnection()
