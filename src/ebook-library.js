@@ -455,7 +455,7 @@ export function initEbookLibrary() {
   import('./ebook-reader-sync.js').then(({ initReaderSync }) => initReaderSync()).catch((error) => console.warn('Az USB-s e-reader modul nem tölthető be:', error))
   const params = new URLSearchParams(window.location.search)
   const directReceiver = params.has('ebook-pair') || params.has('ebook-reader')
-  const requestedView = sessionStorage.getItem('grapes-ebook-view') === 'organizer' ? 'organizer' : 'library'
+  const requestedView = window.sessionStorage?.getItem('grapes-ebook-view') === 'organizer' ? 'organizer' : 'library'
   if (initialized) {
     if (directReceiver || requestedView === 'library') showEbookManager()
     else showEbookOrganizer()
