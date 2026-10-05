@@ -169,42 +169,64 @@ function updateMetadataForm() {
   const data = ebookMetadata[id] || {}
   if ($('#ebook-metadata-title')) $('#ebook-metadata-title').value = data.title || ''
   if ($('#ebook-metadata-author')) $('#ebook-metadata-author').value = data.author || ''
-  if ($('#ebook-metadata-suggestion')) $('#ebook-metadata-suggestion').textContent = id ? `Javaslat: ${suggestMetadata(currentBooks.find((book) => book.id === id)?.name || '')}` : ''
-  pendingMetadataSuggestion = null
-  if ($('#ebook-metadata-apply')) $('#ebook-metadata-apply').disabled = true
+  pendingMetadataSuggestion = id ? parseFilenameMetadata(currentBooks.find((book) => book.id === id)?.name || '') : null
+  setMetadataMessage(id ? `Fájlnév alapján: ${suggestMetadata(currentBooks.find((book) => book.id === id)?.name || '')}` : '')
+  if ($('#ebook-metadata-apply')) $('#ebook-metadata-apply').disabled = !pendingMetadataSuggestion
+}
+function setMetadataMessage(message, kind = '') {
+  const node = $('#ebook-metadata-suggestion')
+  if (node) { node.textContent = message; node.dataset.kind = kind }
 }
 async function lookupBookMetadata() {
   const id = $('#ebook-metadata-book')?.value
-  if (!id) return setStatus('Válassz ki egy könyvet a webes kereséshez.', 'error')
+  if (!id) { setMetadataMessage('Válassz ki egy könyvet a webes kereséshez.', 'error'); return }
   const book = currentBooks.find((item) => item.id === id)
-  const query = (book?.name || '').replace(/\.[^.]+$/, '').replace(/[._]+/g, ' ').trim()
-  if (!query) return setStatus('Ehhez a fájlhoz nincs kereshető név.', 'error')
+  const typedTitle = $('#ebook-metadata-title')?.value.trim() || ''
+  const typedAuthor = $('#ebook-metadata-author')?.value.trim() || ''
+  const filename = (book?.name || '').replace(/\.[^.]+$/, '').replace(/[._]+/g, ' ').trim()
+  const parsed = parseFilenameMetadata(book?.name || '')
+  const title = typedTitle || parsed?.title || ''
+  const author = typedAuthor || parsed?.author || ''
+  if (!title && !author && !filename) { setMetadataMessage('Adj meg címet vagy szerzőt a kereséshez.', 'error'); return }
   const button = $('#ebook-metadata-lookup'); if (button) button.disabled = true
+  setMetadataMessage('Keresés az Open Library adatbázisában…')
+  let timeout
   try {
-    const url = `https://openlibrary.org/search.json?${new URLSearchParams({ title: query, fields: 'title,author_name,first_publish_year,cover_i', limit: '5', lang: 'hu' })}`
-    const response = await fetch(url)
+    const search = new URLSearchParams({ fields: 'title,author_name,first_publish_year,cover_i,key', limit: '10', lang: 'hu' })
+    if (title) search.set('title', title)
+    if (author) search.set('author', author)
+    if (!title && !author) search.set('q', filename)
+    const controller = new AbortController()
+    timeout = window.setTimeout(() => controller.abort(), 12000)
+    const response = await fetch(`https://openlibrary.org/search.json?${search}`, { signal: controller.signal })
     if (!response.ok) throw new Error(`Webes keresési hiba (${response.status})`)
     const result = await response.json()
     const first = result.docs?.[0]
     if (!first?.title) throw new Error('Nem találtam biztos könyvtalálatot.')
     pendingMetadataSuggestion = { title: first.title, author: first.author_name?.[0] || '' }
     const year = first.first_publish_year ? ` · ${first.first_publish_year}` : ''
-    $('#ebook-metadata-suggestion').textContent = `Találat: ${first.title}${pendingMetadataSuggestion.author ? ` — ${pendingMetadataSuggestion.author}` : ''}${year}`
+    setMetadataMessage(`Találat: ${first.title}${pendingMetadataSuggestion.author ? ` — ${pendingMetadataSuggestion.author}` : ''}${year}`, 'success')
     $('#ebook-metadata-apply').disabled = false
-    setStatus('Találtam egy lehetséges könyvadatot. Ellenőrizd, majd alkalmazd.', 'success')
-  } catch (error) { setStatus(`A webes keresés nem sikerült. ${error.message}`, 'error') } finally { if (button) button.disabled = false }
+  } catch (error) {
+    const message = error?.name === 'AbortError' ? 'A keresés túllépte az időkorlátot.' : error.message
+    setMetadataMessage(`A webes keresés nem sikerült. ${message}`, 'error')
+  } finally { window.clearTimeout(timeout); if (button) button.disabled = false }
 }
 function applyMetadataSuggestion() {
-  if (!pendingMetadataSuggestion) return
+  if (!pendingMetadataSuggestion) { setMetadataMessage('Nincs alkalmazható javaslat.', 'error'); return }
   $('#ebook-metadata-title').value = pendingMetadataSuggestion.title || ''
   $('#ebook-metadata-author').value = pendingMetadataSuggestion.author || ''
   $('#ebook-metadata-apply').disabled = true
-  $('#ebook-metadata-suggestion').textContent += ' · Alkalmazva, mentéshez kattints a Metaadatok mentése gombra.'
+  setMetadataMessage('A javaslat alkalmazva. A véglegesítéshez kattints a Metaadatok mentése gombra.', 'success')
+}
+function parseFilenameMetadata(name = '') {
+  const clean = name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').replace(/\s+/g, ' ').trim()
+  const match = clean.match(/^(.+?)\s+-\s+(.+)$/)
+  return match ? { author: match[1].trim(), title: match[2].trim() } : null
 }
 function suggestMetadata(name = '') {
-  const clean = name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').trim()
-  const match = clean.match(/^(.+?)\s+-\s+(.+)$/)
-  return match ? `Szerző: ${match[1].trim()} · Cím: ${match[2].trim()}` : 'A fájlnévből nem azonosítható biztosan a szerző és a cím.'
+  const parsed = parseFilenameMetadata(name)
+  return parsed ? `Szerző: ${parsed.author} · Cím: ${parsed.title}` : 'nem azonosítható biztosan a szerző és a cím.'
 }
 function openMetadataEditor(id) { const select = $('#ebook-metadata-book'); if (select) { select.value = id; updateMetadataForm(); $('#ebook-metadata-panel')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }) } }
 async function saveMetadataFromForm() {
@@ -479,7 +501,7 @@ async function sendBook(fileId) {
 function setEbookMode(mode = 'library') {
   const manager = $('#ebook-manager-view')
   if (manager) manager.dataset.ebookMode = mode
-  const labels = { library: 'E-book Könyvtár', organizer: 'Könyvrendező', sync: 'USB-s szinkron' }
+  const labels = { library: 'E-book Könyvtár', organizer: 'Könyvszerkesztő' }
   const sub = document.querySelector('#ebook-toolbar .toolbar__brand-sub')
   if (sub) sub.textContent = labels[mode] || labels.library
 }

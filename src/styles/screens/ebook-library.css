@@ -67,6 +67,8 @@
 .ebook-library__metadata-form{display:grid;grid-template-columns:minmax(180px,1.2fr) minmax(150px,1fr) minmax(150px,1fr) auto;gap:12px;align-items:end}
 .ebook-library__metadata-form .field{min-width:0}
 .ebook-library__metadata-suggestion{min-height:18px;margin:12px 0 0;color:var(--color-text-muted);font-size:13px}
+.ebook-library__metadata-suggestion[data-kind="success"]{color:var(--color-success)}
+.ebook-library__metadata-suggestion[data-kind="error"]{color:var(--color-danger)}
 @media (max-width:760px){.ebook-library__metadata-form{grid-template-columns:1fr}.ebook-library__metadata-form .btn{width:100%}.ebook-library__metadata-note{display:none}}
 
 #ebook-manager-view[data-ebook-mode="library"] #ebook-metadata-panel{display:none}
