@@ -1092,7 +1092,14 @@
             <div class="ebook-library__reader-setup">
               <h3>E-book olvasó</h3>
               <p>A párosításkor a könyvtár támogatott könyvei linkkel olvasható megosztást kapnak. Az olvasó ezután saját, tartós azonosítóval éri el a listát.</p>
-              <button id="ebook-reader-pair-btn" class="btn btn--primary btn--block" type="button">E-olvasó párosítása</button>
+            <button id="ebook-reader-pair-btn" class="btn btn--primary btn--block" type="button">E-olvasó párosítása</button>
+            <section class="ebook-library__reader-sync" aria-labelledby="ebook-reader-sync-title">
+              <h3 id="ebook-reader-sync-title">USB-s e-reader szinkron</h3>
+              <p>Csatlakoztasd az e-readert kábellel, válaszd ki a könyvmappáját, majd indítsd el a kétirányú szinkronizálást.</p>
+              <div class="ebook-library__reader-sync-actions"><button id="ebook-reader-connect" class="btn btn--ghost btn--block" type="button">E-reader csatlakoztatása</button><button id="ebook-sync" class="btn btn--primary btn--block" type="button">Szinkronizálás</button></div>
+              <p id="ebook-reader-state" role="status">○ Nincs csatlakoztatva</p><p id="ebook-reader-support" class="ebook-library__support" hidden>Ehhez Chrome vagy Edge asztali böngésző kell.</p>
+              <ul id="ebook-sync-list" class="ebook-library__reader-sync-list"></ul><p id="ebook-sync-status" role="status">A Drive és az e-reader csatlakoztatása után használható.</p>
+            </section>
               <iframe id="ebook-reader-pair-code" class="ebook-library__pair-frame" title="Az e-olvasó párosítási kódja" referrerpolicy="no-referrer" hidden></iframe>
               <a class="ebook-library__reader-link" href="e/">Könnyített e-olvasó oldal</a>
             </div>

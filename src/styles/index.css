@@ -18,6 +18,7 @@
 @import './screens/splash.css';
 @import './screens/brochure.css';
 @import './screens/qr-studio.css';
+@import './screens/ebook-reader-sync.css';
 
 /* A 3D stúdió (screens/studio.css) és a legacy GrapesJS-motor
    (screens/legacy.css, legacy-grapes.css) stílusait a saját moduljuk

@@ -47,3 +47,11 @@ test('the workspace menu uses one vertical category list with menu-like module r
   assert.match(css, /\.module-group\s*\{[^}]*break-inside:\s*avoid/)
   assert.match(css, /\.card\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto auto/)
 })
+
+test('the e-book manager exposes the USB reader synchronization controls', async () => {
+  const [html, source] = await Promise.all([read('index.html'), read('src/ebook-library.js')])
+  assert.match(html, /id="ebook-reader-connect"/)
+  assert.match(html, /id="ebook-sync"/)
+  assert.match(html, /USB-s e-reader szinkron/)
+  assert.match(source, /ebook-reader-sync\.js/)
+})

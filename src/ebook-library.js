@@ -350,6 +350,7 @@ function showEbookManager() {
   if (accessTokenAvailable()) refreshLibrary()
 }
 export function initEbookLibrary() {
+  import('./ebook-reader-sync.js').then(({ initReaderSync }) => initReaderSync()).catch((error) => console.warn('Az USB-s e-reader modul nem tölthető be:', error))
   const params = new URLSearchParams(window.location.search)
   const directReceiver = params.has('ebook-pair') || params.has('ebook-reader')
   if (initialized) {
