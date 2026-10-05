@@ -28,9 +28,18 @@ const projectModules = [
 
 for (const [selector, screen] of Object.entries({
   '#pick-brochure': 'brochure', '#pick-studio': 'studio', '#pick-qr': 'qr',
-  '#pick-ebook': 'ebook', '#pick-ebook-organizer': 'ebook', '#pick-email': 'email', '#pick-finance': 'finance',
+  '#pick-email': 'email', '#pick-finance': 'finance',
   '#pick-billing': 'billing',
 })) el(selector).addEventListener('click', () => showScreen(screen))
+
+el('#pick-ebook').addEventListener('click', () => {
+  sessionStorage.setItem('grapes-ebook-view', 'library')
+  showScreen('ebook')
+})
+el('#pick-ebook-organizer').addEventListener('click', () => {
+  sessionStorage.setItem('grapes-ebook-view', 'organizer')
+  showScreen('ebook')
+})
 
 function renderAccount() {
   const account = getGrapesAccount() || { name: 'Google', email: '', photo: '' }

@@ -66,6 +66,7 @@
       <symbol id="i-cube" viewBox="0 0 24 24"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9Z" /><path d="m4 7.5 8 4.5 8-4.5M12 12v9" /></symbol>
       <symbol id="i-layout" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2" /><path d="M3.5 9.5h17M9.5 9.5v10" /></symbol>
       <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 19.5V11h4v8.5M10 19.5V5h4v14.5M16 19.5V8h4v11.5M3 19.5h18" /></symbol>
+      <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4.5 19.5h4l10.8-10.8a2 2 0 0 0 0-2.8l-1.2-1.2a2 2 0 0 0-2.8 0L4.5 15.5Z" /><path d="m13.8 6.2 4 4M4.5 15.5l4 4" /></symbol>
     </svg>
 
     <section id="login-screen" class="login-screen" aria-labelledby="login-title">
@@ -1002,40 +1003,7 @@
           <span class="btn__label">Főmenü</span>
         </button>
       </header>
-      <main id="ebook-hub-view" class="ebook-library__hub">
-        <div class="ebook-library__hub-intro">
-          <p class="ebook-library__eyebrow">E-book központ</p>
-          <h1 class="ebook-library__title">Hogyan szeretnéd használni?</h1>
-          <p class="ebook-library__subtitle">A teljes könyvtárkezelő modern böngészőre készült. Az e-olvasó mód külön, könnyű oldalt használ régebbi böngészőkhöz.</p>
-        </div>
-        <div class="ebook-library__hub-grid">
-          <article class="ebook-library__hub-card">
-            <div class="ebook-library__hub-icon" aria-hidden="true">K</div>
-            <h2>Könyvtár kezelése</h2>
-            <p>Google Drive csatlakozás, automatikus könyvbeolvasás, feltöltés és e-olvasó párosítása.</p>
-            <button id="ebook-open-manager" class="btn btn--primary btn--block" type="button">Könyvtár megnyitása</button>
-          </article>
-          <article class="ebook-library__hub-card">
-            <div class="ebook-library__hub-icon" aria-hidden="true">R</div>
-            <h2>Könyvrendező</h2>
-            <p>Címek, szerzők és automatikusan keresett könyvmetaadatok külön felületen.</p>
-            <button id="ebook-open-organizer" class="btn btn--primary btn--block" type="button">Könyvrendező megnyitása</button>
-          </article>
-          <article class="ebook-library__hub-card">
-            <div class="ebook-library__hub-icon" aria-hidden="true">S</div>
-            <h2>USB-s szinkron</h2>
-            <p>Drive és a kábellel csatlakoztatott e-reader kétirányú szinkronizálása.</p>
-            <button id="ebook-open-sync" class="btn btn--primary btn--block" type="button">Szinkron megnyitása</button>
-          </article>
-          <article class="ebook-library__hub-card">
-            <div class="ebook-library__hub-icon" aria-hidden="true">O</div>
-            <h2>E-book olvasó</h2>
-            <p>Könnyített oldal e-ink és régebbi böngészőkhöz. Párosítás után automatikusan megjegyzi az olvasót.</p>
-            <a class="btn btn--ghost btn--block" href="e/">E-olvasó oldal megnyitása</a>
-          </article>
-        </div>
-      </main>
-      <div id="ebook-manager-view" hidden>
+      <div id="ebook-manager-view" data-ebook-mode="library">
       <section id="ebook-receiver-panel" class="ebook-library__transfer ebook-library__receiver" hidden>
         <div class="ebook-library__transfer-card">
           <p class="ebook-library__eyebrow">E-olvasó mód</p>
@@ -1058,7 +1026,6 @@
             <p class="ebook-library__subtitle">A könyvek a saját Google Drive-od dedikált könyvtárában maradnak. Innen később közvetlenül az e-olvasóra küldhetők.</p>
           </div>
           <div class="ebook-library__actions">
-            <button id="ebook-manager-back" class="btn btn--ghost" type="button">E-book központ</button>
             <button id="ebook-refresh-btn" class="btn btn--ghost" type="button">Frissítés</button>
             <button id="ebook-drive-connect" class="btn btn--primary" type="button">Google Drive csatlakoztatása</button>
             <button id="ebook-drive-disconnect" class="btn btn--danger" type="button" disabled>Drive leválasztása</button>

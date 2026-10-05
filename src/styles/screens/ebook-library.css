@@ -65,14 +65,3 @@
 #ebook-manager-view[data-ebook-mode="organizer"] #ebook-status,
 #ebook-manager-view[data-ebook-mode="organizer"] #ebook-transfer-panel,
 #ebook-manager-view[data-ebook-mode="organizer"] .ebook-library__grid{display:none}
-#ebook-manager-view[data-ebook-mode="sync"] .ebook-library__hero,
-#ebook-manager-view[data-ebook-mode="sync"] #ebook-status,
-#ebook-manager-view[data-ebook-mode="sync"] #ebook-transfer-panel,
-#ebook-manager-view[data-ebook-mode="sync"] #ebook-metadata-panel{display:none}
-#ebook-manager-view[data-ebook-mode="sync"] .ebook-library__grid{display:block}
-#ebook-manager-view[data-ebook-mode="sync"] .ebook-library__grid > section{display:none}
-#ebook-manager-view[data-ebook-mode="sync"] .ebook-library__side{display:block;max-width:760px;margin:0 auto}
-#ebook-manager-view[data-ebook-mode="sync"] .ebook-library__side > *{display:none}
-#ebook-manager-view[data-ebook-mode="sync"] .ebook-library__side > .ebook-library__reader-setup{display:block}
-#ebook-manager-view[data-ebook-mode="sync"] .ebook-library__reader-setup > *{display:none}
-#ebook-manager-view[data-ebook-mode="sync"] .ebook-library__reader-setup > .ebook-library__reader-sync{display:block}

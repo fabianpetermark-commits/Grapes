@@ -432,12 +432,6 @@ async function sendBook(fileId) {
     setStatus(`Az átvitel előkészítése nem sikerült. ${error.message}`, 'error')
   }
 }
-function showEbookHub() {
-  const hub = $('#ebook-hub-view')
-  const manager = $('#ebook-manager-view')
-  if (hub) hub.hidden = false
-  if (manager) manager.hidden = true
-}
 function setEbookMode(mode = 'library') {
   const manager = $('#ebook-manager-view')
   if (manager) manager.dataset.ebookMode = mode
@@ -446,42 +440,30 @@ function setEbookMode(mode = 'library') {
   if (sub) sub.textContent = labels[mode] || labels.library
 }
 function showEbookManager() {
-  const hub = $('#ebook-hub-view')
   const manager = $('#ebook-manager-view')
-  if (hub) hub.hidden = true
   if (manager) manager.hidden = false
   setEbookMode('library')
   if (accessTokenAvailable()) refreshLibrary()
 }
 function showEbookOrganizer() {
-  const hub = $('#ebook-hub-view'); const manager = $('#ebook-manager-view')
-  if (hub) hub.hidden = true
+  const manager = $('#ebook-manager-view')
   if (manager) manager.hidden = false
   setEbookMode('organizer')
   if (accessTokenAvailable()) refreshLibrary()
-}
-function showEbookSync() {
-  const hub = $('#ebook-hub-view'); const manager = $('#ebook-manager-view')
-  if (hub) hub.hidden = true
-  if (manager) manager.hidden = false
-  setEbookMode('sync')
 }
 export function initEbookLibrary() {
   import('./ebook-reader-sync.js').then(({ initReaderSync }) => initReaderSync()).catch((error) => console.warn('Az USB-s e-reader modul nem tölthető be:', error))
   const params = new URLSearchParams(window.location.search)
   const directReceiver = params.has('ebook-pair') || params.has('ebook-reader')
+  const requestedView = sessionStorage.getItem('grapes-ebook-view') === 'organizer' ? 'organizer' : 'library'
   if (initialized) {
-    if (directReceiver) showEbookManager()
-    else showEbookHub()
+    if (directReceiver || requestedView === 'library') showEbookManager()
+    else showEbookOrganizer()
     handleTransferLink()
     return
   }
   initialized=true
   onGrapesDriveChange(renderDriveConnection)
-  $('#ebook-open-manager')?.addEventListener('click', showEbookManager)
-  $('#ebook-open-organizer')?.addEventListener('click', showEbookOrganizer)
-  $('#ebook-open-sync')?.addEventListener('click', showEbookSync)
-  $('#ebook-manager-back')?.addEventListener('click', showEbookHub)
   $('#ebook-reader-pair-btn')?.addEventListener('click', createReaderPairing)
   $('#ebook-drive-connect')?.addEventListener('click',connectDrive)
   $('#ebook-drive-disconnect')?.addEventListener('click',disconnectDrive)
@@ -511,7 +493,7 @@ export function initEbookLibrary() {
   renderDriveConnection()
   setStatus(sharedConnected ? 'A közös Grapes Drive kapcsolat aktív.' : (CLIENT_ID ? 'A Google Drive-ot a főmenüben vagy itt csatlakoztathatod.' : 'Drive nincs konfigurálva. Állítsd be a VITE_GOOGLE_CLIENT_ID értéket.'), sharedConnected ? 'success' : (CLIENT_ID ? '' : 'error'))
   if (sharedConnected) refreshLibrary()
-  if (directReceiver) showEbookManager()
-  else showEbookHub()
+  if (directReceiver || requestedView === 'library') showEbookManager()
+  else showEbookOrganizer()
   handleTransferLink()
 }
