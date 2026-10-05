@@ -41,3 +41,10 @@ test('finance and billing use responsive task-oriented layouts', async () => {
   assert.match(billingSource, /class="billing__document-footer"/)
   assert.match(billingCss, /\.billing__document-footer\s*\{[^}]*position:sticky/)
 })
+
+test('finance deletes all transactions only after creating a safety export', async () => {
+  const [markup, source] = await Promise.all([read('index.html'), read('src/finance-tracker.js')])
+  assert.match(markup, /id="finance-delete-all"[^>]*btn--danger[^>]*disabled/)
+  assert.match(source, /#finance-delete-all[\s\S]*window\.confirm[\s\S]*transactionsToCsv\(transactions\)[\s\S]*transactions = \[\]/)
+  assert.match(source, /penzugyi-naplo-biztonsagi-mentes-/)
+})

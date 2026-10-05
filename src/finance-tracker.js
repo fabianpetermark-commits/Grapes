@@ -34,6 +34,11 @@ function currentMonth() {
   return today().slice(0, 7)
 }
 
+function backupTimestamp() {
+  const date = new Date()
+  return `${today()}-${String(date.getHours()).padStart(2, '0')}${String(date.getMinutes()).padStart(2, '0')}${String(date.getSeconds()).padStart(2, '0')}`
+}
+
 function formatMoney(value) {
   return new Intl.NumberFormat('hu-HU', {
     style: 'currency', currency, maximumFractionDigits: currency === 'HUF' ? 0 : 2,
@@ -226,6 +231,7 @@ function render() {
   el('#finance-income-count').textContent = `${visible.filter((item) => item.type === 'income').length} tétel`
   el('#finance-expense-count').textContent = `${visible.filter((item) => item.type === 'expense').length} tétel`
   el('#finance-balance-note').textContent = getFilters().month ? `${getFilters().month} hónapban` : 'A kijelölt időszakban'
+  el('#finance-delete-all').disabled = transactions.length === 0
   renderRows(visible)
   renderChart(visible)
   renderCategories()
@@ -317,6 +323,23 @@ function bindControls() {
   }
   el('#finance-filter-clear').addEventListener('click', () => {
     el('#finance-filter-month').value = ''; el('#finance-filter-type').value = 'all'; el('#finance-filter-search').value = ''; render()
+  })
+  el('#finance-delete-all').addEventListener('click', () => {
+    if (!transactions.length) return
+    const count = transactions.length
+    const confirmed = window.confirm(
+      `Biztosan törlöd mind a(z) ${count} pénzügyi tételt?\n\nA törlés előtt automatikusan letöltünk egy teljes CSV biztonsági másolatot.`,
+    )
+    if (!confirmed) return
+    download(
+      transactionsToCsv(transactions),
+      'text/csv;charset=utf-8',
+      `penzugyi-naplo-biztonsagi-mentes-${backupTimestamp()}.csv`,
+    )
+    transactions = []
+    render()
+    scheduleSave()
+    notifySuccess('A biztonsági CSV elkészült, majd minden pénzügyi tételt töröltünk.')
   })
   el('#finance-currency').addEventListener('change', (event) => { currency = event.target.value; render(); scheduleSave() })
   el('#finance-export-btn').addEventListener('click', () => {
