@@ -324,17 +324,17 @@ test('persistent reader pairing uses an inline frame with the verified marker', 
 
 test('reader pairing code bridge accepts only the selected iframe and expires the code', () => {
   const a = app()
-  const sourceWindow = {}
   const frame = a.run('$("#ebook-reader-pair-code")')
-  frame.contentWindow = sourceWindow
+  frame.src = 'https://script.google.com/macros/s/test/exec'
+  a.run('readerPairNonce = "1234567890abcdef1234567890abcdef1234567890abcdef"')
   let expire
   a.context.window.setTimeout = (callback, delay) => { if (delay === 120000) expire = callback; return 1 }
   a.context.window.clearTimeout = () => {}
-  a.context.message = { source: {}, data: { type: 'grapes-reader-pairing-code', code: 'BAD234', expiresInSeconds: 120 } }
+  a.context.message = { origin: 'https://evil.example', data: { type: 'grapes-reader-pairing-code', code: 'BAD234', nonce: '1234567890abcdef1234567890abcdef1234567890abcdef', expiresInSeconds: 120 } }
   a.run('handleReaderPairingMessage(message)')
   assert.equal(a.nodes.has('#ebook-reader-pair-value'), false)
 
-  a.context.message = { source: sourceWindow, data: { type: 'grapes-reader-pairing-code', code: 'ABC234', expiresInSeconds: 120 } }
+  a.context.message = { origin: 'https://script.googleusercontent.com', data: { type: 'grapes-reader-pairing-code', code: 'ABC234', nonce: '1234567890abcdef1234567890abcdef1234567890abcdef', expiresInSeconds: 120 } }
   a.run('handleReaderPairingMessage(message)')
   assert.equal(a.nodes.get('#ebook-reader-pair-value').value, 'ABC234')
   assert.match(a.nodes.get('#ebook-reader-pair-status').textContent, /2 percig/)
@@ -380,7 +380,7 @@ test('automatic broker deployment stays aligned with every live client URL', () 
   assert.equal(deploymentId(readerPageSource), expected)
   assert.match(brokerWorkflowSource, /clasp push --force/)
   assert.match(brokerWorkflowSource, /clasp deploy --deploymentId/)
-  assert.match(brokerSource, /BROKER_API_VERSION = 2/)
+  assert.match(brokerSource, /BROKER_API_VERSION = 3/)
   assert.match(brokerSource, /action === 'health'/)
 })
 
@@ -396,9 +396,10 @@ test('only explicit embedded creation pages allow framing, including readable er
   assert.match(compact.html, /ABC234/)
   assert.match(compact.html, /&lt;book&gt;/)
   assert.doesNotMatch(compact.html, /quickchart|<iframe|<script/)
-  const bridged = c.embeddedCodePage('ABC234', 'Olvasó', true, 'grapes-reader-pairing-code')
-  assert.match(bridged.html, /window\.parent\.postMessage/)
+  const bridged = c.embeddedCodePage('ABC234', 'Olvasó', true, 'grapes-reader-pairing-code', '1234567890abcdef1234567890abcdef1234567890abcdef')
+  assert.match(bridged.html, /window\.top\.postMessage/)
   assert.match(bridged.html, /grapes-reader-pairing-code/)
+  assert.match(bridged.html, /1234567890abcdef1234567890abcdef1234567890abcdef/)
   assert.match(bridged.html, /fabianpetermark-commits\.github\.io/)
 })
 test('broker rejects private files and foreign return URLs, expires codes and rechecks sharing', () => {

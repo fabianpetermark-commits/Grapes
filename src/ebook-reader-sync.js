@@ -7,6 +7,7 @@ let driveBooks = []
 let readerBooks = []
 let initialized = false
 let readerConnectionState = 'disconnected'
+let readerVerification = null
 
 const $ = selector => document.querySelector(selector)
 const status = (message, kind = '') => { const node = $('#ebook-sync-status'); if (node) { node.textContent = message; node.dataset.kind = kind } }
@@ -16,13 +17,14 @@ const normalize = name => String(name || '').normalize('NFKC').trim().toLocaleLo
 const updateConnection = () => {
   const node = $('#ebook-reader-state')
   if (node) {
-    node.textContent = readerConnectionState === 'connected'
+    const message = readerConnectionState === 'connected'
       ? `● Elérhető – /${readerRoot?.name || ''}`
       : readerConnectionState === 'checking'
         ? `◐ Ellenőrzés – /${readerRoot?.name || ''}`
         : readerRoot
           ? `○ Nem érhető el – /${readerRoot.name}`
           : '○ Nincs csatlakoztatva'
+    if (node.textContent !== message) node.textContent = message
     node.dataset.kind = readerConnectionState === 'connected' ? 'success' : readerConnectionState === 'disconnected' && readerRoot ? 'error' : ''
   }
   const button = $('#ebook-reader-connect')
@@ -30,21 +32,25 @@ const updateConnection = () => {
   const sync = $('#ebook-sync')
   if (sync) sync.disabled = readerConnectionState !== 'connected'
 }
-async function verifyReaderAccess() {
+async function verifyReaderAccess({ announce = false } = {}) {
   if (!readerRoot) { readerConnectionState = 'disconnected'; updateConnection(); return false }
-  readerConnectionState = 'checking'; updateConnection()
-  try {
-    if (await readerRoot.queryPermission({ mode: 'readwrite' }) !== 'granted') throw new Error('Nincs mappaengedély.')
-    const iterator = readerRoot.values()
-    await iterator.next()
-    readerConnectionState = 'connected'
-    updateConnection()
-    return true
-  } catch {
-    readerConnectionState = 'disconnected'
-    updateConnection()
-    return false
-  }
+  if (readerVerification) return readerVerification
+  if (announce && readerConnectionState !== 'connected') { readerConnectionState = 'checking'; updateConnection() }
+  readerVerification = (async () => {
+    try {
+      if (await readerRoot.queryPermission({ mode: 'readwrite' }) !== 'granted') throw new Error('Nincs mappaengedély.')
+      const iterator = readerRoot.values()
+      await iterator.next()
+      readerConnectionState = 'connected'
+      updateConnection()
+      return true
+    } catch {
+      readerConnectionState = 'disconnected'
+      updateConnection()
+      return false
+    } finally { readerVerification = null }
+  })()
+  return readerVerification
 }
 function updateProgress(current, total, label = '') {
   const progress = $('#ebook-sync-progress')
@@ -109,7 +115,7 @@ async function refreshInventory() {
 }
 async function connectReader() {
   if (!supports()) { status('Ez a böngésző nem támogatja az USB-s mappahozzáférést.', 'error'); return }
-  try { const handle = await showDirectoryPicker({ id: 'grapes-ebook-reader', mode: 'readwrite', startIn: 'documents' }); if (await handle.requestPermission({ mode: 'readwrite' }) !== 'granted') throw new Error('Az írási engedély nem lett megadva.'); readerRoot = handle; await saveHandle(handle); if (!await verifyReaderAccess()) throw new Error('A kiválasztott mappa jelenleg nem érhető el.'); await refreshInventory() }
+  try { const handle = await showDirectoryPicker({ id: 'grapes-ebook-reader', mode: 'readwrite', startIn: 'documents' }); if (await handle.requestPermission({ mode: 'readwrite' }) !== 'granted') throw new Error('Az írási engedély nem lett megadva.'); readerRoot = handle; await saveHandle(handle); if (!await verifyReaderAccess({ announce: true })) throw new Error('A kiválasztott mappa jelenleg nem érhető el.'); await refreshInventory() }
   catch (error) { if (error?.name !== 'AbortError') status(`Az e-reader csatlakoztatása nem sikerült. ${error.message}`, 'error') }
 }
 async function writeToReader(book) {
@@ -144,7 +150,7 @@ export function initReaderSync() {
   $('#ebook-reader-connect')?.addEventListener('click', connectReader)
   $('#ebook-sync')?.addEventListener('click', synchronize)
   if (!supports()) { const note = $('#ebook-reader-support'); if (note) note.hidden = false }
-  loadHandle().then(async handle => { if (handle) { readerRoot = handle; await verifyReaderAccess() } }).catch(() => {})
-  window.setInterval?.(() => { if (readerRoot) verifyReaderAccess() }, 5000)
+  loadHandle().then(async handle => { if (handle) { readerRoot = handle; await verifyReaderAccess({ announce: true }) } }).catch(() => {})
+  window.setInterval?.(() => { if (readerRoot) verifyReaderAccess({ announce: false }) }, 5000)
   updateConnection()
 }

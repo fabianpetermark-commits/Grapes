@@ -49,7 +49,7 @@ test('the workspace menu uses one vertical category list with menu-like module r
 })
 
 test('the e-book manager exposes the USB reader synchronization controls', async () => {
-  const [html, source] = await Promise.all([read('index.html'), read('src/ebook-library.js')])
+  const [html, source, sync] = await Promise.all([read('index.html'), read('src/ebook-library.js'), read('src/ebook-reader-sync.js')])
   assert.match(html, /id="ebook-reader-connect"/)
   assert.match(html, /id="ebook-sync"/)
   assert.match(html, /USB-s e-reader szinkron/)
@@ -59,4 +59,6 @@ test('the e-book manager exposes the USB reader synchronization controls', async
   const controls = ['ebook-upload-btn', 'ebook-reader-pair-btn', 'ebook-reader-pair-value', 'ebook-reader-connect', 'ebook-reader-state']
   const positions = controls.map(id => html.indexOf(`id="${id}"`))
   assert.ok(positions.every((position, index) => position >= 0 && (!index || position > positions[index - 1])))
+  assert.match(sync, /readerVerification/)
+  assert.match(sync, /setInterval[^\n]*verifyReaderAccess\(\{ announce: false \}\)/)
 })

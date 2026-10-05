@@ -1,5 +1,5 @@
 const CODE_LENGTH = 6;
-const BROKER_API_VERSION = 2;
+const BROKER_API_VERSION = 3;
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const TTL_MS = 20 * 60 * 1000;
 const STORE_PREFIX = 'ebook_transfer_';
@@ -37,9 +37,9 @@ function pairingOutput(output, p) {
   return output;
 }
 
-function embeddedCodePage(code, label, singleUse, messageType) {
+function embeddedCodePage(code, label, singleUse, messageType, nonce) {
   const bridge = messageType
-    ? '<script>window.parent.postMessage(' + JSON.stringify({ type: messageType, code: code, expiresInSeconds: Math.round(TTL_MS / 1000) }) + ',' + JSON.stringify(ALLOWED_PARENT_ORIGIN) + ');</script>'
+    ? '<script>(function(){var payload=' + JSON.stringify({ type: messageType, code: code, nonce: nonce, expiresInSeconds: Math.round(TTL_MS / 1000) }) + ';var target=' + JSON.stringify(ALLOWED_PARENT_ORIGIN) + ';function send(){window.top.postMessage(payload,target)}send();setTimeout(send,500);setTimeout(send,1500)})();</script>'
     : '';
   return HtmlService.createHtmlOutput('<!doctype html><html lang="hu"><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Párosítási kód</title>' +
     '<style>body{margin:0;padding:24px 12px;background:#fff;color:#111;font:16px Arial,sans-serif;text-align:center;overflow-wrap:anywhere}.code{font-size:36px;font-weight:bold;letter-spacing:.12em;margin:24px 0}</style></head><body>' +
@@ -168,7 +168,7 @@ function createReaderPairingPage(p) {
       marker.setTrashed(true);
     } finally { lock.releaseLock(); }
 
-    if (p.embed === '1') return embeddedCodePage(code, 'Írd be ezt a kódot az e-book olvasón:', true, 'grapes-reader-pairing-code');
+    if (p.embed === '1') return embeddedCodePage(code, 'Írd be ezt a kódot az e-book olvasón:', true, 'grapes-reader-pairing-code', nonce);
     return HtmlService.createHtmlOutput(
       '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>E-olvasó párosítás</title>' +
       '<style>body{font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:28px;text-align:center}.code{font-size:42px;font-weight:bold;letter-spacing:.18em;margin:24px 0}.box{border:1px solid #bbb;padding:22px;border-radius:8px}a{color:#111}</style></head><body>' +
