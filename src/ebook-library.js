@@ -97,7 +97,7 @@ function renderBooks(books = []) {
     const row = document.createElement('article'); row.className = 'ebook-library__book'
     const sendAction = book.isAppAuthorized === false ? '' : `<button class="btn btn--primary btn--sm" type="button" data-send="${book.id}">Küldés</button>`
     const accessLabel = book.isAppAuthorized === false ? ' · Drive, csak olvasás' : ''
-    row.innerHTML = `<div class="ebook-library__book-icon" aria-hidden="true">E</div><div class="ebook-library__book-main"><strong>${escapeHtml(book.name)}</strong><span>${ext(book.name).toUpperCase()} · ${formatSize(Number(book.size))}${accessLabel}</span></div><div class="ebook-library__book-actions"><button class="btn btn--ghost btn--sm" type="button" data-download="${book.id}">Letöltés</button>${sendAction}</div>`
+    row.innerHTML = `<div class="ebook-library__book-icon" aria-hidden="true">E</div><div class="ebook-library__book-main" data-book-name="${escapeHtml(book.name)}"><strong>${escapeHtml(book.name)} <span class="ebook-library__location-badge" data-location-badge="Drive">Drive</span></strong><span>${ext(book.name).toUpperCase()} · ${formatSize(Number(book.size))}${accessLabel}</span></div><div class="ebook-library__book-actions"><button class="btn btn--ghost btn--sm" type="button" data-download="${book.id}">Letöltés</button>${sendAction}</div>`
     list.append(row)
   }
   list.querySelectorAll('[data-download]').forEach((b) => b.addEventListener('click', () => downloadBook(b.dataset.download)))

@@ -63,6 +63,11 @@ function renderInventory() {
   for (const book of readerBooks) { const group = groups.get(normalize(book.name)) || { name: book.name, drive: null, reader: null }; group.reader = book; groups.set(normalize(book.name), group) }
   const entries = [...groups.values()].map(group => ({ ...group, state: group.drive && group.reader ? (Number(group.drive.size) === Number(group.reader.size) ? 'Szinkronban' : 'Eltérő méret') : group.drive ? 'Csak Drive-on' : 'Csak e-readeren' }))
   host.replaceChildren(...entries.map(item => { const row = document.createElement('li'); row.textContent = `${item.name} · ${item.state}`; return row }))
+  for (const row of document.querySelectorAll('#ebook-list [data-book-name]')) {
+    const entry = entries.find(item => normalize(item.name) === normalize(row.dataset.bookName))
+    const badge = row.querySelector('[data-location-badge]')
+    if (badge && entry) badge.textContent = entry.reader ? 'Drive · E-reader' : 'Drive'
+  }
   const counts = entries.reduce((acc, item) => { acc[item.state] = (acc[item.state] || 0) + 1; return acc }, {})
   const summary = Object.entries(counts).map(([key, value]) => `${key}: ${value}`).join(' · ') || 'Nincs könyv'
   status(summary)

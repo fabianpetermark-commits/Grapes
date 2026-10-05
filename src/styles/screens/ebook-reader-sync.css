@@ -3,3 +3,4 @@
 .ebook-library__reader-sync-list { display: grid; gap: 4px; margin: 0; padding-left: 18px; max-height: 180px; overflow: auto; color: var(--color-text-subtle, #bac7d8); font-size: 13px; }
 .ebook-library__reader-sync progress { width: 100%; height: 10px; accent-color: var(--color-accent, #73d6b3); }
 .ebook-library__reader-sync-progress { min-height: 18px; margin: 0; color: var(--color-text-subtle, #bac7d8); font-size: 13px; }
+.ebook-library__location-badge { display: inline-block; margin-left: 6px; padding: 2px 7px; border: 1px solid var(--color-border-strong, #485468); border-radius: 999px; color: var(--color-accent, #73d6b3); font-size: 10px; font-weight: 700; letter-spacing: .04em; vertical-align: middle; white-space: nowrap; }
