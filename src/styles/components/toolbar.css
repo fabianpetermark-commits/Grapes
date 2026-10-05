@@ -135,6 +135,8 @@
   background: var(--color-bg-hover);
 }
 
+.menu__item--mobile { display: none; }
+
 .responsive-overflow { display: contents; }
 .responsive-overflow > summary { display: none; list-style: none; }
 .responsive-overflow > summary::-webkit-details-marker { display: none; }
@@ -212,4 +214,12 @@
     width: 34px;
     height: 34px;
   }
+
+  .menu__item--mobile { display: flex; }
+}
+
+@media (width <= 480px) {
+  #fabric-toolbar .toolbar__brand-name,
+  #fabric-load-btn,
+  #fabric-pdf-btn { display: none; }
 }

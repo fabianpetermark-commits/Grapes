@@ -91,6 +91,7 @@
   font-size: 13px;
   font-weight: 650;
   cursor: pointer;
+  min-height: var(--touch-target);
 }
 
 .qr-studio__tab:hover {

@@ -250,7 +250,7 @@
     background: var(--color-bg-surface);
   }
   .email-studio__mobile-nav button {
-    min-height: 42px;
+    min-height: var(--touch-target);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     color: var(--color-text-muted);
@@ -293,6 +293,12 @@
     min-height: 420px;
   }
   .email-studio__palette { grid-template-columns: repeat(4, 1fr); }
+  .email-studio__templates button,
+  .email-studio input,
+  .email-studio select,
+  .email-studio__palette button,
+  .email-studio__block-row button { min-height: var(--touch-target); }
+  .email-studio input[type="range"] { min-height: var(--touch-target); }
 }
 
 @media (max-width: 620px) {
@@ -307,7 +313,7 @@
   .email-studio__brand > span:not(.email-studio__save-status),
   .email-studio__save-status { display: none; }
   .email-studio__toolbar-group { flex: 0 0 auto; overflow: visible; }
-  .email-studio__toolbar-group .btn { flex: 0 0 auto; min-height: 42px; }
+  .email-studio__toolbar-group .btn { flex: 0 0 auto; min-height: var(--touch-target); }
   .email-studio__toolbar-group--primary .btn:not(.btn--primary) { width: var(--touch-target); padding: 0; overflow: hidden; font-size: 0; }
   .email-studio__toolbar-group--primary .btn:not(.btn--primary)::before { font-size: 18px; content: '⌂'; }
   .email-studio .responsive-overflow__panel .email-studio__toolbar-group .btn { width: 100%; white-space: normal; }

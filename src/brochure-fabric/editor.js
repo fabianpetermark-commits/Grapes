@@ -585,6 +585,8 @@ function setupProjectIO(history) {
   })
 
   document.querySelector('#fabric-pdf-btn').addEventListener('click', () => exportToPdf(canvas))
+  document.querySelector('#fabric-load-menu-btn').addEventListener('click', () => document.querySelector('#fabric-load-btn').click())
+  document.querySelector('#fabric-pdf-menu-btn').addEventListener('click', () => document.querySelector('#fabric-pdf-btn').click())
   document.querySelector('#fabric-html-export-btn').addEventListener('click', () => exportToHtml(canvas))
   document.querySelector('#fabric-code-view-btn').addEventListener('click', () => openCodeView(canvas, history))
 }

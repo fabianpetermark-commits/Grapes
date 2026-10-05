@@ -24,7 +24,7 @@
   .ebook-library__hub-card p{margin:0;font-size:12px;line-height:1.35}
   .ebook-library__hub-card .btn{grid-column:1 / -1;margin-top:3px;min-height:38px}
 }
-.ebook-library__upload-btn{min-height:40px;border:1px solid var(--color-border-strong);white-space:normal}
+.ebook-library__upload-btn{min-height:var(--touch-target);border:1px solid var(--color-border-strong);white-space:normal}
 .ebook-library__full-read-btn{min-height:48px;white-space:normal;line-height:1.3}
 .ebook-library__quick-add{display:flex;align-items:center;justify-content:space-between;gap:12px 18px;padding:14px 18px;margin-bottom:18px;position:relative;flex-wrap:wrap}
 .ebook-library__quick-add-heading{display:flex;align-items:center;gap:14px;min-width:0}
@@ -36,8 +36,8 @@
 .ebook-library__quick-group{display:flex;gap:8px;align-items:center;min-width:0;padding-left:8px;border-left:1px solid var(--color-border)}
 .ebook-library__quick-group:first-child{padding-left:0;border-left:0}
 .ebook-library__quick-group--usb{flex:1 1 270px}
-.ebook-library__quick-add .ebook-library__upload-btn,.ebook-library__quick-add .ebook-library__full-read-btn{min-height:40px}
-.ebook-library__pair-control{width:180px;min-height:40px}
+.ebook-library__quick-add .ebook-library__upload-btn,.ebook-library__quick-add .ebook-library__full-read-btn{min-height:var(--touch-target)}
+.ebook-library__pair-control{width:180px;min-height:var(--touch-target)}
 .ebook-library__pair-value{font-weight:800;letter-spacing:.14em;text-align:center;text-transform:uppercase}
 .ebook-library__pair-status{flex:1 0 100%;text-align:right}
 .ebook-library__pair-bridge{position:absolute;width:1px;height:1px;left:-10000px;top:-10000px;border:0;opacity:0;pointer-events:none}

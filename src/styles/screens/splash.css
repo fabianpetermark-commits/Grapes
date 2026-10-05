@@ -91,6 +91,10 @@
   .account-chip { padding-right: 4px; }
 }
 
+@media (max-width: 768px) {
+  .language-switch button { min-width: var(--touch-target); min-height: var(--touch-target); }
+}
+
 @media (max-width: 720px) {
   .login-screen { align-items: start; padding-top: 84px; }
   .login-screen__language { top: var(--space-4); right: var(--space-4); }
@@ -110,7 +114,6 @@
 @media (max-width: 420px) {
   .dashboard__brand strong { font-size: var(--text-md); }
   .dashboard__account { gap: var(--space-1); }
-  .language-switch button { min-width: 34px; }
 }
 
 @media (pointer: coarse) {
