@@ -1066,11 +1066,15 @@
             <span id="ebook-upload-state" class="ebook-library__quick-status" role="status">Drive kapcsolat ellenőrzése…</span>
           </div>
           <div class="ebook-library__quick-add-actions">
-            <button id="ebook-upload-btn" class="btn btn--ghost ebook-library__upload-btn" type="button">Fájl feltöltése</button>
-            <button id="ebook-reader-pair-btn" class="btn btn--primary ebook-library__pair-control" type="button">E-olvasó párosítása</button>
-            <input id="ebook-reader-pair-value" class="input ebook-library__pair-control ebook-library__pair-value" type="text" readonly aria-label="E-olvasó párosítási kód" placeholder="Párosítási kód" />
-            <button id="ebook-reader-connect" class="btn btn--ghost" type="button">E-reader csatlakoztatása</button>
-            <span id="ebook-reader-state" class="ebook-library__quick-status" role="status">○ Nincs csatlakoztatva</span>
+            <div class="ebook-library__quick-group"><button id="ebook-upload-btn" class="btn btn--ghost ebook-library__upload-btn" type="button">Fájl feltöltése</button></div>
+            <div class="ebook-library__quick-group ebook-library__quick-group--pair">
+              <button id="ebook-reader-pair-btn" class="btn btn--primary ebook-library__pair-control" type="button">E-olvasó párosítása</button>
+              <input id="ebook-reader-pair-value" class="input ebook-library__pair-control ebook-library__pair-value" type="text" readonly aria-label="E-olvasó párosítási kód" placeholder="Párosítási kód" />
+            </div>
+            <div class="ebook-library__quick-group ebook-library__quick-group--usb">
+              <button id="ebook-reader-connect" class="btn btn--ghost" type="button">E-reader csatlakoztatása</button>
+              <span id="ebook-reader-state" class="ebook-library__quick-status" role="status">○ Nincs csatlakoztatva</span>
+            </div>
           </div>
           <span id="ebook-reader-pair-status" class="ebook-library__quick-status ebook-library__pair-status" role="status" aria-live="polite"></span>
           <input id="ebook-file-input" type="file" hidden />
@@ -1098,13 +1102,29 @@
         </div>
         <section id="ebook-metadata-panel" class="ebook-library__panel ebook-library__metadata" aria-labelledby="ebook-metadata-title-heading">
           <div class="ebook-library__panel-head"><div><p class="ebook-library__eyebrow">Könyvszerkesztő</p><h2 id="ebook-metadata-title-heading">Metaadatok szerkesztése</h2></div><span class="ebook-library__metadata-note">A könyvfájl tartalma nem változik</span></div>
-          <div class="ebook-library__metadata-form">
-            <label class="field"><span class="field__label">Könyv</span><select id="ebook-metadata-book" class="input"><option value="">Válassz könyvet…</option></select></label>
-            <label class="field"><span class="field__label">Cím</span><input id="ebook-metadata-title" class="input" type="text" placeholder="Pl. Dűne" /></label>
-            <label class="field"><span class="field__label">Szerző</span><input id="ebook-metadata-author" class="input" type="text" placeholder="Pl. Frank Herbert" /></label>
-            <button id="ebook-metadata-lookup" class="btn btn--ghost" type="button">Webes keresés</button><button id="ebook-metadata-apply" class="btn btn--ghost" type="button" disabled>Javaslat alkalmazása</button><button id="ebook-metadata-save" class="btn btn--primary" type="button">Metaadatok mentése</button>
+          <div class="ebook-library__metadata-layout">
+            <aside class="ebook-library__metadata-picker">
+              <label class="field"><span class="field__label">Keresés a könyvtárban</span><input id="ebook-metadata-filter" class="input" type="search" placeholder="Cím, szerző vagy fájlnév…" autocomplete="off" /></label>
+              <label class="field"><span class="field__label">Könyv</span><select id="ebook-metadata-book" class="input" size="8"><option value="">Válassz könyvet…</option></select></label>
+            </aside>
+            <div class="ebook-library__metadata-workspace">
+              <div id="ebook-metadata-preview" class="ebook-library__metadata-preview" data-empty="true">
+                <div class="ebook-library__book-icon" aria-hidden="true">E</div>
+                <div><strong id="ebook-metadata-preview-title">Nincs kiválasztott könyv</strong><span id="ebook-metadata-preview-meta">Válassz egy könyvet a bal oldali listából.</span></div>
+              </div>
+              <div class="ebook-library__metadata-form">
+                <label class="field"><span class="field__label">Cím</span><input id="ebook-metadata-title" class="input" type="text" placeholder="Pl. Dűne" /></label>
+                <label class="field"><span class="field__label">Szerző</span><input id="ebook-metadata-author" class="input" type="text" placeholder="Pl. Frank Herbert" /></label>
+              </div>
+              <p id="ebook-metadata-suggestion" class="ebook-library__metadata-suggestion" role="status"></p>
+              <div class="ebook-library__metadata-actions">
+                <span id="ebook-metadata-dirty" class="ebook-library__metadata-dirty" aria-live="polite">Nincs mentetlen módosítás</span>
+                <button id="ebook-metadata-lookup" class="btn btn--ghost" type="button">Webes keresés</button>
+                <button id="ebook-metadata-apply" class="btn btn--ghost" type="button" disabled>Javaslat alkalmazása</button>
+                <button id="ebook-metadata-save" class="btn btn--primary" type="button" disabled>Metaadatok mentése</button>
+              </div>
+            </div>
           </div>
-          <p id="ebook-metadata-suggestion" class="ebook-library__metadata-suggestion" role="status"></p>
         </section>
       </main>
       </div>

@@ -377,6 +377,20 @@ test('metadata lookup accepts a strong exact catalogue match', async () => {
   assert.match(a.nodes.get('#ebook-metadata-suggestion').textContent, /Dune — Frank Herbert · 1965/)
 })
 
+test('metadata editor exposes search, live preview and a protected dirty state', () => {
+  const a = app(async () => json({}))
+  for (const id of ['#ebook-metadata-book', '#ebook-metadata-title', '#ebook-metadata-author', '#ebook-metadata-preview', '#ebook-metadata-preview-title', '#ebook-metadata-preview-meta', '#ebook-metadata-dirty', '#ebook-metadata-save', '#ebook-metadata-apply', '#ebook-metadata-suggestion', '#ebook-metadata-filter']) a.run(`$("${id}")`)
+  a.run('currentBooks = [{ id: "book", name: "Dune -- Frank Herbert.epub", size: 2048 }]')
+  a.nodes.get('#ebook-metadata-book').value = 'book'
+  a.run('updateMetadataForm()')
+  assert.equal(a.nodes.get('#ebook-metadata-preview-title').textContent, 'Dune -- Frank Herbert.epub')
+  a.nodes.get('#ebook-metadata-title').value = 'Dűne'
+  a.run('setMetadataDirty(true); updateMetadataPreview()')
+  assert.equal(a.nodes.get('#ebook-metadata-dirty').dataset.dirty, 'true')
+  assert.equal(a.nodes.get('#ebook-metadata-save').disabled, false)
+  assert.equal(a.nodes.get('#ebook-metadata-preview-title').textContent, 'Dűne')
+})
+
 test('reader pairing code bridge accepts only the selected iframe and expires the code', () => {
   const a = app()
   const frame = a.run('$("#ebook-reader-pair-code")')

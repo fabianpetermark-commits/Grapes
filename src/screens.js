@@ -67,6 +67,14 @@ export function showScreen(name) {
   const screen = SCREENS[name]
   if (!screen) throw new Error(`Ismeretlen képernyő: ${name}`)
 
+  if (activeScreenName && activeScreenName !== name) {
+    const transition = new CustomEvent('grapes:before-screen-change', {
+      cancelable: true,
+      detail: { from: activeScreenName, to: name },
+    })
+    if (!document.dispatchEvent(transition)) return false
+  }
+
   // A képernyőváltás egyetlen forrása ez a függvény. Az aktív névvel azt is
   // megjegyezzük, melyik dinamikus betöltés tartozik a jelenlegi nézethez.
   // Így egy későn befejeződő modulbetöltés nem tud egy korábbi nézetet
