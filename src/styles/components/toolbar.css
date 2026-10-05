@@ -135,6 +135,34 @@
   background: var(--color-bg-hover);
 }
 
+.responsive-overflow { display: contents; }
+.responsive-overflow > summary { display: none; list-style: none; }
+.responsive-overflow > summary::-webkit-details-marker { display: none; }
+.responsive-overflow__panel { display: contents; }
+
+@media (width <= 720px) {
+  .responsive-overflow { position: relative; display: block; order: 90; }
+  .responsive-overflow > summary { display: inline-flex; }
+  .responsive-overflow__panel {
+    position: fixed;
+    right: var(--space-3);
+    bottom: max(var(--space-3), env(safe-area-inset-bottom));
+    left: var(--space-3);
+    z-index: var(--z-menu);
+    display: grid;
+    gap: var(--space-2);
+    max-height: min(70dvh, 520px);
+    padding: var(--space-3);
+    overflow-y: auto;
+    background: var(--color-bg-raised);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-3);
+  }
+  .responsive-overflow:not([open]) .responsive-overflow__panel { display: none; }
+  .responsive-overflow__panel > * { display: grid; grid-template-columns: repeat(auto-fit,minmax(120px,1fr)); width: 100%; }
+}
+
 @media (width <= 900px) {
   /* Keskeny nézeten csak az ikon marad, a felirat elfér nélküle is. */
   .btn__label {

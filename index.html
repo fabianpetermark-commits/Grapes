@@ -288,24 +288,26 @@
           <strong>Grapes</strong><span>E-mail Stúdió</span>
           <span id="email-save-status" class="email-studio__save-status">Automatikus mentés</span>
         </div>
-        <div class="email-studio__toolbar-group" role="group" aria-label="Szerkesztési mód">
+        <div class="email-studio__toolbar-group" role="group" aria-label="Szerkesztési mód" data-email-overflow>
           <button id="email-visual-mode" class="btn btn--secondary is-active" type="button">Vizuális</button>
           <button id="email-code-mode" class="btn btn--secondary" type="button">Kód</button>
         </div>
-        <div class="email-studio__toolbar-group" role="group" aria-label="Előzmények">
+        <div class="email-studio__toolbar-group" role="group" aria-label="Előzmények" data-email-overflow>
           <button id="email-undo" class="btn btn--ghost" type="button" title="Visszavonás (Ctrl+Z)">↶</button>
           <button id="email-redo" class="btn btn--ghost" type="button" title="Újra (Ctrl+Shift+Z)">↷</button>
         </div>
-        <div class="email-studio__toolbar-group">
+        <div class="email-studio__toolbar-group" data-email-overflow>
           <button id="email-desktop-preview" class="btn btn--ghost is-active" type="button">Asztali</button>
           <button id="email-mobile-preview" class="btn btn--ghost" type="button">Mobil</button>
           <button id="email-images-toggle" class="btn btn--ghost" type="button">Képek ki</button>
         </div>
-        <div class="email-studio__toolbar-group">
+        <div class="email-studio__toolbar-group" data-email-overflow>
           <button id="email-import-btn" class="btn btn--ghost" type="button">Projekt megnyitása</button>
           <input id="email-import-input" type="file" accept=".json,application/json" hidden>
           <button id="email-export-project" class="btn btn--ghost" type="button">Projekt</button>
           <button id="email-export-text" class="btn btn--ghost" type="button">TXT</button>
+        </div>
+        <div class="email-studio__toolbar-group email-studio__toolbar-group--primary">
           <button id="email-export-html" class="btn btn--primary" type="button">HTML export</button>
           <button id="email-back-to-menu-btn" class="btn btn--ghost" type="button">Főmenü</button>
         </div>
@@ -764,6 +766,8 @@
 
         <span class="toolbar__spacer"></span>
 
+        <button id="studio-mobile-inspector-btn" class="btn btn--ghost studio__mobile-inspector" type="button" aria-expanded="false" aria-controls="studio-inspector">Beállítások</button>
+
         <button id="studio-download-stl-btn" class="btn btn--primary" type="button">
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-download" /></svg>
           <span class="btn__label">STL letöltése</span>
@@ -779,6 +783,7 @@
       </header>
 
       <div class="editor__body studio__body">
+        <div id="studio-mobile-backdrop" class="drawer__backdrop" hidden></div>
         <main id="studio-viewport-container" class="studio__viewport">
           <canvas id="studio-three-canvas"></canvas>
 
@@ -839,7 +844,7 @@
           </p>
         </main>
 
-        <aside class="panel studio__inspector" aria-label="3D eszközök">
+        <aside id="studio-inspector" class="panel studio__inspector" aria-label="3D eszközök">
           <div class="panel__body">
             <p class="panel__group-label">Elem hozzáadása</p>
             <div class="palette__grid palette__grid--three">

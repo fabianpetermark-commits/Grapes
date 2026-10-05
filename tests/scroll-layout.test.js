@@ -25,7 +25,7 @@ test('mobile editor toolbars keep primary actions visible without horizontal scr
   ])
   assert.match(toolbar, /@media \(width <= 768px\)[\s\S]*\.toolbar\s*\{[\s\S]*flex-wrap:\s*nowrap;[\s\S]*overflow:\s*visible/)
   assert.match(toolbar, /\[data-mobile-secondary\]/)
-  assert.match(email, /@media \(max-width: 1200px\)[\s\S]*flex-wrap:\s*nowrap;[\s\S]*overflow-x:\s*auto/)
+  assert.match(email, /@media \(max-width: 1200px\)[\s\S]*flex-wrap:\s*wrap;[\s\S]*overflow:\s*visible/)
   assert.doesNotMatch(studio, /\.studio__inspector\s*\{\s*max-height:\s*4[48]vh/)
 })
 
@@ -46,4 +46,18 @@ test('email mobile panes have a default and working navigation handlers', async 
   for (const pane of ['content', 'preview', 'settings']) {
     assert.match(editor, new RegExp(`setMobilePane\\('${pane}'\\)`))
   }
+})
+
+test('creative tools expose compact mobile actions without losing controls', async () => {
+  const [html, email, studio, studioCss, qr] = await Promise.all([
+    read('index.html'), read('src/email-studio/editor.js'), read('src/studio.js'),
+    read('src/styles/screens/studio.css'), read('src/styles/screens/qr-studio.css'),
+  ])
+  assert.match(email, /createResponsiveOverflow/)
+  assert.match(html, /data-email-overflow/)
+  assert.match(html, /id="studio-mobile-inspector-btn"/)
+  assert.match(html, /id="studio-inspector"/)
+  assert.match(studio, /setInspectorOpen/)
+  assert.match(studioCss, /\.studio__mobile-inspector\s*\{\s*display:\s*inline-flex/)
+  assert.match(qr, /@media \(max-width: 640px\)[\s\S]*position:\s*sticky/)
 })

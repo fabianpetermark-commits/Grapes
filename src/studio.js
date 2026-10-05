@@ -1495,6 +1495,25 @@ function downloadSTL() {
 function bindUI() {
   ensurePrimitivePalette()
 
+  const inspector = el('#studio-inspector')
+  const inspectorButton = el('#studio-mobile-inspector-btn')
+  const inspectorBackdrop = el('#studio-mobile-backdrop')
+  const mobileInspector = window.matchMedia('(max-width: 768px)')
+  const setInspectorOpen = (open) => {
+    const visible = Boolean(open && mobileInspector.matches)
+    inspector.classList.toggle('is-open', visible)
+    inspector.toggleAttribute('inert', mobileInspector.matches && !visible)
+    inspectorButton.setAttribute('aria-expanded', String(visible))
+    inspectorBackdrop.hidden = !visible
+    inspectorBackdrop.classList.toggle('is-open', visible)
+    if (visible) inspector.querySelector('button, input, select, textarea, summary')?.focus()
+  }
+  inspectorButton.addEventListener('click', () => setInspectorOpen(!inspector.classList.contains('is-open')))
+  inspectorBackdrop.addEventListener('click', () => setInspectorOpen(false))
+  mobileInspector.addEventListener?.('change', () => setInspectorOpen(false))
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && inspector.classList.contains('is-open')) setInspectorOpen(false) })
+  setInspectorOpen(false)
+
   document.querySelector('#studio-add-box').addEventListener('click', () => addElement('box'))
   document.querySelector('#studio-add-cylinder').addEventListener('click', () => addElement('cylinder'))
   document.querySelector('#studio-add-sphere').addEventListener('click', () => addElement('sphere'))

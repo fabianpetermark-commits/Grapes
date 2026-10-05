@@ -21,3 +21,10 @@ test('mobile toolbars keep primary actions visible without horizontal scrolling'
   assert.doesNotMatch(toolbar, /@media \(width <= 768px\)[\s\S]*overflow-x:\s*auto/)
   assert.match(toolbar, /\[data-mobile-secondary\]/)
 })
+
+test('responsive overflow keeps secondary actions in a keyboard-dismissible menu', async () => {
+  const source = await read('src/ui/responsive-overflow.js')
+  assert.match(source, /window\.matchMedia/)
+  assert.match(source, /event\.key === 'Escape'/)
+  assert.match(source, /marker\.parentNode\?\.insertBefore/)
+})

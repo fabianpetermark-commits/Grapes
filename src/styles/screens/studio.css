@@ -28,6 +28,8 @@
   height: 100%;
 }
 
+.studio__mobile-inspector { display: none; }
+
 .studio__overlay {
   position: absolute;
   top: var(--space-3);
@@ -107,12 +109,17 @@
     transform: translateX(0);
   }
 
+  .studio__inspector[inert] { visibility: hidden; }
+  .studio__inspector.is-open:not([inert]) { visibility: visible; }
+  .studio__mobile-inspector { display: inline-flex; }
+  .studio__mobile-inspector { width: var(--touch-target); padding: 0; overflow: hidden; font-size: 0; }
+  .studio__mobile-inspector::before { font-size: 19px; content: '⚙'; }
+
   .studio__overlay {
     top: var(--space-2);
     left: var(--space-2);
     right: var(--space-2);
     max-height: calc(100% - 56px);
-    overflow-x: auto;
     overflow-y: auto;
   }
 }
@@ -169,7 +176,7 @@
 }
 @media (max-width: 520px) {
   .studio__overlay { gap: 6px; }
-  .studio__control-group { flex-wrap: nowrap; }
+  .studio__control-group { flex-wrap: wrap; }
   .studio__control-group .btn { flex: 0 0 auto; }
 }
 

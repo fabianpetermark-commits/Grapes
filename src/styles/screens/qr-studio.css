@@ -247,10 +247,20 @@
 
 @media (max-width: 640px) {
   .qr-studio__preview {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-sticky);
     flex: 0 0 auto;
     min-height: 0;
-    padding: 24px 12px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--color-border);
   }
+
+  .qr-studio__preview-card { flex-direction: row; gap: 12px; width: 100%; justify-content: center; }
+  .qr-studio__canvas { width: min(132px, 36vw); }
+  .qr-studio__actions { display: grid; grid-template-columns: 1fr; }
+  .qr-studio__actions .btn { width: 100%; white-space: normal; }
+  .qr-studio__generation-status { max-width: 130px; margin: 0; text-align: left; }
 
   .qr-studio__canvas-wrap {
     padding: 14px;

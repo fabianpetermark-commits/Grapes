@@ -4,6 +4,7 @@ import grapesJSMJML from 'grapesjs-mjml'
 import '../styles/screens/email-studio.css'
 import { el, els, create } from '../ui/dom.js'
 import { notifyError, notifySuccess } from '../ui/toast.js'
+import { createResponsiveOverflow } from '../ui/responsive-overflow.js'
 import { loadLocalProject, saveLocalProject } from '../storage/local-project-store.js'
 import { SOCIAL_NETWORKS } from './compiler.js'
 import { analyzeEmailHtml } from './quality.js'
@@ -405,6 +406,11 @@ export async function initEmailStudio() {
     return
   }
   initialized = true
+  createResponsiveOverflow({
+    toolbar: el('.email-studio__toolbar'),
+    items: els('[data-email-overflow]'),
+    label: 'Továbbiak',
+  })
   buildStaticFields()
   let initialMjml = createTemplateMjml('newsletter', metadata)
   let savedProjectData = null
