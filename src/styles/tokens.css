@@ -97,4 +97,6 @@
   /* --- Alkalmazás-specifikus méretek --- */
   --rail-width: 220px;
   --inspector-width: 288px;
+  --touch-target: 44px;
+  --content-max: 1480px;
 }

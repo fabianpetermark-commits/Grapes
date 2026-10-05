@@ -18,12 +18,13 @@ test('page-like modules own a vertical scroll root while the document stays fixe
   assert.doesNotMatch(qr, /body:has\(#qr-app/)
 })
 
-test('mobile editor toolbars scroll horizontally without consuming the canvas height', async () => {
+test('mobile editor toolbars keep primary actions visible without horizontal scrolling', async () => {
   const [toolbar, email, studio] = await Promise.all([
     read('src/styles/components/toolbar.css'), read('src/styles/screens/email-studio.css'),
     read('src/styles/screens/studio.css'),
   ])
-  assert.match(toolbar, /@media \(width <= 768px\)[\s\S]*\.toolbar\s*\{[\s\S]*flex-wrap:\s*nowrap;[\s\S]*overflow-x:\s*auto/)
+  assert.match(toolbar, /@media \(width <= 768px\)[\s\S]*\.toolbar\s*\{[\s\S]*flex-wrap:\s*nowrap;[\s\S]*overflow:\s*visible/)
+  assert.match(toolbar, /\[data-mobile-secondary\]/)
   assert.match(email, /@media \(max-width: 1200px\)[\s\S]*flex-wrap:\s*nowrap;[\s\S]*overflow-x:\s*auto/)
   assert.doesNotMatch(studio, /\.studio__inspector\s*\{\s*max-height:\s*4[48]vh/)
 })

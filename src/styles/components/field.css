@@ -88,3 +88,18 @@
   margin: 0;
   accent-color: var(--color-accent);
 }
+
+@media (pointer: coarse), (width <= 768px) {
+  .input,
+  .select,
+  .textarea,
+  .input[type='color'],
+  .color-input {
+    min-height: var(--touch-target);
+  }
+
+  .field-checkbox input {
+    width: 22px;
+    height: 22px;
+  }
+}

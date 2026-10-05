@@ -210,9 +210,10 @@
     <div id="billing-app" class="billing hidden"></div>
     <div id="finance-app" class="finance hidden">
       <header class="finance__header">
-        <div>
-          <p class="finance__eyebrow">GRAPES · PÉNZÜGYI NAPLÓ</p>
-          <h1>Kiadás- és bevételkövető</h1>
+        <div class="module-brand">
+          <img class="toolbar__brand-mark" src="./grapes-logo.svg" alt="" />
+          <div><p class="finance__eyebrow">GRAPES · PÉNZÜGYI NAPLÓ</p>
+          <h1>Kiadás- és bevételkövető</h1></div>
         </div>
         <div class="finance__header-actions">
           <span id="finance-save-status" class="finance__save-status" aria-live="polite">Betöltés…</span>
@@ -283,6 +284,7 @@
     <div id="email-app" class="email-studio hidden" data-mobile-pane="content">
       <header class="email-studio__toolbar">
         <div class="email-studio__brand">
+          <img class="toolbar__brand-mark" src="./grapes-logo.svg" alt="" />
           <strong>Grapes</strong><span>E-mail Stúdió</span>
           <span id="email-save-status" class="email-studio__save-status">Automatikus mentés</span>
         </div>
@@ -411,6 +413,7 @@
            voltak. -->
       <header class="toolbar" id="fabric-toolbar">
         <div class="toolbar__brand">
+          <img class="toolbar__brand-mark" src="./grapes-logo.svg" alt="" />
           <span class="toolbar__brand-name">Grapes</span>
           <span class="toolbar__brand-sub">Brossúra</span>
         </div>
@@ -424,7 +427,7 @@
           </button>
         </div>
 
-        <div class="toolbar__group" role="group" aria-label="Előzmények">
+        <div class="toolbar__group" role="group" aria-label="Előzmények" data-mobile-secondary>
           <button id="fabric-undo-btn" class="btn btn--icon btn--ghost" type="button" aria-label="Visszavonás" title="Visszavonás">
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-undo" /></svg>
           </button>
@@ -433,7 +436,7 @@
           </button>
         </div>
 
-        <span class="toolbar__sep"></span>
+        <span class="toolbar__sep" data-mobile-secondary></span>
 
         <div class="toolbar__group" role="group" aria-label="Fájl">
           <button id="fabric-save-btn" class="btn btn--icon btn--ghost" type="button" aria-label="Projekt mentése" title="Projekt mentése">
@@ -451,7 +454,7 @@
 
         <span class="toolbar__spacer"></span>
 
-        <div class="toolbar__group toolbar__group--boxed" role="group" aria-label="Nagyítás">
+        <div class="toolbar__group toolbar__group--boxed" role="group" aria-label="Nagyítás" data-mobile-secondary>
           <button id="fabric-zoom-out-btn" class="btn btn--icon btn--ghost btn--sm" type="button" aria-label="Kicsinyítés" title="Kicsinyítés">
             <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-zoom-out" /></svg>
           </button>
@@ -754,6 +757,7 @@
     <div id="studio-app" class="editor hidden">
       <header class="toolbar">
         <div class="toolbar__brand">
+          <img class="toolbar__brand-mark" src="./grapes-logo.svg" alt="" />
           <span class="toolbar__brand-name">3D Stúdió</span>
           <span class="toolbar__brand-sub">Parametrikus modellezés és STL-export</span>
         </div>
@@ -994,6 +998,7 @@
     <div id="ebook-app" class="editor hidden ebook-library">
       <header class="toolbar" id="ebook-toolbar">
         <div class="toolbar__brand">
+          <img class="toolbar__brand-mark" src="./grapes-logo.svg" alt="" />
           <span class="toolbar__brand-name">Grapes</span>
           <span class="toolbar__brand-sub">E-book Könyvtár</span>
         </div>
@@ -1108,6 +1113,7 @@
     <div id="qr-app" class="editor hidden">
       <header class="toolbar" id="qr-toolbar">
         <div class="toolbar__brand">
+          <img class="toolbar__brand-mark" src="./grapes-logo.svg" alt="" />
           <span class="toolbar__brand-name">Grapes</span>
           <span class="toolbar__brand-sub">QR Stúdió</span>
         </div>

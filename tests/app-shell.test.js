@@ -9,7 +9,7 @@ test('the app shell groups every module and starts with Google sign-in', async (
   assert.match(html, /id="login-screen"/)
   assert.match(html, /id="google-sign-in"/)
   assert.match(html, /src="\.\/grapes-logo\.svg"/)
-  assert.equal((html.match(/src="\.\/grapes-logo\.svg"/g) || []).length, 3)
+  assert.ok((html.match(/src="\.\/grapes-logo\.svg"/g) || []).length >= 8)
   assert.equal((favicon.match(/<circle /g) || []).length, 18)
   assert.equal((logo.match(/<circle /g) || []).length, 18)
   for (const color of ['#4285f4', '#34a853', '#fbbc05', '#ea4335']) assert.match(html, new RegExp(color))

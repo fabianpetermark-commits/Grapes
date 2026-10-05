@@ -20,6 +20,26 @@
   padding-right: var(--space-2);
 }
 
+.toolbar__brand-mark {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  align-self: center;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-sunken);
+}
+
+.module-brand {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  min-width: 0;
+}
+
+.module-brand > div { min-width: 0; }
+.module-brand h1,
+.module-brand p { overflow-wrap: anywhere; }
+
 .toolbar__brand-name {
   font-size: var(--text-lg);
   font-weight: var(--weight-semibold);
@@ -129,11 +149,8 @@
 @media (width <= 768px) {
   .toolbar {
     flex-wrap: nowrap;
-    overflow-x: auto;
-    overflow-y: hidden;
-    overscroll-behavior-x: contain;
-    scrollbar-gutter: auto;
-    -webkit-overflow-scrolling: touch;
+    min-height: 60px;
+    overflow: visible;
   }
 
   .toolbar > * {
@@ -146,5 +163,25 @@
 
   .toolbar__group--mobile {
     display: flex;
+  }
+
+  .toolbar [data-mobile-secondary] {
+    display: none;
+  }
+
+  .toolbar__brand {
+    min-width: 0;
+    padding-right: 0;
+  }
+
+  .toolbar__brand-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .toolbar__brand-mark {
+    width: 34px;
+    height: 34px;
   }
 }
