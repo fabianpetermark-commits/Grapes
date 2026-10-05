@@ -1115,7 +1115,7 @@
           </aside>
         </div>
         <section id="ebook-metadata-panel" class="ebook-library__panel ebook-library__metadata" aria-labelledby="ebook-metadata-title-heading">
-          <div class="ebook-library__panel-head"><div><p class="ebook-library__eyebrow">Könyvszerkesztő</p><h2 id="ebook-metadata-title-heading">Metaadatok szerkesztése</h2></div><span class="ebook-library__metadata-note">A könyvfájl tartalma nem változik</span></div>
+          <div class="ebook-library__panel-head"><div><p class="ebook-library__eyebrow">Könyvszerkesztő</p><h2 id="ebook-metadata-title-heading">Metaadatok szerkesztése</h2></div><span class="ebook-library__metadata-note">A könyvfájl csak az EPUB-mentés engedélyezése után módosul; a könyv szövege változatlan marad.</span></div>
           <div class="ebook-library__metadata-layout">
             <aside class="ebook-library__metadata-picker">
               <label class="field"><span class="field__label">Keresés a könyvtárban</span><input id="ebook-metadata-filter" class="input" type="search" placeholder="Cím, szerző vagy fájlnév…" autocomplete="off" /></label>
@@ -1129,13 +1129,27 @@
               <div class="ebook-library__metadata-form">
                 <label class="field"><span class="field__label">Cím</span><input id="ebook-metadata-title" class="input" type="text" placeholder="Pl. Dűne" /></label>
                 <label class="field"><span class="field__label">Szerző</span><input id="ebook-metadata-author" class="input" type="text" placeholder="Pl. Frank Herbert" /></label>
+                <label class="field"><span class="field__label">ISBN</span><input id="ebook-metadata-isbn" class="input" type="text" inputmode="numeric" placeholder="ISBN-10 vagy ISBN-13" /></label>
+                <label class="field"><span class="field__label">Nyelv</span><input id="ebook-metadata-language" class="input" type="text" placeholder="Pl. hu vagy en" /></label>
+                <label class="field"><span class="field__label">Kiadó</span><input id="ebook-metadata-publisher" class="input" type="text" /></label>
+                <label class="field"><span class="field__label">Megjelenés</span><input id="ebook-metadata-publishedDate" class="input" type="text" placeholder="ÉÉÉÉ vagy ÉÉÉÉ-HH-NN" /></label>
+                <label class="field"><span class="field__label">Sorozat</span><input id="ebook-metadata-series" class="input" type="text" /></label>
+                <label class="field"><span class="field__label">Sorozatszám</span><input id="ebook-metadata-seriesIndex" class="input" type="text" inputmode="decimal" placeholder="Pl. 2" /></label>
+                <label class="field ebook-library__metadata-wide"><span class="field__label">Műfajok (vesszővel elválasztva)</span><input id="ebook-metadata-subjects" class="input" type="text" /></label>
+                <label class="field ebook-library__metadata-wide"><span class="field__label">Leírás</span><textarea id="ebook-metadata-description" class="input" rows="4"></textarea></label>
+                <div class="ebook-library__metadata-cover ebook-library__metadata-wide">
+                  <img id="ebook-metadata-cover-preview" alt="A kiválasztott könyv borítója" hidden />
+                  <div><label class="field"><span class="field__label">Borító (JPG vagy PNG, legfeljebb 10 MiB)</span><input id="ebook-metadata-cover" type="file" accept="image/jpeg,image/png" /></label><button id="ebook-metadata-cover-clear" class="btn btn--ghost btn--sm" type="button">Borító eltávolítása</button></div>
+                </div>
               </div>
               <p id="ebook-metadata-suggestion" class="ebook-library__metadata-suggestion" role="status"></p>
               <label id="ebook-metadata-source-wrap" class="field" hidden><span class="field__label">Katalógustalálat</span><select id="ebook-metadata-source" class="input"></select></label>
+              <div id="ebook-metadata-field-suggestions" class="ebook-library__metadata-proposals" hidden></div>
               <div class="ebook-library__metadata-actions">
                 <span id="ebook-metadata-dirty" class="ebook-library__metadata-dirty" aria-live="polite">Nincs mentetlen módosítás</span>
                 <button id="ebook-metadata-lookup" class="btn btn--ghost" type="button">Webes keresés</button>
-                <button id="ebook-metadata-apply" class="btn btn--ghost" type="button" disabled>Javaslat alkalmazása</button>
+                <button id="ebook-metadata-apply" class="btn btn--ghost" type="button" disabled>Kiválasztott mezők alkalmazása</button>
+                <button id="ebook-metadata-save-catalog" class="btn btn--ghost" type="button" hidden>Csak adatlap mentése</button>
                 <button id="ebook-metadata-save" class="btn btn--primary" type="button" disabled>Metaadatok mentése</button>
               </div>
             </div>

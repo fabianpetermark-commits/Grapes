@@ -42,6 +42,34 @@ további fejlesztést.
 - Nézetváltás (elöl/hátul/izometrikus), drótváz mód
 - STL-export (bináris) nyomtatásra kész exportáláshoz
 
+## E-book könyvszerkesztő
+
+A könyvtári adatlap cím, szerző, ISBN, nyelv, kiadó, megjelenés, sorozat,
+műfaj, leírás és borító mezőket tárol a `Grapes E-book Library` mappában.
+A korábbi v1 metaadatfájlokat változtatás nélkül beolvassa. PDF/MOBI és más
+formátumoknál csak az adatlap változik; EPUB-nál a beágyazott adatok és a
+borító is frissíthetők. A forrásjavaslatok Open Libraryből és Google Booksból
+érkeznek, mezőnként választhatók.
+
+Az EPUB-fájlba írás alapértelmezés szerint **kikapcsolt**. Aktiválás előtt a
+Google Cloud-projektben engedélyezni kell a Books API-t, az OAuth-képernyőn
+deklarálni kell a `https://www.googleapis.com/auth/drive` jogosultságot, és
+el kell végezni a Google által előírt ellenőrzést. Valós Google-fiókkal
+tesztelendő a hozzájárulás, egy EPUB mentése, letöltése és e-olvasós
+megnyitása. Csak ezután állítható `VITE_EBOOK_EPUB_WRITE_ENABLED=true` a
+buildben. A jogot a Grapes nem bejelentkezéskor, hanem az első EPUB-mentéskor
+kéri. Elutasítás esetén az adatlap külön menthető.
+
+EPUB-átíráskor nem készül külön Grapes-másolat; a helyreállítás a Drive
+verzióelőzményeire támaszkodik. A 100 MiB feletti, sérült vagy titkosított
+EPUB-ok kizárólag adatlapként menthetők. A ZIP-szerkezetet helyben ellenőrzi,
+az EPUB 2/3 generált mintákat pedig a CI hivatalos EPUBCheckkel validálja.
+
+```bash
+npm run test:ebook
+npm run test:epubcheck # EPUBCHECK_JAR környezeti változó szükséges
+```
+
 ## Telepítés
 
 ```bash

@@ -4,6 +4,7 @@ import { connectGrapesDrive, disconnectGrapesDrive, getGrapesDriveAccessToken, g
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 const TRANSFER_BROKER_URL = import.meta.env.VITE_EBOOK_TRANSFER_BROKER_URL || ''
+const EPUB_WRITE_ENABLED = import.meta.env.VITE_EBOOK_EPUB_WRITE_ENABLED === 'true'
 const FOLDER_NAME = 'Grapes E-book Library'
 const READER_PAGE_URL = new URL('ebook-reader.html', window.location.href).toString()
 const READER_SHARING_KEY = 'grapes-reader-library-enabled'
@@ -11,6 +12,9 @@ const LIBRARY_CACHE_KEY = 'grapes-ebook-library-cache-v1'
 const FULL_SCAN_CACHE_MS = 5 * 60 * 1000
 const INTERNAL_PAIRING_FILE = /^\.grapes-reader-pairing(?:-\d+)?\.json$/i
 const INTERNAL_METADATA_FILE = /^\.grapes-ebook-metadata\.json$/i
+const METADATA_FIELDS = ['title', 'author', 'isbn', 'language', 'publisher', 'publishedDate', 'series', 'seriesIndex', 'subjects', 'description']
+const METADATA_LABELS = { title: 'Cím', author: 'Szerző', isbn: 'ISBN', language: 'Nyelv', publisher: 'Kiadó', publishedDate: 'Megjelenés', series: 'Sorozat', seriesIndex: 'Sorozatszám', subjects: 'Műfajok', description: 'Leírás', coverUrl: 'Borító' }
+const MAX_COVER_SIZE = 10 * 1024 * 1024
 const SHAREABLE_BOOK_EXTENSIONS = new Set(['epub', 'pdf', 'mobi', 'azw', 'azw3', 'prc', 'txt', 'cbz', 'cbr'])
 const DRIVE_BOOK_EXTENSIONS = new Set(['epub', 'pdf', 'mobi', 'azw', 'azw3', 'azw4', 'kfx', 'prc', 'fb2', 'djvu', 'djv', 'cbz', 'cbr', 'cb7', 'cbt', 'txt', 'rtf', 'doc', 'docx', 'odt', 'html', 'htm', 'xhtml', 'chm', 'lit', 'lrf', 'lrx', 'pdb', 'pml', 'pmlz', 'rb', 'snb', 'tcr', 'tr2', 'tr3', 'xps', 'oxps'])
 
@@ -21,8 +25,17 @@ let ebookMetadataFileId = null
 let pendingMetadataSuggestion = null
 let metadataLookupSerial = 0
 let metadataSearchMatches = []
+let metadataProposalControls = new Map()
 let metadataDirty = false
 let activeMetadataBookId = ''
+let metadataLoadedSnapshot = ''
+let pendingCoverBlob = null
+let pendingCoverUrl = ''
+let pendingCoverRemoved = false
+let coverObjectUrl = ''
+let coverChangeSerial = 0
+let partialMetadataSave = null
+let pendingCoverAsset = null
 let cachedBooks = []
 let cachedAt = 0
 let readerPairMessageTimer = null
@@ -179,6 +192,17 @@ function renderBooks(books = []) {
 }
 
 function metadataFileName() { return '.grapes-ebook-metadata.json' }
+function normalizeMetadataEntry(value) {
+  const entry = { title: String(value.title || '').trim(), author: String(value.author || '').trim() }
+  for (const key of METADATA_FIELDS.filter((field) => !['title', 'author', 'subjects'].includes(field))) {
+    if (value[key] != null && String(value[key]).trim()) entry[key] = String(value[key]).trim()
+  }
+  if (Array.isArray(value.subjects)) entry.subjects = value.subjects.map((subject) => String(subject).trim()).filter(Boolean)
+  if (typeof value.coverFileId === 'string' && value.coverFileId) entry.coverFileId = value.coverFileId
+  if (typeof value.coverMimeType === 'string' && value.coverMimeType) entry.coverMimeType = value.coverMimeType
+  if (typeof value.updatedAt === 'string' && value.updatedAt) entry.updatedAt = value.updatedAt
+  return entry
+}
 function normalizeEbookMetadata(payload) {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return {}
   const normalized = payload.books && typeof payload.books === 'object'
@@ -187,11 +211,8 @@ function normalizeEbookMetadata(payload) {
   for (const [id, value] of Object.entries(payload)) {
     if (id === 'books' || id === 'version' || id === 'updatedAt') continue
     if (!value || typeof value !== 'object' || Array.isArray(value)) continue
-    if (!Object.hasOwn(value, 'title') && !Object.hasOwn(value, 'author')) continue
-    normalized[id] = {
-      title: String(value.title || '').trim(),
-      author: String(value.author || '').trim(),
-    }
+    if (!METADATA_FIELDS.some((field) => Object.hasOwn(value, field))) continue
+    normalized[id] = normalizeMetadataEntry(value)
   }
   return normalized
 }
@@ -206,7 +227,7 @@ async function loadEbookMetadata(folderId) {
   ebookMetadata = normalizeEbookMetadata(payload)
 }
 async function saveEbookMetadata(folderId) {
-  const payload = JSON.stringify({ version: 1, updatedAt: new Date().toISOString(), books: ebookMetadata })
+  const payload = JSON.stringify({ version: 2, updatedAt: new Date().toISOString(), books: ebookMetadata })
   if (ebookMetadataFileId) {
     await driveRequest(`https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(ebookMetadataFileId)}?uploadType=media`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: payload })
     return
@@ -260,16 +281,49 @@ function updateMetadataForm() {
   const id = $('#ebook-metadata-book')?.value
   activeMetadataBookId = id || ''
   const data = ebookMetadata[id] || {}
-  if ($('#ebook-metadata-title')) $('#ebook-metadata-title').value = data.title || ''
-  if ($('#ebook-metadata-author')) $('#ebook-metadata-author').value = data.author || ''
+  const saveButton = $('#ebook-metadata-save')
+  const selectedBook = currentBooks.find((book) => book.id === id)
+  if (saveButton) saveButton.textContent = ext(selectedBook?.name || '') === 'epub' && EPUB_WRITE_ENABLED ? 'Adatlap és EPUB mentése' : 'Könyvtári adatlap mentése'
+  metadataLoadedSnapshot = JSON.stringify(data)
+  for (const key of METADATA_FIELDS) {
+    const input = $(`#ebook-metadata-${key}`)
+    if (input) input.value = key === 'subjects' ? (data.subjects || []).join(', ') : data[key] || ''
+  }
+  pendingCoverBlob = null; pendingCoverUrl = ''; pendingCoverRemoved = false
+  renderCoverPreview('')
+  if (data.coverFileId) loadSavedCoverPreview(id, data.coverFileId)
   pendingMetadataSuggestion = id ? parseFilenameMetadata(currentBooks.find((book) => book.id === id)?.name || '') : null
   metadataSearchMatches = []
   const sourceWrap = $('#ebook-metadata-source-wrap')
   if (sourceWrap) sourceWrap.hidden = true
+  if ($('#ebook-metadata-field-suggestions')) $('#ebook-metadata-field-suggestions').hidden = true
+  if ($('#ebook-metadata-save-catalog')) $('#ebook-metadata-save-catalog').hidden = true
   setMetadataMessage(id ? `Fájlnév alapján: ${suggestMetadata(currentBooks.find((book) => book.id === id)?.name || '')}` : '')
   if ($('#ebook-metadata-apply')) $('#ebook-metadata-apply').disabled = !pendingMetadataSuggestion
   updateMetadataPreview()
   setMetadataDirty(false)
+}
+function renderCoverPreview(url) {
+  if (coverObjectUrl) { URL.revokeObjectURL(coverObjectUrl); coverObjectUrl = '' }
+  const preview = $('#ebook-metadata-cover-preview')
+  if (!preview) return
+  preview.hidden = !url
+  preview.src = url || ''
+}
+function showCoverBlob(blob) {
+  renderCoverPreview('')
+  coverObjectUrl = URL.createObjectURL(blob)
+  const preview = $('#ebook-metadata-cover-preview')
+  if (preview) { preview.src = coverObjectUrl; preview.hidden = false }
+}
+async function loadSavedCoverPreview(bookId, fileId) {
+  try {
+    const blob = await (await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`)).blob()
+    if (bookId !== activeMetadataBookId || pendingCoverBlob || pendingCoverUrl || pendingCoverRemoved) return
+    coverObjectUrl = URL.createObjectURL(blob)
+    const preview = $('#ebook-metadata-cover-preview')
+    if (preview) { preview.src = coverObjectUrl; preview.hidden = false }
+  } catch { /* A hiányzó borító nem akadályozza a könyv szerkesztését. */ }
 }
 function selectMetadataBook() {
   const select = $('#ebook-metadata-book')
@@ -288,12 +342,12 @@ async function lookupBookMetadata() {
   const id = $('#ebook-metadata-book')?.value
   if (!id) { setMetadataMessage('Válassz ki egy könyvet a webes kereséshez.', 'error'); return }
   const book = currentBooks.find((item) => item.id === id)
-  const typedTitle = $('#ebook-metadata-title')?.value.trim() || ''
-  const typedAuthor = $('#ebook-metadata-author')?.value.trim() || ''
+  const typedTitle = ($('#ebook-metadata-title')?.value || '').trim()
+  const typedAuthor = ($('#ebook-metadata-author')?.value || '').trim()
   const parsed = parseFilenameMetadata(book?.name || '')
   const title = typedTitle || parsed?.title || ''
   const author = typedAuthor || parsed?.author || ''
-  const isbn = extractIsbn(book?.name || '')
+  const isbn = ($('#ebook-metadata-isbn')?.value || '').trim().replace(/[^\dX]/gi, '') || extractIsbn(book?.name || '')
   if (!title && !author && !isbn) { setMetadataMessage('Adj meg címet vagy szerzőt a kereséshez.', 'error'); return }
   const serial = ++metadataLookupSerial
   const button = $('#ebook-metadata-lookup'); if (button) button.disabled = true
@@ -301,6 +355,7 @@ async function lookupBookMetadata() {
   if (sourceWrap) sourceWrap.hidden = true
   pendingMetadataSuggestion = null
   metadataSearchMatches = []
+  metadataProposalControls = new Map()
   if ($('#ebook-metadata-apply')) $('#ebook-metadata-apply').disabled = true
   setMetadataMessage('Keresés az Open Library és a Google Books katalógusában…')
   try {
@@ -326,6 +381,7 @@ async function lookupBookMetadata() {
     if (sourceWrap) sourceWrap.hidden = matches.length < 2
     metadataSearchMatches = matches
     pendingMetadataSuggestion = matches[0].suggestion
+    renderMetadataProposals(matches)
     const first = matches[0]
     const detail = first.kind === 'author'
       ? 'A szerzőt megtaláltam; a megadott magyar címet megtartottam.'
@@ -334,7 +390,8 @@ async function lookupBookMetadata() {
       ? (metadataSimilarity(matches[0].suggestion.title, matches[1].suggestion.title) >= 0.8 && metadataSimilarity(matches[0].suggestion.author, matches[1].suggestion.author) >= 0.7
           ? ' A cím és a szerző mindkét forrásban egyezik; a kiadási év eltérhet.' : ' A források eltérnek; válaszd ki a megfelelő találatot.')
       : ` Csak a(z) ${first.source} adott biztos találatot.`
-    setMetadataMessage(`${detail}${agreement}${unavailable.length ? ` Nem elérhető: ${unavailable.join(', ')}.` : ''}`, 'success')
+    const evidence = matches.map((match) => `${match.source}: ${match.evidence?.isbn ? 'ISBN egyezés' : `cím ${Math.round((match.evidence?.titleScore || 0) * 100)}%, szerző ${Math.round((match.evidence?.authorScore || 0) * 100)}%`}`).join('; ')
+    setMetadataMessage(`${detail}${agreement} ${evidence}.${unavailable.length ? ` Nem elérhető: ${unavailable.join(', ')}.` : ''}`, 'success')
     $('#ebook-metadata-apply').disabled = false
   } catch (error) {
     if (serial !== metadataLookupSerial) return
@@ -356,23 +413,28 @@ async function findGoogleBooksMetadata({ title = '', author = '', isbn = '' } = 
     try {
       const response = await fetch(`https://www.googleapis.com/books/v1/volumes?${params}`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal })
       if (!response.ok) throw new Error(`Google Books keresési hiba (${response.status})`)
-      items = (await response.json()).items || []
+      const data = await response.json()
+      items = Array.isArray(data.items) ? data.items : []
     } finally { window.clearTimeout(timeout) }
     const docs = items.map((item) => ({
       title: item.volumeInfo?.title || '', author_name: item.volumeInfo?.authors || [],
       first_publish_year: item.volumeInfo?.publishedDate?.slice(0, 4) || '',
+      publishedDate: item.volumeInfo?.publishedDate || '', publisher: item.volumeInfo?.publisher || '',
+      description: plainBookDescription(item.volumeInfo?.description || ''),
+      language: item.volumeInfo?.language || '', subjects: item.volumeInfo?.categories || [],
+      coverUrl: safeCoverUrl(item.volumeInfo?.imageLinks?.extraLarge || item.volumeInfo?.imageLinks?.large || item.volumeInfo?.imageLinks?.medium || item.volumeInfo?.imageLinks?.thumbnail || ''),
       isbn: item.volumeInfo?.industryIdentifiers?.map((identifier) => identifier.identifier) || [],
     }))
     const exactIsbn = isbn && docs.find((doc) => doc.isbn.includes(isbn))
-    if (exactIsbn) return metadataMatch(exactIsbn, 'isbn')
+    if (exactIsbn) return metadataMatch(exactIsbn, 'isbn', { isbn: true, titleScore: metadataSimilarity(title, exactIsbn.title), authorScore: metadataSimilarity(author, exactIsbn.author_name?.[0] || '') })
     const best = bestMetadataDocument(docs, { title, author })
-    if (best && (title && author ? best.titleScore >= 0.72 && best.authorScore >= 0.5 : title ? best.titleScore >= 0.72 : best.authorScore >= 0.72)) return metadataMatch(best.doc, 'exact')
+    if (best && (title && author ? best.titleScore >= 0.72 && best.authorScore >= 0.5 : title ? best.titleScore >= 0.72 : best.authorScore >= 0.72)) return metadataMatch(best.doc, 'exact', best)
   }
   return null
 }
 
 async function queryOpenLibrary(parameters, signal) {
-  const search = new URLSearchParams({ fields: 'title,author_name,first_publish_year,cover_i,key', limit: '20' })
+  const search = new URLSearchParams({ fields: 'title,author_name,first_publish_year,cover_i,key,isbn,language,publisher,subject', limit: '20' })
   Object.entries(parameters).forEach(([key, value]) => { if (value) search.set(key, value) })
   const response = await fetch(`https://openlibrary.org/search.json?${search}`, { signal })
   if (!response.ok) throw new Error(`Webes keresési hiba (${response.status})`)
@@ -409,21 +471,21 @@ async function findBookMetadata({ title = '', author = '', isbn = '' } = {}) {
   try {
   if (isbn) {
     const isbnMatch = bestMetadataDocument(await queryOpenLibrary({ isbn }, controller.signal), { title, author })
-    if (isbnMatch?.doc) return metadataMatch(isbnMatch.doc, 'isbn')
+    if (isbnMatch?.doc?.isbn?.some((value) => String(value).replace(/[^\dX]/gi, '') === isbn)) return enrichOpenLibraryMatch(metadataMatch(isbnMatch.doc, 'isbn', { ...isbnMatch, isbn: true }), isbnMatch.doc, controller.signal)
   }
   if (title && author) {
     const exact = bestMetadataDocument(await queryOpenLibrary({ title, author }, controller.signal), { title, author })
-    if (exact?.score >= 0.62) return metadataMatch(exact.doc, 'exact')
+    if (exact?.score >= 0.62) return enrichOpenLibraryMatch(metadataMatch(exact.doc, 'exact', exact), exact.doc, controller.signal)
   }
   if (title) {
     const byTitle = bestMetadataDocument(await queryOpenLibrary({ title }, controller.signal), { title, author })
-    if (byTitle?.titleScore >= 0.72 && (!author || byTitle.authorScore >= 0.5)) return metadataMatch(byTitle.doc, 'title')
+    if (byTitle?.titleScore >= 0.72 && (!author || byTitle.authorScore >= 0.5)) return enrichOpenLibraryMatch(metadataMatch(byTitle.doc, 'title', byTitle), byTitle.doc, controller.signal)
   }
   if (author) {
     const byAuthor = bestMetadataDocument(await queryOpenLibrary({ author }, controller.signal), { author })
     if (byAuthor?.authorScore >= 0.72) {
       return {
-        kind: 'author', year: '',
+        kind: 'author', year: '', evidence: { titleScore: 0, authorScore: byAuthor.authorScore },
         suggestion: { title, author: byAuthor.doc.author_name?.[0] || author },
       }
     }
@@ -432,25 +494,104 @@ async function findBookMetadata({ title = '', author = '', isbn = '' } = {}) {
   } finally { window.clearTimeout(timeout) }
 }
 
-function metadataMatch(doc, kind) {
+function plainBookDescription(html) {
+  return String(html).replace(/<[^>]*>/g, ' ').replace(/&(?:amp|lt|gt|quot|nbsp);/g, (entity) => ({ '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&nbsp;': ' ' }[entity])).replace(/\s+/g, ' ').trim()
+}
+function safeCoverUrl(value) {
+  try { const url = new URL(String(value || '').replace(/^http:/, 'https:')); return url.protocol === 'https:' ? url.toString() : '' }
+  catch { return '' }
+}
+async function enrichOpenLibraryMatch(match, doc, signal) {
+  if (!/^\/works\/OL\d+W$/.test(doc.key || '')) return match
+  try {
+    const response = await fetch(`https://openlibrary.org${doc.key}.json`, { signal })
+    if (response.ok) {
+      const work = await response.json()
+      match.suggestion.description = typeof work.description === 'string' ? work.description : work.description?.value || ''
+    }
+  } catch { /* A leírás opcionális; a találat ettől még érvényes. */ }
+  return match
+}
+function metadataMatch(doc, kind, evidence = {}) {
+  const isbn = doc.isbn?.find((value) => String(value).replace(/[^\dX]/gi, '').length === 13) || doc.isbn?.[0] || ''
+  const language = Array.isArray(doc.language) ? doc.language[0] || '' : doc.language || ''
+  const publisher = Array.isArray(doc.publisher) ? doc.publisher[0] || '' : doc.publisher || ''
+  const languageMap = { eng: 'en', hun: 'hu', ger: 'de', fre: 'fr', spa: 'es', ita: 'it' }
   return {
-    kind, year: doc.first_publish_year || '',
-    suggestion: { title: doc.title || '', author: doc.author_name?.[0] || '' },
+    kind, year: doc.first_publish_year || '', evidence,
+    suggestion: {
+      title: doc.title || '', author: doc.author_name?.[0] || '', isbn: String(isbn).replace(/[^\dX]/gi, ''),
+      language: languageMap[language] || language, publisher,
+      publishedDate: doc.publishedDate || (doc.first_publish_year ? String(doc.first_publish_year) : ''),
+      description: doc.description || '', subjects: doc.subjects || doc.subject?.slice(0, 8) || [],
+      coverUrl: safeCoverUrl(doc.coverUrl || (doc.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg?default=false` : '')),
+    },
   }
 }
+function proposalText(value) {
+  return Array.isArray(value) ? value.join(', ') : String(value || '')
+}
+function renderMetadataProposals(matches) {
+  const container = $('#ebook-metadata-field-suggestions')
+  metadataProposalControls = new Map()
+  if (!container) return
+  container.replaceChildren()
+  for (const field of [...METADATA_FIELDS, 'coverUrl']) {
+    const available = matches.map((match, index) => ({ index, match, value: proposalText(match.suggestion[field]) })).filter((item) => item.value)
+    if (!available.length) continue
+    const row = document.createElement('label')
+    row.className = 'ebook-library__metadata-proposal'
+    const name = document.createElement('span')
+    name.textContent = METADATA_LABELS[field]
+    const select = document.createElement('select')
+    select.className = 'input'
+    select.setAttribute?.('aria-label', `${METADATA_LABELS[field]} javaslatának forrása`)
+    const keep = document.createElement('option')
+    keep.value = ''
+    keep.textContent = 'Meglévő / kézi érték megtartása'
+    select.append(keep)
+    for (const item of available) {
+      const option = document.createElement('option')
+      option.value = String(item.index)
+      option.textContent = `${item.match.source}: ${item.value.length > 90 ? `${item.value.slice(0, 87)}…` : item.value}`
+      select.append(option)
+    }
+    select.value = field !== 'coverUrl' && !($(`#ebook-metadata-${field}`)?.value || '').trim() ? String(available[0].index) : ''
+    metadataProposalControls.set(field, select)
+    row.append(name, select)
+    container.append(row)
+  }
+  container.hidden = metadataProposalControls.size === 0
+}
 function applyMetadataSuggestion() {
-  if (!pendingMetadataSuggestion) { setMetadataMessage('Nincs alkalmazható javaslat.', 'error'); return }
-  $('#ebook-metadata-title').value = pendingMetadataSuggestion.title || ''
-  $('#ebook-metadata-author').value = pendingMetadataSuggestion.author || ''
+  if (!metadataSearchMatches.length) { setMetadataMessage('Nincs alkalmazható javaslat.', 'error'); return }
+  let count = 0
+  for (const [field, control] of metadataProposalControls) {
+    if (control.value === '') continue
+    const value = metadataSearchMatches[Number(control.value)]?.suggestion[field]
+    if (!value) continue
+    if (field === 'coverUrl') {
+      pendingCoverBlob = null; pendingCoverUrl = value; pendingCoverRemoved = false; coverChangeSerial++
+      renderCoverPreview(value)
+    } else {
+      const input = $(`#ebook-metadata-${field}`)
+      if (input) input.value = proposalText(value)
+    }
+    control.value = ''
+    count++
+  }
+  if (!count) { setMetadataMessage('Válassz ki legalább egy javasolt mezőt.', 'error'); return }
   $('#ebook-metadata-apply').disabled = true
   setMetadataDirty(true)
   updateMetadataPreview()
-  setMetadataMessage('A javaslat alkalmazva. A véglegesítéshez kattints a Metaadatok mentése gombra.', 'success')
+  setMetadataMessage(`${count} javasolt mező alkalmazva. A véglegesítéshez kattints a Metaadatok mentése gombra.`, 'success')
 }
 function selectMetadataSource() {
   const match = metadataSearchMatches[Number($('#ebook-metadata-source')?.value)]
   pendingMetadataSuggestion = match?.suggestion || null
   if ($('#ebook-metadata-apply')) $('#ebook-metadata-apply').disabled = !pendingMetadataSuggestion
+  const index = metadataSearchMatches.indexOf(match)
+  for (const [field, control] of metadataProposalControls) if (control.value !== '' && match?.suggestion[field]) control.value = String(index)
   if (match) setMetadataMessage(`Kiválasztva: ${match.source} — ${match.suggestion.title}${match.suggestion.author ? ` — ${match.suggestion.author}` : ''}. A mentés csak a Javaslat alkalmazása után történik.`, 'success')
 }
 function parseFilenameMetadata(name = '') {
@@ -468,6 +609,68 @@ function cleanMetadataParts(title, author) {
   const cleanAuthor = author.split(/\s*;\s*/)[0].replace(/\s+[-–—]\s+\d+$/, '').replace(/\s+\((?:auth\.?|author|szerző)\)$/i, '').replace(/(?<=\p{L})\d+$/u, '').trim()
   return cleanTitle && cleanAuthor ? { title: cleanTitle, author: cleanAuthor } : null
 }
+function isbnIsValid(isbn) {
+  if (!isbn) return true
+  if (/^\d{13}$/.test(isbn)) return [...isbn].reduce((sum, digit, index) => sum + Number(digit) * (index % 2 ? 3 : 1), 0) % 10 === 0
+  if (/^\d{9}[\dX]$/.test(isbn)) return [...isbn].reduce((sum, digit, index) => sum + (digit === 'X' ? 10 : Number(digit)) * (10 - index), 0) % 11 === 0
+  return false
+}
+function metadataFromForm() {
+  const result = {}
+  for (const key of METADATA_FIELDS) {
+    const value = ($(`#ebook-metadata-${key}`)?.value || '').trim()
+    result[key] = key === 'subjects' ? [...new Set(value.split(',').map((part) => part.trim()).filter(Boolean))].slice(0, 20) : value
+  }
+  result.isbn = result.isbn.replace(/[^\dX]/gi, '').toUpperCase()
+  return result
+}
+function validateMetadataForm(values, needsEpub) {
+  if (needsEpub && !values.title) throw new Error('Az EPUB címét add meg a mentéshez.')
+  if (!isbnIsValid(values.isbn)) throw new Error('Az ISBN ellenőrzőszáma hibás.')
+  if (values.language && !/^[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{2,8})*$/.test(values.language)) throw new Error('A nyelv kódja legyen például hu vagy en.')
+  if (values.publishedDate && !/^\d{4}(?:-(?:0[1-9]|1[0-2])(?:-(?:0[1-9]|[12]\d|3[01]))?)?$/.test(values.publishedDate)) throw new Error('A megjelenés formátuma ÉÉÉÉ, ÉÉÉÉ-HH vagy ÉÉÉÉ-HH-NN lehet.')
+  if (/^\d{4}-\d{2}-\d{2}$/.test(values.publishedDate)) {
+    const date = new Date(`${values.publishedDate}T00:00:00Z`)
+    if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== values.publishedDate) throw new Error('Nem létező megjelenési dátum.')
+  }
+  if (values.seriesIndex && !/^\d+(?:\.\d+)?$/.test(values.seriesIndex)) throw new Error('A sorozatszám legyen pozitív szám.')
+  if (values.description.length > 10000) throw new Error('A leírás legfeljebb 10 000 karakter lehet.')
+}
+async function selectedCover() {
+  if (pendingCoverRemoved || (!pendingCoverBlob && !pendingCoverUrl)) return null
+  let blob = pendingCoverBlob
+  if (!blob) {
+    const url = new URL(pendingCoverUrl)
+    if (url.protocol !== 'https:') throw new Error('A borító forrásának biztonságos HTTPS-címnek kell lennie.')
+    let response
+    try { response = await fetch(url.toString()) }
+    catch { throw new Error('A katalógus borítója nem érhető el a böngészőből. Tölts fel saját JPG/PNG képet.') }
+    if (!response.ok) throw new Error('A katalógus borítója nem tölthető le. Tölts fel saját JPG/PNG képet.')
+    blob = await response.blob()
+  }
+  if (blob.size > MAX_COVER_SIZE) throw new Error('A borító legfeljebb 10 MiB lehet.')
+  const bytes = new Uint8Array(await blob.arrayBuffer())
+  const jpeg = bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff
+  const png = bytes.slice(0, 8).every((byte, index) => byte === [137, 80, 78, 71, 13, 10, 26, 10][index])
+  if (!jpeg && !png) throw new Error('Csak érvényes JPG vagy PNG borító használható.')
+  return { bytes, mimeType: png ? 'image/png' : 'image/jpeg' }
+}
+async function uploadCoverAsset(folderId, bookId, cover) {
+  const extension = cover.mimeType === 'image/png' ? 'png' : 'jpg'
+  const boundary = `grapes-cover-${crypto.randomUUID()}`
+  const body = new Blob([`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n`, JSON.stringify({ name: `.grapes-cover-${bookId}-${Date.now()}.${extension}`, parents: [folderId], mimeType: cover.mimeType }), `\r\n--${boundary}\r\nContent-Type: ${cover.mimeType}\r\n\r\n`, cover.bytes, `\r\n--${boundary}--\r\n`])
+  const response = await driveRequest('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', { method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${boundary}` }, body })
+  return (await response.json()).id
+}
+function sameDriveVersion(left, right) {
+  if (left?.headRevisionId && right?.headRevisionId) return left.headRevisionId === right.headRevisionId
+  if (left?.md5Checksum && right?.md5Checksum) return left.md5Checksum === right.md5Checksum
+  return left?.modifiedTime === right?.modifiedTime && String(left?.size || '') === String(right?.size || '')
+}
+async function getBookDriveVersion(id) {
+  const response = await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?fields=id,name,size,modifiedTime,md5Checksum,headRevisionId,mimeType,capabilities(canEdit),isAppAuthorized`)
+  return response.json()
+}
 function looksLikeAuthor(value = '') {
   const clean = value.replace(/\([^)]*\)/g, '').replace(/\bdr\.?\s*/gi, '').trim()
   if (/\b(?:19|20)\d{2}\b|\b(?:kiadó|publisher|press|isbn|budapest)\b/i.test(clean)) return false
@@ -484,26 +687,73 @@ function suggestMetadata(name = '') {
 }
 function openMetadataEditor(id) { const select = $('#ebook-metadata-book'); if (select) { select.value = id; updateMetadataForm(); $('#ebook-metadata-panel')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }) } }
 async function saveMetadataFromForm() {
+  return saveMetadata({ catalogOnly: !EPUB_WRITE_ENABLED })
+}
+async function saveMetadata({ catalogOnly = false } = {}) {
   const id = $('#ebook-metadata-book')?.value
   if (!id) return setStatus('Válassz ki egy könyvet a szerkesztéshez.', 'error')
-  const edited = {
-    title: $('#ebook-metadata-title')?.value.trim() || '',
-    author: $('#ebook-metadata-author')?.value.trim() || '',
-  }
+  const book = currentBooks.find((item) => item.id === id)
+  const epub = ext(book?.name || '') === 'epub'
+  const edited = metadataFromForm()
+  const fingerprint = JSON.stringify(edited) + pendingCoverUrl + (pendingCoverBlob?.size || '') + String(pendingCoverRemoved) + coverChangeSerial
   try {
+    if (partialMetadataSave && (partialMetadataSave.id !== id || partialMetadataSave.fingerprint !== fingerprint)) throw new Error('Egy korábbi EPUB-mentés adatlaprésze még hiányzik. Előbb próbáld újra ugyanannál a könyvnél, változatlan mezőkkel.')
+    validateMetadataForm(edited, epub && !catalogOnly)
     const save = $('#ebook-metadata-save'); if (save) save.disabled = true
     const indicator = $('#ebook-metadata-dirty'); if (indicator) indicator.textContent = 'Mentés a Drive-ra…'
     const { folderId } = await getReaderLibraryBooks()
     // Mindig a Drive legfrissebb állapotához fűzzük a módosítást. Így egy
     // másik eszközön mentett könyv nem tűnik el a következő mentéskor.
     await loadEbookMetadata(folderId)
-    ebookMetadata[id] = edited
-    await saveEbookMetadata(folderId)
+    if (JSON.stringify(ebookMetadata[id] || {}) !== metadataLoadedSnapshot) throw new Error('A könyv adatai közben megváltoztak egy másik eszközön. Frissítsd a könyvtárat, majd egyeztesd az eltéréseket.')
+    let cover = partialMetadataSave?.id === id && partialMetadataSave.fingerprint === fingerprint ? partialMetadataSave.cover : await selectedCover()
+    if (epub && !catalogOnly) {
+      if (!EPUB_WRITE_ENABLED) throw new Error('Az EPUB-fájl mentése még nincs élesítve. A könyvtári adatlap külön menthető.')
+      if (partialMetadataSave?.id === id && partialMetadataSave.fingerprint === fingerprint && !sameDriveVersion(partialMetadataSave.version, await getBookDriveVersion(id))) throw new Error('Az EPUB az előző mentési kísérlet óta újra módosult a Drive-on. Frissítsd a könyvtárat.')
+      if (!partialMetadataSave || partialMetadataSave.id !== id || partialMetadataSave.fingerprint !== fingerprint) {
+        const before = await getBookDriveVersion(id)
+        if (book?.modifiedTime && !sameDriveVersion(book, before)) throw new Error('Az EPUB-fájl közben módosult a Drive-on. Frissítsd a könyvtárat a mentés előtt.')
+        if (before.capabilities?.canEdit === false) throw new Error('Ehhez az EPUB-hoz nincs szerkesztési jogod a Drive-on.')
+        await connectGrapesDrive({ fullWrite: true })
+        setStatus('Az EPUB letöltése és ellenőrzése…')
+        const original = await (await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media`)).blob()
+        setStatus('Az EPUB metaadatainak és borítójának frissítése…')
+        const clearFields = METADATA_FIELDS.filter((field) => Boolean(ebookMetadata[id]?.[field]?.length) && !edited[field]?.length)
+        const updated = await (await loadEpubWriter())(original, edited, pendingCoverRemoved ? { remove: true } : cover, { clearFields })
+        if (!sameDriveVersion(before, await getBookDriveVersion(id))) throw new Error('Az EPUB-fájl a feldolgozás közben módosult. Nem írtam felül.')
+        setStatus('A módosított EPUB feltöltése a Drive-ra…')
+        const response = await driveRequest(`https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(id)}?uploadType=media&fields=id,size,modifiedTime,md5Checksum,headRevisionId`, { method: 'PATCH', headers: { 'Content-Type': 'application/epub+zip' }, body: updated })
+        const uploaded = await response.json()
+        Object.assign(book, uploaded)
+        partialMetadataSave = { id, fingerprint, cover, version: uploaded }
+      }
+    }
+    let coverFileId = ebookMetadata[id]?.coverFileId || ''
+    let coverMimeType = ebookMetadata[id]?.coverMimeType || ''
+    if (pendingCoverRemoved) { coverFileId = ''; coverMimeType = '' }
+    if (cover) {
+      coverFileId = pendingCoverAsset?.id === id && pendingCoverAsset.fingerprint === fingerprint
+        ? pendingCoverAsset.fileId : await uploadCoverAsset(folderId, id, cover)
+      coverMimeType = cover.mimeType
+      pendingCoverAsset = { id, fingerprint, fileId: coverFileId }
+      if (partialMetadataSave) partialMetadataSave.coverFileId = coverFileId
+    }
+    const priorEntry = ebookMetadata[id]
+    ebookMetadata[id] = normalizeMetadataEntry({ ...edited, coverFileId, coverMimeType, updatedAt: new Date().toISOString() })
+    try { await saveEbookMetadata(folderId) }
+    catch (error) { if (priorEntry) ebookMetadata[id] = priorEntry; else delete ebookMetadata[id]; throw error }
+    partialMetadataSave = null
+    pendingCoverAsset = null
     renderBooks(currentBooks)
     openMetadataEditor(id)
     setMetadataDirty(false)
-    setStatus('A könyv metaadatai mentve a Drive-ba.', 'success')
-  } catch (error) { setMetadataDirty(true); setStatus(`A metaadatok mentése nem sikerült. ${error.message}`, 'error') }
+    setStatus(epub && !catalogOnly ? 'A könyvtári adatlap és az EPUB metaadatai mentve a Drive-ba.' : 'A könyvtári adatlap mentve a Drive-ba; a könyvfájl változatlan maradt.', 'success')
+  } catch (error) {
+    setMetadataDirty(true)
+    const fallback = $('#ebook-metadata-save-catalog')
+    if (fallback && epub && !partialMetadataSave) fallback.hidden = false
+    setStatus(`${partialMetadataSave ? 'Az EPUB már mentve van, de a könyvtári adatlap még nem. Ugyanezzel a gombbal újrapróbálhatod.' : 'A mentés nem sikerült.'} ${error.message}`, 'error')
+  }
 }
 async function connectDrive() {
   try {
@@ -522,6 +772,7 @@ async function disconnectDrive() {
   setStatus('A Google Drive kapcsolat leválasztva. A Drive-on lévő fájlok nem változtak.', 'success')
 }
 const driveRequest = grapesDriveRequest
+async function loadEpubWriter() { return (await import('./ebook/epub-metadata.js')).rewriteEpubMetadata }
 function accessTokenAvailable() { return isGrapesDriveConnected() }
 async function findLibraryFolderIds() {
   const query = `name = '${FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`
@@ -801,13 +1052,28 @@ export function initEbookLibrary() {
   $('#ebook-refresh-btn')?.addEventListener('click', () => refreshLibrary({ forceFullScan: true }))
   $('#ebook-metadata-filter')?.addEventListener('input', renderMetadataOptions)
   $('#ebook-metadata-book')?.addEventListener('change', selectMetadataBook)
-  for (const selector of ['#ebook-metadata-title', '#ebook-metadata-author']) {
+  for (const selector of METADATA_FIELDS.map((field) => `#ebook-metadata-${field}`)) {
     $(selector)?.addEventListener('input', () => { if (activeMetadataBookId) { setMetadataDirty(true); updateMetadataPreview() } })
   }
+  $('#ebook-metadata-cover')?.addEventListener('change', (event) => {
+    const file = event.currentTarget.files?.[0]
+    if (!file) return
+    if (!['image/jpeg', 'image/png'].includes(file.type) || file.size > MAX_COVER_SIZE) { setMetadataMessage('Csak legfeljebb 10 MiB méretű JPG vagy PNG borító tölthető fel.', 'error'); event.currentTarget.value = ''; return }
+    pendingCoverBlob = file; pendingCoverUrl = ''; pendingCoverRemoved = false; coverChangeSerial++
+    showCoverBlob(file)
+    setMetadataDirty(true)
+  })
+  $('#ebook-metadata-cover-clear')?.addEventListener('click', () => {
+    pendingCoverBlob = null; pendingCoverUrl = ''; pendingCoverRemoved = true; coverChangeSerial++
+    renderCoverPreview('')
+    if ($('#ebook-metadata-cover')) $('#ebook-metadata-cover').value = ''
+    setMetadataDirty(true)
+  })
   $('#ebook-metadata-lookup')?.addEventListener('click', lookupBookMetadata)
   $('#ebook-metadata-source')?.addEventListener('change', selectMetadataSource)
   $('#ebook-metadata-apply')?.addEventListener('click', applyMetadataSuggestion)
   $('#ebook-metadata-save')?.addEventListener('click', saveMetadataFromForm)
+  $('#ebook-metadata-save-catalog')?.addEventListener('click', () => saveMetadata({ catalogOnly: true }))
   $('#ebook-transfer-close')?.addEventListener('click', closeTransfer)
   $('#ebook-transfer-pair')?.addEventListener('click', () => {
     const url = $('#ebook-transfer-pair').dataset.brokerUrl

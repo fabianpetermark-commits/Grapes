@@ -9,7 +9,7 @@ const source = readFileSync(new URL('../src/ebook-library.js', import.meta.url),
   .replace(/^import .*\r?\n/gm, '').replaceAll('import.meta.env', 'env').replace('export function', 'function')
 const driveSource = readFileSync(new URL('../src/storage/grapes-drive.js', import.meta.url), 'utf8')
   .replaceAll('export ', '').replaceAll('import.meta.env', 'env')
-function app(fetch, { connected = true, session = new Map(), local = new Map() } = {}) {
+function app(fetch, { connected = true, session = new Map(), local = new Map(), epubWriter = async () => new Blob(['rewritten epub']) } = {}) {
   const nodes = new Map()
   const element = () => ({ dataset: {}, children: [], listeners: {}, addEventListener(type, fn) { this.listeners[type] = fn }, removeAttribute(key) { delete this[key] }, replaceChildren() { this.children = [] }, append(row) { this.children.push(row) }, querySelectorAll: () => [] })
   const document = { querySelector(id) { if (!nodes.has(id)) nodes.set(id, element()); return nodes.get(id) }, createElement: element, head: { append() {} } }
@@ -17,12 +17,13 @@ function app(fetch, { connected = true, session = new Map(), local = new Map() }
   if (connected && !session.has('grapes-drive-session')) session.set('grapes-drive-session', JSON.stringify({ clientId: '123-client', accessToken: 'test-token', expiresAt: Date.now() + 3600000 }))
   const testSetTimeout = (callback, delay) => { const timer = setTimeout(callback, delay); timer.unref?.(); return timer }
   const context = vm.createContext({ document, fetch, Blob, URL, URLSearchParams, AbortController, crypto: webcrypto, QRCode: { async toCanvas(canvas, value) { canvas.qrValue = value } },
-    env: { VITE_GOOGLE_CLIENT_ID: '123-client', VITE_EBOOK_TRANSFER_BROKER_URL: 'https://broker.example/exec' },
+    env: { VITE_GOOGLE_CLIENT_ID: '123-client', VITE_EBOOK_TRANSFER_BROKER_URL: 'https://broker.example/exec', VITE_EBOOK_EPUB_WRITE_ENABLED: 'true' }, rewriteEpubMetadata: epubWriter,
     window: { sessionStorage: storage(session), localStorage: storage(local), setTimeout: testSetTimeout, clearTimeout, location: { href: 'https://fabianpetermark-commits.github.io/Grapes/', origin: 'https://fabianpetermark-commits.github.io', search: '' } } })
   const driveContext = vm.createContext({ window: context.window, document, fetch, env: context.env, Blob, crypto: webcrypto })
-  const api = vm.runInContext(driveSource + '\n({ connectGrapesDrive, disconnectGrapesDrive, getGrapesDriveAccessToken, grapesDriveHasFullReadAccess, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange })', driveContext)
+  const api = vm.runInContext(driveSource + '\n({ connectGrapesDrive, disconnectGrapesDrive, getGrapesDriveAccessToken, grapesDriveHasFullReadAccess, grapesDriveHasFullWriteAccess, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange })', driveContext)
   Object.assign(context, api)
   vm.runInContext(source + '\nonGrapesDriveChange(renderDriveConnection)', context)
+  vm.runInContext('loadEpubWriter = async () => rewriteEpubMetadata', context)
   return { context, nodes, session, local, run: (code) => vm.runInContext(code, context) }
 }
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status })
@@ -323,6 +324,23 @@ test('persistent reader pairing uses an inline frame with the verified marker', 
   assert.equal(a.nodes.get('#ebook-reader-pair-btn').disabled, false)
 })
 
+test('full Drive writing is requested only on demand and denial preserves the current token', async () => {
+  const a = app(async url => url.includes('/about?') ? json({ user: { emailAddress: 'reader@example.com' } }) : json({}))
+  let request; let config
+  a.context.window.google = { accounts: { oauth2: { initTokenClient(options) {
+    config = options
+    return { requestAccessToken(options) { request = options } }
+  } } } }
+  assert.equal(a.run('grapesDriveHasFullWriteAccess()'), false)
+  const pending = a.run('connectGrapesDrive({ fullWrite: true })')
+  await Promise.resolve()
+  assert.match(config.scope, /https:\/\/www\.googleapis\.com\/auth\/drive(?:\s|$)/)
+  assert.equal(request.prompt, 'consent')
+  config.error_callback({ type: 'popup_closed' })
+  await assert.rejects(pending, /popup_closed/)
+  assert.equal(a.run('getGrapesDriveAccessToken()'), 'test-token')
+})
+
 test('metadata parser understands title-first library filenames and legacy author-first names', () => {
   const a = app(async () => json({}))
   assert.deepEqual(
@@ -477,7 +495,7 @@ test('conflicting catalogues stay separate and the selected result is applied', 
   assert.equal(a.nodes.get('#ebook-metadata-source-wrap').hidden, false)
   assert.equal(a.nodes.get('#ebook-metadata-source').children.length, 2)
   a.nodes.get('#ebook-metadata-source').value = '1'
-  a.run('selectMetadataSource(); applyMetadataSuggestion()')
+  a.run('selectMetadataSource(); metadataProposalControls.get("author").value = "1"; applyMetadataSuggestion()')
   assert.equal(a.nodes.get('#ebook-metadata-author').value, 'F. Herbert')
 })
 
@@ -493,6 +511,138 @@ test('a failing Google Books lookup does not hide an Open Library match', async 
   await a.run('lookupBookMetadata()')
   assert.match(a.nodes.get('#ebook-metadata-suggestion').textContent, /Nem elérhető: Google Books/)
   assert.equal(a.nodes.get('#ebook-metadata-apply').disabled, false)
+})
+
+test('v2 catalogue keeps rich fields while v1 records remain readable', async () => {
+  const a = app(async url => url.includes('alt=media')
+    ? json({ version: 2, books: { old: { title: 'Régi', author: 'Szerző' }, new: { title: 'Új', author: 'Író', isbn: '9780306406157', subjects: ['Fantasy'], coverFileId: 'cover-id', description: 'Leírás' } } })
+    : json({ files: [{ id: 'metadata-file' }] }))
+  await a.run('loadEbookMetadata("folder")')
+  assert.equal(a.run('ebookMetadata.new.isbn'), '9780306406157')
+  assert.equal(a.run('ebookMetadata.new.coverFileId'), 'cover-id')
+  assert.equal(a.run('ebookMetadata.old.title'), 'Régi')
+})
+
+test('field-level catalogue suggestions preserve manually entered values', async () => {
+  const a = app(async url => url.startsWith('https://openlibrary.org/')
+    ? json({ docs: [{ title: 'Dune', author_name: ['Frank Herbert'], publisher: ['Ace'], isbn: ['9780306406157'] }] })
+    : json({ items: [] }))
+  a.run('currentBooks = [{ id: "book", name: "Dune.epub" }]')
+  a.nodes.get('#ebook-metadata-book') || a.run('$("#ebook-metadata-book")')
+  a.nodes.get('#ebook-metadata-book').value = 'book'
+  a.run('$("#ebook-metadata-title")')
+  a.nodes.get('#ebook-metadata-title').value = 'Dűne'
+  await a.run('lookupBookMetadata()')
+  assert.equal(a.run('metadataProposalControls.get("title").value'), '')
+  assert.equal(a.run('metadataProposalControls.get("publisher").value'), '0')
+  a.run('applyMetadataSuggestion()')
+  assert.equal(a.nodes.get('#ebook-metadata-title').value, 'Dűne')
+  assert.equal(a.nodes.get('#ebook-metadata-publisher').value, 'Ace')
+})
+
+test('metadata validation rejects bad ISBN and impossible dates', () => {
+  const a = app(async () => json({}))
+  assert.equal(a.run('isbnIsValid("9780306406157")'), true)
+  assert.equal(a.run('isbnIsValid("9780306406158")'), false)
+  assert.throws(() => a.run('validateMetadataForm({ title: "Dune", isbn: "9780306406158", language: "en", publishedDate: "", seriesIndex: "", description: "" }, true)'), /ISBN/)
+  assert.throws(() => a.run('validateMetadataForm({ title: "Dune", isbn: "", language: "en", publishedDate: "2026-02-31", seriesIndex: "", description: "" }, true)'), /dátum/)
+})
+
+test('EPUB save asks for broad Drive access only on write and retries a partial sidecar failure without another upload', async () => {
+  let uploads = 0; let catalogueWrites = 0; let grants = 0
+  const a = app(async (url, options = {}) => {
+    if (options.method === 'PATCH' && url.includes('uploadType=media')) { uploads++; return json({ id: 'book', modifiedTime: 'new', size: 13, headRevisionId: 'new-rev' }) }
+    if (url.includes('alt=media')) return new Response(new Blob(['original epub']))
+    return json({})
+  })
+  a.run('currentBooks = [{ id: "book", name: "Dune.epub", modifiedTime: "old", size: 13 }]')
+  a.run('$("#ebook-metadata-book"); $("#ebook-metadata-title"); $("#ebook-metadata-author")')
+  a.nodes.get('#ebook-metadata-book').value = 'book'
+  a.nodes.get('#ebook-metadata-title').value = 'Dune'
+  a.nodes.get('#ebook-metadata-author').value = 'Frank Herbert'
+  a.run('metadataLoadedSnapshot = "{}"; getReaderLibraryBooks = async () => ({ folderId: "folder" }); loadEbookMetadata = async () => {}; getBookDriveVersion = async () => ({ modifiedTime: currentBooks[0].modifiedTime, size: currentBooks[0].size, headRevisionId: currentBooks[0].headRevisionId }); renderBooks = () => {}; openMetadataEditor = () => {};')
+  a.context.connectGrapesDrive = async (options) => { assert.equal(options.fullWrite, true); grants++ }
+  a.context.catalogueWrite = async () => { catalogueWrites++; if (catalogueWrites === 1) throw new Error('temporary failure') }
+  a.run('saveEbookMetadata = () => catalogueWrite()')
+  await a.run('saveMetadataFromForm()')
+  assert.equal(uploads, 1)
+  assert.match(a.nodes.get('#ebook-status').textContent, /EPUB már mentve/)
+  await a.run('saveMetadataFromForm()')
+  assert.equal(uploads, 1)
+  assert.equal(grants, 1)
+  assert.equal(catalogueWrites, 2)
+})
+
+test('denied broad Drive permission leaves the edited EPUB and catalogue untouched', async () => {
+  let uploads = 0
+  const a = app(async (url, options = {}) => { if (options.method === 'PATCH') uploads++; return json({}) })
+  a.run('currentBooks = [{ id: "book", name: "Dune.epub", modifiedTime: "old", size: 13 }]')
+  a.run('$("#ebook-metadata-book"); $("#ebook-metadata-title")')
+  a.nodes.get('#ebook-metadata-book').value = 'book'
+  a.nodes.get('#ebook-metadata-title').value = 'Dune'
+  a.run('metadataLoadedSnapshot = "{}"; getReaderLibraryBooks = async () => ({ folderId: "folder" }); loadEbookMetadata = async () => {}; getBookDriveVersion = async () => ({ modifiedTime: "old", size: 13 });')
+  a.context.connectGrapesDrive = async () => { throw new Error('consent denied') }
+  await a.run('saveMetadataFromForm()')
+  assert.equal(uploads, 0)
+  assert.equal(a.nodes.get('#ebook-metadata-title').value, 'Dune')
+  assert.match(a.nodes.get('#ebook-status').textContent, /consent denied/)
+})
+
+test('another device changing the EPUB prevents a binary overwrite', async () => {
+  let uploads = 0; let grants = 0
+  const a = app(async (url, options = {}) => { if (options.method === 'PATCH') uploads++; return json({}) })
+  a.run('currentBooks = [{ id: "book", name: "Dune.epub", modifiedTime: "old", size: 13 }]')
+  a.run('$("#ebook-metadata-book"); $("#ebook-metadata-title")')
+  a.nodes.get('#ebook-metadata-book').value = 'book'
+  a.nodes.get('#ebook-metadata-title').value = 'Dune'
+  a.run('metadataLoadedSnapshot = "{}"; getReaderLibraryBooks = async () => ({ folderId: "folder" }); loadEbookMetadata = async () => {}; getBookDriveVersion = async () => ({ modifiedTime: "new", size: 13 });')
+  a.context.connectGrapesDrive = async () => { grants++ }
+  await a.run('saveMetadataFromForm()')
+  assert.equal(uploads, 0)
+  assert.equal(grants, 0)
+  assert.match(a.nodes.get('#ebook-status').textContent, /közben módosult/)
+})
+
+test('PDF saves rich catalogue data and a cover without rewriting the file', async () => {
+  let saved; let binaryUploads = 0
+  const a = app(async (url, options = {}) => { if (options.method === 'PATCH' && url.includes('uploadType=media')) binaryUploads++; return json({}) })
+  a.run('currentBooks = [{ id: "pdf-book", name: "Dune.pdf" }]')
+  a.run('$("#ebook-metadata-book"); $("#ebook-metadata-title"); $("#ebook-metadata-author"); $("#ebook-metadata-publisher"); $("#ebook-metadata-description")')
+  a.nodes.get('#ebook-metadata-book').value = 'pdf-book'
+  a.nodes.get('#ebook-metadata-title').value = 'Dune'
+  a.nodes.get('#ebook-metadata-author').value = 'Frank Herbert'
+  a.nodes.get('#ebook-metadata-publisher').value = 'Ace'
+  a.nodes.get('#ebook-metadata-description').value = 'Kézi leírás'
+  a.run('metadataLoadedSnapshot = "{}"; pendingCoverBlob = new Blob([new Uint8Array([255,216,255,217])], { type: "image/jpeg" }); getReaderLibraryBooks = async () => ({ folderId: "folder" }); loadEbookMetadata = async () => {}; uploadCoverAsset = async () => "cover-id"; renderBooks = () => {}; openMetadataEditor = () => {};')
+  a.context.captureCatalogue = () => { saved = JSON.parse(a.run('JSON.stringify(ebookMetadata["pdf-book"])')) }
+  a.run('saveEbookMetadata = () => captureCatalogue()')
+  await a.run('saveMetadata({ catalogOnly: true })')
+  assert.equal(saved.coverFileId, 'cover-id')
+  assert.equal(saved.publisher, 'Ace')
+  assert.equal(saved.description, 'Kézi leírás')
+  assert.equal(binaryUploads, 0)
+})
+
+test('an invalid EPUB offers catalogue-only save and leaves the original file unchanged', async () => {
+  let binaryUploads = 0; let saved = false
+  const a = app(async (url, options = {}) => {
+    if (options.method === 'PATCH') binaryUploads++
+    if (url.includes('alt=media')) return new Response(new Blob(['invalid epub']))
+    return json({})
+  }, { epubWriter: async () => { throw new Error('Nem érvényes EPUB') } })
+  a.run('currentBooks = [{ id: "book", name: "Dune.epub", modifiedTime: "old", size: 13 }]')
+  a.run('$("#ebook-metadata-book"); $("#ebook-metadata-title")')
+  a.nodes.get('#ebook-metadata-book').value = 'book'
+  a.nodes.get('#ebook-metadata-title').value = 'Dune'
+  a.run('metadataLoadedSnapshot = "{}"; getReaderLibraryBooks = async () => ({ folderId: "folder" }); loadEbookMetadata = async () => {}; getBookDriveVersion = async () => ({ modifiedTime: "old", size: 13 }); renderBooks = () => {}; openMetadataEditor = () => {};')
+  a.context.connectGrapesDrive = async () => 'token'
+  a.context.markSaved = () => { saved = true }
+  a.run('saveEbookMetadata = () => markSaved()')
+  await a.run('saveMetadataFromForm()')
+  assert.equal(binaryUploads, 0)
+  assert.equal(a.nodes.get('#ebook-metadata-save-catalog').hidden, false)
+  await a.run('saveMetadata({ catalogOnly: true })')
+  assert.equal(saved, true)
 })
 
 test('metadata editor exposes search, live preview and a protected dirty state', () => {

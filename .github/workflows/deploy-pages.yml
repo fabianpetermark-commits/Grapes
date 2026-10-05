@@ -23,11 +23,24 @@ jobs:
         with:
           node-version: 20
           cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
       - run: npm ci
-      - run: npm run test:ebook
+      - run: npm test
+      - name: Validate generated EPUB with EPUBCheck
+        run: |
+          mkdir -p "$RUNNER_TEMP/epubcheck"
+          curl --fail --location --retry 3 https://github.com/w3c/epubcheck/releases/download/v5.4.0/epubcheck-5.4.0.zip -o "$RUNNER_TEMP/epubcheck.zip"
+          unzip -q "$RUNNER_TEMP/epubcheck.zip" -d "$RUNNER_TEMP/epubcheck"
+          EPUBCHECK_JAR="$(find "$RUNNER_TEMP/epubcheck" -name epubcheck.jar -print -quit)"
+          test -n "$EPUBCHECK_JAR"
+          EPUBCHECK_JAR="$EPUBCHECK_JAR" npm run test:epubcheck
       - run: npm run build
         env:
           VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
+          VITE_EBOOK_EPUB_WRITE_ENABLED: 'false'
           VITE_EBOOK_TRANSFER_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
       - uses: actions/upload-pages-artifact@v3
         with:
