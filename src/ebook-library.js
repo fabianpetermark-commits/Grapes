@@ -7,7 +7,6 @@ const PICKER_API_KEY = import.meta.env.VITE_GOOGLE_PICKER_API_KEY || ''
 const PICKER_APP_ID = import.meta.env.VITE_GOOGLE_APP_ID || CLIENT_ID.split('-')[0]
 const BOOKS_API_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY || ''
 const TRANSFER_BROKER_URL = import.meta.env.VITE_EBOOK_TRANSFER_BROKER_URL || ''
-const ISBNDB_ENABLED = import.meta.env.VITE_EBOOK_ISBNDB_ENABLED === 'true'
 const EPUB_WRITE_ENABLED = import.meta.env.VITE_EBOOK_EPUB_WRITE_ENABLED === 'true'
 const FOLDER_NAME = 'Grapes E-book Library'
 // The Apps Script broker accepts only the canonical reader and return URLs.
@@ -503,13 +502,12 @@ async function lookupBookMetadata() {
   if ($('#ebook-metadata-evidence')) $('#ebook-metadata-evidence').replaceChildren()
   if ($('#ebook-metadata-evidence')) $('#ebook-metadata-evidence').hidden = true
   if ($('#ebook-metadata-apply')) $('#ebook-metadata-apply').disabled = true
-  setMetadataMessage(`Keresés az Open Library, a Google Books${ISBNDB_ENABLED ? ' és az ISBNdb' : ''} katalógusában…`)
+  setMetadataMessage('Keresés az Open Library és a Google Books katalógusában…')
   try {
     const sources = [
       ['Open Library', findBookMetadata({ title, author, isbn })],
       ['Google Books', findGoogleBooksMetadata({ title, author, isbn })],
     ]
-    if (ISBNDB_ENABLED) sources.push(['ISBNdb', findIsbndbMetadata({ title, author, isbn })])
     const results = await Promise.allSettled(sources.map(([, task]) => task))
     if (serial !== metadataLookupSerial || id !== $('#ebook-metadata-book')?.value) return
     const matches = results.map((result, index) => result.status === 'fulfilled' && result.value ? { ...result.value, source: sources[index][0] } : null).filter(Boolean)
@@ -590,72 +588,6 @@ async function findGoogleBooksMetadata({ title = '', author = '', isbn = '' } = 
     const best = bestMetadataDocument(docs, { title, author })
     if (best && (title && author ? best.titleScore >= 0.72 && best.authorScore >= 0.5 : title ? best.titleScore >= 0.72 : best.authorScore >= 0.72)) return metadataMatch(best.doc, 'title', best, '', true)
   }
-  return null
-}
-
-// A cross-origin form targets our Apps Script iframe: the ISBNdb key never enters
-// the static Pages bundle, and the Drive token is sent in a POST body, not a URL.
-function requestIsbndb({ title = '', author = '', isbn = '' } = {}) {
-  const token = getGrapesDriveAccessToken()
-  if (!TRANSFER_BROKER_URL || !token) return Promise.resolve(null)
-  const nonce = createReaderNonce()
-  return new Promise((resolve, reject) => {
-    const frame = document.createElement('iframe')
-    const form = document.createElement('form')
-    frame.name = `grapes-isbndb-${nonce}`
-    frame.hidden = true
-    frame.setAttribute('aria-hidden', 'true')
-    form.hidden = true
-    form.method = 'POST'
-    form.action = TRANSFER_BROKER_URL
-    form.target = frame.name
-    const fields = { action: 'lookup-isbndb', accessToken: token, title, author, isbn, nonce }
-    for (const [name, value] of Object.entries(fields)) {
-      const input = document.createElement('input')
-      input.type = 'hidden'; input.name = name; input.value = value
-      form.append(input)
-    }
-    let timer
-    const cleanup = () => {
-      window.clearTimeout(timer)
-      window.removeEventListener('message', onMessage)
-      form.remove(); frame.remove()
-    }
-    const onMessage = (event) => {
-      let trusted = false
-      try {
-        const origin = new URL(event.origin)
-        trusted = origin.protocol === 'https:' && (origin.hostname === 'script.google.com' || origin.hostname === 'script.googleusercontent.com' || origin.hostname.endsWith('.googleusercontent.com'))
-      } catch {}
-      // HtmlService renders inside a second, Google-owned iframe. Its message
-      // source is therefore not the outer frame's contentWindow; the fresh
-      // 192-bit nonce plus Google's HTTPS origin authenticates this response.
-      if (!trusted || event.data?.type !== 'grapes-isbndb-result' || event.data?.nonce !== nonce) return
-      cleanup()
-      if (event.data?.status === 'ok') resolve(event.data.books || [])
-      else reject(new Error(String(event.data?.message || 'Az ISBNdb nem elérhető.')))
-    }
-    window.addEventListener('message', onMessage)
-    timer = window.setTimeout(() => { cleanup(); reject(new Error('Az ISBNdb időtúllépés miatt nem válaszolt.')) }, 18000)
-    try { document.body.append(frame, form); form.submit() }
-    catch (error) { cleanup(); reject(error) }
-  })
-}
-
-async function findIsbndbMetadata({ title = '', author = '', isbn = '' } = {}) {
-  const books = await requestIsbndb({ title, author, isbn })
-  if (!Array.isArray(books)) return null
-  const docs = books.map((book) => ({
-    title: book.title || '', author_name: book.authors || [],
-    isbn: [book.isbn13, book.isbn10].filter(Boolean),
-    publisher: book.publisher || '', publishedDate: book.date_published || '',
-    language: book.language || '', description: book.synopsis || '',
-    subjects: book.subjects || [], coverUrl: book.image || '',
-  }))
-  const exact = isbn && docs.find((doc) => doc.isbn.some((value) => normalizeIsbn(value) === isbn))
-  if (exact) return metadataMatch(exact, 'isbn', { isbn: true, titleScore: metadataSimilarity(title, exact.title), authorScore: metadataSimilarity(author, exact.author_name?.[0] || '') }, isbn)
-  const best = bestMetadataDocument(docs, { title, author })
-  if (best && (title && author ? best.titleScore >= 0.72 && best.authorScore >= 0.5 : title ? best.titleScore >= 0.72 : best.authorScore >= 0.72)) return metadataMatch(best.doc, 'title', best, '', true)
   return null
 }
 

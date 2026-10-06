@@ -11,21 +11,6 @@ is the complete clasp authentication JSON from the account that owns the Apps
 Script project. It contains credentials: never commit it or paste it into an
 issue, pull request, or chat.
 
-ISBNdb lookup additionally requires the repository Actions secret `ISBN_API_KEY`.
-The workflow inserts it into a deploy-only Apps Script source file; it is never
-bundled into GitHub Pages or committed. The public broker accepts lookup requests
-only with a valid Google Drive token belonging to `ISBNDB_ALLOWED_EMAIL`, a
-separate Actions secret containing the Grapes Google account's email address.
-If omitted, the web app deployer's Drive account is the only allowed account. The
-first deployment with ISBNdb may require the owner to authorize the added
-`script.external_request` scope in Apps Script before lookups work.
-
-If ISBNdb search reports an Apps Script `UrlFetchApp.fetch` permission error,
-open the project as its owner, choose `authorizeIsbndbRequests` in the function
-picker and click **Run**. Approve the Google consent prompt. This check calls
-only ISBNdb's public documentation endpoint; it does not send the private API
-key or change any books. Then retry the search in Grapes.
-
 1. On your own computer, run `npx @google/clasp login` and sign in with the project
    owner's account. Complete Google's consent yourself.
 2. Enable the Google Apps Script API in the account's Apps Script settings if it
