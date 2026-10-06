@@ -283,7 +283,7 @@ function updateMetadataForm() {
   const data = ebookMetadata[id] || {}
   const saveButton = $('#ebook-metadata-save')
   const selectedBook = currentBooks.find((book) => book.id === id)
-  if (saveButton) saveButton.textContent = ext(selectedBook?.name || '') === 'epub' && EPUB_WRITE_ENABLED ? 'Adatlap és EPUB mentése' : 'Könyvtári adatlap mentése'
+  if (saveButton) saveButton.textContent = canWriteEpub(selectedBook) ? 'Adatlap és EPUB mentése' : 'Könyvtári adatlap mentése'
   metadataLoadedSnapshot = JSON.stringify(data)
   for (const key of METADATA_FIELDS) {
     const input = $(`#ebook-metadata-${key}`)
@@ -298,7 +298,10 @@ function updateMetadataForm() {
   if (sourceWrap) sourceWrap.hidden = true
   if ($('#ebook-metadata-field-suggestions')) $('#ebook-metadata-field-suggestions').hidden = true
   if ($('#ebook-metadata-save-catalog')) $('#ebook-metadata-save-catalog').hidden = true
-  setMetadataMessage(id ? `Fájlnév alapján: ${suggestMetadata(currentBooks.find((book) => book.id === id)?.name || '')}` : '')
+  setMetadataMessage(id && EPUB_WRITE_ENABLED && ext(selectedBook?.name || '') === 'epub' && selectedBook?.isAppAuthorized !== true
+    ? 'Ez az EPUB nem kapott fájlonkénti Grapes-hozzáférést. Egyelőre csak a könyvtári adatlap menthető; a könyvfájlhoz külön hozzáférés szükséges.'
+    : canWriteEpub(selectedBook) ? `EPUB-mentési próba: csak külön eredetivel rendelkező másolaton használd. Fájlnév alapján: ${suggestMetadata(selectedBook.name)}`
+    : id ? `Fájlnév alapján: ${suggestMetadata(selectedBook?.name || '')}` : '')
   if ($('#ebook-metadata-apply')) $('#ebook-metadata-apply').disabled = !pendingMetadataSuggestion
   updateMetadataPreview()
   setMetadataDirty(false)
@@ -686,8 +689,12 @@ function suggestMetadata(name = '') {
   return parsed ? `Szerző: ${parsed.author} · Cím: ${parsed.title}` : 'nem azonosítható biztosan a szerző és a cím.'
 }
 function openMetadataEditor(id) { const select = $('#ebook-metadata-book'); if (select) { select.value = id; updateMetadataForm(); $('#ebook-metadata-panel')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }) } }
+function canWriteEpub(book) {
+  return EPUB_WRITE_ENABLED && ext(book?.name || '') === 'epub' && book?.isAppAuthorized === true
+}
 async function saveMetadataFromForm() {
-  return saveMetadata({ catalogOnly: !EPUB_WRITE_ENABLED })
+  const book = currentBooks.find((item) => item.id === $('#ebook-metadata-book')?.value)
+  return saveMetadata({ catalogOnly: !canWriteEpub(book) })
 }
 async function saveMetadata({ catalogOnly = false } = {}) {
   const id = $('#ebook-metadata-book')?.value
@@ -697,6 +704,7 @@ async function saveMetadata({ catalogOnly = false } = {}) {
   const edited = metadataFromForm()
   const fingerprint = JSON.stringify(edited) + pendingCoverUrl + (pendingCoverBlob?.size || '') + String(pendingCoverRemoved) + coverChangeSerial
   try {
+    if (epub && !catalogOnly && !partialMetadataSave && window.confirm && !window.confirm('Az EPUB-fájl módosul a Drive-on. Csak akkor folytasd, ha külön megvan az eredeti példány. Folytatod?')) return
     if (partialMetadataSave && (partialMetadataSave.id !== id || partialMetadataSave.fingerprint !== fingerprint)) throw new Error('Egy korábbi EPUB-mentés adatlaprésze még hiányzik. Előbb próbáld újra ugyanannál a könyvnél, változatlan mezőkkel.')
     validateMetadataForm(edited, epub && !catalogOnly)
     const save = $('#ebook-metadata-save'); if (save) save.disabled = true
@@ -714,7 +722,7 @@ async function saveMetadata({ catalogOnly = false } = {}) {
         const before = await getBookDriveVersion(id)
         if (book?.modifiedTime && !sameDriveVersion(book, before)) throw new Error('Az EPUB-fájl közben módosult a Drive-on. Frissítsd a könyvtárat a mentés előtt.')
         if (before.capabilities?.canEdit === false) throw new Error('Ehhez az EPUB-hoz nincs szerkesztési jogod a Drive-on.')
-        await connectGrapesDrive({ fullWrite: true })
+        if (before.isAppAuthorized !== true) throw new Error('Ehhez az EPUB-hoz nincs fájlonkénti Grapes-hozzáférés. A teljes Drive-jogot nem kérjük; egyelőre csak a könyvtári adatlap menthető.')
         setStatus('Az EPUB letöltése és ellenőrzése…')
         const original = await (await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media`)).blob()
         setStatus('Az EPUB metaadatainak és borítójának frissítése…')

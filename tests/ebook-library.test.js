@@ -20,7 +20,7 @@ function app(fetch, { connected = true, session = new Map(), local = new Map(), 
     env: { VITE_GOOGLE_CLIENT_ID: '123-client', VITE_EBOOK_TRANSFER_BROKER_URL: 'https://broker.example/exec', VITE_EBOOK_EPUB_WRITE_ENABLED: 'true' }, rewriteEpubMetadata: epubWriter,
     window: { sessionStorage: storage(session), localStorage: storage(local), setTimeout: testSetTimeout, clearTimeout, location: { href: 'https://fabianpetermark-commits.github.io/Grapes/', origin: 'https://fabianpetermark-commits.github.io', search: '' } } })
   const driveContext = vm.createContext({ window: context.window, document, fetch, env: context.env, Blob, crypto: webcrypto })
-  const api = vm.runInContext(driveSource + '\n({ connectGrapesDrive, disconnectGrapesDrive, getGrapesDriveAccessToken, grapesDriveHasFullReadAccess, grapesDriveHasFullWriteAccess, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange })', driveContext)
+  const api = vm.runInContext(driveSource + '\n({ connectGrapesDrive, disconnectGrapesDrive, getGrapesDriveAccessToken, grapesDriveHasFullReadAccess, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange })', driveContext)
   Object.assign(context, api)
   vm.runInContext(source + '\nonGrapesDriveChange(renderDriveConnection)', context)
   vm.runInContext('loadEpubWriter = async () => rewriteEpubMetadata', context)
@@ -324,21 +324,9 @@ test('persistent reader pairing uses an inline frame with the verified marker', 
   assert.equal(a.nodes.get('#ebook-reader-pair-btn').disabled, false)
 })
 
-test('full Drive writing is requested only on demand and denial preserves the current token', async () => {
-  const a = app(async url => url.includes('/about?') ? json({ user: { emailAddress: 'reader@example.com' } }) : json({}))
-  let request; let config
-  a.context.window.google = { accounts: { oauth2: { initTokenClient(options) {
-    config = options
-    return { requestAccessToken(options) { request = options } }
-  } } } }
-  assert.equal(a.run('grapesDriveHasFullWriteAccess()'), false)
-  const pending = a.run('connectGrapesDrive({ fullWrite: true })')
-  await Promise.resolve()
-  assert.match(config.scope, /https:\/\/www\.googleapis\.com\/auth\/drive(?:\s|$)/)
-  assert.equal(request.prompt, 'consent')
-  config.error_callback({ type: 'popup_closed' })
-  await assert.rejects(pending, /popup_closed/)
-  assert.equal(a.run('getGrapesDriveAccessToken()'), 'test-token')
+test('EPUB save path never requests the restricted full Drive write scope', () => {
+  assert.doesNotMatch(source, /fullWrite|connectGrapesDrive\(\{\s*fullWrite/)
+  assert.doesNotMatch(driveSource, /scope:\s*[^\n]*GRAPES_DRIVE_WRITE_SCOPE/)
 })
 
 test('metadata parser understands title-first library filenames and legacy author-first names', () => {
@@ -548,20 +536,20 @@ test('metadata validation rejects bad ISBN and impossible dates', () => {
   assert.throws(() => a.run('validateMetadataForm({ title: "Dune", isbn: "", language: "en", publishedDate: "2026-02-31", seriesIndex: "", description: "" }, true)'), /dátum/)
 })
 
-test('EPUB save asks for broad Drive access only on write and retries a partial sidecar failure without another upload', async () => {
+test('app-authorized EPUB saves with drive.file and retries a partial sidecar failure without another upload', async () => {
   let uploads = 0; let catalogueWrites = 0; let grants = 0
   const a = app(async (url, options = {}) => {
     if (options.method === 'PATCH' && url.includes('uploadType=media')) { uploads++; return json({ id: 'book', modifiedTime: 'new', size: 13, headRevisionId: 'new-rev' }) }
     if (url.includes('alt=media')) return new Response(new Blob(['original epub']))
     return json({})
   })
-  a.run('currentBooks = [{ id: "book", name: "Dune.epub", modifiedTime: "old", size: 13 }]')
+  a.run('currentBooks = [{ id: "book", name: "Dune.epub", modifiedTime: "old", size: 13, isAppAuthorized: true }]')
   a.run('$("#ebook-metadata-book"); $("#ebook-metadata-title"); $("#ebook-metadata-author")')
   a.nodes.get('#ebook-metadata-book').value = 'book'
   a.nodes.get('#ebook-metadata-title').value = 'Dune'
   a.nodes.get('#ebook-metadata-author').value = 'Frank Herbert'
-  a.run('metadataLoadedSnapshot = "{}"; getReaderLibraryBooks = async () => ({ folderId: "folder" }); loadEbookMetadata = async () => {}; getBookDriveVersion = async () => ({ modifiedTime: currentBooks[0].modifiedTime, size: currentBooks[0].size, headRevisionId: currentBooks[0].headRevisionId }); renderBooks = () => {}; openMetadataEditor = () => {};')
-  a.context.connectGrapesDrive = async (options) => { assert.equal(options.fullWrite, true); grants++ }
+  a.run('metadataLoadedSnapshot = "{}"; getReaderLibraryBooks = async () => ({ folderId: "folder" }); loadEbookMetadata = async () => {}; getBookDriveVersion = async () => ({ modifiedTime: currentBooks[0].modifiedTime, size: currentBooks[0].size, headRevisionId: currentBooks[0].headRevisionId, isAppAuthorized: true }); renderBooks = () => {}; openMetadataEditor = () => {};')
+  a.context.connectGrapesDrive = async () => { grants++; throw new Error('Nem kérhető teljes Drive-jog') }
   a.context.catalogueWrite = async () => { catalogueWrites++; if (catalogueWrites === 1) throw new Error('temporary failure') }
   a.run('saveEbookMetadata = () => catalogueWrite()')
   await a.run('saveMetadataFromForm()')
@@ -569,29 +557,74 @@ test('EPUB save asks for broad Drive access only on write and retries a partial 
   assert.match(a.nodes.get('#ebook-status').textContent, /EPUB már mentve/)
   await a.run('saveMetadataFromForm()')
   assert.equal(uploads, 1)
-  assert.equal(grants, 1)
+  assert.equal(grants, 0)
   assert.equal(catalogueWrites, 2)
 })
 
-test('denied broad Drive permission leaves the edited EPUB and catalogue untouched', async () => {
-  let uploads = 0
+test('non-app-authorized EPUB saves only its catalogue entry without requesting broad Drive access', async () => {
+  let uploads = 0; let grants = 0; let catalogueWrites = 0
   const a = app(async (url, options = {}) => { if (options.method === 'PATCH') uploads++; return json({}) })
-  a.run('currentBooks = [{ id: "book", name: "Dune.epub", modifiedTime: "old", size: 13 }]')
+  a.run('currentBooks = [{ id: "book", name: "Dune.epub", modifiedTime: "old", size: 13, isAppAuthorized: false }]')
   a.run('$("#ebook-metadata-book"); $("#ebook-metadata-title")')
   a.nodes.get('#ebook-metadata-book').value = 'book'
   a.nodes.get('#ebook-metadata-title').value = 'Dune'
-  a.run('metadataLoadedSnapshot = "{}"; getReaderLibraryBooks = async () => ({ folderId: "folder" }); loadEbookMetadata = async () => {}; getBookDriveVersion = async () => ({ modifiedTime: "old", size: 13 });')
-  a.context.connectGrapesDrive = async () => { throw new Error('consent denied') }
+  a.run('metadataLoadedSnapshot = "{}"; getReaderLibraryBooks = async () => ({ folderId: "folder" }); loadEbookMetadata = async () => {}; renderBooks = () => {}; openMetadataEditor = () => {};')
+  a.context.connectGrapesDrive = async () => { grants++ }
+  a.context.catalogueWrite = async () => { catalogueWrites++ }
+  a.run('saveEbookMetadata = () => catalogueWrite()')
   await a.run('saveMetadataFromForm()')
   assert.equal(uploads, 0)
+  assert.equal(grants, 0)
+  assert.equal(catalogueWrites, 1)
   assert.equal(a.nodes.get('#ebook-metadata-title').value, 'Dune')
-  assert.match(a.nodes.get('#ebook-status').textContent, /consent denied/)
+  assert.match(a.nodes.get('#ebook-status').textContent, /könyvfájl változatlan/)
+})
+
+test('changed Drive authorization blocks an EPUB overwrite even when the list was stale', async () => {
+  let uploads = 0; let grants = 0
+  const a = app(async (url, options = {}) => { if (options.method === 'PATCH') uploads++; return json({}) })
+  a.run('currentBooks = [{ id: "book", name: "Dune.epub", modifiedTime: "old", size: 13, isAppAuthorized: true }]')
+  a.run('$("#ebook-metadata-book"); $("#ebook-metadata-title")')
+  a.nodes.get('#ebook-metadata-book').value = 'book'
+  a.nodes.get('#ebook-metadata-title').value = 'Dune'
+  a.run('metadataLoadedSnapshot = "{}"; getReaderLibraryBooks = async () => ({ folderId: "folder" }); loadEbookMetadata = async () => {}; getBookDriveVersion = async () => ({ modifiedTime: "old", size: 13, isAppAuthorized: false });')
+  a.context.connectGrapesDrive = async () => { grants++ }
+  await a.run('saveMetadataFromForm()')
+  assert.equal(uploads, 0)
+  assert.equal(grants, 0)
+  assert.match(a.nodes.get('#ebook-status').textContent, /fájlonkénti Grapes-hozzáférés/)
+})
+
+test('editor offers EPUB writing only for a file opened by Grapes', () => {
+  const a = app(async () => json({}))
+  a.run('currentBooks = [{ id: "own", name: "own.epub", isAppAuthorized: true }, { id: "other", name: "other.epub", isAppAuthorized: false }]')
+  a.run('$("#ebook-metadata-book")')
+  a.nodes.get('#ebook-metadata-book').value = 'own'
+  a.run('updateMetadataForm()')
+  assert.equal(a.nodes.get('#ebook-metadata-save').textContent, 'Adatlap és EPUB mentése')
+  a.nodes.get('#ebook-metadata-book').value = 'other'
+  a.run('updateMetadataForm()')
+  assert.equal(a.nodes.get('#ebook-metadata-save').textContent, 'Könyvtári adatlap mentése')
+  assert.match(a.nodes.get('#ebook-metadata-suggestion').textContent, /fájlonkénti Grapes-hozzáférést/)
+})
+
+test('cancelled EPUB confirmation does not touch Drive or edited form values', async () => {
+  let requests = 0
+  const a = app(async () => { requests++; return json({}) })
+  a.run('currentBooks = [{ id: "book", name: "Dune.epub", isAppAuthorized: true }]')
+  a.run('$("#ebook-metadata-book"); $("#ebook-metadata-title")')
+  a.nodes.get('#ebook-metadata-book').value = 'book'
+  a.nodes.get('#ebook-metadata-title').value = 'Edited title'
+  a.context.window.confirm = () => false
+  await a.run('saveMetadataFromForm()')
+  assert.equal(requests, 0)
+  assert.equal(a.nodes.get('#ebook-metadata-title').value, 'Edited title')
 })
 
 test('another device changing the EPUB prevents a binary overwrite', async () => {
   let uploads = 0; let grants = 0
   const a = app(async (url, options = {}) => { if (options.method === 'PATCH') uploads++; return json({}) })
-  a.run('currentBooks = [{ id: "book", name: "Dune.epub", modifiedTime: "old", size: 13 }]')
+  a.run('currentBooks = [{ id: "book", name: "Dune.epub", modifiedTime: "old", size: 13, isAppAuthorized: true }]')
   a.run('$("#ebook-metadata-book"); $("#ebook-metadata-title")')
   a.nodes.get('#ebook-metadata-book').value = 'book'
   a.nodes.get('#ebook-metadata-title').value = 'Dune'
@@ -630,12 +663,12 @@ test('an invalid EPUB offers catalogue-only save and leaves the original file un
     if (url.includes('alt=media')) return new Response(new Blob(['invalid epub']))
     return json({})
   }, { epubWriter: async () => { throw new Error('Nem érvényes EPUB') } })
-  a.run('currentBooks = [{ id: "book", name: "Dune.epub", modifiedTime: "old", size: 13 }]')
+  a.run('currentBooks = [{ id: "book", name: "Dune.epub", modifiedTime: "old", size: 13, isAppAuthorized: true }]')
   a.run('$("#ebook-metadata-book"); $("#ebook-metadata-title")')
   a.nodes.get('#ebook-metadata-book').value = 'book'
   a.nodes.get('#ebook-metadata-title').value = 'Dune'
-  a.run('metadataLoadedSnapshot = "{}"; getReaderLibraryBooks = async () => ({ folderId: "folder" }); loadEbookMetadata = async () => {}; getBookDriveVersion = async () => ({ modifiedTime: "old", size: 13 }); renderBooks = () => {}; openMetadataEditor = () => {};')
-  a.context.connectGrapesDrive = async () => 'token'
+  a.run('metadataLoadedSnapshot = "{}"; getReaderLibraryBooks = async () => ({ folderId: "folder" }); loadEbookMetadata = async () => {}; getBookDriveVersion = async () => ({ modifiedTime: "old", size: 13, isAppAuthorized: true }); renderBooks = () => {}; openMetadataEditor = () => {};')
+  a.context.connectGrapesDrive = async () => { throw new Error('Nem kérhető teljes Drive-jog') }
   a.context.markSaved = () => { saved = true }
   a.run('saveEbookMetadata = () => markSaved()')
   await a.run('saveMetadataFromForm()')

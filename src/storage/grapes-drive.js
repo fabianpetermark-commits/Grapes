@@ -4,7 +4,7 @@
 
 export const GRAPES_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file'
 export const GRAPES_DRIVE_READ_SCOPE = 'https://www.googleapis.com/auth/drive.readonly'
-export const GRAPES_DRIVE_WRITE_SCOPE = 'https://www.googleapis.com/auth/drive'
+const LEGACY_DRIVE_WRITE_SCOPE = 'https://www.googleapis.com/auth/drive'
 export const GRAPES_ROOT_FOLDER = 'Grapes'
 export const GRAPES_PROJECTS_FOLDER = 'Projects'
 export const GRAPES_PROJECT_MIME = 'application/json'
@@ -21,7 +21,6 @@ let accountProfile = null
 const SESSION_KEY = 'grapes-drive-session'
 const ACCOUNT_KEY = 'grapes-drive-account'
 const FULL_READ_KEY = 'grapes-drive-full-read'
-const FULL_WRITE_KEY = 'grapes-drive-full-write'
 const listeners = new Set()
 const folderCache = new Map()
 
@@ -89,11 +88,7 @@ export function getGrapesAccount() {
 }
 
 export function grapesDriveHasFullReadAccess() {
-  return isGrapesDriveConnected() && grantedScopes.split(/\s+/).some((scope) => scope === GRAPES_DRIVE_READ_SCOPE || scope === GRAPES_DRIVE_WRITE_SCOPE)
-}
-
-export function grapesDriveHasFullWriteAccess() {
-  return isGrapesDriveConnected() && grantedScopes.split(/\s+/).includes(GRAPES_DRIVE_WRITE_SCOPE)
+  return isGrapesDriveConnected() && grantedScopes.split(/\s+/).some((scope) => scope === GRAPES_DRIVE_READ_SCOPE || scope === LEGACY_DRIVE_WRITE_SCOPE)
 }
 
 export async function disconnectGrapesDrive() {
@@ -103,24 +98,24 @@ export async function disconnectGrapesDrive() {
   }
   clearSession()
   try { window.localStorage.removeItem(FULL_READ_KEY) } catch {}
-  try { window.localStorage.removeItem(FULL_WRITE_KEY) } catch {}
+  try { window.localStorage.removeItem('grapes-drive-full-write') } catch {}
 }
 
 export async function grapesDriveRequest(url, options = {}) {
   return driveRequest(url, options)
 }
 
-export async function connectGrapesDrive({ fullRead = false, fullWrite = false } = {}) {
+export async function connectGrapesDrive({ fullRead = false } = {}) {
   if (!CLIENT_ID) throw new Error('A Google Drive kliensazonosító nincs konfigurálva.')
   let preferredFullRead = false
   try { preferredFullRead = window.localStorage.getItem(FULL_READ_KEY) === '1' } catch {}
   const requestedFullRead = fullRead || preferredFullRead
-  if (isGrapesDriveConnected() && (!requestedFullRead || grapesDriveHasFullReadAccess()) && (!fullWrite || grapesDriveHasFullWriteAccess())) return accessToken
+  if (isGrapesDriveConnected() && (!requestedFullRead || grapesDriveHasFullReadAccess())) return accessToken
   await loadGoogleIdentity()
   if (connecting) {
     await connecting
-    return (requestedFullRead && !grapesDriveHasFullReadAccess()) || (fullWrite && !grapesDriveHasFullWriteAccess())
-      ? connectGrapesDrive({ fullRead: requestedFullRead, fullWrite }) : accessToken
+    return requestedFullRead && !grapesDriveHasFullReadAccess()
+      ? connectGrapesDrive({ fullRead: true }) : accessToken
   }
   let loginHint = ''
   try { loginHint = window.localStorage.getItem(ACCOUNT_KEY) || '' } catch {}
@@ -128,33 +123,29 @@ export async function connectGrapesDrive({ fullRead = false, fullWrite = false }
     // Each attempt owns its callbacks; a cached client would resolve an old promise.
     const tokenClient = window.google.accounts.oauth2.initTokenClient({
       client_id: CLIENT_ID,
-      scope: [GRAPES_DRIVE_SCOPE, requestedFullRead && !fullWrite && GRAPES_DRIVE_READ_SCOPE, fullWrite && GRAPES_DRIVE_WRITE_SCOPE].filter(Boolean).join(' '),
+      scope: requestedFullRead ? `${GRAPES_DRIVE_SCOPE} ${GRAPES_DRIVE_READ_SCOPE}` : GRAPES_DRIVE_SCOPE,
       login_hint: loginHint,
       error_callback: (error) => reject(new Error(error?.type || 'Google Drive bejelentkezési hiba.')),
       callback: async (response) => {
         if (response.error) return reject(new Error(response.error_description || response.error))
         if (!response.access_token) return reject(new Error('A Google nem adott hozzáférési tokent.'))
         const responseScopes = String(response.scope || '')
-        if (requestedFullRead && !fullWrite && ![GRAPES_DRIVE_SCOPE, GRAPES_DRIVE_READ_SCOPE].every((scope) => responseScopes.split(/\s+/).includes(scope))) {
+        if (requestedFullRead && ![GRAPES_DRIVE_SCOPE, GRAPES_DRIVE_READ_SCOPE].every((scope) => responseScopes.split(/\s+/).includes(scope))) {
           return reject(new Error('A Google nem adta meg mindkét szükséges Drive-engedélyt.'))
         }
-        if (fullWrite && !responseScopes.split(/\s+/).includes(GRAPES_DRIVE_WRITE_SCOPE)) return reject(new Error('A Google nem adta meg a teljes Drive-írási engedélyt.'))
         accessToken = response.access_token
         grantedScopes = responseScopes || GRAPES_DRIVE_SCOPE
         expiresAt = Date.now() + (Number(response.expires_in) || 3600) * 1000
         scheduleExpiry()
         folderCache.clear()
         if (requestedFullRead) try { window.localStorage.setItem(FULL_READ_KEY, '1') } catch {}
-        if (fullWrite) try { window.localStorage.setItem(FULL_WRITE_KEY, '1') } catch {}
         await rememberAccount(accessToken)
         persistSession()
         for (const listener of listeners) listener(true)
         resolve(accessToken)
       },
     })
-    let previouslyGrantedWrite = false
-    try { previouslyGrantedWrite = window.localStorage.getItem(FULL_WRITE_KEY) === '1' } catch {}
-    tokenClient.requestAccessToken({ prompt: fullWrite && !previouslyGrantedWrite ? 'consent' : '' })
+    tokenClient.requestAccessToken({ prompt: '' })
   })
   try { return await connecting } finally { connecting = null }
 }

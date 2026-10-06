@@ -51,14 +51,19 @@ formátumoknál csak az adatlap változik; EPUB-nál a beágyazott adatok és a
 borító is frissíthetők. A forrásjavaslatok Open Libraryből és Google Booksból
 érkeznek, mezőnként választhatók.
 
-Az EPUB-fájlba írás alapértelmezés szerint **kikapcsolt**. Aktiválás előtt a
-Google Cloud-projektben engedélyezni kell a Books API-t, az OAuth-képernyőn
-deklarálni kell a `https://www.googleapis.com/auth/drive` jogosultságot, és
-el kell végezni a Google által előírt ellenőrzést. Valós Google-fiókkal
-tesztelendő a hozzájárulás, egy EPUB mentése, letöltése és e-olvasós
-megnyitása. Csak ezután állítható `VITE_EBOOK_EPUB_WRITE_ENABLED=true` a
-buildben. A jogot a Grapes nem bejelentkezéskor, hanem az első EPUB-mentéskor
-kéri. Elutasítás esetén az adatlap külön menthető.
+Az EPUB-fájlba írás alapértelmezés szerint **kikapcsolt**. A Grapes csak az
+általa létrehozott vagy fájlonként megnyitott EPUB-okat írja át a meglévő
+`drive.file` joggal (`isAppAuthorized: true`); teljes Drive-írási jogot nem kér.
+Más könyvnél csak a könyvtári adatlap menthető. Aktiválás előtt valós
+Google-fiókkal, egy külön próba-EPUB-on ellenőrizendő a mentés, visszatöltés
+és e-olvasós megnyitás. Csak sikeres próba után állítható
+`VITE_EBOOK_EPUB_WRITE_ENABLED=true` a fő buildben. A Google Books-katalógus
+élő használatához a Books API projektkvótáját külön ellenőrizni kell.
+
+A GitHub Pages főoldalán az EPUB-írás kikapcsolt marad. A külön,
+tesztelésre szolgáló `/Grapes/ebook-pilot/` buildben engedélyezett próba csak a Grapes által
+fájlonként kezelt EPUB-okra vonatkozik, és mentés előtt megerősítést kér.
+Ezt kizárólag olyan tesztmásolattal használd, amelynek az eredetije megvan.
 
 EPUB-átíráskor nem készül külön Grapes-másolat; a helyreállítás a Drive
 verzióelőzményeire támaszkodik. A 100 MiB feletti, sérült vagy titkosított
