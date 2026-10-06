@@ -1057,8 +1057,13 @@ test('ISBNdb broker validates the owner token before spending quota and does not
   requests.length = 0
   c.DriveApp.getRootFolder = () => ({ getOwner: () => ({ getEmail: () => 'someone-else@example.com' }) })
   const denied = c.doPost({ parameter: { ...p, isbn: '9781111111111' } })
-  assert.match(denied.html, /tulajdonos/)
+  assert.match(denied.html, /nem ez a Google-fiók/)
   assert.equal(requests.some(request => request.url.includes('isbndb.com')), false)
+  c.GRAPES_ISBNDB_ALLOWED_EMAIL = ' owner@example.com '
+  const allowed = c.doPost({ parameter: { ...p, isbn: '9782222222222' } })
+  assert.match(allowed.html, /grapes-isbndb-result/)
+  assert.match(allowed.html, /"status":"ok"/)
+  assert.equal(requests.some(request => request.url.includes('isbndb.com')), true)
 })
 
 test('automatic broker deployment stays aligned with every live client URL', () => {

@@ -37,19 +37,19 @@ function doPost(e) {
 function lookupIsbndb_(p) {
   const token = String(p.accessToken || '');
   if (!token || token.length > 4096) throw new Error('Csatlakoztasd újra a Google Drive-ot.');
-  // The web app executes as its owner. Drive's root-folder owner is available
-  // under the already-authorized Drive scope; Session.getEffectiveUser would
-  // require a separate userinfo.email consent after deployment.
-  const rootOwner = DriveApp.getRootFolder().getOwner();
-  const owner = String((rootOwner && rootOwner.getEmail()) || '').toLowerCase();
-  if (!owner) throw new Error('Az ISBNdb-hozzáférés tulajdonosa nem ellenőrizhető.');
+  // The private allowlist permits the Grapes account to differ from the web-app
+  // deployer. Without it, retain the previous owner-only fail-closed default.
+  const configuredEmail = typeof GRAPES_ISBNDB_ALLOWED_EMAIL === 'undefined' ? '' : String(GRAPES_ISBNDB_ALLOWED_EMAIL).trim().toLowerCase();
+  const rootOwner = configuredEmail ? null : DriveApp.getRootFolder().getOwner();
+  const allowedEmail = configuredEmail || String((rootOwner && rootOwner.getEmail()) || '').toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(allowedEmail)) throw new Error('Az ISBNdb engedélyezett fiókja nincs megfelelően beállítva.');
   const identity = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)', {
     headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true
   });
   if (identity.getResponseCode() !== 200) throw new Error('A Google-munkamenet lejárt. Csatlakoztasd újra a Drive-ot.');
   const account = JSON.parse(identity.getContentText()).user;
-  if (String((account && account.emailAddress) || '').toLowerCase() !== owner) {
-    throw new Error('Az ISBNdb csak az alkalmazás tulajdonosának Google-fiókjával használható.');
+  if (String((account && account.emailAddress) || '').toLowerCase() !== allowedEmail) {
+    throw new Error('Az ISBNdb-kereséshez nem ez a Google-fiók van engedélyezve.');
   }
   const key = typeof GRAPES_ISBNDB_API_KEY === 'undefined' ? '' : String(GRAPES_ISBNDB_API_KEY);
   if (!key) throw new Error('Az ISBNdb-kulcs még nincs telepítve.');
@@ -63,7 +63,7 @@ function lookupIsbndb_(p) {
   const cacheKey = 'isbndb_' + encodeURIComponent(query).slice(0, 200);
   const cached = cache.get(cacheKey);
   if (cached) return JSON.parse(cached);
-  const limiter = 'isbndb_quota_' + owner;
+  const limiter = 'isbndb_quota_' + allowedEmail;
   const used = Number(cache.get(limiter) || 0);
   if (used >= 20) throw new Error('Túl sok ISBNdb-keresés. Próbáld meg egy perc múlva.');
   cache.put(limiter, String(used + 1), 60);

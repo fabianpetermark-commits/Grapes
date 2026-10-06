@@ -14,7 +14,9 @@ issue, pull request, or chat.
 ISBNdb lookup additionally requires the repository Actions secret `ISBN_API_KEY`.
 The workflow inserts it into a deploy-only Apps Script source file; it is never
 bundled into GitHub Pages or committed. The public broker accepts lookup requests
-only with a valid Google Drive token belonging to the Apps Script owner. The
+only with a valid Google Drive token belonging to `ISBNDB_ALLOWED_EMAIL`, a
+separate Actions secret containing the Grapes Google account's email address.
+If omitted, the web app deployer's Drive account is the only allowed account. The
 first deployment with ISBNdb may require the owner to authorize the added
 `script.external_request` scope in Apps Script before lookups work.
 
