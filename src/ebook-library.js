@@ -5,6 +5,7 @@ import { connectGrapesDrive, disconnectGrapesDrive, getGrapesDriveAccessToken, g
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 const PICKER_API_KEY = import.meta.env.VITE_GOOGLE_PICKER_API_KEY || ''
 const PICKER_APP_ID = import.meta.env.VITE_GOOGLE_APP_ID || CLIENT_ID.split('-')[0]
+const BOOKS_API_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY || ''
 const TRANSFER_BROKER_URL = import.meta.env.VITE_EBOOK_TRANSFER_BROKER_URL || ''
 const EPUB_WRITE_ENABLED = import.meta.env.VITE_EBOOK_EPUB_WRITE_ENABLED === 'true'
 const FOLDER_NAME = 'Grapes E-book Library'
@@ -500,16 +501,17 @@ async function lookupBookMetadata() {
 
 async function findGoogleBooksMetadata({ title = '', author = '', isbn = '' } = {}) {
   const token = getGrapesDriveAccessToken()
-  if (!token) return null
+  if (!BOOKS_API_KEY && !token) return null
   const searches = isbn ? [`isbn:${isbn}`] : []
   if (title || author) searches.push([title && `intitle:${title}`, author && `inauthor:${author}`].filter(Boolean).join(' '))
   for (const query of searches) {
     const params = new URLSearchParams({ q: query, printType: 'books', maxResults: '20' })
+    if (BOOKS_API_KEY) params.set('key', BOOKS_API_KEY)
     const controller = new AbortController()
     const timeout = window.setTimeout(() => controller.abort(), 12000)
     let items
     try {
-      const response = await fetch(`https://www.googleapis.com/books/v1/volumes?${params}`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal })
+      const response = await fetch(`https://www.googleapis.com/books/v1/volumes?${params}`, { headers: BOOKS_API_KEY ? {} : { Authorization: `Bearer ${token}` }, signal: controller.signal })
       if (!response.ok) throw new Error(`Google Books keresési hiba (${response.status})`)
       const data = await response.json()
       items = Array.isArray(data.items) ? data.items : []

@@ -9,7 +9,7 @@ const source = readFileSync(new URL('../src/ebook-library.js', import.meta.url),
   .replace(/^import .*\r?\n/gm, '').replaceAll('import.meta.env', 'env').replace('export function', 'function')
 const driveSource = readFileSync(new URL('../src/storage/grapes-drive.js', import.meta.url), 'utf8')
   .replaceAll('export ', '').replaceAll('import.meta.env', 'env')
-function app(fetch, { connected = true, session = new Map(), local = new Map(), epubWriter = async () => new Blob(['rewritten epub']), pickerKey = '' } = {}) {
+function app(fetch, { connected = true, session = new Map(), local = new Map(), epubWriter = async () => new Blob(['rewritten epub']), pickerKey = '', booksKey = '' } = {}) {
   const nodes = new Map()
   const element = () => ({ dataset: {}, children: [], listeners: {}, addEventListener(type, fn) { this.listeners[type] = fn }, removeAttribute(key) { delete this[key] }, replaceChildren() { this.children = [] }, append(row) { this.children.push(row) }, querySelectorAll: () => [] })
   const document = { querySelector(id) { if (!nodes.has(id)) nodes.set(id, element()); return nodes.get(id) }, createElement: element, head: { append() {} } }
@@ -17,7 +17,7 @@ function app(fetch, { connected = true, session = new Map(), local = new Map(), 
   if (connected && !session.has('grapes-drive-session')) session.set('grapes-drive-session', JSON.stringify({ clientId: '123-client', accessToken: 'test-token', expiresAt: Date.now() + 3600000 }))
   const testSetTimeout = (callback, delay) => { const timer = setTimeout(callback, delay); timer.unref?.(); return timer }
   const context = vm.createContext({ document, fetch, Blob, URL, URLSearchParams, AbortController, crypto: webcrypto, QRCode: { async toCanvas(canvas, value) { canvas.qrValue = value } },
-    env: { VITE_GOOGLE_CLIENT_ID: '123-client', VITE_GOOGLE_PICKER_API_KEY: pickerKey, VITE_GOOGLE_APP_ID: '123', VITE_EBOOK_TRANSFER_BROKER_URL: 'https://broker.example/exec', VITE_EBOOK_EPUB_WRITE_ENABLED: 'true' }, rewriteEpubMetadata: epubWriter,
+    env: { VITE_GOOGLE_CLIENT_ID: '123-client', VITE_GOOGLE_PICKER_API_KEY: pickerKey, VITE_GOOGLE_BOOKS_API_KEY: booksKey, VITE_GOOGLE_APP_ID: '123', VITE_EBOOK_TRANSFER_BROKER_URL: 'https://broker.example/exec', VITE_EBOOK_EPUB_WRITE_ENABLED: 'true' }, rewriteEpubMetadata: epubWriter,
     window: { sessionStorage: storage(session), localStorage: storage(local), setTimeout: testSetTimeout, clearTimeout, location: { href: 'https://fabianpetermark-commits.github.io/Grapes/', origin: 'https://fabianpetermark-commits.github.io', search: '' } } })
   const driveContext = vm.createContext({ window: context.window, document, fetch, env: context.env, Blob, crypto: webcrypto })
   const api = vm.runInContext(driveSource + '\n({ connectGrapesDrive, disconnectGrapesDrive, getGrapesDriveAccessToken, grapesDriveHasFullReadAccess, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange })', driveContext)
@@ -515,6 +515,24 @@ test('Google Books can supply a missing Open Library result using the current Go
   assert.match(a.nodes.get('#ebook-metadata-suggestion').textContent, /Google Books/)
   a.run('applyMetadataSuggestion()')
   assert.equal(a.nodes.get('#ebook-metadata-author').value, 'Frank Herbert')
+})
+
+test('a configured Books-only key is used for public searches without sending the Drive token', async () => {
+  const a = app(async (url, options = {}) => {
+    if (url.startsWith('https://openlibrary.org/')) return json({ docs: [] })
+    const parsed = new URL(url)
+    assert.equal(parsed.searchParams.get('key'), 'books-test-key')
+    assert.equal(parsed.searchParams.get('q'), 'intitle:Dune inauthor:Frank Herbert')
+    assert.equal(options.headers.Authorization, undefined)
+    return json({ items: [{ volumeInfo: { title: 'Dune', authors: ['Frank Herbert'] } }] })
+  }, { connected: false, booksKey: 'books-test-key' })
+  a.run('currentBooks = [{ id: "book", name: "Dune -- Frank Herbert.epub" }]')
+  a.run('$("#ebook-metadata-book"); $("#ebook-metadata-title"); $("#ebook-metadata-author")')
+  a.nodes.get('#ebook-metadata-book').value = 'book'
+  a.nodes.get('#ebook-metadata-title').value = 'Dune'
+  a.nodes.get('#ebook-metadata-author').value = 'Frank Herbert'
+  await a.run('lookupBookMetadata()')
+  assert.match(a.nodes.get('#ebook-metadata-suggestion').textContent, /Google Books/)
 })
 
 test('conflicting catalogues stay separate and the selected result is applied', async () => {

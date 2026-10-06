@@ -71,6 +71,14 @@ használhatók. Hiányzó kulcsnál a hozzáféréskérés nem aktív, az adatla
 viszont továbbra is működik.
 A Google Books-katalógus
 élő használatához a Books API projektkvótáját külön ellenőrizni kell.
+A nyilvános könyvkereséshez külön Books API-kulcs is használható. Ezt a
+Google Cloudban kizárólag a Books API-ra és a
+`https://fabianpetermark-commits.github.io/*` webhelyre korlátozd, majd a
+GitHub Actions `GOOGLE_BOOKS_API_KEY` repository secretként állítsd be. A
+következő Pages buildtől a keresés ezt használja; ha nincs beállítva, a
+korábbi Google OAuth-tokenes keresés marad. A kulcs a böngészős buildben
+látható, ezért a webhely- és API-korlátozás kötelező. A Picker-kulcsot nem
+kell módosítani. A külön kulcs nem növeli automatikusan a projektkvótát.
 
 A GitHub Pages főoldalán és a korábbi `/Grapes/ebook-pilot/` útvonalon
 ugyanaz a fájlonként korlátozott EPUB-mentés érhető el. Mentés előtt a Grapes
