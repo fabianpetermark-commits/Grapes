@@ -661,6 +661,39 @@ test('Google Books normalizes hyphenated ISBN identifiers and keeps the requeste
   assert.equal(match.suggestion.publisher, 'Ace')
 })
 
+test('web search stops on a 12-digit ISBN and points out its possible missing check digit', async () => {
+  let requests = 0
+  const a = app(async () => { requests++; return json({ docs: [] }) })
+  a.run('currentBooks = [{ id: "book", name: "A változó agy -- Norman Doidge.epub" }]')
+  a.run('$("#ebook-metadata-book"); $("#ebook-metadata-title"); $("#ebook-metadata-author"); $("#ebook-metadata-isbn")')
+  a.nodes.get('#ebook-metadata-book').value = 'book'
+  a.nodes.get('#ebook-metadata-title').value = 'A változó agy'
+  a.nodes.get('#ebook-metadata-author').value = 'Norman Doidge'
+  a.nodes.get('#ebook-metadata-isbn').value = '978963530883'
+  await a.run('lookupBookMetadata()')
+  assert.equal(requests, 0)
+  assert.equal(a.nodes.get('#ebook-metadata-suggestion').dataset.kind, 'error')
+  assert.match(a.nodes.get('#ebook-metadata-suggestion').textContent, /9789635308835/)
+  assert.equal(a.nodes.get('#ebook-metadata-apply').disabled, true)
+})
+
+test('a valid but unconfirmed ISBN is not presented as an edition match', async () => {
+  const a = app(async url => {
+    if (url.includes('/isbn/')) return json({}, 404)
+    if (url.includes('/search.json')) return json({ docs: [{ title: 'A változó agy', author_name: ['Norman Doidge'] }] })
+    return json({ items: [] })
+  })
+  a.run('currentBooks = [{ id: "book", name: "A változó agy -- Norman Doidge.epub" }]')
+  a.run('$("#ebook-metadata-book"); $("#ebook-metadata-title"); $("#ebook-metadata-author"); $("#ebook-metadata-isbn")')
+  a.nodes.get('#ebook-metadata-book').value = 'book'
+  a.nodes.get('#ebook-metadata-title').value = 'A változó agy'
+  a.nodes.get('#ebook-metadata-author').value = 'Norman Doidge'
+  a.nodes.get('#ebook-metadata-isbn').value = '9789635308835'
+  await a.run('lookupBookMetadata()')
+  assert.match(a.nodes.get('#ebook-metadata-suggestion').textContent, /ISBN-t egyik elérhető katalógus sem erősítette meg/)
+  assert.equal(a.run('metadataSearchMatches[0].suggestion.isbn'), '')
+})
+
 test('metadata validation rejects bad ISBN and impossible dates', () => {
   const a = app(async () => json({}))
   assert.equal(a.run('isbnIsValid("9780306406157")'), true)

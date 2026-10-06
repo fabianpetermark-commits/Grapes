@@ -394,6 +394,7 @@ function updateMetadataForm() {
   if (sourceWrap) sourceWrap.hidden = true
   if ($('#ebook-metadata-field-suggestions')) $('#ebook-metadata-field-suggestions').hidden = true
   if ($('#ebook-metadata-evidence')) $('#ebook-metadata-evidence').replaceChildren()
+  if ($('#ebook-metadata-evidence')) $('#ebook-metadata-evidence').hidden = true
   if ($('#ebook-metadata-save-catalog')) $('#ebook-metadata-save-catalog').hidden = true
   setMetadataMessage(id && EPUB_WRITE_ENABLED && ext(selectedBook?.name || '') === 'epub' && selectedBook?.isAppAuthorized !== true
     ? 'Ez az EPUB nem kapott fájlonkénti Grapes-hozzáférést. Egyelőre csak a könyvtári adatlap menthető; a könyvfájlhoz külön hozzáférés szükséges.'
@@ -447,7 +448,20 @@ async function lookupBookMetadata() {
   const parsed = parseFilenameMetadata(book?.name || '')
   const title = typedTitle || parsed?.title || ''
   const author = typedAuthor || parsed?.author || ''
-  const isbn = ($('#ebook-metadata-isbn')?.value || '').trim().replace(/[^\dX]/gi, '') || extractIsbn(book?.name || '')
+  const enteredIsbn = normalizeIsbn($('#ebook-metadata-isbn')?.value || '')
+  if (enteredIsbn && !isbnIsValid(enteredIsbn)) {
+    metadataLookupSerial++
+    metadataSearchMatches = []
+    pendingMetadataSuggestion = null
+    metadataProposalControls = new Map()
+    if ($('#ebook-metadata-source-wrap')) $('#ebook-metadata-source-wrap').hidden = true
+    if ($('#ebook-metadata-field-suggestions')) $('#ebook-metadata-field-suggestions').hidden = true
+    if ($('#ebook-metadata-evidence')) { $('#ebook-metadata-evidence').replaceChildren(); $('#ebook-metadata-evidence').hidden = true }
+    if ($('#ebook-metadata-apply')) $('#ebook-metadata-apply').disabled = true
+    setMetadataMessage(isbnLookupProblem(enteredIsbn), 'error')
+    return
+  }
+  const isbn = enteredIsbn || extractIsbn(book?.name || '')
   if (!title && !author && !isbn) { setMetadataMessage('Adj meg címet vagy szerzőt a kereséshez.', 'error'); return }
   const serial = ++metadataLookupSerial
   const button = $('#ebook-metadata-lookup'); if (button) button.disabled = true
@@ -457,6 +471,7 @@ async function lookupBookMetadata() {
   metadataSearchMatches = []
   metadataProposalControls = new Map()
   if ($('#ebook-metadata-evidence')) $('#ebook-metadata-evidence').replaceChildren()
+  if ($('#ebook-metadata-evidence')) $('#ebook-metadata-evidence').hidden = true
   if ($('#ebook-metadata-apply')) $('#ebook-metadata-apply').disabled = true
   setMetadataMessage('Keresés az Open Library és a Google Books katalógusában…')
   try {
@@ -467,7 +482,7 @@ async function lookupBookMetadata() {
     const unavailable = results.map((result, index) => result.status === 'rejected' ? (index ? 'Google Books' : 'Open Library') : null).filter(Boolean)
     if (!matches.length) {
       const reason = unavailable.length ? ` Nem elérhető: ${unavailable.join(', ')}.` : ''
-      throw new Error(`Egyik katalógusban sem találtam elég biztos egyezést.${reason} A cím és a szerző kézzel menthető.`)
+      throw new Error(`${isbn ? `A(z) ${isbn} ISBN-hez` : 'A megadott adatokhoz'} egyik katalógusban sem találtam megerősíthető találatot.${reason} Ellenőrizd a számot, vagy keress cím és szerző alapján; a kézi adatok ettől függetlenül menthetők.`)
     }
     const select = $('#ebook-metadata-source')
     if (select) {
@@ -475,7 +490,7 @@ async function lookupBookMetadata() {
       matches.forEach((match, index) => {
         const option = document.createElement('option')
         option.value = String(index)
-        option.textContent = `${match.source} · ${match.evidence?.isbn ? 'ISBN-egyezés' : 'cím/szerző alapján'}: ${match.suggestion.title}${match.suggestion.author ? ` — ${match.suggestion.author}` : ''}${match.year ? ` · ${match.year}` : ''}`
+        option.textContent = `${match.source} · ${match.evidence?.isbn ? 'pontos ISBN-egyezés' : 'cím/szerző alapján'}: ${match.suggestion.title}${match.suggestion.author ? ` — ${match.suggestion.author}` : ''}${match.year ? ` · ${match.year}` : ''}`
         select.append(option)
       })
       select.value = '0'
@@ -493,8 +508,10 @@ async function lookupBookMetadata() {
       ? (metadataSimilarity(matches[0].suggestion.title, matches[1].suggestion.title) >= 0.8 && metadataSimilarity(matches[0].suggestion.author, matches[1].suggestion.author) >= 0.7
           ? ' A cím és a szerző mindkét forrásban egyezik; a kiadási év eltérhet.' : ' A források eltérnek; válaszd ki a megfelelő találatot.')
       : ` Csak a(z) ${first.source} adott biztos találatot.`
-    const evidence = matches.map((match) => `${match.source}: ${match.evidence?.isbn ? 'ISBN egyezés' : `cím ${Math.round((match.evidence?.titleScore || 0) * 100)}%, szerző ${Math.round((match.evidence?.authorScore || 0) * 100)}%`}`).join('; ')
-    setMetadataMessage(`${detail}${agreement} ${evidence}.${unavailable.length ? ` Nem elérhető: ${unavailable.join(', ')}.` : ''}`, 'success')
+    const evidence = matches.map((match) => `${match.source}: ${match.evidence?.isbn ? 'pontos ISBN egyezés' : `cím ${Math.round((match.evidence?.titleScore || 0) * 100)}%, szerző ${Math.round((match.evidence?.authorScore || 0) * 100)}%`}`).join('; ')
+    const isbnWarning = isbn && !matches.some((match) => match.evidence?.isbn)
+      ? ` A(z) ${isbn} ISBN-t egyik elérhető katalógus sem erősítette meg; ez csak cím/szerző alapú találat.` : ''
+    setMetadataMessage(`${detail}${agreement}${isbnWarning} ${evidence}.${unavailable.length ? ` Nem elérhető: ${unavailable.join(', ')}.` : ''}`, 'success')
     $('#ebook-metadata-apply').disabled = false
   } catch (error) {
     if (serial !== metadataLookupSerial) return
@@ -782,6 +799,14 @@ function isbnIsValid(isbn) {
   if (/^\d{13}$/.test(isbn)) return [...isbn].reduce((sum, digit, index) => sum + Number(digit) * (index % 2 ? 3 : 1), 0) % 10 === 0
   if (/^\d{9}[\dX]$/.test(isbn)) return [...isbn].reduce((sum, digit, index) => sum + (digit === 'X' ? 10 : Number(digit)) * (10 - index), 0) % 11 === 0
   return false
+}
+function isbnLookupProblem(isbn) {
+  if (isbn.length === 12 && /^\d{12}$/.test(isbn)) {
+    const sum = [...isbn].reduce((total, digit, index) => total + Number(digit) * (index % 2 ? 3 : 1), 0)
+    return `Az ISBN-13 utolsó számjegye hiányzik. Ha az első 12 számjegy helyes, a teljes szám ${isbn}${(10 - sum % 10) % 10} lehet. Ellenőrizd a könyvön, majd írd be a teljes ISBN-t.`
+  }
+  if (isbn.length !== 10 && isbn.length !== 13) return `Az ISBN ${isbn.length} karakteres; ISBN-10 esetén 10, ISBN-13 esetén 13 karakter kell. A keresés nem indult el.`
+  return 'Az ISBN ellenőrzőszáma hibás. Ellenőrizd a számot a könyvön; a keresés nem indult el.'
 }
 function metadataFromForm() {
   const result = {}
