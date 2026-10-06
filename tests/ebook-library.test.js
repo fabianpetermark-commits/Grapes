@@ -496,7 +496,8 @@ test('metadata lookup accepts a strong exact catalogue match', async () => {
   a.nodes.get('#ebook-metadata-author').value = 'Frank Herbert'
   await a.run('lookupBookMetadata()')
   assert.equal(a.nodes.get('#ebook-metadata-suggestion').dataset.kind, 'success')
-  assert.match(a.nodes.get('#ebook-metadata-suggestion').textContent, /Dune — Frank Herbert · 1965/)
+  assert.match(a.nodes.get('#ebook-metadata-suggestion').textContent, /Dune — Frank Herbert/)
+  assert.match(a.nodes.get('#ebook-metadata-evidence').children[0].textContent, /Nem azonosított kiadás/)
 })
 
 test('Google Books can supply a missing Open Library result using the current Google token', async () => {
@@ -547,6 +548,7 @@ test('conflicting catalogues stay separate and the selected result is applied', 
   await a.run('lookupBookMetadata()')
   assert.equal(a.nodes.get('#ebook-metadata-source-wrap').hidden, false)
   assert.equal(a.nodes.get('#ebook-metadata-source').children.length, 2)
+  assert.match(a.nodes.get('#ebook-metadata-evidence').children.at(-1).textContent, /források eltérnek.*Szerző/i)
   a.nodes.get('#ebook-metadata-source').value = '1'
   a.run('selectMetadataSource(); metadataProposalControls.get("author").value = "1"; applyMetadataSuggestion()')
   assert.equal(a.nodes.get('#ebook-metadata-author').value, 'F. Herbert')
@@ -576,7 +578,7 @@ test('v2 catalogue keeps rich fields while v1 records remain readable', async ()
   assert.equal(a.run('ebookMetadata.old.title'), 'Régi')
 })
 
-test('field-level catalogue suggestions preserve manually entered values', async () => {
+test('work-level catalogue suggestions preserve manually entered values and do not infer an edition', async () => {
   const a = app(async url => url.startsWith('https://openlibrary.org/')
     ? json({ docs: [{ title: 'Dune', author_name: ['Frank Herbert'], publisher: ['Ace'], isbn: ['9780306406157'] }] })
     : json({ items: [] }))
@@ -587,10 +589,76 @@ test('field-level catalogue suggestions preserve manually entered values', async
   a.nodes.get('#ebook-metadata-title').value = 'Dűne'
   await a.run('lookupBookMetadata()')
   assert.equal(a.run('metadataProposalControls.get("title").value'), '')
-  assert.equal(a.run('metadataProposalControls.get("publisher").value'), '0')
+  assert.equal(a.run('metadataProposalControls.has("publisher")'), false)
+  assert.equal(a.run('metadataProposalControls.has("isbn")'), false)
   a.run('applyMetadataSuggestion()')
   assert.equal(a.nodes.get('#ebook-metadata-title').value, 'Dűne')
-  assert.equal(a.nodes.get('#ebook-metadata-publisher').value, 'Ace')
+  assert.equal(a.run('$("#ebook-metadata-publisher").value'), undefined)
+})
+
+test('Open Library ISBN resolves the edition rather than work-level search data', async () => {
+  const requests = []
+  const a = app(async url => {
+    requests.push(url)
+    if (url.endsWith('/isbn/9780306406157.json')) return json({ title: 'Edition title', isbn_13: ['978-0-306-40615-7'], publishers: ['Edition publisher'], publish_date: '2004', authors: [{ key: '/authors/OL123A' }], works: [{ key: '/works/OL456W' }] })
+    if (url.endsWith('/authors/OL123A.json')) return json({ name: 'Edition author' })
+    if (url.endsWith('/works/OL456W.json')) return json({ description: 'Work description' })
+    if (url.startsWith('https://www.googleapis.com/')) return json({ items: [] })
+    throw new Error(`Unexpected URL: ${url}`)
+  })
+  a.run('currentBooks = [{ id: "book", name: "Edition title.epub" }]')
+  a.nodes.get('#ebook-metadata-book') || a.run('$("#ebook-metadata-book")')
+  a.nodes.get('#ebook-metadata-book').value = 'book'
+  a.run('$("#ebook-metadata-title"); $("#ebook-metadata-author"); $("#ebook-metadata-isbn")')
+  a.nodes.get('#ebook-metadata-title').value = 'Edition title'
+  a.nodes.get('#ebook-metadata-author').value = 'Edition author'
+  a.nodes.get('#ebook-metadata-isbn').value = '9780306406157'
+  await a.run('lookupBookMetadata()')
+  assert.equal(requests.some(url => url.includes('/search.json')), false)
+  assert.equal(a.run('metadataSearchMatches[0].suggestion.isbn'), '9780306406157')
+  assert.equal(a.run('metadataSearchMatches[0].suggestion.publisher'), 'Edition publisher')
+  assert.match(a.nodes.get('#ebook-metadata-evidence').children[0].textContent, /Pontos ISBN/)
+})
+
+test('an ISBN match visibly warns about a conflicting title without changing the typed title', async () => {
+  const a = app(async url => {
+    if (url.includes('/isbn/')) return json({ title: 'Another book', isbn_13: ['9780306406157'] })
+    return json({ items: [] })
+  })
+  a.run('currentBooks = [{ id: "book", name: "Dune.epub" }]')
+  a.run('$("#ebook-metadata-book"); $("#ebook-metadata-title"); $("#ebook-metadata-isbn")')
+  a.nodes.get('#ebook-metadata-book').value = 'book'
+  a.nodes.get('#ebook-metadata-title').value = 'Dune'
+  a.nodes.get('#ebook-metadata-isbn').value = '9780306406157'
+  await a.run('lookupBookMetadata()')
+  assert.match(a.nodes.get('#ebook-metadata-evidence').children[0].textContent, /eltérő cím/)
+  assert.equal(a.run('metadataProposalControls.get("title").value'), '')
+  assert.equal(a.nodes.get('#ebook-metadata-title').value, 'Dune')
+})
+
+test('ISBN search fallback never suggests another edition details', async () => {
+  const a = app(async url => {
+    if (url.includes('/isbn/')) return json({}, 404)
+    if (url.includes('/search.json')) return json({ docs: [{ title: 'Dune', author_name: ['Frank Herbert'], isbn: ['9781111111111'], publisher: ['Other edition'], first_publish_year: 1965 }] })
+    return json({ items: [] })
+  })
+  const match = await a.run('findBookMetadata({ title: "Dune", author: "Frank Herbert", isbn: "9780306406157" })')
+  assert.equal(match.evidence.isbn, undefined)
+  assert.equal(match.suggestion.isbn, '')
+  assert.equal(match.suggestion.publisher, '')
+  assert.equal(match.suggestion.publishedDate, '')
+  assert.equal(match.suggestion.coverUrl, '')
+})
+
+test('Google Books normalizes hyphenated ISBN identifiers and keeps the requested edition', async () => {
+  const a = app(async url => {
+    assert.match(url, /isbn%3A9780306406157/)
+    return json({ items: [{ volumeInfo: { title: 'Dune', authors: ['Frank Herbert'], industryIdentifiers: [{ type: 'ISBN_13', identifier: '978-0-306-40615-7' }], publisher: 'Ace' } }] })
+  }, { booksKey: 'books-test-key' })
+  const match = await a.run('findGoogleBooksMetadata({ title: "Dune", author: "Frank Herbert", isbn: "9780306406157" })')
+  assert.equal(match.evidence.isbn, true)
+  assert.equal(match.suggestion.isbn, '9780306406157')
+  assert.equal(match.suggestion.publisher, 'Ace')
 })
 
 test('metadata validation rejects bad ISBN and impossible dates', () => {

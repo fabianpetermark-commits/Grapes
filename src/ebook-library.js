@@ -393,6 +393,7 @@ function updateMetadataForm() {
   const sourceWrap = $('#ebook-metadata-source-wrap')
   if (sourceWrap) sourceWrap.hidden = true
   if ($('#ebook-metadata-field-suggestions')) $('#ebook-metadata-field-suggestions').hidden = true
+  if ($('#ebook-metadata-evidence')) $('#ebook-metadata-evidence').replaceChildren()
   if ($('#ebook-metadata-save-catalog')) $('#ebook-metadata-save-catalog').hidden = true
   setMetadataMessage(id && EPUB_WRITE_ENABLED && ext(selectedBook?.name || '') === 'epub' && selectedBook?.isAppAuthorized !== true
     ? 'Ez az EPUB nem kapott fájlonkénti Grapes-hozzáférést. Egyelőre csak a könyvtári adatlap menthető; a könyvfájlhoz külön hozzáférés szükséges.'
@@ -455,12 +456,14 @@ async function lookupBookMetadata() {
   pendingMetadataSuggestion = null
   metadataSearchMatches = []
   metadataProposalControls = new Map()
+  if ($('#ebook-metadata-evidence')) $('#ebook-metadata-evidence').replaceChildren()
   if ($('#ebook-metadata-apply')) $('#ebook-metadata-apply').disabled = true
   setMetadataMessage('Keresés az Open Library és a Google Books katalógusában…')
   try {
     const results = await Promise.allSettled([findBookMetadata({ title, author, isbn }), findGoogleBooksMetadata({ title, author, isbn })])
     if (serial !== metadataLookupSerial || id !== $('#ebook-metadata-book')?.value) return
     const matches = results.map((result, index) => result.status === 'fulfilled' && result.value ? { ...result.value, source: index ? 'Google Books' : 'Open Library' } : null).filter(Boolean)
+    matches.sort((a, b) => Number(Boolean(b.evidence?.isbn)) - Number(Boolean(a.evidence?.isbn)))
     const unavailable = results.map((result, index) => result.status === 'rejected' ? (index ? 'Google Books' : 'Open Library') : null).filter(Boolean)
     if (!matches.length) {
       const reason = unavailable.length ? ` Nem elérhető: ${unavailable.join(', ')}.` : ''
@@ -472,7 +475,7 @@ async function lookupBookMetadata() {
       matches.forEach((match, index) => {
         const option = document.createElement('option')
         option.value = String(index)
-        option.textContent = `${match.source}: ${match.suggestion.title}${match.suggestion.author ? ` — ${match.suggestion.author}` : ''}${match.year ? ` · ${match.year}` : ''}`
+        option.textContent = `${match.source} · ${match.evidence?.isbn ? 'ISBN-egyezés' : 'cím/szerző alapján'}: ${match.suggestion.title}${match.suggestion.author ? ` — ${match.suggestion.author}` : ''}${match.year ? ` · ${match.year}` : ''}`
         select.append(option)
       })
       select.value = '0'
@@ -480,6 +483,7 @@ async function lookupBookMetadata() {
     if (sourceWrap) sourceWrap.hidden = matches.length < 2
     metadataSearchMatches = matches
     pendingMetadataSuggestion = matches[0].suggestion
+    renderMetadataEvidence(matches, { title, author, isbn })
     renderMetadataProposals(matches)
     const first = matches[0]
     const detail = first.kind === 'author'
@@ -525,10 +529,10 @@ async function findGoogleBooksMetadata({ title = '', author = '', isbn = '' } = 
       coverUrl: safeCoverUrl(item.volumeInfo?.imageLinks?.extraLarge || item.volumeInfo?.imageLinks?.large || item.volumeInfo?.imageLinks?.medium || item.volumeInfo?.imageLinks?.thumbnail || ''),
       isbn: item.volumeInfo?.industryIdentifiers?.map((identifier) => identifier.identifier) || [],
     }))
-    const exactIsbn = isbn && docs.find((doc) => doc.isbn.includes(isbn))
-    if (exactIsbn) return metadataMatch(exactIsbn, 'isbn', { isbn: true, titleScore: metadataSimilarity(title, exactIsbn.title), authorScore: metadataSimilarity(author, exactIsbn.author_name?.[0] || '') })
+    const exactIsbn = isbn && docs.find((doc) => doc.isbn.some((value) => normalizeIsbn(value) === isbn))
+    if (exactIsbn) return metadataMatch(exactIsbn, 'isbn', { isbn: true, titleScore: metadataSimilarity(title, exactIsbn.title), authorScore: metadataSimilarity(author, exactIsbn.author_name?.[0] || '') }, isbn)
     const best = bestMetadataDocument(docs, { title, author })
-    if (best && (title && author ? best.titleScore >= 0.72 && best.authorScore >= 0.5 : title ? best.titleScore >= 0.72 : best.authorScore >= 0.72)) return metadataMatch(best.doc, 'exact', best)
+    if (best && (title && author ? best.titleScore >= 0.72 && best.authorScore >= 0.5 : title ? best.titleScore >= 0.72 : best.authorScore >= 0.72)) return metadataMatch(best.doc, 'title', best, '', true)
   }
   return null
 }
@@ -552,6 +556,38 @@ function metadataSimilarity(left = '', right = '') {
   const common = [...a].filter((word) => b.has(word)).length
   return (2 * common) / (a.size + b.size)
 }
+function normalizeIsbn(value = '') { return String(value).replace(/[^\dX]/gi, '').toUpperCase() }
+function safeCatalogDate(value = '') {
+  const text = String(value).trim()
+  if (/^\d{4}(?:-\d{2}(?:-\d{2})?)?$/.test(text)) return text
+  const year = text.match(/\b(?:1[5-9]\d{2}|20\d{2})\b/)
+  return year?.[0] || ''
+}
+async function findOpenLibraryEdition(isbn, signal) {
+  const response = await fetch(`https://openlibrary.org/isbn/${encodeURIComponent(isbn)}.json`, { signal })
+  if (response.status === 404) return null
+  if (!response.ok) throw new Error(`Open Library ISBN-keresési hiba (${response.status})`)
+  const edition = await response.json()
+  const identifiers = [...(edition.isbn_10 || []), ...(edition.isbn_13 || [])]
+  if (!identifiers.some((value) => normalizeIsbn(value) === isbn)) return null
+  const authorRef = edition.authors?.[0]?.key
+  let author = ''
+  if (/^\/authors\/OL\d+A$/.test(authorRef || '')) {
+    try {
+      const authorResponse = await fetch(`https://openlibrary.org${authorRef}.json`, { signal })
+      if (authorResponse.ok) author = (await authorResponse.json()).name || ''
+    } catch { /* A szerző kiegészítése opcionális. */ }
+  }
+  const workKey = edition.works?.[0]?.key
+  const doc = {
+    title: edition.title || '', author_name: author ? [author] : [],
+    isbn: identifiers, publisher: edition.publishers || [],
+    publishedDate: safeCatalogDate(edition.publish_date),
+    language: edition.languages?.[0]?.key?.split('/').pop() || '',
+    cover_i: edition.covers?.[0], key: workKey,
+  }
+  return doc
+}
 
 function bestMetadataDocument(docs, { title = '', author = '' } = {}) {
   let best = null
@@ -570,16 +606,16 @@ async function findBookMetadata({ title = '', author = '', isbn = '' } = {}) {
   const timeout = window.setTimeout(() => controller.abort(), 12000)
   try {
   if (isbn) {
-    const isbnMatch = bestMetadataDocument(await queryOpenLibrary({ isbn }, controller.signal), { title, author })
-    if (isbnMatch?.doc?.isbn?.some((value) => String(value).replace(/[^\dX]/gi, '') === isbn)) return enrichOpenLibraryMatch(metadataMatch(isbnMatch.doc, 'isbn', { ...isbnMatch, isbn: true }), isbnMatch.doc, controller.signal)
+    const edition = await findOpenLibraryEdition(isbn, controller.signal)
+    if (edition) return enrichOpenLibraryMatch(metadataMatch(edition, 'isbn', { isbn: true, titleScore: metadataSimilarity(title, edition.title), authorScore: metadataSimilarity(author, edition.author_name?.[0] || '') }, isbn), edition, controller.signal)
   }
   if (title && author) {
     const exact = bestMetadataDocument(await queryOpenLibrary({ title, author }, controller.signal), { title, author })
-    if (exact?.score >= 0.62) return enrichOpenLibraryMatch(metadataMatch(exact.doc, 'exact', exact), exact.doc, controller.signal)
+    if (exact?.score >= 0.62) return enrichOpenLibraryMatch(metadataMatch(exact.doc, 'title', exact, '', true), exact.doc, controller.signal)
   }
   if (title) {
     const byTitle = bestMetadataDocument(await queryOpenLibrary({ title }, controller.signal), { title, author })
-    if (byTitle?.titleScore >= 0.72 && (!author || byTitle.authorScore >= 0.5)) return enrichOpenLibraryMatch(metadataMatch(byTitle.doc, 'title', byTitle), byTitle.doc, controller.signal)
+    if (byTitle?.titleScore >= 0.72 && (!author || byTitle.authorScore >= 0.5)) return enrichOpenLibraryMatch(metadataMatch(byTitle.doc, 'title', byTitle, '', true), byTitle.doc, controller.signal)
   }
   if (author) {
     const byAuthor = bestMetadataDocument(await queryOpenLibrary({ author }, controller.signal), { author })
@@ -612,24 +648,56 @@ async function enrichOpenLibraryMatch(match, doc, signal) {
   } catch { /* A leírás opcionális; a találat ettől még érvényes. */ }
   return match
 }
-function metadataMatch(doc, kind, evidence = {}) {
-  const isbn = doc.isbn?.find((value) => String(value).replace(/[^\dX]/gi, '').length === 13) || doc.isbn?.[0] || ''
+function metadataMatch(doc, kind, evidence = {}, requestedIsbn = '', unverifiedEdition = false) {
+  const isbn = requestedIsbn || doc.isbn?.find((value) => normalizeIsbn(value).length === 13) || doc.isbn?.[0] || ''
   const language = Array.isArray(doc.language) ? doc.language[0] || '' : doc.language || ''
   const publisher = Array.isArray(doc.publisher) ? doc.publisher[0] || '' : doc.publisher || ''
   const languageMap = { eng: 'en', hun: 'hu', ger: 'de', fre: 'fr', spa: 'es', ita: 'it' }
   return {
-    kind, year: doc.first_publish_year || '', evidence,
+    kind, year: unverifiedEdition ? '' : (doc.publishedDate || doc.first_publish_year || ''), evidence,
     suggestion: {
-      title: doc.title || '', author: doc.author_name?.[0] || '', isbn: String(isbn).replace(/[^\dX]/gi, ''),
-      language: languageMap[language] || language, publisher,
-      publishedDate: doc.publishedDate || (doc.first_publish_year ? String(doc.first_publish_year) : ''),
+      title: doc.title || '', author: doc.author_name?.[0] || '', isbn: unverifiedEdition ? '' : normalizeIsbn(isbn),
+      language: unverifiedEdition ? '' : (languageMap[language] || language), publisher: unverifiedEdition ? '' : publisher,
+      publishedDate: unverifiedEdition ? '' : safeCatalogDate(doc.publishedDate || doc.first_publish_year),
       description: doc.description || '', subjects: doc.subjects || doc.subject?.slice(0, 8) || [],
-      coverUrl: safeCoverUrl(doc.coverUrl || (doc.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg?default=false` : '')),
+      coverUrl: unverifiedEdition ? '' : safeCoverUrl(doc.coverUrl || (doc.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg?default=false` : '')),
     },
   }
 }
 function proposalText(value) {
   return Array.isArray(value) ? value.join(', ') : String(value || '')
+}
+function renderMetadataEvidence(matches, query) {
+  const container = $('#ebook-metadata-evidence')
+  if (!container) return
+  container.replaceChildren()
+  for (const match of matches) {
+    const item = document.createElement('div')
+    item.className = 'ebook-library__metadata-evidence-item'
+    const parts = [match.source]
+    if (match.evidence?.isbn) parts.push(`Pontos ISBN: ${query.isbn}`)
+    else parts.push('Nem azonosított kiadás; ISBN, kiadó, dátum és borító nincs javasolva')
+    if (query.title && match.suggestion.title) parts.push(`cím ${Math.round((match.evidence?.titleScore || 0) * 100)}%`)
+    if (query.author && match.suggestion.author) parts.push(`szerző ${Math.round((match.evidence?.authorScore || 0) * 100)}%`)
+    if (match.evidence?.isbn && query.title && match.evidence.titleScore < 0.5) parts.push('Figyelem: eltérő cím')
+    if (match.evidence?.isbn && query.author && match.evidence.authorScore < 0.5) parts.push('Figyelem: eltérő szerző')
+    item.textContent = parts.join(' · ')
+    container.append(item)
+  }
+  if (matches.length > 1) {
+    const fields = ['title', 'author', 'publisher', 'publishedDate', 'language']
+    const differing = fields.filter((field) => {
+      const values = matches.map((match) => proposalText(match.suggestion[field]).trim().toLocaleLowerCase('hu-HU')).filter(Boolean)
+      return values.length > 1 && new Set(values).size > 1
+    })
+    if (differing.length) {
+      const item = document.createElement('div')
+      item.className = 'ebook-library__metadata-evidence-item'
+      item.textContent = `A források eltérnek ezekben: ${differing.map((field) => METADATA_LABELS[field]).join(', ')}. Válaszd ki mezőnként a megfelelő értéket.`
+      container.append(item)
+    }
+  }
+  container.hidden = !matches.length
 }
 function renderMetadataProposals(matches) {
   const container = $('#ebook-metadata-field-suggestions')

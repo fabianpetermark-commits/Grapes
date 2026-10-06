@@ -94,6 +94,8 @@
 .ebook-library__metadata-cover img{width:90px;height:130px;object-fit:cover;border:1px solid var(--color-border);border-radius:var(--radius-sm)}
 .ebook-library__metadata-cover>div{display:grid;gap:8px;min-width:0}
 .ebook-library__metadata-proposals{display:grid;gap:8px;min-width:0}
+.ebook-library__metadata-evidence{display:grid;gap:6px;min-width:0;font-size:13px;color:var(--color-text-muted)}
+.ebook-library__metadata-evidence-item{min-width:0;overflow-wrap:anywhere;padding:8px 10px;border:1px solid var(--color-border);border-radius:var(--radius-sm)}
 .ebook-library__metadata-proposal{display:grid;grid-template-columns:minmax(100px,160px) minmax(0,1fr);gap:8px;align-items:center}
 .ebook-library__metadata-proposal select{width:100%;min-width:0}
 .ebook-library__metadata-suggestion{min-height:20px;margin:0;color:var(--color-text-muted);font-size:13px}
