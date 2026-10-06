@@ -87,6 +87,10 @@ export function getGrapesAccount() {
   return email ? { name: email.split('@')[0], email, photo: '' } : null
 }
 
+export function getConnectedGrapesAccount() {
+  return isGrapesDriveConnected() && accountProfile?.email ? { ...accountProfile } : null
+}
+
 export function grapesDriveHasFullReadAccess() {
   return isGrapesDriveConnected() && grantedScopes.split(/\s+/).some((scope) => scope === GRAPES_DRIVE_READ_SCOPE || scope === LEGACY_DRIVE_WRITE_SCOPE)
 }

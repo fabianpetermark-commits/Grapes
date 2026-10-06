@@ -20,7 +20,7 @@ function app(fetch, { connected = true, session = new Map(), local = new Map(), 
     env: { VITE_GOOGLE_CLIENT_ID: '123-client', VITE_GOOGLE_PICKER_API_KEY: pickerKey, VITE_GOOGLE_BOOKS_API_KEY: booksKey, VITE_GOOGLE_APP_ID: '123', VITE_EBOOK_TRANSFER_BROKER_URL: 'https://broker.example/exec', VITE_EBOOK_EPUB_WRITE_ENABLED: 'true' }, rewriteEpubMetadata: epubWriter,
     window: { sessionStorage: storage(session), localStorage: storage(local), setTimeout: testSetTimeout, clearTimeout, location: { href: 'https://fabianpetermark-commits.github.io/Grapes/', origin: 'https://fabianpetermark-commits.github.io', search: '' } } })
   const driveContext = vm.createContext({ window: context.window, document, fetch, env: context.env, Blob, crypto: webcrypto })
-  const api = vm.runInContext(driveSource + '\n({ connectGrapesDrive, disconnectGrapesDrive, getGrapesDriveAccessToken, grapesDriveHasFullReadAccess, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange })', driveContext)
+  const api = vm.runInContext(driveSource + '\n({ connectGrapesDrive, disconnectGrapesDrive, getConnectedGrapesAccount, getGrapesDriveAccessToken, grapesDriveHasFullReadAccess, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange })', driveContext)
   Object.assign(context, api)
   vm.runInContext(source + '\nonGrapesDriveChange(renderDriveConnection)', context)
   vm.runInContext('loadEpubWriter = async () => rewriteEpubMetadata', context)
@@ -325,6 +325,31 @@ test('persistent reader pairing uses an inline frame with the verified marker', 
   assert.match(url.searchParams.get('nonce'), /^[a-f0-9]{48}$/)
   assert.equal(url.searchParams.get('returnUrl'), 'https://fabianpetermark-commits.github.io/Grapes/ebook-reader.html')
   assert.equal(a.nodes.get('#ebook-reader-pair-btn').disabled, false)
+})
+
+test('library cache keeps edited titles with books and never displays another account cache', () => {
+  const local = new Map([['grapes-ebook-library-cache-v1', JSON.stringify({ books: [{ id: 'legacy', name: 'old.epub' }] })]])
+  const sessionFor = (email) => new Map([['grapes-drive-session', JSON.stringify({
+    clientId: '123-client', accessToken: 'test-token', expiresAt: Date.now() + 3600000,
+    account: { name: email, email, photo: '' },
+  })]])
+  const first = app(undefined, { session: sessionFor('reader@example.com'), local })
+  first.run('ebookMetadata = { book: { title: "Mentett cím", author: "Mentett szerző", publisher: "Kiadó" } }; saveLibraryCache([{ id: "book", name: "regi-fajlnev.epub" }])')
+  const cached = JSON.parse(local.get('grapes-ebook-library-cache-v2:reader%40example.com'))
+  assert.equal(cached.metadata.book.title, 'Mentett cím')
+  const sameAccount = app(undefined, { session: sessionFor('reader@example.com'), local })
+  assert.equal(sameAccount.run('renderLibraryCache()'), true)
+  assert.match(sameAccount.nodes.get('#ebook-list').children[0].innerHTML, /Mentett cím/)
+  assert.match(sameAccount.nodes.get('#ebook-metadata-book').innerHTML, /Mentett cím/)
+  assert.equal(local.has('grapes-ebook-library-cache-v1'), false)
+  sameAccount.context.getConnectedGrapesAccount = () => ({ email: 'other@example.com' })
+  sameAccount.run('renderDriveConnection()')
+  assert.equal(sameAccount.nodes.get('#ebook-list').children.length, 0)
+  const otherAccount = app(undefined, { session: sessionFor('other@example.com'), local })
+  assert.equal(otherAccount.run('renderLibraryCache()'), false)
+  assert.equal(otherAccount.nodes.get('#ebook-list'), undefined)
+  const unidentified = app(undefined, { local: new Map([['grapes-drive-account', 'reader@example.com'], ...local]) })
+  assert.equal(unidentified.run('renderLibraryCache()'), false)
 })
 
 test('reader pairing explains when a book transfer code was entered instead', () => {

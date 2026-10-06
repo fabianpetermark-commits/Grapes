@@ -1,6 +1,6 @@
 import QRCode from 'qrcode'
 import './styles/screens/ebook-library.css'
-import { connectGrapesDrive, disconnectGrapesDrive, getGrapesDriveAccessToken, grapesDriveHasFullReadAccess, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange } from './storage/grapes-drive.js'
+import { connectGrapesDrive, disconnectGrapesDrive, getConnectedGrapesAccount, getGrapesDriveAccessToken, grapesDriveHasFullReadAccess, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange } from './storage/grapes-drive.js'
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 const PICKER_API_KEY = import.meta.env.VITE_GOOGLE_PICKER_API_KEY || ''
@@ -14,7 +14,8 @@ const FOLDER_NAME = 'Grapes E-book Library'
 const APP_RETURN_URL = 'https://fabianpetermark-commits.github.io/Grapes/'
 const READER_PAGE_URL = new URL('ebook-reader.html', APP_RETURN_URL).toString()
 const READER_SHARING_KEY = 'grapes-reader-library-enabled'
-const LIBRARY_CACHE_KEY = 'grapes-ebook-library-cache-v1'
+const LIBRARY_CACHE_KEY = 'grapes-ebook-library-cache-v2:'
+const LEGACY_LIBRARY_CACHE_KEY = 'grapes-ebook-library-cache-v1'
 const FULL_SCAN_CACHE_MS = 5 * 60 * 1000
 const INTERNAL_PAIRING_FILE = /^\.grapes-reader-pairing(?:-\d+)?\.json$/i
 const INTERNAL_METADATA_FILE = /^\.grapes-ebook-metadata\.json$/i
@@ -44,6 +45,7 @@ let partialMetadataSave = null
 let pendingCoverAsset = null
 let cachedBooks = []
 let cachedAt = 0
+let cachedAccount = ''
 let readerPairMessageTimer = null
 let readerPairExpiryTimer = null
 let readerPairNonce = ''
@@ -63,17 +65,39 @@ const formatSize = (bytes) => !Number.isFinite(bytes) ? '—' : bytes < 1024 * 1
 const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
 function setStatus(message, kind = '') { const node = $('#ebook-status'); if (node) { node.textContent = message; node.dataset.kind = kind } }
 function setUploadState(message, kind = '') { const node = $('#ebook-upload-state'); if (node) { node.textContent = message; node.dataset.kind = kind } }
+function activeLibraryAccount() { return getConnectedGrapesAccount()?.email?.trim().toLocaleLowerCase('en-US') || '' }
+function libraryCacheKey(account) { return `${LIBRARY_CACHE_KEY}${encodeURIComponent(account)}` }
+function resetLibraryCacheMemory() { cachedBooks = []; cachedAt = 0; cachedAccount = '' }
 function saveLibraryCache(books) {
+  const account = activeLibraryAccount()
   cachedBooks = books
   cachedAt = Date.now()
-  try { window.localStorage?.setItem(LIBRARY_CACHE_KEY, JSON.stringify({ savedAt: cachedAt, books })) } catch {}
+  cachedAccount = account
+  if (!account) return
+  try {
+    window.localStorage?.setItem(libraryCacheKey(account), JSON.stringify({
+      savedAt: cachedAt, books,
+      metadata: Object.fromEntries(books.filter((book) => ebookMetadata[book.id]).map((book) => [book.id, ebookMetadata[book.id]])),
+    }))
+  } catch {
+    // Ha a részletes metaadat nem fér el, a megjelenített címeket még megőrizzük.
+    try {
+      const labels = Object.fromEntries(books.filter((book) => ebookMetadata[book.id]).map((book) => [book.id, { title: ebookMetadata[book.id].title, author: ebookMetadata[book.id].author }]))
+      window.localStorage?.setItem(libraryCacheKey(account), JSON.stringify({ savedAt: cachedAt, books, metadata: labels }))
+    } catch {}
+  }
 }
 function renderLibraryCache() {
   try {
-    const cached = JSON.parse(window.localStorage?.getItem(LIBRARY_CACHE_KEY) || 'null')
+    window.localStorage?.removeItem(LEGACY_LIBRARY_CACHE_KEY)
+    const account = activeLibraryAccount()
+    if (!account) return false
+    const cached = JSON.parse(window.localStorage?.getItem(libraryCacheKey(account)) || 'null')
     if (!Array.isArray(cached?.books) || !cached.books.length) return false
     cachedBooks = cached.books
     cachedAt = Number(cached.savedAt) || 0
+    cachedAccount = account
+    ebookMetadata = normalizeEbookMetadata(cached.metadata)
     renderBooks(cachedBooks)
     setStatus(`${cachedBooks.length} könyv betöltve a gyorsítótárból. Frissítés a háttérben…`)
     return true
@@ -159,6 +183,11 @@ function handleReaderPairingMessage(event) {
 }
 function renderDriveConnection() {
   const connected = isGrapesDriveConnected()
+  if ((!connected && currentBooks.length) || (cachedAccount && cachedAccount !== activeLibraryAccount())) {
+    resetLibraryCacheMemory()
+    ebookMetadata = {}
+    renderBooks([])
+  }
   const button = $('#ebook-drive-connect')
   if (button) { button.disabled = connected; button.textContent = connected ? 'Google Drive csatlakoztatva' : 'Google Drive csatlakoztatása' }
   const disconnect = $('#ebook-drive-disconnect')
@@ -943,6 +972,7 @@ async function saveMetadata({ catalogOnly = false } = {}) {
     partialMetadataSave = null
     pendingCoverAsset = null
     renderBooks(currentBooks)
+    saveLibraryCache(currentBooks)
     openMetadataEditor(id)
     setMetadataDirty(false)
     setStatus(epub && !catalogOnly ? 'A könyvtári adatlap és az EPUB metaadatai mentve a Drive-ba.' : 'A könyvtári adatlap mentve a Drive-ba; a könyvfájl változatlan maradt.', 'success')
@@ -966,7 +996,6 @@ async function connectDrive() {
 }
 async function disconnectDrive() {
   await disconnectGrapesDrive()
-  renderBooks([])
   setStatus('A Google Drive kapcsolat leválasztva. A Drive-on lévő fájlok nem változtak.', 'success')
 }
 const driveRequest = grapesDriveRequest
@@ -1126,6 +1155,12 @@ async function createReaderPairing() {
 async function refreshLibrary({ forceFullScan = false } = {}) {
   if(!accessTokenAvailable()) return
   try {
+    const account = activeLibraryAccount()
+    if (cachedAccount && cachedAccount !== account) {
+      resetLibraryCacheMemory()
+      ebookMetadata = {}
+      renderBooks([])
+    }
     setStatus('A Grapes könyvtármappa frissítése…')
     const folderIds = await findLibraryFolderIds()
     if (!folderIds.length) folderIds.push(await ensureLibraryFolder())
