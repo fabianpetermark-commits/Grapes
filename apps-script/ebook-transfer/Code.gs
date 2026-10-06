@@ -31,7 +31,11 @@ function doPost(e) {
 function lookupIsbndb_(p) {
   const token = String(p.accessToken || '');
   if (!token || token.length > 4096) throw new Error('Csatlakoztasd újra a Google Drive-ot.');
-  const owner = String(Session.getEffectiveUser().getEmail() || '').toLowerCase();
+  // The web app executes as its owner. Drive's root-folder owner is available
+  // under the already-authorized Drive scope; Session.getEffectiveUser would
+  // require a separate userinfo.email consent after deployment.
+  const rootOwner = DriveApp.getRootFolder().getOwner();
+  const owner = String((rootOwner && rootOwner.getEmail()) || '').toLowerCase();
   if (!owner) throw new Error('Az ISBNdb-hozzáférés tulajdonosa nem ellenőrizhető.');
   const identity = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)', {
     headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true

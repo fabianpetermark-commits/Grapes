@@ -1034,7 +1034,7 @@ test('ISBNdb broker validates the owner token before spending quota and does not
   const cache = new Map()
   const c = vm.createContext({
     GRAPES_ISBNDB_API_KEY: 'private-test-key',
-    Session: { getEffectiveUser: () => ({ getEmail: () => 'owner@example.com' }) },
+    DriveApp: { getRootFolder: () => ({ getOwner: () => ({ getEmail: () => 'owner@example.com' }) }) },
     CacheService: { getScriptCache: () => ({ get: key => cache.get(key), put: (key, value) => cache.set(key, value) }) },
     UrlFetchApp: { fetch(url, options) {
       requests.push({ url, options })
@@ -1055,7 +1055,7 @@ test('ISBNdb broker validates the owner token before spending quota and does not
   assert.match(c.doPost({ parameter: { ...p, nonce: 'bad' } }).html, /Invalid request/)
   assert.equal(requests.length, 2)
   requests.length = 0
-  c.Session.getEffectiveUser = () => ({ getEmail: () => 'someone-else@example.com' })
+  c.DriveApp.getRootFolder = () => ({ getOwner: () => ({ getEmail: () => 'someone-else@example.com' }) })
   const denied = c.doPost({ parameter: { ...p, isbn: '9781111111111' } })
   assert.match(denied.html, /tulajdonos/)
   assert.equal(requests.some(request => request.url.includes('isbndb.com')), false)

@@ -16,8 +16,7 @@ The workflow inserts it into a deploy-only Apps Script source file; it is never
 bundled into GitHub Pages or committed. The public broker accepts lookup requests
 only with a valid Google Drive token belonging to the Apps Script owner. The
 first deployment with ISBNdb may require the owner to authorize the added
-`script.external_request` and `userinfo.email` scopes in Apps Script before
-lookups work.
+`script.external_request` scope in Apps Script before lookups work.
 
 1. On your own computer, run `npx @google/clasp login` and sign in with the project
    owner's account. Complete Google's consent yourself.
