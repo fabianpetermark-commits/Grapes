@@ -698,7 +698,7 @@ test('ISBNdb exact ISBN supplies edition metadata, while a title-only match cann
   assert.equal(titleOnly.suggestion.publisher, '')
 })
 
-test('ISBNdb browser bridge posts the Drive token only to its own iframe and ignores foreign messages', async () => {
+test('ISBNdb browser bridge posts the Drive token only to Google and accepts its nested iframe message', async () => {
   const a = app(async () => json({}))
   let frame; let form; let listener
   a.context.document.body = { append(nextFrame, nextForm) { frame = nextFrame; form = nextForm } }
@@ -713,11 +713,11 @@ test('ISBNdb browser bridge posts the Drive token only to its own iframe and ign
   assert.equal(form.fields.find(field => field.name === 'accessToken').value, 'test-token')
   assert.doesNotMatch(form.action, /test-token/)
   const nonce = form.fields.find(field => field.name === 'nonce').value
-  listener({ source: {}, origin: 'https://script.google.com', data: { type: 'grapes-isbndb-result', nonce, status: 'ok', books: [] } })
+  listener({ source: {}, origin: 'https://script.google.com', data: { type: 'grapes-isbndb-result', nonce: 'b'.repeat(48), status: 'ok', books: [] } })
   assert.equal(form.removed, undefined)
   listener({ source: frame.contentWindow, origin: 'https://evil.example', data: { type: 'grapes-isbndb-result', nonce, status: 'ok', books: [] } })
   assert.equal(form.removed, undefined)
-  listener({ source: frame.contentWindow, origin: 'https://script.googleusercontent.com', data: { type: 'grapes-isbndb-result', nonce, status: 'ok', books: [{ title: 'Dune' }] } })
+  listener({ source: {}, origin: 'https://script.googleusercontent.com', data: { type: 'grapes-isbndb-result', nonce, status: 'ok', books: [{ title: 'Dune' }] } })
   assert.equal((await pending)[0].title, 'Dune')
   assert.equal(form.removed, true)
   assert.equal(frame.removed, true)

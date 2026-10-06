@@ -624,7 +624,10 @@ function requestIsbndb({ title = '', author = '', isbn = '' } = {}) {
         const origin = new URL(event.origin)
         trusted = origin.protocol === 'https:' && (origin.hostname === 'script.google.com' || origin.hostname === 'script.googleusercontent.com' || origin.hostname.endsWith('.googleusercontent.com'))
       } catch {}
-      if (!trusted || event.source !== frame.contentWindow || event.data?.type !== 'grapes-isbndb-result' || event.data?.nonce !== nonce) return
+      // HtmlService renders inside a second, Google-owned iframe. Its message
+      // source is therefore not the outer frame's contentWindow; the fresh
+      // 192-bit nonce plus Google's HTTPS origin authenticates this response.
+      if (!trusted || event.data?.type !== 'grapes-isbndb-result' || event.data?.nonce !== nonce) return
       cleanup()
       if (event.data?.status === 'ok') resolve(event.data.books || [])
       else reject(new Error(String(event.data?.message || 'Az ISBNdb nem elérhető.')))
