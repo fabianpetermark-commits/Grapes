@@ -15,6 +15,7 @@ dist-ssr
 .env.*
 !.env.example
 .clasprc*.json
+apps-script/ebook-transfer/IsbndbSecret.gs
 
 # Editor directories and files
 .vscode/*

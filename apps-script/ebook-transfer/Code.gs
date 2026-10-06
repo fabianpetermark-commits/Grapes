@@ -13,6 +13,78 @@ const ALLOWED_PARENT_ORIGIN = 'https://fabianpetermark-commits.github.io';
 const READER_RETURN_URL = 'https://fabianpetermark-commits.github.io/Grapes/ebook-reader.html';
 const ALLOWED_BOOK_EXTENSIONS = ['epub', 'pdf', 'mobi', 'azw', 'azw3', 'prc', 'txt', 'cbz', 'cbr'];
 
+function doPost(e) {
+  const p = (e && e.parameter) || {};
+  if (p.action !== 'lookup-isbndb') return HtmlService.createHtmlOutput('Unsupported action');
+  const nonce = String(p.nonce || '');
+  if (!/^[a-f0-9]{48}$/.test(nonce)) return HtmlService.createHtmlOutput('Invalid request');
+  let result;
+  try { result = { status: 'ok', books: lookupIsbndb_(p) }; }
+  catch (error) { result = { status: 'error', message: error.message }; }
+  // Escape HTML-significant characters even inside JSON embedded in a script.
+  const payload = JSON.stringify(Object.assign({ type: 'grapes-isbndb-result', nonce: nonce }, result))
+    .replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
+  return HtmlService.createHtmlOutput('<!doctype html><html><body><script>window.top.postMessage(' + payload + ',' + JSON.stringify(ALLOWED_PARENT_ORIGIN) + ')</script></body></html>')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function lookupIsbndb_(p) {
+  const token = String(p.accessToken || '');
+  if (!token || token.length > 4096) throw new Error('Csatlakoztasd újra a Google Drive-ot.');
+  const owner = String(Session.getEffectiveUser().getEmail() || '').toLowerCase();
+  if (!owner) throw new Error('Az ISBNdb-hozzáférés tulajdonosa nem ellenőrizhető.');
+  const identity = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)', {
+    headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true
+  });
+  if (identity.getResponseCode() !== 200) throw new Error('A Google-munkamenet lejárt. Csatlakoztasd újra a Drive-ot.');
+  const account = JSON.parse(identity.getContentText()).user;
+  if (String((account && account.emailAddress) || '').toLowerCase() !== owner) {
+    throw new Error('Az ISBNdb csak az alkalmazás tulajdonosának Google-fiókjával használható.');
+  }
+  const key = typeof GRAPES_ISBNDB_API_KEY === 'undefined' ? '' : String(GRAPES_ISBNDB_API_KEY);
+  if (!key) throw new Error('Az ISBNdb-kulcs még nincs telepítve.');
+  const isbn = String(p.isbn || '').replace(/[^0-9X]/gi, '').toUpperCase();
+  const title = String(p.title || '').trim().slice(0, 150);
+  const author = String(p.author || '').trim().slice(0, 150);
+  if (!isbn && !title && !author) throw new Error('Hiányzik a keresési adat.');
+  if (isbn && !/^(?:[0-9]{13}|[0-9]{9}[0-9X])$/.test(isbn)) throw new Error('Érvénytelen ISBN.');
+  const query = isbn ? 'i:' + isbn : title ? 't:' + title : 'a:' + author;
+  const cache = CacheService.getScriptCache();
+  const cacheKey = 'isbndb_' + encodeURIComponent(query).slice(0, 200);
+  const cached = cache.get(cacheKey);
+  if (cached) return JSON.parse(cached);
+  const limiter = 'isbndb_quota_' + owner;
+  const used = Number(cache.get(limiter) || 0);
+  if (used >= 20) throw new Error('Túl sok ISBNdb-keresés. Próbáld meg egy perc múlva.');
+  cache.put(limiter, String(used + 1), 60);
+  const url = isbn
+    ? 'https://api2.isbndb.com/book/' + encodeURIComponent(isbn)
+    : 'https://api2.isbndb.com/books/' + encodeURIComponent(title || author) + '?pageSize=10' + (title ? '' : '&column=author');
+  const response = UrlFetchApp.fetch(url, { headers: { Authorization: key }, muteHttpExceptions: true });
+  const status = response.getResponseCode();
+  if (status === 404) return [];
+  if (status === 401) throw new Error('Az ISBNdb-kulcs érvénytelen vagy nem aktív.');
+  if (status === 429) throw new Error('Az ISBNdb-kvóta elfogyott. Próbáld később.');
+  if (status !== 200) throw new Error('Az ISBNdb nem elérhető (' + status + ').');
+  const data = JSON.parse(response.getContentText());
+  const books = (isbn ? [data.book] : data.books || []).filter(Boolean).slice(0, 10).map(function(book) {
+    return {
+      title: String(book.title || '').slice(0, 300),
+      authors: (book.authors || []).slice(0, 8).map(function(value) { return String(value).slice(0, 200); }),
+      isbn13: String(book.isbn13 || ''), isbn10: String(book.isbn10 || ''),
+      publisher: String(book.publisher || '').slice(0, 200),
+      date_published: String(book.date_published || '').slice(0, 40),
+      language: String(book.language || '').slice(0, 30),
+      synopsis: String(book.synopsis || '').slice(0, 3000),
+      subjects: (book.subjects || []).slice(0, 12).map(function(value) { return String(value).slice(0, 100); }),
+      image: /^https:\/\//.test(book.image || '') ? String(book.image).slice(0, 1000) : ''
+    };
+  });
+  const serialized = JSON.stringify(books);
+  if (serialized.length < 80000) cache.put(cacheKey, serialized, 21600);
+  return books;
+}
+
 function doGet(e) {
   const action = String((e && e.parameter && e.parameter.action) || '').toLowerCase();
   const p = (e && e.parameter) || {};

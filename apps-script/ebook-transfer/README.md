@@ -11,6 +11,13 @@ is the complete clasp authentication JSON from the account that owns the Apps
 Script project. It contains credentials: never commit it or paste it into an
 issue, pull request, or chat.
 
+ISBNdb lookup additionally requires the repository Actions secret `ISBN_API_KEY`.
+The workflow inserts it into a deploy-only Apps Script source file; it is never
+bundled into GitHub Pages or committed. The public broker accepts lookup requests
+only with a valid Google Drive token belonging to the Apps Script owner. The
+first deployment with ISBNdb may require the owner to authorize the added
+`script.external_request` scope in Apps Script before lookups work.
+
 1. On your own computer, run `npx @google/clasp login` and sign in with the project
    owner's account. Complete Google's consent yourself.
 2. Enable the Google Apps Script API in the account's Apps Script settings if it

@@ -44,6 +44,16 @@ jobs:
             "rootDir": "."
           }
           EOF
+      - name: Inject ISBNdb secret into deploy-only source
+        working-directory: apps-script/ebook-transfer
+        env:
+          ISBN_API_KEY: ${{ secrets.ISBN_API_KEY }}
+        run: |
+          if [ -z "$ISBN_API_KEY" ]; then
+            echo "::error::Missing ISBN_API_KEY repository secret."
+            exit 1
+          fi
+          node -e "require('node:fs').writeFileSync('IsbndbSecret.gs', 'var GRAPES_ISBNDB_API_KEY = ' + JSON.stringify(process.env.ISBN_API_KEY) + ';\n', { mode: 0o600 })"
       - name: Push source
         working-directory: apps-script/ebook-transfer
         run: clasp push --force

@@ -686,6 +686,43 @@ test('Google Books normalizes hyphenated ISBN identifiers and keeps the requeste
   assert.equal(match.suggestion.publisher, 'Ace')
 })
 
+test('ISBNdb exact ISBN supplies edition metadata, while a title-only match cannot invent an edition', async () => {
+  const a = app(async () => json({}))
+  a.run('requestIsbndb = async () => [{ title: "Dune", authors: ["Frank Herbert"], isbn13: "9780306406157", publisher: "Ace", language: "eng", date_published: "2005-08-01", synopsis: "A desert planet" }]')
+  const exact = await a.run('findIsbndbMetadata({ title: "Dune", author: "Frank Herbert", isbn: "9780306406157" })')
+  assert.equal(exact.evidence.isbn, true)
+  assert.equal(exact.suggestion.publisher, 'Ace')
+  assert.equal(exact.suggestion.language, 'en')
+  const titleOnly = await a.run('findIsbndbMetadata({ title: "Dune", author: "Frank Herbert", isbn: "9781111111111" })')
+  assert.equal(titleOnly.suggestion.isbn, '')
+  assert.equal(titleOnly.suggestion.publisher, '')
+})
+
+test('ISBNdb browser bridge posts the Drive token only to its own iframe and ignores foreign messages', async () => {
+  const a = app(async () => json({}))
+  let frame; let form; let listener
+  a.context.document.body = { append(nextFrame, nextForm) { frame = nextFrame; form = nextForm } }
+  a.context.document.createElement = (tag) => ({ tag, fields: [], contentWindow: tag === 'iframe' ? {} : undefined,
+    setAttribute() {}, append(child) { this.fields.push(child) }, remove() { this.removed = true }, submit() { this.submitted = true } })
+  a.context.window.addEventListener = (type, fn) => { if (type === 'message') listener = fn }
+  a.context.window.removeEventListener = () => { listener = null }
+  const pending = a.run('requestIsbndb({ title: "Dune", isbn: "9780306406157" })')
+  assert.equal(form.action, 'https://broker.example/exec')
+  assert.equal(form.method, 'POST')
+  assert.equal(form.submitted, true)
+  assert.equal(form.fields.find(field => field.name === 'accessToken').value, 'test-token')
+  assert.doesNotMatch(form.action, /test-token/)
+  const nonce = form.fields.find(field => field.name === 'nonce').value
+  listener({ source: {}, origin: 'https://script.google.com', data: { type: 'grapes-isbndb-result', nonce, status: 'ok', books: [] } })
+  assert.equal(form.removed, undefined)
+  listener({ source: frame.contentWindow, origin: 'https://evil.example', data: { type: 'grapes-isbndb-result', nonce, status: 'ok', books: [] } })
+  assert.equal(form.removed, undefined)
+  listener({ source: frame.contentWindow, origin: 'https://script.googleusercontent.com', data: { type: 'grapes-isbndb-result', nonce, status: 'ok', books: [{ title: 'Dune' }] } })
+  assert.equal((await pending)[0].title, 'Dune')
+  assert.equal(form.removed, true)
+  assert.equal(frame.removed, true)
+})
+
 test('web search stops on a 12-digit ISBN and points out its possible missing check digit', async () => {
   let requests = 0
   const a = app(async () => { requests++; return json({ docs: [] }) })
@@ -991,6 +1028,38 @@ const brokerSource = readFileSync(new URL('../apps-script/ebook-transfer/Code.gs
 const brokerWorkflowSource = readFileSync(new URL('../.github/workflows/deploy-ebook-apps-script.yml', import.meta.url), 'utf8')
 const pagesWorkflowSource = readFileSync(new URL('../.github/workflows/deploy-pages.yml', import.meta.url), 'utf8')
 const readerPageSource = readFileSync(new URL('../public/ebook-reader.html', import.meta.url), 'utf8')
+
+test('ISBNdb broker validates the owner token before spending quota and does not expose the key', () => {
+  const requests = []
+  const cache = new Map()
+  const c = vm.createContext({
+    GRAPES_ISBNDB_API_KEY: 'private-test-key',
+    Session: { getEffectiveUser: () => ({ getEmail: () => 'owner@example.com' }) },
+    CacheService: { getScriptCache: () => ({ get: key => cache.get(key), put: (key, value) => cache.set(key, value) }) },
+    UrlFetchApp: { fetch(url, options) {
+      requests.push({ url, options })
+      return url.includes('googleapis.com')
+        ? { getResponseCode: () => 200, getContentText: () => JSON.stringify({ user: { emailAddress: 'owner@example.com' } }) }
+        : { getResponseCode: () => 200, getContentText: () => JSON.stringify({ book: { title: 'Dune', isbn13: '9780306406157', authors: ['Frank Herbert'] } }) }
+    } },
+    HtmlService: { XFrameOptionsMode: { ALLOWALL: 'ALLOWALL' }, createHtmlOutput: html => ({ html, setXFrameOptionsMode() { return this } }) },
+  })
+  vm.runInContext(brokerSource, c)
+  const p = { action: 'lookup-isbndb', accessToken: 'drive-token', isbn: '9780306406157', nonce: 'a'.repeat(48) }
+  const result = c.doPost({ parameter: p })
+  assert.match(result.html, /grapes-isbndb-result/)
+  assert.doesNotMatch(result.html, /private-test-key|drive-token/)
+  assert.equal(requests[0].options.headers.Authorization, 'Bearer drive-token')
+  assert.equal(requests[1].options.headers.Authorization, 'private-test-key')
+  assert.equal(requests[1].url, 'https://api2.isbndb.com/book/9780306406157')
+  assert.match(c.doPost({ parameter: { ...p, nonce: 'bad' } }).html, /Invalid request/)
+  assert.equal(requests.length, 2)
+  requests.length = 0
+  c.Session.getEffectiveUser = () => ({ getEmail: () => 'someone-else@example.com' })
+  const denied = c.doPost({ parameter: { ...p, isbn: '9781111111111' } })
+  assert.match(denied.html, /tulajdonos/)
+  assert.equal(requests.some(request => request.url.includes('isbndb.com')), false)
+})
 
 test('automatic broker deployment stays aligned with every live client URL', () => {
   const deploymentId = (source) => source.match(/AKfyc[A-Za-z0-9_-]+/)?.[0]
