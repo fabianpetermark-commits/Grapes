@@ -9,7 +9,7 @@ const source = readFileSync(new URL('../src/ebook-library.js', import.meta.url),
   .replace(/^import .*\r?\n/gm, '').replaceAll('import.meta.env', 'env').replace('export function', 'function')
 const driveSource = readFileSync(new URL('../src/storage/grapes-drive.js', import.meta.url), 'utf8')
   .replaceAll('export ', '').replaceAll('import.meta.env', 'env')
-function app(fetch, { connected = true, session = new Map(), local = new Map(), epubWriter = async () => new Blob(['rewritten epub']) } = {}) {
+function app(fetch, { connected = true, session = new Map(), local = new Map(), epubWriter = async () => new Blob(['rewritten epub']), pickerKey = '' } = {}) {
   const nodes = new Map()
   const element = () => ({ dataset: {}, children: [], listeners: {}, addEventListener(type, fn) { this.listeners[type] = fn }, removeAttribute(key) { delete this[key] }, replaceChildren() { this.children = [] }, append(row) { this.children.push(row) }, querySelectorAll: () => [] })
   const document = { querySelector(id) { if (!nodes.has(id)) nodes.set(id, element()); return nodes.get(id) }, createElement: element, head: { append() {} } }
@@ -17,7 +17,7 @@ function app(fetch, { connected = true, session = new Map(), local = new Map(), 
   if (connected && !session.has('grapes-drive-session')) session.set('grapes-drive-session', JSON.stringify({ clientId: '123-client', accessToken: 'test-token', expiresAt: Date.now() + 3600000 }))
   const testSetTimeout = (callback, delay) => { const timer = setTimeout(callback, delay); timer.unref?.(); return timer }
   const context = vm.createContext({ document, fetch, Blob, URL, URLSearchParams, AbortController, crypto: webcrypto, QRCode: { async toCanvas(canvas, value) { canvas.qrValue = value } },
-    env: { VITE_GOOGLE_CLIENT_ID: '123-client', VITE_EBOOK_TRANSFER_BROKER_URL: 'https://broker.example/exec', VITE_EBOOK_EPUB_WRITE_ENABLED: 'true' }, rewriteEpubMetadata: epubWriter,
+    env: { VITE_GOOGLE_CLIENT_ID: '123-client', VITE_GOOGLE_PICKER_API_KEY: pickerKey, VITE_GOOGLE_APP_ID: '123', VITE_EBOOK_TRANSFER_BROKER_URL: 'https://broker.example/exec', VITE_EBOOK_EPUB_WRITE_ENABLED: 'true' }, rewriteEpubMetadata: epubWriter,
     window: { sessionStorage: storage(session), localStorage: storage(local), setTimeout: testSetTimeout, clearTimeout, location: { href: 'https://fabianpetermark-commits.github.io/Grapes/', origin: 'https://fabianpetermark-commits.github.io', search: '' } } })
   const driveContext = vm.createContext({ window: context.window, document, fetch, env: context.env, Blob, crypto: webcrypto })
   const api = vm.runInContext(driveSource + '\n({ connectGrapesDrive, disconnectGrapesDrive, getGrapesDriveAccessToken, grapesDriveHasFullReadAccess, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange })', driveContext)
@@ -653,6 +653,65 @@ test('editor offers EPUB writing only for a file opened by Grapes', () => {
   a.run('updateMetadataForm()')
   assert.equal(a.nodes.get('#ebook-metadata-save').textContent, 'Könyvtári adatlap mentése')
   assert.match(a.nodes.get('#ebook-metadata-suggestion').textContent, /fájlonkénti Grapes-hozzáférést/)
+})
+
+test('Picker stays unavailable without its restricted API key while catalogue saving remains available', () => {
+  const a = app(async () => json({}))
+  a.run('currentBooks = [{ id: "other", name: "other.epub", isAppAuthorized: false }]')
+  a.run('$("#ebook-metadata-book")')
+  a.nodes.get('#ebook-metadata-book').value = 'other'
+  a.run('updateMetadataForm()')
+  assert.equal(a.nodes.get('#ebook-metadata-access').hidden, false)
+  assert.equal(a.nodes.get('#ebook-metadata-grant').disabled, true)
+  assert.match(a.nodes.get('#ebook-metadata-access-status').textContent, /API-kulcs hiányzik/)
+  assert.equal(a.nodes.get('#ebook-metadata-save').textContent, 'Könyvtári adatlap mentése')
+})
+
+test('Picker grants only the selected EPUB and keeps unsaved form values', async () => {
+  const calls = []
+  const a = app(async (url, options = {}) => {
+    calls.push({ url: String(url), options })
+    return json({ id: 'book', isAppAuthorized: true, capabilities: { canEdit: true } })
+  }, { pickerKey: 'restricted-browser-key' })
+  let callback
+  const builder = {
+    addView(view) { assert.equal(view.ids[0], 'book'); return this },
+    setOAuthToken(token) { assert.equal(token, 'test-token'); return this },
+    setDeveloperKey(key) { assert.equal(key, 'restricted-browser-key'); return this },
+    setAppId(id) { assert.equal(id, '123'); return this },
+    setCallback(fn) { callback = fn; return this },
+    build() { return { setVisible(value) { assert.equal(value, true); callback({ action: 'picked', docs: [{ id: 'book' }] }) } } },
+  }
+  a.context.window.google = { picker: { PickerBuilder: function () { return builder }, DocsView: function () { return { setFileIds(ids) { this.ids = ids; return this } } }, ViewId: { DOCS: 'docs' }, Action: { PICKED: 'picked', CANCEL: 'cancel' } } }
+  a.run('currentBooks = [{ id: "book", name: "Dune.epub", isAppAuthorized: false }]')
+  a.run('$("#ebook-metadata-book")')
+  a.nodes.get('#ebook-metadata-book').value = 'book'
+  a.run('updateMetadataForm()')
+  a.nodes.get('#ebook-metadata-title').value = 'Edited title'
+  a.run('setMetadataDirty(true)')
+  await a.run('grantSelectedEpubAccess()')
+  assert.equal(a.nodes.get('#ebook-metadata-title').value, 'Edited title')
+  assert.equal(a.run('metadataDirty'), true)
+  assert.equal(a.run('currentBooks[0].isAppAuthorized'), true)
+  assert.equal(a.nodes.get('#ebook-metadata-save').textContent, 'Adatlap és EPUB mentése')
+  assert.equal(a.nodes.get('#ebook-metadata-access').hidden, true)
+  assert.ok(calls.every(({ options }) => !options.method || options.method === 'GET'))
+})
+
+test('Picker cancellation and foreign file selection do not authorize an EPUB', async () => {
+  for (const data of [{ action: 'cancel' }, { action: 'picked', docs: [{ id: 'wrong' }] }]) {
+    const a = app(async () => json({ id: 'book', isAppAuthorized: true }), { pickerKey: 'restricted-browser-key' })
+    const builder = { addView() { return this }, setOAuthToken() { return this }, setDeveloperKey() { return this }, setAppId() { return this }, setCallback(fn) { this.callback = fn; return this }, build() { return { setVisible: () => builder.callback(data) } } }
+    a.context.window.google = { picker: { PickerBuilder: function () { return builder }, DocsView: function () { return { setFileIds() { return this } } }, ViewId: { DOCS: 'docs' }, Action: { PICKED: 'picked', CANCEL: 'cancel' } } }
+    a.run('currentBooks = [{ id: "book", name: "Dune.epub", isAppAuthorized: false }]')
+    a.run('$("#ebook-metadata-book")')
+    a.nodes.get('#ebook-metadata-book').value = 'book'
+    a.run('updateMetadataForm()')
+    await a.run('grantSelectedEpubAccess()')
+    assert.equal(a.run('currentBooks[0].isAppAuthorized'), false)
+    assert.equal(a.nodes.get('#ebook-metadata-grant').disabled, false)
+    assert.match(a.nodes.get('#ebook-metadata-access-status').textContent, data.action === 'cancel' ? /megszakítva/ : /nem egyezik/)
+  }
 })
 
 test('cancelled EPUB confirmation does not touch Drive or edited form values', async () => {

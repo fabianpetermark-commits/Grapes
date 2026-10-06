@@ -57,6 +57,18 @@ GitHub Pages buildben a sikeres próba után engedélyezett. A Grapes csak az
 `drive.file` joggal (`isAppAuthorized: true`); teljes Drive-írási jogot nem kér.
 Más könyvnél csak a könyvtári adatlap menthető. Az élesítés előtt valós
 Google-fiókkal, külön próba-EPUB-on történt mentési és szinkronpróba.
+A meglévő Drive-könyvekhez a szerkesztő Google fájlválasztóval külön is kérhet
+fájlonkénti hozzáférést, amint a Picker konfigurálva van. Ehhez a Grapes
+Google Cloud-projektjében engedélyezni kell a Google Picker API-t, és létre
+kell hozni egy böngészős API-kulcsot. A kulcs webhelykorlátozásai között a
+`https://fabianpetermark-commits.github.io/*` és a `https://docs.google.com/*`
+is szerepeljen; API-korlátozásként csak a Google Picker API legyen engedélyezve.
+A GitHub Actions `GOOGLE_PICKER_API_KEY` secretbe kerülő kulcs a kész
+böngészős buildben látható lesz, ezért a Google Cloud-beli korlátozás kötelező.
+A secret beállítása után új Pages build szükséges. Helyi teszthez a
+`VITE_GOOGLE_PICKER_API_KEY` és `VITE_GOOGLE_APP_ID` környezeti változók
+használhatók. Hiányzó kulcsnál a hozzáféréskérés nem aktív, az adatlap mentése
+viszont továbbra is működik.
 A Google Books-katalógus
 élő használatához a Books API projektkvótáját külön ellenőrizni kell.
 

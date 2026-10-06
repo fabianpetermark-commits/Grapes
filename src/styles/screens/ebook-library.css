@@ -80,6 +80,12 @@
 .ebook-library__metadata-preview>div:last-child{display:grid;gap:4px;min-width:0}
 .ebook-library__metadata-preview strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ebook-library__metadata-preview span{color:var(--color-text-muted);font-size:var(--text-sm);overflow-wrap:anywhere}
+.ebook-library__metadata-access{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-bg-raised);font-size:var(--text-sm)}
+.ebook-library__metadata-access[hidden]{display:none}
+.ebook-library__metadata-access span{flex:1;min-width:180px;overflow-wrap:anywhere}
+.ebook-library__metadata-access span[data-kind="error"]{color:var(--color-danger)}
+.ebook-library__metadata-access span[data-kind="success"]{color:var(--color-success)}
+.ebook-library__metadata-access .btn{min-height:44px}
 .ebook-library__metadata-form{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:end}
 .ebook-library__metadata-form .field{min-width:0}
 .ebook-library__metadata-wide{grid-column:1/-1}

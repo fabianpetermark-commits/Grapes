@@ -3,6 +3,8 @@ import './styles/screens/ebook-library.css'
 import { connectGrapesDrive, disconnectGrapesDrive, getGrapesDriveAccessToken, grapesDriveHasFullReadAccess, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange } from './storage/grapes-drive.js'
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
+const PICKER_API_KEY = import.meta.env.VITE_GOOGLE_PICKER_API_KEY || ''
+const PICKER_APP_ID = import.meta.env.VITE_GOOGLE_APP_ID || CLIENT_ID.split('-')[0]
 const TRANSFER_BROKER_URL = import.meta.env.VITE_EBOOK_TRANSFER_BROKER_URL || ''
 const EPUB_WRITE_ENABLED = import.meta.env.VITE_EBOOK_EPUB_WRITE_ENABLED === 'true'
 const FOLDER_NAME = 'Grapes E-book Library'
@@ -44,6 +46,8 @@ let cachedAt = 0
 let readerPairMessageTimer = null
 let readerPairExpiryTimer = null
 let readerPairNonce = ''
+let pickerLoadPromise = null
+let pickerPending = false
 const $ = (selector) => document.querySelector(selector)
 const ext = (name = '') => name.includes('.') ? name.split('.').pop().toLowerCase() : 'FILE'
 const isShareableBook = (name = '') => SHAREABLE_BOOK_EXTENSIONS.has(ext(name))
@@ -269,6 +273,95 @@ function setMetadataDirty(value) {
   const save = $('#ebook-metadata-save')
   if (save) save.disabled = !metadataDirty || !activeMetadataBookId
 }
+function setMetadataAccessStatus(message, kind = '') {
+  const status = $('#ebook-metadata-access-status')
+  if (status) { status.textContent = message; status.dataset.kind = kind }
+}
+function renderMetadataAccess(book) {
+  const wrap = $('#ebook-metadata-access')
+  const button = $('#ebook-metadata-grant')
+  const eligible = EPUB_WRITE_ENABLED && ext(book?.name || '') === 'epub' && book?.isAppAuthorized !== true
+  if (wrap) wrap.hidden = !eligible
+  if (button) button.disabled = !eligible || !PICKER_API_KEY || !PICKER_APP_ID || pickerPending
+  const save = $('#ebook-metadata-save')
+  if (save) save.textContent = canWriteEpub(book) ? 'Adatlap és EPUB mentése' : 'Könyvtári adatlap mentése'
+  if (!eligible || pickerPending) return
+  setMetadataAccessStatus(PICKER_API_KEY && PICKER_APP_ID
+    ? 'A könyvfájl módosításához ezt az egy EPUB-ot válaszd ki a Google fájlválasztójában. A teljes Drive-írási jog nem szükséges.'
+    : 'A fájlonkénti hozzáférés még nincs beállítva: a Google Picker API-kulcs hiányzik. Az adatlap ettől még menthető.')
+}
+function loadGooglePicker() {
+  if (window.google?.picker?.PickerBuilder) return Promise.resolve()
+  if (pickerLoadPromise) return pickerLoadPromise
+  pickerLoadPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script')
+    script.src = 'https://apis.google.com/js/api.js'
+    script.async = true
+    script.onload = () => {
+      if (!window.gapi?.load) return reject(new Error('A Google fájlválasztó nem érhető el.'))
+      window.gapi.load('picker', {
+        callback: () => window.google?.picker?.PickerBuilder ? resolve() : reject(new Error('A Google fájlválasztó nem töltődött be.')),
+        onerror: () => reject(new Error('A Google fájlválasztó betöltése nem sikerült.')),
+        timeout: 15000,
+        ontimeout: () => reject(new Error('A Google fájlválasztó betöltése túllépte az időkorlátot.')),
+      })
+    }
+    script.onerror = () => reject(new Error('A Google fájlválasztó szkriptje nem tölthető be.'))
+    document.head.append(script)
+  }).catch((error) => { pickerLoadPromise = null; throw error })
+  return pickerLoadPromise
+}
+function pickExistingBook(book, token) {
+  return new Promise((resolve, reject) => {
+    const picker = window.google.picker
+    const view = new picker.DocsView(picker.ViewId.DOCS).setFileIds([book.id])
+    const dialog = new picker.PickerBuilder()
+      .addView(view)
+      .setOAuthToken(token)
+      .setDeveloperKey(PICKER_API_KEY)
+      .setAppId(PICKER_APP_ID)
+      .setCallback((data) => {
+        if (data?.action === picker.Action.CANCEL) return resolve(false)
+        if (data?.action === picker.Action.ERROR || data?.error) return reject(new Error('A Google fájlválasztó hibát jelzett. Ellenőrizd az API-kulcs és a megengedett webhelyek beállítását.'))
+        if (data?.action !== picker.Action.PICKED) return
+        const selected = data.docs || []
+        if (selected.length !== 1 || selected[0]?.id !== book.id) return reject(new Error('A kiválasztott fájl nem egyezik a szerkesztett könyvvel.'))
+        resolve(true)
+      })
+      .build()
+    dialog.setVisible(true)
+  })
+}
+async function grantSelectedEpubAccess() {
+  const id = $('#ebook-metadata-book')?.value
+  const book = currentBooks.find((item) => item.id === id)
+  if (!book || canWriteEpub(book) || pickerPending) return
+  if (!PICKER_API_KEY || !PICKER_APP_ID) return setMetadataAccessStatus('A Google Picker API-kulcs még nincs beállítva. Addig csak a könyvtári adatlap menthető.', 'error')
+  pickerPending = true
+  renderMetadataAccess(book)
+  setMetadataAccessStatus('A Google fájlválasztó megnyitása…')
+  try {
+    const token = getGrapesDriveAccessToken() || await connectGrapesDrive()
+    await loadGooglePicker()
+    const picked = await pickExistingBook(book, token)
+    if (!picked) return setMetadataAccessStatus('A fájlválasztás megszakítva; a szerkesztett adatok megmaradtak.')
+    const current = await getBookDriveVersion(id)
+    if (current.isAppAuthorized !== true) throw new Error('A Google még nem jelezte vissza a fájlonkénti hozzáférést. Próbáld újra a kiválasztást.')
+    if (current.capabilities?.canEdit === false) throw new Error('Ehhez a könyvhöz nincs szerkesztési jogod a Drive-on.')
+    book.isAppAuthorized = true
+    if (activeMetadataBookId === id) {
+      renderMetadataAccess(book)
+      setMetadataAccessStatus('A könyv most már szerkeszthető EPUB-ként. A mezőkben lévő módosítások megmaradtak.', 'success')
+    }
+    setStatus('A kiválasztott EPUB fájlonkénti hozzáférése engedélyezve.', 'success')
+  } catch (error) {
+    setMetadataAccessStatus(`A fájlonkénti hozzáférés nem sikerült. ${error.message}`, 'error')
+  } finally {
+    pickerPending = false
+    const button = $('#ebook-metadata-grant')
+    if (button) button.disabled = !PICKER_API_KEY || !PICKER_APP_ID || !currentBooks.some((item) => item.id === $('#ebook-metadata-book')?.value && item.isAppAuthorized !== true)
+  }
+}
 function updateMetadataPreview() {
   const book = currentBooks.find((item) => item.id === activeMetadataBookId)
   const preview = $('#ebook-metadata-preview')
@@ -284,9 +377,8 @@ function updateMetadataForm() {
   const id = $('#ebook-metadata-book')?.value
   activeMetadataBookId = id || ''
   const data = ebookMetadata[id] || {}
-  const saveButton = $('#ebook-metadata-save')
   const selectedBook = currentBooks.find((book) => book.id === id)
-  if (saveButton) saveButton.textContent = canWriteEpub(selectedBook) ? 'Adatlap és EPUB mentése' : 'Könyvtári adatlap mentése'
+  renderMetadataAccess(selectedBook)
   metadataLoadedSnapshot = JSON.stringify(data)
   for (const key of METADATA_FIELDS) {
     const input = $(`#ebook-metadata-${key}`)
@@ -1081,6 +1173,7 @@ export function initEbookLibrary() {
   $('#ebook-metadata-source')?.addEventListener('change', selectMetadataSource)
   $('#ebook-metadata-apply')?.addEventListener('click', applyMetadataSuggestion)
   $('#ebook-metadata-save')?.addEventListener('click', saveMetadataFromForm)
+  $('#ebook-metadata-grant')?.addEventListener('click', grantSelectedEpubAccess)
   $('#ebook-metadata-save-catalog')?.addEventListener('click', () => saveMetadata({ catalogOnly: true }))
   $('#ebook-transfer-close')?.addEventListener('click', closeTransfer)
   $('#ebook-transfer-pair')?.addEventListener('click', () => {
