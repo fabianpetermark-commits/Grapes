@@ -259,6 +259,7 @@ test('expired token enables reconnect and reports actionable error', async () =>
 test('transfer renders a download QR and offers a code plus a stable reader address', async () => {
   const calls = []
   const a = app(async (url, options) => { calls.push({ url, options }); return json(url.includes('permissions') ? {} : { name: 'book.pdf' }) })
+  a.context.window.location.href = 'https://fabianpetermark-commits.github.io/Grapes/ebook-pilot/?module=ebook'
   await a.run('sendBook("book")')
   assert.deepEqual(JSON.parse(calls[1].options.body), { type: 'anyone', role: 'reader', allowFileDiscovery: false })
   const broker = new URL(a.nodes.get('#ebook-transfer-pair').dataset.brokerUrl)
@@ -312,6 +313,7 @@ test('persistent reader pairing uses an inline frame with the verified marker', 
     if (url.includes('orderBy=')) return json({ files: [] })
     return folder()
   })
+  a.context.window.location.href = 'https://fabianpetermark-commits.github.io/Grapes/ebook-pilot/?module=ebook'
   a.context.window.open = () => { throw new Error('must not open a new window') }
   await a.run('createReaderPairing()')
   const frame = a.nodes.get('#ebook-reader-pair-code')
@@ -321,7 +323,52 @@ test('persistent reader pairing uses an inline frame with the verified marker', 
   assert.equal(url.searchParams.get('embed'), '1')
   assert.equal(url.searchParams.get('markerId'), 'marker')
   assert.match(url.searchParams.get('nonce'), /^[a-f0-9]{48}$/)
+  assert.equal(url.searchParams.get('returnUrl'), 'https://fabianpetermark-commits.github.io/Grapes/ebook-reader.html')
   assert.equal(a.nodes.get('#ebook-reader-pair-btn').disabled, false)
+})
+
+test('reader pairing explains when a book transfer code was entered instead', () => {
+  const values = new Map([['ebook_transfer_ABC234', JSON.stringify({ expiresAt: Date.now() + 60000 })]])
+  const c = vm.createContext({
+    HtmlService: { createHtmlOutput: html => html },
+    PropertiesService: { getScriptProperties: () => ({ getProperty: key => values.get(key) }) },
+  })
+  vm.runInContext(brokerSource, c)
+  assert.match(c.pairReader({ code: 'ABC234' }), /könyvküldési kód/)
+  assert.match(c.pairReader({ code: 'DEF234' }), /A kód nem található/)
+})
+
+test('reader pairing code created by the broker is accepted once by the same broker', () => {
+  const values = new Map()
+  const nonce = 'a'.repeat(48)
+  let trashed = false
+  const folder = { getId: () => 'folder', getName: () => 'Grapes E-book Library' }
+  const marker = {
+    isTrashed: () => trashed,
+    getBlob: () => ({ getDataAsString: () => JSON.stringify({ kind: 'grapes-reader-pairing', nonce, createdAt: Date.now(), folderId: 'folder' }) }),
+    getParents: () => ({ hasNext: () => true, next: () => folder }),
+    setTrashed: value => { trashed = value },
+  }
+  const props = { getProperty: key => values.get(key), setProperty: (key, value) => values.set(key, value), getProperties: () => Object.fromEntries(values), deleteProperty: key => values.delete(key) }
+  const c = vm.createContext({
+    HtmlService: { createHtmlOutput: html => ({ html }) },
+    PropertiesService: { getScriptProperties: () => props },
+    LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
+    DriveApp: { getFileById: () => marker },
+    ScriptApp: { getService: () => ({ getUrl: () => 'https://broker.example/exec' }) },
+  })
+  vm.runInContext(brokerSource, c)
+  c.getReaderLibraryFolders = () => [folder]
+  c.scanReaderLibraryFolders = () => ({ books: [] })
+  c.createUniqueCode = () => 'ABC234'
+  c.createReaderToken = () => 'A'.repeat(64)
+  const created = c.createReaderPairingPage({ markerId: 'marker', nonce, returnUrl: 'https://fabianpetermark-commits.github.io/Grapes/ebook-reader.html', embed: '1' })
+  assert.match(created.html, /ABC234/)
+  assert.equal(trashed, true)
+  assert.ok(values.has('ebook_reader_pair_ABC234'))
+  assert.match(c.pairReader({ code: 'ABC234' }).html, /Párosítás kész/)
+  assert.equal(values.has('ebook_reader_pair_ABC234'), false)
+  assert.match(c.pairReader({ code: 'ABC234' }).html, /A kód nem található/)
 })
 
 test('EPUB save path never requests the restricted full Drive write scope', () => {
@@ -750,7 +797,7 @@ test('automatic broker deployment stays aligned with every live client URL', () 
   assert.equal(deploymentId(readerPageSource), expected)
   assert.match(brokerWorkflowSource, /clasp push --force/)
   assert.match(brokerWorkflowSource, /clasp deploy --deploymentId/)
-  assert.match(brokerSource, /BROKER_API_VERSION = 3/)
+  assert.match(brokerSource, /BROKER_API_VERSION = 4/)
   assert.match(brokerSource, /action === 'health'/)
 })
 

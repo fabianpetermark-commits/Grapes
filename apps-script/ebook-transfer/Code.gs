@@ -1,5 +1,5 @@
 const CODE_LENGTH = 6;
-const BROKER_API_VERSION = 3;
+const BROKER_API_VERSION = 4;
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const TTL_MS = 20 * 60 * 1000;
 const STORE_PREFIX = 'ebook_transfer_';
@@ -186,7 +186,10 @@ function pairReader(p) {
   const props = PropertiesService.getScriptProperties();
   const key = READER_PAIR_PREFIX + code;
   const raw = props.getProperty(key);
-  if (!raw) return readerMessagePage('A kód nem található', 'Kérj új párosítási kódot a Grapes könyvtárkezelőből.');
+  if (!raw) {
+    if (props.getProperty(STORE_PREFIX + code)) return readerMessagePage('Ez könyvküldési kód', 'Az e-olvasó párosításához az Új könyv sáv E-olvasó párosítása gombjával kért kódot használd.');
+    return readerMessagePage('A kód nem található', 'Kérj új kódot az E-olvasó párosítása gombbal. A kód 20 percig érvényes és egyszer használható.');
+  }
 
   let record;
   try { record = JSON.parse(raw); }
