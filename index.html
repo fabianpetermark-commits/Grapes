@@ -217,15 +217,18 @@
         </div>
         <div class="finance__header-actions">
           <span id="finance-save-status" class="finance__save-status" aria-live="polite">Betöltés…</span>
-          <label class="finance__currency" data-finance-overflow>Pénznem
+          <label class="finance__currency" data-finance-overflow>Pénznem (tételek után rögzül)
             <select id="finance-currency"><option value="HUF">HUF</option><option value="EUR">EUR</option><option value="USD">USD</option></select>
           </label>
           <button id="finance-import-btn" class="btn" type="button" data-finance-overflow>CSV import</button>
           <button id="finance-export-btn" class="btn" type="button" data-finance-overflow>CSV export</button>
+          <button id="finance-backup-import-btn" class="btn" type="button" data-finance-overflow>Teljes mentés import</button>
+          <button id="finance-backup-export-btn" class="btn" type="button" data-finance-overflow>Teljes mentés</button>
           <button id="finance-drive-save" class="btn btn--primary" type="button">Mentés Drive-ra</button>
           <button id="finance-back-to-menu-btn" class="btn btn--ghost" type="button">Főmenü</button>
         </div>
         <input id="finance-csv-input" type="file" accept=".csv,text/csv" hidden>
+        <input id="finance-backup-input" type="file" accept=".json,application/json" hidden>
       </header>
 
       <main class="finance__main">
@@ -270,6 +273,7 @@
               <select id="finance-filter-type" aria-label="Típus szűrése"><option value="all">Minden típus</option><option value="income">Bevétel</option><option value="expense">Kiadás</option></select>
               <input id="finance-filter-search" type="search" placeholder="Keresés…" aria-label="Keresés a tranzakciók között">
               <button id="finance-filter-clear" class="btn btn--ghost" type="button">Szűrés törlése</button>
+              <button id="finance-restore-last" class="btn btn--ghost" type="button">Utolsó törlés visszaállítása</button>
               <button id="finance-delete-all" class="btn btn--danger" type="button" disabled>Minden tétel törlése</button>
             </div>
           </div>

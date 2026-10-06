@@ -11,6 +11,7 @@
     "test:epubcheck": "node tests/epubcheck.integration.mjs",
     "test:ebook:layout": "node tests/ebook-editor-layout.browser.mjs",
     "test:qr": "node --test tests/qr-data.test.js",
+    "test:finance:backup": "node tests/finance-backup.browser.mjs",
     "test:responsive": "node tests/responsive-layout.browser.mjs",
     "dev": "vite",
     "build": "vite build",

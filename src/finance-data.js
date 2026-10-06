@@ -5,6 +5,9 @@ export const DEFAULT_CATEGORIES = {
   expense: ['Lakhatás', 'Élelmiszer', 'Közlekedés', 'Számlák', 'Egészség', 'Szórakozás', 'Adó', 'Egyéb kiadás'],
 }
 
+const FINANCE_CURRENCIES = new Set(['HUF', 'EUR', 'USD'])
+const FINANCE_BACKUP_VERSION = 1
+
 export function normalizeTransaction(value = {}) {
   const type = value.type === 'income' ? 'income' : 'expense'
   const amount = Math.round(Number(value.amount) * 100) / 100
@@ -22,6 +25,25 @@ export function normalizeTransaction(value = {}) {
     receipt: value.receipt || null,
     createdAt: value.createdAt || new Date().toISOString(),
   }
+}
+
+export function financeBackupToJson({ currency, transactions }, exportedAt = new Date().toISOString()) {
+  if (!FINANCE_CURRENCIES.has(currency) || !Array.isArray(transactions)) throw new Error('Érvénytelen pénzügyi napló.')
+  return JSON.stringify({ grapesFinanceBackup: true, version: FINANCE_BACKUP_VERSION, exportedAt, data: { version: 1, currency, transactions } }, null, 2)
+}
+
+export function financeBackupFromJson(source) {
+  let backup
+  try { backup = JSON.parse(source) } catch { throw new Error('A biztonsági mentés nem érvényes JSON-fájl.') }
+  if (backup?.grapesFinanceBackup !== true || backup.version !== FINANCE_BACKUP_VERSION || !FINANCE_CURRENCIES.has(backup.data?.currency) || !Array.isArray(backup.data?.transactions)) {
+    throw new Error('Ez nem támogatott Grapes pénzügyi biztonsági mentés.')
+  }
+  if (backup.data.transactions.length > 100000) throw new Error('A biztonsági mentés túl sok tételt tartalmaz.')
+  let transactions
+  try { transactions = backup.data.transactions.map((item) => normalizeTransaction(item)) }
+  catch (error) { throw new Error(`A biztonsági mentés egyik tétele hibás: ${error.message}`) }
+  if (new Set(transactions.map((item) => item.id)).size !== transactions.length) throw new Error('A biztonsági mentésben ismétlődő tételazonosító van.')
+  return { version: 1, currency: backup.data.currency, transactions }
 }
 
 export function calculateSummary(transactions) {
@@ -59,13 +81,15 @@ function escapeCsvCell(value) {
   return /[";,\n\r]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text
 }
 
-export function transactionsToCsv(transactions) {
-  const header = ['Dátum', 'Típus', 'Kategória', 'Összeg', 'Megjegyzés', 'Bizonylat']
+export function transactionsToCsv(transactions, currency = 'HUF') {
+  if (!FINANCE_CURRENCIES.has(currency)) throw new Error('Érvénytelen pénznem.')
+  const header = ['Dátum', 'Típus', 'Kategória', 'Összeg', 'Pénznem', 'Megjegyzés', 'Bizonylat']
   const rows = transactions.map((item) => [
     item.date,
     item.type === 'income' ? 'Bevétel' : 'Kiadás',
     item.category,
     Number(item.amount).toFixed(2),
+    currency,
     item.note,
     item.receipt?.name || '',
   ])
@@ -94,7 +118,13 @@ export function parseCsvRows(source, delimiter = ';') {
   return rows.filter((cells) => cells.some((value) => value.trim()))
 }
 
-export function transactionsFromCsv(source) {
+export function csvHasCurrencyColumn(source) {
+  const sample = String(source || '').split(/\r?\n/, 1)[0]
+  const delimiter = (sample.match(/;/g) || []).length >= (sample.match(/,/g) || []).length ? ';' : ','
+  return parseCsvRows(sample, delimiter)[0]?.some((header) => ['pénznem', 'penznem', 'currency'].includes(header.trim().toLocaleLowerCase('hu-HU'))) || false
+}
+
+export function transactionsFromCsv(source, expectedCurrency = '') {
   const sample = String(source || '').split(/\r?\n/, 1)[0]
   const delimiter = (sample.match(/;/g) || []).length >= (sample.match(/,/g) || []).length ? ';' : ','
   const rows = parseCsvRows(source, delimiter)
@@ -105,9 +135,15 @@ export function transactionsFromCsv(source) {
     date: find('dátum', 'datum', 'date'), type: find('típus', 'tipus', 'type'),
     category: find('kategória', 'kategoria', 'category'), amount: find('összeg', 'osszeg', 'amount'),
     note: find('megjegyzés', 'megjegyzes', 'note', 'description'),
+    currency: find('pénznem', 'penznem', 'currency'),
   }
   if (indexes.date < 0 || indexes.amount < 0) throw new Error('A CSV-ben Dátum és Összeg oszlop szükséges.')
   return rows.slice(1).map((row) => {
+    if (indexes.currency >= 0) {
+      const rowCurrency = String(row[indexes.currency] || '').trim().toUpperCase()
+      if (!FINANCE_CURRENCIES.has(rowCurrency)) throw new Error('A CSV egyik sorában hiányzik vagy érvénytelen a pénznem.')
+      if (expectedCurrency && rowCurrency !== expectedCurrency) throw new Error(`A CSV pénzneme ${rowCurrency}, a naplóé ${expectedCurrency}. Átváltás nélkül nem importálható.`)
+    }
     const rawAmount = String(row[indexes.amount] || '').replace(/\s/g, '').replace(',', '.')
     const rawType = String(row[indexes.type] || '').toLocaleLowerCase('hu-HU')
     const type = rawType.includes('bev') || rawType === 'income' ? 'income' : 'expense'

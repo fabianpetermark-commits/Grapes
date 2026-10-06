@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  calculateSummary, categorySummary, filterTransactions, getMonthlySeries,
-  normalizeTransaction, parseCsvRows, transactionsFromCsv, transactionsToCsv,
+  calculateSummary, categorySummary, csvHasCurrencyColumn, filterTransactions, getMonthlySeries,
+  financeBackupFromJson, financeBackupToJson, normalizeTransaction, parseCsvRows, transactionsFromCsv, transactionsToCsv,
 } from '../src/finance-data.js'
 
 const rows = [
@@ -37,12 +37,16 @@ test('creates stable monthly and category summaries', () => {
 })
 
 test('CSV export and import preserve quoted Hungarian data', () => {
-  const source = transactionsToCsv([{ ...rows[1], note: 'Kenyér; tej, "akciós"' }])
-  const parsed = transactionsFromCsv(source)
+  const source = transactionsToCsv([{ ...rows[1], note: 'Kenyér; tej, "akciós"' }], 'EUR')
+  assert.equal(csvHasCurrencyColumn(source), true)
+  const parsed = transactionsFromCsv(source, 'EUR')
   assert.equal(parsed.length, 1)
   assert.equal(parsed[0].type, 'expense')
   assert.equal(parsed[0].amount, 12000)
   assert.equal(parsed[0].note, 'Kenyér; tej, "akciós"')
+  assert.throws(() => transactionsFromCsv(source, 'HUF'), /Átváltás nélkül/)
+  assert.equal(csvHasCurrencyColumn('Dátum;Összeg\n2026-01-01;12'), false)
+  assert.equal(transactionsFromCsv('Dátum;Összeg\n2026-01-01;12', 'HUF').length, 1)
 })
 
 test('CSV parser supports commas and embedded newlines', () => {
@@ -59,4 +63,27 @@ test('receipts retain safe attachments and reject executable imported URLs', () 
   const receipt = {name:'szamla.pdf',size:3,type:'application/pdf',data:'data:application/pdf;base64,YWJj'}
   assert.deepEqual(normalizeTransaction({...rows[0],receipt}).receipt,receipt)
   assert.throws(() => normalizeTransaction({...rows[0],receipt:{...receipt,data:'javascript:alert(1)'}}), /bizonylat/)
+})
+
+test('complete finance backup restores currency, transaction ids and receipt contents', () => {
+  const receipt = { name: 'szamla.pdf', size: 3, type: 'application/pdf', data: 'data:application/pdf;base64,YWJj' }
+  const source = { currency: 'EUR', transactions: [{ ...rows[0], receipt }] }
+  const json = financeBackupToJson(source, '2026-10-06T12:00:00.000Z')
+  assert.equal(JSON.parse(json).exportedAt, '2026-10-06T12:00:00.000Z')
+  const restored = financeBackupFromJson(json)
+  assert.equal(restored.currency, 'EUR')
+  assert.equal(restored.transactions[0].id, rows[0].id)
+  assert.equal(restored.transactions[0].amount, rows[0].amount)
+  assert.deepEqual(restored.transactions[0].receipt, receipt)
+})
+
+test('complete finance backup rejects invalid receipts and duplicate ids without partial restore', () => {
+  const source = { currency: 'HUF', transactions: [rows[0]] }
+  const payload = JSON.parse(financeBackupToJson(source))
+  payload.data.transactions[0].receipt = { name: 'bad', size: 1, type: 'text/html', data: 'javascript:alert(1)' }
+  assert.throws(() => financeBackupFromJson(JSON.stringify(payload)), /bizonylat/)
+  payload.data.transactions = [rows[0], rows[0]]
+  assert.throws(() => financeBackupFromJson(JSON.stringify(payload)), /ismétlődő/)
+  payload.data.currency = 'GBP'
+  assert.throws(() => financeBackupFromJson(JSON.stringify(payload)), /nem támogatott/)
 })

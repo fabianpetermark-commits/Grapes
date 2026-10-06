@@ -6,14 +6,17 @@ import { setUxState } from './ui/status.js'
 import { loadLocalProject, saveLocalProject } from './storage/local-project-store.js'
 import { isGrapesDriveConnected, loadGrapesProject, saveGrapesProject } from './storage/grapes-drive.js'
 import {
-  DEFAULT_CATEGORIES, calculateSummary, categorySummary, filterTransactions, getMonthlySeries,
-  normalizeTransaction, transactionsFromCsv, transactionsToCsv,
+  DEFAULT_CATEGORIES, calculateSummary, categorySummary, csvHasCurrencyColumn, filterTransactions, getMonthlySeries,
+  financeBackupFromJson, financeBackupToJson, normalizeTransaction, transactionsFromCsv, transactionsToCsv,
 } from './finance-data.js'
 
 const STORAGE_ID = 'finance-tracker-current'
+const DELETE_BACKUP_ID = 'finance-tracker-last-delete-backup'
+const RESTORE_BACKUP_ID = 'finance-tracker-before-restore-backup'
 const MODULE_NAME = 'Pénzügyi Napló'
 const RECEIPT_LIMIT = 3 * 1024 * 1024
 const PROJECT_RECEIPT_LIMIT = 15 * 1024 * 1024
+const BACKUP_FILE_LIMIT = 30 * 1024 * 1024
 
 let initialized = false
 let transactions = []
@@ -89,7 +92,7 @@ function scheduleSave() {
 async function saveToDrive(showToast = true) {
   if (!isGrapesDriveConnected()) {
     notifyError('Előbb csatlakoztasd a Google Drive-ot a főmenüben.')
-    return
+    return false
   }
   const button = el('#finance-drive-save')
   button.disabled = true
@@ -103,10 +106,13 @@ async function saveToDrive(showToast = true) {
     setUxState('#finance-save-status', 'saved', 'Drive-ra mentve')
     button.textContent = 'Drive mentve'
     if (showToast) notifySuccess('A pénzügyi napló mentve a Google Drive-ra.')
+    return true
   } catch (error) {
     console.error(error)
     el('#finance-drive-status').textContent = 'A Drive-mentés nem sikerült.'
+    button.textContent = 'Mentés Drive-ra'
     if (showToast) notifyError(error.message || 'A Drive-mentés nem sikerült.')
+    return false
   } finally {
     button.disabled = false
   }
@@ -232,9 +238,36 @@ function render() {
   el('#finance-expense-count').textContent = `${visible.filter((item) => item.type === 'expense').length} tétel`
   el('#finance-balance-note').textContent = getFilters().month ? `${getFilters().month} hónapban` : 'A kijelölt időszakban'
   el('#finance-delete-all').disabled = transactions.length === 0
+  const currencySelect = el('#finance-currency')
+  currencySelect.value = currency
+  currencySelect.disabled = transactions.length > 0
+  currencySelect.title = transactions.length > 0 ? 'A meglévő összegek nem válthatók át automatikusan. A pénznem csak üres naplónál módosítható.' : 'Az új napló pénzneme'
   renderRows(visible)
   renderChart(visible)
   renderCategories()
+}
+
+async function saveSafetySnapshot(id, name, data) {
+  await saveLocalProject({ id, module: MODULE_NAME, name, data })
+}
+
+async function restoreFinanceBackup(data) {
+  if (transactions.length && !window.confirm('A visszaállítás lecseréli a jelenlegi pénzügyi tételeket. Folytatod?')) return
+  clearTimeout(localSaveTimer)
+  clearTimeout(driveSaveTimer)
+  await persistLocal()
+  await saveSafetySnapshot(RESTORE_BACKUP_ID, 'Pénzügyi napló – visszaállítás előtti mentés', serializeProject())
+  await saveLocalProject({ id: STORAGE_ID, module: MODULE_NAME, name: 'Pénzügyi napló', data, driveFileId: null })
+  applyProject(data)
+  driveProjectFileId = null
+  el('#finance-filter-month').value = ''
+  el('#finance-filter-type').value = 'all'
+  el('#finance-filter-search').value = ''
+  el('#finance-drive-status').textContent = 'Helyben visszaállítva. A Drive-ra külön mentsd el.'
+  el('#finance-drive-save').textContent = 'Mentés Drive-ra'
+  render()
+  setUxState('#finance-save-status', 'saved', 'Helyben visszaállítva')
+  notifySuccess(`${transactions.length} tétel és a csatolt bizonylatok visszaállítva.`)
 }
 
 function fileToDataUrl(file) {
@@ -324,34 +357,71 @@ function bindControls() {
   el('#finance-filter-clear').addEventListener('click', () => {
     el('#finance-filter-month').value = ''; el('#finance-filter-type').value = 'all'; el('#finance-filter-search').value = ''; render()
   })
-  el('#finance-delete-all').addEventListener('click', () => {
+  el('#finance-delete-all').addEventListener('click', async () => {
     if (!transactions.length) return
     const count = transactions.length
-    const confirmed = window.confirm(
-      `Biztosan törlöd mind a(z) ${count} pénzügyi tételt?\n\nA törlés előtt automatikusan letöltünk egy teljes CSV biztonsági másolatot.`,
-    )
-    if (!confirmed) return
-    download(
-      transactionsToCsv(transactions),
-      'text/csv;charset=utf-8',
-      `penzugyi-naplo-biztonsagi-mentes-${backupTimestamp()}.csv`,
-    )
-    transactions = []
-    render()
-    scheduleSave()
-    notifySuccess('A biztonsági CSV elkészült, majd minden pénzügyi tételt töröltünk.')
+    if (!window.confirm(`Előkészítsek egy teljes biztonsági mentést mind a(z) ${count} tételről és a bizonylatokról? A törlésről ezután külön dönthetsz.`)) return
+    const button = el('#finance-delete-all')
+    button.disabled = true
+    try {
+      const snapshot = serializeProject()
+      const filename = `penzugyi-naplo-teljes-mentes-${backupTimestamp()}.json`
+      clearTimeout(localSaveTimer)
+      clearTimeout(driveSaveTimer)
+      await persistLocal()
+      await saveSafetySnapshot(DELETE_BACKUP_ID, 'Pénzügyi napló – utolsó törlés előtti mentés', snapshot)
+      download(financeBackupToJson(snapshot), 'application/json;charset=utf-8', filename)
+      const confirmed = window.confirm(`A bizonylatokat is tartalmazó teljes mentést helyben megőriztük, és a ${filename} letöltését elindítottuk. A fájl személyes adatokat tartalmazhat. Ellenőrizd, hogy megjelent a letöltéseid között. Biztosan törlöd mind a(z) ${count} tételt?`)
+      if (!confirmed) return
+      transactions = []
+      render()
+      try { await persistLocal() }
+      catch (error) { transactions = snapshot.transactions; render(); throw error }
+      const driveSynced = driveProjectFileId && isGrapesDriveConnected() ? await saveToDrive(false) : false
+      setUxState('#finance-save-status', 'saved', driveSynced ? 'Drive-ra törölve' : 'Helyben törölve')
+      notifySuccess(`A tételeket ${driveSynced ? 'a Drive-on is' : 'helyben'} töröltük. A teljes mentés fájlból vagy az „Utolsó törlés visszaállítása” gombbal visszaállítható.`)
+    } catch (error) {
+      console.error(error)
+      notifyError(`A biztonsági mentés vagy a törlés mentése nem sikerült: ${error.message}`)
+    } finally { button.disabled = transactions.length === 0 }
   })
-  el('#finance-currency').addEventListener('change', (event) => { currency = event.target.value; render(); scheduleSave() })
+  el('#finance-currency').addEventListener('change', (event) => {
+    if (transactions.length) { event.target.value = currency; notifyError('A meglévő tételek összegeit nem váltjuk át automatikusan. A pénznem csak üres naplónál módosítható.'); return }
+    currency = event.target.value; render(); scheduleSave()
+  })
+  el('#finance-backup-export-btn').addEventListener('click', () => {
+    download(financeBackupToJson(serializeProject()), 'application/json;charset=utf-8', `penzugyi-naplo-teljes-mentes-${backupTimestamp()}.json`)
+    notifySuccess('A teljes, bizonylatokat is tartalmazó mentés letöltése elindult.')
+  })
+  el('#finance-backup-import-btn').addEventListener('click', () => el('#finance-backup-input').click())
+  el('#finance-backup-input').addEventListener('change', async (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    try {
+      if (file.size > BACKUP_FILE_LIMIT) throw new Error('A mentésfájl legfeljebb 30 MiB lehet.')
+      await restoreFinanceBackup(financeBackupFromJson(await file.text()))
+    } catch (error) { notifyError(error.message || 'A teljes mentés nem állítható vissza.') }
+    finally { event.target.value = '' }
+  })
+  el('#finance-restore-last').addEventListener('click', async () => {
+    try {
+      const backup = await loadLocalProject(DELETE_BACKUP_ID)
+      if (!backup?.data) throw new Error('Nincs helyi törlés előtti mentés. A letöltött JSON-fájlt is importálhatod.')
+      await restoreFinanceBackup(financeBackupFromJson(financeBackupToJson(backup.data)))
+    } catch (error) { notifyError(error.message || 'A helyi mentés nem állítható vissza.') }
+  })
   el('#finance-export-btn').addEventListener('click', () => {
-    download(transactionsToCsv(transactions), 'text/csv;charset=utf-8', `penzugyi-naplo-${today()}.csv`)
-    notifySuccess('A CSV-export elkészült.')
+    download(transactionsToCsv(transactions, currency), 'text/csv;charset=utf-8', `penzugyi-naplo-${today()}.csv`)
+    notifySuccess('A CSV-export elkészült. A bizonylatfájlokhoz használd a Teljes mentést.')
   })
   el('#finance-import-btn').addEventListener('click', () => el('#finance-csv-input').click())
   el('#finance-csv-input').addEventListener('change', async (event) => {
     const file = event.target.files[0]
     if (!file) return
     try {
-      const imported = transactionsFromCsv(await file.text())
+      const source = await file.text()
+      if (!csvHasCurrencyColumn(source) && !window.confirm(`A CSV nem tartalmaz pénznemet. Az összegeket ${currency} pénznemként importáljam? Átváltás nem történik.`)) return
+      const imported = transactionsFromCsv(source, currency)
       transactions.push(...imported); render(); scheduleSave()
       notifySuccess(`${imported.length} tétel importálva.`)
     } catch (error) { notifyError(error.message || 'A CSV nem importálható.') }
