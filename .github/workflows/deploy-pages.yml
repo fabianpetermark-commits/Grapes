@@ -40,7 +40,7 @@ jobs:
       - run: npm run build
         env:
           VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
-          VITE_EBOOK_EPUB_WRITE_ENABLED: 'false'
+          VITE_EBOOK_EPUB_WRITE_ENABLED: 'true'
           VITE_EBOOK_TRANSFER_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
       - name: Build isolated EPUB write pilot
         run: npm run build -- --base=/Grapes/ebook-pilot/ --outDir=dist/ebook-pilot

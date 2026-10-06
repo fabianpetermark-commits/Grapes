@@ -303,7 +303,7 @@ function updateMetadataForm() {
   if ($('#ebook-metadata-save-catalog')) $('#ebook-metadata-save-catalog').hidden = true
   setMetadataMessage(id && EPUB_WRITE_ENABLED && ext(selectedBook?.name || '') === 'epub' && selectedBook?.isAppAuthorized !== true
     ? 'Ez az EPUB nem kapott fájlonkénti Grapes-hozzáférést. Egyelőre csak a könyvtári adatlap menthető; a könyvfájlhoz külön hozzáférés szükséges.'
-    : canWriteEpub(selectedBook) ? `EPUB-mentési próba: csak külön eredetivel rendelkező másolaton használd. Fájlnév alapján: ${suggestMetadata(selectedBook.name)}`
+    : canWriteEpub(selectedBook) ? `Az EPUB-fájl belső metaadatai is frissülnek; fontos könyvből tarts külön eredetit. Fájlnév alapján: ${suggestMetadata(selectedBook.name)}`
     : id ? `Fájlnév alapján: ${suggestMetadata(selectedBook?.name || '')}` : '')
   if ($('#ebook-metadata-apply')) $('#ebook-metadata-apply').disabled = !pendingMetadataSuggestion
   updateMetadataPreview()
