@@ -514,8 +514,11 @@ async function lookupBookMetadata() {
     if (serial !== metadataLookupSerial || id !== $('#ebook-metadata-book')?.value) return
     const matches = results.map((result, index) => result.status === 'fulfilled' && result.value ? { ...result.value, source: sources[index][0] } : null).filter(Boolean)
     matches.sort((a, b) => Number(Boolean(b.evidence?.isbn)) - Number(Boolean(a.evidence?.isbn)))
-    const unavailable = results.map((result, index) => result.status === 'rejected'
-      ? (sources[index][0] === 'ISBNdb' ? `ISBNdb (${String(result.reason?.message || 'ismeretlen hiba')})` : sources[index][0]) : null).filter(Boolean)
+    const unavailable = results.map((result, index) => {
+      if (result.status !== 'rejected') return null
+      const message = String(result.reason?.message || '').slice(0, 140)
+      return `${sources[index][0]}${message ? ` (${message})` : ''}`
+    }).filter(Boolean)
     if (!matches.length) {
       const reason = unavailable.length ? ` Nem elérhető: ${unavailable.join(', ')}.` : ''
       throw new Error(`${isbn ? `A(z) ${isbn} ISBN-hez` : 'A megadott adatokhoz'} egyik katalógusban sem találtam megerősíthető találatot.${reason} Ellenőrizd a számot, vagy keress cím és szerző alapján; a kézi adatok ettől függetlenül menthetők.`)

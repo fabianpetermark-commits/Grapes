@@ -18,6 +18,12 @@ only with a valid Google Drive token belonging to the Apps Script owner. The
 first deployment with ISBNdb may require the owner to authorize the added
 `script.external_request` scope in Apps Script before lookups work.
 
+If ISBNdb search reports an Apps Script `UrlFetchApp.fetch` permission error,
+open the project as its owner, choose `authorizeIsbndbRequests` in the function
+picker and click **Run**. Approve the Google consent prompt. This check calls
+only ISBNdb's public documentation endpoint; it does not send the private API
+key or change any books. Then retry the search in Grapes.
+
 1. On your own computer, run `npx @google/clasp login` and sign in with the project
    owner's account. Complete Google's consent yourself.
 2. Enable the Google Apps Script API in the account's Apps Script settings if it

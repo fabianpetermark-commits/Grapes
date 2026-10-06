@@ -13,6 +13,12 @@ const ALLOWED_PARENT_ORIGIN = 'https://fabianpetermark-commits.github.io';
 const READER_RETURN_URL = 'https://fabianpetermark-commits.github.io/Grapes/ebook-reader.html';
 const ALLOWED_BOOK_EXTENSIONS = ['epub', 'pdf', 'mobi', 'azw', 'azw3', 'prc', 'txt', 'cbz', 'cbr'];
 
+// Run once as the script owner in the Apps Script editor after deploying ISBNdb.
+// This authorizes UrlFetchApp without using the private key or a book lookup.
+function authorizeIsbndbRequests() {
+  return UrlFetchApp.fetch('https://api2.isbndb.com/doc.json', { muteHttpExceptions: true }).getResponseCode();
+}
+
 function doPost(e) {
   const p = (e && e.parameter) || {};
   if (p.action !== 'lookup-isbndb') return HtmlService.createHtmlOutput('Unsupported action');
