@@ -1119,7 +1119,7 @@
           </aside>
         </div>
         <section id="ebook-metadata-panel" class="ebook-library__panel ebook-library__metadata" aria-labelledby="ebook-metadata-title-heading">
-          <div class="ebook-library__panel-head"><div><p class="ebook-library__eyebrow">Könyvszerkesztő</p><h2 id="ebook-metadata-title-heading">Metaadatok szerkesztése</h2></div><span class="ebook-library__metadata-note">A könyvfájl csak az EPUB-mentés engedélyezése után módosul; a könyv szövege változatlan marad.</span></div>
+          <div class="ebook-library__panel-head"><div><button id="ebook-detail-back" class="btn btn--ghost ebook-library__detail-back" type="button">← Vissza a könyvtárhoz</button><p id="ebook-metadata-eyebrow" class="ebook-library__eyebrow">Könyvszerkesztő</p><h2 id="ebook-metadata-title-heading" tabindex="-1">Metaadatok szerkesztése</h2></div><span class="ebook-library__metadata-note">A könyvfájl csak az EPUB-mentés engedélyezése után módosul; a könyv szövege változatlan marad.</span></div>
           <div class="ebook-library__metadata-layout">
             <aside class="ebook-library__metadata-picker">
               <label class="field"><span class="field__label">Keresés a könyvtárban</span><input id="ebook-metadata-filter" class="input" type="search" placeholder="Cím, szerző vagy fájlnév…" autocomplete="off" /></label>
@@ -1154,6 +1154,7 @@
               <div id="ebook-metadata-evidence" class="ebook-library__metadata-evidence" aria-label="Katalógustalálatok ellenőrzése" hidden></div>
               <label id="ebook-metadata-source-wrap" class="field" hidden><span class="field__label">Katalógustalálat</span><select id="ebook-metadata-source" class="input"></select></label>
               <div id="ebook-metadata-field-suggestions" class="ebook-library__metadata-proposals" hidden></div>
+              <p id="ebook-metadata-operation-status" class="ebook-library__metadata-operation-status" role="status" aria-live="polite"></p>
               <div class="ebook-library__metadata-actions">
                 <span id="ebook-metadata-dirty" class="ebook-library__metadata-dirty" aria-live="polite">Nincs mentetlen módosítás</span>
                 <button id="ebook-metadata-lookup" class="btn btn--ghost" type="button">Webes keresés</button>

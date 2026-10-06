@@ -20,7 +20,7 @@ try {
   for (const width of [360, 390, 768, 1024, 1440]) {
     const context = await browser.newContext({ viewport: { width, height: 900 } })
     await context.addInitScript(() => {
-      sessionStorage.setItem('grapes-ebook-view', 'organizer')
+      if (!sessionStorage.getItem('grapes-ebook-view')) sessionStorage.setItem('grapes-ebook-view', 'organizer')
       sessionStorage.setItem('grapes-drive-session', JSON.stringify({ clientId: 'ebook-layout-test', accessToken: 'test', expiresAt: Date.now() + 3600000, scopes: 'https://www.googleapis.com/auth/drive.file' }))
     })
     await context.route('https://www.googleapis.com/**', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ files: [] }) }))
@@ -39,6 +39,44 @@ try {
     assert.ok(measured.overflow <= 1 && measured.panelOverflow <= 1, `${width}px: vízszintes túlcsordulás: ${JSON.stringify(measured)}`)
     assert.ok(measured.saveWidth >= 44 && measured.saveHeight >= (width <= 768 ? 44 : 32) && measured.saveRight <= width + 1, `${width}px: mentés nem érhető el: ${JSON.stringify(measured)}`)
     console.log(`✓ E-book szerkesztő ${width}px`)
+
+    await page.route('https://www.googleapis.com/**', (route) => {
+      const query = new URL(route.request().url()).searchParams.get('q') || ''
+      const files = query.includes('.grapes-ebook-metadata') ? []
+        : query.includes("name = 'Grapes E-book Library'") ? [{ id: 'folder', name: 'Grapes E-book Library' }]
+          : query.includes("'folder' in parents") ? [{ id: 'book', name: 'Dune.pdf', size: '2048', mimeType: 'application/pdf', isAppAuthorized: true }]
+            : []
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ files }) })
+    })
+    await page.evaluate(() => sessionStorage.setItem('grapes-ebook-view', 'library'))
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await page.locator('[data-edit-book="book"]').click()
+    await page.locator('#ebook-metadata-panel').waitFor({ state: 'visible' })
+    assert.equal(await page.locator('#ebook-manager-view').getAttribute('data-ebook-mode'), 'detail')
+    assert.equal(await page.locator('#ebook-metadata-book').inputValue(), 'book')
+    assert.equal(await page.locator('.ebook-library__metadata-picker').isVisible(), false)
+    assert.equal(await page.locator('.ebook-library__grid').isVisible(), false)
+    const detail = await page.evaluate(() => ({
+      overflow: document.documentElement.scrollWidth - innerWidth,
+      panelOverflow: document.querySelector('#ebook-metadata-panel').scrollWidth - document.querySelector('#ebook-metadata-panel').clientWidth,
+      save: document.querySelector('#ebook-metadata-save').getBoundingClientRect().toJSON(),
+      back: document.querySelector('#ebook-detail-back').getBoundingClientRect().toJSON(),
+    }))
+    assert.ok(detail.overflow <= 1 && detail.panelOverflow <= 1, `${width}px: az adatlap túlcsordul: ${JSON.stringify(detail)}`)
+    assert.ok(detail.save.width >= 44 && detail.save.right <= width + 1 && detail.back.height >= 44, `${width}px: adatlapműveletek nem érhetők el: ${JSON.stringify(detail)}`)
+    if (width === 360) {
+      await page.locator('#ebook-metadata-title').fill('Dűne')
+      page.once('dialog', (dialog) => dialog.dismiss())
+      await page.locator('#ebook-detail-back').click()
+      assert.equal(await page.locator('#ebook-manager-view').getAttribute('data-ebook-mode'), 'detail')
+      page.once('dialog', (dialog) => dialog.dismiss())
+      await page.locator('#ebook-back-to-menu-btn').click()
+      assert.equal(await page.locator('body').getAttribute('data-screen'), 'ebook')
+      page.once('dialog', (dialog) => dialog.accept())
+    }
+    await page.locator('#ebook-detail-back').click()
+    assert.equal(await page.locator('#ebook-manager-view').getAttribute('data-ebook-mode'), 'library')
+    console.log(`✓ Könyvenkénti adatlap ${width}px`)
     await context.close()
   }
 } finally {

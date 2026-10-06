@@ -34,6 +34,7 @@ let metadataLookupSerial = 0
 let metadataSearchMatches = []
 let metadataProposalControls = new Map()
 let metadataDirty = false
+let libraryScrollTop = 0
 let activeMetadataBookId = ''
 let metadataLoadedSnapshot = ''
 let pendingCoverBlob = null
@@ -63,7 +64,15 @@ const isBookFile = (file) => Boolean(file?.name)
 const isDriveBook = (file) => isBookFile(file) && (DRIVE_BOOK_EXTENSIONS.has(ext(file.name)) || /\.fb2\.zip$/i.test(file.name))
 const formatSize = (bytes) => !Number.isFinite(bytes) ? '—' : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
-function setStatus(message, kind = '') { const node = $('#ebook-status'); if (node) { node.textContent = message; node.dataset.kind = kind } }
+function setStatus(message, kind = '') {
+  const node = $('#ebook-status')
+  if (node) { node.textContent = message; node.dataset.kind = kind }
+  const editorStatus = $('#ebook-metadata-operation-status')
+  if (editorStatus && $('#ebook-manager-view')?.dataset.ebookMode !== 'library') {
+    editorStatus.textContent = message
+    editorStatus.dataset.kind = kind
+  }
+}
 function setUploadState(message, kind = '') { const node = $('#ebook-upload-state'); if (node) { node.textContent = message; node.dataset.kind = kind } }
 function activeLibraryAccount() { return getConnectedGrapesAccount()?.email?.trim().toLocaleLowerCase('en-US') || '' }
 function libraryCacheKey(account) { return `${LIBRARY_CACHE_KEY}${encodeURIComponent(account)}` }
@@ -224,7 +233,7 @@ function renderBooks(books = []) {
   }
   list.querySelectorAll('[data-download]').forEach((b) => b.addEventListener('click', () => downloadBook(b.dataset.download)))
   list.querySelectorAll('[data-send]').forEach((b) => b.addEventListener('click', () => sendBook(b.dataset.send)))
-  list.querySelectorAll('[data-edit-book]').forEach((b) => b.addEventListener('click', () => openMetadataEditor(b.dataset.editBook)))
+  list.querySelectorAll('[data-edit-book]').forEach((b) => b.addEventListener('click', () => openBookDetail(b.dataset.editBook)))
   renderMetadataEditor()
 }
 
@@ -276,9 +285,19 @@ async function saveEbookMetadata(folderId) {
 function renderMetadataEditor() {
   const select = $('#ebook-metadata-book'); if (!select) return
   const previous = activeMetadataBookId || select.value
+  if ($('#ebook-manager-view')?.dataset.ebookMode === 'detail' && previous && !currentBooks.some((book) => book.id === previous)) {
+    if (metadataDirty) {
+      setMetadataMessage('Ez a könyv már nem érhető el a frissített könyvtárban. A beírt adatok megmaradtak, de mentés előtt állítsd helyre a Drive-hozzáférést.', 'error')
+      setMetadataDirty(true)
+    } else {
+      closeBookDetail({ force: true })
+      setStatus('A kiválasztott könyv már nem érhető el a könyvtárban.', 'error')
+    }
+    return
+  }
   renderMetadataOptions()
   if (currentBooks.some((book) => book.id === previous)) select.value = previous
-  if (metadataDirty && select.value === activeMetadataBookId) { updateMetadataPreview(); return }
+  if (metadataDirty && select.value === activeMetadataBookId) { updateMetadataPreview(); setMetadataDirty(true); return }
   updateMetadataForm()
 }
 function renderMetadataOptions() {
@@ -301,7 +320,7 @@ function setMetadataDirty(value) {
     indicator.textContent = metadataDirty ? 'Mentetlen módosítások' : activeMetadataBookId ? 'Minden módosítás mentve' : 'Nincs mentetlen módosítás'
   }
   const save = $('#ebook-metadata-save')
-  if (save) save.disabled = !metadataDirty || !activeMetadataBookId
+  if (save) save.disabled = !metadataDirty || !activeMetadataBookId || !currentBooks.some((book) => book.id === activeMetadataBookId)
 }
 function setMetadataAccessStatus(message, kind = '') {
   const status = $('#ebook-metadata-access-status')
@@ -915,7 +934,36 @@ function suggestMetadata(name = '') {
   const parsed = parseFilenameMetadata(name)
   return parsed ? `Szerző: ${parsed.author} · Cím: ${parsed.title}` : 'nem azonosítható biztosan a szerző és a cím.'
 }
-function openMetadataEditor(id) { const select = $('#ebook-metadata-book'); if (select) { select.value = id; updateMetadataForm(); $('#ebook-metadata-panel')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }) } }
+function openMetadataEditor(id, { scroll = true } = {}) {
+  const select = $('#ebook-metadata-book')
+  if (!select) return
+  select.value = id
+  updateMetadataForm()
+  if (scroll) $('#ebook-metadata-panel')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+}
+function openBookDetail(id) {
+  if (!currentBooks.some((book) => book.id === id)) return setStatus('A kiválasztott könyv már nem érhető el. Frissítsd a könyvtárat.', 'error')
+  const manager = $('#ebook-manager-view')
+  libraryScrollTop = manager?.scrollTop || 0
+  const filter = $('#ebook-metadata-filter')
+  if (filter) filter.value = ''
+  renderMetadataOptions()
+  openMetadataEditor(id, { scroll: false })
+  setEbookMode('detail')
+  if (manager) manager.scrollTop = 0
+  $('#ebook-metadata-title-heading')?.focus?.()
+}
+function closeBookDetail({ force = false } = {}) {
+  if (!force && metadataDirty && !window.confirm('A mentetlen módosítások elvesznek. Visszalépsz a könyvtárhoz?')) return false
+  const id = activeMetadataBookId
+  setMetadataDirty(false)
+  setEbookMode('library')
+  const manager = $('#ebook-manager-view')
+  if (manager) manager.scrollTop = libraryScrollTop
+  const button = [...($('#ebook-list')?.querySelectorAll('[data-edit-book]') || [])].find((item) => item.dataset.editBook === id)
+  button?.focus?.()
+  return true
+}
 function canWriteEpub(book) {
   return EPUB_WRITE_ENABLED && ext(book?.name || '') === 'epub' && book?.isAppAuthorized === true
 }
@@ -927,6 +975,7 @@ async function saveMetadata({ catalogOnly = false } = {}) {
   const id = $('#ebook-metadata-book')?.value
   if (!id) return setStatus('Válassz ki egy könyvet a szerkesztéshez.', 'error')
   const book = currentBooks.find((item) => item.id === id)
+  if (!book) return setMetadataMessage('Ez a könyv már nem érhető el a könyvtárban. Frissítsd a Drive-kapcsolatot a mentés előtt.', 'error')
   const epub = ext(book?.name || '') === 'epub'
   const edited = metadataFromForm()
   const fingerprint = JSON.stringify(edited) + pendingCoverUrl + (pendingCoverBlob?.size || '') + String(pendingCoverRemoved) + coverChangeSerial
@@ -981,7 +1030,7 @@ async function saveMetadata({ catalogOnly = false } = {}) {
     pendingCoverAsset = null
     renderBooks(currentBooks)
     saveLibraryCache(currentBooks)
-    openMetadataEditor(id)
+    openMetadataEditor(id, { scroll: false })
     setMetadataDirty(false)
     setStatus(epub && !catalogOnly ? 'A könyvtári adatlap és az EPUB metaadatai mentve a Drive-ba.' : 'A könyvtári adatlap mentve a Drive-ba; a könyvfájl változatlan maradt.', 'success')
   } catch (error) {
@@ -1252,7 +1301,11 @@ async function sendBook(fileId) {
 function setEbookMode(mode = 'library') {
   const manager = $('#ebook-manager-view')
   if (manager) manager.dataset.ebookMode = mode
-  const labels = { library: 'E-book Könyvtár', organizer: 'Könyvszerkesztő' }
+  const status = $('#ebook-metadata-operation-status')
+  if (status) { status.textContent = ''; status.dataset.kind = '' }
+  const labels = { library: 'E-book Könyvtár', organizer: 'Könyvszerkesztő', detail: 'Könyv adatlapja' }
+  const eyebrow = $('#ebook-metadata-eyebrow')
+  if (eyebrow) eyebrow.textContent = mode === 'detail' ? 'Könyv adatlapja' : 'Könyvszerkesztő'
   const sub = document.querySelector('#ebook-toolbar .toolbar__brand-sub')
   if (sub) sub.textContent = labels[mode] || labels.library
 }
@@ -1290,6 +1343,7 @@ export function initEbookLibrary() {
   $('#ebook-refresh-btn')?.addEventListener('click', () => refreshLibrary({ forceFullScan: true }))
   $('#ebook-metadata-filter')?.addEventListener('input', renderMetadataOptions)
   $('#ebook-metadata-book')?.addEventListener('change', selectMetadataBook)
+  $('#ebook-detail-back')?.addEventListener('click', () => closeBookDetail())
   for (const selector of METADATA_FIELDS.map((field) => `#ebook-metadata-${field}`)) {
     $(selector)?.addEventListener('input', () => { if (activeMetadataBookId) { setMetadataDirty(true); updateMetadataPreview() } })
   }
@@ -1329,7 +1383,7 @@ export function initEbookLibrary() {
   $('#ebook-receiver-input')?.addEventListener('keydown', (event) => { if (event.key === 'Enter') $('#ebook-receiver-submit')?.click() })
   window.addEventListener?.('message', handleReaderPairingMessage)
   document.addEventListener?.('grapes:before-screen-change', (event) => {
-    if (event.detail?.from !== 'ebook' || !metadataDirty || $('#ebook-manager-view')?.dataset.ebookMode !== 'organizer') return
+    if (event.detail?.from !== 'ebook' || !metadataDirty || $('#ebook-manager-view')?.dataset.ebookMode === 'library') return
     if (!window.confirm('A könyvszerkesztőben mentetlen módosítások vannak. Biztosan kilépsz?')) event.preventDefault()
     else setMetadataDirty(false)
   })

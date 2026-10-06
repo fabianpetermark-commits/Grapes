@@ -101,12 +101,25 @@
 .ebook-library__metadata-suggestion{min-height:20px;margin:0;color:var(--color-text-muted);font-size:13px}
 .ebook-library__metadata-suggestion[data-kind="success"]{color:var(--color-success)}
 .ebook-library__metadata-suggestion[data-kind="error"]{color:var(--color-danger)}
+.ebook-library__metadata-operation-status{margin:0;color:var(--color-text-muted);font-size:var(--text-sm);overflow-wrap:anywhere}
+.ebook-library__metadata-operation-status:empty{display:none}
+.ebook-library__metadata-operation-status[data-kind="success"]{color:var(--color-success)}
+.ebook-library__metadata-operation-status[data-kind="error"]{color:var(--color-danger)}
+.ebook-library__detail-back{display:none;margin-bottom:12px;min-height:44px}
 .ebook-library__metadata-actions{position:sticky;bottom:0;display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 0 max(2px,env(safe-area-inset-bottom));background:linear-gradient(transparent,var(--color-bg-surface) 12px)}
 .ebook-library__metadata-dirty{flex:1;min-width:170px;color:var(--color-text-subtle);font-size:var(--text-sm)}
 .ebook-library__metadata-dirty[data-dirty="true"]{color:var(--color-warning)}
 @media (max-width:760px){.ebook-library__metadata-layout{grid-template-columns:1fr}.ebook-library__metadata-picker{border-right:0;border-bottom:1px solid var(--color-border)}.ebook-library__metadata-picker select{min-height:180px}.ebook-library__metadata-workspace{padding:16px}.ebook-library__metadata-form{grid-template-columns:1fr}.ebook-library__metadata-note{display:none}.ebook-library__metadata-actions{display:grid;grid-template-columns:minmax(0,1fr)}.ebook-library__metadata-actions .btn{width:100%;min-width:0;min-height:44px;white-space:normal}.ebook-library__metadata-actions .btn--primary{order:1}.ebook-library__metadata-actions .btn--ghost{order:2}.ebook-library__book-main strong{white-space:normal}.ebook-library__book-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%}.ebook-library__book-actions .btn{min-width:0;padding-inline:6px}}
 
 #ebook-manager-view[data-ebook-mode="library"] #ebook-metadata-panel{display:none}
+#ebook-manager-view[data-ebook-mode="detail"] .ebook-library__hero,
+#ebook-manager-view[data-ebook-mode="detail"] #ebook-status,
+#ebook-manager-view[data-ebook-mode="detail"] #ebook-transfer-panel,
+#ebook-manager-view[data-ebook-mode="detail"] .ebook-library__quick-add,
+#ebook-manager-view[data-ebook-mode="detail"] .ebook-library__grid{display:none}
+#ebook-manager-view[data-ebook-mode="detail"] .ebook-library__metadata-picker{display:none}
+#ebook-manager-view[data-ebook-mode="detail"] .ebook-library__metadata-layout{grid-template-columns:minmax(0,1fr)}
+#ebook-manager-view[data-ebook-mode="detail"] .ebook-library__detail-back{display:inline-flex}
 #ebook-manager-view[data-ebook-mode="organizer"] .ebook-library__hero,
 #ebook-manager-view[data-ebook-mode="organizer"] #ebook-status,
 #ebook-manager-view[data-ebook-mode="organizer"] #ebook-transfer-panel,

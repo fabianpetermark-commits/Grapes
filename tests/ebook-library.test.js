@@ -943,6 +943,84 @@ test('metadata editor exposes search, live preview and a protected dirty state',
   assert.equal(a.nodes.get('#ebook-metadata-preview-title').textContent, 'Dűne')
 })
 
+test('library edit opens only the selected book detail and restores the library scroll position', () => {
+  const a = app(async () => json({}))
+  const manager = a.run('$("#ebook-manager-view")')
+  manager.dataset.ebookMode = 'library'
+  manager.scrollTop = 384
+  a.run('currentBooks = [{ id: "first", name: "First.pdf", size: 1024 }, { id: "second", name: "Second.pdf", size: 2048 }]')
+  a.run('ebookMetadata = { first: { title: "Első könyv" }, second: { title: "Második könyv" } }')
+  a.run('openBookDetail("second")')
+  assert.equal(manager.dataset.ebookMode, 'detail')
+  assert.equal(manager.scrollTop, 0)
+  assert.equal(a.nodes.get('#ebook-metadata-book').value, 'second')
+  assert.equal(a.nodes.get('#ebook-metadata-title').value, 'Második könyv')
+  assert.equal(a.run('activeMetadataBookId'), 'second')
+  assert.equal(a.run('closeBookDetail()'), true)
+  assert.equal(manager.dataset.ebookMode, 'library')
+  assert.equal(manager.scrollTop, 384)
+})
+
+test('book detail guards unsaved navigation and preserves edits during background refresh', () => {
+  const a = app(async () => json({}))
+  const manager = a.run('$("#ebook-manager-view")')
+  manager.dataset.ebookMode = 'library'
+  a.run('currentBooks = [{ id: "book", name: "Dune.pdf", size: 1024 }]')
+  a.run('openBookDetail("book")')
+  a.nodes.get('#ebook-metadata-title').value = 'Dűne'
+  a.run('setMetadataDirty(true)')
+  a.context.window.confirm = () => false
+  a.run('ebookMetadata = { book: { title: "Drive-on frissült cím" } }; renderMetadataEditor()')
+  assert.equal(a.nodes.get('#ebook-metadata-title').value, 'Dűne')
+  assert.equal(a.run('closeBookDetail()'), false)
+  assert.equal(manager.dataset.ebookMode, 'detail')
+  a.context.window.confirm = () => true
+  assert.equal(a.run('closeBookDetail()'), true)
+  assert.equal(a.run('metadataDirty'), false)
+})
+
+test('missing book does not overwrite a dirty detail or allow an orphan metadata save', () => {
+  const a = app(async () => json({}))
+  const manager = a.run('$("#ebook-manager-view")')
+  manager.dataset.ebookMode = 'library'
+  a.run('currentBooks = [{ id: "book", name: "Dune.pdf", size: 1024 }]')
+  a.run('openBookDetail("book")')
+  a.nodes.get('#ebook-metadata-title').value = 'Dűne'
+  a.run('setMetadataDirty(true); currentBooks = []; renderMetadataEditor()')
+  assert.equal(manager.dataset.ebookMode, 'detail')
+  assert.equal(a.nodes.get('#ebook-metadata-title').value, 'Dűne')
+  assert.equal(a.nodes.get('#ebook-metadata-save').disabled, true)
+  assert.match(a.nodes.get('#ebook-metadata-suggestion').textContent, /nem érhető el/)
+  a.run('saveMetadata({ catalogOnly: true })')
+  assert.match(a.nodes.get('#ebook-metadata-suggestion').textContent, /nem érhető el/)
+})
+
+test('missing untouched book returns to the library with a visible error', () => {
+  const a = app(async () => json({}))
+  const manager = a.run('$("#ebook-manager-view")')
+  manager.dataset.ebookMode = 'library'
+  a.run('currentBooks = [{ id: "book", name: "Dune.pdf", size: 1024 }]')
+  a.run('openBookDetail("book"); currentBooks = []; renderMetadataEditor()')
+  assert.equal(manager.dataset.ebookMode, 'library')
+  assert.equal(a.nodes.get('#ebook-status').dataset.kind, 'error')
+  assert.match(a.nodes.get('#ebook-status').textContent, /nem érhető el/)
+})
+
+test('saving from a book detail keeps the detail open and updates the library title', async () => {
+  const a = app(async () => json({}))
+  a.run('$("#ebook-manager-view").dataset.ebookMode = "library"; currentBooks = [{ id: "book", name: "Dune.pdf", size: 1024 }]')
+  a.run('openBookDetail("book")')
+  a.nodes.get('#ebook-metadata-title').value = 'Dűne'
+  a.nodes.get('#ebook-metadata-author').value = 'Frank Herbert'
+  a.run('setMetadataDirty(true); getReaderLibraryBooks = async () => ({ folderId: "folder" }); loadEbookMetadata = async () => {}; saveEbookMetadata = async () => {}')
+  await a.run('saveMetadata({ catalogOnly: true })')
+  assert.equal(a.nodes.get('#ebook-manager-view').dataset.ebookMode, 'detail')
+  assert.equal(a.run('ebookMetadata.book.title'), 'Dűne')
+  assert.match(a.nodes.get('#ebook-list').children[0].innerHTML, /Dűne/)
+  assert.equal(a.nodes.get('#ebook-metadata-operation-status').dataset.kind, 'success')
+  assert.equal(a.run('metadataDirty'), false)
+})
+
 test('reader pairing code bridge accepts only the selected iframe and expires the code', () => {
   const a = app()
   const frame = a.run('$("#ebook-reader-pair-code")')
