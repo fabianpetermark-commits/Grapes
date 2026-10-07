@@ -288,7 +288,10 @@ function pairReader(p) {
     const currentRecord = JSON.parse(current);
     const books = currentRecord.bookChunks ? readReaderBookChunks(props, code, currentRecord.bookChunks) : [];
     token = createReaderToken();
-    const bookChunks = books.length ? writeReaderBookChunks(props, token, books) : 0;
+    // A nulla könyves pillanatkép is valódi, új típusú párosítás. Ha ezt 0-val
+    // jelölnénk, a readerLibraryPage régi Drive-mappás tokennek nézné, és egy
+    // másik Google-fióknál elérhetetlen folderId-t próbálna megnyitni.
+    const bookChunks = currentRecord.bookChunks ? writeReaderBookChunks(props, token, books) : 0;
     props.setProperty(READER_TOKEN_PREFIX + token, JSON.stringify({
       folderId: record.folderId,
       bookChunks: bookChunks,
@@ -335,9 +338,16 @@ function readerLibraryPage(p) {
   if (record.bookChunks) {
     scan.books = readReaderBookChunks(props, token, record.bookChunks).map(function (row) { return { id: row[0], name: row[1], size: row[2] }; });
   } else {
+    if (!record.folderId) {
+      props.deleteProperty(key);
+      return readerExpiredPage('A korábbi párosítás érvénytelen', 'Az elavult olvasóazonosítót töröltük. Párosítsd újra az e-book olvasót.');
+    }
     let folder;
     try { folder = DriveApp.getFolderById(record.folderId); }
-    catch (err) { return readerMessagePage('A könyvtár nem érhető el', 'Párosítsd újra az e-book olvasót.'); }
+    catch (err) {
+      props.deleteProperty(key);
+      return readerExpiredPage('A könyvtár nem érhető el', 'A korábbi párosítást töröltük. Párosítsd újra az e-book olvasót.');
+    }
     // Régi párosításoknál megmarad a dinamikus Drive-mappa beolvasása.
     const folders = getReaderLibraryFolders(folder);
     scan = scanReaderLibraryFolders(folders);
@@ -458,8 +468,9 @@ function revokeReaderPage(p) {
   return HtmlService.createHtmlOutput('<!doctype html><html><head><meta http-equiv="refresh" content="0;url=' + escapeHtml(landing) + '"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Leválasztva</title></head><body><p>Az e-olvasó leválasztva.</p><p><a href="' + escapeHtml(landing) + '">Vissza az olvasóoldalra</a></p></body></html>');
 }
 
-function readerExpiredPage() {
-  return readerMessagePage('A párosítás lejárt', 'Nyisd meg az e-olvasó oldalt és párosítsd újra az eszközt.', READER_RETURN_URL + '?forget=1');
+function readerExpiredPage(title, message) {
+  const landing = READER_RETURN_URL + '?forget=1';
+  return HtmlService.createHtmlOutput('<!doctype html><html><head><meta http-equiv="refresh" content="1;url=' + escapeHtml(landing) + '"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + escapeHtml(title || 'A párosítás lejárt') + '</title><style>body{font-family:Arial,sans-serif;max-width:620px;margin:0 auto;padding:28px;text-align:center}a{color:#111}</style></head><body><h1>' + escapeHtml(title || 'A párosítás lejárt') + '</h1><p>' + escapeHtml(message || 'Nyisd meg az e-olvasó oldalt és párosítsd újra az eszközt.') + '</p><p>Az újrapárosító oldal megnyílik…</p><p><a href="' + escapeHtml(landing) + '">Újrapárosítás most</a></p></body></html>');
 }
 
 function readerMessagePage(title, message, link) {

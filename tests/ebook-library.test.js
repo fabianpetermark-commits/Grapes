@@ -968,6 +968,47 @@ test('POST reader pairing works across Google accounts and keeps the snapshot in
   assert.match(page.html, /drive\.usercontent\.google\.com/)
 })
 
+test('an empty reader snapshot stays valid instead of falling back to an inaccessible Drive folder', () => {
+  const values = new Map()
+  const props = { getProperty: key => values.get(key), setProperty: (key, value) => values.set(key, value), getProperties: () => Object.fromEntries(values), deleteProperty: key => values.delete(key) }
+  const c = vm.createContext({
+    HtmlService: { XFrameOptionsMode: { ALLOWALL: 'ALLOWALL' }, createHtmlOutput: html => ({ html, setXFrameOptionsMode() { return this } }) },
+    PropertiesService: { getScriptProperties: () => props },
+    LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
+    ScriptApp: { getService: () => ({ getUrl: () => 'https://broker.example/exec' }) },
+    DriveApp: { getFolderById: () => { throw new Error('must not read Drive for a snapshot token') } },
+  })
+  vm.runInContext(brokerSource, c)
+  c.createUniqueCode = () => 'ABC234'
+  c.createReaderToken = () => 'B'.repeat(64)
+  c.doPost({ parameter: {
+    action: 'create-reader-pairing', nonce: 'c'.repeat(48), embed: '1',
+    returnUrl: 'https://fabianpetermark-commits.github.io/Grapes/ebook-reader.html',
+    books: '[]',
+  } })
+  c.pairReader({ code: 'ABC234' })
+  const tokenRecord = JSON.parse(values.get('ebook_reader_token_' + 'B'.repeat(64)))
+  assert.equal(tokenRecord.bookChunks, 1)
+  assert.match(c.readerLibraryPage({ token: 'B'.repeat(64) }).html, /Még nincs e-olvasóra megosztott könyv/)
+})
+
+test('an inaccessible legacy reader token is removed and automatically returns to re-pairing', () => {
+  const token = 'C'.repeat(64)
+  const values = new Map([['ebook_reader_token_' + token, JSON.stringify({ folderId: 'foreign-folder', createdAt: Date.now(), lastSeenAt: Date.now() })]])
+  const props = { getProperty: key => values.get(key), setProperty: (key, value) => values.set(key, value), getProperties: () => Object.fromEntries(values), deleteProperty: key => values.delete(key) }
+  const c = vm.createContext({
+    HtmlService: { createHtmlOutput: html => ({ html }) },
+    PropertiesService: { getScriptProperties: () => props },
+    DriveApp: { getFolderById: () => { throw new Error('foreign account') } },
+  })
+  vm.runInContext(brokerSource, c)
+  const page = c.readerLibraryPage({ token })
+  assert.equal(values.has('ebook_reader_token_' + token), false)
+  assert.match(page.html, /A könyvtár nem érhető el/)
+  assert.match(page.html, /http-equiv="refresh" content="1;url=/)
+  assert.match(page.html, /ebook-reader\.html\?forget=1/)
+})
+
 test('explicit sign-out forgets the previous account and the next login opens the account chooser', async () => {
   const local = new Map([['grapes-drive-account', 'old@example.com']])
   const a = app(async url => url.includes('/about?') ? json({ user: { emailAddress: 'new@example.com' } }) : json({}), { local })
