@@ -505,6 +505,20 @@ function updateMetadataPreview() {
   $('#ebook-metadata-preview-meta').textContent = book
     ? `${$('#ebook-metadata-author')?.value.trim() || ebookMetadata[book.id]?.author || 'Ismeretlen szerző'} · ${ext(book.name).toUpperCase()} · ${formatSize(Number(book.size))} · Drive`
     : 'Válassz egy könyvet a bal oldali listából.'
+  const filename = $('#ebook-metadata-filename')
+  const filenameNext = $('#ebook-metadata-filename-next')
+  if (filename) filename.value = book?.name || ''
+  if (filenameNext) {
+    const nextName = book ? metadataFileNameFor(book, {
+      title: $('#ebook-metadata-title')?.value.trim() || '',
+      author: $('#ebook-metadata-author')?.value.trim() || '',
+    }) : ''
+    filenameNext.textContent = !book
+      ? 'Válassz könyvet a Drive-fájlnév megjelenítéséhez.'
+      : nextName && nextName !== book.name
+        ? `Mentéskor az új fájlnév: ${nextName}`
+        : 'Ez a fájlnév kerül az e-olvasóra; azonos nevű könyvnél a fájl frissül.'
+  }
 }
 function updateMetadataForm() {
   metadataLookupSerial++

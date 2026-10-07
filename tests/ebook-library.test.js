@@ -977,6 +977,15 @@ test('saved title and author produce a safe filename while preserving the extens
   assert.equal(a.run('metadataFileNameFor({ name: "old.PDF" }, { title: "Új cím", author: "" })'), 'Új cím.pdf')
 })
 
+test('metadata card shows the current Drive filename and the filename planned from title and author', () => {
+  const a = app(async () => json({}))
+  a.run('currentBooks = [{ id: "book", name: "old.epub", size: 2048 }]; ebookMetadata = { book: { title: "Régi cím", author: "Régi szerző" } }; activeMetadataBookId = "book"')
+  a.run('$("#ebook-metadata-title").value = "Az idő gyermekei"; $("#ebook-metadata-author").value = "Adrian Tchaikovsky"')
+  a.run('updateMetadataPreview()')
+  assert.equal(a.nodes.get('#ebook-metadata-filename').value, 'old.epub')
+  assert.match(a.nodes.get('#ebook-metadata-filename-next').textContent, /Adrian Tchaikovsky - Az idő gyermekei\.epub/)
+})
+
 test('library edit opens only the selected book detail and restores the library scroll position', () => {
   const a = app(async () => json({}))
   const manager = a.run('$("#ebook-manager-view")')

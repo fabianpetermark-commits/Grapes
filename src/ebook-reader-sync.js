@@ -114,13 +114,24 @@ async function connectReader() {
   try { const handle = await showDirectoryPicker({ id: 'grapes-ebook-reader', mode: 'readwrite', startIn: 'documents' }); if (await handle.requestPermission({ mode: 'readwrite' }) !== 'granted') throw new Error('Az írási engedély nem lett megadva.'); readerRoot = handle; await saveHandle(handle); if (!await verifyReaderAccess({ announce: true })) throw new Error('A kiválasztott mappa jelenleg nem érhető el.'); await refreshInventory() }
   catch (error) { if (error?.name !== 'AbortError') status(`Az e-reader csatlakoztatása nem sikerült. ${error.message}`, 'error') }
 }
-async function writeToReader(book) {
+async function writeToReader(book, existing = null) {
   const response = await grapesDriveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(book.id)}?alt=media`)
-  const handle = await readerRoot.getFileHandle(book.name, { create: true }); const writable = await handle.createWritable(); await writable.write(await response.blob()); await writable.close()
+  const handle = existing?.handle && normalize(existing.name) === normalize(book.name)
+    ? existing.handle
+    : await readerRoot.getFileHandle(book.name, { create: true })
+  const writable = await handle.createWritable(); await writable.write(await response.blob()); await writable.close()
 }
 function previousNames(book) {
   try { return JSON.parse(book.appProperties?.grapesPreviousNames || '[]').filter((name) => typeof name === 'string') }
   catch { return [] }
+}
+function shouldCopyToReader(book, current) {
+  if (!current) return true
+  if (Number(book.size) !== Number(current.size)) return true
+  const driveTime = new Date(book.modifiedTime || '').getTime()
+  const readerTime = Number(current.lastModified)
+  if (!Number.isFinite(driveTime) || !Number.isFinite(readerTime) || readerTime <= 0) return true
+  return driveTime > readerTime
 }
 async function removeReaderBook(book) {
   const parts = String(book?.path || '').split('/').filter(Boolean)
@@ -148,15 +159,14 @@ async function synchronize() {
       const previous = previousNames(book).map(name => readerByName.get(normalize(name))).filter(Boolean)
       if (current) claimedReaderPaths.add(current.path)
       previous.forEach(item => claimedReaderPaths.add(item.path))
-      const driveChanged = current && (Number(book.size) !== Number(current.size) || (book.modifiedTime && current.lastModified && new Date(book.modifiedTime).getTime() > current.lastModified + 2000))
-      if (!current || driveChanged) readerQueue.push({ book, previous: current ? [] : previous })
+      if (shouldCopyToReader(book, current)) readerQueue.push({ book, current, previous: current ? [] : previous })
       else cleanupQueue.push(...previous.filter(item => item.path !== current.path))
     }
     const driveQueue = readerBooks.filter(book => !claimedReaderPaths.has(book.path))
     const total = readerQueue.length + driveQueue.length + cleanupQueue.length
     updateProgress(0, total, total ? 'Előkészítés…' : 'Minden könyv szinkronban van')
     let completed = 0
-    for (const item of readerQueue) { updateProgress(completed, total, `${item.book.name} → e-reader`); await writeToReader(item.book); for (const previous of item.previous) await removeReaderBook(previous); toReader++; updateProgress(++completed, total, `${item.book.name} kész`) }
+    for (const item of readerQueue) { updateProgress(completed, total, `${item.book.name} → e-reader`); await writeToReader(item.book, item.current); for (const previous of item.previous) await removeReaderBook(previous); toReader++; updateProgress(++completed, total, `${item.book.name} kész`) }
     for (const book of cleanupQueue) { updateProgress(completed, total, `${book.name} régi példány törlése`); await removeReaderBook(book); updateProgress(++completed, total, 'Régi fájlnév eltávolítva') }
     for (const book of driveQueue) { updateProgress(completed, total, `${book.name} → Drive`); await uploadFromReader(book, folderId); toDrive++; updateProgress(++completed, total, `${book.name} kész`) }
     await refreshInventory(); status(`Szinkronizálás kész: ${toReader} könyv az e-readerre, ${toDrive} könyv a Drive-ra.`, 'success'); showSuccess(true)
