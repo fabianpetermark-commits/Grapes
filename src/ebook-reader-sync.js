@@ -15,6 +15,16 @@ const status = (message, kind = '') => { const node = $('#ebook-sync-status'); i
 const supports = () => typeof window.showDirectoryPicker === 'function' && typeof window.indexedDB !== 'undefined'
 const candidate = name => Boolean(String(name || '').trim()) && !String(name).startsWith('.') && !/^(desktop\.ini|thumbs\.db)$/i.test(name)
 const normalize = name => String(name || '').normalize('NFKC').trim().toLocaleLowerCase('hu-HU')
+function nameFingerprint(value = '') {
+  const normalized = normalize(value)
+  let left = 0x811c9dc5; let right = 0x9e3779b9
+  for (let index = 0; index < normalized.length; index++) {
+    const code = normalized.charCodeAt(index)
+    left = Math.imul(left ^ code, 0x01000193)
+    right = Math.imul(right ^ (code + index), 0x85ebca6b)
+  }
+  return `${(left >>> 0).toString(16).padStart(8, '0')}${(right >>> 0).toString(16).padStart(8, '0')}`
+}
 const updateConnection = () => {
   const node = $('#ebook-reader-state')
   if (node) {
@@ -121,9 +131,12 @@ async function writeToReader(book, existing = null) {
     : await readerRoot.getFileHandle(book.name, { create: true })
   const writable = await handle.createWritable(); await writable.write(await response.blob()); await writable.close()
 }
-function previousNames(book) {
-  try { return JSON.parse(book.appProperties?.grapesPreviousNames || '[]').filter((name) => typeof name === 'string') }
-  catch { return [] }
+function previousNameFingerprints(book) {
+  const compact = String(book.appProperties?.grapesPrev || '').split(',').filter((value) => /^[a-f0-9]{16}$/.test(value))
+  try {
+    const legacy = JSON.parse(book.appProperties?.grapesPreviousNames || '[]').filter((name) => typeof name === 'string').map(nameFingerprint)
+    return [...new Set([...compact, ...legacy])]
+  } catch { return compact }
 }
 function shouldCopyToReader(book, current) {
   if (!current) return true
@@ -151,12 +164,13 @@ async function synchronize() {
     showSuccess(false)
     await refreshInventory(); const folderId = await findLibraryFolder(); let toReader = 0, toDrive = 0
     const readerByName = new Map(readerBooks.map(book => [normalize(book.name), book]))
+    const readerByFingerprint = new Map(readerBooks.map(book => [nameFingerprint(book.name), book]))
     const claimedReaderPaths = new Set()
     const readerQueue = []
     const cleanupQueue = []
     for (const book of driveBooks) {
       const current = readerByName.get(normalize(book.name))
-      const previous = previousNames(book).map(name => readerByName.get(normalize(name))).filter(Boolean)
+      const previous = previousNameFingerprints(book).map(fingerprint => readerByFingerprint.get(fingerprint)).filter(Boolean)
       if (current) claimedReaderPaths.add(current.path)
       previous.forEach(item => claimedReaderPaths.add(item.path))
       if (shouldCopyToReader(book, current)) readerQueue.push({ book, current, previous: current ? [] : previous })

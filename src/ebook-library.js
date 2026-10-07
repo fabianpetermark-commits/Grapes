@@ -35,6 +35,7 @@ let metadataLookupSerial = 0
 let metadataSearchMatches = []
 let metadataProposalControls = new Map()
 let metadataDirty = false
+let metadataFilenameManual = false
 let contentSession = null
 let contentBookId = ''
 let contentLoadedVersion = null
@@ -73,6 +74,17 @@ let pickerPending = false
 const $ = (selector) => document.querySelector(selector)
 const ext = (name = '') => name.includes('.') ? name.split('.').pop().toLowerCase() : 'FILE'
 const safeFilePart = (value = '') => String(value).replace(/[<>:"/\\|?*\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').replace(/[. ]+$/g, '').trim()
+const comparableFileName = (value = '') => String(value).normalize('NFKC')
+function nameFingerprint(value = '') {
+  const normalized = comparableFileName(value).trim().toLocaleLowerCase('hu-HU')
+  let left = 0x811c9dc5; let right = 0x9e3779b9
+  for (let index = 0; index < normalized.length; index++) {
+    const code = normalized.charCodeAt(index)
+    left = Math.imul(left ^ code, 0x01000193)
+    right = Math.imul(right ^ (code + index), 0x85ebca6b)
+  }
+  return `${(left >>> 0).toString(16).padStart(8, '0')}${(right >>> 0).toString(16).padStart(8, '0')}`
+}
 function metadataFileNameFor(book, metadata) {
   const extension = ext(book?.name || '')
   const title = safeFilePart(metadata?.title)
@@ -80,6 +92,12 @@ function metadataFileNameFor(book, metadata) {
   if (!title || extension === 'FILE') return book?.name || ''
   const base = (author ? `${author} - ${title}` : title).slice(0, 180).replace(/[. ]+$/g, '')
   return `${base}.${extension}`
+}
+function requestedFileNameFor(book, requested, metadata) {
+  const value = safeFilePart(requested || metadataFileNameFor(book, metadata))
+  if (!value) throw new Error('A Drive-fájlnév nem lehet üres.')
+  if (ext(value) !== ext(book?.name || '')) throw new Error(`A fájlnév kiterjesztése maradjon .${ext(book?.name || '').toLowerCase()}.`)
+  return value
 }
 const isShareableBook = (name = '') => SHAREABLE_BOOK_EXTENSIONS.has(ext(name))
 const isBookFile = (file) => Boolean(file?.name)
@@ -506,6 +524,7 @@ function updateMetadataPreview() {
     ? `${$('#ebook-metadata-author')?.value.trim() || ebookMetadata[book.id]?.author || 'Ismeretlen szerző'} · ${ext(book.name).toUpperCase()} · ${formatSize(Number(book.size))} · Drive`
     : 'Válassz egy könyvet a bal oldali listából.'
   const filename = $('#ebook-metadata-filename')
+  const filenameTarget = $('#ebook-metadata-filename-target')
   const filenameNext = $('#ebook-metadata-filename-next')
   if (filename) filename.value = book?.name || ''
   if (filenameNext) {
@@ -513,10 +532,12 @@ function updateMetadataPreview() {
       title: $('#ebook-metadata-title')?.value.trim() || '',
       author: $('#ebook-metadata-author')?.value.trim() || '',
     }) : ''
+    if (filenameTarget && !metadataFilenameManual) filenameTarget.value = nextName || book?.name || ''
+    const targetName = filenameTarget?.value.trim() || ''
     filenameNext.textContent = !book
       ? 'Válassz könyvet a Drive-fájlnév megjelenítéséhez.'
-      : nextName && nextName !== book.name
-        ? `Mentéskor az új fájlnév: ${nextName}`
+      : targetName && comparableFileName(targetName) !== comparableFileName(book.name)
+        ? `Mentéskor átnevezve: ${book.name} → ${targetName}`
         : 'Ez a fájlnév kerül az e-olvasóra; azonos nevű könyvnél a fájl frissül.'
   }
 }
@@ -526,6 +547,7 @@ function updateMetadataForm() {
   activeMetadataBookId = id || ''
   const data = ebookMetadata[id] || {}
   const selectedBook = currentBooks.find((book) => book.id === id)
+  metadataFilenameManual = false
   renderMetadataAccess(selectedBook)
   metadataLoadedSnapshot = JSON.stringify(data)
   for (const key of METADATA_FIELDS) {
@@ -1020,21 +1042,25 @@ async function getBookDriveVersion(id) {
   const response = await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?fields=id,name,size,modifiedTime,md5Checksum,headRevisionId,mimeType,capabilities(canEdit),isAppAuthorized,appProperties`)
   return response.json()
 }
-async function renameBookOnDrive(book, metadata) {
-  const nextName = metadataFileNameFor(book, metadata)
-  if (!nextName || nextName === book.name) return null
+async function renameBookOnDrive(book, metadata, requestedName = '') {
+  const nextName = requestedFileNameFor(book, requestedName, metadata)
+  if (!nextName || comparableFileName(nextName) === comparableFileName(book.name)) return null
   if (book.isAppAuthorized === false) throw new Error('A cím és szerző mentéséhez engedélyezd ennek a könyvfájlnak a hozzáférését, hogy a fájlnév is frissülhessen.')
-  const previous = (() => {
+  const legacyNames = (() => {
     try { return JSON.parse(book.appProperties?.grapesPreviousNames || '[]') }
     catch { return [] }
   })()
-  const names = [...new Set([book.name, ...previous].filter(Boolean))].slice(0, 12)
+  const priorFingerprints = String(book.appProperties?.grapesPrev || '').split(',').filter((value) => /^[a-f0-9]{16}$/.test(value))
+  const fingerprints = [...new Set([nameFingerprint(book.name), ...legacyNames.map(nameFingerprint), ...priorFingerprints])].slice(0, 5)
+  const compactHistory = fingerprints.join(',')
   const response = await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(book.id)}?fields=id,name,size,modifiedTime,md5Checksum,headRevisionId,appProperties,isAppAuthorized`, {
     method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: nextName, appProperties: { grapesPreviousNames: JSON.stringify(names) } }),
+    body: JSON.stringify({ name: nextName, appProperties: { grapesPrev: compactHistory, grapesPreviousNames: null } }),
   })
   const renamed = await response.json()
-  Object.assign(book, renamed, { name: nextName, appProperties: renamed.appProperties || { ...(book.appProperties || {}), grapesPreviousNames: JSON.stringify(names) } })
+  const fallbackProperties = { ...(book.appProperties || {}), grapesPrev: compactHistory }
+  delete fallbackProperties.grapesPreviousNames
+  Object.assign(book, renamed, { name: nextName, appProperties: renamed.appProperties || fallbackProperties })
   return renamed
 }
 function looksLikeAuthor(value = '') {
@@ -1379,7 +1405,7 @@ async function saveMetadata({ catalogOnly = false } = {}) {
   if (contentEdited && catalogOnly) return setContentStatus('A tartalommódosítás nem menthető csak az adatlapba. Engedélyezd az EPUB-fájl hozzáférését.', 'error')
   const epub = ext(book?.name || '') === 'epub'
   const edited = metadataFromForm()
-  const fingerprint = JSON.stringify(edited) + pendingCoverUrl + (pendingCoverBlob?.size || '') + String(pendingCoverRemoved) + coverChangeSerial + (contentEdited ? `:${contentChangeSerial}` : '')
+  const fingerprint = JSON.stringify(edited) + ($('#ebook-metadata-filename-target')?.value || '') + pendingCoverUrl + (pendingCoverBlob?.size || '') + String(pendingCoverRemoved) + coverChangeSerial + (contentEdited ? `:${contentChangeSerial}` : '')
   try {
     if (epub && !catalogOnly && !partialMetadataSave && window.confirm && !window.confirm(contentEdited
       ? `A módosított EPUB felülírja az eredeti Drive-fájlt. ${contentSession.changeSummary.length} mentetlen szerkesztési művelet lesz véglegesítve; külön másolat nem készül. Folytatod?`
@@ -1423,7 +1449,7 @@ async function saveMetadata({ catalogOnly = false } = {}) {
         partialMetadataSave = { id, fingerprint, cover, version: uploaded, preparedContentSession }
       }
     }
-    const renamed = await renameBookOnDrive(book, edited)
+    const renamed = await renameBookOnDrive(book, edited, $('#ebook-metadata-filename-target')?.value || '')
     if (renamed && partialMetadataSave && (renamed.headRevisionId || renamed.md5Checksum || renamed.modifiedTime)) partialMetadataSave.version = renamed
     let coverFileId = ebookMetadata[id]?.coverFileId || ''
     let coverMimeType = ebookMetadata[id]?.coverMimeType || ''
@@ -1767,6 +1793,12 @@ export function initEbookLibrary() {
   for (const selector of METADATA_FIELDS.map((field) => `#ebook-metadata-${field}`)) {
     $(selector)?.addEventListener('input', () => { if (activeMetadataBookId) { setMetadataDirty(true); updateMetadataPreview() } })
   }
+  $('#ebook-metadata-filename-target')?.addEventListener('input', () => {
+    if (!activeMetadataBookId) return
+    metadataFilenameManual = true
+    setMetadataDirty(true)
+    updateMetadataPreview()
+  })
   $('#ebook-metadata-cover')?.addEventListener('change', (event) => {
     const file = event.currentTarget.files?.[0]
     if (!file) return

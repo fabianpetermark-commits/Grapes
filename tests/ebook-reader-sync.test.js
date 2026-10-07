@@ -15,7 +15,7 @@ function syncHelpers() {
     Blob,
     crypto,
   })
-  return vm.runInContext(`${source}\n({ shouldCopyToReader })`, context)
+  return vm.runInContext(`${source}\n({ nameFingerprint, shouldCopyToReader })`, context)
 }
 
 test('reader sync recopies a same-size book changed less than two seconds later', () => {
@@ -31,4 +31,9 @@ test('reader sync skips an unchanged copy and safely refreshes unknown timestamp
   assert.equal(shouldCopyToReader(drive, { size: 1024, lastModified: Date.parse('2026-10-07T10:00:01.000Z') }), false)
   assert.equal(shouldCopyToReader({ ...drive, modifiedTime: '' }, { size: 1024, lastModified: 1 }), true)
   assert.equal(shouldCopyToReader(drive, null), true)
+})
+
+test('reader filename fingerprints ignore equivalent Unicode composition', () => {
+  const { nameFingerprint } = syncHelpers()
+  assert.equal(nameFingerprint('Zbigniew Pietrasiński.pdf'), nameFingerprint('Zbigniew Pietrasin\u0301ski.pdf'))
 })

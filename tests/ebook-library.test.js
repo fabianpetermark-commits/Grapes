@@ -984,6 +984,38 @@ test('metadata card shows the current Drive filename and the filename planned fr
   a.run('updateMetadataPreview()')
   assert.equal(a.nodes.get('#ebook-metadata-filename').value, 'old.epub')
   assert.match(a.nodes.get('#ebook-metadata-filename-next').textContent, /Adrian Tchaikovsky - Az idő gyermekei\.epub/)
+  assert.equal(a.nodes.get('#ebook-metadata-filename-target').value, 'Adrian Tchaikovsky - Az idő gyermekei.epub')
+})
+
+test('manual Drive filename keeps the book extension and overrides the generated name', () => {
+  const a = app(async () => json({}))
+  assert.equal(a.run('requestedFileNameFor({ name: "old.epub" }, "Saját fájlnév.epub", { title: "Cím", author: "Szerző" })'), 'Saját fájlnév.epub')
+  assert.throws(() => a.run('requestedFileNameFor({ name: "old.epub" }, "Saját fájlnév.pdf", { title: "Cím", author: "Szerző" })'), /kiterjesztése/)
+})
+
+test('Drive rename stores long filename history inside the appProperties byte limit', async () => {
+  let payload
+  const a = app(async (_url, options = {}) => {
+    if (options.method === 'PATCH') {
+      payload = JSON.parse(options.body)
+      return json({ name: payload.name, appProperties: { grapesPrev: payload.appProperties.grapesPrev } })
+    }
+    return json({})
+  })
+  const oldName = `${'Nagyon hosszú korábbi könyvcím '.repeat(6)}.pdf`
+  a.run(`currentBooks = [{ id: "book", name: ${JSON.stringify(oldName)}, isAppAuthorized: true, appProperties: {} }]`)
+  await a.run('renameBookOnDrive(currentBooks[0], { title: "Új cím", author: "Új szerző" })')
+  assert.equal(payload.name, 'Új szerző - Új cím.pdf')
+  assert.ok(Buffer.byteLength(`grapesPrev${payload.appProperties.grapesPrev}`, 'utf8') <= 124)
+  assert.equal(payload.appProperties.grapesPreviousNames, null)
+})
+
+test('visually identical Unicode filenames are not renamed', async () => {
+  let requests = 0
+  const a = app(async () => { requests++; return json({}) })
+  a.run('currentBooks = [{ id: "book", name: "Zbigniew Pietrasin\u0301ski - The psychology of efficient thinking.pdf", isAppAuthorized: true }]')
+  assert.equal(await a.run('renameBookOnDrive(currentBooks[0], { title: "The psychology of efficient thinking", author: "Zbigniew Pietrasiński" })'), null)
+  assert.equal(requests, 0)
 })
 
 test('library edit opens only the selected book detail and restores the library scroll position', () => {
@@ -1055,7 +1087,7 @@ test('saving from a book detail keeps the detail open and updates the library ti
   a.run('openBookDetail("book")')
   a.nodes.get('#ebook-metadata-title').value = 'Dűne'
   a.nodes.get('#ebook-metadata-author').value = 'Frank Herbert'
-  a.run('setMetadataDirty(true); getReaderLibraryBooks = async () => ({ folderId: "folder" }); loadEbookMetadata = async () => {}; saveEbookMetadata = async () => {}')
+  a.run('updateMetadataPreview(); setMetadataDirty(true); getReaderLibraryBooks = async () => ({ folderId: "folder" }); loadEbookMetadata = async () => {}; saveEbookMetadata = async () => {}')
   await a.run('saveMetadata({ catalogOnly: true })')
   assert.equal(a.nodes.get('#ebook-manager-view').dataset.ebookMode, 'detail')
   assert.equal(a.run('ebookMetadata.book.title'), 'Dűne')

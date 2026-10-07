@@ -1139,7 +1139,10 @@
                 <div class="ebook-library__book-icon" aria-hidden="true">E</div>
                 <div><strong id="ebook-metadata-preview-title">Nincs kiválasztott könyv</strong><span id="ebook-metadata-preview-meta">Válassz egy könyvet a bal oldali listából.</span></div>
               </div>
-              <label class="field ebook-library__metadata-filename"><span class="field__label">Fájlnév a Google Drive-ban</span><input id="ebook-metadata-filename" class="input" type="text" readonly /><small id="ebook-metadata-filename-next">A mentés után ezt a fájlnevet szinkronizáljuk az e-olvasóra.</small></label>
+              <div class="ebook-library__editor-field-row ebook-library__metadata-filename">
+                <label class="field"><span class="field__label">Jelenlegi fájlnév a Google Drive-ban</span><input id="ebook-metadata-filename" class="input" type="text" readonly /></label>
+                <label class="field"><span class="field__label">Mentés utáni fájlnév</span><input id="ebook-metadata-filename-target" class="input" type="text" autocomplete="off" /><small id="ebook-metadata-filename-next">Ez a fájlnév kerül az e-olvasóra.</small></label>
+              </div>
               <div id="ebook-metadata-access" class="ebook-library__metadata-access" hidden>
                 <span id="ebook-metadata-access-status" role="status" aria-live="polite"></span>
                 <button id="ebook-metadata-grant" class="btn btn--ghost" type="button">EPUB-hozzáférés engedélyezése</button>

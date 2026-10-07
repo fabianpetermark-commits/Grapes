@@ -62,7 +62,7 @@ test('the e-book manager exposes the USB reader synchronization controls', async
   const positions = controls.map(id => html.indexOf(`id="${id}"`))
   assert.ok(positions.every((position, index) => position >= 0 && (!index || position > positions[index - 1])))
   assert.match(sync, /readerVerification/)
-  assert.match(sync, /grapesPreviousNames/)
+  assert.match(sync, /grapesPrev/)
   assert.match(sync, /removeReaderBook/)
   assert.match(sync, /setInterval[^\n]*verifyReaderAccess\(\{ announce: false \}\)/)
   assert.match(html, /id="ebook-metadata-filter"/)
