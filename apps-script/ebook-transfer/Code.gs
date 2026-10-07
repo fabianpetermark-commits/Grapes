@@ -286,29 +286,41 @@ function pairReader(p) {
     const current = props.getProperty(key);
     if (!current) return readerMessagePage('A kód már felhasznált', 'Ez a párosítási kód csak egyszer használható.');
     const currentRecord = JSON.parse(current);
-    const books = currentRecord.bookChunks ? readReaderBookChunks(props, code, currentRecord.bookChunks) : [];
-    token = createReaderToken();
-    // A nulla könyves pillanatkép is valódi, új típusú párosítás. Ha ezt 0-val
-    // jelölnénk, a readerLibraryPage régi Drive-mappás tokennek nézné, és egy
-    // másik Google-fióknál elérhetetlen folderId-t próbálna megnyitni.
-    const bookChunks = currentRecord.bookChunks ? writeReaderBookChunks(props, token, books) : 0;
-    props.setProperty(READER_TOKEN_PREFIX + token, JSON.stringify({
-      folderId: record.folderId,
-      bookChunks: bookChunks,
-      createdAt: Date.now(),
-      lastSeenAt: Date.now()
-    }));
-    props.deleteProperty(key);
-    deleteReaderBookChunks(props, code, currentRecord.bookChunks);
+    if (/^[A-F0-9]{64}$/.test(String(currentRecord.pairedToken || ''))) {
+      // Régi e-reader böngészők néha nem követik az első átirányítást. A kód
+      // frissítése ezért ugyanahhoz a már létrehozott tokenhez tér vissza.
+      token = currentRecord.pairedToken;
+    } else {
+      const books = currentRecord.bookChunks ? readReaderBookChunks(props, code, currentRecord.bookChunks) : [];
+      token = createReaderToken();
+      // A nulla könyves pillanatkép is valódi, új típusú párosítás. Ha ezt 0-val
+      // jelölnénk, a readerLibraryPage régi Drive-mappás tokennek nézné, és egy
+      // másik Google-fióknál elérhetetlen folderId-t próbálna megnyitni.
+      const bookChunks = currentRecord.bookChunks ? writeReaderBookChunks(props, token, books) : 0;
+      props.setProperty(READER_TOKEN_PREFIX + token, JSON.stringify({
+        folderId: record.folderId,
+        bookChunks: bookChunks,
+        createdAt: Date.now(),
+        lastSeenAt: Date.now()
+      }));
+      deleteReaderBookChunks(props, code, currentRecord.bookChunks);
+      props.setProperty(key, JSON.stringify({ expiresAt: currentRecord.expiresAt, pairedToken: token }));
+    }
   } finally { lock.releaseLock(); }
 
+  return readerPairingCompletePage(token);
+}
+
+function readerPairingCompletePage(token) {
   const landing = READER_RETURN_URL + '?reader-token=' + encodeURIComponent(token);
   const direct = ScriptApp.getService().getUrl() + '?action=reader&token=' + encodeURIComponent(token);
   return HtmlService.createHtmlOutput(
     '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">' +
-    '<meta http-equiv="refresh" content="0;url=' + escapeHtml(landing) + '"><title>Párosítás kész</title></head><body>' +
-    '<h1>Párosítás kész</h1><p><a href="' + escapeHtml(landing) + '">Folytatás az e-olvasó oldalon</a></p>' +
-    '<p>Ha az átirányítás nem működik: <a href="' + escapeHtml(direct) + '">könyvtár megnyitása közvetlenül</a>.</p></body></html>'
+    '<meta http-equiv="refresh" content="3;url=' + escapeHtml(landing) + '"><title>Párosítás kész</title>' +
+    '<style>body{font-family:Arial,sans-serif;max-width:620px;margin:0 auto;padding:28px;text-align:center}a{display:block;margin:16px 0;padding:14px;border:1px solid #111;color:#111;font-weight:bold;text-decoration:none}</style></head><body>' +
+    '<h1>Párosítás kész</h1><p>A könyvtár megnyílik. Ha az e-reader nem lép tovább, válaszd az egyik gombot.</p>' +
+    '<p><a href="' + escapeHtml(landing) + '">Könyvtár megnyitása</a><a href="' + escapeHtml(direct) + '">Közvetlen megnyitás</a></p>' +
+    '<script>setTimeout(function(){window.location.replace(' + JSON.stringify(landing) + ')},500);<\/script></body></html>'
   );
 }
 

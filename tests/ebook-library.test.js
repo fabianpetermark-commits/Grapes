@@ -362,7 +362,7 @@ test('reader pairing explains when a book transfer code was entered instead', ()
   assert.match(c.pairReader({ code: 'DEF234' }), /A kód nem található/)
 })
 
-test('reader pairing code created by the broker is accepted once by the same broker', () => {
+test('reader pairing code retries return the same token when an old browser misses the redirect', () => {
   const values = new Map()
   const nonce = 'a'.repeat(48)
   let trashed = false
@@ -390,9 +390,14 @@ test('reader pairing code created by the broker is accepted once by the same bro
   assert.match(created.html, /ABC234/)
   assert.equal(trashed, true)
   assert.ok(values.has('ebook_reader_pair_ABC234'))
+  const first = c.pairReader({ code: 'ABC234' }).html
+  const retained = JSON.parse(values.get('ebook_reader_pair_ABC234'))
+  assert.match(first, /Párosítás kész/)
+  assert.match(first, /Közvetlen megnyitás/)
+  assert.match(first, /content="3;url=/)
+  assert.equal(retained.pairedToken, 'A'.repeat(64))
   assert.match(c.pairReader({ code: 'ABC234' }).html, /Párosítás kész/)
-  assert.equal(values.has('ebook_reader_pair_ABC234'), false)
-  assert.match(c.pairReader({ code: 'ABC234' }).html, /A kód nem található/)
+  assert.equal(JSON.parse(values.get('ebook_reader_pair_ABC234')).pairedToken, retained.pairedToken)
 })
 
 test('EPUB save path never requests the restricted full Drive write scope', () => {
