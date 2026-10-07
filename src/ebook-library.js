@@ -345,11 +345,24 @@ function handleTransferLink() {
   if (downloadUrl) setStatus('A párosítási kód ellenőrzése a letöltés megnyitásakor történik.')
   else if (!TRANSFER_BROKER_URL) $('#ebook-receiver-status').textContent = 'Az átvétel még nincs konfigurálva.'
 }
+function libraryAddedAt(book) {
+  const timestamp = Date.parse(book?.createdTime || book?.modifiedTime || '')
+  return Number.isFinite(timestamp) ? timestamp : 0
+}
+function sortLibraryBooks(books = []) {
+  return [...books].sort((left, right) => {
+    const newestFirst = libraryAddedAt(right) - libraryAddedAt(left)
+    if (newestFirst) return newestFirst
+    return String(left?.name || '').localeCompare(String(right?.name || ''), 'hu', { sensitivity: 'base' })
+      || String(left?.id || '').localeCompare(String(right?.id || ''))
+  })
+}
 function renderBooks(books = []) {
   const list = $('#ebook-list'); const empty = $('#ebook-empty'); if (!list || !empty) return
-  list.replaceChildren(); empty.hidden = books.length > 0
-  currentBooks = books
-  for (const book of books) {
+  const orderedBooks = sortLibraryBooks(books)
+  list.replaceChildren(); empty.hidden = orderedBooks.length > 0
+  currentBooks = orderedBooks
+  for (const book of orderedBooks) {
     const row = document.createElement('article'); row.className = 'ebook-library__book'
     const sendAction = book.isAppAuthorized === false ? '' : `<button class="btn btn--primary btn--sm" type="button" data-send="${book.id}">Küldés</button>`
     const accessLabel = book.isAppAuthorized === false ? ' · Drive, csak olvasás' : ''
@@ -1630,7 +1643,7 @@ async function listFolderChildren(folderId) {
   const query = `'${folderId}' in parents and trashed = false`
   let pageToken = ''
   do {
-    const response = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=nextPageToken,files(id,name,size,modifiedTime,mimeType,parents,isAppAuthorized,appProperties)&orderBy=modifiedTime desc&pageSize=1000&pageToken=${encodeURIComponent(pageToken)}`)
+    const response = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=nextPageToken,files(id,name,size,createdTime,modifiedTime,mimeType,parents,isAppAuthorized,appProperties)&orderBy=createdTime desc&pageSize=1000&pageToken=${encodeURIComponent(pageToken)}`)
     const data = await response.json()
     children.push(...(data.files || []))
     pageToken = data.nextPageToken || ''
@@ -1659,7 +1672,7 @@ async function listAllDriveBooks() {
   const query = "trashed = false and mimeType != 'application/vnd.google-apps.folder'"
   let pageToken = ''
   do {
-    const response = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=nextPageToken,files(id,name,size,modifiedTime,mimeType,parents,isAppAuthorized,appProperties)&pageSize=1000&pageToken=${encodeURIComponent(pageToken)}`)
+    const response = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=nextPageToken,files(id,name,size,createdTime,modifiedTime,mimeType,parents,isAppAuthorized,appProperties)&orderBy=createdTime desc&pageSize=1000&pageToken=${encodeURIComponent(pageToken)}`)
     const data = await response.json()
     for (const file of data.files || []) if (isDriveBook(file)) books.push(file)
     pageToken = data.nextPageToken || ''
