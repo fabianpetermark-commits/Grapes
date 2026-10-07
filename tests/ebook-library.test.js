@@ -393,8 +393,9 @@ test('reader pairing code retries return the same token when an old browser miss
   const first = c.pairReader({ code: 'ABC234' }).html
   const retained = JSON.parse(values.get('ebook_reader_pair_ABC234'))
   assert.match(first, /Párosítás kész/)
-  assert.match(first, /Közvetlen megnyitás/)
-  assert.match(first, /content="3;url=/)
+  assert.match(first, /Könyvtár közvetlen megnyitása/)
+  assert.match(first, /Párosítás mentése modern böngészőn/)
+  assert.doesNotMatch(first, /http-equiv="refresh"|setTimeout|location\.replace/)
   assert.equal(retained.pairedToken, 'A'.repeat(64))
   assert.match(c.pairReader({ code: 'ABC234' }).html, /Párosítás kész/)
   assert.equal(JSON.parse(values.get('ebook_reader_pair_ABC234')).pairedToken, retained.pairedToken)

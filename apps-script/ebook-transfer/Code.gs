@@ -316,11 +316,11 @@ function readerPairingCompletePage(token) {
   const direct = ScriptApp.getService().getUrl() + '?action=reader&token=' + encodeURIComponent(token);
   return HtmlService.createHtmlOutput(
     '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">' +
-    '<meta http-equiv="refresh" content="3;url=' + escapeHtml(landing) + '"><title>Párosítás kész</title>' +
-    '<style>body{font-family:Arial,sans-serif;max-width:620px;margin:0 auto;padding:28px;text-align:center}a{display:block;margin:16px 0;padding:14px;border:1px solid #111;color:#111;font-weight:bold;text-decoration:none}</style></head><body>' +
-    '<h1>Párosítás kész</h1><p>A könyvtár megnyílik. Ha az e-reader nem lép tovább, válaszd az egyik gombot.</p>' +
-    '<p><a href="' + escapeHtml(landing) + '">Könyvtár megnyitása</a><a href="' + escapeHtml(direct) + '">Közvetlen megnyitás</a></p>' +
-    '<script>setTimeout(function(){window.location.replace(' + JSON.stringify(landing) + ')},500);<\/script></body></html>'
+    '<title>Párosítás kész</title>' +
+    '<style>body{font-family:Arial,sans-serif;max-width:620px;margin:0 auto;padding:28px;text-align:center}a{display:block;margin:16px 0;padding:14px;border:1px solid #111;color:#111;font-weight:bold;text-decoration:none}.primary{background:#111;color:#fff}</style></head><body>' +
+    '<h1>Párosítás kész</h1><p>Régebbi e-reader böngészőn nyomd meg az első gombot. Ez az oldal nem lép tovább automatikusan.</p>' +
+    '<p><a class="primary" href="' + escapeHtml(direct) + '">Könyvtár közvetlen megnyitása</a><a href="' + escapeHtml(landing) + '">Párosítás mentése modern böngészőn</a></p>' +
+    '</body></html>'
   );
 }
 
