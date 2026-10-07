@@ -943,6 +943,26 @@ test('metadata editor exposes search, live preview and a protected dirty state',
   assert.equal(a.nodes.get('#ebook-metadata-preview-title').textContent, 'Dűne')
 })
 
+test('explicit sign-out forgets the previous account and the next login opens the account chooser', async () => {
+  const local = new Map([['grapes-drive-account', 'old@example.com']])
+  const a = app(async url => url.includes('/about?') ? json({ user: { emailAddress: 'new@example.com' } }) : json({}), { local })
+  let config; let request
+  a.context.window.google = { accounts: { oauth2: {
+    revoke(_token, done) { done() },
+    initTokenClient(options) {
+      config = options
+      return { requestAccessToken(options) { request = options; config.callback({ access_token: 'new-token', expires_in: 3600 }) } }
+    },
+  } } }
+  await a.run('disconnectGrapesDrive({ forgetAccount: true })')
+  assert.equal(local.has('grapes-drive-account'), false)
+  await a.run('connectGrapesDrive()')
+  assert.equal(Object.hasOwn(config, 'login_hint'), false)
+  assert.equal(request.prompt, 'select_account')
+  await new Promise(setImmediate)
+  assert.equal(local.get('grapes-drive-account'), 'new@example.com')
+})
+
 test('missing Hungarian title falls back to possible original works by the same author', async () => {
   const requests = []
   const a = app(async url => {

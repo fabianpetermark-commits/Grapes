@@ -95,7 +95,7 @@ export function grapesDriveHasFullReadAccess() {
   return isGrapesDriveConnected() && grantedScopes.split(/\s+/).some((scope) => scope === GRAPES_DRIVE_READ_SCOPE || scope === LEGACY_DRIVE_WRITE_SCOPE)
 }
 
-export async function disconnectGrapesDrive() {
+export async function disconnectGrapesDrive({ forgetAccount = false } = {}) {
   const token = accessToken
   if (token && window.google?.accounts?.oauth2?.revoke) {
     await new Promise((resolve) => window.google.accounts.oauth2.revoke(token, resolve)).catch(() => {})
@@ -103,6 +103,7 @@ export async function disconnectGrapesDrive() {
   clearSession()
   try { window.localStorage.removeItem(FULL_READ_KEY) } catch {}
   try { window.localStorage.removeItem('grapes-drive-full-write') } catch {}
+  if (forgetAccount) try { window.localStorage.removeItem(ACCOUNT_KEY) } catch {}
 }
 
 export async function grapesDriveRequest(url, options = {}) {
@@ -128,7 +129,7 @@ export async function connectGrapesDrive({ fullRead = false } = {}) {
     const tokenClient = window.google.accounts.oauth2.initTokenClient({
       client_id: CLIENT_ID,
       scope: requestedFullRead ? `${GRAPES_DRIVE_SCOPE} ${GRAPES_DRIVE_READ_SCOPE}` : GRAPES_DRIVE_SCOPE,
-      login_hint: loginHint,
+      ...(loginHint ? { login_hint: loginHint } : {}),
       error_callback: (error) => reject(new Error(error?.type || 'Google Drive bejelentkezési hiba.')),
       callback: async (response) => {
         if (response.error) return reject(new Error(response.error_description || response.error))
@@ -149,7 +150,7 @@ export async function connectGrapesDrive({ fullRead = false } = {}) {
         resolve(accessToken)
       },
     })
-    tokenClient.requestAccessToken({ prompt: '' })
+    tokenClient.requestAccessToken({ prompt: loginHint ? '' : 'select_account' })
   })
   try { return await connecting } finally { connecting = null }
 }

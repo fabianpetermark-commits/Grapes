@@ -131,7 +131,7 @@ el('#google-sign-in').addEventListener('click', async () => {
 el('#grapes-sign-out').addEventListener('click', async () => {
   const button = el('#grapes-sign-out')
   button.disabled = true
-  try { await disconnectGrapesDrive() } finally {
+  try { await disconnectGrapesDrive({ forgetAccount: true }) } finally {
     button.disabled = false
     showLogin()
   }

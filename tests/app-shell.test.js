@@ -32,7 +32,7 @@ test('HU and EN translations cover every shell translation key', async () => {
 
 test('sign-out returns to the login screen without deleting local project data', async () => {
   const [main, drive] = await Promise.all([read('src/main.js'), read('src/storage/grapes-drive.js')])
-  assert.match(main, /await disconnectGrapesDrive\(\)/)
+  assert.match(main, /await disconnectGrapesDrive\(\{ forgetAccount: true \}\)/)
   assert.match(main, /showLogin\(\)/)
   assert.doesNotMatch(drive, /localStorage\.clear\(/)
 })
