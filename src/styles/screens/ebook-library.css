@@ -4,6 +4,8 @@
 .ebook-library__reader-sync-success{display:grid;justify-items:center;gap:6px;margin:14px 0;padding:18px;border:1px solid color-mix(in srgb,var(--color-success) 55%,var(--color-border));border-radius:var(--radius-md);background:color-mix(in srgb,var(--color-success) 10%,transparent);color:var(--color-success);text-align:center}
 .ebook-library__reader-sync-success span{display:grid;place-items:center;width:68px;height:68px;border-radius:50%;background:var(--color-success);color:#08120c;font-size:44px;font-weight:900;line-height:1}
 .ebook-library__reader-sync-success strong{font-size:16px}
+.ebook-library__panel-head--actions{display:flex;align-items:center;gap:12px}
+.ebook-library__panel-head--actions .btn{min-height:36px}
 
 .ebook-library [hidden]{display:none!important}
 .ebook-library__pair-frame{display:block;width:100%;min-height:360px;border:1px solid var(--color-border);border-radius:10px;background:#fff;color-scheme:light}

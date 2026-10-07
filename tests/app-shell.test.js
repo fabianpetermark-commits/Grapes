@@ -69,4 +69,8 @@ test('the e-book manager exposes the USB reader synchronization controls', async
   assert.doesNotMatch(html, /id="ebook-metadata-book"[^>]*\bsize=/)
   assert.match(html, /id="ebook-metadata-preview"/)
   assert.match(source, /grapes:before-screen-change/)
+  assert.match(html, /id="ebook-list-title">Könyvtár<\/h2><button id="ebook-open-organizer" class="btn btn--primary btn--sm"[^>]*>Szerkesztés<\/button>/)
+  assert.match(html, /id="ebook-editor-structure-tab"[\s\S]*?>Szerkezeti hibák<\/button>[\s\S]*?id="ebook-open-library" class="btn btn--primary"[^>]*>Könyvtár<\/button>/)
+  assert.match(source, /#ebook-open-organizer[^\n]*navigateToEbookOrganizer/)
+  assert.match(source, /#ebook-open-library[^\n]*navigateToEbookLibrary/)
 })

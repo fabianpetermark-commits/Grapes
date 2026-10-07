@@ -1101,7 +1101,7 @@
 
         <div class="ebook-library__grid">
           <section class="ebook-library__panel" aria-labelledby="ebook-list-title">
-            <div class="ebook-library__panel-head"><h2 id="ebook-list-title">Könyvtár</h2></div>
+            <div class="ebook-library__panel-head ebook-library__panel-head--actions"><h2 id="ebook-list-title">Könyvtár</h2><button id="ebook-open-organizer" class="btn btn--primary btn--sm" type="button">Szerkesztés</button></div>
             <div id="ebook-list" class="ebook-library__list"></div>
             <div id="ebook-empty" class="ebook-library__empty">Még nincs könyv a könyvtárban.</div>
           </section>
@@ -1132,6 +1132,7 @@
                   <button id="ebook-editor-text-tab" class="btn btn--ghost" type="button" role="tab" aria-controls="ebook-editor-text-pane" aria-selected="false">Szöveg és kinézet</button>
                   <button id="ebook-editor-structure-tab" class="btn btn--ghost" type="button" role="tab" aria-controls="ebook-editor-structure-pane" aria-selected="false">Szerkezeti hibák</button>
                 </div>
+                <button id="ebook-open-library" class="btn btn--primary" type="button">Könyvtár</button>
                 <button id="ebook-editor-open" class="btn btn--ghost" type="button">EPUB megnyitása</button>
               </div>
               <div id="ebook-editor-metadata-pane" class="ebook-library__editor-pane" role="tabpanel" aria-labelledby="ebook-editor-metadata-tab">

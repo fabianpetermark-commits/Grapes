@@ -1100,6 +1100,26 @@ test('book editor opens each selected book on the metadata tab', () => {
   assert.equal(a.nodes.get('#ebook-editor-metadata-tab').tabIndex, 0)
 })
 
+test('library and book editor navigation buttons switch modes and guard unsaved changes', () => {
+  const session = new Map()
+  const a = app(async () => json({}), { session })
+  const manager = a.run('$("#ebook-manager-view")')
+  manager.dataset.ebookMode = 'library'
+  assert.equal(a.run('navigateToEbookOrganizer()'), true)
+  assert.equal(manager.dataset.ebookMode, 'organizer')
+  assert.equal(manager.dataset.ebookTab, 'metadata')
+  assert.equal(session.get('grapes-ebook-view'), 'organizer')
+
+  a.context.window.confirm = () => false
+  a.run('metadataDirty = true')
+  assert.equal(a.run('navigateToEbookLibrary()'), false)
+  assert.equal(manager.dataset.ebookMode, 'organizer')
+  a.context.window.confirm = () => true
+  assert.equal(a.run('navigateToEbookLibrary()'), true)
+  assert.equal(manager.dataset.ebookMode, 'library')
+  assert.equal(session.get('grapes-ebook-view'), 'library')
+})
+
 test('library rows no longer expose book editing', () => {
   const a = app(async () => json({}))
   a.run('renderBooks([{ id: "book", name: "Dune.epub", size: 2048, isAppAuthorized: true }])')

@@ -1877,6 +1877,23 @@ function showEbookOrganizer() {
   setEbookMode('organizer')
   if (accessTokenAvailable()) refreshLibrary()
 }
+function navigateToEbookOrganizer() {
+  try { window.sessionStorage?.setItem('grapes-ebook-view', 'organizer') } catch {}
+  const manager = $('#ebook-manager-view')
+  if (manager) { manager.dataset.ebookTab = 'metadata'; manager.scrollTop = 0 }
+  setEbookMode('organizer')
+  return true
+}
+function navigateToEbookLibrary() {
+  const dirty = metadataDirty || hasContentChanges()
+  if (dirty && !window.confirm('A könyvszerkesztőben mentetlen módosítások vannak. Biztosan visszalépsz a könyvtárhoz?')) return false
+  if (dirty) { setMetadataDirty(false); resetContentState() }
+  try { window.sessionStorage?.setItem('grapes-ebook-view', 'library') } catch {}
+  const manager = $('#ebook-manager-view')
+  setEbookMode('library')
+  if (manager) manager.scrollTop = 0
+  return true
+}
 export function initEbookLibrary() {
   import('./ebook-reader-sync.js').then(({ initReaderSync }) => initReaderSync()).catch((error) => console.warn('Az USB-s e-reader modul nem tölthető be:', error))
   const params = new URLSearchParams(window.location.search)
@@ -1900,6 +1917,8 @@ export function initEbookLibrary() {
   $('#ebook-metadata-filter')?.addEventListener('input', renderMetadataOptions)
   $('#ebook-metadata-book')?.addEventListener('change', selectMetadataBook)
   $('#ebook-detail-back')?.addEventListener('click', () => closeBookDetail())
+  $('#ebook-open-organizer')?.addEventListener('click', navigateToEbookOrganizer)
+  $('#ebook-open-library')?.addEventListener('click', navigateToEbookLibrary)
   for (const selector of METADATA_FIELDS.map((field) => `#ebook-metadata-${field}`)) {
     $(selector)?.addEventListener('input', () => { if (activeMetadataBookId) { setMetadataDirty(true); updateMetadataPreview() } })
   }
