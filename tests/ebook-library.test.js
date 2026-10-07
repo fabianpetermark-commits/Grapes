@@ -9,7 +9,7 @@ const source = readFileSync(new URL('../src/ebook-library.js', import.meta.url),
   .replace(/^import .*\r?\n/gm, '').replaceAll('import.meta.env', 'env').replace('export function', 'function')
 const driveSource = readFileSync(new URL('../src/storage/grapes-drive.js', import.meta.url), 'utf8')
   .replaceAll('export ', '').replaceAll('import.meta.env', 'env')
-function app(fetch, { connected = true, session = new Map(), local = new Map(), epubWriter = async () => new Blob(['rewritten epub']), pickerKey = '', booksKey = '' } = {}) {
+function app(fetch, { connected = true, session = new Map(), local = new Map(), epubWriter = async () => new Blob(['rewritten epub']), pdfWriter = async () => ({ blob: new Blob(['rewritten pdf'], { type: 'application/pdf' }), hasSignatures: false }), pickerKey = '', booksKey = '' } = {}) {
   const nodes = new Map()
   const element = () => ({ dataset: {}, children: [], listeners: {}, addEventListener(type, fn) { this.listeners[type] = fn }, removeAttribute(key) { delete this[key] }, replaceChildren() { this.children = [] }, append(row) { this.children.push(row) }, querySelectorAll: () => [] })
   const document = { querySelector(id) { if (!nodes.has(id)) nodes.set(id, element()); return nodes.get(id) }, createElement: element, head: { append() {} } }
@@ -17,13 +17,14 @@ function app(fetch, { connected = true, session = new Map(), local = new Map(), 
   if (connected && !session.has('grapes-drive-session')) session.set('grapes-drive-session', JSON.stringify({ clientId: '123-client', accessToken: 'test-token', expiresAt: Date.now() + 3600000 }))
   const testSetTimeout = (callback, delay) => { const timer = setTimeout(callback, delay); timer.unref?.(); return timer }
   const context = vm.createContext({ document, fetch, Blob, URL, URLSearchParams, AbortController, crypto: webcrypto, QRCode: { async toCanvas(canvas, value) { canvas.qrValue = value } },
-    env: { VITE_GOOGLE_CLIENT_ID: '123-client', VITE_GOOGLE_PICKER_API_KEY: pickerKey, VITE_GOOGLE_BOOKS_API_KEY: booksKey, VITE_GOOGLE_APP_ID: '123', VITE_EBOOK_TRANSFER_BROKER_URL: 'https://broker.example/exec', VITE_EBOOK_EPUB_WRITE_ENABLED: 'true' }, rewriteEpubMetadata: epubWriter,
+    env: { VITE_GOOGLE_CLIENT_ID: '123-client', VITE_GOOGLE_PICKER_API_KEY: pickerKey, VITE_GOOGLE_BOOKS_API_KEY: booksKey, VITE_GOOGLE_APP_ID: '123', VITE_EBOOK_TRANSFER_BROKER_URL: 'https://broker.example/exec', VITE_EBOOK_EPUB_WRITE_ENABLED: 'true' }, rewriteEpubMetadata: epubWriter, rewritePdfMetadata: pdfWriter,
     window: { sessionStorage: storage(session), localStorage: storage(local), setTimeout: testSetTimeout, clearTimeout, location: { href: 'https://fabianpetermark-commits.github.io/Grapes/', origin: 'https://fabianpetermark-commits.github.io', search: '' } } })
   const driveContext = vm.createContext({ window: context.window, document, fetch, env: context.env, Blob, crypto: webcrypto })
   const api = vm.runInContext(driveSource + '\n({ connectGrapesDrive, disconnectGrapesDrive, getConnectedGrapesAccount, getGrapesDriveAccessToken, grapesDriveHasFullReadAccess, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange })', driveContext)
   Object.assign(context, api)
   vm.runInContext(source + '\nonGrapesDriveChange(renderDriveConnection)', context)
   vm.runInContext('loadEpubWriter = async () => rewriteEpubMetadata', context)
+  vm.runInContext('loadPdfWriter = async () => rewritePdfMetadata', context)
   return { context, nodes, session, local, run: (code) => vm.runInContext(code, context) }
 }
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status })
@@ -928,6 +929,52 @@ test('PDF saves rich catalogue data and a cover without rewriting the file', asy
   assert.equal(saved.publisher, 'Ace')
   assert.equal(saved.description, 'Kézi leírás')
   assert.equal(binaryUploads, 0)
+})
+
+test('app-authorized PDF rewrites its embedded metadata before saving the catalogue', async () => {
+  let uploadedBody; let writerValues
+  const a = app(async (url, options = {}) => {
+    if (url.includes('alt=media')) return new Response(new Blob(['original pdf'], { type: 'application/pdf' }))
+    if (options.method === 'PATCH' && url.includes('uploadType=media')) {
+      uploadedBody = options.body
+      return json({ id: 'pdf-book', modifiedTime: 'new', size: 13, headRevisionId: 'new-rev' })
+    }
+    return json({})
+  }, { pdfWriter: async (blob, values) => {
+    writerValues = values
+    assert.equal(blob.type, 'application/pdf')
+    return { blob: new Blob(['rewritten pdf'], { type: 'application/pdf' }), hasSignatures: false }
+  } })
+  a.run('currentBooks = [{ id: "pdf-book", name: "old.pdf", modifiedTime: "old", size: 12, isAppAuthorized: true }]')
+  a.run('$("#ebook-metadata-book"); $("#ebook-metadata-title"); $("#ebook-metadata-author")')
+  a.nodes.get('#ebook-metadata-book').value = 'pdf-book'
+  a.nodes.get('#ebook-metadata-title').value = 'Javított cím'
+  a.nodes.get('#ebook-metadata-author').value = 'Javított szerző'
+  a.run('metadataLoadedSnapshot = "{}"; getReaderLibraryBooks = async () => ({ folderId: "folder" }); loadEbookMetadata = async () => {}; getBookDriveVersion = async () => ({ modifiedTime: currentBooks[0].modifiedTime, size: currentBooks[0].size, headRevisionId: currentBooks[0].headRevisionId, isAppAuthorized: true }); saveEbookMetadata = async () => {}; renderBooks = () => {}; openMetadataEditor = () => {};')
+  await a.run('saveMetadataFromForm()')
+  assert.equal(writerValues.title, 'Javított cím')
+  assert.equal(writerValues.author, 'Javított szerző')
+  assert.equal(uploadedBody.type, 'application/pdf')
+  assert.match(a.nodes.get('#ebook-status').textContent, /PDF belső cím- és szerzőadatai/)
+})
+
+test('a signed PDF needs a second confirmation and cancellation preserves the edits', async () => {
+  let uploads = 0; let confirmations = 0
+  const a = app(async (url, options = {}) => {
+    if (url.includes('alt=media')) return new Response(new Blob(['original pdf'], { type: 'application/pdf' }))
+    if (options.method === 'PATCH' && url.includes('uploadType=media')) uploads++
+    return json({})
+  }, { pdfWriter: async () => ({ blob: new Blob(['signed rewrite'], { type: 'application/pdf' }), hasSignatures: true }) })
+  a.context.window.confirm = () => ++confirmations === 1
+  a.run('currentBooks = [{ id: "pdf-book", name: "signed.pdf", modifiedTime: "old", size: 12, isAppAuthorized: true }]')
+  a.run('$("#ebook-metadata-book"); $("#ebook-metadata-title"); metadataLoadedSnapshot = "{}"; getReaderLibraryBooks = async () => ({ folderId: "folder" }); loadEbookMetadata = async () => {}; getBookDriveVersion = async () => ({ modifiedTime: "old", size: 12, isAppAuthorized: true });')
+  a.nodes.get('#ebook-metadata-book').value = 'pdf-book'
+  a.nodes.get('#ebook-metadata-title').value = 'Javított cím'
+  await a.run('saveMetadataFromForm()')
+  assert.equal(confirmations, 2)
+  assert.equal(uploads, 0)
+  assert.equal(a.run('metadataDirty'), true)
+  assert.match(a.nodes.get('#ebook-status').textContent, /feltöltése megszakítva/)
 })
 
 test('an invalid EPUB offers catalogue-only save and leaves the original file unchanged', async () => {

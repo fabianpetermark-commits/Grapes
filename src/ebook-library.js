@@ -470,14 +470,16 @@ function setMetadataAccessStatus(message, kind = '') {
 function renderMetadataAccess(book) {
   const wrap = $('#ebook-metadata-access')
   const button = $('#ebook-metadata-grant')
-  const eligible = EPUB_WRITE_ENABLED && ext(book?.name || '') === 'epub' && book?.isAppAuthorized !== true
+  const format = ext(book?.name || '')
+  const editableFile = EPUB_WRITE_ENABLED && ['epub', 'pdf'].includes(format)
+  const eligible = editableFile && book?.isAppAuthorized !== true
   if (wrap) wrap.hidden = !eligible
   if (button) button.disabled = !eligible || !PICKER_API_KEY || !PICKER_APP_ID || pickerPending
   const save = $('#ebook-metadata-save')
-  if (save) save.textContent = canWriteEpub(book) ? 'Adatlap és EPUB mentése' : 'Könyvtári adatlap mentése'
+  if (save) save.textContent = canWriteEpub(book) ? 'Adatlap és EPUB mentése' : canWritePdf(book) ? 'Adatlap és PDF mentése' : 'Könyvtári adatlap mentése'
   if (!eligible || pickerPending) return
   setMetadataAccessStatus(PICKER_API_KEY && PICKER_APP_ID
-    ? 'A könyvfájl módosításához ezt az egy EPUB-ot válaszd ki a Google fájlválasztójában. A teljes Drive-írási jog nem szükséges.'
+    ? `A könyvfájl módosításához ezt az egy ${format.toUpperCase()}-ot válaszd ki a Google fájlválasztójában. A teljes Drive-írási jog nem szükséges.`
     : 'A fájlonkénti hozzáférés még nincs beállítva: a Google Picker API-kulcs hiányzik. Az adatlap ettől még menthető.')
 }
 function loadGooglePicker() {
@@ -525,7 +527,7 @@ function pickExistingBook(book, token) {
 async function grantSelectedEpubAccess() {
   const id = $('#ebook-metadata-book')?.value
   const book = currentBooks.find((item) => item.id === id)
-  if (!book || canWriteEpub(book) || pickerPending) return
+  if (!book || canWriteBookMetadata(book) || pickerPending) return
   if (!PICKER_API_KEY || !PICKER_APP_ID) return setMetadataAccessStatus('A Google Picker API-kulcs még nincs beállítva. Addig csak a könyvtári adatlap menthető.', 'error')
   pickerPending = true
   renderMetadataAccess(book)
@@ -541,9 +543,9 @@ async function grantSelectedEpubAccess() {
     book.isAppAuthorized = true
     if (activeMetadataBookId === id) {
       renderMetadataAccess(book)
-      setMetadataAccessStatus('A könyv most már szerkeszthető EPUB-ként. A mezőkben lévő módosítások megmaradtak.', 'success')
+      setMetadataAccessStatus(`A könyv most már szerkeszthető ${ext(book.name).toUpperCase()}-ként. A mezőkben lévő módosítások megmaradtak.`, 'success')
     }
-    setStatus('A kiválasztott EPUB fájlonkénti hozzáférése engedélyezve.', 'success')
+    setStatus(`A kiválasztott ${ext(book.name).toUpperCase()} fájlonkénti hozzáférése engedélyezve.`, 'success')
   } catch (error) {
     setMetadataAccessStatus(`A fájlonkénti hozzáférés nem sikerült. ${error.message}`, 'error')
   } finally {
@@ -603,9 +605,11 @@ function updateMetadataForm() {
   if ($('#ebook-metadata-evidence')) $('#ebook-metadata-evidence').replaceChildren()
   if ($('#ebook-metadata-evidence')) $('#ebook-metadata-evidence').hidden = true
   if ($('#ebook-metadata-save-catalog')) $('#ebook-metadata-save-catalog').hidden = true
-  setMetadataMessage(id && EPUB_WRITE_ENABLED && ext(selectedBook?.name || '') === 'epub' && selectedBook?.isAppAuthorized !== true
-    ? 'Ez az EPUB nem kapott fájlonkénti Grapes-hozzáférést. Egyelőre csak a könyvtári adatlap menthető; a könyvfájlhoz külön hozzáférés szükséges.'
+  const selectedFormat = ext(selectedBook?.name || '')
+  setMetadataMessage(id && EPUB_WRITE_ENABLED && ['epub', 'pdf'].includes(selectedFormat) && selectedBook?.isAppAuthorized !== true
+    ? `Ez a ${selectedFormat.toUpperCase()} nem kapott fájlonkénti Grapes-hozzáférést. Egyelőre csak a könyvtári adatlap menthető; a könyvfájlhoz külön hozzáférés szükséges.`
     : canWriteEpub(selectedBook) ? `Az EPUB-fájl belső metaadatai is frissülnek; fontos könyvből tarts külön eredetit. Fájlnév alapján: ${suggestMetadata(selectedBook.name)}`
+    : canWritePdf(selectedBook) ? `A PDF belső cím- és szerzőadatai is frissülnek; fontos könyvből tarts külön eredetit. Fájlnév alapján: ${suggestMetadata(selectedBook.name)}`
     : id ? `Fájlnév alapján: ${suggestMetadata(selectedBook?.name || '')}` : '')
   if ($('#ebook-metadata-apply')) $('#ebook-metadata-apply').disabled = !pendingMetadataSuggestion
   updateMetadataPreview()
@@ -1508,9 +1512,13 @@ function closeBookDetail({ force = false } = {}) {
 function canWriteEpub(book) {
   return EPUB_WRITE_ENABLED && ext(book?.name || '') === 'epub' && book?.isAppAuthorized === true
 }
+function canWritePdf(book) {
+  return EPUB_WRITE_ENABLED && ext(book?.name || '') === 'pdf' && book?.isAppAuthorized === true
+}
+function canWriteBookMetadata(book) { return canWriteEpub(book) || canWritePdf(book) }
 async function saveMetadataFromForm() {
   const book = currentBooks.find((item) => item.id === $('#ebook-metadata-book')?.value)
-  return saveMetadata({ catalogOnly: !canWriteEpub(book) })
+  return saveMetadata({ catalogOnly: !canWriteBookMetadata(book) })
 }
 async function saveMetadata({ catalogOnly = false } = {}) {
   const id = $('#ebook-metadata-book')?.value
@@ -1522,14 +1530,16 @@ async function saveMetadata({ catalogOnly = false } = {}) {
   const contentEdited = Boolean(contentSession?.hasChanges && contentBookId === id && $('#ebook-manager-view')?.dataset.ebookMode === 'organizer')
   if (contentEdited && catalogOnly) return setContentStatus('A tartalommódosítás nem menthető csak az adatlapba. Engedélyezd az EPUB-fájl hozzáférését.', 'error')
   const epub = ext(book?.name || '') === 'epub'
+  const pdf = ext(book?.name || '') === 'pdf'
   const edited = metadataFromForm()
   const fingerprint = JSON.stringify(edited) + ($('#ebook-metadata-filename-target')?.value || '') + pendingCoverUrl + (pendingCoverBlob?.size || '') + String(pendingCoverRemoved) + coverChangeSerial + (contentEdited ? `:${contentChangeSerial}` : '')
   try {
     if (epub && !catalogOnly && !partialMetadataSave && window.confirm && !window.confirm(contentEdited
       ? `A módosított EPUB felülírja az eredeti Drive-fájlt. ${contentSession.changeSummary.length} mentetlen szerkesztési művelet lesz véglegesítve; külön másolat nem készül. Folytatod?`
       : 'Az EPUB-fájl módosul a Drive-on. Csak akkor folytasd, ha külön megvan az eredeti példány. Folytatod?')) return
-    if (partialMetadataSave && (partialMetadataSave.id !== id || partialMetadataSave.fingerprint !== fingerprint)) throw new Error('Egy korábbi EPUB-mentés adatlaprésze még hiányzik. Előbb próbáld újra ugyanannál a könyvnél, változatlan mezőkkel.')
-    validateMetadataForm(edited, epub && !catalogOnly)
+    if (pdf && !catalogOnly && !partialMetadataSave && window.confirm && !window.confirm('A PDF belső cím- és szerzőadatai módosulnak a Drive-on; az oldalak tartalma nem változik. Csak akkor folytasd, ha külön megvan az eredeti példány. Folytatod?')) return
+    if (partialMetadataSave && (partialMetadataSave.id !== id || partialMetadataSave.fingerprint !== fingerprint)) throw new Error('Egy korábbi könyvfájl-mentés adatlaprésze még hiányzik. Előbb próbáld újra ugyanannál a könyvnél, változatlan mezőkkel.')
+    validateMetadataForm(edited, (epub || pdf) && !catalogOnly)
     const save = $('#ebook-metadata-save'); if (save) save.disabled = true
     const indicator = $('#ebook-metadata-dirty'); if (indicator) indicator.textContent = 'Mentés a Drive-ra…'
     const { folderId } = await getReaderLibraryBooks()
@@ -1564,7 +1574,31 @@ async function saveMetadata({ catalogOnly = false } = {}) {
         const response = await driveRequest(`https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(id)}?uploadType=media&fields=id,size,modifiedTime,md5Checksum,headRevisionId`, { method: 'PATCH', headers: { 'Content-Type': 'application/epub+zip' }, body: updated })
         const uploaded = await response.json()
         Object.assign(book, uploaded)
-        partialMetadataSave = { id, fingerprint, cover, version: uploaded, preparedContentSession }
+        partialMetadataSave = { id, fingerprint, cover, version: uploaded, preparedContentSession, format: 'epub' }
+      }
+    }
+    if (pdf && !catalogOnly) {
+      if (!EPUB_WRITE_ENABLED) throw new Error('A PDF-fájl mentése még nincs élesítve. A könyvtári adatlap külön menthető.')
+      if (partialMetadataSave?.id === id && partialMetadataSave.fingerprint === fingerprint && !sameDriveVersion(partialMetadataSave.version, await getBookDriveVersion(id))) throw new Error('A PDF az előző mentési kísérlet óta újra módosult a Drive-on. Frissítsd a könyvtárat.')
+      if (!partialMetadataSave || partialMetadataSave.id !== id || partialMetadataSave.fingerprint !== fingerprint) {
+        const before = await getBookDriveVersion(id)
+        if (book?.modifiedTime && !sameDriveVersion(book, before)) throw new Error('A PDF-fájl közben módosult a Drive-on. Frissítsd a könyvtárat a mentés előtt.')
+        if (before.capabilities?.canEdit === false) throw new Error('Ehhez a PDF-hez nincs szerkesztési jogod a Drive-on.')
+        if (before.isAppAuthorized !== true) throw new Error('Ehhez a PDF-hez nincs fájlonkénti Grapes-hozzáférés. Egyelőre csak a könyvtári adatlap menthető.')
+        setStatus('A PDF letöltése és ellenőrzése…')
+        const original = await (await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media`)).blob()
+        const clearFields = METADATA_FIELDS.filter((field) => Boolean(ebookMetadata[id]?.[field]?.length) && !edited[field]?.length)
+        const result = await (await loadPdfWriter())(original, edited, { clearFields })
+        if (result.hasSignatures && window.confirm && !window.confirm('Ez a PDF digitális aláírást tartalmazhat. A metaadat módosítása érvénytelenítheti az aláírást. Biztosan feltöltöd a módosított PDF-et?')) {
+          setMetadataDirty(true)
+          return setStatus('A PDF feltöltése megszakítva; a szerkesztett adatok megmaradtak.', 'error')
+        }
+        if (!sameDriveVersion(before, await getBookDriveVersion(id))) throw new Error('A PDF-fájl a feldolgozás közben módosult. Nem írtam felül.')
+        setStatus('A módosított PDF feltöltése a Drive-ra…')
+        const response = await driveRequest(`https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(id)}?uploadType=media&fields=id,size,modifiedTime,md5Checksum,headRevisionId`, { method: 'PATCH', headers: { 'Content-Type': 'application/pdf' }, body: result.blob })
+        const uploaded = await response.json()
+        Object.assign(book, uploaded)
+        partialMetadataSave = { id, fingerprint, cover, version: uploaded, preparedContentSession: null, format: 'pdf' }
       }
     }
     const renamed = await renameBookOnDrive(book, edited, $('#ebook-metadata-filename-target')?.value || '')
@@ -1595,12 +1629,12 @@ async function saveMetadata({ catalogOnly = false } = {}) {
     saveLibraryCache(currentBooks)
     openMetadataEditor(id, { scroll: false })
     setMetadataDirty(false)
-    setStatus(contentEdited ? 'A könyv tartalma és adatlapja mentve a Drive-ba. A visszavonási előzmény új mentéshez ürült.' : epub && !catalogOnly ? 'A könyvtári adatlap és az EPUB metaadatai mentve a Drive-ba.' : 'A könyvtári adatlap mentve a Drive-ba; a könyvfájl változatlan maradt.', 'success')
+    setStatus(contentEdited ? 'A könyv tartalma és adatlapja mentve a Drive-ba. A visszavonási előzmény új mentéshez ürült.' : epub && !catalogOnly ? 'A könyvtári adatlap és az EPUB metaadatai mentve a Drive-ba.' : pdf && !catalogOnly ? 'A könyvtári adatlap és a PDF belső cím- és szerzőadatai mentve a Drive-ba.' : 'A könyvtári adatlap mentve a Drive-ba; a könyvfájl változatlan maradt.', 'success')
   } catch (error) {
     setMetadataDirty(true)
     const fallback = $('#ebook-metadata-save-catalog')
-    if (fallback && epub && !partialMetadataSave) fallback.hidden = false
-    setStatus(`${partialMetadataSave ? 'Az EPUB már mentve van, de a könyvtári adatlap még nem. Ugyanezzel a gombbal újrapróbálhatod.' : 'A mentés nem sikerült.'} ${error.message}`, 'error')
+    if (fallback && (epub || pdf) && !partialMetadataSave) fallback.hidden = false
+    setStatus(`${partialMetadataSave ? `A ${partialMetadataSave.format === 'pdf' ? 'PDF' : 'EPUB'} már mentve van, de a könyvtári adatlap még nem. Ugyanezzel a gombbal újrapróbálhatod.` : 'A mentés nem sikerült.'} ${error.message}`, 'error')
   }
 }
 async function connectDrive() {
@@ -1620,6 +1654,7 @@ async function disconnectDrive() {
 }
 const driveRequest = grapesDriveRequest
 async function loadEpubWriter() { return (await import('./ebook/epub-metadata.js')).rewriteEpubMetadata }
+async function loadPdfWriter() { return (await import('./ebook/pdf-metadata.js')).rewritePdfMetadata }
 function accessTokenAvailable() { return isGrapesDriveConnected() }
 async function findLibraryFolderIds() {
   const query = `name = '${FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`
