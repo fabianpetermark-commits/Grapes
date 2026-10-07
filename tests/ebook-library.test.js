@@ -488,7 +488,7 @@ test('unreadable Drive metadata cannot be silently overwritten', async () => {
   await assert.rejects(a.run('loadEbookMetadata("folder")'), (error) => error.name === 'SyntaxError')
 })
 
-test('metadata lookup falls back to a verified author and preserves a Hungarian title', async () => {
+test('metadata lookup falls back to possible original works and preserves a Hungarian title', async () => {
   const calls = []
   const a = app(async url => {
     if (!url.startsWith('https://openlibrary.org/')) return json({ items: [] })
@@ -502,9 +502,9 @@ test('metadata lookup falls back to a verified author and preserves a Hungarian 
   a.nodes.get('#ebook-metadata-title').value = 'Az elme trükkjei'
   a.nodes.get('#ebook-metadata-author').value = 'Albert Moukheiber'
   await a.run('lookupBookMetadata()')
-  assert.equal(calls.length, 3)
+  assert.equal(calls.length, 4)
   assert.equal(a.nodes.get('#ebook-metadata-suggestion').dataset.kind, 'success')
-  assert.match(a.nodes.get('#ebook-metadata-suggestion').textContent, /magyar címet megtartottam/)
+  assert.match(a.nodes.get('#ebook-metadata-suggestion').textContent, /Lehetséges eredeti művek/)
   a.run('applyMetadataSuggestion()')
   assert.equal(a.nodes.get('#ebook-metadata-title').value, 'Az elme trükkjei')
   assert.equal(a.nodes.get('#ebook-metadata-author').value, 'Albert Moukheiber')
@@ -941,6 +941,51 @@ test('metadata editor exposes search, live preview and a protected dirty state',
   assert.equal(a.nodes.get('#ebook-metadata-dirty').dataset.dirty, 'true')
   assert.equal(a.nodes.get('#ebook-metadata-save').disabled, false)
   assert.equal(a.nodes.get('#ebook-metadata-preview-title').textContent, 'Dűne')
+})
+
+test('missing Hungarian title falls back to possible original works by the same author', async () => {
+  const requests = []
+  const a = app(async url => {
+    requests.push(url)
+    if (url.startsWith('https://openlibrary.org/')) {
+      const query = new URL(url).searchParams
+      if (query.get('title')) return json({ docs: [] })
+      return json({ docs: [
+        { title: 'Why We Sleep', author_name: ['Matthew Walker'], subject: ['Sleep'] },
+        { title: 'Sleep Better', author_name: ['Another Author'] },
+      ] })
+    }
+    const query = new URL(url).searchParams.get('q') || ''
+    if (query.startsWith('intitle:')) return json({ items: [] })
+    return json({ items: [{ volumeInfo: { title: 'Why We Sleep', authors: ['Matthew Walker'], description: 'The science of sleep.', categories: ['Science'], publisher: 'Penguin' } }] })
+  }, { booksKey: 'books-test-key' })
+  a.run('currentBooks = [{ id: "book", name: "Miért alszunk -- Matthew Walker.epub" }]')
+  a.run('$("#ebook-metadata-book"); $("#ebook-metadata-title"); $("#ebook-metadata-author")')
+  a.nodes.get('#ebook-metadata-book').value = 'book'
+  a.nodes.get('#ebook-metadata-title').value = 'Miért alszunk?'
+  a.nodes.get('#ebook-metadata-author').value = 'Matthew Walker'
+  await a.run('lookupBookMetadata()')
+  assert.equal(a.run('metadataSearchMatches.every((match) => match.kind === "original")'), true)
+  assert.equal(a.run('metadataSearchMatches[0].suggestion.title'), 'Why We Sleep')
+  assert.equal(a.run('metadataSearchMatches[0].suggestion.publisher'), '')
+  assert.equal(a.run('metadataProposalControls.get("title").value'), '')
+  assert.equal(a.nodes.get('#ebook-metadata-title').value, 'Miért alszunk?')
+  assert.match(a.nodes.get('#ebook-metadata-suggestion').textContent, /Lehetséges eredeti művek/)
+  assert.match(a.nodes.get('#ebook-metadata-evidence').children[0].textContent, /magyar kiadás adatai nem változnak automatikusan/)
+  assert.equal(requests.some(url => new URL(url).searchParams.get('q') === 'inauthor:Matthew Walker'), true)
+})
+
+test('original-work fallback rejects books by another author and deduplicates catalogues', async () => {
+  const a = app(async url => url.startsWith('https://openlibrary.org/')
+    ? json({ docs: [
+      { title: 'Original title', author_name: ['Correct Author'] },
+      { title: 'Unrelated title', author_name: ['Different Person'] },
+    ] })
+    : json({ items: [{ volumeInfo: { title: 'Original title', authors: ['Correct Author'] } }] }), { booksKey: 'books-test-key' })
+  const matches = await a.run('Promise.all([findOpenLibraryOriginalWorks({ author: "Correct Author" }), findGoogleBooksOriginalWorks({ author: "Correct Author" })]).then((groups) => deduplicateOriginalMatches(groups.flat()))')
+  assert.equal(matches.length, 1)
+  assert.equal(matches[0].suggestion.title, 'Original title')
+  assert.equal(matches[0].suggestion.author, 'Correct Author')
 })
 
 test('switching books clears stale encoding results and marks the next book unchecked', () => {

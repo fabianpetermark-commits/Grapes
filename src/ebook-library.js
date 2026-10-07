@@ -651,13 +651,32 @@ async function lookupBookMetadata() {
     ]
     const results = await Promise.allSettled(sources.map(([, task]) => task))
     if (serial !== metadataLookupSerial || id !== $('#ebook-metadata-book')?.value) return
-    const matches = results.map((result, index) => result.status === 'fulfilled' && result.value ? { ...result.value, source: sources[index][0] } : null).filter(Boolean)
+    let matches = results.map((result, index) => result.status === 'fulfilled' && result.value ? { ...result.value, source: sources[index][0] } : null).filter(Boolean)
     matches.sort((a, b) => Number(Boolean(b.evidence?.isbn)) - Number(Boolean(a.evidence?.isbn)))
     const unavailable = results.map((result, index) => {
       if (result.status !== 'rejected') return null
       const message = String(result.reason?.message || '').slice(0, 140)
       return `${sources[index][0]}${message ? ` (${message})` : ''}`
     }).filter(Boolean)
+    const onlyAuthorConfirmation = matches.length > 0 && matches.every((match) => match.kind === 'author')
+    if ((!matches.length || onlyAuthorConfirmation) && author) {
+      setMetadataMessage('A magyar kiadáshoz nincs biztos találat. Lehetséges eredeti művek keresése a szerző alapján…')
+      const originalSources = [
+        ['Open Library', findOpenLibraryOriginalWorks({ author, excludedTitle: title })],
+        ['Google Books', findGoogleBooksOriginalWorks({ author, excludedTitle: title })],
+      ]
+      const originalResults = await Promise.allSettled(originalSources.map(([, task]) => task))
+      if (serial !== metadataLookupSerial || id !== $('#ebook-metadata-book')?.value) return
+      const originalMatches = originalResults.flatMap((result, index) => result.status === 'fulfilled'
+        ? result.value.map((match) => ({ ...match, source: `${originalSources[index][0]} · Lehetséges eredeti mű` }))
+        : [])
+      matches = deduplicateOriginalMatches(originalMatches).slice(0, 8)
+      originalResults.forEach((result, index) => {
+        if (result.status !== 'rejected') return
+        const message = String(result.reason?.message || '').slice(0, 140)
+        unavailable.push(`${originalSources[index][0]} eredetimű-keresés${message ? ` (${message})` : ''}`)
+      })
+    }
     if (!matches.length) {
       const reason = unavailable.length ? ` Nem elérhető: ${unavailable.join(', ')}.` : ''
       throw new Error(`${isbn ? `A(z) ${isbn} ISBN-hez` : 'A megadott adatokhoz'} egyik katalógusban sem találtam megerősíthető találatot.${reason} Ellenőrizd a számot, vagy keress cím és szerző alapján; a kézi adatok ettől függetlenül menthetők.`)
@@ -668,7 +687,8 @@ async function lookupBookMetadata() {
       matches.forEach((match, index) => {
         const option = document.createElement('option')
         option.value = String(index)
-        option.textContent = `${match.source} · ${match.evidence?.isbn ? 'pontos ISBN-egyezés' : 'cím/szerző alapján'}: ${match.suggestion.title}${match.suggestion.author ? ` — ${match.suggestion.author}` : ''}${match.year ? ` · ${match.year}` : ''}`
+        const matchKind = match.kind === 'original' ? 'szerző alapján' : match.evidence?.isbn ? 'pontos ISBN-egyezés' : 'cím/szerző alapján'
+        option.textContent = `${match.source} · ${matchKind}: ${match.suggestion.title}${match.suggestion.author ? ` — ${match.suggestion.author}` : ''}${match.year ? ` · ${match.year}` : ''}`
         select.append(option)
       })
       select.value = '0'
@@ -679,16 +699,18 @@ async function lookupBookMetadata() {
     renderMetadataEvidence(matches, { title, author, isbn })
     renderMetadataProposals(matches)
     const first = matches[0]
-    const detail = first.kind === 'author'
+    const detail = first.kind === 'original'
+      ? `Lehetséges eredeti művek: ${matches.length} találat. Válaszd ki a megfelelőt; semmi nem kerül automatikusan a könyv adatlapjára.`
+      : first.kind === 'author'
       ? 'A szerzőt megtaláltam; a megadott magyar címet megtartottam.'
       : `Találat: ${first.suggestion.title}${first.suggestion.author ? ` — ${first.suggestion.author}` : ''}${first.year ? ` · ${first.year}` : ''}`
-    const agreement = matches.length > 1
+    const agreement = first.kind === 'original' ? '' : matches.length > 1
       ? (metadataSimilarity(matches[0].suggestion.title, matches[1].suggestion.title) >= 0.8 && metadataSimilarity(matches[0].suggestion.author, matches[1].suggestion.author) >= 0.7
           ? ' A cím és a szerző több forrásban egyezik; a kiadási év eltérhet.' : ' A források eltérnek; válaszd ki a megfelelő találatot.')
       : ` Csak a(z) ${first.source} adott biztos találatot.`
-    const evidence = matches.map((match) => `${match.source}: ${match.evidence?.isbn ? 'pontos ISBN egyezés' : `cím ${Math.round((match.evidence?.titleScore || 0) * 100)}%, szerző ${Math.round((match.evidence?.authorScore || 0) * 100)}%`}`).join('; ')
+    const evidence = matches.map((match) => `${match.source}: ${match.kind === 'original' ? `szerző ${Math.round((match.evidence?.authorScore || 0) * 100)}%` : match.evidence?.isbn ? 'pontos ISBN egyezés' : `cím ${Math.round((match.evidence?.titleScore || 0) * 100)}%, szerző ${Math.round((match.evidence?.authorScore || 0) * 100)}%`}`).join('; ')
     const isbnWarning = isbn && !matches.some((match) => match.evidence?.isbn)
-      ? ` A(z) ${isbn} ISBN-t egyik elérhető katalógus sem erősítette meg; ez csak cím/szerző alapú találat.` : ''
+      ? ` A(z) ${isbn} ISBN-t egyik elérhető katalógus sem erősítette meg; ${first.kind === 'original' ? 'ezek csak szerző alapján talált lehetséges eredeti művek' : 'ez csak cím/szerző alapú találat'}.` : ''
     setMetadataMessage(`${detail}${agreement}${isbnWarning} ${evidence}.${unavailable.length ? ` Nem elérhető: ${unavailable.join(', ')}.` : ''}`, 'success')
     $('#ebook-metadata-apply').disabled = false
   } catch (error) {
@@ -870,7 +892,8 @@ function renderMetadataEvidence(matches, query) {
     const item = document.createElement('div')
     item.className = 'ebook-library__metadata-evidence-item'
     const parts = [match.source]
-    if (match.evidence?.isbn) parts.push(`Pontos ISBN: ${query.isbn}`)
+    if (match.kind === 'original') parts.push('Lehetséges eredeti mű; a magyar kiadás adatai nem változnak automatikusan')
+    else if (match.evidence?.isbn) parts.push(`Pontos ISBN: ${query.isbn}`)
     else parts.push('Nem azonosított kiadás; ISBN, kiadó, dátum és borító nincs javasolva')
     if (query.title && match.suggestion.title) parts.push(`cím ${Math.round((match.evidence?.titleScore || 0) * 100)}%`)
     if (query.author && match.suggestion.author) parts.push(`szerző ${Math.round((match.evidence?.authorScore || 0) * 100)}%`)
@@ -1041,6 +1064,63 @@ function sameDriveVersion(left, right) {
 async function getBookDriveVersion(id) {
   const response = await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?fields=id,name,size,modifiedTime,md5Checksum,headRevisionId,mimeType,capabilities(canEdit),isAppAuthorized,appProperties`)
   return response.json()
+}
+
+function originalWorkMatch(doc, author, sourceRank = 0) {
+  const authorScore = Math.max(0, ...(doc.author_name || []).map((name) => metadataSimilarity(author, name)))
+  if (!doc.title || authorScore < 0.72) return null
+  const match = metadataMatch(doc, 'original', { titleScore: 0, authorScore }, '', true)
+  match.originalRank = sourceRank
+  return match
+}
+
+function deduplicateOriginalMatches(matches = []) {
+  const seen = new Set()
+  const richness = (match) => Number(Boolean(match.suggestion.description)) * 10 + (match.suggestion.subjects?.length || 0)
+  return matches
+    .sort((left, right) => (right.evidence?.authorScore || 0) - (left.evidence?.authorScore || 0) || richness(right) - richness(left) || left.originalRank - right.originalRank)
+    .filter((match) => {
+      const key = `${normalizedWords(match.suggestion.title).join(' ')}|${normalizedWords(match.suggestion.author).join(' ')}`
+      if (!key || seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+}
+
+async function findGoogleBooksOriginalWorks({ author = '', excludedTitle = '' } = {}) {
+  const token = getGrapesDriveAccessToken()
+  if ((!BOOKS_API_KEY && !token) || !author) return []
+  const params = new URLSearchParams({ q: `inauthor:${author}`, printType: 'books', maxResults: '20' })
+  if (BOOKS_API_KEY) params.set('key', BOOKS_API_KEY)
+  const controller = new AbortController()
+  const timeout = window.setTimeout(() => controller.abort(), 12000)
+  try {
+    const response = await fetch(`https://www.googleapis.com/books/v1/volumes?${params}`, { headers: BOOKS_API_KEY ? {} : { Authorization: `Bearer ${token}` }, signal: controller.signal })
+    if (!response.ok) throw new Error(`Google Books keresési hiba (${response.status})`)
+    const data = await response.json()
+    return (Array.isArray(data.items) ? data.items : []).map((item, index) => {
+      const info = item.volumeInfo || {}
+      const doc = {
+        title: info.title || '', author_name: info.authors || [], description: plainBookDescription(info.description || ''),
+        subjects: info.categories || [], language: info.language || '', first_publish_year: info.publishedDate?.slice(0, 4) || '',
+      }
+      if (excludedTitle && metadataSimilarity(excludedTitle, doc.title) >= 0.72) return null
+      return originalWorkMatch(doc, author, index)
+    }).filter(Boolean).slice(0, 5)
+  } finally { window.clearTimeout(timeout) }
+}
+
+async function findOpenLibraryOriginalWorks({ author = '', excludedTitle = '' } = {}) {
+  if (!author) return []
+  const controller = new AbortController()
+  const timeout = window.setTimeout(() => controller.abort(), 12000)
+  try {
+    const docs = await queryOpenLibrary({ author }, controller.signal)
+    return docs.map((doc, index) => {
+      if (excludedTitle && metadataSimilarity(excludedTitle, doc.title) >= 0.72) return null
+      return originalWorkMatch(doc, author, index)
+    }).filter(Boolean).slice(0, 5)
+  } finally { window.clearTimeout(timeout) }
 }
 async function renameBookOnDrive(book, metadata, requestedName = '') {
   const nextName = requestedFileNameFor(book, requestedName, metadata)
