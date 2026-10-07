@@ -1126,10 +1126,13 @@
               <label class="field"><span class="field__label">Könyv</span><select id="ebook-metadata-book" class="input"><option value="">Válassz könyvet…</option></select></label>
             </aside>
             <div class="ebook-library__metadata-workspace">
-              <div id="ebook-editor-tabs" class="ebook-library__editor-tabs" role="tablist" aria-label="Könyvszerkesztő nézetek">
-                <button id="ebook-editor-text-tab" class="btn btn--ghost" type="button" role="tab" aria-controls="ebook-editor-text-pane" aria-selected="true">Szöveg</button>
-                <button id="ebook-editor-font-tab" class="btn btn--ghost" type="button" role="tab" aria-controls="ebook-editor-font-pane" aria-selected="false">Kinézet</button>
-                <button id="ebook-editor-metadata-tab" class="btn btn--ghost" type="button" role="tab" aria-controls="ebook-editor-metadata-pane" aria-selected="false">Adatlap</button>
+              <div class="ebook-library__editor-topbar">
+                <div id="ebook-editor-tabs" class="ebook-library__editor-tabs" role="tablist" aria-label="Könyvszerkesztő nézetek">
+                  <button id="ebook-editor-text-tab" class="btn btn--ghost" type="button" role="tab" aria-controls="ebook-editor-text-pane" aria-selected="true">Szöveg</button>
+                  <button id="ebook-editor-font-tab" class="btn btn--ghost" type="button" role="tab" aria-controls="ebook-editor-font-pane" aria-selected="false">Kinézet</button>
+                  <button id="ebook-editor-metadata-tab" class="btn btn--ghost" type="button" role="tab" aria-controls="ebook-editor-metadata-pane" aria-selected="false">Adatlap</button>
+                </div>
+                <button id="ebook-editor-open" class="btn btn--ghost" type="button">EPUB megnyitása</button>
               </div>
               <div id="ebook-editor-metadata-pane" class="ebook-library__editor-pane" role="tabpanel" aria-labelledby="ebook-editor-metadata-tab">
               <div id="ebook-metadata-preview" class="ebook-library__metadata-preview" data-empty="true">
@@ -1203,7 +1206,6 @@
               </section>
               <div id="ebook-editor-global-actions" class="ebook-library__metadata-actions ebook-library__editor-global-actions">
                 <span id="ebook-editor-status" role="status" aria-live="polite">Válassz EPUB-könyvet, majd nyisd meg a fájlt.</span>
-                <button id="ebook-editor-open" class="btn btn--ghost" type="button">EPUB megnyitása</button>
                 <button id="ebook-editor-undo" class="btn btn--ghost" type="button" aria-label="Utolsó módosítás visszavonása" title="Visszavonás" disabled>↶</button>
                 <button id="ebook-editor-save" class="btn btn--primary" type="button" disabled>Változások mentése a Drive-ra</button>
               </div>

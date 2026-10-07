@@ -27,17 +27,25 @@ try {
     await context.route('https://accounts.google.com/**', (route) => route.abort())
     const page = await context.newPage()
     await page.goto('http://127.0.0.1:4174/?module=ebook', { waitUntil: 'domcontentloaded', timeout: 20000 })
+    await page.evaluate(() => document.querySelector('#pick-ebook-organizer').click())
+    await page.waitForFunction(() => document.querySelector('#ebook-manager-view')?.dataset.ebookMode === 'organizer', null, { timeout: 20000 })
     await page.locator('#ebook-metadata-panel').waitFor({ state: 'visible', timeout: 20000 })
     const measured = await page.evaluate(() => {
       const root = document.documentElement
       const panel = document.querySelector('#ebook-metadata-panel')
+      const workspace = document.querySelector('.ebook-library__metadata-workspace').getBoundingClientRect()
+      const globalActions = document.querySelector('#ebook-editor-global-actions').getBoundingClientRect()
       const save = document.querySelector('#ebook-editor-save').getBoundingClientRect()
+      const open = document.querySelector('#ebook-editor-open').getBoundingClientRect()
+      const tabs = document.querySelector('#ebook-editor-tabs').getBoundingClientRect()
       const edge = panel.getBoundingClientRect().right
       const overflowing = [...panel.querySelectorAll('*')].map((el) => ({ node: el.tagName.toLowerCase(), id: el.id, className: typeof el.className === 'string' ? el.className : '', right: Math.round(el.getBoundingClientRect().right - edge), scroll: el.scrollWidth - el.clientWidth })).filter((item) => item.right > 1 || item.scroll > 1).sort((a, b) => b.scroll - a.scroll).slice(0, 5)
-      return { overflow: root.scrollWidth - innerWidth, panelOverflow: panel.scrollWidth - panel.clientWidth, saveWidth: save.width, saveHeight: save.height, saveRight: save.right, overflowing }
+      return { overflow: root.scrollWidth - innerWidth, panelOverflow: panel.scrollWidth - panel.clientWidth, saveWidth: save.width, saveHeight: save.height, saveRight: save.right, saveCenterOffset: Math.abs((save.left + save.right) / 2 - (workspace.left + workspace.right) / 2), workspace: [workspace.left, workspace.right], globalActions: [globalActions.left, globalActions.right], mode: document.querySelector('#ebook-manager-view').dataset.ebookMode, display: getComputedStyle(document.querySelector('#ebook-editor-global-actions')).display, grid: getComputedStyle(document.querySelector('#ebook-editor-global-actions')).gridTemplateColumns, justify: getComputedStyle(document.querySelector('#ebook-editor-save')).justifySelf, openTop: open.top, tabsBottom: tabs.bottom, openInTopbar: document.querySelector('.ebook-library__editor-topbar').contains(document.querySelector('#ebook-editor-open')), overflowing }
     })
     assert.ok(measured.overflow <= 1 && measured.panelOverflow <= 1, `${width}px: vízszintes túlcsordulás: ${JSON.stringify(measured)}`)
     assert.ok(measured.saveWidth >= 44 && measured.saveHeight >= (width <= 768 ? 44 : 32) && measured.saveRight <= width + 1, `${width}px: mentés nem érhető el: ${JSON.stringify(measured)}`)
+    assert.ok(measured.saveCenterOffset <= 2, `${width}px: a mentés nincs középen: ${JSON.stringify(measured)}`)
+    assert.equal(measured.openInTopbar, true, `${width}px: az EPUB megnyitása nincs a felső fülsávban`)
     console.log(`✓ E-book szerkesztő ${width}px`)
 
     await page.route('https://www.googleapis.com/**', (route) => {
