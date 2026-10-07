@@ -307,9 +307,8 @@ test('single-book code appears in Grapes without opening a window and resets on 
   assert.equal(frame.src, undefined)
 })
 
-test('persistent reader pairing uses an inline frame with the verified marker', async () => {
+test('persistent reader pairing posts a compact library snapshot without waiting for book sharing', async () => {
   const a = app(async url => {
-    if (url.includes('/upload/')) return json({ id: 'marker' })
     if (url.includes('orderBy=')) return json({ files: [] })
     return folder()
   })
@@ -317,13 +316,13 @@ test('persistent reader pairing uses an inline frame with the verified marker', 
   a.context.window.open = () => { throw new Error('must not open a new window') }
   await a.run('createReaderPairing()')
   const frame = a.nodes.get('#ebook-reader-pair-code')
-  const url = new URL(frame.src)
   assert.equal(frame.hidden, false)
-  assert.equal(url.searchParams.get('action'), 'create-reader-pairing')
-  assert.equal(url.searchParams.get('embed'), '1')
-  assert.equal(url.searchParams.get('markerId'), 'marker')
-  assert.match(url.searchParams.get('nonce'), /^[a-f0-9]{48}$/)
-  assert.equal(url.searchParams.get('returnUrl'), 'https://fabianpetermark-commits.github.io/Grapes/ebook-reader.html')
+  assert.match(frame.srcdoc, /method="post"/)
+  assert.match(frame.srcdoc, /name="action" value="create-reader-pairing"/)
+  assert.match(frame.srcdoc, /name="embed" value="1"/)
+  assert.match(frame.srcdoc, /name="nonce" value="[a-f0-9]{48}"/)
+  assert.match(frame.srcdoc, /ebook-reader\.html/)
+  assert.doesNotMatch(frame.srcdoc, /access[_-]?token/i)
   assert.equal(a.nodes.get('#ebook-reader-pair-btn').disabled, false)
 })
 
@@ -943,6 +942,32 @@ test('metadata editor exposes search, live preview and a protected dirty state',
   assert.equal(a.nodes.get('#ebook-metadata-preview-title').textContent, 'Dűne')
 })
 
+test('POST reader pairing works across Google accounts and keeps the snapshot in private script properties', () => {
+  const values = new Map()
+  const props = { getProperty: key => values.get(key), setProperty: (key, value) => values.set(key, value), getProperties: () => Object.fromEntries(values), deleteProperty: key => values.delete(key) }
+  const c = vm.createContext({
+    HtmlService: { XFrameOptionsMode: { ALLOWALL: 'ALLOWALL' }, createHtmlOutput: html => ({ html, setXFrameOptionsMode() { return this } }) },
+    PropertiesService: { getScriptProperties: () => props },
+    LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
+    ScriptApp: { getService: () => ({ getUrl: () => 'https://broker.example/exec' }) },
+  })
+  vm.runInContext(brokerSource, c)
+  c.createUniqueCode = () => 'ABC234'
+  c.createReaderToken = () => 'A'.repeat(64)
+  const nonce = 'b'.repeat(48)
+  const created = c.doPost({ parameter: {
+    action: 'create-reader-pairing', nonce, embed: '1',
+    returnUrl: 'https://fabianpetermark-commits.github.io/Grapes/ebook-reader.html',
+    books: JSON.stringify([['foreign-account-book', 'Másik fiók könyve.epub', 2048]]),
+  } })
+  assert.match(created.html, /ABC234/)
+  assert.doesNotMatch(values.get('ebook_reader_pair_ABC234'), /Másik fiók könyve/)
+  assert.match(c.pairReader({ code: 'ABC234' }).html, /Párosítás kész/)
+  const page = c.readerLibraryPage({ token: 'A'.repeat(64) })
+  assert.match(page.html, /Másik fiók könyve\.epub/)
+  assert.match(page.html, /drive\.usercontent\.google\.com/)
+})
+
 test('explicit sign-out forgets the previous account and the next login opens the account chooser', async () => {
   const local = new Map([['grapes-drive-account', 'old@example.com']])
   const a = app(async url => url.includes('/about?') ? json({ user: { emailAddress: 'new@example.com' } }) : json({}), { local })
@@ -1234,7 +1259,7 @@ test('automatic broker deployment stays aligned with every live client URL', () 
   assert.equal(deploymentId(readerPageSource), expected)
   assert.match(brokerWorkflowSource, /clasp push --force/)
   assert.match(brokerWorkflowSource, /clasp deploy --deploymentId/)
-  assert.match(brokerSource, /BROKER_API_VERSION = 5/)
+  assert.match(brokerSource, /BROKER_API_VERSION = 6/)
   assert.match(brokerSource, /action === 'health'/)
 })
 

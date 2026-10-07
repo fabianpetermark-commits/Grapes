@@ -1,10 +1,12 @@
 const CODE_LENGTH = 6;
-const BROKER_API_VERSION = 5;
+const BROKER_API_VERSION = 6;
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const TTL_MS = 20 * 60 * 1000;
 const STORE_PREFIX = 'ebook_transfer_';
 const READER_PAIR_PREFIX = 'ebook_reader_pair_';
 const READER_TOKEN_PREFIX = 'ebook_reader_token_';
+const READER_BOOKS_PREFIX = 'ebook_reader_books_';
+const READER_BOOK_CHUNK_LENGTH = 1800;
 const READER_TOKEN_TTL_MS = 180 * 24 * 60 * 60 * 1000;
 const READER_MARKER_TTL_MS = 10 * 60 * 1000;
 const FOLDER_NAME = 'Grapes E-book Library';
@@ -16,6 +18,7 @@ const ALLOWED_BOOK_EXTENSIONS = ['epub', 'pdf', 'mobi', 'azw', 'azw3', 'prc', 't
 // Compatibility for older open Grapes tabs. The retired provider is never called.
 function doPost(e) {
   const p = (e && e.parameter) || {};
+  if (p.action === 'create-reader-pairing') return pairingOutput(createReaderPairingManifestPage(p), p);
   if (p.action !== 'lookup-isbndb') return HtmlService.createHtmlOutput('Unsupported action');
   const nonce = String(p.nonce || '');
   if (!/^[a-f0-9]{48}$/.test(nonce)) return HtmlService.createHtmlOutput('Invalid request');
@@ -50,11 +53,80 @@ function pairingOutput(output, p) {
 
 function embeddedCodePage(code, label, singleUse, messageType, nonce) {
   const bridge = messageType
-    ? '<script>(function(){var payload=' + JSON.stringify({ type: messageType, code: code, nonce: nonce, expiresInSeconds: Math.round(TTL_MS / 1000) }) + ';var target=' + JSON.stringify(ALLOWED_PARENT_ORIGIN) + ';function send(){window.top.postMessage(payload,target)}send();setTimeout(send,500);setTimeout(send,1500)})();</script>'
+    ? '<script>(function(){var payload=' + JSON.stringify({ type: messageType, code: code, nonce: nonce, expiresInSeconds: Math.round(TTL_MS / 1000) }) + ';var target=' + JSON.stringify(ALLOWED_PARENT_ORIGIN) + ';function send(){window.top.postMessage(payload,target)}[0,250,750,1500,3000,6000].forEach(function(delay){setTimeout(send,delay)})})();</script>'
     : '';
   return HtmlService.createHtmlOutput('<!doctype html><html lang="hu"><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Párosítási kód</title>' +
     '<style>body{margin:0;padding:24px 12px;background:#fff;color:#111;font:16px Arial,sans-serif;text-align:center;overflow-wrap:anywhere}.code{font-size:36px;font-weight:bold;letter-spacing:.12em;margin:24px 0}</style></head><body>' +
     '<p>' + escapeHtml(label) + '</p><div class="code">' + code + '</div><p>A kód 20 percig érvényes' + (singleUse ? ' és egyszer használható' : '') + '.</p>' + bridge + '</body></html>');
+}
+
+function readerPairingError(p, title, message) {
+  const nonce = String((p && p.nonce) || '').trim().toLowerCase();
+  if (p && p.embed === '1' && /^[a-f0-9]{48}$/.test(nonce)) {
+    const payload = JSON.stringify({ type: 'grapes-reader-pairing-error', nonce: nonce, message: message });
+    return HtmlService.createHtmlOutput('<!doctype html><html><body><p>' + escapeHtml(message) + '</p><script>(function(){var payload=' + payload + ';var target=' + JSON.stringify(ALLOWED_PARENT_ORIGIN) + ';function send(){window.top.postMessage(payload,target)}[0,300,1000].forEach(function(delay){setTimeout(send,delay)})})();<\/script></body></html>');
+  }
+  return readerMessagePage(title, message);
+}
+
+function normalizeReaderBookRows(raw) {
+  let rows;
+  try { rows = JSON.parse(String(raw || '[]')); }
+  catch (err) { throw new Error('A könyvlista nem olvasható.'); }
+  if (!Array.isArray(rows) || rows.length > 2000) throw new Error('A könyvlista mérete érvénytelen.');
+  const result = [];
+  const seen = {};
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (!Array.isArray(row)) continue;
+    const id = String(row[0] || '').trim();
+    const name = String(row[1] || '').trim().slice(0, 240);
+    const size = Math.max(0, Number(row[2]) || 0);
+    if (!/^[A-Za-z0-9_-]{1,200}$/.test(id) || !isAllowedBook(name) || seen[id]) continue;
+    seen[id] = true;
+    result.push([id, name, size]);
+  }
+  return result;
+}
+
+function writeReaderBookChunks(props, ownerKey, books) {
+  const raw = JSON.stringify(books);
+  const count = Math.max(1, Math.ceil(raw.length / READER_BOOK_CHUNK_LENGTH));
+  for (let i = 0; i < count; i++) props.setProperty(READER_BOOKS_PREFIX + ownerKey + '_' + i, raw.slice(i * READER_BOOK_CHUNK_LENGTH, (i + 1) * READER_BOOK_CHUNK_LENGTH));
+  return count;
+}
+
+function readReaderBookChunks(props, ownerKey, count) {
+  let raw = '';
+  for (let i = 0; i < Number(count || 0); i++) raw += props.getProperty(READER_BOOKS_PREFIX + ownerKey + '_' + i) || '';
+  return normalizeReaderBookRows(raw || '[]');
+}
+
+function deleteReaderBookChunks(props, ownerKey, count) {
+  for (let i = 0; i < Number(count || 0); i++) props.deleteProperty(READER_BOOKS_PREFIX + ownerKey + '_' + i);
+}
+
+function createReaderPairingManifestPage(p) {
+  const nonce = String(p.nonce || '').trim().toLowerCase();
+  const returnUrl = String(p.returnUrl || '').trim();
+  if (!/^[a-f0-9]{48}$/.test(nonce) || returnUrl !== READER_RETURN_URL) return readerPairingError(p, 'Érvénytelen párosítás', 'A párosítási kérés hibás vagy nem a hivatalos Grapes olvasóoldalról érkezett.');
+  let books;
+  try { books = normalizeReaderBookRows(p.books); }
+  catch (err) { return readerPairingError(p, 'Érvénytelen könyvlista', err.message); }
+
+  const props = PropertiesService.getScriptProperties();
+  const lock = LockService.getScriptLock();
+  lock.waitLock(5000);
+  let code;
+  try {
+    cleanupExpiredRecords();
+    code = createUniqueCode();
+    const chunks = writeReaderBookChunks(props, code, books);
+    props.setProperty(READER_PAIR_PREFIX + code, JSON.stringify({ returnUrl: READER_RETURN_URL, expiresAt: Date.now() + TTL_MS, bookChunks: chunks }));
+  } catch (err) {
+    return readerPairingError(p, 'A párosítás nem sikerült', 'A kód létrehozása közben hiba történt. Kérj új kódot.');
+  } finally { lock.releaseLock(); }
+  return embeddedCodePage(code, 'Írd be ezt a kódot az e-book olvasón:', true, 'grapes-reader-pairing-code', nonce);
 }
 
 function createTransferPage(p) {
@@ -162,9 +234,6 @@ function createReaderPairingPage(p) {
     // A böngészős drive.file scope nem feltétlenül látja a korábban kézzel
     // létrehozott azonos nevű mappát. A broker ezért a hitelesített mappa mellett
     // az összes "Grapes E-book Library" mappát összefogja.
-    const readerFolders = getReaderLibraryFolders(verifiedFolder);
-    scanReaderLibraryFolders(readerFolders);
-
     const lock = LockService.getScriptLock();
     lock.waitLock(10000);
     let code;
@@ -216,13 +285,18 @@ function pairReader(p) {
   try {
     const current = props.getProperty(key);
     if (!current) return readerMessagePage('A kód már felhasznált', 'Ez a párosítási kód csak egyszer használható.');
-    props.deleteProperty(key);
+    const currentRecord = JSON.parse(current);
+    const books = currentRecord.bookChunks ? readReaderBookChunks(props, code, currentRecord.bookChunks) : [];
     token = createReaderToken();
+    const bookChunks = books.length ? writeReaderBookChunks(props, token, books) : 0;
     props.setProperty(READER_TOKEN_PREFIX + token, JSON.stringify({
       folderId: record.folderId,
+      bookChunks: bookChunks,
       createdAt: Date.now(),
       lastSeenAt: Date.now()
     }));
+    props.deleteProperty(key);
+    deleteReaderBookChunks(props, code, currentRecord.bookChunks);
   } finally { lock.releaseLock(); }
 
   const landing = READER_RETURN_URL + '?reader-token=' + encodeURIComponent(token);
@@ -257,15 +331,17 @@ function readerLibraryPage(p) {
   record.lastSeenAt = Date.now();
   props.setProperty(key, JSON.stringify(record));
 
-  let folder;
-  try { folder = DriveApp.getFolderById(record.folderId); }
-  catch (err) { return readerMessagePage('A könyvtár nem érhető el', 'Párosítsd újra az e-book olvasót.'); }
-
-  // A reader-token már egy ellenőrzött Grapes könyvtárhoz tartozik.
-  // A Drive-on lehet több azonos nevű mappa (pl. egy régi, kézzel létrehozott
-  // és egy drive.file által létrehozott). Ezeket egy közös olvasói listává fűzzük.
-  const folders = getReaderLibraryFolders(folder);
-  const scan = scanReaderLibraryFolders(folders);
+  let scan = { books: [], skippedCount: 0, skippedNames: [] };
+  if (record.bookChunks) {
+    scan.books = readReaderBookChunks(props, token, record.bookChunks).map(function (row) { return { id: row[0], name: row[1], size: row[2] }; });
+  } else {
+    let folder;
+    try { folder = DriveApp.getFolderById(record.folderId); }
+    catch (err) { return readerMessagePage('A könyvtár nem érhető el', 'Párosítsd újra az e-book olvasót.'); }
+    // Régi párosításoknál megmarad a dinamikus Drive-mappa beolvasása.
+    const folders = getReaderLibraryFolders(folder);
+    scan = scanReaderLibraryFolders(folders);
+  }
   const books = scan.books;
   books.sort(function (a, b) { return a.name.toLowerCase().localeCompare(b.name.toLowerCase()); });
 
@@ -372,7 +448,12 @@ function syncReaderLibrarySharing(folder) {
 
 function revokeReaderPage(p) {
   const token = String(p.token || '').trim().toUpperCase();
-  if (/^[A-F0-9]{64}$/.test(token)) PropertiesService.getScriptProperties().deleteProperty(READER_TOKEN_PREFIX + token);
+  if (/^[A-F0-9]{64}$/.test(token)) {
+    const props = PropertiesService.getScriptProperties();
+    const raw = props.getProperty(READER_TOKEN_PREFIX + token);
+    if (raw) try { deleteReaderBookChunks(props, token, JSON.parse(raw).bookChunks); } catch (err) {}
+    props.deleteProperty(READER_TOKEN_PREFIX + token);
+  }
   const landing = READER_RETURN_URL + '?forget=1';
   return HtmlService.createHtmlOutput('<!doctype html><html><head><meta http-equiv="refresh" content="0;url=' + escapeHtml(landing) + '"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Leválasztva</title></head><body><p>Az e-olvasó leválasztva.</p><p><a href="' + escapeHtml(landing) + '">Vissza az olvasóoldalra</a></p></body></html>');
 }
@@ -396,6 +477,8 @@ function cleanupExpiredRecords() {
       const record = JSON.parse(records[key]);
       if ((record.expiresAt !== undefined && Number(record.expiresAt) <= now) ||
           (key.indexOf(READER_TOKEN_PREFIX) === 0 && now - Number(record.lastSeenAt || record.createdAt || 0) > READER_TOKEN_TTL_MS)) {
+        const ownerKey = key.indexOf(READER_PAIR_PREFIX) === 0 ? key.slice(READER_PAIR_PREFIX.length) : key.indexOf(READER_TOKEN_PREFIX) === 0 ? key.slice(READER_TOKEN_PREFIX.length) : '';
+        if (ownerKey) deleteReaderBookChunks(props, ownerKey, record.bookChunks);
         props.deleteProperty(key);
       }
     } catch (err) { props.deleteProperty(key); }

@@ -254,6 +254,16 @@ function showPairingFrame(selector, url) {
   frame.src = embeddedUrl.toString()
   frame.hidden = false
 }
+function postPairingFrame(selector, url, fields) {
+  const frame = $(selector)
+  const action = new URL(url)
+  action.search = ''
+  const escape = (value) => String(value).replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character])
+  const inputs = Object.entries({ ...fields, embed: '1' }).map(([name, value]) => `<input type="hidden" name="${escape(name)}" value="${escape(value)}">`).join('')
+  frame.removeAttribute('src')
+  frame.srcdoc = `<!doctype html><html><body><form method="post" action="${escape(action.toString())}">${inputs}</form><script>document.forms[0].submit()<\/script></body></html>`
+  frame.hidden = false
+}
 function setReaderPairStatus(message, kind = '') {
   const node = $('#ebook-reader-pair-status')
   if (node) { node.textContent = message; node.dataset.kind = kind }
@@ -266,6 +276,8 @@ function clearReaderPairCode(message = '') {
   readerPairNonce = ''
   const input = $('#ebook-reader-pair-value')
   if (input) input.value = ''
+  const frame = $('#ebook-reader-pair-code')
+  if (frame) { frame.removeAttribute('src'); frame.removeAttribute('srcdoc'); frame.hidden = true }
   setReaderPairStatus(message)
 }
 function handleReaderPairingMessage(event) {
@@ -275,10 +287,21 @@ function handleReaderPairingMessage(event) {
     const origin = new URL(event.origin)
     trustedOrigin = origin.protocol === 'https:' && (origin.hostname === 'script.google.com' || origin.hostname === 'script.googleusercontent.com' || origin.hostname.endsWith('.googleusercontent.com'))
   } catch {}
-  if (!frame?.src || !trustedOrigin || !readerPairNonce) return
-  const code = String(event.data?.code || '').trim().toUpperCase()
+  if (!(frame?.src || frame?.srcdoc) || !trustedOrigin || !readerPairNonce) return
   const nonce = String(event.data?.nonce || '').trim().toLowerCase()
-  if (event.data?.type !== 'grapes-reader-pairing-code' || !/^[A-Z0-9]{6}$/.test(code) || nonce !== readerPairNonce) return
+  if (nonce !== readerPairNonce) return
+  if (event.data?.type === 'grapes-reader-pairing-error') {
+    window.clearTimeout?.(readerPairMessageTimer)
+    readerPairMessageTimer = null
+    readerPairNonce = ''
+    setReaderPairStatus(String(event.data?.message || 'A párosítási kód létrehozása nem sikerült.'), 'error')
+    frame.hidden = true
+    frame.removeAttribute('src')
+    frame.removeAttribute('srcdoc')
+    return
+  }
+  const code = String(event.data?.code || '').trim().toUpperCase()
+  if (event.data?.type !== 'grapes-reader-pairing-code' || !/^[A-Z0-9]{6}$/.test(code)) return
   const input = $('#ebook-reader-pair-value')
   if (input) input.value = code
   window.clearTimeout?.(readerPairMessageTimer)
@@ -292,6 +315,7 @@ function handleReaderPairingMessage(event) {
   }, expiresInSeconds * 1000)
   frame.hidden = true
   frame.removeAttribute('src')
+  frame.removeAttribute('srcdoc')
 }
 function renderDriveConnection() {
   const connected = isGrapesDriveConnected()
@@ -1695,6 +1719,11 @@ async function createReaderMarker(folderId) {
   })
   return { markerId: (await response.json()).id, nonce }
 }
+async function shareReaderBooks(books) {
+  for (let index = 0; index < books.length; index += 10) {
+    await Promise.all(books.slice(index, index + 10).map((book) => ensurePublicRead(book.id)))
+  }
+}
 async function createReaderPairing() {
   if (!accessTokenAvailable()) return setStatus('Előbb csatlakoztasd a Google Drive-ot.', 'error')
   if (!TRANSFER_BROKER_URL) return setStatus('Az E-book Transfer broker nincs konfigurálva.', 'error')
@@ -1706,30 +1735,31 @@ async function createReaderPairing() {
   $('#ebook-reader-pair-code').hidden = true
   try {
     setStatus('Az e-olvasó könyvtár előkészítése…')
-    const { folderId, books } = await getReaderLibraryBooks()
+    const { books } = await getReaderLibraryBooks()
     const shareableBooks = books.filter((book) => book.isAppAuthorized !== false)
-    for (let index = 0; index < shareableBooks.length; index += 6) {
-      const batch = shareableBooks.slice(index, index + 6)
-      setStatus(`E-olvasó megosztás: ${Math.min(index + batch.length, shareableBooks.length)}/${shareableBooks.length} könyv…`)
-      await Promise.all(batch.map((book) => ensurePublicRead(book.id)))
-    }
     setReaderLibraryEnabled(true)
 
-    const marker = await createReaderMarker(folderId)
-    readerPairNonce = marker.nonce
-    const brokerUrl = buildBrokerUrl({
+    readerPairNonce = createReaderNonce()
+    const brokerUrl = buildBrokerUrl({})
+    postPairingFrame('#ebook-reader-pair-code', brokerUrl, {
       action: 'create-reader-pairing',
-      markerId: marker.markerId,
-      nonce: marker.nonce,
+      nonce: readerPairNonce,
       returnUrl: READER_PAGE_URL,
+      books: JSON.stringify(shareableBooks.map((book) => [book.id, book.name, Number(book.size) || 0])),
     })
-
-    showPairingFrame('#ebook-reader-pair-code', brokerUrl)
-    setReaderPairStatus(`${books.length} könyv előkészítve. A párosítási kód érkezésére várunk…`)
+    setReaderPairStatus('Párosítási kód kérése…')
+    shareReaderBooks(shareableBooks).then(() => {
+      setStatus(`${shareableBooks.length} könyv előkészítve az e-olvasóhoz.`, 'success')
+    }).catch((error) => {
+      setStatus(`A kód elkészült, de néhány könyv megosztása nem sikerült. ${error.message}`, 'error')
+    })
     readerPairMessageTimer = window.setTimeout?.(() => {
       const input = $('#ebook-reader-pair-value')
-      if (!input?.value) setReaderPairStatus('A párosítási kód nem érkezett meg. Próbáld újra.', 'error')
-    }, 45000)
+      if (!input?.value) {
+        readerPairNonce = ''
+        setReaderPairStatus('A kód 18 másodpercen belül nem érkezett meg. Kérj új kódot.', 'error')
+      }
+    }, 18000)
   } catch (error) {
     setReaderPairStatus(`Az e-olvasó párosítása nem sikerült. ${error.message}`, 'error')
   } finally { button.disabled = false }
