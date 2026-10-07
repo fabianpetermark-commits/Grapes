@@ -1112,7 +1112,7 @@
               <p>Csatlakoztasd az e-readert kábellel, válaszd ki a könyvmappáját, majd indítsd el a kétirányú szinkronizálást.</p>
               <div class="ebook-library__reader-sync-actions"><button id="ebook-sync" class="btn btn--primary btn--block" type="button">Szinkronizálás</button></div>
               <p id="ebook-reader-support" class="ebook-library__support" hidden>Ehhez Chrome vagy Edge asztali böngésző kell.</p>
-              <ul id="ebook-sync-list" class="ebook-library__reader-sync-list"></ul><p id="ebook-sync-status" role="status">A Drive és az e-reader csatlakoztatása után használható.</p><progress id="ebook-sync-progress" max="1" value="0" hidden></progress><p id="ebook-sync-progress-label" class="ebook-library__reader-sync-progress" aria-live="polite"></p>
+              <div id="ebook-sync-success" class="ebook-library__reader-sync-success" role="status" aria-live="polite" hidden><span aria-hidden="true">✓</span><strong>Sikeres szinkronizálás</strong></div><p id="ebook-sync-status" role="status">A Drive és az e-reader csatlakoztatása után használható.</p><progress id="ebook-sync-progress" max="1" value="0" hidden></progress><p id="ebook-sync-progress-label" class="ebook-library__reader-sync-progress" aria-live="polite"></p>
             </section>
               <a class="ebook-library__reader-link" href="e/">Könnyített e-olvasó oldal</a>
             </div>
@@ -1126,6 +1126,12 @@
               <label class="field"><span class="field__label">Könyv</span><select id="ebook-metadata-book" class="input" size="8"><option value="">Válassz könyvet…</option></select></label>
             </aside>
             <div class="ebook-library__metadata-workspace">
+              <div id="ebook-editor-tabs" class="ebook-library__editor-tabs" role="tablist" aria-label="Könyvszerkesztő nézetek">
+                <button id="ebook-editor-text-tab" class="btn btn--ghost" type="button" role="tab" aria-controls="ebook-editor-text-pane" aria-selected="true">Szöveg</button>
+                <button id="ebook-editor-font-tab" class="btn btn--ghost" type="button" role="tab" aria-controls="ebook-editor-font-pane" aria-selected="false">Kinézet</button>
+                <button id="ebook-editor-metadata-tab" class="btn btn--ghost" type="button" role="tab" aria-controls="ebook-editor-metadata-pane" aria-selected="false">Adatlap</button>
+              </div>
+              <div id="ebook-editor-metadata-pane" class="ebook-library__editor-pane" role="tabpanel" aria-labelledby="ebook-editor-metadata-tab">
               <div id="ebook-metadata-preview" class="ebook-library__metadata-preview" data-empty="true">
                 <div class="ebook-library__book-icon" aria-hidden="true">E</div>
                 <div><strong id="ebook-metadata-preview-title">Nincs kiválasztott könyv</strong><span id="ebook-metadata-preview-meta">Válassz egy könyvet a bal oldali listából.</span></div>
@@ -1161,6 +1167,45 @@
                 <button id="ebook-metadata-apply" class="btn btn--ghost" type="button" disabled>Kiválasztott mezők alkalmazása</button>
                 <button id="ebook-metadata-save-catalog" class="btn btn--ghost" type="button" hidden>Csak adatlap mentése</button>
                 <button id="ebook-metadata-save" class="btn btn--primary" type="button" disabled>Metaadatok mentése</button>
+              </div>
+              </div>
+              <section id="ebook-editor-text-pane" class="ebook-library__editor-pane" role="tabpanel" aria-labelledby="ebook-editor-text-tab">
+                <p class="ebook-library__editor-hint">A javítások az EPUB szövegcsomópontjait módosítják; a linkek, képek és formázó elemek szerkezete megmarad. A változásokat mentés előtt ellenőrizheted.</p>
+                <div class="ebook-library__editor-field-row">
+                  <label class="field"><span class="field__label">Fejezet keresése</span><input id="ebook-editor-chapter-filter" class="input" type="search" placeholder="Keresés a fejezetek között" /></label>
+                  <label class="field"><span class="field__label">Fejezet</span><select id="ebook-editor-chapter" class="input"></select></label>
+                  <div class="ebook-library__editor-field-row"><label class="field"><span class="field__label">Fejezet címe a könyvben</span><input id="ebook-editor-heading" class="input" type="text" /></label><label class="field"><span class="field__label">Cím a tartalomjegyzékben</span><input id="ebook-editor-toc" class="input" type="text" /></label></div>
+                  <button id="ebook-editor-title-apply" class="btn btn--ghost" type="button">Fejezetcímek alkalmazása</button>
+                </div>
+                <div class="ebook-library__editor-section">
+                  <h3>Szövegrész kézi javítása</h3>
+                  <div class="ebook-library__editor-pagination"><button id="ebook-editor-segments-prev" class="btn btn--ghost" type="button">← Előző részek</button><span id="ebook-editor-segments-range"></span><button id="ebook-editor-segments-next" class="btn btn--ghost" type="button">Következő részek →</button></div>
+                  <select id="ebook-editor-segments" class="input ebook-library__segment-list" aria-label="Fejezet szövegrészei"></select>
+                  <label class="field"><span class="field__label">Kiválasztott szövegrész</span><textarea id="ebook-editor-segment-text" class="input" rows="5"></textarea></label>
+                  <button id="ebook-editor-segment-apply" class="btn btn--ghost" type="button">Szövegrész alkalmazása</button>
+                </div>
+                <div class="ebook-library__editor-section">
+                  <h3>Könyvszintű keresés és csere</h3>
+                  <div class="ebook-library__editor-field-row"><label class="field"><span class="field__label">Keresett szöveg</span><input id="ebook-editor-find" class="input" type="search" /></label><label class="field"><span class="field__label">Új szöveg</span><input id="ebook-editor-replace" class="input" type="text" /></label></div>
+                  <div class="ebook-library__editor-options"><label><input id="ebook-editor-case" type="checkbox" /> Kis- és nagybetű számít</label><label><input id="ebook-editor-word" type="checkbox" /> Csak teljes szó</label></div>
+                  <div class="ebook-library__editor-buttons"><button id="ebook-editor-search" class="btn btn--ghost" type="button">Találatok keresése</button><button id="ebook-editor-select-matches" class="btn btn--ghost" type="button">Összes kijelölése</button><button id="ebook-editor-apply-matches" class="btn btn--primary" type="button">Kijelölt cserék alkalmazása</button></div>
+                  <p id="ebook-editor-match-summary" role="status"></p><div id="ebook-editor-matches" class="ebook-library__editor-results"></div>
+                </div>
+                <div class="ebook-library__editor-section">
+                  <h3>Karakterhibák</h3><button id="ebook-editor-encoding-scan" class="btn btn--ghost" type="button">Gyanús karakterek keresése</button>
+                  <p id="ebook-editor-encoding-summary" role="status"></p><div id="ebook-editor-encoding-results" class="ebook-library__editor-results"></div>
+                </div>
+              </section>
+              <section id="ebook-editor-font-pane" class="ebook-library__editor-pane" role="tabpanel" aria-labelledby="ebook-editor-font-tab">
+                <p class="ebook-library__editor-hint">A kiválasztott hibás fontbeállítást a fájl CSS-ében és a szövegbe írt stílusokban cseréljük. Az olvasó saját betűtípus-beállítása ezt felülírhatja.</p>
+                <div class="ebook-library__editor-field-row"><label class="field"><span class="field__label">Lecserélendő betűcsalád</span><select id="ebook-editor-font-source" class="input"></select></label><label class="field"><span class="field__label">Helyettesítő család</span><select id="ebook-editor-font-target" class="input"><option value="serif">Talpas (serif)</option><option value="sans-serif">Talpatlan (sans-serif)</option></select></label></div>
+                <p id="ebook-editor-font-summary" role="status"></p><button id="ebook-editor-font-apply" class="btn btn--primary" type="button">Betűtípus-javítás alkalmazása</button>
+              </section>
+              <div id="ebook-editor-global-actions" class="ebook-library__metadata-actions ebook-library__editor-global-actions">
+                <span id="ebook-editor-status" role="status" aria-live="polite">Válassz EPUB-könyvet, majd nyisd meg a fájlt.</span>
+                <button id="ebook-editor-open" class="btn btn--ghost" type="button">EPUB megnyitása</button>
+                <button id="ebook-editor-undo" class="btn btn--ghost" type="button" aria-label="Utolsó módosítás visszavonása" title="Visszavonás" disabled>↶</button>
+                <button id="ebook-editor-save" class="btn btn--primary" type="button" disabled>Változások mentése a Drive-ra</button>
               </div>
             </div>
           </div>

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import JSZip from 'jszip'
 import { rewriteEpubMetadata } from '../src/ebook/epub-metadata.js'
+import { openEpubContent } from '../src/ebook/epub-content.js'
 
 const jar = process.env.EPUBCHECK_JAR
 if (!jar) throw new Error('EPUBCHECK_JAR is required for the EPUB conformance test.')
@@ -33,6 +34,17 @@ const edited2 = await rewriteEpubMetadata(await zip2.generateAsync({ type: 'blob
   publisher: 'Grapes', publishedDate: '2026', isbn: '', subjects: ['Testing'], series: 'Test series', seriesIndex: '1',
 }, { bytes: cover, mimeType: 'image/png' })
 
+async function repairContent(source) {
+  const book = await openEpubContent(source)
+  const chapter = book.chapters[0]
+  book.renameChapter(chapter.id, { heading: 'Repaired chapter', toc: 'Repaired chapter' })
+  const match = book.getMatches('Unchanged content.')
+  book.replaceMatches(match, 'Repaired content.')
+  return book.buildBlob()
+}
+const repaired3 = await repairContent(edited)
+const repaired2 = await repairContent(edited2)
+
 const directory = await mkdtemp(join(tmpdir(), 'grapes-epubcheck-'))
 const target = join(directory, 'edited.epub')
 try {
@@ -41,6 +53,11 @@ try {
   const target2 = join(directory, 'edited-epub2.epub')
   await writeFile(target2, Buffer.from(await edited2.arrayBuffer()))
   execFileSync('java', ['-jar', jar, target2], { stdio: 'inherit', timeout: 120000 })
+  for (const [name, file] of [['repaired-epub3.epub', repaired3], ['repaired-epub2.epub', repaired2]]) {
+    const destination = join(directory, name)
+    await writeFile(destination, Buffer.from(await file.arrayBuffer()))
+    execFileSync('java', ['-jar', jar, destination], { stdio: 'inherit', timeout: 120000 })
+  }
 } finally {
   await rm(directory, { recursive: true, force: true })
 }

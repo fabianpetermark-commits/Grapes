@@ -31,7 +31,7 @@ try {
     const measured = await page.evaluate(() => {
       const root = document.documentElement
       const panel = document.querySelector('#ebook-metadata-panel')
-      const save = document.querySelector('#ebook-metadata-save').getBoundingClientRect()
+      const save = document.querySelector('#ebook-editor-save').getBoundingClientRect()
       const edge = panel.getBoundingClientRect().right
       const overflowing = [...panel.querySelectorAll('*')].map((el) => ({ node: el.tagName.toLowerCase(), id: el.id, className: typeof el.className === 'string' ? el.className : '', right: Math.round(el.getBoundingClientRect().right - edge), scroll: el.scrollWidth - el.clientWidth })).filter((item) => item.right > 1 || item.scroll > 1).sort((a, b) => b.scroll - a.scroll).slice(0, 5)
       return { overflow: root.scrollWidth - innerWidth, panelOverflow: panel.scrollWidth - panel.clientWidth, saveWidth: save.width, saveHeight: save.height, saveRight: save.right, overflowing }

@@ -943,6 +943,12 @@ test('metadata editor exposes search, live preview and a protected dirty state',
   assert.equal(a.nodes.get('#ebook-metadata-preview-title').textContent, 'Dűne')
 })
 
+test('saved title and author produce a safe filename while preserving the extension', () => {
+  const a = app(async () => json({}))
+  assert.equal(a.run('metadataFileNameFor({ name: "old.epub" }, { title: "Az idő: gyermekei?", author: "Adrian / Tchaikovsky" })'), 'Adrian Tchaikovsky - Az idő gyermekei.epub')
+  assert.equal(a.run('metadataFileNameFor({ name: "old.PDF" }, { title: "Új cím", author: "" })'), 'Új cím.pdf')
+})
+
 test('library edit opens only the selected book detail and restores the library scroll position', () => {
   const a = app(async () => json({}))
   const manager = a.run('$("#ebook-manager-view")')
@@ -1016,6 +1022,7 @@ test('saving from a book detail keeps the detail open and updates the library ti
   await a.run('saveMetadata({ catalogOnly: true })')
   assert.equal(a.nodes.get('#ebook-manager-view').dataset.ebookMode, 'detail')
   assert.equal(a.run('ebookMetadata.book.title'), 'Dűne')
+  assert.equal(a.run('currentBooks[0].name'), 'Frank Herbert - Dűne.pdf')
   assert.match(a.nodes.get('#ebook-list').children[0].innerHTML, /Dűne/)
   assert.equal(a.nodes.get('#ebook-metadata-operation-status').dataset.kind, 'success')
   assert.equal(a.run('metadataDirty'), false)

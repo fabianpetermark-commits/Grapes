@@ -10,7 +10,8 @@ let readerConnectionState = 'disconnected'
 let readerVerification = null
 
 const $ = selector => document.querySelector(selector)
-const status = (message, kind = '') => { const node = $('#ebook-sync-status'); if (node) { node.textContent = message; node.dataset.kind = kind } }
+const showSuccess = (visible) => { const node = $('#ebook-sync-success'); if (node) node.hidden = !visible }
+const status = (message, kind = '') => { const node = $('#ebook-sync-status'); if (node) { node.textContent = message; node.dataset.kind = kind }; if (kind !== 'success') showSuccess(false) }
 const supports = () => typeof window.showDirectoryPicker === 'function' && typeof window.indexedDB !== 'undefined'
 const candidate = name => Boolean(String(name || '').trim()) && !String(name).startsWith('.') && !/^(desktop\.ini|thumbs\.db)$/i.test(name)
 const normalize = name => String(name || '').normalize('NFKC').trim().toLocaleLowerCase('hu-HU')
@@ -70,7 +71,7 @@ async function scanDirectory(directory, prefix = '') {
     if (handle.name.startsWith('.')) continue
     const path = prefix ? `${prefix}/${handle.name}` : handle.name
     if (handle.kind === 'directory') result.push(...await scanDirectory(handle, path))
-    else if (candidate(handle.name)) { const file = await handle.getFile(); result.push({ name: file.name, size: file.size, path, handle, file }) }
+    else if (candidate(handle.name)) { const file = await handle.getFile(); result.push({ name: file.name, size: file.size, lastModified: file.lastModified, path, handle, file }) }
   }
   return result
 }
@@ -85,26 +86,21 @@ async function listDriveBooks(folderId) {
   while (pending.length) {
     const folder = pending.shift(); if (visited.has(folder)) continue; visited.add(folder)
     const query = `'${folder}' in parents and trashed = false`
-    const data = await (await grapesDriveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,size,mimeType,parents)&pageSize=1000`)).json()
+    const data = await (await grapesDriveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,size,modifiedTime,md5Checksum,mimeType,parents,appProperties)&pageSize=1000`)).json()
     for (const file of data.files || []) file.mimeType === 'application/vnd.google-apps.folder' ? pending.push(file.id) : candidate(file.name) && result.push(file)
   }
   return result
 }
 function renderInventory() {
-  const host = $('#ebook-sync-list'); if (!host) return
   const groups = new Map()
   for (const book of driveBooks) groups.set(normalize(book.name), { name: book.name, drive: book, reader: null })
   for (const book of readerBooks) { const group = groups.get(normalize(book.name)) || { name: book.name, drive: null, reader: null }; group.reader = book; groups.set(normalize(book.name), group) }
-  const entries = [...groups.values()].map(group => ({ ...group, state: group.drive && group.reader ? (Number(group.drive.size) === Number(group.reader.size) ? 'Szinkronban' : 'Eltérő méret') : group.drive ? 'Csak Drive-on' : 'Csak e-readeren' }))
-  host.replaceChildren(...entries.map(item => { const row = document.createElement('li'); row.textContent = `${item.name} · ${item.state}`; return row }))
+  const entries = [...groups.values()]
   for (const row of document.querySelectorAll('#ebook-list [data-book-name]')) {
     const entry = entries.find(item => normalize(item.name) === normalize(row.dataset.bookName))
     const badge = row.querySelector('[data-location-badge]')
     if (badge && entry) badge.textContent = entry.reader ? 'Drive · E-reader' : 'Drive'
   }
-  const counts = entries.reduce((acc, item) => { acc[item.state] = (acc[item.state] || 0) + 1; return acc }, {})
-  const summary = Object.entries(counts).map(([key, value]) => `${key}: ${value}`).join(' · ') || 'Nincs könyv'
-  status(summary)
 }
 async function refreshInventory() {
   if (!isGrapesDriveConnected()) throw new Error('Előbb csatlakoztasd a Google Drive-ot a főmenüben.')
@@ -122,6 +118,17 @@ async function writeToReader(book) {
   const response = await grapesDriveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(book.id)}?alt=media`)
   const handle = await readerRoot.getFileHandle(book.name, { create: true }); const writable = await handle.createWritable(); await writable.write(await response.blob()); await writable.close()
 }
+function previousNames(book) {
+  try { return JSON.parse(book.appProperties?.grapesPreviousNames || '[]').filter((name) => typeof name === 'string') }
+  catch { return [] }
+}
+async function removeReaderBook(book) {
+  const parts = String(book?.path || '').split('/').filter(Boolean)
+  if (!parts.length) return
+  let parent = readerRoot
+  for (const part of parts.slice(0, -1)) parent = await parent.getDirectoryHandle(part)
+  await parent.removeEntry(parts.at(-1))
+}
 async function uploadFromReader(book, folderId) {
   const boundary = `grapes-reader-sync-${crypto.randomUUID()}`
   const body = new Blob([`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n`, JSON.stringify({ name: book.name, parents: [folderId] }), `\r\n--${boundary}\r\nContent-Type: ${book.file.type || 'application/octet-stream'}\r\n\r\n`, book.file, `\r\n--${boundary}--\r\n`])
@@ -130,17 +137,29 @@ async function uploadFromReader(book, folderId) {
 async function synchronize() {
   if (!readerRoot || !await verifyReaderAccess()) return status('Az e-reader nem érhető el. Csatlakoztasd USB-kábellel, majd válaszd ki újra a mappáját.', 'error')
   try {
+    showSuccess(false)
     await refreshInventory(); const folderId = await findLibraryFolder(); let toReader = 0, toDrive = 0
-    const readerNames = new Set(readerBooks.map(book => normalize(book.name)))
-    const driveNames = new Set(driveBooks.map(book => normalize(book.name)))
-    const readerQueue = driveBooks.filter(book => !readerNames.has(normalize(book.name)))
-    const driveQueue = readerBooks.filter(book => !driveNames.has(normalize(book.name)))
-    const total = readerQueue.length + driveQueue.length
+    const readerByName = new Map(readerBooks.map(book => [normalize(book.name), book]))
+    const claimedReaderPaths = new Set()
+    const readerQueue = []
+    const cleanupQueue = []
+    for (const book of driveBooks) {
+      const current = readerByName.get(normalize(book.name))
+      const previous = previousNames(book).map(name => readerByName.get(normalize(name))).filter(Boolean)
+      if (current) claimedReaderPaths.add(current.path)
+      previous.forEach(item => claimedReaderPaths.add(item.path))
+      const driveChanged = current && (Number(book.size) !== Number(current.size) || (book.modifiedTime && current.lastModified && new Date(book.modifiedTime).getTime() > current.lastModified + 2000))
+      if (!current || driveChanged) readerQueue.push({ book, previous: current ? [] : previous })
+      else cleanupQueue.push(...previous.filter(item => item.path !== current.path))
+    }
+    const driveQueue = readerBooks.filter(book => !claimedReaderPaths.has(book.path))
+    const total = readerQueue.length + driveQueue.length + cleanupQueue.length
     updateProgress(0, total, total ? 'Előkészítés…' : 'Minden könyv szinkronban van')
     let completed = 0
-    for (const book of readerQueue) { updateProgress(completed, total, `${book.name} → e-reader`); await writeToReader(book); toReader++; updateProgress(++completed, total, `${book.name} kész`) }
+    for (const item of readerQueue) { updateProgress(completed, total, `${item.book.name} → e-reader`); await writeToReader(item.book); for (const previous of item.previous) await removeReaderBook(previous); toReader++; updateProgress(++completed, total, `${item.book.name} kész`) }
+    for (const book of cleanupQueue) { updateProgress(completed, total, `${book.name} régi példány törlése`); await removeReaderBook(book); updateProgress(++completed, total, 'Régi fájlnév eltávolítva') }
     for (const book of driveQueue) { updateProgress(completed, total, `${book.name} → Drive`); await uploadFromReader(book, folderId); toDrive++; updateProgress(++completed, total, `${book.name} kész`) }
-    await refreshInventory(); status(`Szinkronizálás kész: ${toReader} könyv az e-readerre, ${toDrive} könyv a Drive-ra.`, 'success')
+    await refreshInventory(); status(`Szinkronizálás kész: ${toReader} könyv az e-readerre, ${toDrive} könyv a Drive-ra.`, 'success'); showSuccess(true)
     updateProgress(total, total, 'Kész')
   } catch (error) { status(`A szinkronizálás nem sikerült. ${error.message}`, 'error') }
 }

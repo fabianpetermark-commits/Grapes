@@ -34,6 +34,20 @@ let metadataLookupSerial = 0
 let metadataSearchMatches = []
 let metadataProposalControls = new Map()
 let metadataDirty = false
+let contentSession = null
+let contentBookId = ''
+let contentLoadedVersion = null
+let contentLoadSerial = 0
+let contentChangeSerial = 0
+let contentDraftDirty = false
+let contentMatches = []
+let contentEncodingSuggestions = []
+let activeChapterId = ''
+let activeSegmentIndex = -1
+let segmentOffset = 0
+let displayedHeading = ''
+let displayedToc = ''
+let displayedSegment = ''
 let libraryScrollTop = 0
 let activeMetadataBookId = ''
 let metadataLoadedSnapshot = ''
@@ -54,6 +68,15 @@ let pickerLoadPromise = null
 let pickerPending = false
 const $ = (selector) => document.querySelector(selector)
 const ext = (name = '') => name.includes('.') ? name.split('.').pop().toLowerCase() : 'FILE'
+const safeFilePart = (value = '') => String(value).replace(/[<>:"/\\|?*\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').replace(/[. ]+$/g, '').trim()
+function metadataFileNameFor(book, metadata) {
+  const extension = ext(book?.name || '')
+  const title = safeFilePart(metadata?.title)
+  const author = safeFilePart(metadata?.author)
+  if (!title || extension === 'FILE') return book?.name || ''
+  const base = (author ? `${author} - ${title}` : title).slice(0, 180).replace(/[. ]+$/g, '')
+  return `${base}.${extension}`
+}
 const isShareableBook = (name = '') => SHAREABLE_BOOK_EXTENSIONS.has(ext(name))
 const isBookFile = (file) => Boolean(file?.name)
   && !file.name.startsWith('.')
@@ -72,6 +95,11 @@ function setStatus(message, kind = '') {
     editorStatus.textContent = message
     editorStatus.dataset.kind = kind
   }
+  if ($('#ebook-manager-view')?.dataset.ebookMode === 'organizer') setContentStatus(message, kind)
+}
+function setContentStatus(message, kind = '') {
+  const status = $('#ebook-editor-status')
+  if (status) { status.textContent = message; status.dataset.kind = kind }
 }
 function setUploadState(message, kind = '') { const node = $('#ebook-upload-state'); if (node) { node.textContent = message; node.dataset.kind = kind } }
 function activeLibraryAccount() { return getConnectedGrapesAccount()?.email?.trim().toLocaleLowerCase('en-US') || '' }
@@ -321,6 +349,7 @@ function setMetadataDirty(value) {
   }
   const save = $('#ebook-metadata-save')
   if (save) save.disabled = !metadataDirty || !activeMetadataBookId || !currentBooks.some((book) => book.id === activeMetadataBookId)
+  updateContentSaveState()
 }
 function setMetadataAccessStatus(message, kind = '') {
   const status = $('#ebook-metadata-access-status')
@@ -451,6 +480,7 @@ function updateMetadataForm() {
   if ($('#ebook-metadata-apply')) $('#ebook-metadata-apply').disabled = !pendingMetadataSuggestion
   updateMetadataPreview()
   setMetadataDirty(false)
+  syncContentSelection()
 }
 function renderCoverPreview(url) {
   if (coverObjectUrl) { URL.revokeObjectURL(coverObjectUrl); coverObjectUrl = '' }
@@ -477,7 +507,7 @@ async function loadSavedCoverPreview(bookId, fileId) {
 function selectMetadataBook() {
   const select = $('#ebook-metadata-book')
   const next = select?.value || ''
-  if (metadataDirty && next !== activeMetadataBookId && !window.confirm('A mentetlen módosítások elvesznek. Másik könyvet választasz?')) {
+  if ((metadataDirty || hasContentChanges()) && next !== activeMetadataBookId && !window.confirm('A mentetlen módosítások elvesznek. Másik könyvet választasz?')) {
     select.value = activeMetadataBookId
     return
   }
@@ -917,8 +947,25 @@ function sameDriveVersion(left, right) {
   return left?.modifiedTime === right?.modifiedTime && String(left?.size || '') === String(right?.size || '')
 }
 async function getBookDriveVersion(id) {
-  const response = await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?fields=id,name,size,modifiedTime,md5Checksum,headRevisionId,mimeType,capabilities(canEdit),isAppAuthorized`)
+  const response = await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?fields=id,name,size,modifiedTime,md5Checksum,headRevisionId,mimeType,capabilities(canEdit),isAppAuthorized,appProperties`)
   return response.json()
+}
+async function renameBookOnDrive(book, metadata) {
+  const nextName = metadataFileNameFor(book, metadata)
+  if (!nextName || nextName === book.name) return null
+  if (book.isAppAuthorized === false) throw new Error('A cím és szerző mentéséhez engedélyezd ennek a könyvfájlnak a hozzáférését, hogy a fájlnév is frissülhessen.')
+  const previous = (() => {
+    try { return JSON.parse(book.appProperties?.grapesPreviousNames || '[]') }
+    catch { return [] }
+  })()
+  const names = [...new Set([book.name, ...previous].filter(Boolean))].slice(0, 12)
+  const response = await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(book.id)}?fields=id,name,size,modifiedTime,md5Checksum,headRevisionId,appProperties,isAppAuthorized`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: nextName, appProperties: { grapesPreviousNames: JSON.stringify(names) } }),
+  })
+  const renamed = await response.json()
+  Object.assign(book, renamed, { name: nextName, appProperties: renamed.appProperties || { ...(book.appProperties || {}), grapesPreviousNames: JSON.stringify(names) } })
+  return renamed
 }
 function looksLikeAuthor(value = '') {
   const clean = value.replace(/\([^)]*\)/g, '').replace(/\bdr\.?\s*/gi, '').trim()
@@ -933,6 +980,239 @@ function extractIsbn(name = '') {
 function suggestMetadata(name = '') {
   const parsed = parseFilenameMetadata(name)
   return parsed ? `Szerző: ${parsed.author} · Cím: ${parsed.title}` : 'nem azonosítható biztosan a szerző és a cím.'
+}
+function hasContentChanges() { return Boolean(contentSession?.hasChanges || contentDraftDirty) }
+function updateContentSaveState() {
+  const book = currentBooks.find((item) => item.id === activeMetadataBookId)
+  const save = $('#ebook-editor-save')
+  if (save) save.disabled = !book || (!metadataDirty && !hasContentChanges())
+  const undo = $('#ebook-editor-undo')
+  if (undo) undo.disabled = !hasContentChanges() || Boolean(partialMetadataSave)
+  const open = $('#ebook-editor-open')
+  if (open) {
+    open.disabled = !book || ext(book.name) !== 'epub' || !canWriteEpub(book) || Boolean(partialMetadataSave) || hasContentChanges()
+    open.textContent = contentSession && contentBookId === book?.id ? 'EPUB újratöltése' : 'EPUB megnyitása'
+  }
+  for (const selector of ['#ebook-editor-heading', '#ebook-editor-toc', '#ebook-editor-segment-text', '#ebook-editor-title-apply', '#ebook-editor-segment-apply', '#ebook-editor-apply-matches', '#ebook-editor-font-apply']) {
+    const control = $(selector)
+    if (control && partialMetadataSave) control.disabled = true
+  }
+}
+function resetContentState(id = '') {
+  contentLoadSerial++
+  contentSession = null
+  contentBookId = id
+  contentLoadedVersion = null
+  contentDraftDirty = false
+  contentMatches = []
+  contentEncodingSuggestions = []
+  activeChapterId = ''
+  activeSegmentIndex = -1
+  segmentOffset = 0
+  displayedHeading = displayedToc = displayedSegment = ''
+  for (const selector of ['#ebook-editor-chapter', '#ebook-editor-segments', '#ebook-editor-matches', '#ebook-editor-encoding-results', '#ebook-editor-font-source']) {
+    $(selector)?.replaceChildren()
+  }
+  updateContentSaveState()
+}
+function showEditorTab(tab) {
+  const manager = $('#ebook-manager-view')
+  if (!manager) return
+  const book = currentBooks.find((item) => item.id === activeMetadataBookId)
+  const selected = ext(book?.name || '') === 'epub' ? tab : 'metadata'
+  manager.dataset.ebookTab = selected
+  for (const name of ['text', 'font', 'metadata']) {
+    const button = $(`#ebook-editor-${name}-tab`)
+    if (button) { button.setAttribute?.('aria-selected', String(name === selected)); button.tabIndex = name === selected ? 0 : -1; button.disabled = name !== 'metadata' && ext(book?.name || '') !== 'epub' }
+  }
+  if (selected === 'font') renderContentFonts()
+}
+function syncContentSelection() {
+  const id = activeMetadataBookId
+  const changedBook = contentBookId !== id
+  if (changedBook) resetContentState(id)
+  const book = currentBooks.find((item) => item.id === id)
+  if (changedBook && book && $('#ebook-manager-view')?.dataset.ebookMode === 'organizer') $('#ebook-manager-view').dataset.ebookTab = ext(book.name) === 'epub' ? 'text' : 'metadata'
+  if ($('#ebook-manager-view')?.dataset.ebookMode === 'organizer') {
+    if (!book) setContentStatus('Válassz egy könyvet a bal oldali listából.')
+    else if (ext(book.name) !== 'epub') setContentStatus('Ehhez a formátumhoz csak az adatlap szerkeszthető.')
+    else if (!canWriteEpub(book)) setContentStatus('A tartalomhoz az Adatlap fülön engedélyezd ennek az EPUB-nak a fájlonkénti hozzáférését.')
+    else if (!contentSession) setContentStatus('Nyisd meg az EPUB-ot a fejezetek és a szöveg javításához.')
+  }
+  showEditorTab($('#ebook-manager-view')?.dataset.ebookTab || 'text')
+  updateContentSaveState()
+}
+function renderContentChapters() {
+  if (!contentSession) return
+  const select = $('#ebook-editor-chapter')
+  if (!select) return
+  const query = normalizedWords($('#ebook-editor-chapter-filter')?.value || '').join(' ')
+  const visible = contentSession.chapters.filter((chapter) => !query || normalizedWords(chapter.title).join(' ').includes(query))
+  select.innerHTML = visible.map((chapter) => `<option value="${escapeHtml(chapter.id)}">${escapeHtml(chapter.title)}</option>`).join('')
+  activeChapterId = contentSession.chapters.some((chapter) => chapter.id === activeChapterId) ? activeChapterId : contentSession.chapters[0].id
+  select.value = visible.some((chapter) => chapter.id === activeChapterId) ? activeChapterId : ''
+  renderContentChapter()
+}
+function renderContentChapter() {
+  if (!contentSession || !activeChapterId) return
+  const chapter = contentSession.getChapter(activeChapterId)
+  const heading = $('#ebook-editor-heading')
+  const toc = $('#ebook-editor-toc')
+  displayedHeading = chapter.heading
+  displayedToc = chapter.toc
+  if (heading) { heading.value = chapter.heading; heading.disabled = !chapter.headingEditable }
+  if (toc) { toc.value = chapter.toc; toc.disabled = !chapter.tocEditable }
+  const apply = $('#ebook-editor-title-apply')
+  if (apply) apply.disabled = !chapter.headingEditable && !chapter.tocEditable
+  renderContentSegments()
+}
+function renderContentSegments() {
+  if (!contentSession || !activeChapterId) return
+  const segments = contentSession.getSegments(activeChapterId)
+  segmentOffset = Math.max(0, Math.min(segmentOffset, Math.max(0, Math.floor((segments.length - 1) / 100) * 100)))
+  const visible = segments.slice(segmentOffset, segmentOffset + 100)
+  const select = $('#ebook-editor-segments')
+  if (select) {
+    select.innerHTML = visible.map((segment) => `<option value="${segment.index}">${escapeHtml(`${segment.index + 1}. ${segment.text.replace(/\s+/g, ' ').slice(0, 105)}`)}</option>`).join('')
+    if (!visible.some((segment) => segment.index === activeSegmentIndex)) activeSegmentIndex = visible[0]?.index ?? -1
+    if (activeSegmentIndex >= 0) select.value = String(activeSegmentIndex)
+  }
+  const range = $('#ebook-editor-segments-range')
+  if (range) range.textContent = segments.length ? `${segmentOffset + 1}–${Math.min(segmentOffset + 100, segments.length)} / ${segments.length}` : 'Nincs szövegrész'
+  const previous = $('#ebook-editor-segments-prev'); if (previous) previous.disabled = segmentOffset === 0
+  const next = $('#ebook-editor-segments-next'); if (next) next.disabled = segmentOffset + 100 >= segments.length
+  const textarea = $('#ebook-editor-segment-text')
+  displayedSegment = segments[activeSegmentIndex]?.text || ''
+  if (textarea) { textarea.value = displayedSegment; textarea.disabled = activeSegmentIndex < 0 }
+  const apply = $('#ebook-editor-segment-apply'); if (apply) apply.disabled = activeSegmentIndex < 0
+}
+function commitContentDrafts() {
+  if (!contentSession || !contentDraftDirty) return
+  if (partialMetadataSave) throw new Error('Az EPUB már feltöltődött; előbb az adatlap mentését kell újrapróbálni.')
+  const chapter = contentSession.getChapter(activeChapterId)
+  const heading = $('#ebook-editor-heading')?.value
+  const toc = $('#ebook-editor-toc')?.value
+  const segment = contentSession.getSegments(activeChapterId)[activeSegmentIndex]
+  const text = $('#ebook-editor-segment-text')?.value
+  if (segment && text !== displayedSegment && contentSession.editSegment(activeChapterId, activeSegmentIndex, text, displayedSegment)) contentChangeSerial++
+  if ((chapter.headingEditable && heading !== displayedHeading) || (chapter.tocEditable && toc !== displayedToc)) {
+    contentSession.renameChapter(activeChapterId, { heading: chapter.headingEditable && heading !== displayedHeading ? heading : undefined, toc: chapter.tocEditable && toc !== displayedToc ? toc : undefined })
+    contentChangeSerial++
+  }
+  contentDraftDirty = false
+  renderContentChapters()
+  updateContentSaveState()
+}
+async function openContentBook() {
+  const book = currentBooks.find((item) => item.id === activeMetadataBookId)
+  if (!book || ext(book.name) !== 'epub') return setContentStatus('A tartalomszerkesztés csak EPUB-könyvhöz érhető el.', 'error')
+  if (!canWriteEpub(book)) return setContentStatus('Az Adatlap fülön engedélyezd a kiválasztott EPUB fájlonkénti hozzáférését.', 'error')
+  if (hasContentChanges()) return setContentStatus('Előbb mentsd vagy vond vissza a jelenlegi módosításokat.', 'error')
+  const serial = ++contentLoadSerial
+  const button = $('#ebook-editor-open'); if (button) button.disabled = true
+  setContentStatus('Az EPUB letöltése és ellenőrzése…')
+  try {
+    const before = await getBookDriveVersion(book.id)
+    if (before.isAppAuthorized !== true) throw new Error('A fájlonkénti Drive-hozzáférés már nem aktív.')
+    const blob = await (await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(book.id)}?alt=media`)).blob()
+    const { openEpubContent } = await import('./ebook/epub-content.js')
+    const session = await openEpubContent(blob)
+    if (!sameDriveVersion(before, await getBookDriveVersion(book.id))) throw new Error('Az EPUB közben megváltozott a Drive-on. Nyisd meg újra.')
+    if (serial !== contentLoadSerial || activeMetadataBookId !== book.id || $('#ebook-manager-view')?.dataset.ebookMode !== 'organizer') return
+    contentSession = session
+    contentBookId = book.id
+    contentLoadedVersion = before
+    const titleField = $('#ebook-metadata-title')
+    if (titleField && !titleField.value.trim() && session.title) { titleField.value = session.title; updateMetadataPreview() }
+    renderContentChapters()
+    renderContentFonts()
+    setContentStatus(`${session.chapters.length} fejezet megnyitva. A fájl még nem módosult.`, 'success')
+  } catch (error) {
+    if (serial === contentLoadSerial) setContentStatus(`A tartalom nem nyitható meg: ${error.message} Az adatlap továbbra is használható.`, 'error')
+  } finally { updateContentSaveState() }
+}
+function renderContentMatches() {
+  const container = $('#ebook-editor-matches')
+  if (!container) return
+  container.replaceChildren()
+  const replacement = $('#ebook-editor-replace')?.value || ''
+  contentMatches.forEach((match, index) => {
+    const label = document.createElement('label')
+    label.className = 'ebook-library__editor-result'
+    const checkbox = document.createElement('input')
+    checkbox.type = 'checkbox'; checkbox.value = String(index); checkbox.checked = true
+    const content = document.createElement('span')
+    const title = document.createElement('small'); title.textContent = match.chapterTitle
+    const text = document.createElement('span')
+    text.append(document.createTextNode(match.before))
+    const old = document.createElement('del'); old.textContent = match.found
+    const next = document.createElement('ins'); next.textContent = replacement
+    text.append(old, document.createTextNode(' → '), next, document.createTextNode(match.after))
+    content.append(title, text); label.append(checkbox, content); container.append(label)
+  })
+  const summary = $('#ebook-editor-match-summary')
+  if (summary) summary.textContent = `${contentMatches.length} találat. Csak a kijelölt előfordulások módosulnak.`
+}
+function searchContentMatches() {
+  if (!contentSession) return setContentStatus('Előbb nyisd meg az EPUB-ot.', 'error')
+  try {
+    commitContentDrafts()
+    const query = $('#ebook-editor-find')?.value || ''
+    if (!query) throw new Error('Írd be a keresett szöveget.')
+    const matches = contentSession.getMatches(query, { caseSensitive: $('#ebook-editor-case')?.checked, wholeWord: $('#ebook-editor-word')?.checked })
+    if (matches.length > 500) throw new Error('Több mint 500 találat van. Pontosítsd a keresést az ellenőrizhető csere előtt.')
+    contentMatches = matches
+    renderContentMatches()
+  } catch (error) { contentMatches = []; $('#ebook-editor-matches')?.replaceChildren(); setContentStatus(error.message, 'error') }
+}
+function applyContentMatches() {
+  if (!contentSession || !contentMatches.length) return
+  if (partialMetadataSave) return setContentStatus('Az EPUB már feltöltődött; előbb az adatlap mentését kell újrapróbálni.', 'error')
+  const selected = [...($('#ebook-editor-matches')?.querySelectorAll('input:checked') || [])].map((node) => contentMatches[Number(node.value)]).filter(Boolean)
+  try {
+    const count = contentSession.replaceMatches(selected, $('#ebook-editor-replace')?.value || '')
+    if (!count) return setContentStatus('Nem jelöltél ki találatot.', 'error')
+    contentChangeSerial++
+    contentMatches = []
+    $('#ebook-editor-matches')?.replaceChildren()
+    renderContentChapter()
+    setContentStatus(`${count} jóváhagyott csere előkészítve. A Drive-fájl csak mentéskor módosul.`, 'success')
+    updateContentSaveState()
+  } catch (error) { setContentStatus(error.message, 'error') }
+}
+function renderEncodingSuggestions() {
+  const container = $('#ebook-editor-encoding-results')
+  if (!container) return
+  container.replaceChildren()
+  contentEncodingSuggestions.forEach((item, index) => {
+    const row = document.createElement('div'); row.className = 'ebook-library__editor-result'
+    const text = document.createElement('span')
+    const title = document.createElement('small'); title.textContent = item.chapterTitle
+    text.append(title, document.createTextNode(item.original.slice(0, 180)), document.createTextNode(' → '), document.createTextNode(item.recoverable ? item.replacement.slice(0, 180) : 'Nem állítható vissza biztosan; kézi javítás szükséges.'))
+    row.append(text)
+    if (item.recoverable) { const button = document.createElement('button'); button.type = 'button'; button.className = 'btn btn--ghost'; button.dataset.encodingIndex = String(index); button.textContent = 'Javaslat alkalmazása'; row.append(button) }
+    container.append(row)
+  })
+  const summary = $('#ebook-editor-encoding-summary')
+  if (summary) summary.textContent = `${contentEncodingSuggestions.length} gyanús szövegrész; egyik sem módosul automatikusan.`
+}
+function renderContentFonts() {
+  const select = $('#ebook-editor-font-source')
+  if (!select) return
+  const fonts = contentSession?.getFonts() || []
+  select.innerHTML = fonts.map((item) => `<option value="${escapeHtml(item.value)}">${escapeHtml(item.value)} (${item.count})</option>`).join('')
+  const summary = $('#ebook-editor-font-summary')
+  if (summary) summary.textContent = fonts.length ? 'Válaszd ki a hibás beállítást. A beágyazott fontfájlok változatlanok maradnak.' : 'Nincs javítható font-family beállítás, vagy az EPUB még nincs megnyitva.'
+  const button = $('#ebook-editor-font-apply'); if (button) button.disabled = !fonts.length
+}
+function undoContentAction() {
+  if (partialMetadataSave) return
+  if (contentDraftDirty) { contentDraftDirty = false; renderContentChapters() }
+  else if (contentSession?.undo()) { contentChangeSerial++; renderContentChapters(); renderContentFonts() }
+  contentMatches = []
+  $('#ebook-editor-matches')?.replaceChildren()
+  updateContentSaveState()
+  setContentStatus(hasContentChanges() ? 'Az utolsó lépést visszavontam; további módosítások még mentetlenek.' : 'Minden mentetlen tartalommódosítás visszavonva.', 'success')
 }
 function openMetadataEditor(id, { scroll = true } = {}) {
   const select = $('#ebook-metadata-book')
@@ -976,11 +1256,17 @@ async function saveMetadata({ catalogOnly = false } = {}) {
   if (!id) return setStatus('Válassz ki egy könyvet a szerkesztéshez.', 'error')
   const book = currentBooks.find((item) => item.id === id)
   if (!book) return setMetadataMessage('Ez a könyv már nem érhető el a könyvtárban. Frissítsd a Drive-kapcsolatot a mentés előtt.', 'error')
+  try { if (contentDraftDirty && contentBookId === id) commitContentDrafts() }
+  catch (error) { return setContentStatus(`A szövegrész nem alkalmazható: ${error.message}`, 'error') }
+  const contentEdited = Boolean(contentSession?.hasChanges && contentBookId === id && $('#ebook-manager-view')?.dataset.ebookMode === 'organizer')
+  if (contentEdited && catalogOnly) return setContentStatus('A tartalommódosítás nem menthető csak az adatlapba. Engedélyezd az EPUB-fájl hozzáférését.', 'error')
   const epub = ext(book?.name || '') === 'epub'
   const edited = metadataFromForm()
-  const fingerprint = JSON.stringify(edited) + pendingCoverUrl + (pendingCoverBlob?.size || '') + String(pendingCoverRemoved) + coverChangeSerial
+  const fingerprint = JSON.stringify(edited) + pendingCoverUrl + (pendingCoverBlob?.size || '') + String(pendingCoverRemoved) + coverChangeSerial + (contentEdited ? `:${contentChangeSerial}` : '')
   try {
-    if (epub && !catalogOnly && !partialMetadataSave && window.confirm && !window.confirm('Az EPUB-fájl módosul a Drive-on. Csak akkor folytasd, ha külön megvan az eredeti példány. Folytatod?')) return
+    if (epub && !catalogOnly && !partialMetadataSave && window.confirm && !window.confirm(contentEdited
+      ? `A módosított EPUB felülírja az eredeti Drive-fájlt. ${contentSession.changeSummary.length} mentetlen szerkesztési művelet lesz véglegesítve; külön másolat nem készül. Folytatod?`
+      : 'Az EPUB-fájl módosul a Drive-on. Csak akkor folytasd, ha külön megvan az eredeti példány. Folytatod?')) return
     if (partialMetadataSave && (partialMetadataSave.id !== id || partialMetadataSave.fingerprint !== fingerprint)) throw new Error('Egy korábbi EPUB-mentés adatlaprésze még hiányzik. Előbb próbáld újra ugyanannál a könyvnél, változatlan mezőkkel.')
     validateMetadataForm(edited, epub && !catalogOnly)
     const save = $('#ebook-metadata-save'); if (save) save.disabled = true
@@ -997,21 +1283,26 @@ async function saveMetadata({ catalogOnly = false } = {}) {
       if (!partialMetadataSave || partialMetadataSave.id !== id || partialMetadataSave.fingerprint !== fingerprint) {
         const before = await getBookDriveVersion(id)
         if (book?.modifiedTime && !sameDriveVersion(book, before)) throw new Error('Az EPUB-fájl közben módosult a Drive-on. Frissítsd a könyvtárat a mentés előtt.')
+        if (contentEdited && !sameDriveVersion(contentLoadedVersion, before)) throw new Error('Az EPUB a megnyitás óta módosult a Drive-on. A változtatásokat nem írtam felül; nyisd meg újra a fájlt.')
         if (before.capabilities?.canEdit === false) throw new Error('Ehhez az EPUB-hoz nincs szerkesztési jogod a Drive-on.')
         if (before.isAppAuthorized !== true) throw new Error('Ehhez az EPUB-hoz nincs fájlonkénti Grapes-hozzáférés. A teljes Drive-jogot nem kérjük; egyelőre csak a könyvtári adatlap menthető.')
         setStatus('Az EPUB letöltése és ellenőrzése…')
         const original = await (await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media`)).blob()
-        setStatus('Az EPUB metaadatainak és borítójának frissítése…')
+        setStatus(contentEdited ? 'A jóváhagyott szöveg-, fejezet- és fontjavítások elkészítése…' : 'Az EPUB metaadatainak és borítójának frissítése…')
+        const contentBlob = contentEdited ? await contentSession.buildBlob() : original
         const clearFields = METADATA_FIELDS.filter((field) => Boolean(ebookMetadata[id]?.[field]?.length) && !edited[field]?.length)
-        const updated = await (await loadEpubWriter())(original, edited, pendingCoverRemoved ? { remove: true } : cover, { clearFields })
+        const updated = await (await loadEpubWriter())(contentBlob, edited, pendingCoverRemoved ? { remove: true } : cover, { clearFields })
+        const preparedContentSession = contentEdited ? await (await import('./ebook/epub-content.js')).openEpubContent(updated) : null
         if (!sameDriveVersion(before, await getBookDriveVersion(id))) throw new Error('Az EPUB-fájl a feldolgozás közben módosult. Nem írtam felül.')
         setStatus('A módosított EPUB feltöltése a Drive-ra…')
         const response = await driveRequest(`https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(id)}?uploadType=media&fields=id,size,modifiedTime,md5Checksum,headRevisionId`, { method: 'PATCH', headers: { 'Content-Type': 'application/epub+zip' }, body: updated })
         const uploaded = await response.json()
         Object.assign(book, uploaded)
-        partialMetadataSave = { id, fingerprint, cover, version: uploaded }
+        partialMetadataSave = { id, fingerprint, cover, version: uploaded, preparedContentSession }
       }
     }
+    const renamed = await renameBookOnDrive(book, edited)
+    if (renamed && partialMetadataSave && (renamed.headRevisionId || renamed.md5Checksum || renamed.modifiedTime)) partialMetadataSave.version = renamed
     let coverFileId = ebookMetadata[id]?.coverFileId || ''
     let coverMimeType = ebookMetadata[id]?.coverMimeType || ''
     if (pendingCoverRemoved) { coverFileId = ''; coverMimeType = '' }
@@ -1026,13 +1317,18 @@ async function saveMetadata({ catalogOnly = false } = {}) {
     ebookMetadata[id] = normalizeMetadataEntry({ ...edited, coverFileId, coverMimeType, updatedAt: new Date().toISOString() })
     try { await saveEbookMetadata(folderId) }
     catch (error) { if (priorEntry) ebookMetadata[id] = priorEntry; else delete ebookMetadata[id]; throw error }
+    const savedContentSession = partialMetadataSave?.preparedContentSession
     partialMetadataSave = null
     pendingCoverAsset = null
+    if (contentEdited) {
+      if (savedContentSession) { contentSession = savedContentSession; contentLoadedVersion = { ...book }; contentDraftDirty = false; contentMatches = []; renderContentChapters(); renderContentFonts() }
+      else resetContentState(id)
+    } else if (epub && !catalogOnly && contentBookId === id && contentSession) resetContentState(id)
     renderBooks(currentBooks)
     saveLibraryCache(currentBooks)
     openMetadataEditor(id, { scroll: false })
     setMetadataDirty(false)
-    setStatus(epub && !catalogOnly ? 'A könyvtári adatlap és az EPUB metaadatai mentve a Drive-ba.' : 'A könyvtári adatlap mentve a Drive-ba; a könyvfájl változatlan maradt.', 'success')
+    setStatus(contentEdited ? 'A könyv tartalma és adatlapja mentve a Drive-ba. A visszavonási előzmény új mentéshez ürült.' : epub && !catalogOnly ? 'A könyvtári adatlap és az EPUB metaadatai mentve a Drive-ba.' : 'A könyvtári adatlap mentve a Drive-ba; a könyvfájl változatlan maradt.', 'success')
   } catch (error) {
     setMetadataDirty(true)
     const fallback = $('#ebook-metadata-save-catalog')
@@ -1081,7 +1377,7 @@ async function listFolderChildren(folderId) {
   const query = `'${folderId}' in parents and trashed = false`
   let pageToken = ''
   do {
-    const response = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=nextPageToken,files(id,name,size,modifiedTime,mimeType,parents,isAppAuthorized)&orderBy=modifiedTime desc&pageSize=1000&pageToken=${encodeURIComponent(pageToken)}`)
+    const response = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=nextPageToken,files(id,name,size,modifiedTime,mimeType,parents,isAppAuthorized,appProperties)&orderBy=modifiedTime desc&pageSize=1000&pageToken=${encodeURIComponent(pageToken)}`)
     const data = await response.json()
     children.push(...(data.files || []))
     pageToken = data.nextPageToken || ''
@@ -1110,7 +1406,7 @@ async function listAllDriveBooks() {
   const query = "trashed = false and mimeType != 'application/vnd.google-apps.folder'"
   let pageToken = ''
   do {
-    const response = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=nextPageToken,files(id,name,size,modifiedTime,mimeType,parents,isAppAuthorized)&pageSize=1000&pageToken=${encodeURIComponent(pageToken)}`)
+    const response = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=nextPageToken,files(id,name,size,modifiedTime,mimeType,parents,isAppAuthorized,appProperties)&pageSize=1000&pageToken=${encodeURIComponent(pageToken)}`)
     const data = await response.json()
     for (const file of data.files || []) if (isDriveBook(file)) books.push(file)
     pageToken = data.nextPageToken || ''
@@ -1301,6 +1597,7 @@ async function sendBook(fileId) {
 function setEbookMode(mode = 'library') {
   const manager = $('#ebook-manager-view')
   if (manager) manager.dataset.ebookMode = mode
+  if (mode === 'organizer') syncContentSelection()
   const status = $('#ebook-metadata-operation-status')
   if (status) { status.textContent = ''; status.dataset.kind = '' }
   const labels = { library: 'E-book Könyvtár', organizer: 'Könyvszerkesztő', detail: 'Könyv adatlapja' }
@@ -1367,6 +1664,62 @@ export function initEbookLibrary() {
   $('#ebook-metadata-save')?.addEventListener('click', saveMetadataFromForm)
   $('#ebook-metadata-grant')?.addEventListener('click', grantSelectedEpubAccess)
   $('#ebook-metadata-save-catalog')?.addEventListener('click', () => saveMetadata({ catalogOnly: true }))
+  for (const tab of ['text', 'font', 'metadata']) $('#ebook-editor-' + tab + '-tab')?.addEventListener('click', () => showEditorTab(tab))
+  $('#ebook-editor-open')?.addEventListener('click', openContentBook)
+  $('#ebook-editor-save')?.addEventListener('click', saveMetadataFromForm)
+  $('#ebook-editor-undo')?.addEventListener('click', undoContentAction)
+  $('#ebook-editor-chapter')?.addEventListener('change', (event) => {
+    const nextChapterId = event.currentTarget.value
+    try { commitContentDrafts(); activeChapterId = nextChapterId; activeSegmentIndex = -1; segmentOffset = 0; renderContentChapter() }
+    catch (error) { setContentStatus(error.message, 'error') }
+  })
+  $('#ebook-editor-chapter-filter')?.addEventListener('input', () => {
+    try { commitContentDrafts(); renderContentChapters() }
+    catch (error) { setContentStatus(error.message, 'error') }
+  })
+  $('#ebook-editor-segments')?.addEventListener('change', (event) => {
+    const nextSegmentIndex = Number(event.currentTarget.value)
+    try { commitContentDrafts(); activeSegmentIndex = nextSegmentIndex; renderContentSegments() }
+    catch (error) { setContentStatus(error.message, 'error') }
+  })
+  for (const selector of ['#ebook-editor-heading', '#ebook-editor-toc', '#ebook-editor-segment-text']) $(selector)?.addEventListener('input', () => { contentDraftDirty = true; updateContentSaveState() })
+  for (const selector of ['#ebook-editor-title-apply', '#ebook-editor-segment-apply']) $(selector)?.addEventListener('click', () => {
+    try { commitContentDrafts(); setContentStatus('A jóváhagyott javítás mentésre vár.', 'success') }
+    catch (error) { setContentStatus(error.message, 'error') }
+  })
+  for (const [selector, direction] of [['#ebook-editor-segments-prev', -1], ['#ebook-editor-segments-next', 1]]) $(selector)?.addEventListener('click', () => {
+    try { commitContentDrafts(); segmentOffset += direction * 100; activeSegmentIndex = -1; renderContentSegments() }
+    catch (error) { setContentStatus(error.message, 'error') }
+  })
+  $('#ebook-editor-search')?.addEventListener('click', searchContentMatches)
+  $('#ebook-editor-select-matches')?.addEventListener('click', () => $('#ebook-editor-matches')?.querySelectorAll('input[type="checkbox"]').forEach((input) => { input.checked = true }))
+  $('#ebook-editor-apply-matches')?.addEventListener('click', applyContentMatches)
+  $('#ebook-editor-encoding-scan')?.addEventListener('click', () => {
+    if (!contentSession) return setContentStatus('Előbb nyisd meg az EPUB-ot.', 'error')
+    try { commitContentDrafts(); contentEncodingSuggestions = contentSession.getEncodingSuggestions().slice(0, 200); renderEncodingSuggestions() }
+    catch (error) { setContentStatus(error.message, 'error') }
+  })
+  $('#ebook-editor-encoding-results')?.addEventListener('click', (event) => {
+    const index = event.target.closest?.('[data-encoding-index]')?.dataset.encodingIndex
+    if (index === undefined || !contentSession || partialMetadataSave) return
+    const suggestion = contentEncodingSuggestions[Number(index)]
+    if (!suggestion?.recoverable) return
+    try {
+      commitContentDrafts()
+      if (contentSession.editSegment(suggestion.chapterId, suggestion.segmentIndex, suggestion.replacement, suggestion.original)) {
+        contentChangeSerial++; contentEncodingSuggestions = []; renderEncodingSuggestions(); renderContentChapter(); updateContentSaveState()
+        setContentStatus('A karakterjavítás mentésre vár.', 'success')
+      }
+    } catch (error) { setContentStatus(error.message, 'error') }
+  })
+  $('#ebook-editor-font-apply')?.addEventListener('click', () => {
+    if (!contentSession || partialMetadataSave) return setContentStatus('Előbb nyisd meg a szerkeszthető EPUB-ot.', 'error')
+    try {
+      commitContentDrafts()
+      const count = contentSession.replaceFontFamily($('#ebook-editor-font-source')?.value, $('#ebook-editor-font-target')?.value)
+      if (count) { contentChangeSerial++; renderContentFonts(); updateContentSaveState(); setContentStatus(`${count} fontbeállítás módosítása mentésre vár.`, 'success') }
+    } catch (error) { setContentStatus(error.message, 'error') }
+  })
   $('#ebook-transfer-close')?.addEventListener('click', closeTransfer)
   $('#ebook-transfer-pair')?.addEventListener('click', () => {
     const url = $('#ebook-transfer-pair').dataset.brokerUrl
@@ -1383,12 +1736,12 @@ export function initEbookLibrary() {
   $('#ebook-receiver-input')?.addEventListener('keydown', (event) => { if (event.key === 'Enter') $('#ebook-receiver-submit')?.click() })
   window.addEventListener?.('message', handleReaderPairingMessage)
   document.addEventListener?.('grapes:before-screen-change', (event) => {
-    if (event.detail?.from !== 'ebook' || !metadataDirty || $('#ebook-manager-view')?.dataset.ebookMode === 'library') return
+    if (event.detail?.from !== 'ebook' || (!metadataDirty && !hasContentChanges()) || $('#ebook-manager-view')?.dataset.ebookMode === 'library') return
     if (!window.confirm('A könyvszerkesztőben mentetlen módosítások vannak. Biztosan kilépsz?')) event.preventDefault()
-    else setMetadataDirty(false)
+    else { setMetadataDirty(false); resetContentState() }
   })
   window.addEventListener?.('beforeunload', (event) => {
-    if (!metadataDirty) return
+    if (!metadataDirty && !hasContentChanges()) return
     event.preventDefault()
     event.returnValue = ''
   })
