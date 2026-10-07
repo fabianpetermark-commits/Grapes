@@ -40,20 +40,41 @@
       return '';
     }
     function valid(token) { return /^[A-F0-9]{64}$/i.test(token || ''); }
+    function saveToken(token) {
+      token = String(token || '').toUpperCase();
+      try { window.localStorage.setItem(KEY, token); } catch (e) {}
+      try { document.cookie = KEY + '=' + encodeURIComponent(token) + '; Max-Age=31536000; Path=/Grapes/; SameSite=Lax'; } catch (e) {}
+    }
+    function savedToken() {
+      var saved = '';
+      try { saved = window.localStorage.getItem(KEY) || ''; } catch (e) {}
+      if (valid(saved)) return saved;
+      try {
+        var cookies = document.cookie ? document.cookie.split(';') : [];
+        for (var i = 0; i < cookies.length; i++) {
+          var part = cookies[i].replace(/^\s+/, '').split('=');
+          if (part[0] === KEY) return decodeURIComponent(part.slice(1).join('='));
+        }
+      } catch (e) {}
+      return '';
+    }
+    function forgetToken() {
+      try { window.localStorage.removeItem(KEY); } catch (e) {}
+      try { document.cookie = KEY + '=; Max-Age=0; Path=/Grapes/; SameSite=Lax'; } catch (e) {}
+    }
     function openLibrary(token) {
       window.location.replace(BROKER + '?action=reader&token=' + encodeURIComponent(token));
     }
     if (param('forget') === '1') {
-      try { window.localStorage.removeItem(KEY); } catch (e) {}
+      forgetToken();
     }
     var incoming = param('reader-token');
     if (valid(incoming)) {
-      try { window.localStorage.setItem(KEY, incoming.toUpperCase()); } catch (e) {}
+      saveToken(incoming);
       openLibrary(incoming);
       return;
     }
-    var saved = '';
-    try { saved = window.localStorage.getItem(KEY) || ''; } catch (e) {}
+    var saved = savedToken();
     if (valid(saved)) openLibrary(saved);
   }());
   </script>

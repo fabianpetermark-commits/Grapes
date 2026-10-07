@@ -1,5 +1,5 @@
 const CODE_LENGTH = 6;
-const BROKER_API_VERSION = 7;
+const BROKER_API_VERSION = 8;
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const TTL_MS = 20 * 60 * 1000;
 const STORE_PREFIX = 'ebook_transfer_';
@@ -316,13 +316,12 @@ function pairReader(p) {
 
 function readerPairingCompletePage(token) {
   const landing = READER_RETURN_URL + '?reader-token=' + encodeURIComponent(token);
-  const direct = ScriptApp.getService().getUrl() + '?action=reader&token=' + encodeURIComponent(token);
   return HtmlService.createHtmlOutput(
-    '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<!doctype html><html><head><meta http-equiv="refresh" content="1;url=' + escapeHtml(landing) + '"><meta name="viewport" content="width=device-width,initial-scale=1">' +
     '<title>Párosítás kész</title>' +
     '<style>body{font-family:Arial,sans-serif;max-width:620px;margin:0 auto;padding:28px;text-align:center}a{display:block;margin:16px 0;padding:14px;border:1px solid #111;color:#111;font-weight:bold;text-decoration:none}.primary{background:#111;color:#fff}</style></head><body>' +
-    '<h1>Párosítás kész</h1><p>Régebbi e-reader böngészőn nyomd meg az első gombot. Ez az oldal nem lép tovább automatikusan.</p>' +
-    '<p><a class="primary" href="' + escapeHtml(direct) + '">Könyvtár közvetlen megnyitása</a><a href="' + escapeHtml(landing) + '">Párosítás mentése modern böngészőn</a></p>' +
+    '<h1>Párosítás kész</h1><p>A tartós párosítás mentése és a könyvtár megnyitása folyamatban…</p>' +
+    '<p><a class="primary" href="' + escapeHtml(landing) + '">Párosítás mentése és könyvtár megnyitása</a></p>' +
     '</body></html>'
   );
 }
@@ -381,11 +380,12 @@ function readerLibraryPage(p) {
   if (!items) items = '<li class="empty">Még nincs e-olvasóra megosztott könyv.</li>';
 
   const refreshUrl = base + '?action=reader&token=' + encodeURIComponent(token);
+  const savedReaderUrl = READER_RETURN_URL + '?reader-token=' + encodeURIComponent(token);
   const revokeUrl = base + '?action=revoke-reader&token=' + encodeURIComponent(token);
   return HtmlService.createHtmlOutput(
     '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Grapes E-book Könyvtár</title>' +
     '<style>body{font-family:Arial,sans-serif;max-width:720px;margin:0 auto;padding:18px;background:#fff;color:#111}h1{font-size:24px}ul{list-style:none;padding:0;margin:20px 0}.book{display:flex;align-items:center;gap:12px;border:1px solid #999;padding:14px;margin:0 0 10px;color:#111}.book__info{min-width:0;flex:1}.book strong{display:block;font-size:17px;word-break:break-word}.book span{display:block;margin-top:5px;font-size:12px;color:#555}.book .download-state{font-size:13px;font-weight:bold;color:#176b2c}.download-button{flex:0 0 auto;display:inline-block;padding:10px 14px;border:1px solid #111;background:#111;color:#fff;text-decoration:none;font-weight:bold}.book[data-downloaded="true"]{border-color:#6b8f72;background:#f6faf7}.book[data-downloaded="true"] .download-button{background:#fff;color:#111}.empty{padding:18px;border:1px solid #bbb}.nav a{display:inline-block;margin:4px 12px 4px 0;color:#111}@media(max-width:480px){.book{align-items:stretch;flex-direction:column}.download-button{text-align:center}}</style></head><body>' +
-    '<h1>Grapes E-book Könyvtár</h1><p>' + books.length + ' könyv érhető el.' + (omittedCount ? ' A párosításkor ' + omittedCount + ' további könyv nem volt átadható vagy nem a Grapes könyvtármappában volt.' : '') + (scan.skippedCount ? ' ' + scan.skippedCount + ' támogatott fájlt nem sikerült elérhetővé tenni.' : '') + '</p><div class="nav"><a href="' + escapeHtml(refreshUrl) + '">Frissítés</a><a href="' + escapeHtml(READER_RETURN_URL) + '">Olvasóoldal</a><a href="' + escapeHtml(revokeUrl) + '">Eszköz leválasztása</a></div><ul>' + items + '</ul>' + (scan.skippedNames.length ? '<p class="empty">Nem hozzáférhető: ' + escapeHtml(scan.skippedNames.join(', ')) + '</p>' : '') + '<script>(function(){var KEY="grapes-ebook-downloaded";var state={};try{state=JSON.parse(localStorage.getItem(KEY)||"{}")||{}}catch(e){}function paint(){var books=document.querySelectorAll("[data-book-id]");for(var i=0;i<books.length;i++){var id=books[i].getAttribute("data-book-id");var done=!!state[id];books[i].setAttribute("data-downloaded",done?"true":"false");var label=books[i].querySelector(".download-state");if(label)label.textContent=done?"✓ Letöltve":""}}var links=document.querySelectorAll("[data-download-id]");for(var i=0;i<links.length;i++){links[i].addEventListener("click",function(){var id=this.getAttribute("data-download-id");state[id]=Date.now();try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}paint()})}paint()}());<\/script></body></html>'
+    '<h1>Grapes E-book Könyvtár</h1><p>' + books.length + ' könyv érhető el.' + (omittedCount ? ' A párosításkor ' + omittedCount + ' további könyv nem volt átadható vagy nem a Grapes könyvtármappában volt.' : '') + (scan.skippedCount ? ' ' + scan.skippedCount + ' támogatott fájlt nem sikerült elérhetővé tenni.' : '') + '</p><div class="nav"><a href="' + escapeHtml(refreshUrl) + '">Frissítés</a><a href="' + escapeHtml(savedReaderUrl) + '">Olvasóoldal</a><a href="' + escapeHtml(revokeUrl) + '">Eszköz leválasztása</a></div><ul>' + items + '</ul>' + (scan.skippedNames.length ? '<p class="empty">Nem hozzáférhető: ' + escapeHtml(scan.skippedNames.join(', ')) + '</p>' : '') + '<script>(function(){var KEY="grapes-ebook-downloaded";var state={};try{state=JSON.parse(localStorage.getItem(KEY)||"{}")||{}}catch(e){}function paint(){var books=document.querySelectorAll("[data-book-id]");for(var i=0;i<books.length;i++){var id=books[i].getAttribute("data-book-id");var done=!!state[id];books[i].setAttribute("data-downloaded",done?"true":"false");var label=books[i].querySelector(".download-state");if(label)label.textContent=done?"✓ Letöltve":""}}var links=document.querySelectorAll("[data-download-id]");for(var i=0;i<links.length;i++){links[i].addEventListener("click",function(){var id=this.getAttribute("data-download-id");state[id]=Date.now();try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}paint()})}paint()}());<\/script></body></html>'
   );
 }
 

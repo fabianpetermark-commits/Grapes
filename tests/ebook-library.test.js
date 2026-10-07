@@ -412,12 +412,21 @@ test('reader pairing code retries return the same token when an old browser miss
   const first = c.pairReader({ code: 'ABC234' }).html
   const retained = JSON.parse(values.get('ebook_reader_pair_ABC234'))
   assert.match(first, /Párosítás kész/)
-  assert.match(first, /Könyvtár közvetlen megnyitása/)
-  assert.match(first, /Párosítás mentése modern böngészőn/)
-  assert.doesNotMatch(first, /http-equiv="refresh"|setTimeout|location\.replace/)
+  assert.match(first, /Párosítás mentése és könyvtár megnyitása/)
+  assert.doesNotMatch(first, /Közvetlen megnyitás/)
+  assert.match(first, /http-equiv="refresh"/)
   assert.equal(retained.pairedToken, 'A'.repeat(64))
   assert.match(c.pairReader({ code: 'ABC234' }).html, /Párosítás kész/)
   assert.equal(JSON.parse(values.get('ebook_reader_pair_ABC234')).pairedToken, retained.pairedToken)
+})
+
+test('reader pairing saves the persistent token before opening the direct library', () => {
+  assert.match(readerPageSource, /localStorage\.setItem\(KEY, token\)/)
+  assert.match(readerPageSource, /document\.cookie = KEY \+ '=' \+ encodeURIComponent\(token\)/)
+  assert.match(readerPageSource, /savedToken\(\)/)
+  assert.match(brokerSource, /http-equiv="refresh" content="1;url=/)
+  assert.match(brokerSource, /Párosítás mentése és könyvtár megnyitása/)
+  assert.match(brokerSource, /savedReaderUrl = READER_RETURN_URL \+ '\?reader-token='/)
 })
 
 test('EPUB save path never requests the restricted full Drive write scope', () => {
@@ -1397,7 +1406,7 @@ test('automatic broker deployment stays aligned with every live client URL', () 
   assert.equal(deploymentId(readerPageSource), expected)
   assert.match(brokerWorkflowSource, /clasp push --force/)
   assert.match(brokerWorkflowSource, /clasp deploy --deploymentId/)
-  assert.match(brokerSource, /BROKER_API_VERSION = 7/)
+  assert.match(brokerSource, /BROKER_API_VERSION = 8/)
   assert.match(brokerSource, /action === 'health'/)
 })
 
