@@ -128,7 +128,7 @@
 #ebook-manager-view[data-ebook-mode="organizer"] .ebook-library__quick-add,
 #ebook-manager-view[data-ebook-mode="organizer"] .ebook-library__grid{display:none}
 
-.ebook-library__editor-topbar,.ebook-library__editor-global-actions,#ebook-editor-text-pane,#ebook-editor-font-pane{display:none}
+.ebook-library__editor-topbar,.ebook-library__editor-global-actions,#ebook-editor-text-pane,#ebook-editor-structure-pane{display:none}
 .ebook-library__editor-topbar{align-items:center;gap:12px;min-width:0}
 .ebook-library__editor-tabs{display:flex;flex-wrap:wrap;gap:8px;min-width:0}
 .ebook-library__editor-topbar #ebook-editor-open{margin-left:auto;flex:none}
@@ -155,13 +155,13 @@
 #ebook-manager-view[data-ebook-mode="organizer"] .ebook-library__editor-global-actions{display:grid;grid-template-columns:minmax(0,1fr);width:100%}
 #ebook-manager-view[data-ebook-mode="organizer"] #ebook-metadata-save{display:none}
 #ebook-manager-view[data-ebook-mode="organizer"][data-ebook-tab="text"] #ebook-editor-metadata-pane,
-#ebook-manager-view[data-ebook-mode="organizer"][data-ebook-tab="text"] #ebook-editor-font-pane,
-#ebook-manager-view[data-ebook-mode="organizer"][data-ebook-tab="font"] #ebook-editor-metadata-pane,
-#ebook-manager-view[data-ebook-mode="organizer"][data-ebook-tab="font"] #ebook-editor-text-pane,
+#ebook-manager-view[data-ebook-mode="organizer"][data-ebook-tab="text"] #ebook-editor-structure-pane,
+#ebook-manager-view[data-ebook-mode="organizer"][data-ebook-tab="structure"] #ebook-editor-metadata-pane,
+#ebook-manager-view[data-ebook-mode="organizer"][data-ebook-tab="structure"] #ebook-editor-text-pane,
 #ebook-manager-view[data-ebook-mode="organizer"][data-ebook-tab="metadata"] #ebook-editor-text-pane,
-#ebook-manager-view[data-ebook-mode="organizer"][data-ebook-tab="metadata"] #ebook-editor-font-pane{display:none}
+#ebook-manager-view[data-ebook-mode="organizer"][data-ebook-tab="metadata"] #ebook-editor-structure-pane{display:none}
 #ebook-manager-view[data-ebook-mode="organizer"][data-ebook-tab="text"] #ebook-editor-text-pane,
-#ebook-manager-view[data-ebook-mode="organizer"][data-ebook-tab="font"] #ebook-editor-font-pane{display:grid}
+#ebook-manager-view[data-ebook-mode="organizer"][data-ebook-tab="structure"] #ebook-editor-structure-pane{display:grid}
 .ebook-library__editor-global-actions{z-index:2;text-align:center}
 .ebook-library__validation{grid-column:1/-1;width:100%;padding:14px 16px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-bg-raised);text-align:left}
 .ebook-library__validation[hidden]{display:none}

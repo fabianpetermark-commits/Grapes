@@ -3,6 +3,7 @@ import { DOMParser, XMLSerializer } from '@xmldom/xmldom'
 
 const OPF = 'http://www.idpf.org/2007/opf'
 const XHTML = 'http://www.w3.org/1999/xhtml'
+const EPUB = 'http://www.idpf.org/2007/ops'
 const MAX_SIZE = 100 * 1024 * 1024
 const MAX_EXPANDED = 250 * 1024 * 1024
 const serializer = new XMLSerializer()
@@ -99,6 +100,21 @@ function fontDeclarations(source) {
   return found
 }
 
+function validNcName(value) {
+  return /^[\p{L}_][\p{L}\p{N}\p{M}_.-]*$/u.test(value)
+}
+
+function repairedId(value, used) {
+  let next = String(value).replace(/[^\p{L}\p{N}\p{M}_.-]+/gu, '-').replace(/^-+|-+$/g, '')
+  if (!/^[\p{L}_]/u.test(next)) next = `id-${next}`
+  if (!next) next = 'id'
+  const base = next
+  let suffix = 2
+  while (used.has(next)) next = `${base}-${suffix++}`
+  used.add(next)
+  return next
+}
+
 export async function openEpubContent(blob) {
   if (blob.size > MAX_SIZE) throw new Error('A 100 MiB-nál nagyobb EPUB nem szerkeszthető.')
   const zip = await JSZip.loadAsync(await blob.arrayBuffer(), { checkCRC32: true })
@@ -133,14 +149,21 @@ export async function openEpubContent(blob) {
   if (!zip.file(navPath)) throw new Error('Hiányzó tartalomjegyzék-fájl.')
   const navDoc = parseXml(await zip.file(navPath).async('string'), 'Tartalomjegyzék')
   const docs = new Map([[navPath, navDoc]])
+  const xhtmlPaths = new Set()
+  for (const item of items.values()) {
+    if (item.getAttribute('media-type') !== 'application/xhtml+xml') continue
+    const path = archivePath(opfPath, item.getAttribute('href'))
+    if (!zip.file(path)) throw new Error(`Hiányzó XHTML-fájl: ${path}`)
+    xhtmlPaths.add(path)
+    if (!docs.has(path)) docs.set(path, parseXml(await zip.file(path).async('string'), path))
+  }
   const chapters = []
   for (const ref of elements(spine, 'itemref')) {
     const item = items.get(ref.getAttribute('idref'))
     if (!item || item.getAttribute('media-type') !== 'application/xhtml+xml') throw new Error('Nem XHTML-alapú fejezetet tartalmazó EPUB nem szerkeszthető.')
     const path = archivePath(opfPath, item.getAttribute('href'))
     if (!zip.file(path)) throw new Error(`Hiányzó fejezet: ${path}`)
-    const doc = docs.get(path) || parseXml(await zip.file(path).async('string'), path)
-    docs.set(path, doc)
+    const doc = docs.get(path)
     if (elements(doc, 'script').length) throw new Error('Szkriptet tartalmazó EPUB csak adatlapon szerkeszthető.')
     const body = elements(doc.documentElement, 'body')[0]
     if (!body || body.namespaceURI !== XHTML) throw new Error(`Hibás XHTML-fejezet: ${path}`)
@@ -176,6 +199,106 @@ export async function openEpubContent(blob) {
   const undoStack = []
   const chapter = (id) => { const found = chapters.find((entry) => entry.id === id); if (!found) throw new Error('Ismeretlen fejezet.'); return found }
   const saveUndo = (label, rollback) => undoStack.push({ label, rollback })
+  function structuralSuggestions() {
+    const found = []
+    if (!epub3) {
+      for (const path of xhtmlPaths) {
+        const attributes = []
+        for (const node of elements(docs.get(path), '*')) {
+          for (let index = 0; index < (node.attributes?.length || 0); index++) {
+            const attribute = node.attributes.item(index)
+            if (attribute?.namespaceURI === EPUB && ['prefix', 'type'].includes(attribute.localName)) attributes.push({ node, name: attribute.name, namespace: attribute.namespaceURI, value: attribute.value })
+          }
+        }
+        if (attributes.length) found.push({
+          id: `legacy-attributes:${path}`,
+          kind: 'legacy-attributes',
+          path,
+          count: attributes.length,
+          title: 'EPUB 3-as attribútumok eltávolítása az EPUB 2-es fejezetből',
+          detail: `${attributes.length} darab epub:prefix vagy epub:type attribútum · ${path}`,
+          attributes,
+        })
+      }
+    }
+    for (const path of xhtmlPaths) {
+      const doc = docs.get(path)
+      const withIds = elements(doc, '*').filter((node) => node.hasAttribute('id'))
+      const frequencies = new Map()
+      for (const node of withIds) frequencies.set(node.getAttribute('id'), (frequencies.get(node.getAttribute('id')) || 0) + 1)
+      const used = new Set(withIds.map((node) => node.getAttribute('id')))
+      let index = 0
+      for (const node of withIds) {
+        const oldId = node.getAttribute('id')
+        if (validNcName(oldId) || frequencies.get(oldId) !== 1) continue
+        const nextId = repairedId(oldId, used)
+        found.push({
+          id: `invalid-id:${path}:${index++}`,
+          kind: 'invalid-id',
+          path,
+          count: 1,
+          title: 'Érvénytelen belső azonosító javítása',
+          detail: `${oldId} → ${nextId} · a rá mutató belső hivatkozásokkal együtt · ${path}`,
+          node,
+          oldId,
+          nextId,
+        })
+      }
+    }
+    return found
+  }
+  function rewriteFragmentReference(value, sourcePath, renames) {
+    if (!value?.includes('#') || /^(?:https?:|mailto:|data:|javascript:|\/\/)/i.test(value)) return value
+    const hash = value.indexOf('#')
+    const before = value.slice(0, hash)
+    let fragment
+    try { fragment = decodeURIComponent(value.slice(hash + 1)) } catch { return value }
+    let targetPath
+    try { targetPath = before ? archivePath(sourcePath, before) : sourcePath } catch { return value }
+    const rename = renames.find((entry) => entry.path === targetPath && entry.oldId === fragment)
+    return rename ? `${before}#${encodeURIComponent(rename.nextId)}` : value
+  }
+  function applyStructuralSuggestions(ids) {
+    const selected = new Set(ids)
+    const suggestions = structuralSuggestions().filter((item) => selected.has(item.id))
+    if (!suggestions.length) return 0
+    const removedAttributes = []
+    const renamedIds = []
+    for (const suggestion of suggestions) {
+      if (suggestion.kind === 'legacy-attributes') {
+        for (const attribute of suggestion.attributes) {
+          removedAttributes.push(attribute)
+          attribute.node.removeAttribute(attribute.name)
+        }
+      } else if (suggestion.kind === 'invalid-id') {
+        renamedIds.push(suggestion)
+        suggestion.node.setAttribute('id', suggestion.nextId)
+      }
+    }
+    const changedReferences = []
+    if (renamedIds.length) for (const [path, doc] of docs) for (const node of elements(doc, '*')) {
+      for (const name of ['href', 'src', 'xlink:href']) {
+        const value = node.getAttribute(name)
+        if (!value) continue
+        const next = rewriteFragmentReference(value, path, renamedIds)
+        if (next !== value) { changedReferences.push({ node, name, value }); node.setAttribute(name, next) }
+      }
+      for (const name of ['aria-labelledby', 'aria-describedby', 'headers']) {
+        const value = node.getAttribute(name)
+        if (!value) continue
+        const local = renamedIds.filter((entry) => entry.path === path)
+        const next = value.split(/\s+/).map((token) => local.find((entry) => entry.oldId === token)?.nextId || token).join(' ')
+        if (next !== value) { changedReferences.push({ node, name, value }); node.setAttribute(name, next) }
+      }
+    }
+    const count = removedAttributes.length + renamedIds.length
+    saveUndo(`${count} szerkezeti javítás`, () => {
+      for (const change of changedReferences.reverse()) change.node.setAttribute(change.name, change.value)
+      for (const change of renamedIds.reverse()) change.node.setAttribute('id', change.oldId)
+      for (const change of removedAttributes.reverse()) change.node.setAttributeNS(change.namespace, change.name, change.value)
+    })
+    return count
+  }
   const api = {
     chapters,
     title: packageTitle,
@@ -277,6 +400,10 @@ export async function openEpubContent(blob) {
       if (count) saveUndo(`${count} betűtípus-javítás`, () => { styles.clear(); oldStyles.forEach((value, path) => styles.set(path, value)); oldInline.forEach(([node, style]) => node.setAttribute('style', style)) })
       return count
     },
+    getStructuralSuggestions() {
+      return structuralSuggestions().map(({ attributes, node, oldId, nextId, ...suggestion }) => suggestion)
+    },
+    applyStructuralSuggestions,
     getEncodingSuggestions() {
       const found = []
       for (const item of chapters) item.segments.forEach((node, index) => {

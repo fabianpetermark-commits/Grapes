@@ -1129,8 +1129,8 @@
               <div class="ebook-library__editor-topbar">
                 <div id="ebook-editor-tabs" class="ebook-library__editor-tabs" role="tablist" aria-label="Könyvszerkesztő nézetek">
                   <button id="ebook-editor-metadata-tab" class="btn btn--ghost" type="button" role="tab" aria-controls="ebook-editor-metadata-pane" aria-selected="true">Adatlap</button>
-                  <button id="ebook-editor-text-tab" class="btn btn--ghost" type="button" role="tab" aria-controls="ebook-editor-text-pane" aria-selected="false">Szöveg</button>
-                  <button id="ebook-editor-font-tab" class="btn btn--ghost" type="button" role="tab" aria-controls="ebook-editor-font-pane" aria-selected="false">Kinézet</button>
+                  <button id="ebook-editor-text-tab" class="btn btn--ghost" type="button" role="tab" aria-controls="ebook-editor-text-pane" aria-selected="false">Szöveg és kinézet</button>
+                  <button id="ebook-editor-structure-tab" class="btn btn--ghost" type="button" role="tab" aria-controls="ebook-editor-structure-pane" aria-selected="false">Szerkezeti hibák</button>
                 </div>
                 <button id="ebook-editor-open" class="btn btn--ghost" type="button">EPUB megnyitása</button>
               </div>
@@ -1198,11 +1198,20 @@
                   <h3>Karakterhibák</h3><button id="ebook-editor-encoding-scan" class="btn btn--ghost" type="button">Gyanús karakterek keresése</button>
                   <p id="ebook-editor-encoding-summary" role="status"></p><div id="ebook-editor-encoding-results" class="ebook-library__editor-results"></div>
                 </div>
+                <div class="ebook-library__editor-section">
+                  <h3>Betűtípus és megjelenés</h3>
+                  <p class="ebook-library__editor-hint">A kiválasztott hibás fontbeállítást a fájl CSS-ében és a szövegbe írt stílusokban cseréljük. Az olvasó saját betűtípus-beállítása ezt felülírhatja.</p>
+                  <div class="ebook-library__editor-field-row"><label class="field"><span class="field__label">Lecserélendő betűcsalád</span><select id="ebook-editor-font-source" class="input"></select></label><label class="field"><span class="field__label">Helyettesítő család</span><select id="ebook-editor-font-target" class="input"><option value="serif">Talpas (serif)</option><option value="sans-serif">Talpatlan (sans-serif)</option></select></label></div>
+                  <p id="ebook-editor-font-summary" role="status"></p><button id="ebook-editor-font-apply" class="btn btn--primary" type="button">Betűtípus-javítás alkalmazása</button>
+                </div>
               </section>
-              <section id="ebook-editor-font-pane" class="ebook-library__editor-pane" role="tabpanel" aria-labelledby="ebook-editor-font-tab">
-                <p class="ebook-library__editor-hint">A kiválasztott hibás fontbeállítást a fájl CSS-ében és a szövegbe írt stílusokban cseréljük. Az olvasó saját betűtípus-beállítása ezt felülírhatja.</p>
-                <div class="ebook-library__editor-field-row"><label class="field"><span class="field__label">Lecserélendő betűcsalád</span><select id="ebook-editor-font-source" class="input"></select></label><label class="field"><span class="field__label">Helyettesítő család</span><select id="ebook-editor-font-target" class="input"><option value="serif">Talpas (serif)</option><option value="sans-serif">Talpatlan (sans-serif)</option></select></label></div>
-                <p id="ebook-editor-font-summary" role="status"></p><button id="ebook-editor-font-apply" class="btn btn--primary" type="button">Betűtípus-javítás alkalmazása</button>
+              <section id="ebook-editor-structure-pane" class="ebook-library__editor-pane" role="tabpanel" aria-labelledby="ebook-editor-structure-tab">
+                <p class="ebook-library__editor-hint">Csak olyan szerkezeti javításokat ajánlunk fel, amelyek a könyv szövegét nem változtatják meg. Semmi nem módosul automatikusan.</p>
+                <div class="ebook-library__editor-section">
+                  <div class="ebook-library__editor-buttons"><button id="ebook-editor-structure-select" class="btn btn--ghost" type="button">Összes kijelölése</button><button id="ebook-editor-structure-apply" class="btn btn--primary" type="button">Kijelölt javítások alkalmazása</button></div>
+                  <p id="ebook-editor-structure-summary" role="status">Nyisd meg az EPUB-ot a biztonságosan javítható szerkezeti hibák elemzéséhez.</p>
+                  <div id="ebook-editor-structure-results" class="ebook-library__editor-results"></div>
+                </div>
               </section>
               <div id="ebook-editor-global-actions" class="ebook-library__metadata-actions ebook-library__editor-global-actions">
                 <section id="ebook-editor-validation" class="ebook-library__validation" aria-labelledby="ebook-editor-validation-title" hidden>

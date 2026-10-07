@@ -43,6 +43,7 @@ let contentChangeSerial = 0
 let contentDraftDirty = false
 let contentMatches = []
 let contentEncodingSuggestions = []
+let contentStructuralSuggestions = []
 let encodingScanSerial = 0
 let contentValidationResult = null
 let activeChapterId = ''
@@ -1050,7 +1051,7 @@ function updateContentSaveState() {
     open.disabled = !book || ext(book.name) !== 'epub' || !canWriteEpub(book) || Boolean(partialMetadataSave) || hasContentChanges()
     open.textContent = contentSession && contentBookId === book?.id ? 'EPUB újratöltése' : 'EPUB megnyitása'
   }
-  for (const selector of ['#ebook-editor-heading', '#ebook-editor-toc', '#ebook-editor-segment-text', '#ebook-editor-title-apply', '#ebook-editor-segment-apply', '#ebook-editor-apply-matches', '#ebook-editor-font-apply']) {
+  for (const selector of ['#ebook-editor-heading', '#ebook-editor-toc', '#ebook-editor-segment-text', '#ebook-editor-title-apply', '#ebook-editor-segment-apply', '#ebook-editor-apply-matches', '#ebook-editor-font-apply', '#ebook-editor-structure-apply']) {
     const control = $(selector)
     if (control && partialMetadataSave) control.disabled = true
   }
@@ -1064,18 +1065,22 @@ function resetContentState(id = '') {
   contentDraftDirty = false
   contentMatches = []
   contentEncodingSuggestions = []
+  contentStructuralSuggestions = []
   activeChapterId = ''
   activeSegmentIndex = -1
   segmentOffset = 0
   displayedHeading = displayedToc = displayedSegment = ''
   clearEpubValidation()
-  for (const selector of ['#ebook-editor-chapter', '#ebook-editor-segments', '#ebook-editor-matches', '#ebook-editor-encoding-results', '#ebook-editor-font-source']) {
+  for (const selector of ['#ebook-editor-chapter', '#ebook-editor-segments', '#ebook-editor-matches', '#ebook-editor-encoding-results', '#ebook-editor-structure-results', '#ebook-editor-font-source']) {
     $(selector)?.replaceChildren()
   }
   const encodingSummary = $('#ebook-editor-encoding-summary')
   if (encodingSummary) encodingSummary.textContent = id ? 'Az új könyvön még nem futott karakterhiba-ellenőrzés.' : ''
   const encodingButton = $('#ebook-editor-encoding-scan')
   if (encodingButton) { encodingButton.disabled = true; encodingButton.textContent = 'Gyanús karakterek keresése' }
+  const structureSummary = $('#ebook-editor-structure-summary')
+  if (structureSummary) structureSummary.textContent = id ? 'Nyisd meg az EPUB-ot a biztonságosan javítható szerkezeti hibák elemzéséhez.' : ''
+  for (const selector of ['#ebook-editor-structure-select', '#ebook-editor-structure-apply']) if ($(selector)) $(selector).disabled = true
   updateContentSaveState()
 }
 function showEditorTab(tab) {
@@ -1084,11 +1089,12 @@ function showEditorTab(tab) {
   const book = currentBooks.find((item) => item.id === activeMetadataBookId)
   const selected = ext(book?.name || '') === 'epub' ? tab : 'metadata'
   manager.dataset.ebookTab = selected
-  for (const name of ['text', 'font', 'metadata']) {
+  for (const name of ['metadata', 'text', 'structure']) {
     const button = $(`#ebook-editor-${name}-tab`)
     if (button) { button.setAttribute?.('aria-selected', String(name === selected)); button.tabIndex = name === selected ? 0 : -1; button.disabled = name !== 'metadata' && ext(book?.name || '') !== 'epub' }
   }
-  if (selected === 'font') renderContentFonts()
+  if (selected === 'text') renderContentFonts()
+  if (selected === 'structure') renderStructuralSuggestions()
 }
 function syncContentSelection() {
   const id = activeMetadataBookId
@@ -1190,6 +1196,7 @@ async function openContentBook() {
     if (titleField && !titleField.value.trim() && session.title) { titleField.value = session.title; updateMetadataPreview() }
     renderContentChapters()
     renderContentFonts()
+    renderStructuralSuggestions()
     const encodingButton = $('#ebook-editor-encoding-scan')
     if (encodingButton) encodingButton.disabled = false
     const encodingSummary = $('#ebook-editor-encoding-summary')
@@ -1279,10 +1286,32 @@ function renderContentFonts() {
   if (summary) summary.textContent = fonts.length ? 'Válaszd ki a hibás beállítást. A beágyazott fontfájlok változatlanok maradnak.' : 'Nincs javítható font-family beállítás, vagy az EPUB még nincs megnyitva.'
   const button = $('#ebook-editor-font-apply'); if (button) button.disabled = !fonts.length
 }
+function renderStructuralSuggestions() {
+  const container = $('#ebook-editor-structure-results')
+  const summary = $('#ebook-editor-structure-summary')
+  if (!container || !summary) return
+  container.replaceChildren()
+  contentStructuralSuggestions = contentSession?.getStructuralSuggestions() || []
+  for (const [index, suggestion] of contentStructuralSuggestions.entries()) {
+    const label = document.createElement('label')
+    label.className = 'ebook-library__editor-result'
+    const checkbox = document.createElement('input')
+    checkbox.type = 'checkbox'; checkbox.value = String(index); checkbox.checked = true
+    const content = document.createElement('span')
+    const title = document.createElement('strong'); title.textContent = suggestion.title
+    const detail = document.createElement('small'); detail.textContent = suggestion.detail
+    content.append(title, detail); label.append(checkbox, content); container.append(label)
+  }
+  summary.textContent = contentSession
+    ? contentStructuralSuggestions.length ? `${contentStructuralSuggestions.length} biztonságosan javítható szerkezeti hibacsoport. A módosítások csak jóváhagyás után készülnek elő.` : 'Nem találtam automatikusan, biztonságosan javítható szerkezeti hibát. Az EPUBCheck további jelzései lent láthatók.'
+    : 'Nyisd meg az EPUB-ot a biztonságosan javítható szerkezeti hibák elemzéséhez.'
+  const select = $('#ebook-editor-structure-select'); if (select) select.disabled = !contentStructuralSuggestions.length
+  const apply = $('#ebook-editor-structure-apply'); if (apply) apply.disabled = !contentStructuralSuggestions.length || Boolean(partialMetadataSave)
+}
 function undoContentAction() {
   if (partialMetadataSave) return
   if (contentDraftDirty) { contentDraftDirty = false; renderContentChapters() }
-  else if (contentSession?.undo()) { contentChangeSerial++; renderContentChapters(); renderContentFonts() }
+  else if (contentSession?.undo()) { contentChangeSerial++; renderContentChapters(); renderContentFonts(); renderStructuralSuggestions() }
   contentMatches = []
   $('#ebook-editor-matches')?.replaceChildren()
   updateContentSaveState()
@@ -1400,7 +1429,7 @@ async function saveMetadata({ catalogOnly = false } = {}) {
     partialMetadataSave = null
     pendingCoverAsset = null
     if (contentEdited) {
-      if (savedContentSession) { contentSession = savedContentSession; contentLoadedVersion = { ...book }; contentDraftDirty = false; contentMatches = []; renderContentChapters(); renderContentFonts() }
+      if (savedContentSession) { contentSession = savedContentSession; contentLoadedVersion = { ...book }; contentDraftDirty = false; contentMatches = []; renderContentChapters(); renderContentFonts(); renderStructuralSuggestions() }
       else resetContentState(id)
     } else if (epub && !catalogOnly && contentBookId === id && contentSession) resetContentState(id)
     if (preparedValidationResult) renderEpubValidation(preparedValidationResult)
@@ -1744,7 +1773,7 @@ export function initEbookLibrary() {
   $('#ebook-metadata-save')?.addEventListener('click', saveMetadataFromForm)
   $('#ebook-metadata-grant')?.addEventListener('click', grantSelectedEpubAccess)
   $('#ebook-metadata-save-catalog')?.addEventListener('click', () => saveMetadata({ catalogOnly: true }))
-  for (const tab of ['text', 'font', 'metadata']) $('#ebook-editor-' + tab + '-tab')?.addEventListener('click', () => showEditorTab(tab))
+  for (const tab of ['metadata', 'text', 'structure']) $('#ebook-editor-' + tab + '-tab')?.addEventListener('click', () => showEditorTab(tab))
   $('#ebook-editor-open')?.addEventListener('click', openContentBook)
   $('#ebook-editor-save')?.addEventListener('click', saveMetadataFromForm)
   $('#ebook-editor-undo')?.addEventListener('click', undoContentAction)
@@ -1819,6 +1848,26 @@ export function initEbookLibrary() {
       const count = contentSession.replaceFontFamily($('#ebook-editor-font-source')?.value, $('#ebook-editor-font-target')?.value)
       if (count) { contentChangeSerial++; renderContentFonts(); updateContentSaveState(); setContentStatus(`${count} fontbeállítás módosítása mentésre vár.`, 'success') }
     } catch (error) { setContentStatus(error.message, 'error') }
+  })
+  $('#ebook-editor-structure-select')?.addEventListener('click', () => {
+    $('#ebook-editor-structure-results')?.querySelectorAll('input[type="checkbox"]').forEach((input) => { input.checked = true })
+  })
+  $('#ebook-editor-structure-apply')?.addEventListener('click', () => {
+    if (!contentSession || partialMetadataSave) return setContentStatus('Előbb nyisd meg a szerkeszthető EPUB-ot.', 'error')
+    try {
+      commitContentDrafts()
+      const ids = [...($('#ebook-editor-structure-results')?.querySelectorAll('input:checked') || [])]
+        .map((node) => contentStructuralSuggestions[Number(node.value)]?.id)
+        .filter(Boolean)
+      const count = contentSession.applyStructuralSuggestions(ids)
+      if (!count) return setContentStatus('Nem jelöltél ki szerkezeti javítást.', 'error')
+      contentChangeSerial++
+      renderContentChapters()
+      renderContentFonts()
+      renderStructuralSuggestions()
+      updateContentSaveState()
+      setContentStatus(`${count} szerkezeti javítás előkészítve. A Drive-fájl csak mentéskor módosul.`, 'success')
+    } catch (error) { setContentStatus(`A szerkezeti javítás nem alkalmazható: ${error.message}`, 'error') }
   })
   $('#ebook-transfer-close')?.addEventListener('click', closeTransfer)
   $('#ebook-transfer-pair')?.addEventListener('click', () => {

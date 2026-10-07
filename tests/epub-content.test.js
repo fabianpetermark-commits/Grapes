@@ -3,15 +3,15 @@ import assert from 'node:assert/strict'
 import JSZip from 'jszip'
 import { openEpubContent } from '../src/ebook/epub-content.js'
 
-async function fixture(version = '3.0', { fixed = false, protectedFile = false } = {}) {
+async function fixture(version = '3.0', { fixed = false, protectedFile = false, structural = false } = {}) {
   const epub3 = version.startsWith('3')
   const zip = new JSZip()
   zip.file('mimetype', 'application/epub+zip', { compression: 'STORE' })
   zip.file('META-INF/container.xml', '<?xml version="1.0"?><container><rootfiles><rootfile full-path="OPS/package.opf"/></rootfiles></container>')
   if (protectedFile) zip.file('META-INF/encryption.xml', '<encryption/>')
   zip.file('OPS/package.opf', `<package xmlns="http://www.idpf.org/2007/opf" version="${version}" unique-identifier="book-id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="book-id">urn:uuid:keep</dc:identifier><dc:title>Test book</dc:title><dc:language>hu</dc:language>${fixed ? '<meta property="rendition:layout">pre-paginated</meta>' : ''}</metadata><manifest><item id="one" href="one.xhtml" media-type="application/xhtml+xml"/><item id="two" href="two.xhtml" media-type="application/xhtml+xml"/><item id="css" href="book.css" media-type="text/css"/><item id="image" href="image.png" media-type="image/png"/><item id="nav" href="${epub3 ? 'nav.xhtml' : 'toc.ncx'}" media-type="${epub3 ? 'application/xhtml+xml' : 'application/x-dtbncx+xml'}"${epub3 ? ' properties="nav"' : ''}/></manifest><spine${epub3 ? '' : ' toc="nav"'}><itemref idref="one"/><itemref idref="two"/></spine></package>`)
-  zip.file('OPS/one.xhtml', '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>One</title><link href="book.css" rel="stylesheet"/></head><body><h1>Első fejezet</h1><p>A hibÃ¡s szó és egy <a href="two.xhtml#end">link</a>.</p><p style="font-family: Broken Font">Rossz szó.</p><img src="image.png" alt="kép"/></body></html>')
-  zip.file('OPS/two.xhtml', '<html xmlns="http://www.w3.org/1999/xhtml"><body><h1>Második fejezet</h1><p id="end">Rossz szó.</p><aside epub:type="footnote" xmlns:epub="http://www.idpf.org/2007/ops"><p>Lábjegyzet.</p></aside></body></html>')
+  zip.file('OPS/one.xhtml', `<html xmlns="http://www.w3.org/1999/xhtml"${structural ? ' xmlns:epub="http://www.idpf.org/2007/ops" epub:prefix="z3998: http://www.daisy.org/z3998/2012/vocab/structure/#"' : ''}><head><title>One</title><link href="book.css" rel="stylesheet"/></head><body><h1>Első fejezet</h1><p${structural ? ' id="bad:id" epub:type="chapter"' : ''}>A hibÃ¡s szó és egy <a href="two.xhtml#end">link</a>.</p><p style="font-family: Broken Font">Rossz szó.</p><img src="image.png" alt="kép"/></body></html>`)
+  zip.file('OPS/two.xhtml', `<html xmlns="http://www.w3.org/1999/xhtml"><body><h1>Második fejezet</h1><p id="end">Rossz szó.</p><p><a href="one.xhtml${structural ? '#bad:id' : ''}">Vissza</a></p><aside epub:type="footnote" xmlns:epub="http://www.idpf.org/2007/ops"><p>Lábjegyzet.</p></aside></body></html>`)
   zip.file('OPS/book.css', '@font-face { font-family: Broken Font; src: url(font.woff); } body { font-family: Broken Font; } p { font-size: 1em; }')
   zip.file('OPS/image.png', new Uint8Array([137, 80, 78, 71, 1, 2, 3]))
   if (epub3) zip.file('OPS/nav.xhtml', '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><body><nav epub:type="toc"><ol><li><a href="one.xhtml">Első fejezet</a></li><li><a href="two.xhtml">Második fejezet</a></li></ol></nav></body></html>')
@@ -73,6 +73,25 @@ test('encoding suggestions require approval and font repair changes only chosen 
   assert.match(await zip.file('OPS/one.xhtml').async('string'), /font-family: serif/)
   editor.undo()
   assert.equal(editor.getFonts().find((item) => item.value === 'Broken Font')?.count, 2)
+})
+
+test('EPUB 2 structural repairs remove EPUB 3 attributes and update invalid id references', async () => {
+  const editor = await openEpubContent(await fixture('2.0.1', { structural: true }))
+  const suggestions = editor.getStructuralSuggestions()
+  assert.ok(suggestions.some((item) => item.kind === 'legacy-attributes'))
+  assert.ok(suggestions.some((item) => item.kind === 'invalid-id'))
+  assert.ok(editor.applyStructuralSuggestions(suggestions.map((item) => item.id)) >= 3)
+  assert.equal(editor.getStructuralSuggestions().length, 0)
+
+  const zip = await JSZip.loadAsync(await (await editor.buildBlob()).arrayBuffer())
+  const first = await zip.file('OPS/one.xhtml').async('string')
+  const second = await zip.file('OPS/two.xhtml').async('string')
+  assert.doesNotMatch(first, /\sepub:(?:prefix|type)=/)
+  assert.match(first, /id="bad-id"/)
+  assert.match(second, /href="one.xhtml#bad-id"/)
+
+  assert.equal(editor.undo(), true)
+  assert.ok(editor.getStructuralSuggestions().length >= 2)
 })
 
 test('protected and fixed-layout books are rejected before content editing', async () => {

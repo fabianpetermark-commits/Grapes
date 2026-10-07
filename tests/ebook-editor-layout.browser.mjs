@@ -47,7 +47,7 @@ try {
     assert.ok(measured.saveCenterOffset <= 2, `${width}px: a mentés nincs középen: ${JSON.stringify(measured)}`)
     assert.equal(measured.openInTopbar, true, `${width}px: az EPUB megnyitása nincs a felső fülsávban`)
     assert.equal(measured.activeTab, 'metadata', `${width}px: nem az Adatlap az alapértelmezett nézet`)
-    assert.deepEqual(measured.tabOrder, ['ebook-editor-metadata-tab', 'ebook-editor-text-tab', 'ebook-editor-font-tab'])
+    assert.deepEqual(measured.tabOrder, ['ebook-editor-metadata-tab', 'ebook-editor-text-tab', 'ebook-editor-structure-tab'])
     console.log(`✓ E-book szerkesztő ${width}px`)
 
     await page.route('https://www.googleapis.com/**', (route) => {
