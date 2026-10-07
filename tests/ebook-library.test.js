@@ -156,12 +156,12 @@ test('global Drive disconnect revokes the token and clears the visible library',
 test('library shows the most recently added book first', () => {
   const a = app(async () => json({}))
   a.run(`renderBooks([
-    { id: "older", name: "Régebbi.epub", createdTime: "2026-01-01T08:00:00.000Z", modifiedTime: "2026-10-01T08:00:00.000Z", size: 1 },
+    { id: "recently-added", name: "Legutóbb bekerült.epub", createdTime: "2026-01-01T08:00:00.000Z", modifiedTime: "2026-10-08T08:00:00.000Z", size: 1 },
     { id: "newest", name: "Legújabb.epub", createdTime: "2026-10-07T08:00:00.000Z", modifiedTime: "2026-10-07T08:00:00.000Z", size: 1 },
     { id: "middle", name: "Középső.epub", createdTime: "2026-06-01T08:00:00.000Z", modifiedTime: "2026-06-01T08:00:00.000Z", size: 1 }
   ])`)
-  assert.equal(a.run('currentBooks.map((book) => book.id).join(",")'), 'newest,middle,older')
-  assert.match(a.nodes.get('#ebook-list').children[0].innerHTML, /Legújabb\.epub/)
+  assert.equal(a.run('currentBooks.map((book) => book.id).join(",")'), 'recently-added,newest,middle')
+  assert.match(a.nodes.get('#ebook-list').children[0].innerHTML, /Legutóbb bekerült\.epub/)
 })
 
 test('refresh includes subsequent Drive pages', async () => {

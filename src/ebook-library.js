@@ -346,8 +346,9 @@ function handleTransferLink() {
   else if (!TRANSFER_BROKER_URL) $('#ebook-receiver-status').textContent = 'Az átvétel még nincs konfigurálva.'
 }
 function libraryAddedAt(book) {
-  const timestamp = Date.parse(book?.createdTime || book?.modifiedTime || '')
-  return Number.isFinite(timestamp) ? timestamp : 0
+  const created = Date.parse(book?.createdTime || '')
+  const modified = Date.parse(book?.modifiedTime || '')
+  return Math.max(Number.isFinite(created) ? created : 0, Number.isFinite(modified) ? modified : 0)
 }
 function sortLibraryBooks(books = []) {
   return [...books].sort((left, right) => {
@@ -1643,7 +1644,7 @@ async function listFolderChildren(folderId) {
   const query = `'${folderId}' in parents and trashed = false`
   let pageToken = ''
   do {
-    const response = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=nextPageToken,files(id,name,size,createdTime,modifiedTime,mimeType,parents,isAppAuthorized,appProperties)&orderBy=createdTime desc&pageSize=1000&pageToken=${encodeURIComponent(pageToken)}`)
+    const response = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=nextPageToken,files(id,name,size,createdTime,modifiedTime,mimeType,parents,isAppAuthorized,appProperties)&orderBy=modifiedTime desc&pageSize=1000&pageToken=${encodeURIComponent(pageToken)}`)
     const data = await response.json()
     children.push(...(data.files || []))
     pageToken = data.nextPageToken || ''
@@ -1672,7 +1673,7 @@ async function listAllDriveBooks() {
   const query = "trashed = false and mimeType != 'application/vnd.google-apps.folder'"
   let pageToken = ''
   do {
-    const response = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=nextPageToken,files(id,name,size,createdTime,modifiedTime,mimeType,parents,isAppAuthorized,appProperties)&orderBy=createdTime desc&pageSize=1000&pageToken=${encodeURIComponent(pageToken)}`)
+    const response = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=nextPageToken,files(id,name,size,createdTime,modifiedTime,mimeType,parents,isAppAuthorized,appProperties)&orderBy=modifiedTime desc&pageSize=1000&pageToken=${encodeURIComponent(pageToken)}`)
     const data = await response.json()
     for (const file of data.files || []) if (isDriveBook(file)) books.push(file)
     pageToken = data.nextPageToken || ''
