@@ -943,6 +943,16 @@ test('metadata editor exposes search, live preview and a protected dirty state',
   assert.equal(a.nodes.get('#ebook-metadata-preview-title').textContent, 'Dűne')
 })
 
+test('switching books clears stale encoding results and marks the next book unchecked', () => {
+  const a = app(async () => json({}))
+  for (const id of ['#ebook-editor-encoding-results', '#ebook-editor-encoding-summary', '#ebook-editor-encoding-scan']) a.run(`$("${id}")`)
+  a.run('contentEncodingSuggestions = [{ original: "Ã©" }]; $("#ebook-editor-encoding-summary").textContent = "1 gyanús szövegrész"; resetContentState("next-book")')
+  assert.equal(a.run('contentEncodingSuggestions.length'), 0)
+  assert.equal(a.nodes.get('#ebook-editor-encoding-results').children.length, 0)
+  assert.match(a.nodes.get('#ebook-editor-encoding-summary').textContent, /új könyvön még nem futott/)
+  assert.equal(a.nodes.get('#ebook-editor-encoding-scan').disabled, true)
+})
+
 test('saved title and author produce a safe filename while preserving the extension', () => {
   const a = app(async () => json({}))
   assert.equal(a.run('metadataFileNameFor({ name: "old.epub" }, { title: "Az idő: gyermekei?", author: "Adrian / Tchaikovsky" })'), 'Adrian Tchaikovsky - Az idő gyermekei.epub')

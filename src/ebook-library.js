@@ -42,6 +42,7 @@ let contentChangeSerial = 0
 let contentDraftDirty = false
 let contentMatches = []
 let contentEncodingSuggestions = []
+let encodingScanSerial = 0
 let activeChapterId = ''
 let activeSegmentIndex = -1
 let segmentOffset = 0
@@ -1000,6 +1001,7 @@ function updateContentSaveState() {
 }
 function resetContentState(id = '') {
   contentLoadSerial++
+  encodingScanSerial++
   contentSession = null
   contentBookId = id
   contentLoadedVersion = null
@@ -1013,6 +1015,10 @@ function resetContentState(id = '') {
   for (const selector of ['#ebook-editor-chapter', '#ebook-editor-segments', '#ebook-editor-matches', '#ebook-editor-encoding-results', '#ebook-editor-font-source']) {
     $(selector)?.replaceChildren()
   }
+  const encodingSummary = $('#ebook-editor-encoding-summary')
+  if (encodingSummary) encodingSummary.textContent = id ? 'Az új könyvön még nem futott karakterhiba-ellenőrzés.' : ''
+  const encodingButton = $('#ebook-editor-encoding-scan')
+  if (encodingButton) { encodingButton.disabled = true; encodingButton.textContent = 'Gyanús karakterek keresése' }
   updateContentSaveState()
 }
 function showEditorTab(tab) {
@@ -1034,7 +1040,7 @@ function syncContentSelection() {
   const book = currentBooks.find((item) => item.id === id)
   if (changedBook && book && $('#ebook-manager-view')?.dataset.ebookMode === 'organizer') $('#ebook-manager-view').dataset.ebookTab = ext(book.name) === 'epub' ? 'text' : 'metadata'
   if ($('#ebook-manager-view')?.dataset.ebookMode === 'organizer') {
-    if (!book) setContentStatus('Válassz egy könyvet a bal oldali listából.')
+    if (!book) setContentStatus('Válassz egy könyvet a lenyíló listából.')
     else if (ext(book.name) !== 'epub') setContentStatus('Ehhez a formátumhoz csak az adatlap szerkeszthető.')
     else if (!canWriteEpub(book)) setContentStatus('A tartalomhoz az Adatlap fülön engedélyezd ennek az EPUB-nak a fájlonkénti hozzáférését.')
     else if (!contentSession) setContentStatus('Nyisd meg az EPUB-ot a fejezetek és a szöveg javításához.')
@@ -1126,6 +1132,10 @@ async function openContentBook() {
     if (titleField && !titleField.value.trim() && session.title) { titleField.value = session.title; updateMetadataPreview() }
     renderContentChapters()
     renderContentFonts()
+    const encodingButton = $('#ebook-editor-encoding-scan')
+    if (encodingButton) encodingButton.disabled = false
+    const encodingSummary = $('#ebook-editor-encoding-summary')
+    if (encodingSummary) encodingSummary.textContent = 'A karakterhiba-ellenőrzés még nem futott le ezen a könyvön.'
     setContentStatus(`${session.chapters.length} fejezet megnyitva. A fájl még nem módosult.`, 'success')
   } catch (error) {
     if (serial === contentLoadSerial) setContentStatus(`A tartalom nem nyitható meg: ${error.message} Az adatlap továbbra is használható.`, 'error')
@@ -1694,10 +1704,30 @@ export function initEbookLibrary() {
   $('#ebook-editor-search')?.addEventListener('click', searchContentMatches)
   $('#ebook-editor-select-matches')?.addEventListener('click', () => $('#ebook-editor-matches')?.querySelectorAll('input[type="checkbox"]').forEach((input) => { input.checked = true }))
   $('#ebook-editor-apply-matches')?.addEventListener('click', applyContentMatches)
-  $('#ebook-editor-encoding-scan')?.addEventListener('click', () => {
+  $('#ebook-editor-encoding-scan')?.addEventListener('click', async () => {
     if (!contentSession) return setContentStatus('Előbb nyisd meg az EPUB-ot.', 'error')
-    try { commitContentDrafts(); contentEncodingSuggestions = contentSession.getEncodingSuggestions().slice(0, 200); renderEncodingSuggestions() }
-    catch (error) { setContentStatus(error.message, 'error') }
+    const serial = ++encodingScanSerial
+    const session = contentSession
+    const bookId = contentBookId
+    const button = $('#ebook-editor-encoding-scan')
+    contentEncodingSuggestions = []
+    $('#ebook-editor-encoding-results')?.replaceChildren()
+    const summary = $('#ebook-editor-encoding-summary')
+    if (summary) summary.textContent = 'Karakterhibák keresése az aktuális könyvben…'
+    if (button) { button.disabled = true; button.textContent = 'Ellenőrzés…' }
+    await new Promise((resolve) => window.setTimeout(resolve, 0))
+    try {
+      commitContentDrafts()
+      const suggestions = session.getEncodingSuggestions().slice(0, 200)
+      if (serial !== encodingScanSerial || session !== contentSession || bookId !== contentBookId) return
+      contentEncodingSuggestions = suggestions
+      renderEncodingSuggestions()
+      setContentStatus(suggestions.length ? `${suggestions.length} gyanús szövegrész ellenőrzésre vár.` : 'Nem találtam gyanús karakterkódolási hibát ebben a könyvben.', 'success')
+    } catch (error) {
+      if (serial === encodingScanSerial) { contentEncodingSuggestions = []; renderEncodingSuggestions(); setContentStatus(error.message, 'error') }
+    } finally {
+      if (serial === encodingScanSerial && button) { button.disabled = false; button.textContent = 'Gyanús karakterek keresése' }
+    }
   })
   $('#ebook-editor-encoding-results')?.addEventListener('click', (event) => {
     const index = event.target.closest?.('[data-encoding-index]')?.dataset.encodingIndex

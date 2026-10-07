@@ -66,6 +66,7 @@ test('the e-book manager exposes the USB reader synchronization controls', async
   assert.match(sync, /removeReaderBook/)
   assert.match(sync, /setInterval[^\n]*verifyReaderAccess\(\{ announce: false \}\)/)
   assert.match(html, /id="ebook-metadata-filter"/)
+  assert.doesNotMatch(html, /id="ebook-metadata-book"[^>]*\bsize=/)
   assert.match(html, /id="ebook-metadata-preview"/)
   assert.match(source, /grapes:before-screen-change/)
 })
