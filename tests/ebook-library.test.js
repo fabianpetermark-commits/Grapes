@@ -325,6 +325,10 @@ test('persistent reader pairing posts a compact library snapshot without waiting
   })
   a.context.window.location.href = 'https://fabianpetermark-commits.github.io/Grapes/ebook-pilot/?module=ebook'
   a.context.window.open = () => { throw new Error('must not open a new window') }
+  a.run(`currentBooks = [
+    { id: "ready", name: "Új.epub", size: 2048, createdTime: "2026-10-07T10:00:00.000Z", isAppAuthorized: true },
+    { id: "omitted", name: "Kimaradt.epub", size: 1024, isAppAuthorized: false }
+  ]; getReaderLibraryBooks = async () => ({ books: currentBooks }); shareReaderBooks = async () => {}`)
   await a.run('createReaderPairing()')
   const frame = a.nodes.get('#ebook-reader-pair-code')
   assert.equal(frame.hidden, false)
@@ -332,6 +336,9 @@ test('persistent reader pairing posts a compact library snapshot without waiting
   assert.match(frame.srcdoc, /name="action" value="create-reader-pairing"/)
   assert.match(frame.srcdoc, /name="embed" value="1"/)
   assert.match(frame.srcdoc, /name="nonce" value="[a-f0-9]{48}"/)
+  assert.match(frame.srcdoc, /name="omittedCount" value="1"/)
+  assert.match(frame.srcdoc, /ready/)
+  assert.doesNotMatch(frame.srcdoc, /Kimaradt/)
   assert.match(frame.srcdoc, /ebook-reader\.html/)
   assert.doesNotMatch(frame.srcdoc, /access[_-]?token/i)
   assert.equal(a.nodes.get('#ebook-reader-pair-btn').disabled, false)
@@ -975,13 +982,19 @@ test('POST reader pairing works across Google accounts and keeps the snapshot in
   const created = c.doPost({ parameter: {
     action: 'create-reader-pairing', nonce, embed: '1',
     returnUrl: 'https://fabianpetermark-commits.github.io/Grapes/ebook-reader.html',
-    books: JSON.stringify([['foreign-account-book', 'Másik fiók könyve.epub', 2048]]),
+    omittedCount: '6',
+    books: JSON.stringify([
+      ['older-book', 'Régebbi könyv.epub', 1024, 1000],
+      ['foreign-account-book', 'Másik fiók új könyve.epub', 2048, 2000],
+    ]),
   } })
   assert.match(created.html, /ABC234/)
   assert.doesNotMatch(values.get('ebook_reader_pair_ABC234'), /Másik fiók könyve/)
   assert.match(c.pairReader({ code: 'ABC234' }).html, /Párosítás kész/)
   const page = c.readerLibraryPage({ token: 'A'.repeat(64) })
-  assert.match(page.html, /Másik fiók könyve\.epub/)
+  assert.match(page.html, /Másik fiók új könyve\.epub/)
+  assert.ok(page.html.indexOf('Másik fiók új könyve.epub') < page.html.indexOf('Régebbi könyv.epub'))
+  assert.match(page.html, /6 további könyv nem volt átadható/)
   assert.match(page.html, /drive\.usercontent\.google\.com/)
 })
 
@@ -1337,7 +1350,7 @@ test('automatic broker deployment stays aligned with every live client URL', () 
   assert.equal(deploymentId(readerPageSource), expected)
   assert.match(brokerWorkflowSource, /clasp push --force/)
   assert.match(brokerWorkflowSource, /clasp deploy --deploymentId/)
-  assert.match(brokerSource, /BROKER_API_VERSION = 6/)
+  assert.match(brokerSource, /BROKER_API_VERSION = 7/)
   assert.match(brokerSource, /action === 'health'/)
 })
 

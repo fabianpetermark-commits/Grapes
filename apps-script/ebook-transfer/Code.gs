@@ -1,5 +1,5 @@
 const CODE_LENGTH = 6;
-const BROKER_API_VERSION = 6;
+const BROKER_API_VERSION = 7;
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const TTL_MS = 20 * 60 * 1000;
 const STORE_PREFIX = 'ebook_transfer_';
@@ -82,9 +82,10 @@ function normalizeReaderBookRows(raw) {
     const id = String(row[0] || '').trim();
     const name = String(row[1] || '').trim().slice(0, 240);
     const size = Math.max(0, Number(row[2]) || 0);
+    const updatedAt = Math.max(0, Number(row[3]) || 0);
     if (!/^[A-Za-z0-9_-]{1,200}$/.test(id) || !isAllowedBook(name) || seen[id]) continue;
     seen[id] = true;
-    result.push([id, name, size]);
+    result.push([id, name, size, updatedAt]);
   }
   return result;
 }
@@ -113,6 +114,7 @@ function createReaderPairingManifestPage(p) {
   let books;
   try { books = normalizeReaderBookRows(p.books); }
   catch (err) { return readerPairingError(p, 'Érvénytelen könyvlista', err.message); }
+  const omittedCount = Math.max(0, Math.min(2000, Number(p.omittedCount) || 0));
 
   const props = PropertiesService.getScriptProperties();
   const lock = LockService.getScriptLock();
@@ -122,7 +124,7 @@ function createReaderPairingManifestPage(p) {
     cleanupExpiredRecords();
     code = createUniqueCode();
     const chunks = writeReaderBookChunks(props, code, books);
-    props.setProperty(READER_PAIR_PREFIX + code, JSON.stringify({ returnUrl: READER_RETURN_URL, expiresAt: Date.now() + TTL_MS, bookChunks: chunks }));
+    props.setProperty(READER_PAIR_PREFIX + code, JSON.stringify({ returnUrl: READER_RETURN_URL, expiresAt: Date.now() + TTL_MS, bookChunks: chunks, omittedCount: omittedCount }));
   } catch (err) {
     return readerPairingError(p, 'A párosítás nem sikerült', 'A kód létrehozása közben hiba történt. Kérj új kódot.');
   } finally { lock.releaseLock(); }
@@ -300,6 +302,7 @@ function pairReader(p) {
       props.setProperty(READER_TOKEN_PREFIX + token, JSON.stringify({
         folderId: record.folderId,
         bookChunks: bookChunks,
+        omittedCount: Math.max(0, Number(currentRecord.omittedCount) || 0),
         createdAt: Date.now(),
         lastSeenAt: Date.now()
       }));
@@ -348,7 +351,7 @@ function readerLibraryPage(p) {
 
   let scan = { books: [], skippedCount: 0, skippedNames: [] };
   if (record.bookChunks) {
-    scan.books = readReaderBookChunks(props, token, record.bookChunks).map(function (row) { return { id: row[0], name: row[1], size: row[2] }; });
+    scan.books = readReaderBookChunks(props, token, record.bookChunks).map(function (row) { return { id: row[0], name: row[1], size: row[2], updatedAt: row[3] }; });
   } else {
     if (!record.folderId) {
       props.deleteProperty(key);
@@ -365,7 +368,8 @@ function readerLibraryPage(p) {
     scan = scanReaderLibraryFolders(folders);
   }
   const books = scan.books;
-  books.sort(function (a, b) { return a.name.toLowerCase().localeCompare(b.name.toLowerCase()); });
+  books.sort(function (a, b) { return (Number(b.updatedAt) || 0) - (Number(a.updatedAt) || 0) || a.name.toLowerCase().localeCompare(b.name.toLowerCase()); });
+  const omittedCount = Math.max(0, Number(record.omittedCount) || 0);
 
   const base = ScriptApp.getService().getUrl();
   let items = '';
@@ -381,7 +385,7 @@ function readerLibraryPage(p) {
   return HtmlService.createHtmlOutput(
     '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Grapes E-book Könyvtár</title>' +
     '<style>body{font-family:Arial,sans-serif;max-width:720px;margin:0 auto;padding:18px;background:#fff;color:#111}h1{font-size:24px}ul{list-style:none;padding:0;margin:20px 0}.book{display:flex;align-items:center;gap:12px;border:1px solid #999;padding:14px;margin:0 0 10px;color:#111}.book__info{min-width:0;flex:1}.book strong{display:block;font-size:17px;word-break:break-word}.book span{display:block;margin-top:5px;font-size:12px;color:#555}.book .download-state{font-size:13px;font-weight:bold;color:#176b2c}.download-button{flex:0 0 auto;display:inline-block;padding:10px 14px;border:1px solid #111;background:#111;color:#fff;text-decoration:none;font-weight:bold}.book[data-downloaded="true"]{border-color:#6b8f72;background:#f6faf7}.book[data-downloaded="true"] .download-button{background:#fff;color:#111}.empty{padding:18px;border:1px solid #bbb}.nav a{display:inline-block;margin:4px 12px 4px 0;color:#111}@media(max-width:480px){.book{align-items:stretch;flex-direction:column}.download-button{text-align:center}}</style></head><body>' +
-    '<h1>Grapes E-book Könyvtár</h1><p>' + books.length + ' könyv érhető el.' + (scan.skippedCount ? ' ' + scan.skippedCount + ' támogatott fájlt nem sikerült elérhetővé tenni.' : '') + '</p><div class="nav"><a href="' + escapeHtml(refreshUrl) + '">Frissítés</a><a href="' + escapeHtml(READER_RETURN_URL) + '">Olvasóoldal</a><a href="' + escapeHtml(revokeUrl) + '">Eszköz leválasztása</a></div><ul>' + items + '</ul>' + (scan.skippedNames.length ? '<p class="empty">Nem hozzáférhető: ' + escapeHtml(scan.skippedNames.join(', ')) + '</p>' : '') + '<script>(function(){var KEY="grapes-ebook-downloaded";var state={};try{state=JSON.parse(localStorage.getItem(KEY)||"{}")||{}}catch(e){}function paint(){var books=document.querySelectorAll("[data-book-id]");for(var i=0;i<books.length;i++){var id=books[i].getAttribute("data-book-id");var done=!!state[id];books[i].setAttribute("data-downloaded",done?"true":"false");var label=books[i].querySelector(".download-state");if(label)label.textContent=done?"✓ Letöltve":""}}var links=document.querySelectorAll("[data-download-id]");for(var i=0;i<links.length;i++){links[i].addEventListener("click",function(){var id=this.getAttribute("data-download-id");state[id]=Date.now();try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}paint()})}paint()}());<\/script></body></html>'
+    '<h1>Grapes E-book Könyvtár</h1><p>' + books.length + ' könyv érhető el.' + (omittedCount ? ' A párosításkor ' + omittedCount + ' további könyv nem volt átadható vagy nem a Grapes könyvtármappában volt.' : '') + (scan.skippedCount ? ' ' + scan.skippedCount + ' támogatott fájlt nem sikerült elérhetővé tenni.' : '') + '</p><div class="nav"><a href="' + escapeHtml(refreshUrl) + '">Frissítés</a><a href="' + escapeHtml(READER_RETURN_URL) + '">Olvasóoldal</a><a href="' + escapeHtml(revokeUrl) + '">Eszköz leválasztása</a></div><ul>' + items + '</ul>' + (scan.skippedNames.length ? '<p class="empty">Nem hozzáférhető: ' + escapeHtml(scan.skippedNames.join(', ')) + '</p>' : '') + '<script>(function(){var KEY="grapes-ebook-downloaded";var state={};try{state=JSON.parse(localStorage.getItem(KEY)||"{}")||{}}catch(e){}function paint(){var books=document.querySelectorAll("[data-book-id]");for(var i=0;i<books.length;i++){var id=books[i].getAttribute("data-book-id");var done=!!state[id];books[i].setAttribute("data-downloaded",done?"true":"false");var label=books[i].querySelector(".download-state");if(label)label.textContent=done?"✓ Letöltve":""}}var links=document.querySelectorAll("[data-download-id]");for(var i=0;i<links.length;i++){links[i].addEventListener("click",function(){var id=this.getAttribute("data-download-id");state[id]=Date.now();try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}paint()})}paint()}());<\/script></body></html>'
   );
 }
 
@@ -447,7 +451,9 @@ function scanReaderFolderRecursive(folder, state) {
       if (file.getSharingAccess() !== DriveApp.Access.ANYONE_WITH_LINK) {
         file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
       }
-      state.books.push({ id: fileId, name: name, size: file.getSize() });
+      let updatedAt = 0;
+      try { updatedAt = file.getLastUpdated().getTime(); } catch (err) {}
+      state.books.push({ id: fileId, name: name, size: file.getSize(), updatedAt: updatedAt });
     } catch (err) {
       state.skippedCount++;
       if (state.skippedNames.length < 8) state.skippedNames.push(name);

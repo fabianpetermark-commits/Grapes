@@ -1751,6 +1751,7 @@ async function createReaderPairing() {
     setStatus('Az e-olvasó könyvtár előkészítése…')
     const { books } = await getReaderLibraryBooks()
     const shareableBooks = books.filter((book) => book.isAppAuthorized !== false)
+    const omittedCount = Math.max(0, currentBooks.length - shareableBooks.length)
     setReaderLibraryEnabled(true)
 
     readerPairNonce = createReaderNonce()
@@ -1759,11 +1760,12 @@ async function createReaderPairing() {
       action: 'create-reader-pairing',
       nonce: readerPairNonce,
       returnUrl: READER_PAGE_URL,
-      books: JSON.stringify(shareableBooks.map((book) => [book.id, book.name, Number(book.size) || 0])),
+      books: JSON.stringify(shareableBooks.map((book) => [book.id, book.name, Number(book.size) || 0, libraryAddedAt(book)])),
+      omittedCount: String(omittedCount),
     })
     setReaderPairStatus('Párosítási kód kérése…')
     shareReaderBooks(shareableBooks).then(() => {
-      setStatus(`${shareableBooks.length} könyv előkészítve az e-olvasóhoz.`, 'success')
+      setStatus(`${shareableBooks.length} könyv előkészítve az e-olvasóhoz.${omittedCount ? ` ${omittedCount} könyv a mappa, formátum vagy hozzáférés miatt kimaradt.` : ''}`, omittedCount ? 'warning' : 'success')
     }).catch((error) => {
       setStatus(`A kód elkészült, de néhány könyv megosztása nem sikerült. ${error.message}`, 'error')
     })
