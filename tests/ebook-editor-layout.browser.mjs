@@ -40,12 +40,14 @@ try {
       const tabs = document.querySelector('#ebook-editor-tabs').getBoundingClientRect()
       const edge = panel.getBoundingClientRect().right
       const overflowing = [...panel.querySelectorAll('*')].map((el) => ({ node: el.tagName.toLowerCase(), id: el.id, className: typeof el.className === 'string' ? el.className : '', right: Math.round(el.getBoundingClientRect().right - edge), scroll: el.scrollWidth - el.clientWidth })).filter((item) => item.right > 1 || item.scroll > 1).sort((a, b) => b.scroll - a.scroll).slice(0, 5)
-      return { overflow: root.scrollWidth - innerWidth, panelOverflow: panel.scrollWidth - panel.clientWidth, saveWidth: save.width, saveHeight: save.height, saveRight: save.right, saveCenterOffset: Math.abs((save.left + save.right) / 2 - (workspace.left + workspace.right) / 2), workspace: [workspace.left, workspace.right], globalActions: [globalActions.left, globalActions.right], mode: document.querySelector('#ebook-manager-view').dataset.ebookMode, display: getComputedStyle(document.querySelector('#ebook-editor-global-actions')).display, grid: getComputedStyle(document.querySelector('#ebook-editor-global-actions')).gridTemplateColumns, justify: getComputedStyle(document.querySelector('#ebook-editor-save')).justifySelf, openTop: open.top, tabsBottom: tabs.bottom, openInTopbar: document.querySelector('.ebook-library__editor-topbar').contains(document.querySelector('#ebook-editor-open')), overflowing }
+      return { overflow: root.scrollWidth - innerWidth, panelOverflow: panel.scrollWidth - panel.clientWidth, saveWidth: save.width, saveHeight: save.height, saveRight: save.right, saveCenterOffset: Math.abs((save.left + save.right) / 2 - (workspace.left + workspace.right) / 2), workspace: [workspace.left, workspace.right], globalActions: [globalActions.left, globalActions.right], mode: document.querySelector('#ebook-manager-view').dataset.ebookMode, activeTab: document.querySelector('#ebook-manager-view').dataset.ebookTab, tabOrder: [...document.querySelectorAll('#ebook-editor-tabs [role="tab"]')].map((tab) => tab.id), display: getComputedStyle(document.querySelector('#ebook-editor-global-actions')).display, grid: getComputedStyle(document.querySelector('#ebook-editor-global-actions')).gridTemplateColumns, justify: getComputedStyle(document.querySelector('#ebook-editor-save')).justifySelf, openTop: open.top, tabsBottom: tabs.bottom, openInTopbar: document.querySelector('.ebook-library__editor-topbar').contains(document.querySelector('#ebook-editor-open')), overflowing }
     })
     assert.ok(measured.overflow <= 1 && measured.panelOverflow <= 1, `${width}px: vízszintes túlcsordulás: ${JSON.stringify(measured)}`)
     assert.ok(measured.saveWidth >= 44 && measured.saveHeight >= (width <= 768 ? 44 : 32) && measured.saveRight <= width + 1, `${width}px: mentés nem érhető el: ${JSON.stringify(measured)}`)
     assert.ok(measured.saveCenterOffset <= 2, `${width}px: a mentés nincs középen: ${JSON.stringify(measured)}`)
     assert.equal(measured.openInTopbar, true, `${width}px: az EPUB megnyitása nincs a felső fülsávban`)
+    assert.equal(measured.activeTab, 'metadata', `${width}px: nem az Adatlap az alapértelmezett nézet`)
+    assert.deepEqual(measured.tabOrder, ['ebook-editor-metadata-tab', 'ebook-editor-text-tab', 'ebook-editor-font-tab'])
     console.log(`✓ E-book szerkesztő ${width}px`)
 
     await page.route('https://www.googleapis.com/**', (route) => {
@@ -58,33 +60,11 @@ try {
     })
     await page.evaluate(() => sessionStorage.setItem('grapes-ebook-view', 'library'))
     await page.reload({ waitUntil: 'domcontentloaded' })
-    await page.locator('[data-edit-book="book"]').click()
-    await page.locator('#ebook-metadata-panel').waitFor({ state: 'visible' })
-    assert.equal(await page.locator('#ebook-manager-view').getAttribute('data-ebook-mode'), 'detail')
-    assert.equal(await page.locator('#ebook-metadata-book').inputValue(), 'book')
-    assert.equal(await page.locator('.ebook-library__metadata-picker').isVisible(), false)
-    assert.equal(await page.locator('.ebook-library__grid').isVisible(), false)
-    const detail = await page.evaluate(() => ({
-      overflow: document.documentElement.scrollWidth - innerWidth,
-      panelOverflow: document.querySelector('#ebook-metadata-panel').scrollWidth - document.querySelector('#ebook-metadata-panel').clientWidth,
-      save: document.querySelector('#ebook-metadata-save').getBoundingClientRect().toJSON(),
-      back: document.querySelector('#ebook-detail-back').getBoundingClientRect().toJSON(),
-    }))
-    assert.ok(detail.overflow <= 1 && detail.panelOverflow <= 1, `${width}px: az adatlap túlcsordul: ${JSON.stringify(detail)}`)
-    assert.ok(detail.save.width >= 44 && detail.save.right <= width + 1 && detail.back.height >= 44, `${width}px: adatlapműveletek nem érhetők el: ${JSON.stringify(detail)}`)
-    if (width === 360) {
-      await page.locator('#ebook-metadata-title').fill('Dűne')
-      page.once('dialog', (dialog) => dialog.dismiss())
-      await page.locator('#ebook-detail-back').click()
-      assert.equal(await page.locator('#ebook-manager-view').getAttribute('data-ebook-mode'), 'detail')
-      page.once('dialog', (dialog) => dialog.dismiss())
-      await page.locator('#ebook-back-to-menu-btn').click()
-      assert.equal(await page.locator('body').getAttribute('data-screen'), 'ebook')
-      page.once('dialog', (dialog) => dialog.accept())
-    }
-    await page.locator('#ebook-detail-back').click()
+    await page.locator('[data-download="book"]').waitFor({ state: 'visible' })
     assert.equal(await page.locator('#ebook-manager-view').getAttribute('data-ebook-mode'), 'library')
-    console.log(`✓ Könyvenkénti adatlap ${width}px`)
+    assert.equal(await page.locator('[data-edit-book]').count(), 0)
+    assert.equal(await page.locator('#ebook-metadata-panel').isVisible(), false)
+    console.log(`✓ Könyvtár szerkesztési művelet nélkül ${width}px`)
     await context.close()
   }
 } finally {

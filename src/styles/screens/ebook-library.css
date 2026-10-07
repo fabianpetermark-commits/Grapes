@@ -163,9 +163,30 @@
 #ebook-manager-view[data-ebook-mode="organizer"][data-ebook-tab="text"] #ebook-editor-text-pane,
 #ebook-manager-view[data-ebook-mode="organizer"][data-ebook-tab="font"] #ebook-editor-font-pane{display:grid}
 .ebook-library__editor-global-actions{z-index:2;text-align:center}
+.ebook-library__validation{grid-column:1/-1;width:100%;padding:14px 16px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-bg-raised);text-align:left}
+.ebook-library__validation[hidden]{display:none}
+.ebook-library__validation[data-kind="success"]{border-color:color-mix(in srgb,var(--color-success) 55%,var(--color-border))}
+.ebook-library__validation[data-kind="warning"]{border-color:#b88932}
+.ebook-library__validation[data-kind="error"]{border-color:color-mix(in srgb,var(--color-danger) 65%,var(--color-border))}
+.ebook-library__validation-head{display:flex;align-items:center;gap:12px;min-width:0}
+.ebook-library__validation-head>div{display:grid;gap:3px;min-width:0}
+.ebook-library__validation-head span:not(.ebook-library__validation-icon){color:var(--color-text-muted);font-size:var(--text-sm);overflow-wrap:anywhere}
+.ebook-library__validation-icon{display:grid;place-items:center;flex:0 0 30px;width:30px;height:30px;border-radius:50%;background:var(--color-success);color:#08120c;font-weight:800;font-size:20px}
+.ebook-library__validation[data-kind="warning"] .ebook-library__validation-icon{background:#d7a84d;color:#1b1305}
+.ebook-library__validation[data-kind="error"] .ebook-library__validation-icon{background:var(--color-danger);color:#fff}
+.ebook-library__validation details{margin-top:10px}
+.ebook-library__validation summary{display:flex;align-items:center;min-height:44px;cursor:pointer;color:var(--color-accent);font-weight:650}
+.ebook-library__validation-messages{display:grid;gap:8px;margin:6px 0 0;padding-left:22px}
+.ebook-library__validation-messages li{padding:8px 10px;border-left:3px solid var(--color-border);overflow-wrap:anywhere}
+.ebook-library__validation-messages li[data-kind="fatal"],.ebook-library__validation-messages li[data-kind="error"]{border-color:var(--color-danger)}
+.ebook-library__validation-messages li[data-kind="warning"]{border-color:#d7a84d}
+.ebook-library__validation-messages strong,.ebook-library__validation-messages span,.ebook-library__validation-messages small{display:block}
+.ebook-library__validation-messages span,.ebook-library__validation-messages small{margin-top:3px;color:var(--color-text-muted);font-size:var(--text-sm)}
+.ebook-library__validation[data-stale="true"]::after{content:"Az eredmény a legutóbb ellenőrzött állapotra vonatkozik. A mentés előtt a módosított EPUB-ot újra ellenőrizzük.";display:block;margin-top:10px;color:#d7a84d;font-size:var(--text-sm)}
 .ebook-library__editor-global-actions #ebook-editor-status{grid-column:1/-1;width:100%;font-size:var(--text-sm);overflow-wrap:anywhere}
 .ebook-library__editor-global-actions #ebook-editor-status[data-kind="error"]{color:var(--color-danger)}
 .ebook-library__editor-global-actions #ebook-editor-status[data-kind="success"]{color:var(--color-success)}
+.ebook-library__editor-global-actions #ebook-editor-status[data-kind="warning"]{color:#d7a84d}
 .ebook-library__editor-global-actions #ebook-editor-undo{min-width:44px;font-size:24px}
 .ebook-library__editor-global-actions #ebook-editor-undo{grid-column:1;justify-self:center}
 .ebook-library__editor-global-actions #ebook-editor-save{grid-column:1;justify-self:center}

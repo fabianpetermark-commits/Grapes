@@ -1128,9 +1128,9 @@
             <div class="ebook-library__metadata-workspace">
               <div class="ebook-library__editor-topbar">
                 <div id="ebook-editor-tabs" class="ebook-library__editor-tabs" role="tablist" aria-label="Könyvszerkesztő nézetek">
-                  <button id="ebook-editor-text-tab" class="btn btn--ghost" type="button" role="tab" aria-controls="ebook-editor-text-pane" aria-selected="true">Szöveg</button>
+                  <button id="ebook-editor-metadata-tab" class="btn btn--ghost" type="button" role="tab" aria-controls="ebook-editor-metadata-pane" aria-selected="true">Adatlap</button>
+                  <button id="ebook-editor-text-tab" class="btn btn--ghost" type="button" role="tab" aria-controls="ebook-editor-text-pane" aria-selected="false">Szöveg</button>
                   <button id="ebook-editor-font-tab" class="btn btn--ghost" type="button" role="tab" aria-controls="ebook-editor-font-pane" aria-selected="false">Kinézet</button>
-                  <button id="ebook-editor-metadata-tab" class="btn btn--ghost" type="button" role="tab" aria-controls="ebook-editor-metadata-pane" aria-selected="false">Adatlap</button>
                 </div>
                 <button id="ebook-editor-open" class="btn btn--ghost" type="button">EPUB megnyitása</button>
               </div>
@@ -1205,6 +1205,16 @@
                 <p id="ebook-editor-font-summary" role="status"></p><button id="ebook-editor-font-apply" class="btn btn--primary" type="button">Betűtípus-javítás alkalmazása</button>
               </section>
               <div id="ebook-editor-global-actions" class="ebook-library__metadata-actions ebook-library__editor-global-actions">
+                <section id="ebook-editor-validation" class="ebook-library__validation" aria-labelledby="ebook-editor-validation-title" hidden>
+                  <div class="ebook-library__validation-head">
+                    <span id="ebook-editor-validation-icon" class="ebook-library__validation-icon" aria-hidden="true">✓</span>
+                    <div><strong id="ebook-editor-validation-title">EPUB állapot</strong><span id="ebook-editor-validation-counts"></span></div>
+                  </div>
+                  <details id="ebook-editor-validation-details">
+                    <summary id="ebook-editor-validation-toggle">Ellenőrzési részletek</summary>
+                    <ol id="ebook-editor-validation-messages" class="ebook-library__validation-messages"></ol>
+                  </details>
+                </section>
                 <span id="ebook-editor-status" role="status" aria-live="polite">Válassz EPUB-könyvet, majd nyisd meg a fájlt.</span>
                 <button id="ebook-editor-undo" class="btn btn--ghost" type="button" aria-label="Utolsó módosítás visszavonása" title="Visszavonás" disabled>↶</button>
                 <button id="ebook-editor-save" class="btn btn--primary" type="button" disabled>Változások mentése a Drive-ra</button>

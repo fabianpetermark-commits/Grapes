@@ -1,6 +1,7 @@
 import QRCode from 'qrcode'
 import './styles/screens/ebook-library.css'
 import { connectGrapesDrive, disconnectGrapesDrive, getConnectedGrapesAccount, getGrapesDriveAccessToken, grapesDriveHasFullReadAccess, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange } from './storage/grapes-drive.js'
+import { messageLabel, validateEpub, validationSummary } from './ebook/epub-validation.js'
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 const PICKER_API_KEY = import.meta.env.VITE_GOOGLE_PICKER_API_KEY || ''
@@ -43,6 +44,7 @@ let contentDraftDirty = false
 let contentMatches = []
 let contentEncodingSuggestions = []
 let encodingScanSerial = 0
+let contentValidationResult = null
 let activeChapterId = ''
 let activeSegmentIndex = -1
 let segmentOffset = 0
@@ -101,6 +103,59 @@ function setStatus(message, kind = '') {
 function setContentStatus(message, kind = '') {
   const status = $('#ebook-editor-status')
   if (status) { status.textContent = message; status.dataset.kind = kind }
+}
+function clearEpubValidation() {
+  contentValidationResult = null
+  const panel = $('#ebook-editor-validation')
+  if (panel) { panel.hidden = true; panel.dataset.kind = '' }
+  $('#ebook-editor-validation-messages')?.replaceChildren()
+}
+function renderEpubValidation(result) {
+  contentValidationResult = result
+  const panel = $('#ebook-editor-validation')
+  const title = $('#ebook-editor-validation-title')
+  const icon = $('#ebook-editor-validation-icon')
+  const counts = $('#ebook-editor-validation-counts')
+  const list = $('#ebook-editor-validation-messages')
+  const toggle = $('#ebook-editor-validation-toggle')
+  if (!panel || !title || !icon || !counts || !list || !toggle) return
+  const state = validationSummary(result)
+  panel.hidden = false
+  panel.dataset.kind = state.kind
+  title.textContent = state.label
+  icon.textContent = state.kind === 'success' ? '✓' : state.kind === 'warning' ? '!' : '×'
+  counts.textContent = `${state.counts.fatals} végzetes · ${state.counts.errors} hiba · ${state.counts.warnings} figyelmeztetés · ${state.counts.infos} információ`
+  list.replaceChildren()
+  const messages = (result.messages || []).filter((message) => message.severity !== 'INFO').slice(0, 100)
+  for (const message of messages) {
+    const item = document.createElement('li')
+    item.dataset.kind = String(message.severity || '').toLowerCase()
+    const heading = document.createElement('strong')
+    heading.textContent = `${messageLabel(message)} · ${message.code || 'EPUBCheck'}`
+    const text = document.createElement('span')
+    const location = message.path ? ` — ${message.path}${message.line > 0 ? `:${message.line}${message.column > 0 ? `:${message.column}` : ''}` : ''}` : ''
+    text.textContent = `${message.message || 'Ismeretlen ellenőrzési üzenet'}${location}`
+    item.append(heading, text)
+    if (message.suggestion) { const suggestion = document.createElement('small'); suggestion.textContent = `Javaslat: ${message.suggestion}`; item.append(suggestion) }
+    list.append(item)
+  }
+  const hiddenCount = Math.max(0, (result.messages || []).filter((message) => message.severity !== 'INFO').length - messages.length)
+  toggle.textContent = messages.length ? `Ellenőrzési részletek (${messages.length}${hiddenCount ? ` + ${hiddenCount}` : ''})` : 'Nincs jelentendő szerkezeti probléma'
+  $('#ebook-editor-validation-details').open = state.kind === 'error'
+}
+async function validateEpubForDisplay(file, book, serial = contentLoadSerial) {
+  try {
+    const result = await validateEpub(file, book?.name || 'book.epub')
+    if (serial !== contentLoadSerial || activeMetadataBookId !== book?.id) return null
+    renderEpubValidation(result)
+    return result
+  } catch (error) {
+    if (serial === contentLoadSerial && activeMetadataBookId === book?.id) {
+      clearEpubValidation()
+      setContentStatus(`Az EPUB megnyílt, de a teljes EPUBCheck ellenőrzés nem futott le: ${error.message}`, 'warning')
+    }
+    return null
+  }
 }
 function setUploadState(message, kind = '') { const node = $('#ebook-upload-state'); if (node) { node.textContent = message; node.dataset.kind = kind } }
 function activeLibraryAccount() { return getConnectedGrapesAccount()?.email?.trim().toLocaleLowerCase('en-US') || '' }
@@ -257,12 +312,11 @@ function renderBooks(books = []) {
     const accessLabel = book.isAppAuthorized === false ? ' · Drive, csak olvasás' : ''
     const metadata = ebookMetadata[book.id] || {}
     const displayName = metadata.title || book.name
-    row.innerHTML = `<div class="ebook-library__book-icon" aria-hidden="true">E</div><div class="ebook-library__book-main" data-book-name="${escapeHtml(book.name)}"><strong>${escapeHtml(displayName)} <span class="ebook-library__location-badge" data-location-badge="Drive">Drive</span></strong><span>${escapeHtml(metadata.author || ext(book.name).toUpperCase())} · ${formatSize(Number(book.size))}${accessLabel}</span></div><div class="ebook-library__book-actions"><button class="btn btn--ghost btn--sm" type="button" data-edit-book="${book.id}">Szerkesztés</button><button class="btn btn--ghost btn--sm" type="button" data-download="${book.id}">Letöltés</button>${sendAction}</div>`
+    row.innerHTML = `<div class="ebook-library__book-icon" aria-hidden="true">E</div><div class="ebook-library__book-main" data-book-name="${escapeHtml(book.name)}"><strong>${escapeHtml(displayName)} <span class="ebook-library__location-badge" data-location-badge="Drive">Drive</span></strong><span>${escapeHtml(metadata.author || ext(book.name).toUpperCase())} · ${formatSize(Number(book.size))}${accessLabel}</span></div><div class="ebook-library__book-actions"><button class="btn btn--ghost btn--sm" type="button" data-download="${book.id}">Letöltés</button>${sendAction}</div>`
     list.append(row)
   }
   list.querySelectorAll('[data-download]').forEach((b) => b.addEventListener('click', () => downloadBook(b.dataset.download)))
   list.querySelectorAll('[data-send]').forEach((b) => b.addEventListener('click', () => sendBook(b.dataset.send)))
-  list.querySelectorAll('[data-edit-book]').forEach((b) => b.addEventListener('click', () => openBookDetail(b.dataset.editBook)))
   renderMetadataEditor()
 }
 
@@ -985,6 +1039,8 @@ function suggestMetadata(name = '') {
 function hasContentChanges() { return Boolean(contentSession?.hasChanges || contentDraftDirty) }
 function updateContentSaveState() {
   const book = currentBooks.find((item) => item.id === activeMetadataBookId)
+  const validation = $('#ebook-editor-validation')
+  if (validation) validation.dataset.stale = String(Boolean(contentValidationResult && hasContentChanges()))
   const save = $('#ebook-editor-save')
   if (save) save.disabled = !book || (!metadataDirty && !hasContentChanges())
   const undo = $('#ebook-editor-undo')
@@ -1012,6 +1068,7 @@ function resetContentState(id = '') {
   activeSegmentIndex = -1
   segmentOffset = 0
   displayedHeading = displayedToc = displayedSegment = ''
+  clearEpubValidation()
   for (const selector of ['#ebook-editor-chapter', '#ebook-editor-segments', '#ebook-editor-matches', '#ebook-editor-encoding-results', '#ebook-editor-font-source']) {
     $(selector)?.replaceChildren()
   }
@@ -1038,14 +1095,14 @@ function syncContentSelection() {
   const changedBook = contentBookId !== id
   if (changedBook) resetContentState(id)
   const book = currentBooks.find((item) => item.id === id)
-  if (changedBook && book && $('#ebook-manager-view')?.dataset.ebookMode === 'organizer') $('#ebook-manager-view').dataset.ebookTab = ext(book.name) === 'epub' ? 'text' : 'metadata'
+  if (changedBook && book && $('#ebook-manager-view')?.dataset.ebookMode === 'organizer') $('#ebook-manager-view').dataset.ebookTab = 'metadata'
   if ($('#ebook-manager-view')?.dataset.ebookMode === 'organizer') {
     if (!book) setContentStatus('Válassz egy könyvet a lenyíló listából.')
     else if (ext(book.name) !== 'epub') setContentStatus('Ehhez a formátumhoz csak az adatlap szerkeszthető.')
     else if (!canWriteEpub(book)) setContentStatus('A tartalomhoz az Adatlap fülön engedélyezd ennek az EPUB-nak a fájlonkénti hozzáférését.')
     else if (!contentSession) setContentStatus('Nyisd meg az EPUB-ot a fejezetek és a szöveg javításához.')
   }
-  showEditorTab($('#ebook-manager-view')?.dataset.ebookTab || 'text')
+  showEditorTab($('#ebook-manager-view')?.dataset.ebookTab || 'metadata')
   updateContentSaveState()
 }
 function renderContentChapters() {
@@ -1121,6 +1178,7 @@ async function openContentBook() {
     const before = await getBookDriveVersion(book.id)
     if (before.isAppAuthorized !== true) throw new Error('A fájlonkénti Drive-hozzáférés már nem aktív.')
     const blob = await (await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(book.id)}?alt=media`)).blob()
+    const validationPromise = validateEpubForDisplay(blob, book, serial)
     const { openEpubContent } = await import('./ebook/epub-content.js')
     const session = await openEpubContent(blob)
     if (!sameDriveVersion(before, await getBookDriveVersion(book.id))) throw new Error('Az EPUB közben megváltozott a Drive-on. Nyisd meg újra.')
@@ -1136,7 +1194,13 @@ async function openContentBook() {
     if (encodingButton) encodingButton.disabled = false
     const encodingSummary = $('#ebook-editor-encoding-summary')
     if (encodingSummary) encodingSummary.textContent = 'A karakterhiba-ellenőrzés még nem futott le ezen a könyvön.'
-    setContentStatus(`${session.chapters.length} fejezet megnyitva. A fájl még nem módosult.`, 'success')
+    setContentStatus(`${session.chapters.length} fejezet megnyitva. A teljes EPUBCheck ellenőrzés folyamatban…`)
+    updateContentSaveState()
+    const validation = await validationPromise
+    if (validation && serial === contentLoadSerial && activeMetadataBookId === book.id) {
+      const state = validationSummary(validation)
+      setContentStatus(`${session.chapters.length} fejezet megnyitva. ${state.label}; az eredmény tájékoztató jelzés, a szerkesztést nem korlátozza.`, state.kind === 'success' ? 'success' : 'warning')
+    }
   } catch (error) {
     if (serial === contentLoadSerial) setContentStatus(`A tartalom nem nyitható meg: ${error.message} Az adatlap továbbra is használható.`, 'error')
   } finally { updateContentSaveState() }
@@ -1287,6 +1351,7 @@ async function saveMetadata({ catalogOnly = false } = {}) {
     await loadEbookMetadata(folderId)
     if (JSON.stringify(ebookMetadata[id] || {}) !== metadataLoadedSnapshot) throw new Error('A könyv adatai közben megváltoztak egy másik eszközön. Frissítsd a könyvtárat, majd egyeztesd az eltéréseket.')
     let cover = partialMetadataSave?.id === id && partialMetadataSave.fingerprint === fingerprint ? partialMetadataSave.cover : await selectedCover()
+    let preparedValidationResult = null
     if (epub && !catalogOnly) {
       if (!EPUB_WRITE_ENABLED) throw new Error('Az EPUB-fájl mentése még nincs élesítve. A könyvtári adatlap külön menthető.')
       if (partialMetadataSave?.id === id && partialMetadataSave.fingerprint === fingerprint && !sameDriveVersion(partialMetadataSave.version, await getBookDriveVersion(id))) throw new Error('Az EPUB az előző mentési kísérlet óta újra módosult a Drive-on. Frissítsd a könyvtárat.')
@@ -1302,6 +1367,10 @@ async function saveMetadata({ catalogOnly = false } = {}) {
         const contentBlob = contentEdited ? await contentSession.buildBlob() : original
         const clearFields = METADATA_FIELDS.filter((field) => Boolean(ebookMetadata[id]?.[field]?.length) && !edited[field]?.length)
         const updated = await (await loadEpubWriter())(contentBlob, edited, pendingCoverRemoved ? { remove: true } : cover, { clearFields })
+        if ($('#ebook-manager-view')?.dataset.ebookMode === 'organizer') {
+          setStatus('A kész EPUB teljes EPUBCheck ellenőrzése…')
+          preparedValidationResult = await validateEpubForDisplay(updated, book)
+        }
         const preparedContentSession = contentEdited ? await (await import('./ebook/epub-content.js')).openEpubContent(updated) : null
         if (!sameDriveVersion(before, await getBookDriveVersion(id))) throw new Error('Az EPUB-fájl a feldolgozás közben módosult. Nem írtam felül.')
         setStatus('A módosított EPUB feltöltése a Drive-ra…')
@@ -1334,6 +1403,7 @@ async function saveMetadata({ catalogOnly = false } = {}) {
       if (savedContentSession) { contentSession = savedContentSession; contentLoadedVersion = { ...book }; contentDraftDirty = false; contentMatches = []; renderContentChapters(); renderContentFonts() }
       else resetContentState(id)
     } else if (epub && !catalogOnly && contentBookId === id && contentSession) resetContentState(id)
+    if (preparedValidationResult) renderEpubValidation(preparedValidationResult)
     renderBooks(currentBooks)
     saveLibraryCache(currentBooks)
     openMetadataEditor(id, { scroll: false })
@@ -1624,7 +1694,7 @@ function showEbookManager() {
 }
 function showEbookOrganizer() {
   const manager = $('#ebook-manager-view')
-  if (manager) manager.hidden = false
+  if (manager) { manager.hidden = false; manager.dataset.ebookTab = 'metadata' }
   setEbookMode('organizer')
   if (accessTokenAvailable()) refreshLibrary()
 }

@@ -953,6 +953,24 @@ test('switching books clears stale encoding results and marks the next book unch
   assert.equal(a.nodes.get('#ebook-editor-encoding-scan').disabled, true)
 })
 
+test('book editor opens each selected book on the metadata tab', () => {
+  const a = app(async () => json({}))
+  const manager = a.run('$("#ebook-manager-view")')
+  manager.dataset.ebookMode = 'organizer'
+  a.run('currentBooks = [{ id: "book", name: "Dune.epub", size: 2048, isAppAuthorized: true }]; activeMetadataBookId = "book"; contentBookId = "other"')
+  a.run('syncContentSelection()')
+  assert.equal(manager.dataset.ebookTab, 'metadata')
+  assert.equal(a.nodes.get('#ebook-editor-metadata-tab').tabIndex, 0)
+})
+
+test('library rows no longer expose book editing', () => {
+  const a = app(async () => json({}))
+  a.run('renderBooks([{ id: "book", name: "Dune.epub", size: 2048, isAppAuthorized: true }])')
+  const html = a.nodes.get('#ebook-list').children[0].innerHTML
+  assert.doesNotMatch(html, /data-edit-book|Szerkesztés/)
+  assert.match(html, /data-download="book"/)
+})
+
 test('saved title and author produce a safe filename while preserving the extension', () => {
   const a = app(async () => json({}))
   assert.equal(a.run('metadataFileNameFor({ name: "old.epub" }, { title: "Az idő: gyermekei?", author: "Adrian / Tchaikovsky" })'), 'Adrian Tchaikovsky - Az idő gyermekei.epub')
