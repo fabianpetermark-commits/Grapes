@@ -58,7 +58,8 @@ try {
   page.on('pageerror', (error) => console.error(`browser:error: ${error.message}`))
   await page.goto('http://127.0.0.1:4175/?module=finance')
   await page.waitForFunction(() => document.querySelector('#finance-save-status')?.textContent === 'Kész')
-  await page.locator('[data-finance-tab="import"]').click()
+  await page.locator('#finance-import-btn').click()
+  assert.equal(await page.locator('[data-finance-tab="import"]').getAttribute('aria-selected'), 'true')
   await page.locator('#finance-workbook-input').setInputFiles({
     name: 'Havi_koltesek_formazva-okgpt.xlsx',
     mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

@@ -747,6 +747,7 @@ function bindControls() {
     download(transactionsToCsv(transactions, currency), 'text/csv;charset=utf-8', `penzugyi-naplo-${today()}.csv`)
     notifySuccess('A CSV-export elkészült. A bizonylatfájlokhoz használd a Teljes mentést.')
   })
+  el('#finance-import-btn').addEventListener('click', () => setFinanceTab('import'))
   el('#finance-drive-save').addEventListener('click', () => saveToDrive(true))
 }
 
