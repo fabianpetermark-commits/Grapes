@@ -308,7 +308,11 @@
               <datalist id="finance-categories"></datalist>
               <label>Személy<span class="finance__field-row"><select id="finance-person"></select><button id="finance-add-person" class="btn btn--ghost" type="button" aria-label="Új személy hozzáadása">+</button></span></label>
               <label class="finance__form-wide">Megjegyzés<input id="finance-note" type="text" maxlength="180" placeholder="Opcionális leírás"></label>
-              <label class="finance__receipt finance__form-wide"><span>Bizonylat <small>PDF, PNG, JPEG, GIF vagy WebP, legfeljebb 3 MB</small></span><input id="finance-receipt" type="file" accept="image/png,image/jpeg,image/gif,image/webp,application/pdf"><strong id="finance-receipt-name">Nincs fájl kiválasztva</strong></label>
+              <div class="finance__receipt-tools finance__form-wide">
+                <label class="finance__receipt"><span>Bizonylat <small>PDF, PNG, JPEG, GIF vagy WebP, legfeljebb 3 MB</small></span><input id="finance-receipt" type="file" accept="image/png,image/jpeg,image/gif,image/webp,application/pdf"><strong id="finance-receipt-name">Nincs fájl kiválasztva</strong></label>
+                <button id="finance-receipt-scan" class="btn btn--ghost" type="button" disabled>Blokk beolvasása</button>
+                <small id="finance-receipt-ocr-status" class="finance__receipt-status" aria-live="polite">A képfeldolgozás helyben fut. Első alkalommal a nyelvi modell letöltése eltarthat egy kicsit.</small>
+              </div>
               <div class="finance__form-actions finance__form-wide"><button id="finance-transaction-submit" class="btn btn--primary" type="submit">Tétel hozzáadása</button><button id="finance-transaction-cancel" class="btn btn--ghost" type="button" hidden>Mégse</button></div>
             </form>
           </article>

@@ -3,8 +3,9 @@ import { el, create } from './ui/dom.js'
 import { notifyError, notifySuccess } from './ui/toast.js'
 import { createResponsiveOverflow } from './ui/responsive-overflow.js'
 import { setUxState } from './ui/status.js'
-import { showGrapesConfirm, showGrapesPrompt } from './ui/modal.js'
+import { openModal, showGrapesAlert, showGrapesConfirm, showGrapesPrompt } from './ui/modal.js'
 import { initFinanceImport } from './finance-import-ui.js'
+import { extractReceiptAmountCandidates, recognizeReceiptImage } from './receipt-ocr.js'
 import { loadLocalProject, saveLocalProject } from './storage/local-project-store.js'
 import { isGrapesDriveConnected, loadGrapesProject, saveGrapesProject } from './storage/grapes-drive.js'
 import {
@@ -36,6 +37,7 @@ let driveSaveTimer = null
 let pendingReceipt = null
 let receiptLoading = false
 let receiptRequest = 0
+let receiptOcrRunning = false
 let editingTransactionId = null
 let editingSavingsEntryId = null
 let financeImportController = null
@@ -88,6 +90,8 @@ function resetTransactionEditor() {
   setTransactionType('expense')
   pendingReceipt = null
   el('#finance-receipt-name').textContent = 'Nincs fájl kiválasztva'
+  el('#finance-receipt-ocr-status').textContent = 'A képfeldolgozás helyben fut. Első alkalommal a nyelvi modell letöltése eltarthat egy kicsit.'
+  updateReceiptOcrControls()
   el('#finance-transaction-submit').textContent = 'Tétel hozzáadása'
   el('#finance-transaction-cancel').hidden = true
 }
@@ -385,6 +389,12 @@ function renderRows(visible) {
       el('#finance-note').value = transaction.note
       pendingReceipt = transaction.receipt
       el('#finance-receipt-name').textContent = pendingReceipt?.name || 'Nincs fájl kiválasztva'
+      el('#finance-receipt-ocr-status').textContent = !pendingReceipt
+        ? 'A képfeldolgozás helyben fut. Első alkalommal a nyelvi modell letöltése eltarthat egy kicsit.'
+        : pendingReceipt.type.startsWith('image/')
+          ? 'A csatolt kép beolvasható.'
+          : 'A PDF most még csak csatolmány; a beolvasása későbbi fejlesztés.'
+      updateReceiptOcrControls()
       el('#finance-transaction-submit').textContent = 'Módosítás mentése'
       el('#finance-transaction-cancel').hidden = false
       setFinanceTab('transaction')
@@ -489,6 +499,106 @@ async function prepareReceipt(file) {
   const total = transactions.reduce((sum, item) => sum + Number(item.receipt?.size || 0), 0)
   if (total + file.size > PROJECT_RECEIPT_LIMIT) throw new Error('A projekthez csatolt bizonylatok összmérete legfeljebb 15 MB lehet.')
   return { name: file.name, type: file.type, size: file.size, data: await fileToDataUrl(file) }
+}
+
+function updateReceiptOcrControls() {
+  const button = el('#finance-receipt-scan')
+  const canScan = pendingReceipt?.type?.startsWith('image/')
+  button.disabled = receiptLoading || receiptOcrRunning || !canScan
+  button.textContent = receiptOcrRunning ? 'Beolvasás…' : 'Blokk beolvasása'
+  button.setAttribute('aria-busy', String(receiptOcrRunning))
+  button.title = canScan ? 'Végösszeg felismerése a csatolt képről' : 'A beolvasás JPG, PNG, GIF vagy WebP képnél használható.'
+  el('#finance-receipt').disabled = receiptOcrRunning
+}
+
+function pickReceiptAmount(candidates, currentAmount) {
+  return new Promise((resolve) => {
+    const options = candidates.slice(0, 5).map((candidate, index) => {
+      const input = create('input', { type: 'radio', name: 'receipt-ocr-amount', value: String(candidate.amount), checked: index === 0 })
+      return create('label', { class: 'finance__ocr-candidate' }, [
+        input,
+        create('span', {}, [
+          create('strong', { textContent: formatMoney(candidate.amount) }),
+          create('small', { textContent: candidate.label || `A blokk ${candidate.line}. sora` }),
+        ]),
+      ])
+    })
+    const cancel = create('button', { class: 'btn btn--ghost', type: 'button', textContent: 'Inkább nem' })
+    const apply = create('button', { class: 'btn btn--primary', type: 'submit', textContent: currentAmount ? 'Igen, cseréld le' : 'Ezt írd be' })
+    const message = currentAmount
+      ? `Most ${currentAmount} szerepel az összegmezőben. Csak a jóváhagyásod után cserélem le.`
+      : 'Ezeket az összegeket találtam. Válaszd ki a végösszeget — a blokk sajnos nem tett esküt.'
+    const form = create('form', { class: 'grapes-dialog' }, [
+      create('div', { class: 'grapes-dialog__message' }, [
+        create('span', { class: 'grapes-dialog__icon', textContent: '🧭', 'aria-hidden': 'true' }),
+        create('p', { textContent: message }),
+      ]),
+      create('fieldset', { class: 'finance__ocr-candidates', 'aria-label': 'Felismerett összegek' }, options),
+      create('div', { class: 'modal__actions' }, [cancel, apply]),
+    ])
+    let settled = false
+    let modal
+    const finish = (amount) => {
+      if (settled) return
+      settled = true
+      resolve(amount)
+      modal?.close()
+    }
+    cancel.addEventListener('click', () => finish(null))
+    form.addEventListener('submit', (event) => {
+      event.preventDefault()
+      finish(Number(form.elements.namedItem('receipt-ocr-amount')?.value) || null)
+    })
+    modal = openModal({ title: 'A blokk beszélt. Kicsit motyogva.', content: form, onClose: () => finish(null) })
+  })
+}
+
+async function scanPendingReceipt() {
+  if (receiptOcrRunning || !pendingReceipt?.type?.startsWith('image/')) return
+  const scannedReceipt = pendingReceipt
+  receiptOcrRunning = true
+  updateReceiptOcrControls()
+  const status = el('#finance-receipt-ocr-status')
+  status.textContent = 'OCR előkészítése…'
+  try {
+    const text = await recognizeReceiptImage(scannedReceipt.data, (progress) => {
+      status.textContent = `Szövegfelismerés… ${Math.round(progress * 100)}%`
+    })
+    if (pendingReceipt !== scannedReceipt) {
+      status.textContent = 'A csatolmány közben megváltozott, ezért az eredményt nem használtam fel.'
+      return
+    }
+    const candidates = extractReceiptAmountCandidates(text)
+    if (!candidates.length) {
+      status.textContent = 'Nem találtam biztos összegjelöltet.'
+      await showGrapesAlert({
+        title: 'A blokk most szemérmes volt.',
+        message: 'Nem találtam rajta használható végösszeget. Próbálj élesebb, egyenesebb fotót, vagy írd be kézzel — a ceruza ezúttal nyert.',
+        confirmLabel: 'Jó, ránézek',
+        icon: '🥸',
+      })
+      return
+    }
+    status.textContent = `${candidates.length} lehetséges összeg találva.`
+    const amount = await pickReceiptAmount(candidates, el('#finance-amount').value)
+    if (amount != null) {
+      el('#finance-amount').value = formatMoneyInput(amount)
+      el('#finance-amount').dispatchEvent(new Event('input', { bubbles: true }))
+      status.textContent = `${formatMoney(amount)} beírva — nézz rá, a gépnek nincs blokkja a tévedhetetlenségről.`
+    } else status.textContent = 'Az összeg nem változott.'
+  } catch (error) {
+    console.error(error)
+    status.textContent = 'A beolvasás nem sikerült.'
+    await showGrapesAlert({
+      title: 'A blokk és az OCR most összeveszett.',
+      message: 'Nem sikerült kiolvasni a képet. Ellenőrizd az internetkapcsolatot az első nyelvimodell-letöltésnél, vagy próbálj másik fotót.',
+      confirmLabel: 'Rendben, kibékítem őket',
+      icon: '🫠',
+    })
+  } finally {
+    receiptOcrRunning = false
+    updateReceiptOcrControls()
+  }
 }
 
 async function loadInitialProject() {
@@ -641,22 +751,36 @@ function bindControls() {
     const request = ++receiptRequest
     receiptLoading = true
     pendingReceipt = null
+    el('#finance-receipt-ocr-status').textContent = 'A csatolmány betöltése…'
+    updateReceiptOcrControls()
     try {
       const receipt = await prepareReceipt(event.target.files[0])
       if (request !== receiptRequest) return
       pendingReceipt = receipt
       el('#finance-receipt-name').textContent = pendingReceipt?.name || 'Nincs fájl kiválasztva'
+      el('#finance-receipt-ocr-status').textContent = !pendingReceipt
+        ? 'A képfeldolgozás helyben fut. Első alkalommal a nyelvi modell letöltése eltarthat egy kicsit.'
+        : pendingReceipt.type.startsWith('image/')
+          ? 'A kép készen áll a helyi beolvasásra.'
+          : 'A PDF most még csak csatolmány; a beolvasása későbbi fejlesztés.'
     } catch (error) {
       if (request !== receiptRequest) return
       pendingReceipt = null; event.target.value = ''
       el('#finance-receipt-name').textContent = 'Nincs fájl kiválasztva'
+      el('#finance-receipt-ocr-status').textContent = 'A csatolmány nem tölthető be.'
       notifyError(error.message)
-    } finally { if (request === receiptRequest) receiptLoading = false }
+    } finally {
+      if (request === receiptRequest) {
+        receiptLoading = false
+        updateReceiptOcrControls()
+      }
+    }
   })
+  el('#finance-receipt-scan').addEventListener('click', scanPendingReceipt)
   el('#finance-form').addEventListener('submit', (event) => {
     event.preventDefault()
     try {
-      if (receiptLoading) throw new Error('Várd meg a bizonylat betöltését.')
+      if (receiptLoading || receiptOcrRunning) throw new Error('Várd meg a bizonylat feldolgozását.')
       const existing = transactions.find((item) => item.id === editingTransactionId)
       const normalized = normalizeTransaction({
         id: existing?.id, createdAt: existing?.createdAt,
