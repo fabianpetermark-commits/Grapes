@@ -13,6 +13,7 @@
     "test:ebook:layout": "node tests/ebook-editor-layout.browser.mjs",
     "test:qr": "node --test tests/qr-data.test.js",
     "test:finance:backup": "node tests/finance-backup.browser.mjs",
+    "test:finance:import": "node tests/finance-import.browser.mjs",
     "test:responsive": "node tests/responsive-layout.browser.mjs",
     "dev": "vite",
     "build": "vite build",
@@ -47,6 +48,7 @@
     "qrcode": "^1.5.4",
     "three": "^0.185.1",
     "three-bvh-csg": "^0.0.18",
-    "three-mesh-bvh": "^0.9.7"
+    "three-mesh-bvh": "^0.9.7",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   }
 }

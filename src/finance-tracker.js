@@ -4,12 +4,13 @@ import { notifyError, notifySuccess } from './ui/toast.js'
 import { createResponsiveOverflow } from './ui/responsive-overflow.js'
 import { setUxState } from './ui/status.js'
 import { showGrapesConfirm, showGrapesPrompt } from './ui/modal.js'
+import { initFinanceImport } from './finance-import-ui.js'
 import { loadLocalProject, saveLocalProject } from './storage/local-project-store.js'
 import { isGrapesDriveConnected, loadGrapesProject, saveGrapesProject } from './storage/grapes-drive.js'
 import {
-  DEFAULT_CATEGORIES, calculateSavings, calculateSummary, categorySummary, csvHasCurrencyColumn, filterTransactions,
+  DEFAULT_CATEGORIES, calculateSavings, calculateSummary, categorySummary, filterTransactions,
   forecastFinances, formatMoneyInput, getMonthlySeries, financeBackupFromJson, financeBackupToJson, normalizePerson,
-  normalizeSavingsEntry, normalizeSavingsGoal, normalizeTransaction, transactionsFromCsv, transactionsToCsv,
+  normalizeSavingsEntry, normalizeSavingsGoal, normalizeTransaction, transactionsToCsv,
 } from './finance-data.js'
 
 const STORAGE_ID = 'finance-tracker-current'
@@ -37,6 +38,7 @@ let receiptLoading = false
 let receiptRequest = 0
 let editingTransactionId = null
 let editingSavingsEntryId = null
+let financeImportController = null
 
 function today() {
   const date = new Date()
@@ -99,7 +101,7 @@ function resetSavingsEditor() {
 }
 
 function setFinanceTab(tab) {
-  const allowed = new Set(['overview', 'transaction', 'savings', 'forecast'])
+  const allowed = new Set(['overview', 'transaction', 'savings', 'forecast', 'import'])
   activeFinanceTab = allowed.has(tab) ? tab : 'overview'
   document.querySelectorAll('[data-finance-tab]').forEach((button) => {
     const active = button.dataset.financeTab === activeFinanceTab
@@ -110,6 +112,7 @@ function setFinanceTab(tab) {
   document.querySelectorAll('[data-finance-panel]').forEach((panel) => {
     panel.hidden = panel.dataset.financePanel !== activeFinanceTab
   })
+  if (activeFinanceTab === 'import') financeImportController?.render()
 }
 
 function applyProject(data = {}) {
@@ -531,6 +534,40 @@ function bindControls() {
     })
   })
   setFinanceTab(activeFinanceTab)
+  financeImportController = initFinanceImport({
+    getTransactions: () => transactions,
+    getSavingsEntries: () => savingsEntries,
+    getPeople: () => people,
+    getCategories: (type) => {
+      const kind = type === 'income' ? 'income' : 'expense'
+      return [...new Set([...DEFAULT_CATEGORIES[kind], ...categories[kind], ...transactions.filter((item) => item.type === kind).map((item) => item.category)])]
+    },
+    getCurrency: () => currency,
+    onCommit: async (rows) => {
+      const importedTransactions = []
+      const importedSavings = []
+      for (const row of rows) {
+        if (row.target === 'income' || row.target === 'expense') {
+          importedTransactions.push(normalizeTransaction({
+            type: row.target, amount: row.amount, date: row.date, category: row.category,
+            personId: row.personId, note: row.note,
+          }))
+        } else {
+          importedSavings.push(normalizeSavingsEntry({
+            type: row.target === 'saving-withdrawal' ? 'withdrawal' : 'deposit',
+            amount: row.amount, date: row.date, goalId: '', personId: row.personId, note: row.note,
+          }))
+        }
+      }
+      transactions.push(...importedTransactions)
+      savingsEntries.push(...importedSavings)
+      el('#finance-filter-month').value = ''
+      el('#finance-filter-type').value = 'all'
+      el('#finance-filter-search').value = ''
+      render(); scheduleSave(); setFinanceTab('overview')
+      return { transactions: importedTransactions.length, savings: importedSavings.length }
+    },
+  })
   document.querySelectorAll('[data-finance-type]').forEach((button) => button.addEventListener('click', () => {
     setTransactionType(button.dataset.financeType)
     el('#finance-category').value = ''
@@ -709,25 +746,6 @@ function bindControls() {
   el('#finance-export-btn').addEventListener('click', () => {
     download(transactionsToCsv(transactions, currency), 'text/csv;charset=utf-8', `penzugyi-naplo-${today()}.csv`)
     notifySuccess('A CSV-export elkészült. A bizonylatfájlokhoz használd a Teljes mentést.')
-  })
-  el('#finance-import-btn').addEventListener('click', () => el('#finance-csv-input').click())
-  el('#finance-csv-input').addEventListener('change', async (event) => {
-    const file = event.target.files[0]
-    if (!file) return
-    try {
-      const source = await file.text()
-      if (!csvHasCurrencyColumn(source) && !await showGrapesConfirm({
-        title: 'A pénz beszél, csak a pénznem hallgat…',
-        message: `A CSV nem árulja el a pénznemet. Kezeljem az összegeket ${currency} pénznemként? Átváltás nem történik.`,
-        confirmLabel: `Igen, legyen ${currency}`,
-        cancelLabel: 'Nem, előbb javítom a fájlt',
-        icon: '🪙',
-      })) return
-      const imported = transactionsFromCsv(source, currency)
-      transactions.push(...imported); render(); scheduleSave()
-      notifySuccess(`${imported.length} tétel importálva.`)
-    } catch (error) { notifyError(error.message || 'A CSV nem importálható.') }
-    finally { event.target.value = '' }
   })
   el('#finance-drive-save').addEventListener('click', () => saveToDrive(true))
 }

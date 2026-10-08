@@ -220,14 +220,12 @@
           <label class="finance__currency" data-finance-overflow>Pénznem (tételek után rögzül)
             <select id="finance-currency"><option value="HUF">HUF</option><option value="EUR">EUR</option><option value="USD">USD</option></select>
           </label>
-          <button id="finance-import-btn" class="btn" type="button" data-finance-overflow>CSV import</button>
           <button id="finance-export-btn" class="btn" type="button" data-finance-overflow>CSV export</button>
           <button id="finance-backup-import-btn" class="btn" type="button" data-finance-overflow>Teljes mentés import</button>
           <button id="finance-backup-export-btn" class="btn" type="button" data-finance-overflow>Teljes mentés</button>
           <button id="finance-drive-save" class="btn btn--primary" type="button">Mentés Drive-ra</button>
           <button id="finance-back-to-menu-btn" class="btn btn--ghost" type="button">Főmenü</button>
         </div>
-        <input id="finance-csv-input" type="file" accept=".csv,text/csv" hidden>
         <input id="finance-backup-input" type="file" accept=".json,application/json" hidden>
       </header>
 
@@ -237,6 +235,7 @@
           <button type="button" role="tab" aria-selected="false" data-finance-tab="transaction">Új tétel</button>
           <button type="button" role="tab" aria-selected="false" data-finance-tab="savings">Megtakarítások</button>
           <button type="button" role="tab" aria-selected="false" data-finance-tab="forecast">Előrejelzés</button>
+          <button type="button" role="tab" aria-selected="false" data-finance-tab="import">Importálás</button>
         </nav>
 
         <section class="finance__summary" aria-label="Pénzügyi összesítés" data-finance-panel="overview">
@@ -312,6 +311,27 @@
               <div class="finance__form-actions finance__form-wide"><button id="finance-transaction-submit" class="btn btn--primary" type="submit">Tétel hozzáadása</button><button id="finance-transaction-cancel" class="btn btn--ghost" type="button" hidden>Mégse</button></div>
             </form>
           </article>
+        </section>
+
+        <section class="finance__panel finance__import" data-finance-panel="import" hidden>
+          <div class="finance__panel-head">
+            <div><p class="finance__eyebrow">IMPORTÁLÁS</p><h2>Excel, XLSM vagy CSV feldolgozása</h2></div>
+            <span id="finance-import-step" class="finance__import-step">1. Fájl kiválasztása</span>
+          </div>
+          <div class="finance__import-intro">
+            <div><strong>Az eredeti fájl érintetlen marad.</strong><span>A Grapes előbb felismeri az adatblokkokat, aztán minden sort megmutat jóváhagyásra.</span></div>
+            <button id="finance-import-pick" class="btn btn--primary" type="button">Fájl kiválasztása</button>
+            <input id="finance-workbook-input" type="file" accept=".xlsx,.xlsm,.xls,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" hidden>
+          </div>
+          <div id="finance-import-summary" class="finance__import-summary" aria-live="polite"></div>
+          <div id="finance-import-blocks" class="finance__import-blocks"></div>
+          <div id="finance-import-preview" class="finance__import-preview"></div>
+          <div id="finance-import-actions" class="finance__import-actions" hidden>
+            <button id="finance-import-reset" class="btn btn--ghost" type="button">Újrakezdés</button>
+            <button id="finance-import-back" class="btn btn--ghost" type="button" hidden>Vissza a blokkokhoz</button>
+            <button id="finance-import-review" class="btn btn--primary" type="button">Tételek ellenőrzése</button>
+            <button id="finance-import-commit" class="btn btn--primary" type="button" hidden>Jóváhagyott tételek importálása</button>
+          </div>
         </section>
 
         <section class="finance__panel finance__transactions" data-finance-panel="overview">

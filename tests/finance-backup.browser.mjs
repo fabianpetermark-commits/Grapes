@@ -93,7 +93,9 @@ try {
 
   const firstDownload = page.waitForEvent('download')
   await page.locator('#finance-delete-all').click()
+  await page.getByRole('button', { name: 'Igen, készíts mentést' }).click()
   const download = await firstDownload
+  await page.getByRole('button', { name: /Igen, töröld mind/ }).click()
   const backup = JSON.parse(readFileSync(await download.path(), 'utf8'))
   assert.equal(backup.data.currency, 'EUR')
   assert.equal(backup.data.transactions[0].receipt.data, 'data:application/pdf;base64,YWJj')
@@ -112,7 +114,9 @@ try {
   assert.equal(await page.locator('.finance__receipt-link').textContent(), 'szamla.pdf')
   const secondDownload = page.waitForEvent('download')
   await page.locator('#finance-delete-all').click()
+  await page.getByRole('button', { name: 'Igen, készíts mentést' }).click()
   await secondDownload
+  await page.getByRole('button', { name: /Igen, töröld mind/ }).click()
   await page.locator('#finance-rows tr').waitFor({ state: 'detached' })
   await page.locator('#finance-backup-input').setInputFiles(await download.path())
   await page.locator('#finance-rows tr').waitFor()
