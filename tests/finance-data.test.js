@@ -1,8 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  calculateSummary, categorySummary, csvHasCurrencyColumn, filterTransactions, getMonthlySeries,
-  financeBackupFromJson, financeBackupToJson, normalizeTransaction, parseCsvRows, transactionsFromCsv, transactionsToCsv,
+  calculateSavings, calculateSummary, categorySummary, csvHasCurrencyColumn, detectRecurringTransactions,
+  filterTransactions, forecastFinances, getMonthlySeries, financeBackupFromJson, financeBackupToJson,
+  normalizePerson, normalizeSavingsEntry, normalizeSavingsGoal, normalizeTransaction, parseCsvRows,
+  transactionsFromCsv, transactionsToCsv,
 } from '../src/finance-data.js'
 
 const rows = [
@@ -86,4 +88,54 @@ test('complete finance backup rejects invalid receipts and duplicate ids without
   assert.throws(() => financeBackupFromJson(JSON.stringify(payload)), /ismétlődő/)
   payload.data.currency = 'GBP'
   assert.throws(() => financeBackupFromJson(JSON.stringify(payload)), /nem támogatott/)
+})
+
+test('people, savings goals and savings entries validate and calculate reserve', () => {
+  const person = normalizePerson({ id: 'p1', name: ' Anna ' })
+  const goal = normalizeSavingsGoal({ id: 'g1', name: 'Vésztartalék', targetAmount: 600000, startDate: '2026-01-01', targetDate: '2026-12-31', personId: person.id })
+  const entries = [
+    normalizeSavingsEntry({ id: 's1', type: 'deposit', amount: 100000, date: '2026-01-02', goalId: goal.id, personId: person.id }),
+    normalizeSavingsEntry({ id: 's2', type: 'withdrawal', amount: 20000, date: '2026-02-02', goalId: goal.id }),
+  ]
+  assert.equal(person.name, 'Anna')
+  assert.equal(calculateSavings(entries), 80000)
+  assert.equal(calculateSavings(entries, goal.id), 80000)
+  assert.throws(() => normalizeSavingsGoal({ name: 'Hibás', targetAmount: 1, startDate: '2026-12-31', targetDate: '2026-01-01' }), /célidőszak/)
+})
+
+test('forecast uses recurring transactions, trends and exposes confidence', () => {
+  const history = [
+    { id: 'a', type: 'income', amount: 500000, date: '2026-07-05', category: 'Munkabér', note: 'Fizetés' },
+    { id: 'b', type: 'income', amount: 500000, date: '2026-08-05', category: 'Munkabér', note: 'Fizetés' },
+    { id: 'c', type: 'income', amount: 500000, date: '2026-09-05', category: 'Munkabér', note: 'Fizetés' },
+    { id: 'd', type: 'expense', amount: 120000, date: '2026-08-10', category: 'Lakhatás', note: 'Albérlet' },
+    { id: 'e', type: 'expense', amount: 120000, date: '2026-09-10', category: 'Lakhatás', note: 'Albérlet' },
+  ]
+  assert.equal(detectRecurringTransactions(history, new Date(2026, 9, 8)).length, 2)
+  const forecast = forecastFinances(history, [
+    { type: 'deposit', amount: 50000, date: '2026-08-20' },
+    { type: 'deposit', amount: 50000, date: '2026-09-20' },
+  ], { historyMonths: 3, futureMonths: 3, referenceDate: new Date(2026, 9, 8) })
+  assert.equal(forecast.months.length, 3)
+  assert.ok(forecast.expectedIncome >= 1500000)
+  assert.ok(forecast.expectedExpense >= 360000)
+  assert.ok(forecast.expectedReserve > forecast.reserveNow)
+  assert.equal(forecast.confidence, 'medium')
+})
+
+test('complete backup includes the extended finance model and reads version one backups', () => {
+  const data = {
+    currency: 'HUF', transactions: [rows[0]], people: [{ id: 'p1', name: 'Anna' }],
+    categories: { income: ['Bónusz'], expense: ['Oktatás'] },
+    savingsGoals: [{ id: 'g1', name: 'Utazás', targetAmount: 100000, startDate: '2026-01-01', targetDate: '2026-12-31' }],
+    savingsEntries: [{ id: 's1', type: 'deposit', amount: 10000, date: '2026-02-01', goalId: 'g1' }],
+    forecastSettings: { historyMonths: 12, futureMonths: 6 },
+  }
+  const restored = financeBackupFromJson(financeBackupToJson(data))
+  assert.equal(restored.people[0].name, 'Anna')
+  assert.equal(restored.savingsGoals[0].name, 'Utazás')
+  assert.equal(restored.savingsEntries[0].amount, 10000)
+  assert.deepEqual(restored.forecastSettings, { historyMonths: 12, futureMonths: 6 })
+  const legacy = { grapesFinanceBackup: true, version: 1, data: { version: 1, currency: 'HUF', transactions: [rows[0]] } }
+  assert.equal(financeBackupFromJson(JSON.stringify(legacy)).transactions.length, 1)
 })

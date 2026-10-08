@@ -6,8 +6,9 @@ import { setUxState } from './ui/status.js'
 import { loadLocalProject, saveLocalProject } from './storage/local-project-store.js'
 import { isGrapesDriveConnected, loadGrapesProject, saveGrapesProject } from './storage/grapes-drive.js'
 import {
-  DEFAULT_CATEGORIES, calculateSummary, categorySummary, csvHasCurrencyColumn, filterTransactions, getMonthlySeries,
-  financeBackupFromJson, financeBackupToJson, normalizeTransaction, transactionsFromCsv, transactionsToCsv,
+  DEFAULT_CATEGORIES, calculateSavings, calculateSummary, categorySummary, csvHasCurrencyColumn, filterTransactions,
+  forecastFinances, getMonthlySeries, financeBackupFromJson, financeBackupToJson, normalizePerson,
+  normalizeSavingsEntry, normalizeSavingsGoal, normalizeTransaction, transactionsFromCsv, transactionsToCsv,
 } from './finance-data.js'
 
 const STORAGE_ID = 'finance-tracker-current'
@@ -20,6 +21,11 @@ const BACKUP_FILE_LIMIT = 30 * 1024 * 1024
 
 let initialized = false
 let transactions = []
+let people = []
+let categories = { income: [], expense: [] }
+let savingsGoals = []
+let savingsEntries = []
+let forecastSettings = { historyMonths: 6, futureMonths: 3 }
 let currency = 'HUF'
 let driveProjectFileId = null
 let localSaveTimer = null
@@ -49,7 +55,7 @@ function formatMoney(value) {
 }
 
 function serializeProject() {
-  return { version: 1, currency, transactions }
+  return { version: 2, currency, transactions, people, categories, savingsGoals, savingsEntries, forecastSettings }
 }
 
 function applyProject(data = {}) {
@@ -62,6 +68,17 @@ function applyProject(data = {}) {
       }
     })
     : []
+  people = (Array.isArray(data.people) ? data.people : []).flatMap((item) => { try { return [normalizePerson(item)] } catch { return [] } })
+  categories = {
+    income: [...new Set((data.categories?.income || []).map((item) => String(item).trim()).filter(Boolean))],
+    expense: [...new Set((data.categories?.expense || []).map((item) => String(item).trim()).filter(Boolean))],
+  }
+  savingsGoals = (Array.isArray(data.savingsGoals) ? data.savingsGoals : []).flatMap((item) => { try { return [normalizeSavingsGoal(item)] } catch { return [] } })
+  savingsEntries = (Array.isArray(data.savingsEntries) ? data.savingsEntries : []).flatMap((item) => { try { return [normalizeSavingsEntry(item)] } catch { return [] } })
+  forecastSettings = {
+    historyMonths: [3, 6, 12, 24].includes(Number(data.forecastSettings?.historyMonths)) ? Number(data.forecastSettings.historyMonths) : 6,
+    futureMonths: [1, 3, 6, 12].includes(Number(data.forecastSettings?.futureMonths)) ? Number(data.forecastSettings.futureMonths) : 3,
+  }
   el('#finance-currency').value = currency
 }
 
@@ -84,7 +101,7 @@ function scheduleSave() {
       setUxState('#finance-save-status', 'error', 'A helyi mentés sikertelen')
     }
   }, 350)
-  if (driveProjectFileId && isGrapesDriveConnected()) {
+  if (isGrapesDriveConnected()) {
     driveSaveTimer = setTimeout(() => saveToDrive(false), 2600)
   }
 }
@@ -130,8 +147,81 @@ function download(content, type, filename) {
 function renderCategories() {
   const type = el('#finance-type').value
   const own = transactions.filter((item) => item.type === type).map((item) => item.category)
-  const categories = [...new Set([...DEFAULT_CATEGORIES[type], ...own])]
-  el('#finance-categories').replaceChildren(...categories.map((value) => create('option', { value })))
+  const choices = [...new Set([...DEFAULT_CATEGORIES[type], ...categories[type], ...own])]
+  el('#finance-categories').replaceChildren(...choices.map((value) => create('option', { value })))
+}
+
+function personName(id) {
+  return people.find((person) => person.id === id)?.name || ''
+}
+
+function renderPeople() {
+  const options = [create('option', { value: '', textContent: 'Nincs megadva' }), ...people.filter((item) => !item.archived).map((person) => create('option', { value: person.id, textContent: person.name }))]
+  for (const selector of ['#finance-person', '#finance-goal-person', '#finance-saving-person']) {
+    const select = el(selector)
+    const selected = select.value
+    select.replaceChildren(...options.map((option) => option.cloneNode(true)))
+    select.value = people.some((person) => person.id === selected) ? selected : ''
+  }
+}
+
+function renderSavings() {
+  const total = calculateSavings(savingsEntries)
+  el('#finance-savings-total').textContent = formatMoney(total)
+  const goalSelect = el('#finance-saving-goal')
+  const selectedGoal = goalSelect.value
+  goalSelect.replaceChildren(create('option', { value: '', textContent: 'Általános tartalék' }), ...savingsGoals.filter((goal) => !goal.archived).map((goal) => create('option', { value: goal.id, textContent: goal.name })))
+  goalSelect.value = savingsGoals.some((goal) => goal.id === selectedGoal) ? selectedGoal : ''
+  const host = el('#finance-goals')
+  host.replaceChildren()
+  if (!savingsGoals.length) host.append(create('p', { class: 'finance__muted', textContent: 'Még nincs megtakarítási cél.' }))
+  for (const goal of savingsGoals.filter((item) => !item.archived)) {
+    const saved = calculateSavings(savingsEntries, goal.id)
+    const percent = Math.max(0, Math.min(100, saved / goal.targetAmount * 100))
+    const card = create('div', { class: 'finance__goal' })
+    const head = create('div', { class: 'finance__goal-head' }, [create('strong', { textContent: goal.name }), create('span', { textContent: `${formatMoney(saved)} / ${formatMoney(goal.targetAmount)}` })])
+    const track = create('div', { class: 'finance__goal-track' }, [create('i')])
+    track.firstChild.style.width = `${percent}%`
+    const owner = personName(goal.personId)
+    const archive = create('button', { class: 'btn btn--icon btn--ghost', type: 'button', textContent: '×', title: 'Cél archiválása' })
+    archive.addEventListener('click', () => { goal.archived = true; render(); scheduleSave() })
+    head.append(archive)
+    card.append(head, track, create('small', { textContent: `${Math.round(percent)}% · ${goal.startDate} – ${goal.targetDate}${owner ? ` · ${owner}` : ''}` }))
+    host.append(card)
+  }
+  const list = el('#finance-savings-list')
+  list.replaceChildren()
+  for (const entry of [...savingsEntries].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt)).slice(0, 8)) {
+    const goal = savingsGoals.find((item) => item.id === entry.goalId)?.name || 'Általános tartalék'
+    const remove = create('button', { class: 'btn btn--icon btn--ghost', type: 'button', textContent: '×', title: 'Megtakarítási mozgás törlése' })
+    remove.addEventListener('click', () => {
+      if (!window.confirm('Biztosan törlöd ezt a megtakarítási mozgást?')) return
+      savingsEntries = savingsEntries.filter((item) => item.id !== entry.id); render(); scheduleSave()
+    })
+    list.append(create('div', { class: 'finance__saving-row' }, [
+      create('span', { textContent: entry.date }), create('span', { textContent: `${goal}${personName(entry.personId) ? ` · ${personName(entry.personId)}` : ''}` }),
+      create('strong', { class: entry.type === 'withdrawal' ? 'is-negative' : '', textContent: `${entry.type === 'withdrawal' ? '−' : '+'}${formatMoney(entry.amount)}` }), remove,
+    ]))
+  }
+}
+
+function renderForecast() {
+  const forecast = forecastFinances(transactions, savingsEntries, forecastSettings)
+  el('#finance-forecast-balance').textContent = formatMoney(forecast.expectedBalance)
+  el('#finance-forecast-note').textContent = `${forecastSettings.futureMonths} hónap várható nettó változása`
+  el('#finance-forecast-income').textContent = formatMoney(forecast.expectedIncome)
+  el('#finance-forecast-expense').textContent = formatMoney(forecast.expectedExpense)
+  el('#finance-forecast-reserve').textContent = formatMoney(forecast.expectedReserve)
+  el('#finance-forecast-history').value = String(forecastSettings.historyMonths)
+  el('#finance-forecast-future').value = String(forecastSettings.futureMonths)
+  const confidenceLabels = { low: 'Kevés adat', medium: 'Közepes adatmennyiség', high: 'Jó adatmennyiség' }
+  el('#finance-forecast-confidence').textContent = `${confidenceLabels[forecast.confidence]}: ${forecast.sampleMonths} aktív hónap alapján. Az előrejelzés becslés.`
+  const host = el('#finance-forecast-chart')
+  host.replaceChildren(...forecast.months.map((month) => create('div', { class: 'finance__forecast-row' }, [
+    create('span', { textContent: month.key }),
+    create('span', { textContent: `Kiadás ${formatMoney(month.expense)}` }),
+    create('strong', { textContent: `Tartalék ${formatMoney(month.reserve)}` }),
+  ])))
 }
 
 function renderChart(visibleTransactions) {
@@ -212,10 +302,10 @@ function renderRows(visible) {
       transactions = transactions.filter((item) => item.id !== transaction.id)
       render(); scheduleSave()
     })
-    const cells = [transaction.date, type, transaction.category, transaction.note || '—', receiptButton(transaction), amount, remove]
-    const labels = ['Dátum', 'Típus', 'Kategória', 'Megjegyzés', 'Bizonylat', 'Összeg', 'Művelet']
+    const cells = [transaction.date, type, transaction.category, personName(transaction.personId) || '—', transaction.note || '—', receiptButton(transaction), amount, remove]
+    const labels = ['Dátum', 'Típus', 'Kategória', 'Személy', 'Megjegyzés', 'Bizonylat', 'Összeg', 'Művelet']
     cells.forEach((content, index) => {
-      const cell = create('td', { class: index === 5 ? 'finance__amount-cell' : '' })
+      const cell = create('td', { class: index === 6 ? 'finance__amount-cell' : '' })
       cell.dataset.label = labels[index]
       if (content instanceof Node) cell.append(content)
       else cell.textContent = content
@@ -228,7 +318,7 @@ function renderRows(visible) {
 }
 
 function render() {
-  const visible = filterTransactions(transactions, getFilters()).sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt))
+  const visible = filterTransactions(transactions.map((item) => ({ ...item, personName: personName(item.personId) })), getFilters()).sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt))
   const summary = calculateSummary(visible)
   el('#finance-income').textContent = formatMoney(summary.income)
   el('#finance-expense').textContent = formatMoney(summary.expense)
@@ -239,12 +329,16 @@ function render() {
   el('#finance-balance-note').textContent = getFilters().month ? `${getFilters().month} hónapban` : 'A kijelölt időszakban'
   el('#finance-delete-all').disabled = transactions.length === 0
   const currencySelect = el('#finance-currency')
+  const hasMoneyData = transactions.length > 0 || savingsEntries.length > 0 || savingsGoals.length > 0
   currencySelect.value = currency
-  currencySelect.disabled = transactions.length > 0
-  currencySelect.title = transactions.length > 0 ? 'A meglévő összegek nem válthatók át automatikusan. A pénznem csak üres naplónál módosítható.' : 'Az új napló pénzneme'
+  currencySelect.disabled = hasMoneyData
+  currencySelect.title = hasMoneyData ? 'A meglévő összegek nem válthatók át automatikusan. A pénznem csak üres naplónál módosítható.' : 'Az új napló pénzneme'
   renderRows(visible)
   renderChart(visible)
   renderCategories()
+  renderPeople()
+  renderSavings()
+  renderForecast()
 }
 
 async function saveSafetySnapshot(id, name, data) {
@@ -267,7 +361,7 @@ async function restoreFinanceBackup(data) {
   el('#finance-drive-save').textContent = 'Mentés Drive-ra'
   render()
   setUxState('#finance-save-status', 'saved', 'Helyben visszaállítva')
-  notifySuccess(`${transactions.length} tétel és a csatolt bizonylatok visszaállítva.`)
+  notifySuccess(`${transactions.length} tétel, a megtakarítások és a beállítások visszaállítva.`)
 }
 
 function fileToDataUrl(file) {
@@ -313,6 +407,10 @@ async function loadInitialProject() {
 
 function bindControls() {
   el('#finance-date').value = today()
+  el('#finance-saving-date').value = today()
+  el('#finance-goal-start').value = today()
+  const defaultGoalEnd = new Date(); defaultGoalEnd.setFullYear(defaultGoalEnd.getFullYear() + 1)
+  el('#finance-goal-end').value = `${defaultGoalEnd.getFullYear()}-${String(defaultGoalEnd.getMonth() + 1).padStart(2, '0')}-${String(defaultGoalEnd.getDate()).padStart(2, '0')}`
   el('#finance-filter-month').value = currentMonth()
   document.querySelectorAll('[data-finance-type]').forEach((button) => button.addEventListener('click', () => {
     el('#finance-type').value = button.dataset.financeType
@@ -320,6 +418,52 @@ function bindControls() {
     el('#finance-category').value = ''
     renderCategories()
   }))
+  el('#finance-add-category').addEventListener('click', () => {
+    const name = window.prompt('Új kategória neve:')?.trim()
+    if (!name) return
+    const type = el('#finance-type').value
+    if (![...DEFAULT_CATEGORIES[type], ...categories[type]].some((item) => item.toLocaleLowerCase('hu-HU') === name.toLocaleLowerCase('hu-HU'))) categories[type].push(name)
+    el('#finance-category').value = name
+    renderCategories(); scheduleSave()
+  })
+  el('#finance-add-person').addEventListener('click', () => {
+    const name = window.prompt('Új személy neve:')?.trim()
+    if (!name) return
+    const existing = people.find((person) => person.name.toLocaleLowerCase('hu-HU') === name.toLocaleLowerCase('hu-HU'))
+    const person = existing || normalizePerson({ name })
+    if (!existing) people.push(person)
+    renderPeople(); el('#finance-person').value = person.id; scheduleSave()
+  })
+  el('#finance-goal-form').addEventListener('submit', (event) => {
+    event.preventDefault()
+    try {
+      savingsGoals.push(normalizeSavingsGoal({
+        name: el('#finance-goal-name').value, targetAmount: el('#finance-goal-amount').value,
+        startDate: el('#finance-goal-start').value, targetDate: el('#finance-goal-end').value,
+        personId: el('#finance-goal-person').value,
+      }))
+      el('#finance-goal-name').value = ''; el('#finance-goal-amount').value = ''
+      render(); scheduleSave()
+    } catch (error) { notifyError(error.message) }
+  })
+  el('#finance-saving-form').addEventListener('submit', (event) => {
+    event.preventDefault()
+    try {
+      savingsEntries.push(normalizeSavingsEntry({
+        type: el('#finance-saving-type').value, amount: el('#finance-saving-amount').value,
+        date: el('#finance-saving-date').value, goalId: el('#finance-saving-goal').value,
+        personId: el('#finance-saving-person').value,
+      }))
+      el('#finance-saving-amount').value = ''
+      render(); scheduleSave()
+    } catch (error) { notifyError(error.message) }
+  })
+  for (const selector of ['#finance-forecast-history', '#finance-forecast-future']) {
+    el(selector).addEventListener('change', () => {
+      forecastSettings = { historyMonths: Number(el('#finance-forecast-history').value), futureMonths: Number(el('#finance-forecast-future').value) }
+      renderForecast(); scheduleSave()
+    })
+  }
   el('#finance-receipt').addEventListener('change', async (event) => {
     const request = ++receiptRequest
     receiptLoading = true
@@ -343,7 +487,7 @@ function bindControls() {
       transactions.push(normalizeTransaction({
         type: el('#finance-type').value, amount: el('#finance-amount').value,
         date: el('#finance-date').value, category: el('#finance-category').value,
-        note: el('#finance-note').value, receipt: pendingReceipt,
+        personId: el('#finance-person').value, note: el('#finance-note').value, receipt: pendingReceipt,
       }))
       event.target.reset(); el('#finance-date').value = today(); el('#finance-type').value = 'expense'
       document.querySelectorAll('[data-finance-type]').forEach((item) => item.classList.toggle('is-active', item.dataset.financeType === 'expense'))
@@ -386,7 +530,7 @@ function bindControls() {
     } finally { button.disabled = transactions.length === 0 }
   })
   el('#finance-currency').addEventListener('change', (event) => {
-    if (transactions.length) { event.target.value = currency; notifyError('A meglévő tételek összegeit nem váltjuk át automatikusan. A pénznem csak üres naplónál módosítható.'); return }
+    if (transactions.length || savingsEntries.length || savingsGoals.length) { event.target.value = currency; notifyError('A meglévő összegeket nem váltjuk át automatikusan. A pénznem csak teljesen üres naplónál módosítható.'); return }
     currency = event.target.value; render(); scheduleSave()
   })
   el('#finance-backup-export-btn').addEventListener('click', () => {

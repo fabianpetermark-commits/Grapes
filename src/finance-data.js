@@ -6,7 +6,15 @@ export const DEFAULT_CATEGORIES = {
 }
 
 const FINANCE_CURRENCIES = new Set(['HUF', 'EUR', 'USD'])
-const FINANCE_BACKUP_VERSION = 1
+const FINANCE_BACKUP_VERSION = 2
+
+function cleanText(value, fallback = '') {
+  return String(value ?? '').trim() || fallback
+}
+
+function roundedAmount(value) {
+  return Math.round(Number(value) * 100) / 100
+}
 
 export function normalizeTransaction(value = {}) {
   const type = value.type === 'income' ? 'income' : 'expense'
@@ -22,20 +30,132 @@ export function normalizeTransaction(value = {}) {
     date,
     category: String(value.category || '').trim() || (type === 'income' ? 'Egyéb bevétel' : 'Egyéb kiadás'),
     note: String(value.note || '').trim(),
+    personId: cleanText(value.personId),
     receipt: value.receipt || null,
     createdAt: value.createdAt || new Date().toISOString(),
   }
 }
 
-export function financeBackupToJson({ currency, transactions }, exportedAt = new Date().toISOString()) {
+export function normalizePerson(value = {}) {
+  const name = cleanText(value.name)
+  if (!name) throw new Error('A személy neve kötelező.')
+  return { id: cleanText(value.id, crypto.randomUUID()), name, archived: Boolean(value.archived) }
+}
+
+export function normalizeSavingsGoal(value = {}) {
+  const targetAmount = roundedAmount(value.targetAmount)
+  if (!cleanText(value.name)) throw new Error('A cél neve kötelező.')
+  if (!Number.isFinite(targetAmount) || targetAmount <= 0) throw new Error('A célösszegnek nullánál nagyobbnak kell lennie.')
+  if (!validDate(value.startDate) || !validDate(value.targetDate) || value.targetDate < value.startDate) throw new Error('Érvényes célidőszak szükséges.')
+  return {
+    id: cleanText(value.id, crypto.randomUUID()), name: cleanText(value.name), targetAmount,
+    startDate: value.startDate, targetDate: value.targetDate, personId: cleanText(value.personId),
+    archived: Boolean(value.archived), createdAt: value.createdAt || new Date().toISOString(),
+  }
+}
+
+export function normalizeSavingsEntry(value = {}) {
+  const amount = roundedAmount(value.amount)
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error('A megtakarítás összegének nullánál nagyobbnak kell lennie.')
+  if (!validDate(value.date)) throw new Error('Érvényes megtakarítási dátum szükséges.')
+  return {
+    id: cleanText(value.id, crypto.randomUUID()), type: value.type === 'withdrawal' ? 'withdrawal' : 'deposit',
+    amount, date: value.date, goalId: cleanText(value.goalId), personId: cleanText(value.personId),
+    note: cleanText(value.note), createdAt: value.createdAt || new Date().toISOString(),
+  }
+}
+
+export function calculateSavings(savingsEntries = [], goalId = null) {
+  const cents = savingsEntries.reduce((total, entry) => {
+    if (goalId !== null && entry.goalId !== goalId) return total
+    return total + (entry.type === 'withdrawal' ? -1 : 1) * (Math.round(Number(entry.amount) * 100) || 0)
+  }, 0)
+  return cents / 100
+}
+
+function monthKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+}
+
+function linearProjection(values, step, allowNegative = false) {
+  if (!values.length) return 0
+  if (values.length === 1) return Math.max(0, values[0])
+  const xMean = (values.length - 1) / 2
+  const yMean = values.reduce((sum, value) => sum + value, 0) / values.length
+  const slope = values.reduce((sum, value, index) => sum + (index - xMean) * (value - yMean), 0)
+    / values.reduce((sum, _value, index) => sum + (index - xMean) ** 2, 0)
+  const projected = yMean + slope * (xMean + step)
+  return allowNegative ? projected : Math.max(0, projected)
+}
+
+export function detectRecurringTransactions(transactions = [], referenceDate = new Date()) {
+  const groups = new Map()
+  for (const item of transactions) {
+    const label = `${item.type}|${cleanText(item.category).toLocaleLowerCase('hu-HU')}|${cleanText(item.note).toLocaleLowerCase('hu-HU')}|${cleanText(item.personId)}`
+    const group = groups.get(label) || []
+    group.push(item)
+    groups.set(label, group)
+  }
+  const currentIndex = referenceDate.getFullYear() * 12 + referenceDate.getMonth()
+  return [...groups.values()].flatMap((items) => {
+    const months = [...new Set(items.map((item) => item.date.slice(0, 7)))]
+    const amounts = items.map((item) => Number(item.amount)).sort((a, b) => a - b)
+    const average = amounts.reduce((sum, value) => sum + value, 0) / amounts.length
+    const deviation = amounts.reduce((sum, value) => sum + Math.abs(value - average), 0) / amounts.length
+    const latest = Math.max(...months.map((key) => Number(key.slice(0, 4)) * 12 + Number(key.slice(5, 7)) - 1))
+    if (months.length < 2 || currentIndex - latest > 2 || (average && deviation / average > .2)) return []
+    return [{ type: items[0].type, amount: roundedAmount(average), category: items[0].category }]
+  })
+}
+
+export function forecastFinances(transactions = [], savingsEntries = [], { historyMonths = 6, futureMonths = 3, referenceDate = new Date() } = {}) {
+  // A folyamatban lévő hónap részadatai ne torzítsák lefelé a trendet.
+  const completedMonth = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - 1, 1)
+  const history = getMonthlySeries(transactions, historyMonths, completedMonth)
+  const savingHistory = getMonthlySavingsSeries(savingsEntries, historyMonths, completedMonth)
+  const recurring = detectRecurringTransactions(transactions, referenceDate)
+  const recurringIncome = recurring.filter((item) => item.type === 'income').reduce((sum, item) => sum + item.amount, 0)
+  const recurringExpense = recurring.filter((item) => item.type === 'expense').reduce((sum, item) => sum + item.amount, 0)
+  const reserveNow = calculateSavings(savingsEntries)
+  let reserve = reserveNow
+  const months = []
+  for (let step = 1; step <= futureMonths; step += 1) {
+    const date = new Date(referenceDate.getFullYear(), referenceDate.getMonth() + step, 1)
+    const income = roundedAmount(Math.max(recurringIncome, linearProjection(history.map((item) => item.income), step)))
+    const expense = roundedAmount(Math.max(recurringExpense, linearProjection(history.map((item) => item.expense), step)))
+    const savingsChange = roundedAmount(linearProjection(savingHistory.map((item) => item.change), step, true))
+    reserve = roundedAmount(reserve + savingsChange)
+    months.push({ key: monthKey(date), income, expense, balance: roundedAmount(income - expense), savingsChange, reserve })
+  }
+  const populated = history.filter((item) => item.income || item.expense).length
+  return {
+    months, reserveNow, expectedIncome: roundedAmount(months.reduce((sum, item) => sum + item.income, 0)),
+    expectedExpense: roundedAmount(months.reduce((sum, item) => sum + item.expense, 0)),
+    expectedBalance: roundedAmount(months.reduce((sum, item) => sum + item.balance, 0)),
+    expectedReserve: months.at(-1)?.reserve ?? reserveNow,
+    confidence: populated >= 6 ? 'high' : populated >= 3 ? 'medium' : 'low', sampleMonths: populated,
+  }
+}
+
+export function getMonthlySavingsSeries(entries, months = 6, referenceDate = new Date()) {
+  const result = []
+  for (let offset = months - 1; offset >= 0; offset -= 1) {
+    const date = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - offset, 1)
+    const key = monthKey(date)
+    result.push({ key, change: calculateSavings(entries.filter((item) => item.date.startsWith(key))) })
+  }
+  return result
+}
+
+export function financeBackupToJson({ currency, transactions, version: _projectVersion, ...rest }, exportedAt = new Date().toISOString()) {
   if (!FINANCE_CURRENCIES.has(currency) || !Array.isArray(transactions)) throw new Error('Érvénytelen pénzügyi napló.')
-  return JSON.stringify({ grapesFinanceBackup: true, version: FINANCE_BACKUP_VERSION, exportedAt, data: { version: 1, currency, transactions } }, null, 2)
+  return JSON.stringify({ grapesFinanceBackup: true, version: FINANCE_BACKUP_VERSION, exportedAt, data: { version: 2, currency, transactions, ...rest } }, null, 2)
 }
 
 export function financeBackupFromJson(source) {
   let backup
   try { backup = JSON.parse(source) } catch { throw new Error('A biztonsági mentés nem érvényes JSON-fájl.') }
-  if (backup?.grapesFinanceBackup !== true || backup.version !== FINANCE_BACKUP_VERSION || !FINANCE_CURRENCIES.has(backup.data?.currency) || !Array.isArray(backup.data?.transactions)) {
+  if (backup?.grapesFinanceBackup !== true || ![1, 2].includes(backup.version) || !FINANCE_CURRENCIES.has(backup.data?.currency) || !Array.isArray(backup.data?.transactions)) {
     throw new Error('Ez nem támogatott Grapes pénzügyi biztonsági mentés.')
   }
   if (backup.data.transactions.length > 100000) throw new Error('A biztonsági mentés túl sok tételt tartalmaz.')
@@ -43,7 +163,11 @@ export function financeBackupFromJson(source) {
   try { transactions = backup.data.transactions.map((item) => normalizeTransaction(item)) }
   catch (error) { throw new Error(`A biztonsági mentés egyik tétele hibás: ${error.message}`) }
   if (new Set(transactions.map((item) => item.id)).size !== transactions.length) throw new Error('A biztonsági mentésben ismétlődő tételazonosító van.')
-  return { version: 1, currency: backup.data.currency, transactions }
+  const people = (backup.data.people || []).map(normalizePerson)
+  const savingsGoals = (backup.data.savingsGoals || []).map(normalizeSavingsGoal)
+  const savingsEntries = (backup.data.savingsEntries || []).map(normalizeSavingsEntry)
+  const categories = backup.data.categories || { income: [], expense: [] }
+  return { version: 2, currency: backup.data.currency, transactions, people, savingsGoals, savingsEntries, categories, forecastSettings: backup.data.forecastSettings || { historyMonths: 6, futureMonths: 3 } }
 }
 
 export function calculateSummary(transactions) {
@@ -60,7 +184,7 @@ export function filterTransactions(transactions, { month = '', type = 'all', sea
   return transactions.filter((transaction) => {
     if (month && !transaction.date.startsWith(month)) return false
     if (type !== 'all' && transaction.type !== type) return false
-    if (term && !`${transaction.category} ${transaction.note}`.toLocaleLowerCase('hu-HU').includes(term)) return false
+    if (term && !`${transaction.category} ${transaction.note} ${transaction.personName || ''}`.toLocaleLowerCase('hu-HU').includes(term)) return false
     return true
   })
 }

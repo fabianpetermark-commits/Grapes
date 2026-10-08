@@ -236,6 +236,47 @@
           <article class="finance__metric finance__metric--income"><span>Bevétel</span><strong id="finance-income">0 Ft</strong><small id="finance-income-count">0 tétel</small></article>
           <article class="finance__metric finance__metric--expense"><span>Kiadás</span><strong id="finance-expense">0 Ft</strong><small id="finance-expense-count">0 tétel</small></article>
           <article class="finance__metric finance__metric--balance"><span>Egyenleg</span><strong id="finance-balance">0 Ft</strong><small id="finance-balance-note">A kijelölt időszakban</small></article>
+          <article class="finance__metric finance__metric--savings"><span>Megtakarítás</span><strong id="finance-savings-total">0 Ft</strong><small id="finance-savings-note">Általános tartalék és célok</small></article>
+          <article class="finance__metric finance__metric--forecast"><span>Előrejelzés</span><strong id="finance-forecast-balance">0 Ft</strong><small id="finance-forecast-note">Várható nettó változás</small></article>
+        </section>
+
+        <section class="finance__top-grid">
+          <article class="finance__panel finance__savings-panel">
+            <div class="finance__panel-head"><div><p class="finance__eyebrow">MEGTAKARÍTÁSOK</p><h2>Célok és tartalék</h2></div></div>
+            <form id="finance-goal-form" class="finance__compact-form">
+              <label>Cél neve<input id="finance-goal-name" required maxlength="80" placeholder="Pl. Vésztartalék"></label>
+              <label>Célösszeg<input id="finance-goal-amount" type="number" min="0.01" step="0.01" required></label>
+              <label>Kezdés<input id="finance-goal-start" type="date" required></label>
+              <label>Határidő<input id="finance-goal-end" type="date" required></label>
+              <label>Személy<select id="finance-goal-person"></select></label>
+              <button class="btn btn--primary" type="submit">Cél hozzáadása</button>
+            </form>
+            <div id="finance-goals" class="finance__goals"></div>
+            <div id="finance-savings-list" class="finance__savings-list"></div>
+            <form id="finance-saving-form" class="finance__compact-form finance__saving-form">
+              <label>Mozgás<select id="finance-saving-type"><option value="deposit">Félretétel</option><option value="withdrawal">Kivét</option></select></label>
+              <label>Összeg<input id="finance-saving-amount" type="number" min="0.01" step="0.01" required></label>
+              <label>Dátum<input id="finance-saving-date" type="date" required></label>
+              <label>Cél<select id="finance-saving-goal"></select></label>
+              <label>Személy<select id="finance-saving-person"></select></label>
+              <button class="btn btn--primary" type="submit">Megtakarítás rögzítése</button>
+            </form>
+          </article>
+
+          <article class="finance__panel finance__forecast-panel">
+            <div class="finance__panel-head"><div><p class="finance__eyebrow">ELŐREJELZÉS</p><h2>Várható pénzügyi alakulás</h2></div></div>
+            <div class="finance__forecast-controls">
+              <label>Figyelt múlt<select id="finance-forecast-history"><option value="3">3 hónap</option><option value="6" selected>6 hónap</option><option value="12">12 hónap</option><option value="24">24 hónap</option></select></label>
+              <label>Előrejelzett idő<select id="finance-forecast-future"><option value="1">1 hónap</option><option value="3" selected>3 hónap</option><option value="6">6 hónap</option><option value="12">12 hónap</option></select></label>
+            </div>
+            <div class="finance__forecast-metrics">
+              <div><span>Várható bevétel</span><strong id="finance-forecast-income">0 Ft</strong></div>
+              <div><span>Várható kiadás</span><strong id="finance-forecast-expense">0 Ft</strong></div>
+              <div><span>Időszak végi tartalék</span><strong id="finance-forecast-reserve">0 Ft</strong></div>
+            </div>
+            <div id="finance-forecast-chart" class="finance__forecast-chart"></div>
+            <p id="finance-forecast-confidence" class="finance__forecast-confidence"></p>
+          </article>
         </section>
 
         <section class="finance__grid">
@@ -256,8 +297,9 @@
               <input id="finance-type" type="hidden" value="expense">
               <label>Összeg<input id="finance-amount" type="number" min="0.01" step="0.01" inputmode="decimal" required placeholder="0"></label>
               <label>Dátum<input id="finance-date" type="date" required></label>
-              <label>Kategória<input id="finance-category" list="finance-categories" required placeholder="Válassz vagy írj be újat"></label>
+              <label>Kategória<span class="finance__field-row"><input id="finance-category" list="finance-categories" required placeholder="Válassz kategóriát"><button id="finance-add-category" class="btn btn--ghost" type="button" aria-label="Új kategória hozzáadása">+</button></span></label>
               <datalist id="finance-categories"></datalist>
+              <label>Személy<span class="finance__field-row"><select id="finance-person"></select><button id="finance-add-person" class="btn btn--ghost" type="button" aria-label="Új személy hozzáadása">+</button></span></label>
               <label class="finance__form-wide">Megjegyzés<input id="finance-note" type="text" maxlength="180" placeholder="Opcionális leírás"></label>
               <label class="finance__receipt finance__form-wide"><span>Bizonylat <small>PDF, PNG, JPEG, GIF vagy WebP, legfeljebb 3 MB</small></span><input id="finance-receipt" type="file" accept="image/png,image/jpeg,image/gif,image/webp,application/pdf"><strong id="finance-receipt-name">Nincs fájl kiválasztva</strong></label>
               <button class="btn btn--primary finance__form-wide" type="submit">Tétel hozzáadása</button>
@@ -278,7 +320,7 @@
             </div>
           </div>
           <div class="finance__table-wrap">
-            <table class="finance__table"><thead><tr><th>Dátum</th><th>Típus</th><th>Kategória</th><th>Megjegyzés</th><th>Bizonylat</th><th class="finance__amount-cell">Összeg</th><th></th></tr></thead><tbody id="finance-rows"></tbody></table>
+            <table class="finance__table"><thead><tr><th>Dátum</th><th>Típus</th><th>Kategória</th><th>Személy</th><th>Megjegyzés</th><th>Bizonylat</th><th class="finance__amount-cell">Összeg</th><th></th></tr></thead><tbody id="finance-rows"></tbody></table>
             <div id="finance-empty" class="finance__empty"><strong>Még nincs rögzített tétel.</strong><span>Add hozzá az első bevételt vagy kiadást.</span></div>
           </div>
           <footer class="finance__table-footer"><span id="finance-result-count">0 tétel</span><span id="finance-drive-status">A változtatások helyben automatikusan mentődnek.</span></footer>
