@@ -4,6 +4,7 @@ import { isGrapesDriveConnected, loadGrapesProject, saveGrapesProject } from './
 import { calculateDocument, prepareDocument, convertDocument, DOCUMENT_TYPES } from './billing-data.js'
 import { notifyError } from './ui/toast.js'
 import { setUxState } from './ui/status.js'
+import { showGrapesConfirm } from './ui/modal.js'
 
 const MODULE = 'Számla és árajánlat', STORAGE = 'billing-current'
 let state = { version: 1, seller: {}, customers: [], products: [], documents: [] }
@@ -111,17 +112,17 @@ function bind() {
     const button = event.target.closest('button'); if (!button) return
     try {
       if (button.dataset.removeLine !== undefined) { readDraft(); draft.lines.splice(Number(button.dataset.removeLine),1); renderLines() }
-      if (button.dataset.open) { readDraft(); if (!confirm('Megnyitod a mentett dokumentumot? A nem mentett szerkesztés elvész.')) return; draft = structuredClone(state.documents.find(item => item.id === button.dataset.open)); render() }
+      if (button.dataset.open) { readDraft(); if (!await showGrapesConfirm({ title: 'Most tényleg… komolyan?', message: 'A mentett dokumentum megnyitásakor a jelenlegi, nem mentett szerkesztés elvész. A piszkozat nem tud úszni.', confirmLabel: 'Igen, nyisd meg', cancelLabel: 'Nem, előbb mentek', danger: true, icon: '📑' })) return; draft = structuredClone(state.documents.find(item => item.id === button.dataset.open)); render() }
       if (button.dataset.convert) {
-        if (!confirm('Átalakítod a mentett árajánlatot? A nem mentett szerkesztés elvész.')) return
+        if (!await showGrapesConfirm({ title: 'Árajánlatból legyen valami komolyabb?', message: 'A mentett árajánlatot átalakítjuk, a jelenlegi nem mentett szerkesztés pedig elvész.', confirmLabel: 'Igen, alakítsd át', cancelLabel: 'Nem, maradjon így', danger: true, icon: '🧾' })) return
         draft = convertDocument(state.documents.find(item => item.id === button.dataset.id),button.dataset.convert); draft.number = nextNumber(draft.type); render()
       }
       if (button.dataset.edit) { const kind = button.dataset.edit; const item = state[kind === 'customer' ? 'customers' : 'products'].find(item => item.id === button.dataset.id); const form = root().querySelector(`#billing-${kind}`); for (const [key,value] of Object.entries(item)) if (form.elements.namedItem(key)) form.elements.namedItem(key).value = value }
-      if (button.dataset.delete && confirm('Törlöd a tárból? A mentett dokumentumok megmaradnak.')) { readDraft(); const key = button.dataset.delete === 'customer' ? 'customers' : 'products'; state[key] = state[key].filter(item => item.id !== button.dataset.id); persist(); render() }
+      if (button.dataset.delete && await showGrapesConfirm({ title: 'Takarítsunk a tárban?', message: 'A kiválasztott adat eltűnik a tárból, de a már mentett dokumentumokban megmarad. A múltat még a Grapes sem írja át.', confirmLabel: 'Igen, töröld', cancelLabel: 'Nem, maradjon', danger: true, icon: '🧹' })) { readDraft(); const key = button.dataset.delete === 'customer' ? 'customers' : 'products'; state[key] = state[key].filter(item => item.id !== button.dataset.id); persist(); render() }
       switch (button.dataset.action) {
         case 'menu': { const { showScreen } = await import('./screens.js'); await showScreen(isGrapesDriveConnected() ? 'splash' : 'login'); break }
         case 'line': readDraft(); draft.lines.push(line()); renderLines(); break
-        case 'new': if (confirm('Új dokumentumot kezdesz? A nem mentett szerkesztés elvész.')) { newDraft(); render() } break
+        case 'new': if (await showGrapesConfirm({ title: 'Tiszta lap, tiszta lelkiismeret?', message: 'Új dokumentumot kezdesz, ezért a nem mentett szerkesztés elvész.', confirmLabel: 'Igen, új dokumentum', cancelLabel: 'Nem, ezt még befejezem', danger: true, icon: '📝' })) { newDraft(); render() } break
         case 'pdf': printDocument(); break
         case 'drive': button.disabled = true; await saveDrive(); break
         case 'export': { const url = URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:'application/json'})); const anchor = document.createElement('a'); anchor.href = url; anchor.download = `grapes-dokumentumok-${dateNow()}.json`; anchor.click(); setTimeout(() => URL.revokeObjectURL(url),1000); break }
@@ -133,7 +134,7 @@ function bind() {
     try {
       const file = event.target.files[0]; if (!file) return
       const data = JSON.parse(await file.text()); validateState(data)
-      if (!confirm('A betöltött mentés lecseréli a jelenlegi dokumentum- és adatbázist. Folytatod?')) return
+      if (!await showGrapesConfirm({ title: 'Teljes szerepcsere következik.', message: 'A betöltött mentés lecseréli a jelenlegi dokumentumokat, ügyfeleket és termékeket. Biztosan ezt akarod?', confirmLabel: 'Igen, töltsd be', cancelLabel: 'Nem, maradjon a mostani', danger: true, icon: '📦' })) return
       state = data; fileId = null; newDraft(); await persist(); render()
     } catch (error) { notifyError(error.message) } finally { event.target.value = '' }
   }

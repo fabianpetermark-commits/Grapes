@@ -18,7 +18,8 @@ function app(fetch, { connected = true, session = new Map(), local = new Map(), 
   const testSetTimeout = (callback, delay) => { const timer = setTimeout(callback, delay); timer.unref?.(); return timer }
   const context = vm.createContext({ document, fetch, Blob, URL, URLSearchParams, AbortController, crypto: webcrypto, QRCode: { async toCanvas(canvas, value) { canvas.qrValue = value } },
     env: { VITE_GOOGLE_CLIENT_ID: '123-client', VITE_GOOGLE_PICKER_API_KEY: pickerKey, VITE_GOOGLE_BOOKS_API_KEY: booksKey, VITE_GOOGLE_APP_ID: '123', VITE_EBOOK_TRANSFER_BROKER_URL: 'https://broker.example/exec', VITE_EBOOK_EPUB_WRITE_ENABLED: 'true' }, rewriteEpubMetadata: epubWriter, rewritePdfMetadata: pdfWriter,
-    window: { sessionStorage: storage(session), localStorage: storage(local), setTimeout: testSetTimeout, clearTimeout, location: { href: 'https://fabianpetermark-commits.github.io/Grapes/', origin: 'https://fabianpetermark-commits.github.io', search: '' } } })
+    window: { confirm: () => true, sessionStorage: storage(session), localStorage: storage(local), setTimeout: testSetTimeout, clearTimeout, location: { href: 'https://fabianpetermark-commits.github.io/Grapes/', origin: 'https://fabianpetermark-commits.github.io', search: '' } } })
+  context.showGrapesConfirm = async (options = {}) => context.window.confirm(options.message)
   const driveContext = vm.createContext({ window: context.window, document, fetch, env: context.env, Blob, crypto: webcrypto })
   const api = vm.runInContext(driveSource + '\n({ connectGrapesDrive, disconnectGrapesDrive, getConnectedGrapesAccount, getGrapesDriveAccessToken, grapesDriveHasFullReadAccess, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange })', driveContext)
   Object.assign(context, api)
@@ -1180,7 +1181,7 @@ test('book editor opens each selected book on the metadata tab', () => {
   assert.equal(a.nodes.get('#ebook-editor-metadata-tab').tabIndex, 0)
 })
 
-test('library and book editor navigation buttons switch modes and guard unsaved changes', () => {
+test('library and book editor navigation buttons switch modes and guard unsaved changes', async () => {
   const session = new Map()
   const a = app(async () => json({}), { session })
   const manager = a.run('$("#ebook-manager-view")')
@@ -1192,10 +1193,10 @@ test('library and book editor navigation buttons switch modes and guard unsaved 
 
   a.context.window.confirm = () => false
   a.run('metadataDirty = true')
-  assert.equal(a.run('navigateToEbookLibrary()'), false)
+  assert.equal(await a.run('navigateToEbookLibrary()'), false)
   assert.equal(manager.dataset.ebookMode, 'organizer')
   a.context.window.confirm = () => true
-  assert.equal(a.run('navigateToEbookLibrary()'), true)
+  assert.equal(await a.run('navigateToEbookLibrary()'), true)
   assert.equal(manager.dataset.ebookMode, 'library')
   assert.equal(session.get('grapes-ebook-view'), 'library')
 })
@@ -1255,7 +1256,7 @@ test('visually identical Unicode filenames are not renamed', async () => {
   assert.equal(requests, 0)
 })
 
-test('library edit opens only the selected book detail and restores the library scroll position', () => {
+test('library edit opens only the selected book detail and restores the library scroll position', async () => {
   const a = app(async () => json({}))
   const manager = a.run('$("#ebook-manager-view")')
   manager.dataset.ebookMode = 'library'
@@ -1268,12 +1269,12 @@ test('library edit opens only the selected book detail and restores the library 
   assert.equal(a.nodes.get('#ebook-metadata-book').value, 'second')
   assert.equal(a.nodes.get('#ebook-metadata-title').value, 'Második könyv')
   assert.equal(a.run('activeMetadataBookId'), 'second')
-  assert.equal(a.run('closeBookDetail()'), true)
+  assert.equal(await a.run('closeBookDetail()'), true)
   assert.equal(manager.dataset.ebookMode, 'library')
   assert.equal(manager.scrollTop, 384)
 })
 
-test('book detail guards unsaved navigation and preserves edits during background refresh', () => {
+test('book detail guards unsaved navigation and preserves edits during background refresh', async () => {
   const a = app(async () => json({}))
   const manager = a.run('$("#ebook-manager-view")')
   manager.dataset.ebookMode = 'library'
@@ -1284,10 +1285,10 @@ test('book detail guards unsaved navigation and preserves edits during backgroun
   a.context.window.confirm = () => false
   a.run('ebookMetadata = { book: { title: "Drive-on frissült cím" } }; renderMetadataEditor()')
   assert.equal(a.nodes.get('#ebook-metadata-title').value, 'Dűne')
-  assert.equal(a.run('closeBookDetail()'), false)
+  assert.equal(await a.run('closeBookDetail()'), false)
   assert.equal(manager.dataset.ebookMode, 'detail')
   a.context.window.confirm = () => true
-  assert.equal(a.run('closeBookDetail()'), true)
+  assert.equal(await a.run('closeBookDetail()'), true)
   assert.equal(a.run('metadataDirty'), false)
 })
 

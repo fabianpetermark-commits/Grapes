@@ -47,7 +47,7 @@ test('finance and billing use responsive task-oriented layouts', async () => {
 test('finance deletes all transactions only after creating a safety export', async () => {
   const [markup, source] = await Promise.all([read('index.html'), read('src/finance-tracker.js')])
   assert.match(markup, /id="finance-delete-all"[^>]*btn--danger[^>]*disabled/)
-  assert.match(source, /#finance-delete-all[\s\S]*saveSafetySnapshot\(DELETE_BACKUP_ID[\s\S]*financeBackupToJson\(snapshot\)[\s\S]*window\.confirm[\s\S]*transactions = \[\]/)
+  assert.match(source, /#finance-delete-all[\s\S]*saveSafetySnapshot\(DELETE_BACKUP_ID[\s\S]*financeBackupToJson\(snapshot\)[\s\S]*showGrapesConfirm[\s\S]*transactions = \[\]/)
   assert.match(source, /penzugyi-naplo-teljes-mentes-/)
   assert.match(markup, /id="finance-backup-input"/)
   assert.match(markup, /id="finance-restore-last"/)

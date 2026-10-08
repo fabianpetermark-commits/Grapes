@@ -76,3 +76,118 @@ export function openModal({ title, content, size = 'md', onClose }) {
 
   return { close: closeModal, body }
 }
+
+function dialogMessage(message, icon) {
+  return create('div', { class: 'grapes-dialog__message' }, [
+    create('span', { class: 'grapes-dialog__icon', textContent: icon, 'aria-hidden': 'true' }),
+    create('p', { textContent: message }),
+  ])
+}
+
+function dialogButton(label, className = 'btn btn--ghost') {
+  return create('button', { type: 'button', class: className, textContent: label })
+}
+
+/** Grapes-stílusú, nem blokkoló üzenetablak. */
+export function showGrapesAlert({
+  title = 'Hoppá, egy szőlőszem félrement…',
+  message,
+  confirmLabel = 'Értem, megnézem',
+  icon = '🍇',
+} = {}) {
+  return new Promise((resolve) => {
+    const okay = dialogButton(confirmLabel, 'btn btn--primary')
+    const content = create('div', { class: 'grapes-dialog' }, [
+      dialogMessage(message, icon),
+      create('div', { class: 'modal__actions' }, [okay]),
+    ])
+    let settled = false
+    let modal
+    const finish = () => {
+      if (settled) return
+      settled = true
+      resolve()
+      modal?.close()
+    }
+    okay.addEventListener('click', finish)
+    modal = openModal({ title, content, onClose: finish })
+  })
+}
+
+/** Grapes-stílusú igen/nem kérdés. Bezáráskor mindig false az eredmény. */
+export function showGrapesConfirm({
+  title = 'Most tényleg… komolyan?',
+  message,
+  confirmLabel = 'Igen, csináljuk',
+  cancelLabel = 'Nem, inkább mégse',
+  danger = false,
+  icon = '🤨',
+} = {}) {
+  return new Promise((resolve) => {
+    const cancel = dialogButton(cancelLabel)
+    const confirm = dialogButton(confirmLabel, danger ? 'btn btn--danger' : 'btn btn--primary')
+    const content = create('div', { class: 'grapes-dialog' }, [
+      dialogMessage(message, icon),
+      create('div', { class: 'modal__actions' }, [cancel, confirm]),
+    ])
+    let settled = false
+    let modal
+    const finish = (answer) => {
+      if (settled) return
+      settled = true
+      resolve(answer)
+      modal?.close()
+    }
+    cancel.addEventListener('click', () => finish(false))
+    confirm.addEventListener('click', () => finish(true))
+    modal = openModal({ title, content, onClose: () => finish(false) })
+  })
+}
+
+/** Grapes-stílusú szövegbevitel. Bezáráskor null az eredmény. */
+export function showGrapesPrompt({
+  title = 'Na, minek nevezzük?',
+  message,
+  value = '',
+  placeholder = '',
+  inputLabel = 'Válasz',
+  confirmLabel = 'Mehet',
+  cancelLabel = 'Mégsem',
+  icon = '✍️',
+} = {}) {
+  return new Promise((resolve) => {
+    const input = create('input', {
+      class: 'input grapes-dialog__input',
+      type: 'text',
+      value,
+      placeholder,
+      autocomplete: 'off',
+    })
+    const cancel = dialogButton(cancelLabel)
+    const confirm = dialogButton(confirmLabel, 'btn btn--primary')
+    const form = create('form', { class: 'grapes-dialog' }, [
+      message ? dialogMessage(message, icon) : null,
+      create('label', { class: 'field grapes-dialog__field' }, [
+        create('span', { class: 'field__label', textContent: inputLabel }),
+        input,
+      ]),
+      create('div', { class: 'modal__actions' }, [cancel, confirm]),
+    ])
+    let settled = false
+    let modal
+    const finish = (answer) => {
+      if (settled) return
+      settled = true
+      resolve(answer)
+      modal?.close()
+    }
+    cancel.addEventListener('click', () => finish(null))
+    confirm.addEventListener('click', () => finish(input.value))
+    form.addEventListener('submit', (event) => {
+      event.preventDefault()
+      finish(input.value)
+    })
+    modal = openModal({ title, content: form, onClose: () => finish(null) })
+    input.select()
+  })
+}

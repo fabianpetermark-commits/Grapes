@@ -26,7 +26,7 @@ function openMissingKeyModal() {
       textContent: 'unsplash.com/developers',
     }),
   ])
-  openModal({ title: 'Ingyenes képtár (Unsplash)', content })
+  openModal({ title: 'Képek, amiket nem nekünk kellett lefotózni', content })
 }
 
 export function openUnsplashModal(canvas) {
@@ -49,7 +49,7 @@ export function openUnsplashModal(canvas) {
     results,
   ])
 
-  openModal({ title: 'Ingyenes képtár (Unsplash)', content, size: 'lg' })
+  openModal({ title: 'Képek, amiket nem nekünk kellett lefotózni', content, size: 'lg' })
   searchInput.focus()
 
   const showMessage = (message) => {

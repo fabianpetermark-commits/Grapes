@@ -3,6 +3,7 @@ import { el, create } from './ui/dom.js'
 import { notifyError, notifySuccess } from './ui/toast.js'
 import { createResponsiveOverflow } from './ui/responsive-overflow.js'
 import { setUxState } from './ui/status.js'
+import { showGrapesConfirm, showGrapesPrompt } from './ui/modal.js'
 import { loadLocalProject, saveLocalProject } from './storage/local-project-store.js'
 import { isGrapesDriveConnected, loadGrapesProject, saveGrapesProject } from './storage/grapes-drive.js'
 import {
@@ -260,8 +261,15 @@ function renderSavings() {
       el('#finance-saving-amount').focus()
     })
     const remove = create('button', { class: 'btn btn--icon btn--ghost', type: 'button', textContent: '×', title: 'Megtakarítási mozgás törlése' })
-    remove.addEventListener('click', () => {
-      if (!window.confirm('Biztosan törlöd ezt a megtakarítási mozgást?')) return
+    remove.addEventListener('click', async () => {
+      if (!await showGrapesConfirm({
+        title: 'Most tényleg… komolyan?',
+        message: 'Ez a megtakarítási mozgás eltűnik a tartalék történetéből. A malacpersely nem sértődik meg, de a számok változni fognak.',
+        confirmLabel: 'Igen, töröld',
+        cancelLabel: 'Nem, maradjon',
+        danger: true,
+        icon: '🐷',
+      })) return
       savingsEntries = savingsEntries.filter((item) => item.id !== entry.id); render(); scheduleSave()
     })
     list.append(create('div', { class: 'finance__saving-row' }, [
@@ -380,8 +388,15 @@ function renderRows(visible) {
       el('#finance-amount').focus()
     })
     const remove = create('button', { class: 'btn btn--icon btn--ghost', type: 'button', textContent: '×', title: 'Tétel törlése', 'aria-label': 'Tétel törlése' })
-    remove.addEventListener('click', () => {
-      if (!window.confirm('Biztosan törlöd ezt a pénzügyi tételt?')) return
+    remove.addEventListener('click', async () => {
+      if (!await showGrapesConfirm({
+        title: 'Most tényleg… komolyan?',
+        message: 'Ez a pénzügyi tétel búcsút int a listának. Ha csak elírás történt, a ceruza kevésbé drámai megoldás.',
+        confirmLabel: 'Igen, töröld',
+        cancelLabel: 'Nem, megmentem',
+        danger: true,
+        icon: '🧾',
+      })) return
       transactions = transactions.filter((item) => item.id !== transaction.id)
       render(); scheduleSave()
     })
@@ -430,7 +445,14 @@ async function saveSafetySnapshot(id, name, data) {
 }
 
 async function restoreFinanceBackup(data) {
-  if (transactions.length && !window.confirm('A visszaállítás lecseréli a jelenlegi pénzügyi tételeket. Folytatod?')) return
+  if (transactions.length && !await showGrapesConfirm({
+    title: 'Időutazás a pénzügyekben?',
+    message: 'A visszaállítás lecseréli a jelenlegi tételeket, megtakarításokat és beállításokat. A mostani állapotról előtte készül biztonsági mentés.',
+    confirmLabel: 'Igen, állítsd vissza',
+    cancelLabel: 'Nem, maradjon a jelen',
+    danger: true,
+    icon: '⏳',
+  })) return
   clearTimeout(localSaveTimer)
   clearTimeout(driveSaveTimer)
   await persistLocal()
@@ -513,16 +535,30 @@ function bindControls() {
     setTransactionType(button.dataset.financeType)
     el('#finance-category').value = ''
   }))
-  el('#finance-add-category').addEventListener('click', () => {
-    const name = window.prompt('Új kategória neve:')?.trim()
+  el('#finance-add-category').addEventListener('click', async () => {
+    const name = (await showGrapesPrompt({
+      title: 'Még egy rekesz a pénznek?',
+      message: 'Adj nevet az új kategóriának. Valami beszédeset — a „Vegyes izék” később bosszút áll.',
+      inputLabel: 'Új kategória neve',
+      placeholder: 'Például: Kávéfüggőség',
+      confirmLabel: 'Kategória hozzáadása',
+      icon: '🏷️',
+    }))?.trim()
     if (!name) return
     const type = el('#finance-type').value
     if (![...DEFAULT_CATEGORIES[type], ...categories[type]].some((item) => item.toLocaleLowerCase('hu-HU') === name.toLocaleLowerCase('hu-HU'))) categories[type].push(name)
     el('#finance-category').value = name
     renderCategories(); scheduleSave()
   })
-  el('#finance-add-person').addEventListener('click', () => {
-    const name = window.prompt('Új személy neve:')?.trim()
+  el('#finance-add-person').addEventListener('click', async () => {
+    const name = (await showGrapesPrompt({
+      title: 'Ki legyen a következő gyanúsított?',
+      message: 'Add meg, kihez tartozzanak a tételek. Csak egy név kell, ujjlenyomatot nem kérünk.',
+      inputLabel: 'Személy neve',
+      placeholder: 'Például: Peti',
+      confirmLabel: 'Személy hozzáadása',
+      icon: '🕵️',
+    }))?.trim()
     if (!name) return
     const existing = people.find((person) => person.name.toLocaleLowerCase('hu-HU') === name.toLocaleLowerCase('hu-HU'))
     const person = existing || normalizePerson({ name })
@@ -607,7 +643,13 @@ function bindControls() {
   el('#finance-delete-all').addEventListener('click', async () => {
     if (!transactions.length) return
     const count = transactions.length
-    if (!window.confirm(`Előkészítsek egy teljes biztonsági mentést mind a(z) ${count} tételről és a bizonylatokról? A törlésről ezután külön dönthetsz.`)) return
+    if (!await showGrapesConfirm({
+      title: 'Nagy piros gomb következik…',
+      message: `Mind a(z) ${count} tétel törlésére készülsz. Előbb készítsek teljes mentést a tételekről és a bizonylatokról? A törlésről utána még egyszer külön megkérdezlek — mert ennyire nem bízom a véletlen kattintásokban.`,
+      confirmLabel: 'Igen, készíts mentést',
+      cancelLabel: 'Nem, visszavonulok',
+      icon: '🚨',
+    })) return
     const button = el('#finance-delete-all')
     button.disabled = true
     try {
@@ -618,7 +660,14 @@ function bindControls() {
       await persistLocal()
       await saveSafetySnapshot(DELETE_BACKUP_ID, 'Pénzügyi napló – utolsó törlés előtti mentés', snapshot)
       download(financeBackupToJson(snapshot), 'application/json;charset=utf-8', filename)
-      const confirmed = window.confirm(`A bizonylatokat is tartalmazó teljes mentést helyben megőriztük, és a ${filename} letöltését elindítottuk. A fájl személyes adatokat tartalmazhat. Ellenőrizd, hogy megjelent a letöltéseid között. Biztosan törlöd mind a(z) ${count} tételt?`)
+      const confirmed = await showGrapesConfirm({
+        title: 'Utolsó kérdés. Becsületszó.',
+        message: `A teljes mentést helyben megőriztük, és a ${filename} letöltését elindítottuk. Ellenőrizd a letöltéseidet: a fájl személyes adatokat is tartalmazhat. Biztosan törlöd mind a(z) ${count} tételt?`,
+        confirmLabel: `Igen, töröld mind a(z) ${count} tételt`,
+        cancelLabel: 'Nem, mégsem törlöm',
+        danger: true,
+        icon: '🧨',
+      })
       if (!confirmed) return
       transactions = []
       render()
@@ -667,7 +716,13 @@ function bindControls() {
     if (!file) return
     try {
       const source = await file.text()
-      if (!csvHasCurrencyColumn(source) && !window.confirm(`A CSV nem tartalmaz pénznemet. Az összegeket ${currency} pénznemként importáljam? Átváltás nem történik.`)) return
+      if (!csvHasCurrencyColumn(source) && !await showGrapesConfirm({
+        title: 'A pénz beszél, csak a pénznem hallgat…',
+        message: `A CSV nem árulja el a pénznemet. Kezeljem az összegeket ${currency} pénznemként? Átváltás nem történik.`,
+        confirmLabel: `Igen, legyen ${currency}`,
+        cancelLabel: 'Nem, előbb javítom a fájlt',
+        icon: '🪙',
+      })) return
       const imported = transactionsFromCsv(source, currency)
       transactions.push(...imported); render(); scheduleSave()
       notifySuccess(`${imported.length} tétel importálva.`)

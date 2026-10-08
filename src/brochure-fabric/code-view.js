@@ -56,7 +56,7 @@ export function openCodeView(canvas, history) {
   let closeModalAfterApply = null
 
   openModal({
-    title: 'Kódnézet (HTML/SVG)',
+    title: 'A motorháztető alatt (HTML/SVG)',
     content,
     size: 'lg',
     onClose: () => {

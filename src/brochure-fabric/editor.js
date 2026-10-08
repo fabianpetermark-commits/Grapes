@@ -26,6 +26,7 @@ import { importSvgFile } from './svg-import.js'
 import { snapToNearbyObjects } from './smart-guides.js'
 import { notifyError } from '../ui/toast.js'
 import { el } from '../ui/dom.js'
+import { showGrapesConfirm, showGrapesPrompt } from '../ui/modal.js'
 
 // Fázis 2 / Lépés 1: alapvető szerkesztő-UX (alakzat-paletta, tulajdonságok
 // panel, rétegek panel, snap-to-grid, igazítás, előre/hátra) a kísérleti
@@ -506,7 +507,13 @@ async function restoreLocalBackup(history) {
   try {
     const backup = await loadLocalProject(LOCAL_BACKUP_ID)
     if (!backup?.data) return
-    const shouldRestore = window.confirm('Találtam egy helyi biztonsági mentést a legutóbbi 2D projektből. Visszaállítsam?')
+    const shouldRestore = await showGrapesConfirm({
+      title: 'Találtam valamit a kanapé alatt…',
+      message: 'Van egy helyi biztonsági mentés a legutóbbi 2D projektből. Visszahozzam, mielőtt úgy teszünk, mintha nem láttuk volna?',
+      confirmLabel: 'Igen, hozd vissza',
+      cancelLabel: 'Nem, kezdjünk tisztán',
+      icon: '🛟',
+    })
     if (!shouldRestore) return
     await loadProjectData(backup.data, canvas)
     driveProjectFileId = backup.driveFileId || null
@@ -525,7 +532,14 @@ function setupProjectIO(history) {
     }
     try {
       if (!driveProjectFileId) {
-        const requested = window.prompt('Projekt neve a Google Drive-on:', driveProjectName)
+        const requested = await showGrapesPrompt({
+          title: 'Névtelen projekt? Az túl titokzatos.',
+          message: 'Adj nevet a projektnek, hogy később a Drive-on is felismerd.',
+          inputLabel: 'Projekt neve',
+          value: driveProjectName,
+          confirmLabel: 'Mentés ezzel a névvel',
+          icon: '☁️',
+        })
         if (!requested?.trim()) return
         driveProjectName = requested.trim()
       }
@@ -556,7 +570,14 @@ function setupProjectIO(history) {
       const choices = projects.slice(0, 20).map((project, index) =>
         `${index + 1}. ${project.name.replace(/\\.grapes\\.json$/, '')}`
       ).join('\n')
-      const selected = window.prompt(`Drive projektek:\n\n${choices}\n\nÍrd be a megnyitandó projekt sorszámát.\n(Helyi fájlhoz nyomj Mégse gombot.)`)
+      const selected = await showGrapesPrompt({
+        title: 'Melyik projektet szedjük le a felhőből?',
+        message: `A Drive ezt kínálja:\n\n${choices}\n\nÍrd be a megnyitandó projekt sorszámát. Ha inkább helyi fájlt nyitnál, válaszd a Mégse gombot.`,
+        inputLabel: 'Projekt sorszáma',
+        placeholder: 'Például: 1',
+        confirmLabel: 'Ezt nyisd meg',
+        icon: '☁️',
+      })
       if (selected === null) {
         projectInput.click()
         return

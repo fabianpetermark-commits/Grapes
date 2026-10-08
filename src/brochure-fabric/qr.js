@@ -43,7 +43,7 @@ export function openQrModal(canvas) {
     create('div', { class: 'modal__actions' }, [insertBtn]),
   ])
 
-  openModal({ title: 'QR-kód', content })
+  openModal({ title: 'Kockabűvészet, avagy QR-kód', content })
   textInput.focus()
 
   let currentDataUrl = ''

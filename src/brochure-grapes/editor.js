@@ -24,6 +24,7 @@ import gjsTooltip from 'grapesjs-tooltip'
 import QRCode from 'qrcode'
 import '../styles/legacy-grapes.css'
 import '../styles/screens/legacy.css'
+import { showGrapesAlert } from '../ui/modal.js'
 
 const GRID_SIZE = 10
 const UNSPLASH_ACCESS_KEY = import.meta.env.VITE_UNSPLASH_ACCESS_KEY || ''
@@ -475,7 +476,7 @@ htmlFileInput.addEventListener('change', () => {
   const reader = new FileReader()
   reader.addEventListener('load', () => {
     if (typeof reader.result !== 'string') {
-      window.alert('A kiválasztott HTML fájl nem olvasható szövegként.')
+      showGrapesAlert({ title: 'Ez a fájl most kukának tetteti magát…', message: 'A kiválasztott HTML-fájl nem olvasható szövegként.', icon: '🧐' })
       htmlFileInput.value = ''
       return
     }
@@ -551,13 +552,13 @@ htmlFileInput.addEventListener('change', () => {
       }
     } catch (error) {
       console.error('HTML-import sikertelen:', error)
-      window.alert(`A HTML-fájl betöltése sikertelen: ${error.message}`)
+      showGrapesAlert({ title: 'A HTML ma nem együttműködő típus.', message: `A fájl betöltése sikertelen: ${error.message}`, icon: '🧩' })
     } finally {
       htmlFileInput.value = ''
     }
   })
   reader.addEventListener('error', () => {
-    window.alert(`A(z) "${file.name}" HTML-fájl beolvasása sikertelen.`)
+    showGrapesAlert({ title: 'A fájl nem akar beszélni velünk.', message: `A(z) „${file.name}” HTML-fájl beolvasása sikertelen.`, icon: '🤐' })
     htmlFileInput.value = ''
   })
   reader.readAsText(file)
@@ -588,15 +589,17 @@ jsonFileInput.addEventListener('change', () => {
       editor.loadProjectData(projectData)
     } catch (error) {
       console.error('Projekt betöltése sikertelen:', error)
-      window.alert(
-        'Ez nem egy érvényes GrapesJS projektfájl (.json)! PDF-fájlokat közvetlenül nem lehet szerkeszteni, csak menteni.',
-      )
+      showGrapesAlert({
+        title: 'Szép próbálkozás, de ez nem projektfájl.',
+        message: 'Ez nem egy érvényes GrapesJS projektfájl (.json). PDF-fájlokat közvetlenül nem lehet szerkeszteni, csak menteni.',
+        icon: '🗂️',
+      })
     } finally {
       jsonFileInput.value = ''
     }
   })
   reader.addEventListener('error', () => {
-    window.alert(`A(z) "${file.name}" projektfájl beolvasása sikertelen.`)
+    showGrapesAlert({ title: 'A projektfájl makacskodik.', message: `A(z) „${file.name}” projektfájl beolvasása sikertelen.`, icon: '🧱' })
     jsonFileInput.value = ''
   })
   reader.readAsText(file)
@@ -641,7 +644,7 @@ document.querySelector('#code-btn').addEventListener('click', () => {
   cssTextarea.className = 'gjs-code-viewer'
   container.append(htmlHeading, htmlTextarea, cssHeading, cssTextarea)
 
-  editor.Modal.setTitle('Projekt Forráskódja')
+  editor.Modal.setTitle('A motorháztető alatt (HTML/CSS)')
   editor.Modal.setContent(container)
   editor.Modal.open()
 })
@@ -663,7 +666,7 @@ previewBtnEl.addEventListener('click', () => {
 document.querySelector('#pdf-btn').addEventListener('click', () => {
   const printWindow = window.open('', '_blank')
   if (!printWindow) {
-    window.alert('A nyomtatási ablak megnyitását a böngésző blokkolta.')
+    showGrapesAlert({ title: 'A böngésző kidobta a nyomdászt.', message: 'A nyomtatási ablak megnyitását a böngésző blokkolta. Engedélyezd a felugró ablakokat, majd próbáld újra.', icon: '🖨️' })
     return
   }
 
@@ -821,14 +824,14 @@ editor.Commands.add('qr:configure', {
     preview.className = 'gjs-qr-preview'
 
     container.append(label, textInput, generateBtn, preview)
-    ed.Modal.setTitle('QR-kód beállítása')
+    ed.Modal.setTitle('Kockabűvészet, avagy QR-kód')
     ed.Modal.setContent(container)
     ed.Modal.open()
 
     generateBtn.addEventListener('click', async () => {
       const text = textInput.value.trim()
       if (!text) {
-        window.alert('Adj meg egy szöveget vagy URL-t a QR-kódhoz.')
+        showGrapesAlert({ title: 'Üres QR-kód? Az csak modern művészet.', message: 'Adj meg egy szöveget vagy URL-t a QR-kódhoz.', icon: '◼️' })
         return
       }
 
@@ -841,7 +844,7 @@ editor.Commands.add('qr:configure', {
         ed.Modal.close()
       } catch (error) {
         console.error('QR-kód generálása sikertelen:', error)
-        window.alert(`A QR-kód generálása sikertelen: ${error.message}`)
+        showGrapesAlert({ title: 'A négyzetek most összevesztek.', message: `A QR-kód generálása sikertelen: ${error.message}`, icon: '🔳' })
       }
     })
   },
@@ -858,9 +861,11 @@ editor.Panels.addButton('options', {
 editor.Commands.add('unsplash:open', {
   run(ed) {
     if (!UNSPLASH_ACCESS_KEY) {
-      window.alert(
-        'Az Unsplash képtár használatához adj meg egy API-kulcsot a VITE_UNSPLASH_ACCESS_KEY környezeti változóban (.env fájl), majd indítsd újra a szervert.\n\nIngyenes kulcs igényelhető: https://unsplash.com/developers',
-      )
+      showGrapesAlert({
+        title: 'Az Unsplash kulcs nélkül csak vállat von.',
+        message: 'A képtár használatához add meg a VITE_UNSPLASH_ACCESS_KEY értékét az .env fájlban, majd indítsd újra a szervert.\n\nIngyenes kulcs: https://unsplash.com/developers',
+        icon: '🔑',
+      })
       return
     }
 
@@ -881,7 +886,7 @@ editor.Commands.add('unsplash:open', {
 
     searchRow.append(searchInput, searchBtn)
     container.append(searchRow, resultsGrid)
-    ed.Modal.setTitle('Ingyenes képtár (Unsplash)')
+    ed.Modal.setTitle('Képek, amiket nem nekünk kellett lefotózni')
     ed.Modal.setContent(container)
     ed.Modal.open()
 

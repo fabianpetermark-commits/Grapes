@@ -150,3 +150,44 @@ body {
 .gjs-unsplash-thumb:hover {
   border-color: #00e5ff;
 }
+
+/* A régi GrapesJS-motor saját dialógusai is a Grapes alkalmazás
+   megjelenését követik, nem a szerkesztő gyári modal témáját. */
+.gjs-mdl-container {
+  background: var(--color-scrim) !important;
+  backdrop-filter: blur(2px);
+}
+
+.gjs-mdl-dialog {
+  overflow: hidden;
+  color: var(--color-text) !important;
+  background: var(--color-bg-raised) !important;
+  border: 1px solid var(--color-border-strong) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-3) !important;
+}
+
+.gjs-mdl-header {
+  padding: var(--space-4) !important;
+  border-bottom: 1px solid var(--color-border) !important;
+}
+
+.gjs-mdl-title {
+  font-family: var(--font-ui);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+.gjs-mdl-content {
+  padding: var(--space-4) !important;
+}
+
+.gjs-mdl-btn-close {
+  color: var(--color-text-muted) !important;
+  border-radius: var(--radius-md);
+}
+
+.gjs-mdl-btn-close:hover {
+  color: var(--color-text) !important;
+  background: var(--color-bg-hover);
+}

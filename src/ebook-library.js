@@ -2,6 +2,7 @@ import QRCode from 'qrcode'
 import './styles/screens/ebook-library.css'
 import { connectGrapesDrive, disconnectGrapesDrive, getConnectedGrapesAccount, getGrapesDriveAccessToken, grapesDriveHasFullReadAccess, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange } from './storage/grapes-drive.js'
 import { messageLabel, validateEpub, validationSummary } from './ebook/epub-validation.js'
+import { showGrapesConfirm } from './ui/modal.js'
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 const PICKER_API_KEY = import.meta.env.VITE_GOOGLE_PICKER_API_KEY || ''
@@ -638,10 +639,17 @@ async function loadSavedCoverPreview(bookId, fileId) {
     if (preview) { preview.src = coverObjectUrl; preview.hidden = false }
   } catch { /* A hiányzó borító nem akadályozza a könyv szerkesztését. */ }
 }
-function selectMetadataBook() {
+async function selectMetadataBook() {
   const select = $('#ebook-metadata-book')
   const next = select?.value || ''
-  if ((metadataDirty || hasContentChanges()) && next !== activeMetadataBookId && !window.confirm('A mentetlen módosítások elvesznek. Másik könyvet választasz?')) {
+  if ((metadataDirty || hasContentChanges()) && next !== activeMetadataBookId && !await showGrapesConfirm({
+    title: 'A piszkozat kapaszkodik az ajtófélfába…',
+    message: 'Mentetlen módosításaid vannak. Ha másik könyvet választasz, ezek elvesznek — és később hiába nézünk ártatlanul.',
+    confirmLabel: 'Igen, válts könyvet',
+    cancelLabel: 'Nem, előbb mentek',
+    danger: true,
+    icon: '📚',
+  })) {
     select.value = activeMetadataBookId
     return
   }
@@ -1498,8 +1506,15 @@ function openBookDetail(id) {
   if (manager) manager.scrollTop = 0
   $('#ebook-metadata-title-heading')?.focus?.()
 }
-function closeBookDetail({ force = false } = {}) {
-  if (!force && metadataDirty && !window.confirm('A mentetlen módosítások elvesznek. Visszalépsz a könyvtárhoz?')) return false
+async function closeBookDetail({ force = false } = {}) {
+  if (!force && metadataDirty && !await showGrapesConfirm({
+    title: 'Máris vissza a polchoz?',
+    message: 'A könyv mentetlen módosításai itt maradnak, te viszont nem. Biztosan visszalépsz a könyvtárhoz?',
+    confirmLabel: 'Igen, változtatások nélkül',
+    cancelLabel: 'Nem, maradok menteni',
+    danger: true,
+    icon: '📖',
+  })) return false
   const id = activeMetadataBookId
   setMetadataDirty(false)
   setEbookMode('library')
@@ -1534,10 +1549,24 @@ async function saveMetadata({ catalogOnly = false } = {}) {
   const edited = metadataFromForm()
   const fingerprint = JSON.stringify(edited) + ($('#ebook-metadata-filename-target')?.value || '') + pendingCoverUrl + (pendingCoverBlob?.size || '') + String(pendingCoverRemoved) + coverChangeSerial + (contentEdited ? `:${contentChangeSerial}` : '')
   try {
-    if (epub && !catalogOnly && !partialMetadataSave && window.confirm && !window.confirm(contentEdited
-      ? `A módosított EPUB felülírja az eredeti Drive-fájlt. ${contentSession.changeSummary.length} mentetlen szerkesztési művelet lesz véglegesítve; külön másolat nem készül. Folytatod?`
-      : 'Az EPUB-fájl módosul a Drive-on. Csak akkor folytasd, ha külön megvan az eredeti példány. Folytatod?')) return
-    if (pdf && !catalogOnly && !partialMetadataSave && window.confirm && !window.confirm('A PDF belső cím- és szerzőadatai módosulnak a Drive-on; az oldalak tartalma nem változik. Csak akkor folytasd, ha külön megvan az eredeti példány. Folytatod?')) return
+    if (epub && !catalogOnly && !partialMetadataSave && !await showGrapesConfirm({
+      title: 'Az eredeti EPUB most nagyot nyel…',
+      message: contentEdited
+        ? `A Drive-on lévő eredeti fájlt felülírjuk, és ${contentSession.changeSummary.length} szerkesztési művelet véglegessé válik. Külön másolat nem készül.`
+        : 'Az EPUB-fájl módosul a Drive-on, külön másolat pedig nem készül. Csak akkor folytasd, ha az eredeti példány máshol biztonságban van.',
+      confirmLabel: 'Igen, írd felül',
+      cancelLabel: 'Nem, előbb mentek másolatot',
+      danger: true,
+      icon: '📕',
+    })) return
+    if (pdf && !catalogOnly && !partialMetadataSave && !await showGrapesConfirm({
+      title: 'Beleírhatunk a PDF belsejébe?',
+      message: 'A Drive-on lévő PDF cím- és szerzőadatai módosulnak; az oldalak tartalma nem. Külön másolat nem készül, mert a Grapes most bátor, de nem vakmerő helyetted.',
+      confirmLabel: 'Igen, módosítsd',
+      cancelLabel: 'Nem, előbb mentek másolatot',
+      danger: true,
+      icon: '📄',
+    })) return
     if (partialMetadataSave && (partialMetadataSave.id !== id || partialMetadataSave.fingerprint !== fingerprint)) throw new Error('Egy korábbi könyvfájl-mentés adatlaprésze még hiányzik. Előbb próbáld újra ugyanannál a könyvnél, változatlan mezőkkel.')
     validateMetadataForm(edited, (epub || pdf) && !catalogOnly)
     const save = $('#ebook-metadata-save'); if (save) save.disabled = true
@@ -1589,7 +1618,14 @@ async function saveMetadata({ catalogOnly = false } = {}) {
         const original = await (await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media`)).blob()
         const clearFields = METADATA_FIELDS.filter((field) => Boolean(ebookMetadata[id]?.[field]?.length) && !edited[field]?.length)
         const result = await (await loadPdfWriter())(original, edited, { clearFields })
-        if (result.hasSignatures && window.confirm && !window.confirm('Ez a PDF digitális aláírást tartalmazhat. A metaadat módosítása érvénytelenítheti az aláírást. Biztosan feltöltöd a módosított PDF-et?')) {
+        if (result.hasSignatures && !await showGrapesConfirm({
+          title: 'Az aláírás ezt lehet, hogy nem díjazza…',
+          message: 'Ez a PDF digitális aláírást tartalmazhat. A metaadat módosítása érvénytelenítheti az aláírást. Biztosan feltöltöd a módosított fájlt?',
+          confirmLabel: 'Igen, vállalom',
+          cancelLabel: 'Nem, hagyjuk érintetlenül',
+          danger: true,
+          icon: '✒️',
+        })) {
           setMetadataDirty(true)
           return setStatus('A PDF feltöltése megszakítva; a szerkesztett adatok megmaradtak.', 'error')
         }
@@ -1935,9 +1971,16 @@ function navigateToEbookOrganizer() {
   setEbookMode('organizer')
   return true
 }
-function navigateToEbookLibrary() {
+async function navigateToEbookLibrary() {
   const dirty = metadataDirty || hasContentChanges()
-  if (dirty && !window.confirm('A könyvszerkesztőben mentetlen módosítások vannak. Biztosan visszalépsz a könyvtárhoz?')) return false
+  if (dirty && !await showGrapesConfirm({
+    title: 'A mentés gomb szerint még nincs vége…',
+    message: 'A könyvszerkesztőben mentetlen módosítások vannak. Biztosan visszalépsz a könyvtárhoz nélkülük?',
+    confirmLabel: 'Igen, lépj vissza',
+    cancelLabel: 'Nem, előbb mentek',
+    danger: true,
+    icon: '📚',
+  })) return false
   if (dirty) { setMetadataDirty(false); resetContentState() }
   try { window.sessionStorage?.setItem('grapes-ebook-view', 'library') } catch {}
   const manager = $('#ebook-manager-view')
@@ -2112,8 +2155,22 @@ export function initEbookLibrary() {
   window.addEventListener?.('message', handleReaderPairingMessage)
   document.addEventListener?.('grapes:before-screen-change', (event) => {
     if (event.detail?.from !== 'ebook' || (!metadataDirty && !hasContentChanges()) || $('#ebook-manager-view')?.dataset.ebookMode === 'library') return
-    if (!window.confirm('A könyvszerkesztőben mentetlen módosítások vannak. Biztosan kilépsz?')) event.preventDefault()
-    else { setMetadataDirty(false); resetContentState() }
+    event.preventDefault()
+    const target = event.detail?.to
+    showGrapesConfirm({
+      title: 'Elpárolognának a módosítások. Puff.',
+      message: 'A könyvszerkesztőben mentetlen módosítások vannak. Biztosan kilépsz ebből a modulból?',
+      confirmLabel: 'Igen, kilépek',
+      cancelLabel: 'Nem, visszamegyek menteni',
+      danger: true,
+      icon: '💨',
+    }).then(async (confirmed) => {
+      if (!confirmed || !target) return
+      setMetadataDirty(false)
+      resetContentState()
+      const { showScreen } = await import('./screens.js')
+      showScreen(target)
+    })
   })
   window.addEventListener?.('beforeunload', (event) => {
     if (!metadataDirty && !hasContentChanges()) return
