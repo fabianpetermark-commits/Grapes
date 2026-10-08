@@ -255,8 +255,8 @@
 .finance__form { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
 .finance__form label { display: grid; gap: var(--space-2); font-size: var(--text-sm); color: var(--color-text-muted); }
 .finance__form-wide, .finance__type-switch { grid-column: 1 / -1; }
-.finance__planned-toggle { display: grid !important; grid-template-columns: auto 1fr; gap: 2px var(--space-3) !important; align-items: center; padding: var(--space-3); color: var(--color-text) !important; background: rgb(245 158 11 / 8%); border: 1px solid rgb(245 158 11 / 30%); border-radius: var(--radius-md); }
-.finance__planned-toggle input { width: 18px; min-height: 18px; padding: 0; margin: 0; accent-color: #f59e0b; }
+.finance__planned-toggle { display: grid !important; grid-template-columns: auto 1fr; gap: 2px var(--space-3) !important; align-items: center; min-height: var(--touch-target); padding: var(--space-3); color: var(--color-text) !important; cursor: pointer; touch-action: manipulation; background: rgb(245 158 11 / 8%); border: 1px solid rgb(245 158 11 / 30%); border-radius: var(--radius-md); }
+.finance__planned-toggle input[type='checkbox'] { width: 20px; height: 20px; min-height: 20px; padding: 0; margin: 0; cursor: pointer; accent-color: #f59e0b; }
 .finance__planned-toggle small { grid-column: 2; color: var(--color-text-subtle); }
 .finance__field-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2); }
 .finance__field-row .btn { min-width: 40px; padding: 0; }
@@ -314,7 +314,8 @@
 }
 
 @media (max-width: 768px) {
-  .finance input, .finance select, .finance__type-switch button { min-height: var(--touch-target); }
+  .finance input:not([type='checkbox']):not([type='radio']), .finance select, .finance__type-switch button { min-height: var(--touch-target); }
+  .finance__planned-toggle input[type='checkbox'] { width: 22px; height: 22px; min-height: 22px; }
 }
 
 @media (max-width: 700px) {
