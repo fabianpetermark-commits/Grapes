@@ -37,6 +37,8 @@ test('finance and billing use responsive task-oriented layouts', async () => {
   assert.match(financeSource, /cell\.dataset\.label/)
   assert.match(financeSource, /createResponsiveOverflow/)
   assert.match(financeCss, /content:\s*attr\(data-label\)/)
+  assert.match(financeCss, /\.finance__tabs/)
+  assert.match(financeSource, /setFinanceTab/)
   assert.match(billingSource, /<fieldset class="billing__section"><legend>Alapadatok/)
   assert.match(billingSource, /class="billing__document-footer"/)
   assert.match(billingCss, /\.billing__document-footer\s*\{[^}]*position:sticky/)

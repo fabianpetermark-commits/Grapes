@@ -232,7 +232,14 @@
       </header>
 
       <main class="finance__main">
-        <section class="finance__summary" aria-label="Pénzügyi összesítés">
+        <nav class="finance__tabs" role="tablist" aria-label="Pénzügyi modul nézetei">
+          <button class="is-active" type="button" role="tab" aria-selected="true" data-finance-tab="overview">Áttekintés</button>
+          <button type="button" role="tab" aria-selected="false" data-finance-tab="transaction">Új tétel</button>
+          <button type="button" role="tab" aria-selected="false" data-finance-tab="savings">Megtakarítások</button>
+          <button type="button" role="tab" aria-selected="false" data-finance-tab="forecast">Előrejelzés</button>
+        </nav>
+
+        <section class="finance__summary" aria-label="Pénzügyi összesítés" data-finance-panel="overview">
           <article class="finance__metric finance__metric--income"><span>Bevétel</span><strong id="finance-income">0 Ft</strong><small id="finance-income-count">0 tétel</small></article>
           <article class="finance__metric finance__metric--expense"><span>Kiadás</span><strong id="finance-expense">0 Ft</strong><small id="finance-expense-count">0 tétel</small></article>
           <article class="finance__metric finance__metric--balance"><span>Egyenleg</span><strong id="finance-balance">0 Ft</strong><small id="finance-balance-note">A kijelölt időszakban</small></article>
@@ -241,7 +248,7 @@
         </section>
 
         <section class="finance__top-grid">
-          <article class="finance__panel finance__savings-panel">
+          <article class="finance__panel finance__savings-panel" data-finance-panel="savings" hidden>
             <div class="finance__panel-head"><div><p class="finance__eyebrow">MEGTAKARÍTÁSOK</p><h2>Célok és tartalék</h2></div></div>
             <form id="finance-goal-form" class="finance__compact-form">
               <label>Cél neve<input id="finance-goal-name" required maxlength="80" placeholder="Pl. Vésztartalék"></label>
@@ -263,7 +270,7 @@
             </form>
           </article>
 
-          <article class="finance__panel finance__forecast-panel">
+          <article class="finance__panel finance__forecast-panel" data-finance-panel="forecast" hidden>
             <div class="finance__panel-head"><div><p class="finance__eyebrow">ELŐREJELZÉS</p><h2>Várható pénzügyi alakulás</h2></div></div>
             <div class="finance__forecast-controls">
               <label>Figyelt múlt<select id="finance-forecast-history"><option value="3">3 hónap</option><option value="6" selected>6 hónap</option><option value="12">12 hónap</option><option value="24">24 hónap</option></select></label>
@@ -280,14 +287,14 @@
         </section>
 
         <section class="finance__grid">
-          <article class="finance__panel finance__chart-panel">
+          <article class="finance__panel finance__chart-panel" data-finance-panel="overview">
             <div class="finance__panel-head"><div><p class="finance__eyebrow">ÁTTEKINTÉS</p><h2>Utolsó 6 hónap</h2></div><div class="finance__legend"><span><i class="is-income"></i>Bevétel</span><span><i class="is-expense"></i>Kiadás</span></div></div>
             <div id="finance-chart" class="finance__chart" role="img" aria-label="Az utolsó hat hónap bevételei és kiadásai"></div>
             <div class="finance__category-head"><strong>Kiadások kategóriánként</strong><span>A kijelölt időszakban</span></div>
             <div id="finance-category-chart" class="finance__category-chart"></div>
           </article>
 
-          <article class="finance__panel finance__form-panel">
+          <article class="finance__panel finance__form-panel" data-finance-panel="transaction" hidden>
             <div class="finance__panel-head"><div><p class="finance__eyebrow">ÚJ TÉTEL</p><h2>Tranzakció rögzítése</h2></div></div>
             <form id="finance-form" class="finance__form">
               <div class="finance__type-switch" role="group" aria-label="Tranzakció típusa">
@@ -307,7 +314,7 @@
           </article>
         </section>
 
-        <section class="finance__panel finance__transactions">
+        <section class="finance__panel finance__transactions" data-finance-panel="overview">
           <div class="finance__panel-head finance__transactions-head">
             <div><p class="finance__eyebrow">NAPLÓ</p><h2>Tranzakciók</h2></div>
             <div class="finance__filters">

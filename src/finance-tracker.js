@@ -20,6 +20,7 @@ const PROJECT_RECEIPT_LIMIT = 15 * 1024 * 1024
 const BACKUP_FILE_LIMIT = 30 * 1024 * 1024
 
 let initialized = false
+let activeFinanceTab = 'overview'
 let transactions = []
 let people = []
 let categories = { income: [], expense: [] }
@@ -56,6 +57,20 @@ function formatMoney(value) {
 
 function serializeProject() {
   return { version: 2, currency, transactions, people, categories, savingsGoals, savingsEntries, forecastSettings }
+}
+
+function setFinanceTab(tab) {
+  const allowed = new Set(['overview', 'transaction', 'savings', 'forecast'])
+  activeFinanceTab = allowed.has(tab) ? tab : 'overview'
+  document.querySelectorAll('[data-finance-tab]').forEach((button) => {
+    const active = button.dataset.financeTab === activeFinanceTab
+    button.classList.toggle('is-active', active)
+    button.setAttribute('aria-selected', String(active))
+    button.tabIndex = active ? 0 : -1
+  })
+  document.querySelectorAll('[data-finance-panel]').forEach((panel) => {
+    panel.hidden = panel.dataset.financePanel !== activeFinanceTab
+  })
 }
 
 function applyProject(data = {}) {
@@ -412,6 +427,18 @@ function bindControls() {
   const defaultGoalEnd = new Date(); defaultGoalEnd.setFullYear(defaultGoalEnd.getFullYear() + 1)
   el('#finance-goal-end').value = `${defaultGoalEnd.getFullYear()}-${String(defaultGoalEnd.getMonth() + 1).padStart(2, '0')}-${String(defaultGoalEnd.getDate()).padStart(2, '0')}`
   el('#finance-filter-month').value = currentMonth()
+  const tabs = [...document.querySelectorAll('[data-finance-tab]')]
+  tabs.forEach((button, index) => {
+    button.addEventListener('click', () => setFinanceTab(button.dataset.financeTab))
+    button.addEventListener('keydown', (event) => {
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+      event.preventDefault()
+      const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1
+        : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length
+      tabs[nextIndex].focus(); setFinanceTab(tabs[nextIndex].dataset.financeTab)
+    })
+  })
+  setFinanceTab(activeFinanceTab)
   document.querySelectorAll('[data-finance-type]').forEach((button) => button.addEventListener('click', () => {
     el('#finance-type').value = button.dataset.financeType
     document.querySelectorAll('[data-finance-type]').forEach((item) => item.classList.toggle('is-active', item === button))
@@ -492,7 +519,7 @@ function bindControls() {
       event.target.reset(); el('#finance-date').value = today(); el('#finance-type').value = 'expense'
       document.querySelectorAll('[data-finance-type]').forEach((item) => item.classList.toggle('is-active', item.dataset.financeType === 'expense'))
       pendingReceipt = null; el('#finance-receipt-name').textContent = 'Nincs fájl kiválasztva'
-      render(); scheduleSave(); el('#finance-amount').focus()
+      render(); scheduleSave(); setFinanceTab('overview')
     } catch (error) { notifyError(error.message) }
   })
   for (const selector of ['#finance-filter-month', '#finance-filter-type', '#finance-filter-search']) {
