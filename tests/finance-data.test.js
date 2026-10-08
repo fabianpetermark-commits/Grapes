@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {
   calculateSavings, calculateSummary, categorySummary, csvHasCurrencyColumn, detectRecurringTransactions,
   filterTransactions, forecastFinances, getMonthlySeries, financeBackupFromJson, financeBackupToJson,
-  normalizePerson, normalizeSavingsEntry, normalizeSavingsGoal, normalizeTransaction, parseCsvRows,
+  formatMoneyInput, normalizePerson, normalizeSavingsEntry, normalizeSavingsGoal, normalizeTransaction, parseCsvRows, parseMoneyInput,
   transactionsFromCsv, transactionsToCsv,
 } from '../src/finance-data.js'
 
@@ -16,7 +16,7 @@ const rows = [
 test('normalizes and validates financial transactions', () => {
   assert.throws(() => normalizeTransaction({ amount: 1, date: '2026-02-30' }), /dátum/)
   assert.equal(normalizeTransaction({ amount: 1, date: '2026-01-01', category: '   ' }).category, 'Egyéb kiadás')
-  assert.equal(normalizeTransaction({ type: 'income', amount: '12.345', date: '2026-01-02' }).amount, 12.35)
+  assert.equal(normalizeTransaction({ type: 'income', amount: '12,345', date: '2026-01-02' }).amount, 12.35)
   assert.throws(() => normalizeTransaction({ amount: 0, date: '2026-01-02' }), /nullánál nagyobbnak/)
   assert.throws(() => normalizeTransaction({ amount: 1, date: '02-01-2026' }), /dátum/)
 })
@@ -88,6 +88,14 @@ test('complete finance backup rejects invalid receipts and duplicate ids without
   assert.throws(() => financeBackupFromJson(JSON.stringify(payload)), /ismétlődő/)
   payload.data.currency = 'GBP'
   assert.throws(() => financeBackupFromJson(JSON.stringify(payload)), /nem támogatott/)
+})
+
+test('formats and parses Hungarian money input', () => {
+  assert.equal(formatMoneyInput('7000'), '7.000')
+  assert.equal(formatMoneyInput('1234567,89'), '1.234.567,89')
+  assert.equal(formatMoneyInput('12.5'), '12,5')
+  assert.equal(parseMoneyInput('1.234.567,89'), 1234567.89)
+  assert.equal(normalizeTransaction({ amount: '7.000', date: '2026-01-01' }).amount, 7000)
 })
 
 test('people, savings goals and savings entries validate and calculate reserve', () => {

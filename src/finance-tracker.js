@@ -7,7 +7,7 @@ import { loadLocalProject, saveLocalProject } from './storage/local-project-stor
 import { isGrapesDriveConnected, loadGrapesProject, saveGrapesProject } from './storage/grapes-drive.js'
 import {
   DEFAULT_CATEGORIES, calculateSavings, calculateSummary, categorySummary, csvHasCurrencyColumn, filterTransactions,
-  forecastFinances, getMonthlySeries, financeBackupFromJson, financeBackupToJson, normalizePerson,
+  forecastFinances, formatMoneyInput, getMonthlySeries, financeBackupFromJson, financeBackupToJson, normalizePerson,
   normalizeSavingsEntry, normalizeSavingsGoal, normalizeTransaction, transactionsFromCsv, transactionsToCsv,
 } from './finance-data.js'
 
@@ -34,6 +34,8 @@ let driveSaveTimer = null
 let pendingReceipt = null
 let receiptLoading = false
 let receiptRequest = 0
+let editingTransactionId = null
+let editingSavingsEntryId = null
 
 function today() {
   const date = new Date()
@@ -57,6 +59,42 @@ function formatMoney(value) {
 
 function serializeProject() {
   return { version: 2, currency, transactions, people, categories, savingsGoals, savingsEntries, forecastSettings }
+}
+
+function bindMoneyInputs() {
+  document.querySelectorAll('[data-finance-money]').forEach((input) => {
+    input.addEventListener('input', () => {
+      const formatted = formatMoneyInput(input.value)
+      if (input.value !== formatted) input.value = formatted
+      input.setSelectionRange?.(input.value.length, input.value.length)
+    })
+    input.addEventListener('blur', () => { input.value = formatMoneyInput(input.value) })
+  })
+}
+
+function setTransactionType(type) {
+  el('#finance-type').value = type === 'income' ? 'income' : 'expense'
+  document.querySelectorAll('[data-finance-type]').forEach((item) => item.classList.toggle('is-active', item.dataset.financeType === el('#finance-type').value))
+  renderCategories()
+}
+
+function resetTransactionEditor() {
+  editingTransactionId = null
+  el('#finance-form').reset()
+  el('#finance-date').value = today()
+  setTransactionType('expense')
+  pendingReceipt = null
+  el('#finance-receipt-name').textContent = 'Nincs fájl kiválasztva'
+  el('#finance-transaction-submit').textContent = 'Tétel hozzáadása'
+  el('#finance-transaction-cancel').hidden = true
+}
+
+function resetSavingsEditor() {
+  editingSavingsEntryId = null
+  el('#finance-saving-form').reset()
+  el('#finance-saving-date').value = today()
+  el('#finance-saving-submit').textContent = 'Megtakarítás rögzítése'
+  el('#finance-saving-cancel').hidden = true
 }
 
 function setFinanceTab(tab) {
@@ -208,6 +246,19 @@ function renderSavings() {
   list.replaceChildren()
   for (const entry of [...savingsEntries].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt)).slice(0, 8)) {
     const goal = savingsGoals.find((item) => item.id === entry.goalId)?.name || 'Általános tartalék'
+    const edit = create('button', { class: 'btn btn--icon btn--ghost', type: 'button', textContent: '✎', title: 'Megtakarítási mozgás szerkesztése', 'aria-label': 'Megtakarítási mozgás szerkesztése' })
+    edit.addEventListener('click', () => {
+      editingSavingsEntryId = entry.id
+      el('#finance-saving-type').value = entry.type
+      el('#finance-saving-amount').value = formatMoneyInput(entry.amount)
+      el('#finance-saving-date').value = entry.date
+      el('#finance-saving-goal').value = entry.goalId
+      el('#finance-saving-person').value = entry.personId
+      el('#finance-saving-submit').textContent = 'Módosítás mentése'
+      el('#finance-saving-cancel').hidden = false
+      setFinanceTab('savings')
+      el('#finance-saving-amount').focus()
+    })
     const remove = create('button', { class: 'btn btn--icon btn--ghost', type: 'button', textContent: '×', title: 'Megtakarítási mozgás törlése' })
     remove.addEventListener('click', () => {
       if (!window.confirm('Biztosan törlöd ezt a megtakarítási mozgást?')) return
@@ -215,7 +266,8 @@ function renderSavings() {
     })
     list.append(create('div', { class: 'finance__saving-row' }, [
       create('span', { textContent: entry.date }), create('span', { textContent: `${goal}${personName(entry.personId) ? ` · ${personName(entry.personId)}` : ''}` }),
-      create('strong', { class: entry.type === 'withdrawal' ? 'is-negative' : '', textContent: `${entry.type === 'withdrawal' ? '−' : '+'}${formatMoney(entry.amount)}` }), remove,
+      create('strong', { class: entry.type === 'withdrawal' ? 'is-negative' : '', textContent: `${entry.type === 'withdrawal' ? '−' : '+'}${formatMoney(entry.amount)}` }),
+      create('span', { class: 'finance__record-actions' }, [edit, remove]),
     ]))
   }
 }
@@ -311,13 +363,30 @@ function renderRows(visible) {
       class: `finance__row-amount finance__row-amount--${transaction.type}`,
       textContent: `${transaction.type === 'income' ? '+' : '−'}${formatMoney(transaction.amount)}`,
     })
+    const edit = create('button', { class: 'btn btn--icon btn--ghost', type: 'button', textContent: '✎', title: 'Tétel szerkesztése', 'aria-label': 'Tétel szerkesztése' })
+    edit.addEventListener('click', () => {
+      editingTransactionId = transaction.id
+      setTransactionType(transaction.type)
+      el('#finance-amount').value = formatMoneyInput(transaction.amount)
+      el('#finance-date').value = transaction.date
+      el('#finance-category').value = transaction.category
+      el('#finance-person').value = transaction.personId
+      el('#finance-note').value = transaction.note
+      pendingReceipt = transaction.receipt
+      el('#finance-receipt-name').textContent = pendingReceipt?.name || 'Nincs fájl kiválasztva'
+      el('#finance-transaction-submit').textContent = 'Módosítás mentése'
+      el('#finance-transaction-cancel').hidden = false
+      setFinanceTab('transaction')
+      el('#finance-amount').focus()
+    })
     const remove = create('button', { class: 'btn btn--icon btn--ghost', type: 'button', textContent: '×', title: 'Tétel törlése', 'aria-label': 'Tétel törlése' })
     remove.addEventListener('click', () => {
       if (!window.confirm('Biztosan törlöd ezt a pénzügyi tételt?')) return
       transactions = transactions.filter((item) => item.id !== transaction.id)
       render(); scheduleSave()
     })
-    const cells = [transaction.date, type, transaction.category, personName(transaction.personId) || '—', transaction.note || '—', receiptButton(transaction), amount, remove]
+    const actions = create('span', { class: 'finance__record-actions' }, [edit, remove])
+    const cells = [transaction.date, type, transaction.category, personName(transaction.personId) || '—', transaction.note || '—', receiptButton(transaction), amount, actions]
     const labels = ['Dátum', 'Típus', 'Kategória', 'Személy', 'Megjegyzés', 'Bizonylat', 'Összeg', 'Művelet']
     cells.forEach((content, index) => {
       const cell = create('td', { class: index === 6 ? 'finance__amount-cell' : '' })
@@ -421,6 +490,7 @@ async function loadInitialProject() {
 }
 
 function bindControls() {
+  bindMoneyInputs()
   el('#finance-date').value = today()
   el('#finance-saving-date').value = today()
   el('#finance-goal-start').value = today()
@@ -440,10 +510,8 @@ function bindControls() {
   })
   setFinanceTab(activeFinanceTab)
   document.querySelectorAll('[data-finance-type]').forEach((button) => button.addEventListener('click', () => {
-    el('#finance-type').value = button.dataset.financeType
-    document.querySelectorAll('[data-finance-type]').forEach((item) => item.classList.toggle('is-active', item === button))
+    setTransactionType(button.dataset.financeType)
     el('#finance-category').value = ''
-    renderCategories()
   }))
   el('#finance-add-category').addEventListener('click', () => {
     const name = window.prompt('Új kategória neve:')?.trim()
@@ -476,15 +544,20 @@ function bindControls() {
   el('#finance-saving-form').addEventListener('submit', (event) => {
     event.preventDefault()
     try {
-      savingsEntries.push(normalizeSavingsEntry({
+      const existing = savingsEntries.find((item) => item.id === editingSavingsEntryId)
+      const normalized = normalizeSavingsEntry({
+        id: existing?.id, createdAt: existing?.createdAt,
         type: el('#finance-saving-type').value, amount: el('#finance-saving-amount').value,
         date: el('#finance-saving-date').value, goalId: el('#finance-saving-goal').value,
         personId: el('#finance-saving-person').value,
-      }))
-      el('#finance-saving-amount').value = ''
+      })
+      if (existing) savingsEntries = savingsEntries.map((item) => item.id === existing.id ? normalized : item)
+      else savingsEntries.push(normalized)
+      resetSavingsEditor()
       render(); scheduleSave()
     } catch (error) { notifyError(error.message) }
   })
+  el('#finance-saving-cancel').addEventListener('click', () => { resetSavingsEditor(); renderSavings() })
   for (const selector of ['#finance-forecast-history', '#finance-forecast-future']) {
     el(selector).addEventListener('change', () => {
       forecastSettings = { historyMonths: Number(el('#finance-forecast-history').value), futureMonths: Number(el('#finance-forecast-future').value) }
@@ -511,17 +584,20 @@ function bindControls() {
     event.preventDefault()
     try {
       if (receiptLoading) throw new Error('Várd meg a bizonylat betöltését.')
-      transactions.push(normalizeTransaction({
+      const existing = transactions.find((item) => item.id === editingTransactionId)
+      const normalized = normalizeTransaction({
+        id: existing?.id, createdAt: existing?.createdAt,
         type: el('#finance-type').value, amount: el('#finance-amount').value,
         date: el('#finance-date').value, category: el('#finance-category').value,
         personId: el('#finance-person').value, note: el('#finance-note').value, receipt: pendingReceipt,
-      }))
-      event.target.reset(); el('#finance-date').value = today(); el('#finance-type').value = 'expense'
-      document.querySelectorAll('[data-finance-type]').forEach((item) => item.classList.toggle('is-active', item.dataset.financeType === 'expense'))
-      pendingReceipt = null; el('#finance-receipt-name').textContent = 'Nincs fájl kiválasztva'
+      })
+      if (existing) transactions = transactions.map((item) => item.id === existing.id ? normalized : item)
+      else transactions.push(normalized)
+      resetTransactionEditor()
       render(); scheduleSave(); setFinanceTab('overview')
     } catch (error) { notifyError(error.message) }
   })
+  el('#finance-transaction-cancel').addEventListener('click', () => { resetTransactionEditor(); setFinanceTab('overview') })
   for (const selector of ['#finance-filter-month', '#finance-filter-type', '#finance-filter-search']) {
     el(selector).addEventListener(selector.includes('search') ? 'input' : 'change', render)
   }

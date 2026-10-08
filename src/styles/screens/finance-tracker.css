@@ -166,6 +166,10 @@
 .finance__saving-row span { color: var(--color-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .finance__saving-row strong { color: var(--color-success); }
 .finance__saving-row strong.is-negative { color: var(--color-danger); }
+.finance__record-actions, .finance__form-actions { display: flex; gap: var(--space-2); align-items: center; }
+.finance__record-actions .btn { min-width: 34px; padding: 0; font-size: 18px; }
+.finance__form-actions { align-self: end; }
+.finance__form-actions .btn { flex: 1; }
 .finance__goal { display: grid; gap: var(--space-2); padding: var(--space-3); background: var(--color-bg-raised); border-radius: var(--radius-lg); }
 .finance__goal-head { display: flex; gap: var(--space-3); justify-content: space-between; }
 .finance__goal-head span, .finance__goal small { color: var(--color-text-muted); }

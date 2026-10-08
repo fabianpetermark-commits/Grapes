@@ -252,7 +252,7 @@
             <div class="finance__panel-head"><div><p class="finance__eyebrow">MEGTAKARÍTÁSOK</p><h2>Célok és tartalék</h2></div></div>
             <form id="finance-goal-form" class="finance__compact-form">
               <label>Cél neve<input id="finance-goal-name" required maxlength="80" placeholder="Pl. Vésztartalék"></label>
-              <label>Célösszeg<input id="finance-goal-amount" type="number" min="0.01" step="0.01" required></label>
+              <label>Célösszeg<input id="finance-goal-amount" type="text" inputmode="decimal" data-finance-money required placeholder="0"></label>
               <label>Kezdés<input id="finance-goal-start" type="date" required></label>
               <label>Határidő<input id="finance-goal-end" type="date" required></label>
               <label>Személy<select id="finance-goal-person"></select></label>
@@ -262,11 +262,11 @@
             <div id="finance-savings-list" class="finance__savings-list"></div>
             <form id="finance-saving-form" class="finance__compact-form finance__saving-form">
               <label>Mozgás<select id="finance-saving-type"><option value="deposit">Félretétel</option><option value="withdrawal">Kivét</option></select></label>
-              <label>Összeg<input id="finance-saving-amount" type="number" min="0.01" step="0.01" required></label>
+              <label>Összeg<input id="finance-saving-amount" type="text" inputmode="decimal" data-finance-money required placeholder="0"></label>
               <label>Dátum<input id="finance-saving-date" type="date" required></label>
               <label>Cél<select id="finance-saving-goal"></select></label>
               <label>Személy<select id="finance-saving-person"></select></label>
-              <button class="btn btn--primary" type="submit">Megtakarítás rögzítése</button>
+              <div class="finance__form-actions"><button id="finance-saving-submit" class="btn btn--primary" type="submit">Megtakarítás rögzítése</button><button id="finance-saving-cancel" class="btn btn--ghost" type="button" hidden>Mégse</button></div>
             </form>
           </article>
 
@@ -302,14 +302,14 @@
                 <button type="button" data-finance-type="income">Bevétel</button>
               </div>
               <input id="finance-type" type="hidden" value="expense">
-              <label>Összeg<input id="finance-amount" type="number" min="0.01" step="0.01" inputmode="decimal" required placeholder="0"></label>
+              <label>Összeg<input id="finance-amount" type="text" inputmode="decimal" data-finance-money required placeholder="0"></label>
               <label>Dátum<input id="finance-date" type="date" required></label>
               <label>Kategória<span class="finance__field-row"><input id="finance-category" list="finance-categories" required placeholder="Válassz kategóriát"><button id="finance-add-category" class="btn btn--ghost" type="button" aria-label="Új kategória hozzáadása">+</button></span></label>
               <datalist id="finance-categories"></datalist>
               <label>Személy<span class="finance__field-row"><select id="finance-person"></select><button id="finance-add-person" class="btn btn--ghost" type="button" aria-label="Új személy hozzáadása">+</button></span></label>
               <label class="finance__form-wide">Megjegyzés<input id="finance-note" type="text" maxlength="180" placeholder="Opcionális leírás"></label>
               <label class="finance__receipt finance__form-wide"><span>Bizonylat <small>PDF, PNG, JPEG, GIF vagy WebP, legfeljebb 3 MB</small></span><input id="finance-receipt" type="file" accept="image/png,image/jpeg,image/gif,image/webp,application/pdf"><strong id="finance-receipt-name">Nincs fájl kiválasztva</strong></label>
-              <button class="btn btn--primary finance__form-wide" type="submit">Tétel hozzáadása</button>
+              <div class="finance__form-actions finance__form-wide"><button id="finance-transaction-submit" class="btn btn--primary" type="submit">Tétel hozzáadása</button><button id="finance-transaction-cancel" class="btn btn--ghost" type="button" hidden>Mégse</button></div>
             </form>
           </article>
         </section>

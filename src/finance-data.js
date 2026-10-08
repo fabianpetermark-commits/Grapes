@@ -12,13 +12,36 @@ function cleanText(value, fallback = '') {
   return String(value ?? '').trim() || fallback
 }
 
+export function parseMoneyInput(value) {
+  if (typeof value === 'number') return value
+  const source = String(value ?? '').trim().replace(/[\s\u00a0]/g, '')
+  if (!source) return Number.NaN
+  let normalized = source
+  if (source.includes(',')) normalized = source.replaceAll('.', '').replace(',', '.')
+  else if (/^\d{1,3}(?:\.\d{3})+$/.test(source)) normalized = source.replaceAll('.', '')
+  return Number(normalized)
+}
+
+export function formatMoneyInput(value) {
+  const source = String(value ?? '').trim().replace(/[^\d.,]/g, '')
+  if (!source) return ''
+  const hasComma = source.includes(',')
+  const decimalDot = !hasComma && /^\d+\.\d{1,2}$/.test(source) && !/^\d{1,3}(?:\.\d{3})+$/.test(source)
+  const separator = hasComma ? ',' : decimalDot ? '.' : ''
+  const [rawInteger = '', rawDecimal = ''] = separator ? source.split(separator, 2) : [source, '']
+  const integer = rawInteger.replaceAll('.', '').replaceAll(',', '').replace(/^0+(?=\d)/, '') || '0'
+  const grouped = integer.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  const decimal = rawDecimal.replace(/\D/g, '').slice(0, 2)
+  return separator ? `${grouped},${decimal}` : grouped
+}
+
 function roundedAmount(value) {
-  return Math.round(Number(value) * 100) / 100
+  return Math.round(parseMoneyInput(value) * 100) / 100
 }
 
 export function normalizeTransaction(value = {}) {
   const type = value.type === 'income' ? 'income' : 'expense'
-  const amount = Math.round(Number(value.amount) * 100) / 100
+  const amount = roundedAmount(value.amount)
   const date = validDate(value.date) ? value.date : ''
   if (!Number.isFinite(amount) || amount <= 0) throw new Error('Az összegnek nullánál nagyobbnak kell lennie.')
   if (!date) throw new Error('Érvényes dátum szükséges.')
