@@ -10,7 +10,7 @@ import { loadLocalProject, saveLocalProject } from './storage/local-project-stor
 import { isGrapesDriveConnected, loadGrapesProject, saveGrapesProject } from './storage/grapes-drive.js'
 import {
   DEFAULT_CATEGORIES, calculateSavings, calculateSummary, categorySummary, filterTransactions,
-  forecastFinances, formatMoneyInput, getMonthlySeries, financeBackupFromJson, financeBackupToJson, normalizePerson,
+  forecastFinances, formatMoneyInput, getMonthlySeries, getMonthlySavingsSeries, financeBackupFromJson, financeBackupToJson, normalizePerson,
   normalizeSavingsEntry, normalizeSavingsGoal, normalizeTransaction, transactionsToCsv,
 } from './finance-data.js'
 
@@ -79,6 +79,9 @@ function bindMoneyInputs() {
 
 function setTransactionType(type) {
   el('#finance-type').value = type === 'income' ? 'income' : 'expense'
+  const planned = el('#finance-planned')
+  planned.disabled = el('#finance-type').value === 'income'
+  if (planned.disabled) planned.checked = false
   document.querySelectorAll('[data-finance-type]').forEach((item) => item.classList.toggle('is-active', item.dataset.financeType === el('#finance-type').value))
   renderCategories()
 }
@@ -308,26 +311,29 @@ function renderForecast() {
 
 function renderChart(visibleTransactions) {
   const series = getMonthlySeries(transactions, 6)
-  const maximum = Math.max(1, ...series.flatMap((item) => [item.income, item.expense]))
+  const savingSeries = new Map(getMonthlySavingsSeries(savingsEntries, 6).map((item) => [item.key, item.change]))
+  for (const month of series) month.savings = savingSeries.get(month.key) || 0
+  const maximum = Math.max(1, ...series.flatMap((item) => [item.income, item.expense, item.planned, Math.abs(item.savings)]))
   const chart = el('#finance-chart')
   chart.replaceChildren()
   for (const month of series) {
     const group = create('div', { class: 'finance__chart-group' })
     const bars = create('div', { class: 'finance__bars' })
-    for (const kind of ['income', 'expense']) {
+    for (const kind of ['income', 'expense', 'planned', 'savings']) {
       const value = month[kind]
+      const labels = { income: 'Bevétel', expense: 'Kiadás', planned: 'Tervezett kiadás', savings: 'Megtakarítás változása' }
       const bar = create('span', {
-        class: `finance__bar finance__bar--${kind}`,
-        title: `${kind === 'income' ? 'Bevétel' : 'Kiadás'}: ${formatMoney(value)}`,
-        'aria-label': `${month.label} ${kind === 'income' ? 'bevétel' : 'kiadás'} ${formatMoney(value)}`,
+        class: `finance__bar finance__bar--${kind}${kind === 'savings' && value < 0 ? ' is-negative' : ''}`,
+        title: `${labels[kind]}: ${formatMoney(value)}`,
+        'aria-label': `${month.label} ${labels[kind].toLocaleLowerCase('hu-HU')} ${formatMoney(value)}`,
       })
-      bar.style.height = value ? `${Math.max(4, (value / maximum) * 100)}%` : '2px'
+      bar.style.height = value ? `${Math.max(4, (Math.abs(value) / maximum) * 100)}%` : '2px'
       bars.append(bar)
     }
     group.append(bars, create('span', { textContent: month.label.replace('.', '') }))
     chart.append(group)
   }
-  const categories = categorySummary(visibleTransactions.filter((item) => item.type === 'expense')).slice(0, 5)
+  const categories = categorySummary(visibleTransactions.filter((item) => item.type === 'expense' && !item.planned)).slice(0, 5)
   const categoryHost = el('#finance-category-chart')
   categoryHost.replaceChildren()
   if (!categories.length) {
@@ -370,18 +376,20 @@ function renderRows(visible) {
   body.replaceChildren()
   for (const transaction of visible) {
     const row = create('tr')
+    const displayType = transaction.planned ? 'planned' : transaction.type
     const type = create('span', {
-      class: `finance__type finance__type--${transaction.type}`,
-      textContent: transaction.type === 'income' ? 'Bevétel' : 'Kiadás',
+      class: `finance__type finance__type--${displayType}`,
+      textContent: transaction.planned ? 'Tervezett' : transaction.type === 'income' ? 'Bevétel' : 'Kiadás',
     })
     const amount = create('strong', {
-      class: `finance__row-amount finance__row-amount--${transaction.type}`,
+      class: `finance__row-amount finance__row-amount--${displayType}`,
       textContent: `${transaction.type === 'income' ? '+' : '−'}${formatMoney(transaction.amount)}`,
     })
     const edit = create('button', { class: 'btn btn--icon btn--ghost', type: 'button', textContent: '✎', title: 'Tétel szerkesztése', 'aria-label': 'Tétel szerkesztése' })
     edit.addEventListener('click', () => {
       editingTransactionId = transaction.id
       setTransactionType(transaction.type)
+      el('#finance-planned').checked = Boolean(transaction.planned)
       el('#finance-amount').value = formatMoneyInput(transaction.amount)
       el('#finance-date').value = transaction.date
       el('#finance-category').value = transaction.category
@@ -437,7 +445,9 @@ function render() {
   el('#finance-balance').textContent = formatMoney(summary.balance)
   el('#finance-balance').dataset.negative = summary.balance < 0 ? 'true' : 'false'
   el('#finance-income-count').textContent = `${visible.filter((item) => item.type === 'income').length} tétel`
-  el('#finance-expense-count').textContent = `${visible.filter((item) => item.type === 'expense').length} tétel`
+  const actualExpenseCount = visible.filter((item) => item.type === 'expense' && !item.planned).length
+  const plannedExpenseCount = visible.filter((item) => item.planned).length
+  el('#finance-expense-count').textContent = `${actualExpenseCount} tényleges${plannedExpenseCount ? ` · ${plannedExpenseCount} tervezett` : ''}`
   el('#finance-balance-note').textContent = getFilters().month ? `${getFilters().month} hónapban` : 'A kijelölt időszakban'
   el('#finance-delete-all').disabled = transactions.length === 0
   const currencySelect = el('#finance-currency')
@@ -785,6 +795,7 @@ function bindControls() {
       const normalized = normalizeTransaction({
         id: existing?.id, createdAt: existing?.createdAt,
         type: el('#finance-type').value, amount: el('#finance-amount').value,
+        planned: el('#finance-planned').checked,
         date: el('#finance-date').value, category: el('#finance-category').value,
         personId: el('#finance-person').value, note: el('#finance-note').value, receipt: pendingReceipt,
       })

@@ -49,6 +49,7 @@ export function normalizeTransaction(value = {}) {
   return {
     id: String(value.id || crypto.randomUUID()),
     type,
+    planned: type === 'expense' && Boolean(value.planned),
     amount,
     date,
     category: String(value.category || '').trim() || (type === 'income' ? 'Egyéb bevétel' : 'Egyéb kiadás'),
@@ -114,6 +115,7 @@ function linearProjection(values, step, allowNegative = false) {
 export function detectRecurringTransactions(transactions = [], referenceDate = new Date()) {
   const groups = new Map()
   for (const item of transactions) {
+    if (item.planned) continue
     const label = `${item.type}|${cleanText(item.category).toLocaleLowerCase('hu-HU')}|${cleanText(item.note).toLocaleLowerCase('hu-HU')}|${cleanText(item.personId)}`
     const group = groups.get(label) || []
     group.push(item)
@@ -196,7 +198,7 @@ export function financeBackupFromJson(source) {
 export function calculateSummary(transactions) {
   const totals = transactions.reduce((summary, transaction) => {
     if (transaction.type === 'income') summary.income += Math.round(Number(transaction.amount) * 100) || 0
-    else summary.expense += Math.round(Number(transaction.amount) * 100) || 0
+    else if (!transaction.planned) summary.expense += Math.round(Number(transaction.amount) * 100) || 0
     return summary
   }, { income: 0, expense: 0 })
   return { income: totals.income / 100, expense: totals.expense / 100, balance: (totals.income - totals.expense) / 100 }
@@ -206,8 +208,10 @@ export function filterTransactions(transactions, { month = '', type = 'all', sea
   const term = String(search).trim().toLocaleLowerCase('hu-HU')
   return transactions.filter((transaction) => {
     if (month && !transaction.date.startsWith(month)) return false
-    if (type !== 'all' && transaction.type !== type) return false
-    if (term && !`${transaction.category} ${transaction.note} ${transaction.personName || ''}`.toLocaleLowerCase('hu-HU').includes(term)) return false
+    if (type === 'planned' && !transaction.planned) return false
+    if (type === 'expense' && (transaction.type !== 'expense' || transaction.planned)) return false
+    if (type !== 'all' && !['planned', 'expense'].includes(type) && transaction.type !== type) return false
+    if (term && !`${transaction.category} ${transaction.note} ${transaction.personName || ''} ${transaction.planned ? 'tervezett kiadás' : ''}`.toLocaleLowerCase('hu-HU').includes(term)) return false
     return true
   })
 }
@@ -217,8 +221,10 @@ export function getMonthlySeries(transactions, months = 6, referenceDate = new D
   for (let offset = months - 1; offset >= 0; offset -= 1) {
     const date = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - offset, 1)
     const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-    const summary = calculateSummary(transactions.filter((item) => item.date.startsWith(key)))
-    result.push({ key, label: new Intl.DateTimeFormat('hu-HU', { month: 'short' }).format(date), ...summary })
+    const monthTransactions = transactions.filter((item) => item.date.startsWith(key))
+    const summary = calculateSummary(monthTransactions)
+    const planned = monthTransactions.filter((item) => item.planned).reduce((sum, item) => sum + Number(item.amount || 0), 0)
+    result.push({ key, label: new Intl.DateTimeFormat('hu-HU', { month: 'short' }).format(date), ...summary, planned })
   }
   return result
 }
@@ -230,10 +236,11 @@ function escapeCsvCell(value) {
 
 export function transactionsToCsv(transactions, currency = 'HUF') {
   if (!FINANCE_CURRENCIES.has(currency)) throw new Error('Érvénytelen pénznem.')
-  const header = ['Dátum', 'Típus', 'Kategória', 'Összeg', 'Pénznem', 'Megjegyzés', 'Bizonylat']
+  const header = ['Dátum', 'Típus', 'Tervezett', 'Kategória', 'Összeg', 'Pénznem', 'Megjegyzés', 'Bizonylat']
   const rows = transactions.map((item) => [
     item.date,
     item.type === 'income' ? 'Bevétel' : 'Kiadás',
+    item.planned ? 'Igen' : 'Nem',
     item.category,
     Number(item.amount).toFixed(2),
     currency,
@@ -281,6 +288,7 @@ export function transactionsFromCsv(source, expectedCurrency = '') {
   const indexes = {
     date: find('dátum', 'datum', 'date'), type: find('típus', 'tipus', 'type'),
     category: find('kategória', 'kategoria', 'category'), amount: find('összeg', 'osszeg', 'amount'),
+    planned: find('tervezett', 'planned'),
     note: find('megjegyzés', 'megjegyzes', 'note', 'description'),
     currency: find('pénznem', 'penznem', 'currency'),
   }
@@ -296,6 +304,7 @@ export function transactionsFromCsv(source, expectedCurrency = '') {
     const type = rawType.includes('bev') || rawType === 'income' ? 'income' : 'expense'
     return normalizeTransaction({
       date: row[indexes.date], type, amount: Math.abs(Number(rawAmount)),
+      planned: indexes.planned >= 0 && /^(?:igen|true|1|yes)$/i.test(String(row[indexes.planned] || '').trim()),
       category: indexes.category >= 0 ? row[indexes.category] : '',
       note: indexes.note >= 0 ? row[indexes.note] : '',
     })

@@ -288,8 +288,8 @@
 
         <section class="finance__grid">
           <article class="finance__panel finance__chart-panel" data-finance-panel="overview">
-            <div class="finance__panel-head"><div><p class="finance__eyebrow">ÁTTEKINTÉS</p><h2>Utolsó 6 hónap</h2></div><div class="finance__legend"><span><i class="is-income"></i>Bevétel</span><span><i class="is-expense"></i>Kiadás</span></div></div>
-            <div id="finance-chart" class="finance__chart" role="img" aria-label="Az utolsó hat hónap bevételei és kiadásai"></div>
+            <div class="finance__panel-head"><div><p class="finance__eyebrow">ÁTTEKINTÉS</p><h2>Utolsó 6 hónap</h2></div><div class="finance__legend"><span><i class="is-income"></i>Bevétel</span><span><i class="is-expense"></i>Kiadás</span><span><i class="is-planned"></i>Tervezett</span><span><i class="is-savings"></i>Megtakarítás</span></div></div>
+            <div id="finance-chart" class="finance__chart" role="img" aria-label="Az utolsó hat hónap bevételei, tényleges és tervezett kiadásai, valamint megtakarítási változásai"></div>
             <div class="finance__category-head"><strong>Kiadások kategóriánként</strong><span>A kijelölt időszakban</span></div>
             <div id="finance-category-chart" class="finance__category-chart"></div>
           </article>
@@ -297,6 +297,7 @@
           <article class="finance__panel finance__form-panel" data-finance-panel="transaction" hidden>
             <div class="finance__panel-head"><div><p class="finance__eyebrow">ÚJ TÉTEL</p><h2>Tranzakció rögzítése</h2></div></div>
             <form id="finance-form" class="finance__form">
+              <label class="finance__planned-toggle finance__form-wide"><input id="finance-planned" type="checkbox"><span>Tervezett kiadás</span><small>Elmentjük a naplóba, de nem számoljuk a tényleges kiadásokhoz.</small></label>
               <div class="finance__type-switch" role="group" aria-label="Tranzakció típusa">
                 <button class="is-active" type="button" data-finance-type="expense">Kiadás</button>
                 <button type="button" data-finance-type="income">Bevétel</button>
@@ -344,7 +345,7 @@
             <div><p class="finance__eyebrow">NAPLÓ</p><h2>Tranzakciók</h2></div>
             <div class="finance__filters">
               <input id="finance-filter-month" type="month" aria-label="Hónap szűrése">
-              <select id="finance-filter-type" aria-label="Típus szűrése"><option value="all">Minden típus</option><option value="income">Bevétel</option><option value="expense">Kiadás</option></select>
+              <select id="finance-filter-type" aria-label="Típus szűrése"><option value="all">Minden típus</option><option value="income">Bevétel</option><option value="expense">Tényleges kiadás</option><option value="planned">Tervezett kiadás</option></select>
               <input id="finance-filter-search" type="search" placeholder="Keresés…" aria-label="Keresés a tranzakciók között">
               <button id="finance-filter-clear" class="btn btn--ghost" type="button">Szűrés törlése</button>
               <button id="finance-restore-last" class="btn btn--ghost" type="button">Utolsó törlés visszaállítása</button>

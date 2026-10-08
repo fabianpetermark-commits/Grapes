@@ -22,16 +22,22 @@ test('normalizes and validates financial transactions', () => {
 })
 
 test('calculates totals and filters by month, type and text', () => {
-  assert.deepEqual(calculateSummary(rows), { income: 500000, expense: 20000, balance: 480000 })
+  const planned = normalizeTransaction({ id: '4', type: 'expense', planned: true, amount: 30000, date: '2026-10-20', category: 'Utazás' })
+  assert.equal(planned.planned, true)
+  assert.equal(normalizeTransaction({ type: 'income', planned: true, amount: 1, date: '2026-10-20' }).planned, false)
+  assert.deepEqual(calculateSummary([...rows, planned]), { income: 500000, expense: 20000, balance: 480000 })
   assert.deepEqual(filterTransactions(rows, { month: '2026-10', type: 'expense' }).map((item) => item.id), ['2'])
+  assert.deepEqual(filterTransactions([...rows, planned], { type: 'planned' }).map((item) => item.id), ['4'])
+  assert.deepEqual(filterTransactions([...rows, planned], { type: 'expense' }).map((item) => item.id), ['2', '3'])
   assert.deepEqual(filterTransactions(rows, { search: 'bevásárlás' }).map((item) => item.id), ['2'])
 })
 
 test('creates stable monthly and category summaries', () => {
-  const series = getMonthlySeries(rows, 2, new Date(2026, 9, 4))
-  assert.deepEqual(series.map(({ key, income, expense }) => ({ key, income, expense })), [
-    { key: '2026-09', income: 0, expense: 8000 },
-    { key: '2026-10', income: 500000, expense: 12000 },
+  const planned = { id: '4', type: 'expense', planned: true, amount: 30000, date: '2026-10-20', category: 'Utazás', note: '' }
+  const series = getMonthlySeries([...rows, planned], 2, new Date(2026, 9, 4))
+  assert.deepEqual(series.map(({ key, income, expense, planned: plannedAmount }) => ({ key, income, expense, planned: plannedAmount })), [
+    { key: '2026-09', income: 0, expense: 8000, planned: 0 },
+    { key: '2026-10', income: 500000, expense: 12000, planned: 30000 },
   ])
   assert.deepEqual(categorySummary(rows.filter((item) => item.type === 'expense')), [
     { category: 'Élelmiszer', amount: 20000 },
@@ -39,12 +45,13 @@ test('creates stable monthly and category summaries', () => {
 })
 
 test('CSV export and import preserve quoted Hungarian data', () => {
-  const source = transactionsToCsv([{ ...rows[1], note: 'Kenyér; tej, "akciós"' }], 'EUR')
+  const source = transactionsToCsv([{ ...rows[1], planned: true, note: 'Kenyér; tej, "akciós"' }], 'EUR')
   assert.equal(csvHasCurrencyColumn(source), true)
   const parsed = transactionsFromCsv(source, 'EUR')
   assert.equal(parsed.length, 1)
   assert.equal(parsed[0].type, 'expense')
   assert.equal(parsed[0].amount, 12000)
+  assert.equal(parsed[0].planned, true)
   assert.equal(parsed[0].note, 'Kenyér; tej, "akciós"')
   assert.throws(() => transactionsFromCsv(source, 'HUF'), /Átváltás nélkül/)
   assert.equal(csvHasCurrencyColumn('Dátum;Összeg\n2026-01-01;12'), false)
