@@ -16,9 +16,11 @@ Ez a Grapes modulokon átívelő elsődleges fejlesztési naplója. A részletes
 
 **Kész:** Google-bejelentkezés, `drive.file` projektmentés, modulválasztó, legutóbbi projektek, magyar/angol alkalmazáskeret.
 
-**Kész:** fejlesztői menü és böngészőnkénti modulkapcsolók a `projectsoundmodel@gmail.com` Google-fiókhoz; a kikapcsolt modul látható, szürke és nem nyitható meg.
+**Kész:** fejlesztői menü a `projectsoundmodel@gmail.com` Google-fiókhoz, külön négyjegyű PIN-kapuval és sárga–fekete aktív mód jelzéssel; böngészőnkénti modulkapcsolók; a kikapcsolt modul látható, szürke és nem nyitható meg.
 
-**Korlát:** a GitHub Pages statikus alkalmazás. A kliensoldali e-mail-kapu és a helyi kapcsolók nem szerveroldali biztonsági vagy globális feature-flag rendszer. Globális kapcsoláshoz hitelesített backend szükséges.
+**Kész:** a fejlesztői menüben olvasható és letölthető `PROJECT_BACKLOG.md`, valamint hozzáadható/eltávolítható, az admin Google Drive-jába mentett felhasználói nyilvántartás.
+
+**Korlát:** a GitHub Pages statikus alkalmazás. A kliensoldali e-mail- és PIN-kapu, a felhasználói nyilvántartás és a helyi kapcsolók nem szerveroldali biztonsági, belépést tiltó vagy globális feature-flag rendszer. Ezekhez hitelesített backend szükséges.
 
 ## Marketing
 
@@ -64,9 +66,9 @@ Ez a Grapes modulokon átívelő elsődleges fejlesztési naplója. A részletes
 
 ### Pénzügyi Napló
 
-**Kész:** bevételek, tényleges/tervezett kiadások, megtakarítások, kimutatások és kép-alapú nyugta-OCR alapok.
+**Kész:** bevételek, tényleges/tervezett kiadások, megtakarítások, kimutatások, kép-alapú nyugta-OCR alapok, valamint jóváhagyásos XLS/XLSX/XLSM/CSV munkafüzet-import több munkalap és adatblokk felismerésével.
 
-**Parkol:** összetett XLS/XLSX/XLSM/CSV import; kategória-tanulás; AI-alapú jelentésfelismerés; makróértelmezés; Excel-visszaírás; PDF-nyugta OCR.
+**Parkol:** kategória-tanulás; AI-alapú jelentésfelismerés; makróértelmezés; Excel-visszaírás; PDF-nyugta OCR.
 
 **Nyitott döntés:** az import megtakarítási célokat is hozzon létre, vagy csak egy gyűjtőcél alá importáljon. Részletek: `GRAPES_BACKLOG.md`.
 
@@ -84,14 +86,13 @@ Ez a Grapes modulokon átívelő elsődleges fejlesztési naplója. A részletes
 
 **Blokkolt:** közvetlen Samsung Health Data SDK vízadapter. A forrás elkészült, de a Samsung AAR, JDK 17/SDK 35 build, készülékteszt és nyilvános terjesztéshez a későbbi Samsung partnerjóváhagyás hiányzik.
 
-**Ellenőrzés:** 209/209 teljes repository egységteszt, fejlesztői menü böngészőteszt, Food mobil böngészőteszt és production build sikeres.
+**Ellenőrzés:** 211/211 teljes repository egységteszt, fejlesztői menü böngészőteszt, Food mobil böngészőteszt és production build sikeres.
 
 **Következő:** Android Studio/JDK 17/SDK 35 környezetben valódi készülékteszt; sikeres eredmény nélkül a Grapes → Health Connect/Samsung Health képesség nem tekinthető késznek.
 
 ## Javasolt sorrend
 
-1. Modulkapcsolók ellenőrzése a végleges fejlesztői e-maillel.
+1. Hitelesített backend a globális felhasználó- és moduljogosultságokhoz.
 2. E-book ismert hibák és production kiadás lezárása.
-3. Pénzügyi Excel-import első, jóváhagyásos változata.
-4. 3D Pattern / Array.
-5. Food Android készülékteszt, amikor újra napirendre kerül.
+3. 3D Pattern / Array.
+4. Food Android készülékteszt, amikor újra napirendre kerül.

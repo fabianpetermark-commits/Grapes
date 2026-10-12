@@ -8,6 +8,9 @@ import { chromium } from 'playwright-core'
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const baseUrl = 'http://127.0.0.1:4182'
 const developerEmail = 'projectsoundmodel@gmail.com'
+const developerPin = '4826'
+const screenshotPath = process.env.DEVELOPER_MENU_SCREENSHOT || ''
+const gateScreenshotPath = process.env.DEVELOPER_GATE_SCREENSHOT || ''
 const executablePath = [
   process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
   'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
@@ -17,7 +20,7 @@ if (!executablePath) throw new Error('Chromium böngésző szükséges a fejlesz
 
 const server = spawn(process.execPath, [resolve(root, 'node_modules/vite/bin/vite.js'), '--host', '127.0.0.1', '--port', '4182', '--strictPort'], {
   cwd: root,
-  env: { ...process.env, VITE_GOOGLE_CLIENT_ID: 'developer-test-client', VITE_DEVELOPER_EMAIL: developerEmail },
+  env: { ...process.env, VITE_GOOGLE_CLIENT_ID: 'developer-test-client', VITE_DEVELOPER_EMAIL: developerEmail, VITE_DEVELOPER_PIN: developerPin },
   stdio: 'ignore',
 })
 
@@ -45,7 +48,20 @@ try {
   await page.goto(baseUrl)
   await page.locator('#developer-menu-toggle').waitFor({ state: 'visible' })
   await page.locator('#developer-menu-toggle').click()
+  await page.locator('#developer-pin-gate').waitFor({ state: 'visible' })
+  if (gateScreenshotPath) await page.screenshot({ path: gateScreenshotPath })
+  await page.locator('#developer-pin-input').fill('1111')
+  await page.locator('#developer-pin-form').evaluate(form => form.requestSubmit())
+  await page.locator('#developer-pin-error').waitFor({ state: 'visible' })
+  assert.match(await page.locator('#developer-pin-error').textContent(), /Hibás/)
+  await page.locator('#developer-pin-input').fill(developerPin)
+  await page.locator('#developer-pin-form').evaluate(form => form.requestSubmit())
   await page.locator('#developer-panel').waitFor({ state: 'visible' })
+  assert.equal(await page.locator('#developer-mode-banner').isVisible(), true)
+  assert.match(await page.locator('#developer-backlog-content').textContent(), /egyesített fejlesztési backlog/i)
+  await page.locator('#developer-user-list .developer-user-row').waitFor({ state: 'visible' })
+  assert.match(await page.locator('#developer-user-list').textContent(), /projectsoundmodel@gmail.com/i)
+  if (screenshotPath) await page.screenshot({ path: screenshotPath, fullPage: true })
   await page.locator('[data-developer-module="food"]').uncheck()
   assert.equal(await page.locator('#pick-food').isVisible(), true)
   assert.equal(await page.locator('#pick-food').isDisabled(), true)
@@ -62,7 +78,7 @@ try {
   assert.equal(await visitorPage.locator('#developer-menu-toggle').isHidden(), true)
   await visitor.close()
 
-  console.log('✓ A fejlesztői fiók kapcsolhat modult; a látogató nem látja a fejlesztői menüt')
+  console.log('✓ A fejlesztői fiók PIN-kóddal beléphet, backlogot és felhasználólistát lát; a látogató nem látja a menüt')
 } finally {
   await browser?.close()
   server.kill()

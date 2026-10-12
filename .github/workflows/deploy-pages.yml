@@ -44,6 +44,7 @@ jobs:
           VITE_GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
           VITE_GOOGLE_APP_ID: '991532871119'
           VITE_DEVELOPER_EMAIL: projectsoundmodel@gmail.com
+          VITE_DEVELOPER_PIN: '2026'
           VITE_EBOOK_EPUB_WRITE_ENABLED: 'true'
           VITE_EBOOK_TRANSFER_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
       - name: Build isolated EPUB write pilot
@@ -54,6 +55,7 @@ jobs:
           VITE_GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
           VITE_GOOGLE_APP_ID: '991532871119'
           VITE_DEVELOPER_EMAIL: projectsoundmodel@gmail.com
+          VITE_DEVELOPER_PIN: '2026'
           VITE_EBOOK_EPUB_WRITE_ENABLED: 'true'
           VITE_EBOOK_TRANSFER_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
       - uses: actions/upload-pages-artifact@v3

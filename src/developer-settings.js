@@ -1,4 +1,6 @@
 export const MODULE_SETTINGS_KEY = 'grapes-developer-module-flags-v1'
+export const DEVELOPER_UNLOCK_KEY = 'grapes-developer-unlock-v1'
+export const DEFAULT_DEVELOPER_PIN = '2026'
 
 export const MODULE_DEFINITIONS = Object.freeze([
   { key: 'email', label: 'E-mail Stúdió' },
@@ -24,6 +26,36 @@ export function configuredDeveloperEmail() {
 export function isDeveloperEmail(email, configuredEmail = configuredDeveloperEmail()) {
   const expected = normalizeEmail(configuredEmail)
   return Boolean(expected) && normalizeEmail(email) === expected
+}
+
+export function configuredDeveloperPin() {
+  const configured = String(import.meta.env?.VITE_DEVELOPER_PIN || '').trim()
+  return /^\d{4}$/.test(configured) ? configured : DEFAULT_DEVELOPER_PIN
+}
+
+export function isDeveloperPin(pin, configuredPin = configuredDeveloperPin()) {
+  const value = String(pin || '').trim()
+  const expected = String(configuredPin || '').trim()
+  return /^\d{4}$/.test(value) && /^\d{4}$/.test(expected) && value === expected
+}
+
+export function isDeveloperSessionUnlocked(email, storage = globalThis.sessionStorage) {
+  try {
+    return storage?.getItem(DEVELOPER_UNLOCK_KEY) === normalizeEmail(email)
+  } catch {
+    return false
+  }
+}
+
+export function unlockDeveloperSession(email, storage = globalThis.sessionStorage) {
+  const normalized = normalizeEmail(email)
+  if (!normalized) return false
+  storage?.setItem(DEVELOPER_UNLOCK_KEY, normalized)
+  return true
+}
+
+export function lockDeveloperSession(storage = globalThis.sessionStorage) {
+  storage?.removeItem(DEVELOPER_UNLOCK_KEY)
 }
 
 export function readModuleSettings(storage = globalThis.localStorage) {

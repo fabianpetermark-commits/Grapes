@@ -116,6 +116,10 @@
         </div>
       </header>
 
+      <div id="developer-mode-banner" class="developer-mode-banner" role="status" hidden>
+        <span>FEJLESZTŐI MÓD AKTÍV</span>
+      </div>
+
       <main class="dashboard__main">
         <section class="dashboard__hero">
           <p class="dashboard__eyebrow" data-i18n="dashboard.eyebrow">GRAPES ALKALMAZÁSCSOMAG</p>
@@ -130,7 +134,28 @@
           </div>
           <p class="developer-panel__notice">A kapcsolók ezen a böngészőn érvényes előnézeti beállítások. A kikapcsolt modul látható marad, de nem nyitható meg.</p>
           <div id="developer-module-list" class="developer-module-list"></div>
-          <button id="developer-enable-all" class="btn btn--secondary" type="button">Összes modul bekapcsolása</button>
+          <div class="developer-panel__actions">
+            <button id="developer-enable-all" class="btn btn--secondary" type="button">Összes modul bekapcsolása</button>
+            <button id="developer-mode-exit" class="btn btn--ghost" type="button">Kilépés a fejlesztői módból</button>
+          </div>
+          <section class="developer-users" aria-labelledby="developer-users-title">
+            <div class="developer-users__head">
+              <div><h3 id="developer-users-title">Regisztrált felhasználók</h3><p id="developer-users-status" role="status" aria-live="polite"></p></div>
+            </div>
+            <form id="developer-user-form" class="developer-user-form">
+              <label><span>Név</span><input class="input" name="name" type="text" autocomplete="name" placeholder="Felhasználó neve"></label>
+              <label><span>E-mail</span><input class="input" name="email" type="email" autocomplete="email" placeholder="nev@example.com" required></label>
+              <label><span>Szerepkör</span><select class="select" name="role"><option value="member">Felhasználó</option><option value="owner">Tulajdonos</option></select></label>
+              <button class="btn btn--secondary" type="submit">Hozzáadás</button>
+            </form>
+            <div id="developer-user-list" class="developer-user-list"></div>
+            <p class="developer-panel__notice">A lista az adminisztrátor Google Drive-jában szinkronizált nyilvántartás. A bejelentkezés központi letiltásához később hitelesített backend szükséges.</p>
+          </section>
+          <details class="developer-status developer-backlog" open>
+            <summary>Egyesített hátralévő projektlista</summary>
+            <div class="developer-status__actions"><button id="developer-backlog-download" class="btn btn--ghost btn--sm" type="button">PROJECT_BACKLOG.md letöltése</button></div>
+            <pre id="developer-backlog-content"></pre>
+          </details>
           <details class="developer-status">
             <summary>Központi fejlesztési napló</summary>
             <pre id="developer-status-content"></pre>
@@ -1451,6 +1476,19 @@
           </div>
         </section>
       </div>
+    </div>
+
+    <div id="developer-pin-gate" class="developer-pin-gate" role="dialog" aria-modal="true" aria-labelledby="developer-pin-title" aria-describedby="developer-pin-description" hidden>
+      <form id="developer-pin-form" class="developer-pin-card">
+        <div class="developer-hazard-stripe" aria-hidden="true"></div>
+        <p class="developer-pin-card__eyebrow">KORLÁTOZOTT TERÜLET</p>
+        <h2 id="developer-pin-title">Belépés fejlesztői módba</h2>
+        <p id="developer-pin-description">A folytatáshoz add meg a négyjegyű fejlesztői kódot.</p>
+        <label class="developer-pin-field" for="developer-pin-input"><span>4 számjegyű kód</span><input id="developer-pin-input" class="input" name="pin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="one-time-code" required></label>
+        <p id="developer-pin-error" class="developer-pin-error" role="alert" aria-live="assertive"></p>
+        <div class="developer-pin-card__actions"><button id="developer-pin-cancel" class="btn btn--ghost" type="button">Mégse</button><button class="btn btn--primary" type="submit">Belépés</button></div>
+        <div class="developer-hazard-stripe" aria-hidden="true"></div>
+      </form>
     </div>
 
     <script type="module" src="/src/main.js"></script>
