@@ -13,10 +13,10 @@ test('the app shell groups every module and starts with Google sign-in', async (
   assert.equal((favicon.match(/<circle /g) || []).length, 18)
   assert.equal((logo.match(/<circle /g) || []).length, 18)
   for (const color of ['#4285f4', '#34a853', '#fbbc05', '#ea4335']) assert.match(html, new RegExp(color))
-  for (const category of ['marketing', 'printing', 'reading', 'finance']) {
+  for (const category of ['marketing', 'printing', 'reading', 'finance', 'health']) {
     assert.match(html, new RegExp(`data-i18n="category\\.${category}"`))
   }
-  for (const module of ['email', 'brochure', 'qr', 'studio', 'ebook', 'finance']) {
+  for (const module of ['email', 'brochure', 'qr', 'studio', 'ebook', 'finance', 'food']) {
     assert.match(html, new RegExp(`data-i18n="module\\.${module}"`))
   }
 })
@@ -40,7 +40,7 @@ test('sign-out returns to the login screen without deleting local project data',
 test('the workspace menu uses one vertical category list with menu-like module rows', async () => {
   const [html, css] = await Promise.all([read('index.html'), read('src/styles/screens/splash.css')])
   assert.match(html, /class="dashboard__menu"/)
-  assert.equal((html.match(/<section class="module-group"/g) || []).length, 4)
+  assert.equal((html.match(/<section class="module-group"/g) || []).length, 5)
   assert.doesNotMatch(html, /class="dashboard__groups"/)
   assert.match(css, /\.dashboard__menu\s*\{[^}]*column-count:\s*2/)
   assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.dashboard__menu\s*\{\s*column-count:\s*1/)

@@ -7,6 +7,7 @@
 // ez a hiba nem tud előfordulni: minden képernyő rejtett, kivéve egyet.
 
 import { el } from './ui/dom.js'
+import { isModuleEnabled } from './developer-settings.js'
 
 // A Fabric az alapértelmezett brossúra-motor; a GrapesJS csak explicit
 // kérésre, ?engine=grapes URL-paraméterrel indul.
@@ -40,6 +41,10 @@ const SCREENS = {
     id: '#finance-app',
     load: () => import('./finance-tracker.js').then((module) => module.initFinanceTracker()),
   },
+  food: {
+    id: '#food-app',
+    load: () => import('./food/food-app.js').then((module) => module.initFoodApp()),
+  },
   studio: {
     id: '#studio-app',
     load: () =>
@@ -61,9 +66,10 @@ const SCREENS = {
 
 // A GrapesJS-es #app mindig jelen van a markupban, de ha nem az a motor
 // fut, akkor is rejtve kell maradnia.
-const ALL_SCREEN_IDS = ['#login-screen', '#splash-screen', '#app', '#fabric-app', '#studio-app', '#qr-app', '#ebook-app', '#email-app', '#finance-app', '#billing-app']
+const ALL_SCREEN_IDS = ['#login-screen', '#splash-screen', '#app', '#fabric-app', '#studio-app', '#qr-app', '#ebook-app', '#email-app', '#finance-app', '#billing-app', '#food-app']
 
 export function showScreen(name) {
+  if (name !== 'login' && name !== 'splash' && !isModuleEnabled(name)) name = 'splash'
   const screen = SCREENS[name]
   if (!screen) throw new Error(`Ismeretlen képernyő: ${name}`)
 

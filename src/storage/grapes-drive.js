@@ -157,13 +157,14 @@ export async function connectGrapesDrive({ fullRead = false } = {}) {
 
 async function rememberAccount(token) {
   try {
-    const response = await fetch('https://www.googleapis.com/drive/v3/about?fields=user(displayName,emailAddress,photoLink)', {
+    const response = await fetch('https://www.googleapis.com/drive/v3/about?fields=user(displayName,emailAddress,photoLink,permissionId)', {
       headers: { Authorization: `Bearer ${token}` },
     })
     if (!response.ok) return
     const user = (await response.json()).user
     if (!user || accessToken !== token) return
     accountProfile = {
+      id: user.permissionId || user.emailAddress || '',
       name: user.displayName || user.emailAddress?.split('@')[0] || 'Google',
       email: user.emailAddress || '',
       photo: user.photoLink || '',
@@ -276,6 +277,29 @@ export async function listGrapesProjects(module) {
 export async function loadGrapesProject(fileId) {
   const response = await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`)
   return response.json()
+}
+
+export async function shareGrapesProject(fileId, targetEmail, role = 'reader') {
+  const emailAddress = String(targetEmail || '').trim().toLocaleLowerCase('hu-HU')
+  if (!fileId || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress)) throw new Error('Érvényes megosztási e-mail-cím szükséges.')
+  const permissionRole = role === 'writer' ? 'writer' : 'reader'
+  const response = await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/permissions?sendNotificationEmail=true&fields=id,emailAddress,role`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'user', role: permissionRole, emailAddress }),
+  })
+  return response.json()
+}
+
+export async function updateGrapesProjectPermission(fileId, permissionId, role = 'reader') {
+  if (!fileId || !permissionId) throw new Error('A Drive-jogosultság azonosítója hiányzik.')
+  const response = await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/permissions/${encodeURIComponent(permissionId)}?fields=id,emailAddress,role`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: role === 'writer' ? 'writer' : 'reader' }),
+  })
+  return response.json()
+}
+
+export async function revokeGrapesProjectPermission(fileId, permissionId) {
+  if (!fileId || !permissionId) throw new Error('A Drive-jogosultság azonosítója hiányzik.')
+  await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/permissions/${encodeURIComponent(permissionId)}`, { method: 'DELETE' })
 }
 
 export function createDebouncedDriveSave(saveFn, delay = 4000) {

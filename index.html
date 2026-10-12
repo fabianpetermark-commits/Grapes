@@ -111,6 +111,7 @@
             <span id="grapes-account-initial" class="account-chip__avatar" aria-hidden="true">G</span>
             <span class="account-chip__text"><strong id="grapes-account-name">Google</strong><small id="grapes-account-email"></small></span>
           </div>
+          <button id="developer-menu-toggle" class="btn btn--ghost" type="button" hidden>Fejlesztő</button>
           <button id="grapes-sign-out" class="btn btn--ghost" type="button" data-i18n="account.logout">Kijelentkezés</button>
         </div>
       </header>
@@ -122,22 +123,42 @@
           <p data-i18n="dashboard.subtitle">Válassz egy munkaterületet. A projektjeid automatikusan a csatlakoztatott Drive-fiókot használják.</p>
         </section>
 
+        <section id="developer-panel" class="developer-panel" aria-labelledby="developer-panel-title" hidden>
+          <div class="developer-panel__head">
+            <div><p class="dashboard__eyebrow">FEJLESZTŐI MENÜ</p><h2 id="developer-panel-title">Modulok és projektállapot</h2></div>
+            <button id="developer-panel-close" class="btn btn--ghost" type="button">Bezárás</button>
+          </div>
+          <p class="developer-panel__notice">A kapcsolók ezen a böngészőn érvényes előnézeti beállítások. A kikapcsolt modul látható marad, de nem nyitható meg.</p>
+          <div id="developer-module-list" class="developer-module-list"></div>
+          <button id="developer-enable-all" class="btn btn--secondary" type="button">Összes modul bekapcsolása</button>
+          <details class="developer-status">
+            <summary>Központi fejlesztési napló</summary>
+            <pre id="developer-status-content"></pre>
+          </details>
+        </section>
+
         <div class="dashboard__menu">
           <section class="module-group" aria-labelledby="marketing-title">
             <div class="module-group__heading"><span class="module-group__number">01</span><div><h2 id="marketing-title" data-i18n="category.marketing">Marketing</h2><p data-i18n="category.marketing.description">Kampányok és vizuális kommunikáció</p></div></div>
             <div class="module-group__cards">
-              <button id="pick-email" class="card" type="button"><span class="card__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-file-html" /></svg></span><span class="card__title" data-i18n="module.email">E-mail Stúdió</span><span class="card__text" data-i18n="module.email.description">Hírlevelek, brandprofil és kódellenőrzés</span><span class="card__open" aria-hidden="true">→</span></button>
-              <button id="pick-brochure" class="card" type="button"><span class="card__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-layout" /></svg></span><span class="card__title" data-i18n="module.brochure">Brossúra Szerkesztő</span><span class="card__text" data-i18n="module.brochure.description">Vizuális brossúra- és PDF-szerkesztő</span><span class="card__open" aria-hidden="true">→</span></button>
-              <button id="pick-qr" class="card" type="button"><span class="card__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-qr" /></svg></span><span class="card__title" data-i18n="module.qr">QR Stúdió</span><span class="card__text" data-i18n="module.qr.description">Testreszabható QR-kódok és kampánylinkek</span><span class="card__open" aria-hidden="true">→</span></button>
+              <button id="pick-email" class="card" data-module-key="email" type="button"><span class="card__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-file-html" /></svg></span><span class="card__title" data-i18n="module.email">E-mail Stúdió</span><span class="card__text" data-i18n="module.email.description">Hírlevelek, brandprofil és kódellenőrzés</span><span class="card__open" aria-hidden="true">→</span></button>
+              <button id="pick-brochure" class="card" data-module-key="brochure" type="button"><span class="card__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-layout" /></svg></span><span class="card__title" data-i18n="module.brochure">Brossúra Szerkesztő</span><span class="card__text" data-i18n="module.brochure.description">Vizuális brossúra- és PDF-szerkesztő</span><span class="card__open" aria-hidden="true">→</span></button>
+              <button id="pick-qr" class="card" data-module-key="qr" type="button"><span class="card__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-qr" /></svg></span><span class="card__title" data-i18n="module.qr">QR Stúdió</span><span class="card__text" data-i18n="module.qr.description">Testreszabható QR-kódok és kampánylinkek</span><span class="card__open" aria-hidden="true">→</span></button>
             </div>
           </section>
-          <section class="module-group" aria-labelledby="printing-title"><div class="module-group__heading"><span class="module-group__number">02</span><div><h2 id="printing-title" data-i18n="category.printing">3D nyomtatás</h2><p data-i18n="category.printing.description">Modellezés és gyártás</p></div></div><div class="module-group__cards"><button id="pick-studio" class="card" type="button"><span class="card__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cube" /></svg></span><span class="card__title" data-i18n="module.studio">3D Nyomtatási Stúdió</span><span class="card__text" data-i18n="module.studio.description">Parametrikus 3D-szerkesztő és STL-export</span><span class="card__open" aria-hidden="true">→</span></button></div></section>
-          <section class="module-group" aria-labelledby="reading-title"><div class="module-group__heading"><span class="module-group__number">03</span><div><h2 id="reading-title" data-i18n="category.reading">Ebook</h2><p data-i18n="category.reading.description">Könyvtár és e-olvasó</p></div></div><div class="module-group__cards"><button id="pick-ebook" class="card" type="button"><span class="card__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-folder" /></svg></span><span class="card__title" data-i18n="module.ebook">E-book Könyvtár</span><span class="card__text" data-i18n="module.ebook.description">Drive-könyvtár és e-olvasó átvitel</span><span class="card__open" aria-hidden="true">→</span></button><button id="pick-ebook-organizer" class="card" type="button"><span class="card__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-edit" /></svg></span><span class="card__title">Könyvszerkesztő</span><span class="card__text">Címek, szerzők és könyvmetaadatok szerkesztése</span><span class="card__open" aria-hidden="true">→</span></button></div></section>
+          <section class="module-group" aria-labelledby="printing-title"><div class="module-group__heading"><span class="module-group__number">02</span><div><h2 id="printing-title" data-i18n="category.printing">3D nyomtatás</h2><p data-i18n="category.printing.description">Modellezés és gyártás</p></div></div><div class="module-group__cards"><button id="pick-studio" class="card" data-module-key="studio" type="button"><span class="card__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cube" /></svg></span><span class="card__title" data-i18n="module.studio">3D Nyomtatási Stúdió</span><span class="card__text" data-i18n="module.studio.description">Parametrikus 3D-szerkesztő és STL-export</span><span class="card__open" aria-hidden="true">→</span></button></div></section>
+          <section class="module-group" aria-labelledby="reading-title"><div class="module-group__heading"><span class="module-group__number">03</span><div><h2 id="reading-title" data-i18n="category.reading">Ebook</h2><p data-i18n="category.reading.description">Könyvtár és e-olvasó</p></div></div><div class="module-group__cards"><button id="pick-ebook" class="card" data-module-key="ebook" type="button"><span class="card__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-folder" /></svg></span><span class="card__title" data-i18n="module.ebook">E-book Könyvtár</span><span class="card__text" data-i18n="module.ebook.description">Drive-könyvtár és e-olvasó átvitel</span><span class="card__open" aria-hidden="true">→</span></button><button id="pick-ebook-organizer" class="card" data-module-key="ebook" type="button"><span class="card__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-edit" /></svg></span><span class="card__title">Könyvszerkesztő</span><span class="card__text">Címek, szerzők és könyvmetaadatok szerkesztése</span><span class="card__open" aria-hidden="true">→</span></button></div></section>
           <section class="module-group" aria-labelledby="finance-title">
             <div class="module-group__heading"><span class="module-group__number">04</span><div><h2 id="finance-title" data-i18n="category.finance">Pénzügy</h2><p data-i18n="category.finance.description">Átlátható személyes pénzügyek</p></div></div>
             <div class="module-group__cards">
-              <button id="pick-finance" class="card" type="button"><span class="card__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chart" /></svg></span><span class="card__title" data-i18n="module.finance">Pénzügyi Napló</span><span class="card__text" data-i18n="module.finance.description">Bevételek, kiadások és havi kimutatások</span><span class="card__open" aria-hidden="true">→</span></button>
-              <button id="pick-billing" class="card" type="button"><span class="card__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-file-html" /></svg></span><span class="card__title" data-i18n="module.billing">Számla és árajánlat</span><span class="card__text" data-i18n="module.billing.description">Ügyfelek, termékek és PDF-dokumentumok</span><span class="card__open" aria-hidden="true">→</span></button>
+              <button id="pick-finance" class="card" data-module-key="finance" type="button"><span class="card__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chart" /></svg></span><span class="card__title" data-i18n="module.finance">Pénzügyi Napló</span><span class="card__text" data-i18n="module.finance.description">Bevételek, kiadások és havi kimutatások</span><span class="card__open" aria-hidden="true">→</span></button>
+              <button id="pick-billing" class="card" data-module-key="billing" type="button"><span class="card__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-file-html" /></svg></span><span class="card__title" data-i18n="module.billing">Számla és árajánlat</span><span class="card__text" data-i18n="module.billing.description">Ügyfelek, termékek és PDF-dokumentumok</span><span class="card__open" aria-hidden="true">→</span></button>
+            </div>
+          </section>
+          <section class="module-group" aria-labelledby="health-title">
+            <div class="module-group__heading"><span class="module-group__number">05</span><div><h2 id="health-title" data-i18n="category.health">Egészség</h2><p data-i18n="category.health.description">Táplálkozás és személyes jóllét</p></div></div>
+            <div class="module-group__cards">
+              <button id="pick-food" class="card" data-module-key="food" type="button"><span class="card__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chart" /></svg></span><span class="card__title" data-i18n="module.food">Food ételnapló</span><span class="card__text" data-i18n="module.food.description">Étkezések, tápanyagok és napi célok</span><span class="card__open" aria-hidden="true">→</span></button>
             </div>
           </section>
         </div>
@@ -208,6 +229,7 @@
     </div>
 
     <div id="billing-app" class="billing hidden"></div>
+    <div id="food-app" class="food hidden"></div>
     <div id="finance-app" class="finance hidden">
       <header class="finance__header">
         <div class="module-brand">

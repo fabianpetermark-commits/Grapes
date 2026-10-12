@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://grapes.local/schemas/health-connect-bridge-v1.json",
+  "title": "Grapes Health Connect bridge export",
+  "type": "object",
+  "required": ["schemaVersion", "producer", "generatedAt", "records"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "producer": { "const": "hu.grapes.healthconnect" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "records": { "type": "array", "items": {
+      "type": "object",
+      "required": ["type", "externalId", "sourcePackage", "startTime", "endTime"],
+      "properties": {
+        "type": { "enum": ["nutrition", "hydration"] },
+        "externalId": { "type": "string", "pattern": "^(healthconnect|samsunghealth):" },
+        "sourcePackage": { "type": "string", "minLength": 1 },
+        "clientRecordId": { "type": ["string", "null"] },
+        "startTime": { "type": "string", "format": "date-time" },
+        "endTime": { "type": "string", "format": "date-time" },
+        "name": { "type": ["string", "null"] },
+        "mealType": { "enum": ["breakfast", "lunch", "dinner", "snack", null] },
+        "energyKcal": { "type": ["number", "null"], "minimum": 0 },
+        "proteinGrams": { "type": ["number", "null"], "minimum": 0 },
+        "carbohydrateGrams": { "type": ["number", "null"], "minimum": 0 },
+        "fatGrams": { "type": ["number", "null"], "minimum": 0 },
+        "volumeMilliliters": { "type": ["number", "null"], "minimum": 0 }
+      }, "additionalProperties": false
+    }}
+  },
+  "additionalProperties": false
+}

@@ -10,11 +10,13 @@ import {
   onGrapesDriveChange,
 } from './storage/grapes-drive.js'
 import { applyTranslations, getLanguage, onLanguageChange, setLanguage, t } from './i18n.js'
+import { applyModuleAvailability, initDeveloperMenu } from './developer-menu.js'
+import { isModuleEnabled } from './developer-settings.js'
 
 const params = new URLSearchParams(window.location.search)
 const hasEbookPair = params.has('ebook-pair') || params.has('ebook-reader')
 const requestedModule = params.get('module')
-const moduleScreens = ['brochure', 'studio', 'qr', 'ebook', 'email', 'finance', 'billing']
+const moduleScreens = ['brochure', 'studio', 'qr', 'ebook', 'email', 'finance', 'billing', 'food']
 const requestedScreen = moduleScreens.includes(requestedModule) ? requestedModule : null
 
 const projectModules = [
@@ -24,11 +26,12 @@ const projectModules = [
   { drive: 'QR & Barcode', screen: 'qr' },
   { drive: 'E-mail Stúdió', screen: 'email' },
   { drive: 'Pénzügyi Napló', screen: 'finance' },
+  { drive: 'Ételnapló', screen: 'food' },
 ]
 
 for (const [selector, screen] of Object.entries({
   '#pick-brochure': 'brochure', '#pick-studio': 'studio', '#pick-qr': 'qr',
-  '#pick-email': 'email', '#pick-finance': 'finance',
+  '#pick-email': 'email', '#pick-finance': 'finance', '#pick-food': 'food',
   '#pick-billing': 'billing',
 })) el(selector).addEventListener('click', () => showScreen(screen))
 
@@ -52,12 +55,15 @@ function renderAccount() {
   else photo.removeAttribute('src')
   photo.onerror = () => { photo.hidden = true }
   el('#grapes-drive-status').dataset.connected = isGrapesDriveConnected() ? 'true' : 'false'
+  initDeveloperMenu(account)
+  applyModuleAvailability()
 }
 
 function openProject(project) {
-  sessionStorage.setItem('grapes-open-project', JSON.stringify({ module: project.module, source: 'Drive', id: project.id }))
   const target = projectModules.find(item => item.drive === project.module)?.screen
-  if (target) showScreen(target)
+  if (!target || !isModuleEnabled(target)) return
+  sessionStorage.setItem('grapes-open-project', JSON.stringify({ module: project.module, source: 'Drive', id: project.id }))
+  showScreen(target)
 }
 
 async function renderRecentProjects() {
@@ -87,6 +93,11 @@ async function renderRecentProjects() {
       const button = document.createElement('button')
       button.type = 'button'
       button.className = 'recent-project'
+      const moduleKey = projectModules.find(item => item.drive === project.module)?.screen
+      if (moduleKey) {
+        button.dataset.moduleKey = moduleKey
+        button.disabled = !isModuleEnabled(moduleKey)
+      }
       const title = document.createElement('strong')
       title.textContent = project.name?.replace(/\.grapes\.json$/, '') || t('recent.untitled')
       const meta = document.createElement('span')
@@ -96,6 +107,7 @@ async function renderRecentProjects() {
       button.addEventListener('click', () => openProject(project))
       list.append(button)
     }
+    applyModuleAvailability(list)
   } catch (error) {
     console.warn('A legutóbbi projektek nem tölthetők be:', error)
     list.innerHTML = `<p class="recent-projects__empty">${t('recent.empty')}</p>`
@@ -154,13 +166,17 @@ for (const selector of [
   '#app-back-to-menu-btn', '#studio-back-to-menu-btn', '#fabric-back-to-menu-btn',
   '#qr-back-to-menu-btn', '#ebook-back-to-menu-btn', '#email-back-to-menu-btn', '#finance-back-to-menu-btn',
 ]) {
-  el(selector).addEventListener('click', () => {
-    if (isGrapesDriveConnected()) {
-      renderRecentProjects()
-      showScreen('splash')
-    } else showLogin()
-  })
+  el(selector).addEventListener('click', goToMainMenu)
 }
+
+function goToMainMenu() {
+  if (isGrapesDriveConnected()) {
+    renderRecentProjects()
+    showScreen('splash')
+  } else showLogin()
+}
+
+document.addEventListener('grapes:open-main-menu', goToMainMenu)
 
 if (hasEbookPair) showScreen('ebook')
 else if (isGrapesDriveConnected()) showAuthenticatedStart()
