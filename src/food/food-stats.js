@@ -1,4 +1,4 @@
-import { CORE_NUTRIENTS, currentTargets, summarizeEntries } from './food-data.js'
+import { CORE_NUTRIENTS, currentTargets, localDateKey, summarizeEntries } from './food-data.js'
 
 const rounded = (value, digits = 2) => Number(Number(value).toFixed(digits))
 
@@ -13,7 +13,7 @@ export function buildDailyNutritionSeries(entries, profileId) {
   const groups = new Map()
   for (const entry of entries) {
     if (entry.profileId !== profileId) continue
-    const date = entry.occurredAt.slice(0, 10)
+    const date = localDateKey(entry.occurredAt)
     if (!groups.has(date)) groups.set(date, [])
     groups.get(date).push(entry)
   }

@@ -249,7 +249,13 @@ export function summarizeEntries(entries = []) {
 }
 
 export function entriesForLocalDay(entries, date, profileId) {
-  return entries.filter(entry => entry.profileId === profileId && entry.occurredAt.slice(0, 10) === date)
+  return entries.filter(entry => entry.profileId === profileId && localDateKey(entry.occurredAt) === date)
+}
+
+export function localDateKey(value) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
 }
 
 export function createEmptyFoodProject(profile) {
@@ -266,6 +272,9 @@ export function normalizeFoodProject(value = {}, expectedProfileId = '') {
   const diaryEntries = (value.diaryEntries || []).map(entry => normalizeDiaryEntry(entry))
   if (new Set(customFoods.map(item => item.id)).size !== customFoods.length) throw new Error('Ismétlődő ételazonosító a mentésben.')
   if (new Set(recipes.map(item => item.id)).size !== recipes.length) throw new Error('Ismétlődő receptazonosító a mentésben.')
+  const ingredientFoodIds = new Set(customFoods.filter(item => item.kind !== 'recipe').map(item => item.id))
+  const missingIngredient = recipes.flatMap(item => item.ingredients).find(item => !ingredientFoodIds.has(item.foodId))
+  if (missingIngredient) throw new Error(`Hiányzó recept-hozzávaló a mentésben: ${missingIngredient.foodId}`)
   const recipeIds = new Set(recipes.map(item => item.id))
   if (recipes.some(item => item.variantOfRecipeId && (item.variantOfRecipeId === item.id || !recipeIds.has(item.variantOfRecipeId)))) throw new Error('Érvénytelen receptvariáns-kapcsolat a mentésben.')
   if (new Set(diaryEntries.map(item => item.id)).size !== diaryEntries.length) throw new Error('Ismétlődő naplóazonosító a mentésben.')

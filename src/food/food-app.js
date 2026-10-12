@@ -33,6 +33,7 @@ let recipeIngredients = []
 let recipeVariantOf = ''
 let saveTimer = null
 let pendingHealthImport = null
+let modalReturnFocus = null
 
 const $ = selector => root.querySelector(selector)
 function localDate(date = new Date()) { const offset = date.getTimezoneOffset() * 60000; return new Date(date.getTime() - offset).toISOString().slice(0, 10) }
@@ -55,11 +56,12 @@ async function saveToDrive() {
   catch (error) { project.syncState.localDirty = true; await persistLocal().catch(() => {}); throw error }
 }
 
-function refreshRecipeFoods() {
+function refreshRecipeFoods({ strict = false } = {}) {
   const baseFoods = project.customFoods.filter(food => food.kind !== 'recipe')
   const generated = []
   for (const recipe of project.recipes || []) {
-    try { generated.push(calculateRecipeFood(recipe, [...baseFoods, ...generated]).food) } catch {}
+    try { generated.push(calculateRecipeFood(recipe, [...baseFoods, ...generated]).food) }
+    catch (error) { if (strict) throw new Error(`${recipe.name}: ${error.message}`) }
   }
   project.customFoods = [...baseFoods, ...generated, ...sharedFoodsFromLibraries(project.recipeLibraries)]
 }
@@ -84,10 +86,10 @@ async function loadProject() {
 function appMarkup() {
   return `
   <header class="food__header"><div class="food__brand"><img src="./grapes-logo.svg" alt=""><div><p>GRAPES · FOOD</p><h1>Ételnapló</h1></div></div><div class="food__header-actions"><span id="food-save-status" class="food__save-status" aria-live="polite">Betöltés…</span><button id="food-health-import" class="btn" type="button">Health import</button><button id="food-backup-export" class="btn" type="button">Mentés export</button><button id="food-backup-import" class="btn" type="button">Mentés visszaállítása</button><button id="food-drive-save" class="btn btn--primary" type="button">Mentés Drive-ra</button><button id="food-back-to-menu-btn" class="btn btn--ghost" type="button">Főmenü</button></div><input id="food-health-input" type="file" accept=".json,application/json" hidden><input id="food-backup-input" type="file" accept=".json,application/json" hidden></header>
-  <main class="food__main"><nav class="food__tabs" aria-label="Food modul nézetei"><button type="button" data-food-tab="diary" class="is-active">Napló</button><button type="button" data-food-tab="foods">Ételek</button><button type="button" data-food-tab="recipes">Receptek</button><button type="button" data-food-tab="libraries">Családi könyvtár</button><button type="button" data-food-tab="stats">Statisztika</button><button type="button" data-food-tab="targets">Célok</button></nav>
-  <section data-food-panel="diary"><div class="food__datebar"><button id="food-date-prev" class="btn" type="button" aria-label="Előző nap">←</button><label>Nap<input id="food-date" type="date"></label><button id="food-date-next" class="btn" type="button" aria-label="Következő nap">→</button><button id="food-date-today" class="btn" type="button">Ma</button></div><div id="food-summary" class="food__summary"></div>
+  <main class="food__main"><nav class="food__tabs" role="tablist" aria-label="Food modul nézetei"><button id="food-tab-diary" type="button" role="tab" aria-controls="food-panel-diary" data-food-tab="diary" class="is-active">Napló</button><button id="food-tab-foods" type="button" role="tab" aria-controls="food-panel-foods" data-food-tab="foods">Ételek</button><button id="food-tab-recipes" type="button" role="tab" aria-controls="food-panel-recipes" data-food-tab="recipes">Receptek</button><button id="food-tab-libraries" type="button" role="tab" aria-controls="food-panel-libraries" data-food-tab="libraries">Családi könyvtár</button><button id="food-tab-stats" type="button" role="tab" aria-controls="food-panel-stats" data-food-tab="stats">Statisztika</button><button id="food-tab-targets" type="button" role="tab" aria-controls="food-panel-targets" data-food-tab="targets">Célok</button></nav>
+  <section id="food-panel-diary" role="tabpanel" aria-labelledby="food-tab-diary" data-food-panel="diary"><div class="food__datebar"><button id="food-date-prev" class="btn" type="button" aria-label="Előző nap">←</button><label>Nap<input id="food-date" type="date"></label><button id="food-date-next" class="btn" type="button" aria-label="Következő nap">→</button><button id="food-date-today" class="btn" type="button">Ma</button></div><div id="food-summary" class="food__summary"></div>
   <form id="food-entry-form" class="food__form food__form--entry"><input id="food-entry-id" type="hidden"><label>Étkezés<select id="food-entry-meal">${MEAL_TYPES.map(type => `<option value="${type}">${MEAL_LABELS[type]}</option>`).join('')}</select></label><label>Étel<select id="food-entry-food" required></select></label><label>Mennyiség<input id="food-entry-amount" type="number" min="0.01" step="0.01" value="100" required></label><label>Egység<select id="food-entry-unit"></select></label><label>Idő<input id="food-entry-time" type="time" required></label><label>Megjegyzés<input id="food-entry-note" maxlength="240" placeholder="opcionális"></label><button class="btn btn--primary" type="submit">Hozzáadás</button><button id="food-entry-cancel" class="btn hidden" type="button">Mégse</button></form><div id="food-meals" class="food__meals"></div></section>
-  <section data-food-panel="foods" class="hidden"><div class="food__search"><label>Keresés<input id="food-search" type="search" placeholder="pl. krumpli vagy csirkemel"></label><label>Kategória<select id="food-category-filter"><option value="">Minden kategória</option></select></label><button id="food-scan" class="btn" type="button">Vonalkód beolvasása</button><button id="food-label-ocr" class="btn" type="button">Tápértékcímke OCR</button><input id="food-label-input" type="file" accept="image/png,image/jpeg,image/webp" capture="environment" hidden></div>
+  <section data-food-panel="foods" class="hidden"><div class="food__search"><label>Keresés<input id="food-search" type="search" placeholder="pl. krumpli vagy csirkemel"></label><label>Kategória<select id="food-category-filter"><option value="">Minden kategória</option></select></label><button id="food-scan" class="btn" type="button">Vonalkód fotózása</button><button id="food-label-ocr" class="btn" type="button">Tápértékcímke OCR</button><input id="food-barcode-input" type="file" accept="image/*" capture="environment" hidden><input id="food-label-input" type="file" accept="image/png,image/jpeg,image/webp" capture="environment" hidden></div>
   <form id="food-item-form" class="food__form food__form--food"><input id="food-item-id" type="hidden"><label>Név<input id="food-item-name" required maxlength="180"></label><label>Kategória<input id="food-item-category" value="Egyéb"></label><label>Vonalkód<input id="food-item-barcode" inputmode="numeric" pattern="[0-9]{7,14}"></label><button id="food-lookup" class="btn" type="button">Termék keresése</button><label>Alapegység<select id="food-item-base-unit"><option value="g">100 g</option><option value="ml">100 ml</option></select></label>${CORE_NUTRIENTS.map(key => `<label>${NUTRIENT_LABELS[key]} / 100 <input id="food-item-${key}" type="number" min="0" step="0.01" placeholder="nincs adat"></label>`).join('')}<label>1 adag mérete<input id="food-item-serving" type="number" min="0.01" step="0.01" placeholder="opcionális"></label><button class="btn btn--primary" type="submit">Étel mentése</button><button id="food-item-cancel" class="btn hidden" type="button">Mégse</button><p id="food-api-status" class="food__form-status" role="status"></p></form><div id="food-items" class="food__items"></div></section>
   <section data-food-panel="recipes" class="hidden"><form id="food-recipe-form" class="food__recipe-form"><input id="food-recipe-id" type="hidden"><div class="food__recipe-basics"><label>Recept neve<input id="food-recipe-name" required maxlength="180"></label><label>Kategória<input id="food-recipe-category" value="Saját recept"></label><label>Kép URL<input id="food-recipe-image" type="url" placeholder="https://…"></label><label>Elkészítés<textarea id="food-recipe-instructions" rows="4"></textarea></label></div><div class="food__ingredient-builder"><h2>Hozzávalók</h2><div><label>Étel<select id="food-recipe-ingredient-food"></select></label><label>Mennyiség<input id="food-recipe-ingredient-amount" type="number" min="0.01" step="0.01" value="100"></label><label>Egység<select id="food-recipe-ingredient-unit"></select></label><button id="food-recipe-add-ingredient" class="btn" type="button">Hozzáadás</button></div><div id="food-recipe-ingredients" class="food__ingredient-list"></div></div><div class="food__recipe-yield"><label>Készétel lemért tömege (g)<input id="food-recipe-prepared-weight" type="number" min="0.01" step="0.01" placeholder="vízveszteség után"></label><label>Hozam<input id="food-recipe-yield-count" type="number" min="0.01" step="0.01" placeholder="pl. 12"></label><label>Hozam egysége<select id="food-recipe-yield-unit"><option value="serving">adag</option><option value="piece">darab</option><option value="slice">szelet</option></select></label><label>Átlagos egységtömeg (g)<input id="food-recipe-unit-weight" type="number" min="0.01" step="0.01" placeholder="opcionális"></label></div><div id="food-recipe-preview" class="food__recipe-preview">Adj hozzá legalább egy hozzávalót.</div><div class="food__recipe-actions"><button class="btn btn--primary" type="submit">Recept mentése</button><button id="food-recipe-cancel" class="btn hidden" type="button">Mégse</button></div></form><div id="food-recipes" class="food__recipes"></div></section>
   <section data-food-panel="stats" class="hidden"><div class="food__stats-controls"><label>Időtáv<select id="food-stats-period"><option value="all">Összes adat</option><option value="7">Utolsó 7 nap</option><option value="30">Utolsó 30 nap</option></select></label><label>Tápanyag<select id="food-stats-nutrient">${CORE_NUTRIENTS.map(key => `<option value="${key}">${NUTRIENT_LABELS[key]}</option>`).join('')}</select></label><label>Összehasonlítás<select id="food-stats-compare"><option value="">Nincs</option>${CORE_NUTRIENTS.map(key => `<option value="${key}">${NUTRIENT_LABELS[key]}</option>`).join('')}</select></label><label>Felbontás<select id="food-stats-granularity"><option value="day">Napi</option><option value="week">Heti</option><option value="month">Havi</option></select></label></div><div id="food-stats-summary" class="food__stats-summary"></div><div class="food__stats-grid"><article class="food__chart-card"><h2>Beviteli trend</h2><div id="food-stats-chart" class="food__chart"></div></article><article class="food__macro-card"><h2>Kalóriaeredet</h2><div id="food-macro-chart"></div></article></div><p id="food-stats-note" class="food__stats-note"></p></section>
@@ -116,7 +118,7 @@ function renderMeals() {
   for (const type of MEAL_TYPES) {
     const section = document.createElement('section'); section.className = 'food__meal'; const heading = document.createElement('h2'); heading.textContent = MEAL_LABELS[type]; const entries = daily.filter(entry => entry.mealType === type); const badge = document.createElement('span'); badge.textContent = `${formatNumber(summarizeEntries(entries).energyKcal)} kcal`; heading.append(badge); section.append(heading)
     if (!entries.length) { const empty = document.createElement('p'); empty.className = 'food__empty'; empty.textContent = 'Még nincs rögzített étel.'; section.append(empty) }
-    for (const entry of entries) { const row = document.createElement('article'); row.className = 'food__entry'; const info = document.createElement('div'); const name = document.createElement('strong'); name.textContent = entry.snapshot.name; const time = new Date(entry.occurredAt).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' }); const meta = document.createElement('span'); meta.textContent = `${time} · ${formatNumber(entry.amount, 2)} ${AMOUNT_UNIT_LABELS[entry.unit] || entry.unit} · ${formatNumber(entry.snapshot.nutrients.energyKcal, 1)} kcal${entry.note ? ` · ${entry.note}` : ''}`; info.append(name, meta); const actions = document.createElement('div'); for (const [action, label] of [['edit', 'Szerkesztés'], ['repeat', 'Ismétlés'], ['delete', 'Törlés']]) { const button = document.createElement('button'); button.type = 'button'; button.className = 'btn btn--sm'; button.dataset.entryAction = action; button.dataset.entryId = entry.id; button.textContent = label; actions.append(button) } row.append(info, actions); section.append(row) }
+    for (const entry of entries) { const row = document.createElement('article'); row.className = 'food__entry'; const info = document.createElement('div'); const name = document.createElement('strong'); name.textContent = entry.snapshot.name; const time = new Date(entry.occurredAt).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' }); const meta = document.createElement('span'); meta.textContent = `${time} · ${formatNumber(entry.amount, 2)} ${AMOUNT_UNIT_LABELS[entry.unit] || entry.unit} · ${formatNumber(entry.snapshot.nutrients.energyKcal, 1)} kcal${entry.note ? ` · ${entry.note}` : ''}`; info.append(name, meta); const actions = document.createElement('div'); for (const [action, label] of [['edit', 'Szerkesztés'], ['repeat', 'Ismétlés'], ['delete', 'Törlés']]) { const button = document.createElement('button'); button.type = 'button'; button.className = 'btn btn--sm'; button.dataset.entryAction = action; button.dataset.entryId = entry.id; button.textContent = label; button.setAttribute('aria-label', `${entry.snapshot.name}: ${label.toLocaleLowerCase('hu-HU')}`); if (action === 'edit' && !project.customFoods.some(food => food.id === entry.snapshot.foodId)) { button.disabled = true; button.title = 'A forrásétel már nem érhető el; a pillanatkép változatlanul megmaradt.' } actions.append(button) } row.append(info, actions); section.append(row) }
     container.append(section)
   }
 }
@@ -127,7 +129,7 @@ function renderFoodItems() {
   if (!results.length) { const empty = document.createElement('p'); empty.className = 'food__empty'; empty.textContent = project.customFoods.length ? 'Nincs találat.' : 'Adj hozzá egy saját ételt vagy keress rá egy vonalkódra.'; container.append(empty); return }
   for (const food of results) {
     const row = document.createElement('article'); row.className = 'food__food-row'
-    const favorite = document.createElement('button'); favorite.type = 'button'; favorite.className = 'food__favorite'; favorite.dataset.foodFavorite = food.id; favorite.setAttribute('aria-label', 'Kedvenc'); favorite.textContent = project.favorites.includes(food.id) ? '★' : '☆'
+    const favorite = document.createElement('button'); favorite.type = 'button'; favorite.className = 'food__favorite'; favorite.dataset.foodFavorite = food.id; favorite.setAttribute('aria-label', `${food.name}: kedvenc állapot váltása`); favorite.setAttribute('aria-pressed', String(project.favorites.includes(food.id))); favorite.textContent = project.favorites.includes(food.id) ? '★' : '☆'
     const info = document.createElement('div'); const name = document.createElement('strong'); name.textContent = food.name; const meta = document.createElement('span')
     meta.textContent = `${food.category} · ${formatNumber(food.nutrients.energyKcal, 1)} kcal / 100 ${food.baseUnit}${food.source.type === 'openfoodfacts' ? ' · Open Food Facts' : food.source.type === 'shared-recipe' ? ' · Megosztott recept' : food.kind === 'recipe' ? ' · Saját recept' : ''}`; info.append(name, meta)
     if (food.source.type === 'shared-recipe') {
@@ -196,7 +198,7 @@ async function connectFamilyLibrary(event) {
 
 async function syncFamilyLibrary(id) {
   const link = libraryLink(id); if (!link) return
-  try { const remote = await loadGrapesProject(link.fileId); const data = normalizeRecipeLibrary(remote.data); project.recipeLibraries = project.recipeLibraries.map(item => item === link ? { ...item, data } : item); refreshRecipeFoods(); scheduleSave(); render(); setLibraryStatus(`${data.name} frissítve.`, 'saved') } catch (error) { setLibraryStatus(error.message, 'error') }
+  try { const remote = await loadGrapesProject(link.fileId); if (remote.module !== FOOD_LIBRARY_MODULE) throw new Error('A Drive-fájl nem Grapes családi receptkönyvtár.'); const data = normalizeRecipeLibrary(remote.data); if (libraryRole(data, profile.email) === 'none') throw new Error('Ehhez az e-mail-címhez nincs könyvtári jogosultság.'); project.recipeLibraries = project.recipeLibraries.map(item => item === link ? { ...item, data } : item); refreshRecipeFoods(); scheduleSave(); render(); setLibraryStatus(`${data.name} frissítve.`, 'saved') } catch (error) { setLibraryStatus(error.message, 'error') }
 }
 
 async function publishFamilyLibrary(id) {
@@ -212,7 +214,9 @@ async function publishFamilyLibrary(id) {
 
 async function shareFamilyLibrary(id) {
   const link = libraryLink(id); if (!link) return
-  const targetEmail = $('#food-library-email').value.trim().toLocaleLowerCase('hu-HU'); const role = $('#food-library-role').value
+  const emailInput = $('#food-library-email'); const targetEmail = emailInput.value.trim().toLocaleLowerCase('hu-HU'); const role = $('#food-library-role').value
+  if (!targetEmail || !emailInput.checkValidity()) { emailInput.focus(); return setLibraryStatus('Adj meg egy érvényes meghívotti e-mail-címet.', 'error') }
+  if (targetEmail === profile.email.toLocaleLowerCase('hu-HU')) { emailInput.focus(); return setLibraryStatus('A saját tulajdonosi e-mail-címedet nem kell külön meghívni.', 'error') }
   let createdPermissionId = ''
   try {
     const previous = normalizeRecipeLibrary(link.data)
@@ -282,7 +286,23 @@ function renderStats() {
 function targetFormValues() { const value = id => $(id).value === '' ? null : Number($(id).value); return { energyKcal: value('#food-target-energy'), protein: value('#food-target-protein'), carbohydrate: value('#food-target-carbohydrate'), fat: value('#food-target-fat') } }
 function renderTargetWarning() { const warning = macroEnergyWarning(targetFormValues()); $('#food-target-warning').textContent = warning ? `A makrókból számolt ${formatNumber(warning.calculatedKcal)} kcal eltér az energiacéltól (${formatNumber(warning.differenceKcal)} kcal). Ettől még menthető.` : '' }
 function renderTargets() { const targets = currentTargets(project, selectedDate); $('#food-target-date').value = selectedDate; for (const key of ['energyKcal', 'protein', 'carbohydrate', 'fat']) $(`#food-target-${key === 'energyKcal' ? 'energy' : key}`).value = targets[key] ?? ''; renderTargetWarning() }
-function render() { $('#food-date').value = selectedDate; for (const button of root.querySelectorAll('[data-food-tab]')) button.classList.toggle('is-active', button.dataset.foodTab === activeTab); for (const panel of root.querySelectorAll('[data-food-panel]')) panel.classList.toggle('hidden', panel.dataset.foodPanel !== activeTab); entryFoodOptions(); renderSummary(); renderMeals(); renderFoodItems(); renderRecipes(); renderLibraries(); renderStats(); renderTargets() }
+function render() {
+  $('#food-date').value = selectedDate
+  for (const button of root.querySelectorAll('[data-food-tab]')) {
+    const selected = button.dataset.foodTab === activeTab
+    button.classList.toggle('is-active', selected)
+    button.setAttribute('aria-selected', String(selected))
+    button.tabIndex = selected ? 0 : -1
+  }
+  for (const panel of root.querySelectorAll('[data-food-panel]')) {
+    const selected = panel.dataset.foodPanel === activeTab
+    panel.id = `food-panel-${panel.dataset.foodPanel}`
+    panel.setAttribute('role', 'tabpanel')
+    panel.setAttribute('aria-labelledby', `food-tab-${panel.dataset.foodPanel}`)
+    panel.classList.toggle('hidden', !selected)
+  }
+  entryFoodOptions(); renderSummary(); renderMeals(); renderFoodItems(); renderRecipes(); renderLibraries(); renderStats(); renderTargets()
+}
 
 function resetEntryForm() { $('#food-entry-form').reset(); $('#food-entry-id').value = ''; $('#food-entry-amount').value = 100; $('#food-entry-time').value = new Date().toTimeString().slice(0, 5); $('#food-entry-cancel').classList.add('hidden'); updateEntryUnits() }
 function resetFoodForm() { $('#food-item-form').reset(); $('#food-item-id').value = ''; $('#food-item-category').value = 'Egyéb'; $('#food-item-base-unit').value = 'g'; $('#food-item-cancel').classList.add('hidden'); pendingProduct = null; $('#food-api-status').textContent = '' }
@@ -290,10 +310,25 @@ function resetRecipeForm() { $('#food-recipe-form').reset(); $('#food-recipe-id'
 function shiftDate(days) { const date = new Date(`${selectedDate}T12:00:00`); date.setDate(date.getDate() + days); selectedDate = localDate(date); render() }
 
 function saveEntry(event) { event.preventDefault(); const food = project.customFoods.find(item => item.id === $('#food-entry-food').value); if (!food) return setStatus('Előbb adj hozzá egy ételt.', 'error'); try { const existingId = $('#food-entry-id').value; const previous = project.diaryEntries.find(item => item.id === existingId); const entry = normalizeDiaryEntry({ id: existingId || createFoodId('entry'), profileId: profile.id, mealType: $('#food-entry-meal').value, amount: $('#food-entry-amount').value, unit: $('#food-entry-unit').value, servingId: food.servings.find(item => item.unit === $('#food-entry-unit').value)?.id || '', note: $('#food-entry-note').value, occurredAt: selectedIsoTime($('#food-entry-time').value), createdAt: previous?.createdAt || new Date().toISOString() }, food); project.diaryEntries = existingId ? project.diaryEntries.map(item => item.id === existingId ? entry : item) : [...project.diaryEntries, entry]; project.recentFoods = [food.id, ...project.recentFoods.filter(id => id !== food.id)].slice(0, 50); resetEntryForm(); scheduleSave(); render() } catch (error) { setStatus(error.message, 'error') } }
-function handleEntryAction(action, id) { const entry = project.diaryEntries.find(item => item.id === id); if (!entry) return; if (action === 'delete') { if (confirm('Törlöd ezt a naplóbejegyzést?')) { project.diaryEntries = project.diaryEntries.filter(item => item.id !== id); scheduleSave(); render() }; return } if (action === 'repeat') { project.diaryEntries.push(normalizeDiaryEntry({ ...entry, id: createFoodId('entry'), occurredAt: selectedIsoTime(new Date().toTimeString().slice(0, 5)), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })); scheduleSave(); render(); return } $('#food-entry-id').value = entry.id; $('#food-entry-meal').value = entry.mealType; $('#food-entry-food').value = entry.snapshot.foodId; $('#food-entry-amount').value = entry.amount; updateEntryUnits(entry.unit); $('#food-entry-time').value = new Date(entry.occurredAt).toTimeString().slice(0, 5); $('#food-entry-note').value = entry.note; $('#food-entry-cancel').classList.remove('hidden'); $('#food-entry-form').scrollIntoView({ behavior: 'smooth', block: 'center' }) }
+function handleEntryAction(action, id) { const entry = project.diaryEntries.find(item => item.id === id); if (!entry) return; if (action === 'delete') { if (confirm('Törlöd ezt a naplóbejegyzést?')) { project.diaryEntries = project.diaryEntries.filter(item => item.id !== id); scheduleSave(); render() }; return } if (action === 'repeat') { project.diaryEntries.push(normalizeDiaryEntry({ ...entry, id: createFoodId('entry'), occurredAt: selectedIsoTime(new Date().toTimeString().slice(0, 5)), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })); scheduleSave(); render(); return } if (action !== 'edit') return; const food = project.customFoods.find(item => item.id === entry.snapshot.foodId); if (!food) return setStatus('A bejegyzés forrásétele már nem érhető el, ezért nem szerkeszthető. Ismételni vagy törölni továbbra is lehet.', 'error'); $('#food-entry-id').value = entry.id; $('#food-entry-meal').value = entry.mealType; $('#food-entry-food').value = food.id; $('#food-entry-amount').value = entry.amount; updateEntryUnits(entry.unit); $('#food-entry-time').value = new Date(entry.occurredAt).toTimeString().slice(0, 5); $('#food-entry-note').value = entry.note; $('#food-entry-cancel').classList.remove('hidden'); $('#food-entry-form').scrollIntoView({ behavior: 'smooth', block: 'center' }) }
 
-function saveFood(event) { event.preventDefault(); try { const existingId = $('#food-item-id').value; const previous = project.customFoods.find(item => item.id === existingId); const servingSize = Number($('#food-item-serving').value); const baseUnit = $('#food-item-base-unit').value; const item = normalizeFoodItem({ ...pendingProduct, id: existingId || createFoodId('food'), kind: pendingProduct?.kind || previous?.kind || 'manual', name: $('#food-item-name').value, category: $('#food-item-category').value, barcode: $('#food-item-barcode').value, baseUnit, nutrients: Object.fromEntries(CORE_NUTRIENTS.map(key => [key, $(`#food-item-${key}`).value])), servings: servingSize > 0 ? [{ id: previous?.servings?.[0]?.id || createFoodId('serving'), name: 'Adag', unit: 'serving', ...(baseUnit === 'g' ? { grams: servingSize } : { milliliters: servingSize }) }] : [], source: pendingProduct?.source || previous?.source || { type: 'manual' }, createdAt: previous?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() }); project.customFoods = existingId ? project.customFoods.map(food => food.id === existingId ? item : food) : [...project.customFoods, item]; resetFoodForm(); scheduleSave(); render() } catch (error) { $('#food-api-status').textContent = error.message } }
+function saveFood(event) { event.preventDefault(); const previousFoods = project.customFoods; let recalculatingRecipes = false; try { const existingId = $('#food-item-id').value; const previous = project.customFoods.find(item => item.id === existingId); const servingSize = Number($('#food-item-serving').value); const baseUnit = $('#food-item-base-unit').value; const item = normalizeFoodItem({ ...pendingProduct, id: existingId || createFoodId('food'), kind: pendingProduct?.kind || previous?.kind || 'manual', name: $('#food-item-name').value, category: $('#food-item-category').value, barcode: $('#food-item-barcode').value, baseUnit, nutrients: Object.fromEntries(CORE_NUTRIENTS.map(key => [key, $(`#food-item-${key}`).value])), servings: servingSize > 0 ? [{ id: previous?.servings?.[0]?.id || createFoodId('serving'), name: 'Adag', unit: 'serving', ...(baseUnit === 'g' ? { grams: servingSize } : { milliliters: servingSize }) }] : [], source: pendingProduct?.source || previous?.source || { type: 'manual' }, createdAt: previous?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() }); project.customFoods = existingId ? project.customFoods.map(food => food.id === existingId ? item : food) : [...project.customFoods, item]; recalculatingRecipes = true; refreshRecipeFoods({ strict: true }); resetFoodForm(); scheduleSave(); render() } catch (error) { project.customFoods = previousFoods; $('#food-api-status').textContent = recalculatingRecipes ? `Az étel nem menthető, mert egy recept érvénytelenné válna. ${error.message}` : error.message } }
 function fillFoodForm(food) { if (!food) return; $('#food-item-id').value = food.id; $('#food-item-name').value = food.name; $('#food-item-category').value = food.category; $('#food-item-barcode').value = food.barcode; $('#food-item-base-unit').value = food.baseUnit; for (const key of CORE_NUTRIENTS) $(`#food-item-${key}`).value = food.nutrients[key] ?? ''; $('#food-item-serving').value = food.baseUnit === 'g' ? food.servings[0]?.grams || '' : food.servings[0]?.milliliters || ''; pendingProduct = { kind: food.kind, source: food.source }; $('#food-item-cancel').classList.remove('hidden'); $('#food-item-form').scrollIntoView({ behavior: 'smooth', block: 'start' }) }
+
+function deleteFoodItem(id) {
+  const food = project.customFoods.find(item => item.id === id && item.kind !== 'recipe')
+  if (!food) return
+  const usedBy = project.recipes.filter(recipe => recipe.ingredients.some(ingredient => ingredient.foodId === id))
+  if (usedBy.length) {
+    $('#food-api-status').textContent = `Nem törölhető: ${usedBy.map(recipe => recipe.name).join(', ')} recept használja. Előbb módosítsd vagy töröld ezeket a recepteket.`
+    return
+  }
+  if (!confirm('Törlöd ezt a saját ételt? A korábbi naplóbejegyzések megmaradnak.')) return
+  project.customFoods = project.customFoods.filter(item => item.id !== id)
+  project.favorites = project.favorites.filter(foodId => foodId !== id)
+  project.recentFoods = project.recentFoods.filter(foodId => foodId !== id)
+  scheduleSave(); render()
+}
 
 function addRecipeIngredient() { const food = project.customFoods.find(item => item.id === $('#food-recipe-ingredient-food').value); const amount = Number($('#food-recipe-ingredient-amount').value); if (!food || !Number.isFinite(amount) || amount <= 0) { $('#food-recipe-preview').textContent = 'Válassz ételt és adj meg érvényes mennyiséget.'; return } const unit = $('#food-recipe-ingredient-unit').value; recipeIngredients.push({ id: createFoodId('ingredient'), foodId: food.id, amount, unit, servingId: food.servings.find(item => item.unit === unit)?.id || '' }); renderRecipeIngredients() }
 function saveRecipe(event) { event.preventDefault(); try { const draft = { ...recipeDraft(), name: $('#food-recipe-name').value }; const recipe = normalizeRecipe(draft); const result = calculateRecipeFood(recipe, project.customFoods.filter(item => item.kind !== 'recipe')); const exists = project.recipes.some(item => item.id === recipe.id); project.recipes = exists ? project.recipes.map(item => item.id === recipe.id ? recipe : item) : [...project.recipes, recipe]; project.customFoods = [...project.customFoods.filter(item => item.id !== recipe.foodId), result.food]; resetRecipeForm(); scheduleSave(); render() } catch (error) { $('#food-recipe-preview').textContent = error.message; $('#food-recipe-preview').dataset.state = 'error' } }
@@ -303,8 +338,49 @@ function createRecipeVariant(id) { fillRecipeForm(project.recipes.find(item => i
 function deleteRecipe(id) { const recipe = project.recipes.find(item => item.id === id); if (!recipe || !confirm('Törlöd ezt a receptet? A korábbi naplóbejegyzések megmaradnak.')) return; project.recipes = project.recipes.filter(item => item.id !== id).map(item => item.variantOfRecipeId === id ? { ...item, variantOfRecipeId: recipe.variantOfRecipeId || '' } : item); project.customFoods = project.customFoods.filter(item => item.id !== recipe.foodId); project.favorites = project.favorites.filter(item => item !== recipe.foodId); scheduleSave(); render() }
 
 async function lookupBarcode() { const status = $('#food-api-status'); status.textContent = 'Termék keresése…'; try { pendingProduct = await lookupOpenFoodFactsProduct($('#food-item-barcode').value); $('#food-item-name').value = pendingProduct.name; $('#food-item-category').value = pendingProduct.category; $('#food-item-base-unit').value = pendingProduct.baseUnit; for (const key of CORE_NUTRIENTS) $(`#food-item-${key}`).value = pendingProduct.nutrients[key] ?? ''; status.textContent = 'Open Food Facts találat betöltve. Ellenőrizd, majd mentsd.' } catch (error) { status.textContent = error.message } }
-async function scanBarcode() { if (!('BarcodeDetector' in window) || !navigator.mediaDevices?.getUserMedia) { $('#food-api-status').textContent = 'A kameraolvasó ezen az eszközön nem támogatott. Írd be a vonalkódot.'; $('#food-item-barcode').focus(); return } let stream; try { const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] }); stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); const video = document.createElement('video'); video.srcObject = stream; video.playsInline = true; await video.play(); $('#food-api-status').textContent = 'Tartsd a vonalkódot a kamera elé…'; const deadline = Date.now() + 15000; while (Date.now() < deadline) { const codes = await detector.detect(video); if (codes[0]?.rawValue) { $('#food-item-barcode').value = codes[0].rawValue; await lookupBarcode(); return } await new Promise(resolve => setTimeout(resolve, 300)) } throw new Error('Nem sikerült leolvasni a vonalkódot. Írd be kézzel.') } catch (error) { $('#food-api-status').textContent = error.message } finally { stream?.getTracks().forEach(track => track.stop()) } }
-function closeLabelOcr() { pendingLabelOcr = null; $('#food-ocr-preview').classList.add('hidden') }
+async function barcodeImageSource(file) {
+  if ('createImageBitmap' in window) return { source: await createImageBitmap(file), release(source) { source.close?.() } }
+  const url = URL.createObjectURL(file)
+  const image = new Image()
+  image.src = url
+  await image.decode()
+  return { source: image, release() { URL.revokeObjectURL(url) } }
+}
+
+async function selectBarcodePhoto(event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file) return
+  const status = $('#food-api-status')
+  if (!('BarcodeDetector' in window)) {
+    status.textContent = 'A fotós vonalkódfelismerés ezen a böngészőn nem támogatott. Írd be kézzel a kódot.'
+    $('#food-item-barcode').focus()
+    return
+  }
+  if (!file.type.startsWith('image/') || file.size > 12 * 1024 * 1024) {
+    status.textContent = 'Legfeljebb 12 MB-os képet készíts vagy válassz.'
+    return
+  }
+  status.textContent = 'Vonalkód keresése a fotón…'
+  let image
+  try {
+    image = await barcodeImageSource(file)
+    const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] })
+    const codes = await detector.detect(image.source)
+    const rawValue = String(codes[0]?.rawValue || '').replace(/\D/g, '')
+    if (!/^\d{7,14}$/.test(rawValue)) throw new Error('A fotón nem található olvasható EAN/UPC vonalkód. Fotózd le közelebbről, jó fényben.')
+    $('#food-item-barcode').value = rawValue
+    status.textContent = `${rawValue} beolvasva · termék keresése…`
+    await lookupBarcode()
+  } catch (error) {
+    status.textContent = error.message || 'A vonalkód felismerése nem sikerült.'
+    $('#food-item-barcode').focus()
+  } finally {
+    image?.release(image.source)
+  }
+}
+function restoreModalFocus() { const target = modalReturnFocus; modalReturnFocus = null; target?.isConnected && target.focus() }
+function closeLabelOcr() { pendingLabelOcr = null; $('#food-ocr-preview').classList.add('hidden'); restoreModalFocus() }
 function renderLabelOcr() {
   if (!pendingLabelOcr) return
   $('#food-ocr-basis').value = pendingLabelOcr.basis.type
@@ -314,15 +390,16 @@ function renderLabelOcr() {
   $('#food-ocr-warning').textContent = pendingLabelOcr.warnings.length ? pendingLabelOcr.warnings.join(' ') : `${pendingLabelOcr.found} érték felismerve. Ellenőrizd őket a fotó alapján.`
   $('#food-ocr-raw').textContent = pendingLabelOcr.rawText
   $('#food-ocr-preview').classList.remove('hidden')
+  $('#food-ocr-close').focus()
 }
 async function selectNutritionLabel(event) {
   const file = event.target.files?.[0]; event.target.value = ''; if (!file) return
-  if (!/^image\/(?:png|jpeg|webp)$/.test(file.type) || file.size > 8 * 1024 * 1024) return setStatus('PNG, JPEG vagy WebP képet válassz, legfeljebb 8 MB méretben.', 'error')
+  if (!/^image\/(?:png|jpeg|webp)$/.test(file.type) || file.size > 8 * 1024 * 1024) { setStatus('PNG, JPEG vagy WebP képet válassz, legfeljebb 8 MB méretben.', 'error'); restoreModalFocus(); return }
   const button = $('#food-label-ocr'); button.disabled = true; button.textContent = 'OCR előkészítése…'
   try {
     pendingLabelOcr = await recognizeNutritionLabelImage(file, progress => { button.textContent = `OCR ${Math.round(progress * 100)}%` })
     renderLabelOcr()
-  } catch (error) { setStatus(`A címke felismerése nem sikerült: ${error.message}`, 'error') }
+  } catch (error) { setStatus(`A címke felismerése nem sikerült: ${error.message}`, 'error'); restoreModalFocus() }
   finally { button.disabled = false; button.textContent = 'Tápértékcímke OCR' }
 }
 function applyLabelOcr() {
@@ -337,13 +414,14 @@ function applyLabelOcr() {
   } catch (error) { $('#food-ocr-warning').textContent = error.message }
 }
 function saveTargets(event) { event.preventDefault(); try { const effectiveFrom = $('#food-target-date').value; const values = normalizeTargets(targetFormValues()); const existing = project.targets.find(item => item.effectiveFrom === effectiveFrom); const target = { id: existing?.id || createFoodId('target'), effectiveFrom, values }; project.targets = existing ? project.targets.map(item => item.id === existing.id ? target : item) : [...project.targets, target]; selectedDate = effectiveFrom; scheduleSave(); render() } catch (error) { $('#food-target-warning').textContent = error.message } }
-function exportBackup() { const blob = new Blob([foodBackupToJson(project)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `grapes-food-${selectedDate}.json`; link.click(); URL.revokeObjectURL(url) }
+function exportBackup() { const blob = new Blob([foodBackupToJson(project)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `grapes-food-${selectedDate}.json`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 0) }
 async function importBackup(event) { const file = event.target.files?.[0]; event.target.value = ''; if (!file) return; try { const imported = foodBackupFromJson(await file.text(), profile.id); if (!confirm('Az import lecseréli a jelenlegi Food-adatokat. Folytatod?')) return; project = imported; project.syncState = { ...project.syncState, localDirty: true }; driveFileId = null; refreshRecipeFoods(); await persistLocal(); resetEntryForm(); resetFoodForm(); resetRecipeForm(); render(); setStatus('Importálva · Drive-mentés szükséges', 'saved') } catch (error) { setStatus(error.message, 'error') } }
 
 function closeHealthPreview() {
   pendingHealthImport = null
   $('#food-health-preview').classList.add('hidden')
   $('#food-health-records').replaceChildren()
+  restoreModalFocus()
 }
 
 function healthRecordLabel(item) {
@@ -370,6 +448,7 @@ function renderHealthPreview() {
   }
   $('#food-health-confirm').disabled = counts.ready === 0
   $('#food-health-preview').classList.remove('hidden')
+  $('#food-health-close').focus()
 }
 
 async function selectHealthImport(event) {
@@ -377,7 +456,7 @@ async function selectHealthImport(event) {
   try {
     pendingHealthImport = prepareHealthBridgeImport(await file.text(), { profileId: profile.id, existingEntries: project.diaryEntries })
     renderHealthPreview()
-  } catch (error) { pendingHealthImport = null; setStatus(error.message, 'error') }
+  } catch (error) { pendingHealthImport = null; setStatus(error.message, 'error'); restoreModalFocus() }
 }
 
 function applyHealthImport() {
@@ -399,7 +478,7 @@ function bindEvents() {
     const favorite = event.target.closest('[data-food-favorite]'); if (favorite) { const id = favorite.dataset.foodFavorite; project.favorites = project.favorites.includes(id) ? project.favorites.filter(item => item !== id) : [...project.favorites, id]; scheduleSave(); renderFoodItems(); return }
     const sharedCopy = event.target.closest('[data-library-copy-food]'); if (sharedCopy) return copySharedRecipe(sharedCopy.dataset.libraryCopyFood)
     const editFood = event.target.closest('[data-food-edit]'); if (editFood) return fillFoodForm(project.customFoods.find(item => item.id === editFood.dataset.foodEdit))
-    const deleteFood = event.target.closest('[data-food-delete]'); if (deleteFood && confirm('Törlöd ezt a saját ételt? A korábbi naplóbejegyzések megmaradnak.')) { project.customFoods = project.customFoods.filter(item => item.id !== deleteFood.dataset.foodDelete); project.favorites = project.favorites.filter(id => id !== deleteFood.dataset.foodDelete); scheduleSave(); render(); return }
+    const deleteFood = event.target.closest('[data-food-delete]'); if (deleteFood) return deleteFoodItem(deleteFood.dataset.foodDelete)
     const removeIngredient = event.target.closest('[data-recipe-ingredient-delete]'); if (removeIngredient) { recipeIngredients = recipeIngredients.filter(item => item.id !== removeIngredient.dataset.recipeIngredientDelete); renderRecipeIngredients(); return }
     const variant = event.target.closest('[data-recipe-variant]'); if (variant) return createRecipeVariant(variant.dataset.recipeVariant)
     const edit = event.target.closest('[data-recipe-edit]'); if (edit) return editRecipe(edit.dataset.recipeEdit)
@@ -410,15 +489,27 @@ function bindEvents() {
     const revoke = event.target.closest('[data-library-revoke]'); if (revoke && confirm(`Visszavonod ${revoke.dataset.memberEmail} hozzáférését?`)) return revokeFamilyMember(revoke.dataset.libraryRevoke, revoke.dataset.memberEmail)
     const detach = event.target.closest('[data-library-remove]'); if (detach && confirm('Leválasztod ezt a receptkönyvtárat erről a profilról?')) return detachFamilyLibrary(detach.dataset.libraryRemove)
   })
+  $('.food__tabs').addEventListener('keydown', event => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+    const tabs = [...root.querySelectorAll('[data-food-tab]')]
+    const current = Math.max(0, tabs.indexOf(document.activeElement))
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (current + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length
+    event.preventDefault(); activeTab = tabs[next].dataset.foodTab; render(); tabs[next].focus()
+  })
+  root.addEventListener('keydown', event => {
+    if (event.key !== 'Escape') return
+    if (!$('#food-ocr-preview').classList.contains('hidden')) closeLabelOcr()
+    else if (!$('#food-health-preview').classList.contains('hidden')) closeHealthPreview()
+  })
   $('#food-date').addEventListener('change', event => { selectedDate = event.target.value || localDate(); render() }); $('#food-date-prev').addEventListener('click', () => shiftDate(-1)); $('#food-date-next').addEventListener('click', () => shiftDate(1)); $('#food-date-today').addEventListener('click', () => { selectedDate = localDate(); render() })
   $('#food-search').addEventListener('input', renderFoodItems); $('#food-category-filter').addEventListener('change', renderFoodItems); $('#food-entry-food').addEventListener('change', () => updateEntryUnits()); $('#food-entry-form').addEventListener('submit', saveEntry); $('#food-entry-cancel').addEventListener('click', resetEntryForm)
-  $('#food-item-form').addEventListener('submit', saveFood); $('#food-item-cancel').addEventListener('click', resetFoodForm); $('#food-lookup').addEventListener('click', lookupBarcode); $('#food-scan').addEventListener('click', scanBarcode); $('#food-label-ocr').addEventListener('click', () => $('#food-label-input').click()); $('#food-label-input').addEventListener('change', selectNutritionLabel); $('#food-ocr-apply').addEventListener('click', applyLabelOcr); $('#food-ocr-close').addEventListener('click', closeLabelOcr); $('#food-ocr-cancel').addEventListener('click', closeLabelOcr); $('#food-ocr-preview').addEventListener('click', event => { if (event.target.id === 'food-ocr-preview') closeLabelOcr() })
+  $('#food-item-form').addEventListener('submit', saveFood); $('#food-item-cancel').addEventListener('click', resetFoodForm); $('#food-lookup').addEventListener('click', lookupBarcode); $('#food-scan').addEventListener('click', () => $('#food-barcode-input').click()); $('#food-barcode-input').addEventListener('change', selectBarcodePhoto); $('#food-label-ocr').addEventListener('click', event => { modalReturnFocus = event.currentTarget; $('#food-label-input').click() }); $('#food-label-input').addEventListener('change', selectNutritionLabel); $('#food-ocr-apply').addEventListener('click', applyLabelOcr); $('#food-ocr-close').addEventListener('click', closeLabelOcr); $('#food-ocr-cancel').addEventListener('click', closeLabelOcr); $('#food-ocr-preview').addEventListener('click', event => { if (event.target.id === 'food-ocr-preview') closeLabelOcr() })
   $('#food-recipe-form').addEventListener('submit', saveRecipe); $('#food-recipe-cancel').addEventListener('click', resetRecipeForm); $('#food-recipe-add-ingredient').addEventListener('click', addRecipeIngredient); $('#food-recipe-ingredient-food').addEventListener('change', () => updateRecipeIngredientUnits()); for (const id of ['#food-recipe-name', '#food-recipe-prepared-weight', '#food-recipe-yield-count', '#food-recipe-yield-unit', '#food-recipe-unit-weight']) $(id).addEventListener('input', renderRecipePreview)
   $('#food-library-create').addEventListener('submit', createFamilyLibrary); $('#food-library-connect').addEventListener('submit', connectFamilyLibrary)
   for (const id of ['#food-stats-period', '#food-stats-nutrient', '#food-stats-compare', '#food-stats-granularity']) $(id).addEventListener('change', renderStats)
   $('#food-target-form').addEventListener('submit', saveTargets); for (const id of ['#food-target-energy', '#food-target-protein', '#food-target-carbohydrate', '#food-target-fat']) $(id).addEventListener('input', renderTargetWarning)
   $('#food-drive-save').addEventListener('click', () => saveToDrive().catch(error => setStatus(error.message, 'error'))); $('#food-back-to-menu-btn').addEventListener('click', () => document.dispatchEvent(new CustomEvent('grapes:open-main-menu'))); $('#food-backup-export').addEventListener('click', exportBackup); $('#food-backup-import').addEventListener('click', () => $('#food-backup-input').click()); $('#food-backup-input').addEventListener('change', importBackup)
-  $('#food-health-import').addEventListener('click', () => $('#food-health-input').click()); $('#food-health-input').addEventListener('change', selectHealthImport); $('#food-health-confirm').addEventListener('click', applyHealthImport); $('#food-health-close').addEventListener('click', closeHealthPreview); $('#food-health-cancel').addEventListener('click', closeHealthPreview); $('#food-health-preview').addEventListener('click', event => { if (event.target.id === 'food-health-preview') closeHealthPreview() })
+  $('#food-health-import').addEventListener('click', event => { modalReturnFocus = event.currentTarget; $('#food-health-input').click() }); $('#food-health-input').addEventListener('change', selectHealthImport); $('#food-health-confirm').addEventListener('click', applyHealthImport); $('#food-health-close').addEventListener('click', closeHealthPreview); $('#food-health-cancel').addEventListener('click', closeHealthPreview); $('#food-health-preview').addEventListener('click', event => { if (event.target.id === 'food-health-preview') closeHealthPreview() })
 }
 
 export async function initFoodApp() { root = document.querySelector('#food-app'); if (!initialized) { root.innerHTML = appMarkup(); bindEvents(); initialized = true } setStatus('Betöltés…'); await loadProject(); resetEntryForm(); resetRecipeForm(); render(); setStatus(driveFileId ? 'Drive-ról betöltve' : 'Helyi napló', 'saved') }

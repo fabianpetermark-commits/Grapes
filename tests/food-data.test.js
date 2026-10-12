@@ -70,6 +70,8 @@ test('dátum és profil szerint szűri a naplót', () => {
     { profileId: 'other', occurredAt: '2026-10-12T08:00:00.000Z' },
   ]
   assert.equal(entriesForLocalDay(entries, '2026-10-12', profile.id).length, 1)
+  const localMidnight = new Date(2026, 9, 13, 0, 15).toISOString()
+  assert.equal(entriesForLocalDay([{ profileId: profile.id, occurredAt: localMidnight }], '2026-10-13', profile.id).length, 1)
 })
 
 test('figyelmeztet az egymással nem egyező energia- és makrócélokra', () => {
@@ -146,4 +148,14 @@ test('a receptvariáns külön recept és külön naplózható étel marad', () 
   assert.equal(normalized.recipes[1].variantOfRecipeId, 'recipe-base')
   assert.notEqual(normalized.recipes[0].foodId, normalized.recipes[1].foodId)
   assert.throws(() => normalizeFoodProject({ ...project, recipes: [{ ...project.recipes[1], variantOfRecipeId: 'missing' }] }), /variáns-kapcsolat/)
+})
+
+test('a projekt betöltése elutasítja a hiányzó alapanyagra hivatkozó receptet', () => {
+  const project = createEmptyFoodProject(profile)
+  project.recipes = [{
+    id: 'recipe-broken', foodId: 'food-broken', ownerProfileId: profile.id, name: 'Hibás recept',
+    ingredients: [{ id: 'ingredient-missing', foodId: 'food-missing', amount: 100, unit: 'g' }],
+    createdAt: '2026-10-12T10:00:00.000Z',
+  }]
+  assert.throws(() => normalizeFoodProject(project), /Hiányzó recept-hozzávaló.*food-missing/)
 })

@@ -5,11 +5,12 @@ function numberOrNull(value) {
   return Number.isFinite(number) && number >= 0 ? number : null
 }
 
-export async function lookupOpenFoodFactsProduct(barcode, { signal } = {}) {
+export async function lookupOpenFoodFactsProduct(barcode, { signal, baseUrl = import.meta.env?.VITE_FOOD_API_URL || DEFAULT_OPEN_FOOD_FACTS_URL, fetchImpl = globalThis.fetch } = {}) {
   const code = String(barcode || '').trim()
   if (!/^\d{7,14}$/.test(code)) throw new Error('A vonalkód 7–14 számjegyből állhat.')
-  const baseUrl = String(import.meta.env.VITE_FOOD_API_URL || DEFAULT_OPEN_FOOD_FACTS_URL).replace(/\/$/, '')
-  const response = await fetch(`${baseUrl}/api/v2/product/${encodeURIComponent(code)}.json`, { signal })
+  if (typeof fetchImpl !== 'function') throw new Error('A termékadatbázis ezen a környezeten nem érhető el.')
+  const endpoint = String(baseUrl || DEFAULT_OPEN_FOOD_FACTS_URL).replace(/\/$/, '')
+  const response = await fetchImpl(`${endpoint}/api/v2/product/${encodeURIComponent(code)}.json`, { signal })
   if (!response.ok) throw new Error(`A termékadatbázis nem érhető el (${response.status}).`)
   const payload = await response.json()
   if (payload.status !== 1 || !payload.product) throw new Error('Nem található termék ezzel a vonalkóddal.')

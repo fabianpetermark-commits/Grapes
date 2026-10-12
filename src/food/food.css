@@ -18,3 +18,47 @@
 .food__stats-controls { display: grid; grid-template-columns: repeat(4, minmax(140px, 1fr)); gap: .75rem; margin-bottom: 1rem; }.food__stats-controls label { display: grid; gap: .35rem; color: #4d5d51; font-size: .78rem; font-weight: 700; }.food__stats-summary { display: grid; grid-template-columns: repeat(6, 1fr); gap: .65rem; margin-bottom: 1rem; }.food__stats-summary article, .food__chart-card, .food__macro-card { padding: 1rem; background: #fff; border: 1px solid #dfe7de; border-radius: 16px; box-shadow: 0 7px 22px rgba(40,68,48,.05); }.food__stats-summary span { display: block; color: #68766c; font-size: .72rem; }.food__stats-summary strong { display: block; margin-top: .3rem; font-size: 1.2rem; }.food__stats-summary small { font-size: .7rem; }.food__stats-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 1rem; }.food__stats-grid h2 { margin: 0 0 1rem; font-size: 1rem; }.food__chart { display: flex; align-items: stretch; gap: .35rem; min-height: 230px; overflow-x: auto; }.food__chart-column { display: grid; grid-template-rows: 190px auto; flex: 1 0 34px; min-width: 34px; text-align: center; }.food__chart-bars { display: flex; align-items: flex-end; justify-content: center; gap: 2px; border-bottom: 1px solid #cfd9d0; }.food__chart-bars i { display: block; width: 45%; height: var(--bar-height); min-height: 1px; background: #3b9b5f; border-radius: 5px 5px 0 0; }.food__chart-bars i.is-compare { background: #5c7de0; }.food__chart-column > span { padding-top: .35rem; color: #6d786f; font-size: .62rem; writing-mode: vertical-rl; }.food__macro-card { display: grid; justify-items: center; align-content: start; }.food__donut { display: grid; place-items: center; width: 170px; height: 170px; border-radius: 50%; background: conic-gradient(#3b9b5f 0 var(--protein), #e3a33c var(--protein) var(--carb), #cc5f55 var(--carb) 100%); }.food__donut::before { content: ''; grid-area: 1 / 1; width: 105px; height: 105px; border-radius: 50%; background: #fff; }.food__donut strong { z-index: 1; grid-area: 1 / 1; font-size: 1.25rem; }.food__donut small { font-size: .65rem; }.food__macro-legend { display: grid; gap: .5rem; margin-top: 1rem; font-size: .75rem; }.food__macro-legend span { display: flex; align-items: center; gap: .4rem; }.food__macro-legend i { width: .7rem; height: .7rem; border-radius: 3px; background: #3b9b5f; }.food__macro-legend span:nth-child(2) i { background: #e3a33c; }.food__macro-legend span:nth-child(3) i { background: #cc5f55; }.food__stats-note { color: #7b5b2c; font-size: .8rem; }
 @media (max-width: 900px) { .food__header { align-items: flex-start; }.food__header-actions { max-width: 70%; }.food__summary { grid-template-columns: repeat(2, 1fr); }.food__form--entry, .food__form--food, .food__target-card, .food__recipe-basics, .food__recipe-yield, .food__stats-controls { grid-template-columns: repeat(2, 1fr); }.food__stats-summary { grid-template-columns: repeat(3, 1fr); }.food__stats-grid, .food__library-intro { grid-template-columns: 1fr; }.food__target-card > div, .food__warning, .food__recipe-basics label:last-child, .food__library-share, .food__library-intro .food__form-status { grid-column: 1 / -1; } }
 @media (max-width: 620px) { .food__header { position: static; display: grid; }.food__header-actions { max-width: none; justify-content: flex-start; }.food__header-actions .btn:not(.btn--primary):not(.btn--ghost) { display: none; }.food__main { width: min(100% - 1rem, 1180px); padding-top: .8rem; }.food__tabs { width: 100%; overflow-x: auto; }.food__summary, .food__form--entry, .food__form--food, .food__target-card, .food__recipe-basics, .food__recipe-yield, .food__ingredient-builder > div:first-of-type, .food__stats-controls, .food__ocr-grid, .food__library-share { grid-template-columns: 1fr; }.food__stats-summary { grid-template-columns: repeat(2, 1fr); }.food__target-card > div, .food__warning, .food__recipe-basics label:last-child { grid-column: auto; }.food__datebar { flex-wrap: wrap; }.food__datebar label { flex: 1; }.food__entry { align-items: flex-start; }.food__entry > div:last-child { flex-wrap: wrap; justify-content: flex-end; }.food__food-row { grid-template-columns: auto 1fr auto; }.food__food-row [data-food-delete] { grid-column: 3; }.food__search { align-items: stretch; flex-direction: column; }.food__recipe-row, .food__library-card { align-items: flex-start; flex-wrap: wrap; } }
+
+/* A Food modul a Grapes shell közös sötét felület- és akcenttokenjeit követi. */
+.food { background: var(--color-bg-app); color: var(--color-text); }
+.food__header { background: var(--color-bg-floating); border-color: var(--color-border); }
+.food__brand p, .food__eyebrow { color: var(--color-accent); }
+.food__save-status, .food__metric span, .food__metric p, .food__meal h2 span, .food__entry span, .food__food-row span, .food__empty, .food__health-summary, .food__health-record small, .food__library-intro p, .food__library-card span, .food__library-card code, .food__recipe-row span, .food__stats-summary span, .food__chart-column > span { color: var(--color-text-muted); }
+.food__save-status[data-state="error"], .food__health-record.is-invalid small { color: var(--color-danger); }
+.food__header .btn--ghost { color: var(--color-text); border-color: var(--color-border-strong); }
+.food__tabs, .food__ingredient-builder { background: var(--color-bg-raised); }
+.food__tabs button { color: var(--color-text-muted); }
+.food__tabs button:hover { color: var(--color-text); background: var(--color-bg-hover); }
+.food__tabs button.is-active { color: var(--color-accent); background: var(--color-bg-active); box-shadow: var(--shadow-1); }
+.food__tabs button:focus-visible, .food button:focus-visible { outline: 0; box-shadow: var(--focus-ring); }
+.food button:disabled { cursor: not-allowed; opacity: .5; }
+.food input, .food select, .food__recipe-form textarea { color: var(--color-text); background: var(--color-bg-raised); border-color: var(--color-border-strong); }
+.food input::placeholder, .food textarea::placeholder { color: var(--color-text-subtle); }
+.food input:focus-visible, .food select:focus-visible, .food textarea:focus-visible { border-color: var(--color-accent); outline: 0; box-shadow: var(--focus-ring); }
+.food__metric, .food__meal, .food__form, .food__target-card, .food__items, .food__library-intro, .food__library-card, .food__recipe-form, .food__recipes, .food__stats-summary article, .food__chart-card, .food__macro-card { background: var(--color-bg-surface); border-color: var(--color-border); box-shadow: var(--shadow-1); }
+.food__form label, .food__target-card label, .food__search label, .food__ocr-grid label, .food__library-form label, .food__library-share label, .food__recipe-form label, .food__stats-controls label { color: var(--color-text-muted); }
+.food__form-status, .food__ocr-dialog details { color: var(--color-text-muted); }
+.food__metric i, .food__chart-bars i { background: var(--color-accent); }
+.food__entry, .food__food-row, .food__ingredient-list > div, .food__recipe-row { border-color: var(--color-border); }
+.food__favorite { color: var(--color-warning); }
+.food__health-overlay { background: var(--color-scrim); }
+.food__health-dialog { color: var(--color-text); background: var(--color-bg-floating); border-color: var(--color-border-strong); box-shadow: var(--shadow-3); }
+.food__health-records { background: var(--color-bg-app); border-color: var(--color-border); }
+.food__health-record { border-color: var(--color-border); }
+.food__health-record input { accent-color: var(--color-accent); }
+.food__health-record.is-duplicate, .food__health-record.is-invalid { color: var(--color-text-subtle); background: var(--color-bg-sunken); }
+.food__recipe-preview { color: var(--color-success); background: var(--color-accent-soft); }
+.food__recipe-preview[data-state="error"] { color: var(--color-danger); background: var(--color-danger-soft); }
+.food__chart-bars { border-color: var(--color-border-strong); }
+.food__chart-bars i.is-compare { background: var(--color-success); }
+.food__donut::before { background: var(--color-bg-surface); }
+.food__warning, .food__stats-note { color: var(--color-warning); }
+
+@media (max-width: 620px) {
+  .food__header-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; max-width: none; gap: .5rem; }
+  .food__header-actions .food__save-status { grid-column: 1 / -1; }
+  .food__header-actions .btn, .food__header-actions .btn:not(.btn--primary):not(.btn--ghost) { display: inline-flex; width: 100%; justify-content: center; }
+  .food__tabs button { flex: 0 0 auto; }
+  .food__food-row { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+  .food__food-row [data-food-delete], .food__food-row [data-recipe-delete] { grid-column: auto; }
+}

@@ -16,6 +16,7 @@
     "test:finance:import": "node tests/finance-import.browser.mjs",
     "test:finance:ocr": "node tests/finance-receipt-ocr.browser.mjs",
     "test:finance:mobile": "node tests/finance-planned-mobile.browser.mjs",
+    "test:food:browser": "node tests/food-app.browser.mjs",
     "test:responsive": "node tests/responsive-layout.browser.mjs",
     "dev": "vite",
     "build": "vite build",
