@@ -5,7 +5,7 @@ import test from 'node:test';
 const root = new URL('../android-health-connect-poc/', import.meta.url);
 const read = (path) => readFile(new URL(path, root), 'utf8');
 
-test('a manifest csak a POC-hoz szükséges Health Connect jogokat kéri', async () => {
+test('az Android alkalmazás csak a szükséges Health Connect jogokat kéri', async () => {
   const manifest = await read('app/src/main/AndroidManifest.xml');
   for (const permission of [
     'READ_NUTRITION',
@@ -18,6 +18,23 @@ test('a manifest csak a POC-hoz szükséges Health Connect jogokat kéri', async
   assert.doesNotMatch(manifest, /WRITE_HYDRATION/);
   assert.match(manifest, /ACTION_SHOW_PERMISSIONS_RATIONALE/);
   assert.match(manifest, /VIEW_PERMISSION_USAGE/);
+  assert.match(manifest, /android\.permission\.INTERNET/);
+  assert.match(manifest, /usesCleartextTraffic="false"/);
+});
+
+test('a Grapes felület helyi Android assetként fut és csak a fő keret kap natív hidat', async () => {
+  const activity = await read(
+    'app/src/main/java/hu/grapes/healthconnect/MainActivity.kt',
+  );
+  const webBridge = await read('../src/android-bridge.js');
+  const foodApp = await read('../src/food/food-app.js');
+  assert.match(activity, /WebViewAssetLoader\.AssetsPathHandler/);
+  assert.match(activity, /https:\/\/\$APP_HOST\/assets\/index\.html/);
+  assert.match(activity, /WebViewCompat\.addWebMessageListener/);
+  assert.match(activity, /if \(!isMainFrame\)/);
+  assert.match(activity, /allowFileAccess = false/);
+  assert.match(webBridge, /GrapesAndroid\.postMessage/);
+  assert.match(foodApp, /readAndroidHealthExport\(selectedDate\)/);
 });
 
 test('az export szerződés verziózott és megköveteli a deduplikációs kulcsot', async () => {

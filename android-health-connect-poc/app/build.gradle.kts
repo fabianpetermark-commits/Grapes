@@ -31,6 +31,7 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.9.3")
     implementation("androidx.health.connect:connect-client:1.1.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
+    implementation("androidx.webkit:webkit:1.12.1")
     implementation("com.google.code.gson:gson:2.13.2")
     if (samsungSdk.exists()) {
         implementation(files(samsungSdk))

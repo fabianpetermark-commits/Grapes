@@ -12,6 +12,7 @@ import { FOOD_LIBRARY_MODULE, buildRecipeLibrary, copyLibraryRecipeToProject, li
 import { aggregateNutritionSeries, buildDailyNutritionSeries, filterNutritionPeriod, macroEnergyDistribution, nutritionStatistics, targetAchievement } from './food-stats.js'
 import { getGrapesAccount, isGrapesDriveConnected, listGrapesProjects, loadGrapesProject, revokeGrapesProjectPermission, saveGrapesProject, shareGrapesProject, updateGrapesProjectPermission } from '../storage/grapes-drive.js'
 import { loadLocalProject, saveLocalProject } from '../storage/local-project-store.js'
+import { isGrapesAndroidApp, readAndroidHealthExport } from '../android-bridge.js'
 
 const MODULE = 'Ételnapló'
 const PROJECT_NAME = 'Ételnapló'
@@ -599,6 +600,24 @@ async function selectHealthImport(event) {
   } catch (error) { pendingHealthImport = null; setStatus(error.message, 'error'); restoreModalFocus() }
 }
 
+async function importAndroidHealth() {
+  const button = $('#food-health-import')
+  button.disabled = true
+  button.textContent = 'Health-adatok olvasása…'
+  try {
+    const payload = await readAndroidHealthExport(selectedDate)
+    pendingHealthImport = prepareHealthBridgeImport(payload, { profileId: profile.id, existingEntries: project.diaryEntries })
+    renderHealthPreview()
+  } catch (error) {
+    pendingHealthImport = null
+    setStatus(error.message, 'error')
+    restoreModalFocus()
+  } finally {
+    button.disabled = false
+    button.textContent = 'Health-adatok beolvasása'
+  }
+}
+
 function applyHealthImport() {
   if (!pendingHealthImport) return
   const selected = [...root.querySelectorAll('[data-health-record]:checked')].map(input => Number(input.value))
@@ -650,7 +669,7 @@ function bindEvents() {
   for (const id of ['#food-stats-period', '#food-stats-nutrient', '#food-stats-compare', '#food-stats-granularity']) $(id).addEventListener('change', renderStats)
   $('#food-target-form').addEventListener('submit', saveTargets); for (const id of ['#food-target-energy', '#food-target-protein', '#food-target-carbohydrate', '#food-target-fat']) $(id).addEventListener('input', renderTargetWarning)
   $('#food-drive-save').addEventListener('click', () => saveToDrive().catch(error => setStatus(error.message, 'error'))); $('#food-back-to-menu-btn').addEventListener('click', () => document.dispatchEvent(new CustomEvent('grapes:open-main-menu'))); $('#food-backup-export').addEventListener('click', exportBackup); $('#food-backup-import').addEventListener('click', () => $('#food-backup-input').click()); $('#food-backup-input').addEventListener('change', importBackup)
-  $('#food-health-import').addEventListener('click', event => { modalReturnFocus = event.currentTarget; $('#food-health-input').click() }); $('#food-health-input').addEventListener('change', selectHealthImport); $('#food-health-confirm').addEventListener('click', applyHealthImport); $('#food-health-close').addEventListener('click', closeHealthPreview); $('#food-health-cancel').addEventListener('click', closeHealthPreview); $('#food-health-preview').addEventListener('click', event => { if (event.target.id === 'food-health-preview') closeHealthPreview() })
+  $('#food-health-import').addEventListener('click', event => { modalReturnFocus = event.currentTarget; if (isGrapesAndroidApp()) importAndroidHealth(); else $('#food-health-input').click() }); $('#food-health-input').addEventListener('change', selectHealthImport); $('#food-health-confirm').addEventListener('click', applyHealthImport); $('#food-health-close').addEventListener('click', closeHealthPreview); $('#food-health-cancel').addEventListener('click', closeHealthPreview); $('#food-health-preview').addEventListener('click', event => { if (event.target.id === 'food-health-preview') closeHealthPreview() })
 }
 
-export async function initFoodApp() { root = document.querySelector('#food-app'); if (!initialized) { root.innerHTML = appMarkup(); addDiaryScannerButton(); addOpenFoodFactsSearchUi(); bindEvents(); initialized = true } setStatus('Betöltés…'); await loadProject(); resetEntryForm(); resetRecipeForm(); render(); setStatus(driveFileId ? 'Drive-ról betöltve' : 'Helyi napló', 'saved') }
+export async function initFoodApp() { root = document.querySelector('#food-app'); if (!initialized) { root.innerHTML = appMarkup(); if (isGrapesAndroidApp()) $('#food-health-import').textContent = 'Health-adatok beolvasása'; addDiaryScannerButton(); addOpenFoodFactsSearchUi(); bindEvents(); initialized = true } setStatus('Betöltés…'); await loadProject(); resetEntryForm(); resetRecipeForm(); render(); setStatus(driveFileId ? 'Drive-ról betöltve' : 'Helyi napló', 'saved') }

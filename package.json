@@ -20,6 +20,7 @@
     "test:responsive": "node tests/responsive-layout.browser.mjs",
     "dev": "vite",
     "build": "vite build",
+    "build:android-web": "vite build --base ./ --outDir android-health-connect-poc/app/src/main/assets --emptyOutDir",
     "preview": "vite preview"
   },
   "devDependencies": {

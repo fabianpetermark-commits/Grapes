@@ -12,12 +12,14 @@ import {
 import { applyTranslations, getLanguage, onLanguageChange, setLanguage, t } from './i18n.js'
 import { applyModuleAvailability, initDeveloperMenu } from './developer-menu.js'
 import { isModuleEnabled } from './developer-settings.js'
+import { isGrapesAndroidApp } from './android-bridge.js'
 
 const params = new URLSearchParams(window.location.search)
 const hasEbookPair = params.has('ebook-pair') || params.has('ebook-reader')
 const requestedModule = params.get('module')
 const moduleScreens = ['brochure', 'studio', 'qr', 'ebook', 'email', 'finance', 'billing', 'food']
 const requestedScreen = moduleScreens.includes(requestedModule) ? requestedModule : null
+const androidApp = isGrapesAndroidApp()
 
 const projectModules = [
   { drive: 'Számla és árajánlat', screen: 'billing' },
@@ -45,7 +47,9 @@ el('#pick-ebook-organizer').addEventListener('click', () => {
 })
 
 function renderAccount() {
-  const account = getGrapesAccount() || { name: 'Google', email: '', photo: '' }
+  const account = getGrapesAccount() || (androidApp
+    ? { name: 'Helyi Grapes', email: 'Android alkalmazás', photo: '' }
+    : { name: 'Google', email: '', photo: '' })
   el('#grapes-account-name').textContent = account.name || 'Google'
   el('#grapes-account-email').textContent = account.email || ''
   el('#grapes-account-initial').textContent = (account.name || account.email || 'G').trim().charAt(0).toUpperCase()
@@ -55,6 +59,8 @@ function renderAccount() {
   else photo.removeAttribute('src')
   photo.onerror = () => { photo.hidden = true }
   el('#grapes-drive-status').dataset.connected = isGrapesDriveConnected() ? 'true' : 'false'
+  if (androidApp && !isGrapesDriveConnected()) el('#grapes-drive-status').textContent = 'Helyi mód'
+  el('#grapes-sign-out').hidden = androidApp && !isGrapesDriveConnected()
   initDeveloperMenu(account)
   applyModuleAvailability()
 }
@@ -70,7 +76,12 @@ async function renderRecentProjects() {
   const list = el('#recent-projects-list')
   el('#recent-projects-source').textContent = t('recent.drive')
   list.innerHTML = `<p class="recent-projects__empty">${t('recent.loading')}</p>`
-  if (!isGrapesDriveConnected()) return
+  if (!isGrapesDriveConnected()) {
+    list.innerHTML = androidApp
+      ? '<p class="recent-projects__empty">A helyi projektjeid az egyes modulokban érhetők el.</p>'
+      : `<p class="recent-projects__empty">${t('recent.empty')}</p>`
+    return
+  }
   try {
     // Sorosan kérjük le a modulmappákat: teljesen új fióknál így a közös
     // Grapes gyökérmappa biztosan csak egyszer jön létre.
@@ -159,7 +170,8 @@ onLanguageChange(() => {
 
 onGrapesDriveChange((connected) => {
   if (connected) renderAccount()
-  else if (!hasEbookPair) showLogin()
+  else if (!hasEbookPair && !androidApp) showLogin()
+  else if (androidApp) showAuthenticatedStart()
 })
 
 for (const selector of [
@@ -170,7 +182,7 @@ for (const selector of [
 }
 
 function goToMainMenu() {
-  if (isGrapesDriveConnected()) {
+  if (isGrapesDriveConnected() || androidApp) {
     renderRecentProjects()
     showScreen('splash')
   } else showLogin()
@@ -180,4 +192,5 @@ document.addEventListener('grapes:open-main-menu', goToMainMenu)
 
 if (hasEbookPair) showScreen('ebook')
 else if (isGrapesDriveConnected()) showAuthenticatedStart()
+else if (androidApp) showAuthenticatedStart()
 else showLogin()

@@ -1,122 +1,172 @@
 package hu.grapes.healthconnect
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
+import android.annotation.SuppressLint
 import android.content.Intent
-import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
-import android.provider.Settings
-import android.view.ViewGroup
-import android.widget.Button
-import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.TextView
+import android.webkit.ValueCallback
+import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
-import androidx.lifecycle.lifecycleScope
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.health.connect.client.HealthConnectClient
+import androidx.lifecycle.lifecycleScope
+import androidx.webkit.WebViewAssetLoader
+import androidx.webkit.WebViewCompat
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 import java.time.LocalDate
 
 class MainActivity : ComponentActivity() {
-    private val bridge by lazy { HealthConnectBridge(this) }
-    private val samsungWater by lazy { SamsungWaterBridgeFactory.create(this) }
-    private lateinit var output: TextView
-    private var lastExport: String? = null
+    private val healthConnect by lazy { HealthConnectBridge(this) }
+    private lateinit var webView: WebView
+    private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
+    private var pendingHealthRequest: PendingHealthRequest? = null
+
+    private data class PendingHealthRequest(val from: LocalDate, val requestId: String)
+
+    private val fileChooser = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val files = WebChromeClient.FileChooserParams.parseResult(result.resultCode, result.data)
+        fileChooserCallback?.onReceiveValue(files)
+        fileChooserCallback = null
+    }
+
     private val permissionLauncher = registerForActivityResult(HealthConnectBridge.permissionContract) {
-        show("Megadott Health Connect jogosultságok: ${it.size}")
+        val request = pendingHealthRequest ?: return@registerForActivityResult
+        pendingHealthRequest = null
+        readHealthData(request.from, request.requestId, allowPermissionRequest = false)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState); setContentView(buildUi()); showAvailability()
-    }
-
-    private fun buildUi() = ScrollView(this).apply {
-        addView(LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL; setPadding(40, 56, 40, 56)
-            addView(TextView(context).apply {
-                text = "Grapes × Health Connect"; textSize = 26f
-                setTextColor(Color.rgb(45, 35, 72))
-            })
-            addView(TextView(context).apply {
-                text = "POC: táplálkozás és víz olvasása, próbaétkezés írása, JSON export."
-                textSize = 16f; setPadding(0, 12, 0, 28)
-            })
-            button("1. Jogosultságok megadása") { requestPermissions() }
-            button("2. Adatok beolvasása 2026-01-01-től") { readData() }
-            button("3. Idempotens próbaétkezés írása") { writeTest() }
-            button("4. JSON másolása") { copyExport() }
-            button("Samsung-víz jogosultság") { requestSamsungWaterPermission() }
-            button("Samsung-víz beolvasása") { readSamsungWater() }
-            button("Próbaétkezés törlése") { deleteTest() }
-            button("Health Connect beállítások") { openSettings() }
-            output = TextView(context).apply {
-                textSize = 13f; setTextIsSelectable(true); setPadding(0, 28, 0, 0)
+        super.onCreate(savedInstanceState)
+        configureWebView()
+        setContentView(webView)
+        webView.loadUrl(APP_URL)
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (webView.canGoBack()) webView.goBack() else finish()
             }
-            addView(output)
         })
     }
 
-    private fun LinearLayout.button(label: String, action: () -> Unit) =
-        addView(Button(context).apply { text = label; setOnClickListener { action() } },
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun configureWebView() {
+        val assetLoader = WebViewAssetLoader.Builder()
+            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
+            .build()
+        webView = WebView(this).apply {
+            settings.javaScriptEnabled = true
+            settings.domStorageEnabled = true
+            settings.allowFileAccess = false
+            settings.allowContentAccess = true
+            WebViewCompat.addWebMessageListener(
+                this,
+                "GrapesAndroid",
+                setOf(APP_ORIGIN)
+            ) { _, message, _, isMainFrame, _ ->
+                if (!isMainFrame) return@addWebMessageListener
+                handleBridgeMessage(message.data)
+            }
+            webViewClient = object : WebViewClient() {
+                override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest) =
+                    assetLoader.shouldInterceptRequest(request.url)
 
-    private fun showAvailability() = show((when (bridge.sdkStatus()) {
-        HealthConnectClient.SDK_AVAILABLE -> "Health Connect elérhető."
-        HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED -> "Telepítés vagy frissítés szükséges."
-        else -> "A Health Connect nem érhető el ezen a készüléken."
-    }) + "\n" + samsungWater.availabilityMessage)
+                override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                    if (request.url.host == APP_HOST) return false
+                    startActivity(Intent(Intent.ACTION_VIEW, request.url))
+                    return true
+                }
+            }
+            webChromeClient = object : WebChromeClient() {
+                override fun onShowFileChooser(
+                    webView: WebView,
+                    callback: ValueCallback<Array<Uri>>,
+                    params: FileChooserParams
+                ): Boolean {
+                    fileChooserCallback?.onReceiveValue(null)
+                    fileChooserCallback = callback
+                    return runCatching {
+                        fileChooser.launch(params.createIntent())
+                        true
+                    }.getOrElse {
+                        fileChooserCallback = null
+                        callback.onReceiveValue(null)
+                        false
+                    }
+                }
+            }
+        }
+    }
 
-    private fun requestPermissions() = lifecycleScope.launch {
-        runCatching { bridge.requestedPermissions() }
-            .onSuccess(permissionLauncher::launch).onFailure(::showError)
+    private fun handleBridgeMessage(rawMessage: String) {
+        val message = runCatching { JSONObject(rawMessage) }.getOrElse { return }
+        val requestId = message.optString("requestId")
+        if (requestId.isBlank()) return
+        when (message.optString("method")) {
+            "readHealthData" -> {
+                val fromDate = message.optJSONArray("args")?.optString(0).orEmpty()
+                val from = runCatching { LocalDate.parse(fromDate) }.getOrElse {
+                    return sendError(requestId, "Érvénytelen kezdődátum.")
+                }
+                readHealthData(from, requestId)
+            }
+            else -> sendError(requestId, "Ismeretlen Android-művelet.")
+        }
     }
-    private fun readData() = lifecycleScope.launch {
+
+    private fun readHealthData(
+        from: LocalDate,
+        requestId: String,
+        allowPermissionRequest: Boolean = true
+    ) = lifecycleScope.launch {
         runCatching {
-            val missing = bridge.requestedPermissions() - bridge.grantedPermissions()
-            check(missing.isEmpty()) { "Hiányzó jogosultságok: ${missing.joinToString()}" }
-            bridge.readExport(LocalDate.of(2026, 1, 1)).toJson()
-        }.onSuccess { lastExport = it; show(it) }.onFailure(::showError)
+            check(healthConnect.sdkStatus() == HealthConnectClient.SDK_AVAILABLE) {
+                "A Health Connect nem érhető el vagy frissítésre szorul."
+            }
+            val missing = healthConnect.requestedPermissions() - healthConnect.grantedPermissions()
+            if (missing.isNotEmpty()) {
+                check(allowPermissionRequest) { "A szükséges Health Connect-engedélyek nem lettek megadva." }
+                pendingHealthRequest = PendingHealthRequest(from, requestId)
+                permissionLauncher.launch(missing)
+                return@launch
+            }
+            healthConnect.readExport(from).toJson()
+        }.onSuccess { payload ->
+            if (payload != null) sendResult(requestId, payload)
+        }.onFailure { sendError(requestId, it.message ?: it.javaClass.simpleName) }
     }
-    private fun writeTest() = lifecycleScope.launch {
-        runCatching { bridge.writeTestNutrition() }
-            .onSuccess { show("Próbaétkezés elmentve. Rekord: $it") }.onFailure(::showError)
+
+    private fun sendResult(requestId: String, payload: String) = dispatchResult(JSONObject().apply {
+        put("requestId", requestId)
+        put("ok", true)
+        put("payload", payload)
+    })
+
+    private fun sendError(requestId: String, message: String) = dispatchResult(JSONObject().apply {
+        put("requestId", requestId)
+        put("ok", false)
+        put("error", message)
+    })
+
+    private fun dispatchResult(detail: JSONObject) {
+        webView.evaluateJavascript(
+            "window.dispatchEvent(new CustomEvent('grapes:android-result',{detail:${detail}}))",
+            null
+        )
     }
-    private fun requestSamsungWaterPermission() = lifecycleScope.launch {
-        runCatching {
-            check(samsungWater.available) { samsungWater.availabilityMessage }
-            samsungWater.requestReadPermission(this@MainActivity)
-        }.onSuccess { granted ->
-            show(if (granted) "Samsung-víz olvasása engedélyezve."
-            else "A Samsung-víz jogosultság nincs megadva vagy a platform nem áll készen.")
-        }.onFailure(::showError)
+
+    override fun onDestroy() {
+        fileChooserCallback?.onReceiveValue(null)
+        webView.destroy()
+        super.onDestroy()
     }
-    private fun readSamsungWater() = lifecycleScope.launch {
-        runCatching {
-            check(samsungWater.available) { samsungWater.availabilityMessage }
-            BridgeExport(
-                generatedAt = java.time.Instant.now().toString(),
-                records = samsungWater.readWater(LocalDate.of(2026, 1, 1))
-            ).toJson()
-        }.onSuccess { lastExport = it; show(it) }.onFailure(::showError)
+
+    companion object {
+        private const val APP_HOST = "appassets.androidplatform.net"
+        private const val APP_ORIGIN = "https://$APP_HOST"
+        private const val APP_URL = "https://$APP_HOST/assets/index.html"
     }
-    private fun deleteTest() = lifecycleScope.launch {
-        runCatching { bridge.deleteTestNutrition() }
-            .onSuccess { show("A Grapes próbaétkezése törölve.") }.onFailure(::showError)
-    }
-    private fun copyExport() {
-        val json = lastExport ?: return show("Előbb olvasd be az adatokat.")
-        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        clipboard.setPrimaryClip(ClipData.newPlainText("Grapes Health Connect export", json))
-        show("A JSON export a vágólapra került (${json.length} karakter).")
-    }
-    private fun openSettings() {
-        runCatching { startActivity(Intent(HealthConnectClient.ACTION_HEALTH_CONNECT_SETTINGS)) }
-            .onFailure { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                data = Uri.parse("package:$packageName")
-            }) }
-    }
-    private fun showError(error: Throwable) = show("Hiba: ${error.message ?: error.javaClass.simpleName}")
-    private fun show(message: String) { output.text = message }
 }
