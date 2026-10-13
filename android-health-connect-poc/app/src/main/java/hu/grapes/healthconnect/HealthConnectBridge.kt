@@ -2,10 +2,11 @@ package hu.grapes.healthconnect
 
 import android.content.Context
 import androidx.health.connect.client.HealthConnectClient
+import androidx.health.connect.client.HealthConnectFeatures
 import androidx.health.connect.client.PermissionController
-import androidx.health.connect.client.feature.HealthConnectFeatures
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.HydrationRecord
+import androidx.health.connect.client.records.MealType
 import androidx.health.connect.client.records.NutritionRecord
 import androidx.health.connect.client.records.metadata.Metadata
 import androidx.health.connect.client.request.ReadRecordsRequest
@@ -54,7 +55,7 @@ class HealthConnectBridge(private val context: Context) {
             startTime = now.minusSeconds(60), startZoneOffset = null,
             endTime = now, endZoneOffset = null,
             name = "Grapes Health Connect próba",
-            mealType = NutritionRecord.MEAL_TYPE_SNACK,
+            mealType = MealType.MEAL_TYPE_SNACK,
             energy = Energy.kilocalories(250.0), protein = Mass.grams(12.0),
             totalCarbohydrate = Mass.grams(30.0), totalFat = Mass.grams(9.0),
             metadata = Metadata.manualEntry(
@@ -113,10 +114,11 @@ class HealthConnectBridge(private val context: Context) {
 
     private fun externalId(origin: String, id: String) = "healthconnect:$origin:$id"
     private fun mealType(value: Int): String? = when (value) {
-        NutritionRecord.MEAL_TYPE_BREAKFAST -> "breakfast"
-        NutritionRecord.MEAL_TYPE_LUNCH -> "lunch"
-        NutritionRecord.MEAL_TYPE_DINNER -> "dinner"
-        NutritionRecord.MEAL_TYPE_SNACK -> "snack"
+        MealType.MEAL_TYPE_BREAKFAST -> "breakfast"
+        MealType.MEAL_TYPE_LUNCH -> "lunch"
+        MealType.MEAL_TYPE_DINNER -> "dinner"
+        MealType.MEAL_TYPE_SNACK -> "snack"
         else -> null
     }
 }
+
