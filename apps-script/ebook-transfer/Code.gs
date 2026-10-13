@@ -1,5 +1,5 @@
 const CODE_LENGTH = 6;
-const BROKER_API_VERSION = 10;
+const BROKER_API_VERSION = 11;
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const TTL_MS = 20 * 60 * 1000;
 const STORE_PREFIX = 'ebook_transfer_';
@@ -57,8 +57,13 @@ function fatSecretFoodSearchPage(p) {
     const products = searchFatSecretFoods(kind, value);
     return fatSecretBridgePage({ type: 'grapes-fatsecret-result', nonce: nonce, status: 'ok', products: products });
   } catch (err) {
-    console.error('FatSecret request failed: ' + String(err && err.message || err));
-    return fatSecretBridgePage({ type: 'grapes-fatsecret-result', nonce: nonce, status: 'error', message: 'A FatSecret kereső most nem érhető el. Ellenőrizd az API-jogosultságokat a FatSecret fejlesztői fiókban.' });
+    const detail = String(err && err.message || err);
+    console.error('FatSecret request failed: ' + detail);
+    let message = 'A FatSecret kereső most nem érhető el.';
+    if (detail.indexOf('Missing FatSecret script properties') >= 0) message = 'A FatSecret Client ID vagy Client Secret hiányzik az Apps Script tulajdonságai közül.';
+    else if (detail.indexOf('FatSecret OAuth HTTP') >= 0) message = 'A FatSecret hitelesítés sikertelen. Ellenőrizd a Client ID és Client Secret értékét.';
+    else if (detail.indexOf('FatSecret HTTP') >= 0) message = 'A FatSecret fiók nem engedélyezi ezt a keresési jogosultságot.';
+    return fatSecretBridgePage({ type: 'grapes-fatsecret-result', nonce: nonce, status: 'error', message: message });
   }
 }
 
