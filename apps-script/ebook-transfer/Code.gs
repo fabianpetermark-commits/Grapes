@@ -1,5 +1,5 @@
 const CODE_LENGTH = 6;
-const BROKER_API_VERSION = 16;
+const BROKER_API_VERSION = 17;
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const TTL_MS = 20 * 60 * 1000;
 const STORE_PREFIX = 'ebook_transfer_';
@@ -101,8 +101,8 @@ function searchFatSecretFoods(kind, value) {
 
 function fatSecretBasicSearch(value) {
   const token = fatSecretAccessToken('basic');
-  const response = fatSecretGetWithToken('https://platform.fatsecret.com/rest/foods/search/v1', {
-    search_expression: value, page_number: 0, max_results: 12, format: 'json',
+  const response = fatSecretPostWithToken('https://platform.fatsecret.com/rest/server.api', {
+    method: 'foods.search', search_expression: value, page_number: 0, max_results: 12, format: 'json',
   }, token);
   const searchResult = response.foods || response.foods_search || {};
   const foods = asFatSecretArray(searchResult.food);
@@ -113,6 +113,15 @@ function fatSecretBasicSearch(value) {
     } catch (err) { foods[i] = fatSecretFoodFromDescription(foods[i]); }
   }
   return { foods: { food: foods } };
+}
+
+function fatSecretPostWithToken(endpoint, params, token) {
+  const response = UrlFetchApp.fetch(endpoint, {
+    method: 'post', contentType: 'application/x-www-form-urlencoded', payload: params,
+    headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true,
+  });
+  if (response.getResponseCode() < 200 || response.getResponseCode() >= 300) throw new Error('FatSecret HTTP ' + response.getResponseCode());
+  return JSON.parse(response.getContentText());
 }
 
 function fatSecretGetWithToken(endpoint, params, token) {

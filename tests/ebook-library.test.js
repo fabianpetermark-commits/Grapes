@@ -1407,7 +1407,7 @@ test('automatic broker deployment stays aligned with every live client URL', () 
   assert.equal(deploymentId(readerPageSource), expected)
   assert.match(brokerWorkflowSource, /clasp push --force/)
   assert.match(brokerWorkflowSource, /clasp deploy --deploymentId/)
-  assert.match(brokerSource, /BROKER_API_VERSION = 16/)
+  assert.match(brokerSource, /BROKER_API_VERSION = 17/)
   assert.match(brokerSource, /action === 'health'/)
   assert.match(brokerSource, /action === 'food-search'/)
 })
@@ -1463,7 +1463,7 @@ test('FatSecret broker falls back to the basic food API when premier scope is un
     Utilities: { base64Encode: value => Buffer.from(value).toString('base64'), base64EncodeWebSafe: value => Buffer.from(value).toString('base64url') },
     UrlFetchApp: { fetch: (url, options) => {
       if (url.includes('/connect/token')) return options.payload.scope === 'basic' ? response(200, { access_token: 'basic-token', expires_in: 3600 }) : response(403, {})
-      if (url.includes('/foods/search/v1')) return response(200, { foods_search: { food: [{ food_id: '7', food_name: 'Basic találat', food_description: 'Per 100g - Calories: 123kcal | Fat: 4g | Carbs: 5g | Protein: 6g' }] } })
+      if (url.includes('/server.api') && options.method === 'post' && options.payload.method === 'foods.search') return response(200, { foods_search: { food: [{ food_id: '7', food_name: 'Basic találat', food_description: 'Per 100g - Calories: 123kcal | Fat: 4g | Carbs: 5g | Protein: 6g' }] } })
       return response(403, {})
     } },
   })
