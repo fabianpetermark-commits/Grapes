@@ -49,3 +49,15 @@ app, but does not configure future GitHub deployments.
   OAuth consent configuration and verification.
 
 The reader's persistent device token is separate from the browser's Drive token.
+
+## FatSecret food search
+
+The same web app proxies Food-module searches so the FatSecret client secret is
+never shipped to GitHub Pages. Configure these values under Apps Script
+**Project settings → Script properties**:
+
+- `FATSECRET_CLIENT_ID`
+- `FATSECRET_CLIENT_SECRET`
+
+Do not add them to a `VITE_` variable or commit them. The broker requests only
+short-lived FatSecret access tokens and caches search results for ten minutes.

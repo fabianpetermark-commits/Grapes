@@ -1,5 +1,5 @@
 const CODE_LENGTH = 6;
-const BROKER_API_VERSION = 8;
+const BROKER_API_VERSION = 9;
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const TTL_MS = 20 * 60 * 1000;
 const STORE_PREFIX = 'ebook_transfer_';
@@ -35,6 +35,7 @@ function doGet(e) {
       .createTextOutput(JSON.stringify({ ok: true, version: BROKER_API_VERSION }))
       .setMimeType(ContentService.MimeType.JSON);
   }
+  if (action === 'food-search') return fatSecretFoodSearchPage(p);
   if (action === 'create') return pairingOutput(createTransferPage(p), p);
   if (action === 'download') return resolveTransfer(p);
   if (action === 'create-reader-pairing') return pairingOutput(createReaderPairingPage(p), p);
@@ -42,6 +43,124 @@ function doGet(e) {
   if (action === 'reader') return readerLibraryPage(p);
   if (action === 'revoke-reader') return revokeReaderPage(p);
   return HtmlService.createHtmlOutput('<h2>Grapes E-book Transfer</h2><p>Missing action.</p>');
+}
+
+function fatSecretFoodSearchPage(p) {
+  const nonce = String(p.nonce || '').trim().toLowerCase();
+  const kind = String(p.kind || 'name').trim().toLowerCase();
+  const value = String(p.value || '').trim().replace(/\s+/g, ' ');
+  if (!/^[a-f0-9]{48}$/.test(nonce)) return fatSecretBridgePage({ type: 'grapes-fatsecret-result', nonce: nonce, status: 'error', message: 'Érvénytelen FatSecret-kérés.' });
+  if (kind !== 'name' && kind !== 'barcode') return fatSecretBridgePage({ type: 'grapes-fatsecret-result', nonce: nonce, status: 'error', message: 'Ismeretlen kereséstípus.' });
+  if (kind === 'name' && (value.length < 2 || value.length > 120)) return fatSecretBridgePage({ type: 'grapes-fatsecret-result', nonce: nonce, status: 'error', message: 'A terméknév legalább 2, legfeljebb 120 karakter legyen.' });
+  if (kind === 'barcode' && !/^\d{7,14}$/.test(value)) return fatSecretBridgePage({ type: 'grapes-fatsecret-result', nonce: nonce, status: 'error', message: 'A vonalkód 7–14 számjegyből állhat.' });
+  try {
+    const products = searchFatSecretFoods(kind, value);
+    return fatSecretBridgePage({ type: 'grapes-fatsecret-result', nonce: nonce, status: 'ok', products: products });
+  } catch (err) {
+    console.error('FatSecret request failed: ' + String(err && err.message || err));
+    return fatSecretBridgePage({ type: 'grapes-fatsecret-result', nonce: nonce, status: 'error', message: 'A FatSecret kereső most nem érhető el. Ellenőrizd az API-jogosultságokat a FatSecret fejlesztői fiókban.' });
+  }
+}
+
+function fatSecretBridgePage(payload) {
+  const safePayload = JSON.stringify(payload).replace(/</g, '\\u003c');
+  return HtmlService.createHtmlOutput('<!doctype html><html><body><script>window.top.postMessage(' + safePayload + ',' + JSON.stringify(ALLOWED_PARENT_ORIGIN) + ');<\/script></body></html>')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function searchFatSecretFoods(kind, value) {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = 'fatsecret_' + kind + '_' + Utilities.base64EncodeWebSafe(value).slice(0, 120);
+  const cached = cache.get(cacheKey);
+  if (cached) return JSON.parse(cached);
+  let response;
+  if (kind === 'barcode') {
+    response = fatSecretAuthorizedGet('https://platform.fatsecret.com/rest/food/barcode/find-by-id/v2', { barcode: value, format: 'json' }, 'basic barcode localization', true);
+  } else {
+    response = fatSecretAuthorizedGet('https://platform.fatsecret.com/rest/foods/search/v5', { search_expression: value, page_number: 0, max_results: 12, format: 'json' }, 'basic premier localization', true);
+  }
+  const rawFoods = kind === 'barcode' ? [response.food || response] : asFatSecretArray(response.foods && response.foods.food);
+  const products = [];
+  for (let i = 0; i < rawFoods.length && products.length < 12; i++) {
+    const normalized = normalizeFatSecretFood(rawFoods[i], kind === 'barcode' ? value : '');
+    if (normalized) products.push(normalized);
+  }
+  cache.put(cacheKey, JSON.stringify(products), 600);
+  return products;
+}
+
+function fatSecretAuthorizedGet(endpoint, params, scope, preferHungary) {
+  let token;
+  try { token = fatSecretAccessToken(scope); }
+  catch (err) {
+    const reducedScope = scope.replace(/\s*localization\b/, '');
+    token = fatSecretAccessToken(reducedScope);
+    preferHungary = false;
+  }
+  const query = [];
+  Object.keys(params).forEach(function (key) { query.push(encodeURIComponent(key) + '=' + encodeURIComponent(params[key])); });
+  if (preferHungary) { query.push('region=HU'); query.push('language=en'); }
+  let response = UrlFetchApp.fetch(endpoint + '?' + query.join('&'), { method: 'get', headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true });
+  if (response.getResponseCode() >= 400 && preferHungary) {
+    token = fatSecretAccessToken(scope.replace(/\s*localization\b/, ''));
+    response = UrlFetchApp.fetch(endpoint + '?' + query.filter(function (part) { return part.indexOf('region=') !== 0 && part.indexOf('language=') !== 0; }).join('&'), { method: 'get', headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true });
+  }
+  if (response.getResponseCode() < 200 || response.getResponseCode() >= 300) throw new Error('FatSecret HTTP ' + response.getResponseCode());
+  return JSON.parse(response.getContentText());
+}
+
+function fatSecretAccessToken(scope) {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = 'fatsecret_token_' + String(scope).replace(/\W+/g, '_');
+  const cached = cache.get(cacheKey);
+  if (cached) return cached;
+  const props = PropertiesService.getScriptProperties();
+  const clientId = String(props.getProperty('FATSECRET_CLIENT_ID') || '').trim();
+  const clientSecret = String(props.getProperty('FATSECRET_CLIENT_SECRET') || '').trim();
+  if (!clientId || !clientSecret) throw new Error('Missing FatSecret script properties');
+  const response = UrlFetchApp.fetch('https://oauth.fatsecret.com/connect/token', {
+    method: 'post', contentType: 'application/x-www-form-urlencoded',
+    headers: { Authorization: 'Basic ' + Utilities.base64Encode(clientId + ':' + clientSecret) },
+    payload: { grant_type: 'client_credentials', scope: scope }, muteHttpExceptions: true,
+  });
+  if (response.getResponseCode() < 200 || response.getResponseCode() >= 300) throw new Error('FatSecret OAuth HTTP ' + response.getResponseCode());
+  const payload = JSON.parse(response.getContentText());
+  if (!payload.access_token) throw new Error('FatSecret access token missing');
+  cache.put(cacheKey, payload.access_token, Math.max(60, Math.min(3500, Number(payload.expires_in) - 60 || 3500)));
+  return payload.access_token;
+}
+
+function asFatSecretArray(value) { return Array.isArray(value) ? value : (value ? [value] : []); }
+function fatSecretNumber(value) { const number = Number(value); return isFinite(number) && number >= 0 ? number : null; }
+
+function normalizeFatSecretFood(food, barcode) {
+  if (!food || !food.food_id || !food.food_name) return null;
+  const servings = asFatSecretArray(food.servings && food.servings.serving);
+  let serving = null;
+  for (let i = 0; i < servings.length; i++) {
+    const unit = String(servings[i].metric_serving_unit || '').toLowerCase();
+    if ((unit === 'g' || unit === 'ml') && Number(servings[i].metric_serving_amount) > 0) {
+      if (!serving || Number(servings[i].metric_serving_amount) === 100 || servings[i].is_default === '1') serving = servings[i];
+      if (Number(servings[i].metric_serving_amount) === 100) break;
+    }
+  }
+  if (!serving) return null;
+  const amount = Number(serving.metric_serving_amount);
+  const factor = 100 / amount;
+  const scaled = function (value) { const number = fatSecretNumber(value); return number === null ? null : Math.round(number * factor * 1000) / 1000; };
+  const unit = String(serving.metric_serving_unit || '').toLowerCase() === 'ml' ? 'ml' : 'g';
+  const sodiumMg = scaled(serving.sodium);
+  return {
+    kind: 'product', name: (food.brand_name ? food.brand_name + ' – ' : '') + food.food_name,
+    barcode: barcode || '', category: food.food_type === 'Brand' ? 'Márkás élelmiszer' : 'Általános élelmiszer',
+    baseUnit: unit, imageUrl: '',
+    nutrients: {
+      energyKcal: scaled(serving.calories), protein: scaled(serving.protein), carbohydrate: scaled(serving.carbohydrate), fat: scaled(serving.fat),
+      fiber: scaled(serving.fiber), sugar: scaled(serving.sugar), saturatedFat: scaled(serving.saturated_fat),
+      salt: sodiumMg === null ? null : Math.round(sodiumMg * 2.5 / 1000 * 1000) / 1000,
+    },
+    source: { type: 'fatsecret', id: String(food.food_id), revision: String(food.last_updated || ''), attribution: 'FatSecret Platform' },
+  };
 }
 
 // Only code-creation pages can be embedded. Private reader pages retain the

@@ -1407,8 +1407,35 @@ test('automatic broker deployment stays aligned with every live client URL', () 
   assert.equal(deploymentId(readerPageSource), expected)
   assert.match(brokerWorkflowSource, /clasp push --force/)
   assert.match(brokerWorkflowSource, /clasp deploy --deploymentId/)
-  assert.match(brokerSource, /BROKER_API_VERSION = 8/)
+  assert.match(brokerSource, /BROKER_API_VERSION = 9/)
   assert.match(brokerSource, /action === 'health'/)
+  assert.match(brokerSource, /action === 'food-search'/)
+})
+
+test('FatSecret broker keeps credentials server-side and maps Hungarian-region food results', () => {
+  const cache = new Map()
+  const requests = []
+  const food = { food_id: '42', food_name: 'Baromfi párizsi', brand_name: 'Pikok', food_type: 'Brand', servings: { serving: {
+    metric_serving_unit: 'g', metric_serving_amount: '100', calories: '210', protein: '12', carbohydrate: '2', fat: '16', sodium: '680',
+  } } }
+  const response = (status, body) => ({ getResponseCode: () => status, getContentText: () => JSON.stringify(body) })
+  const c = vm.createContext({
+    console,
+    HtmlService: { XFrameOptionsMode: { ALLOWALL: 'ALLOWALL' }, createHtmlOutput: html => ({ html, setXFrameOptionsMode(mode) { this.frameMode = mode; return this } }) },
+    PropertiesService: { getScriptProperties: () => ({ getProperty: key => ({ FATSECRET_CLIENT_ID: 'client-id', FATSECRET_CLIENT_SECRET: 'client-secret' })[key] }) },
+    CacheService: { getScriptCache: () => ({ get: key => cache.get(key), put: (key, value) => cache.set(key, value) }) },
+    Utilities: { base64Encode: value => Buffer.from(value).toString('base64'), base64EncodeWebSafe: value => Buffer.from(value).toString('base64url') },
+    UrlFetchApp: { fetch: (url, options) => { requests.push({ url, options }); return url.includes('/connect/token') ? response(200, { access_token: 'server-token', expires_in: 3600 }) : response(200, { foods: { food: [food] } }) } },
+  })
+  vm.runInContext(brokerSource, c)
+  const result = c.doGet({ parameter: { action: 'food-search', kind: 'name', value: 'baromfi párizsi', nonce: 'a'.repeat(48) } })
+  assert.equal(result.frameMode, 'ALLOWALL')
+  assert.match(result.html, /Pikok.*Baromfi párizsi/)
+  assert.match(result.html, /"energyKcal":210/)
+  assert.match(result.html, /"salt":1\.7/)
+  assert.doesNotMatch(result.html, /client-secret|server-token/)
+  assert.match(requests[1].url, /region=HU/)
+  assert.equal(requests[1].options.headers.Authorization, 'Bearer server-token')
 })
 
 test('only explicit embedded creation pages allow framing, including readable errors', () => {

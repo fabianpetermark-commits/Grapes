@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { lookupOpenFoodFactsProduct, searchOpenFoodFactsProducts } from '../src/food/food-api.js'
+import { lookupFatSecretProduct, lookupOpenFoodFactsProduct, searchFatSecretProducts, searchOpenFoodFactsProducts } from '../src/food/food-api.js'
 
 const response = (body, { ok = true, status = 200 } = {}) => ({ ok, status, async json() { return body } })
 
@@ -66,4 +66,23 @@ test('név alapján keres az Open Food Factsban és kiszűri a használhatatlan 
 test('a név szerinti keresés validációs és hálózati hibáit jelzi', async () => {
   await assert.rejects(() => searchOpenFoodFactsProducts('a'), /legalább 2.*karakter/)
   await assert.rejects(() => searchOpenFoodFactsProducts('müzli', { fetchImpl: async () => response({}, { ok: false, status: 429 }) }), /429/)
+})
+
+test('a FatSecret közvetítő név és vonalkód alapján normalizált terméket ad', async () => {
+  const calls = []
+  globalThis.__GRAPES_FATSECRET_TEST__ = async (kind, value) => {
+    calls.push([kind, value])
+    return [{
+      name: 'Pikok – Baromfi párizsi', barcode: kind === 'barcode' ? value : '', category: 'Márkás élelmiszer', baseUnit: 'g',
+      nutrients: { energyKcal: 210, protein: 12, salt: 1.7 }, source: { type: 'fatsecret', id: 'fs-1' },
+    }]
+  }
+  try {
+    const search = await searchFatSecretProducts('baromfi párizsi')
+    const barcode = await lookupFatSecretProduct('5999999999999')
+    assert.equal(search.products[0].source.type, 'fatsecret')
+    assert.equal(search.products[0].name, 'Pikok – Baromfi párizsi')
+    assert.equal(barcode.barcode, '5999999999999')
+    assert.deepEqual(calls, [['name', 'baromfi párizsi'], ['barcode', '5999999999999']])
+  } finally { delete globalThis.__GRAPES_FATSECRET_TEST__ }
 })
