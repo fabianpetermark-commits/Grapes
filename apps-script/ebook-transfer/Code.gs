@@ -1,5 +1,5 @@
 const CODE_LENGTH = 6;
-const BROKER_API_VERSION = 17;
+const BROKER_API_VERSION = 18;
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const TTL_MS = 20 * 60 * 1000;
 const STORE_PREFIX = 'ebook_transfer_';
@@ -65,6 +65,8 @@ function fatSecretFoodSearchPage(p) {
     else if (detail.indexOf('FatSecret OAuth invalid_scope') >= 0) message = 'A FatSecret-fiók nem engedélyezi a szükséges basic jogosultságot (invalid_scope).';
     else if (detail.indexOf('FatSecret OAuth HTTP 403') >= 0 || detail.indexOf('FatSecret OAuth access_denied') >= 0) message = 'A FatSecret blokkolja az Apps Script szerverét; ellenőrizd az alkalmazás IP-korlátozását.';
     else if (detail.indexOf('FatSecret OAuth') >= 0) message = 'A FatSecret OAuth-hitelesítés sikertelen (' + fatSecretSafeOAuthDiagnostic(detail) + ').';
+    else if (detail.indexOf('FatSecret API 14') >= 0) message = 'A FatSecret-fiókhoz nincs engedélyezve a termékkereséshez szükséges scope (API 14).';
+    else if (detail.indexOf('FatSecret API') >= 0) message = 'A FatSecret API hibát jelzett (' + fatSecretSafeApiDiagnostic(detail) + ').';
     else if (detail.indexOf('FatSecret HTTP') >= 0) message = 'A FatSecret fiók nem engedélyezi ezt a keresési jogosultságot.';
     return fatSecretBridgePage({ type: 'grapes-fatsecret-result', nonce: nonce, status: 'error', message: message });
   }
@@ -121,7 +123,7 @@ function fatSecretPostWithToken(endpoint, params, token) {
     headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true,
   });
   if (response.getResponseCode() < 200 || response.getResponseCode() >= 300) throw new Error('FatSecret HTTP ' + response.getResponseCode());
-  return JSON.parse(response.getContentText());
+  return fatSecretParseApiResponse(response.getContentText());
 }
 
 function fatSecretGetWithToken(endpoint, params, token) {
@@ -129,7 +131,21 @@ function fatSecretGetWithToken(endpoint, params, token) {
   Object.keys(params).forEach(function (key) { query.push(encodeURIComponent(key) + '=' + encodeURIComponent(params[key])); });
   const response = UrlFetchApp.fetch(endpoint + '?' + query.join('&'), { method: 'get', headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true });
   if (response.getResponseCode() < 200 || response.getResponseCode() >= 300) throw new Error('FatSecret HTTP ' + response.getResponseCode());
-  return JSON.parse(response.getContentText());
+  return fatSecretParseApiResponse(response.getContentText());
+}
+
+function fatSecretParseApiResponse(responseText) {
+  const payload = JSON.parse(responseText);
+  if (payload && payload.error) {
+    const code = String(payload.error.code || payload.error.error_code || 'unknown').replace(/[^a-z0-9_-]/gi, '').slice(0, 40) || 'unknown';
+    throw new Error('FatSecret API ' + code);
+  }
+  return payload;
+}
+
+function fatSecretSafeApiDiagnostic(detail) {
+  const match = String(detail || '').match(/FatSecret API ([a-z0-9_-]+)/i);
+  return match ? match[1] : 'ismeretlen';
 }
 
 function fatSecretFoodFromDescription(food) {
