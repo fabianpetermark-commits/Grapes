@@ -88,3 +88,17 @@ test('az Android Google Drive kapcsolat natív AuthorizationClientet használ', 
   assert.match(drive, /authorizeAndroidGoogleDrive/);
 });
 
+test('az Android frissítő csak ellenőrzött GitHub Release APK-t ad át a rendszertelepítőnek', async () => {
+  const manifest = await read('app/src/main/AndroidManifest.xml');
+  const updater = await read(
+    'app/src/main/java/hu/grapes/healthconnect/AndroidUpdateManager.kt',
+  );
+  const workflow = await read('../.github/workflows/release-android.yml');
+  assert.match(manifest, /REQUEST_INSTALL_PACKAGES/);
+  assert.match(manifest, /androidx\.core\.content\.FileProvider/);
+  assert.match(updater, /releases\/latest/);
+  assert.match(updater, /MessageDigest\.getInstance\("SHA-256"\)/);
+  assert.match(updater, /canRequestPackageInstalls/);
+  assert.match(workflow, /ANDROID_KEYSTORE_BASE64/);
+  assert.match(workflow, /gh release create/);
+});

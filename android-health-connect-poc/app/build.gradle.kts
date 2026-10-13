@@ -5,16 +5,38 @@ plugins {
 }
 
 val samsungSdk = file("libs/samsung-health-data-api-1.1.0.aar")
+val releaseKeystorePath = providers.environmentVariable("ANDROID_KEYSTORE_PATH").orNull
+val releaseStorePassword = providers.environmentVariable("ANDROID_KEYSTORE_PASSWORD").orNull
+val releaseKeyAlias = providers.environmentVariable("ANDROID_KEY_ALIAS").orNull
+val releaseKeyPassword = providers.environmentVariable("ANDROID_KEY_PASSWORD").orNull
+val grapesVersionCode = providers.environmentVariable("GRAPES_VERSION_CODE").orNull?.toIntOrNull() ?: 1
+val grapesVersionName = providers.environmentVariable("GRAPES_VERSION_NAME").orNull ?: "0.1.0-poc"
 
 android {
     namespace = "hu.grapes.healthconnect"
     compileSdk = 36
+    signingConfigs {
+        if (!releaseKeystorePath.isNullOrBlank()) {
+            create("release") {
+                storeFile = file(releaseKeystorePath)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+                storeType = "PKCS12"
+            }
+        }
+    }
     defaultConfig {
         applicationId = "hu.grapes.healthconnect"
         minSdk = 29
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0-poc"
+        versionCode = grapesVersionCode
+        versionName = grapesVersionName
+    }
+    buildTypes {
+        getByName("release") {
+            if (!releaseKeystorePath.isNullOrBlank()) signingConfig = signingConfigs.getByName("release")
+        }
     }
     buildFeatures { buildConfig = true }
     sourceSets["main"].java.srcDir(
@@ -38,4 +60,3 @@ dependencies {
         implementation(files(samsungSdk))
     }
 }
-

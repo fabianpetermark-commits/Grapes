@@ -14,7 +14,9 @@ Android application shell for the complete Grapes web interface, with a native H
 - excludes this package's own records from imports;
 - writes one idempotent 250 kcal test snack with a stable `clientRecordId`;
 - deletes only that Grapes test record;
-- never uploads data or performs background sync.
+- authorizes Google Drive through Android's native Google authorization flow;
+- checks the latest signed GitHub Release and offers verified in-app APK updates;
+- never performs background health-data sync.
 - optionally reads Samsung Health `WaterIntake` directly through Samsung Health Data SDK 1.1.0.
 
 Keys are `healthconnect:<source package>:<record id>` and `samsunghealth:<source app>:<record id>`. The Grapes Food web module persists them as `externalKey` values, previews every record, and skips already imported or file-internal duplicate keys.
@@ -37,6 +39,19 @@ Prerequisites: Node.js 24, Android Studio with JDK 17, Android SDK 36, and an An
 6. Compare Samsung water with any Health Connect hydration records and verify duplicate handling.
 7. Revoke access and confirm reading fails cleanly.
 
+## Signed releases and in-app updates
+
+Run the `Release Android APK` GitHub Actions workflow with a monotonically increasing `version_code`, a visible `version_name`, and short release notes. The workflow requires these repository secrets:
+
+- `ANDROID_KEYSTORE_BASE64`: the PKCS#12 release keystore encoded as one-line Base64;
+- `ANDROID_KEYSTORE_PASSWORD`;
+- `ANDROID_KEY_ALIAS`;
+- `ANDROID_KEY_PASSWORD`.
+
+Never commit the keystore or its passwords. Back them up securely: every update must be signed with the same key. The workflow publishes a release tagged `android-v<version_code>`. On startup the installed app checks the latest release at most once every six hours, verifies the APK against GitHub's SHA-256 digest, and opens Android's package installer. Android still requires the user to approve installation, and the first update may require enabling “Install unknown apps” for Grapes.
+
+The Android OAuth client in Google Cloud must use package `hu.grapes.healthconnect` and the SHA-1 fingerprint of this same release certificate.
+
 ## Current boundary
 
-The first debug milestone intentionally uses local mode. Native Google Drive authorization, robust Android downloads/sharing, the final package name/signing key, direct Samsung SDK device testing and Play Billing remain later release steps. The optional Samsung adapter still requires Samsung's proprietary AAR and partner approval for public distribution.
+Direct Samsung SDK device testing and Play Billing remain later release steps. The optional Samsung adapter still requires Samsung's proprietary AAR and partner approval for public distribution. If the application is later distributed through Google Play, replace the GitHub APK updater with Play In-App Updates.

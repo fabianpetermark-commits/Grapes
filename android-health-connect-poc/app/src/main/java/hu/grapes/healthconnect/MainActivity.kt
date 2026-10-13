@@ -1,6 +1,7 @@
 package hu.grapes.healthconnect
 
 import android.annotation.SuppressLint
+import android.app.AlertDialog
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -9,6 +10,7 @@ import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.IntentSenderRequest
@@ -30,6 +32,7 @@ import java.time.LocalDate
 class MainActivity : ComponentActivity() {
     private val healthConnect by lazy { HealthConnectBridge(this) }
     private val googleAuthorization by lazy { Identity.getAuthorizationClient(this) }
+    private val updateManager by lazy { AndroidUpdateManager(this) }
     private lateinit var webView: WebView
     private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
     private var pendingHealthRequest: PendingHealthRequest? = null
@@ -69,11 +72,52 @@ class MainActivity : ComponentActivity() {
         configureWebView()
         setContentView(webView)
         webView.loadUrl(APP_URL)
+        checkForAppUpdate()
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 if (webView.canGoBack()) webView.goBack() else finish()
             }
         })
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateManager.resumePendingInstall()
+    }
+
+    private fun checkForAppUpdate() {
+        lifecycleScope.launch {
+            runCatching { updateManager.findAvailableRelease() }
+                .onSuccess { release -> if (release != null && !isFinishing) showUpdateDialog(release) }
+        }
+    }
+
+    private fun showUpdateDialog(release: AndroidUpdateManager.Release) {
+        val details = release.notes.trim().take(600)
+        AlertDialog.Builder(this)
+            .setTitle("Frissítés érhető el")
+            .setMessage(buildString {
+                append("${release.versionName} letölthető.")
+                if (details.isNotBlank()) append("\n\n$details")
+            })
+            .setPositiveButton("Frissítés") { _, _ -> downloadUpdate(release) }
+            .setNegativeButton("Később", null)
+            .show()
+    }
+
+    private fun downloadUpdate(release: AndroidUpdateManager.Release) {
+        Toast.makeText(this, "A Grapes frissítése letöltődik…", Toast.LENGTH_LONG).show()
+        lifecycleScope.launch {
+            runCatching { updateManager.download(release) }
+                .onSuccess { updateManager.requestInstall(it) }
+                .onFailure {
+                    Toast.makeText(
+                        this@MainActivity,
+                        it.message ?: "A frissítés letöltése nem sikerült.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+        }
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -255,5 +299,4 @@ class MainActivity : ComponentActivity() {
         private const val DRIVE_READ_SCOPE = "https://www.googleapis.com/auth/drive.readonly"
     }
 }
-
 
