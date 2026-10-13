@@ -68,7 +68,7 @@ class MainActivity : ComponentActivity() {
                 setOf(APP_ORIGIN)
             ) { _, message, _, isMainFrame, _ ->
                 if (!isMainFrame) return@addWebMessageListener
-                handleBridgeMessage(message.data)
+                handleBridgeMessage(message.data ?: return@addWebMessageListener)
             }
             webViewClient = object : WebViewClient() {
                 override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest) =
@@ -121,22 +121,24 @@ class MainActivity : ComponentActivity() {
         from: LocalDate,
         requestId: String,
         allowPermissionRequest: Boolean = true
-    ) = lifecycleScope.launch {
-        runCatching {
-            check(healthConnect.sdkStatus() == HealthConnectClient.SDK_AVAILABLE) {
-                "A Health Connect nem érhető el vagy frissítésre szorul."
-            }
-            val missing = healthConnect.requestedPermissions() - healthConnect.grantedPermissions()
-            if (missing.isNotEmpty()) {
-                check(allowPermissionRequest) { "A szükséges Health Connect-engedélyek nem lettek megadva." }
-                pendingHealthRequest = PendingHealthRequest(from, requestId)
-                permissionLauncher.launch(missing)
-                return@launch
-            }
-            healthConnect.readExport(from).toJson()
-        }.onSuccess { payload ->
-            if (payload != null) sendResult(requestId, payload)
-        }.onFailure { sendError(requestId, it.message ?: it.javaClass.simpleName) }
+    ) {
+        lifecycleScope.launch {
+            runCatching {
+                check(healthConnect.sdkStatus() == HealthConnectClient.SDK_AVAILABLE) {
+                    "A Health Connect nem érhető el vagy frissítésre szorul."
+                }
+                val missing = healthConnect.requestedPermissions() - healthConnect.grantedPermissions()
+                if (missing.isNotEmpty()) {
+                    check(allowPermissionRequest) { "A szükséges Health Connect-engedélyek nem lettek megadva." }
+                    pendingHealthRequest = PendingHealthRequest(from, requestId)
+                    permissionLauncher.launch(missing)
+                    return@launch
+                }
+                healthConnect.readExport(from).toJson()
+            }.onSuccess { payload ->
+                if (payload != null) sendResult(requestId, payload)
+            }.onFailure { sendError(requestId, it.message ?: it.javaClass.simpleName) }
+        }
     }
 
     private fun sendResult(requestId: String, payload: String) = dispatchResult(JSONObject().apply {
@@ -170,3 +172,4 @@ class MainActivity : ComponentActivity() {
         private const val APP_URL = "https://$APP_HOST/assets/index.html"
     }
 }
+
