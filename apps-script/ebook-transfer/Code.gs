@@ -1,5 +1,5 @@
 const CODE_LENGTH = 6;
-const BROKER_API_VERSION = 12;
+const BROKER_API_VERSION = 13;
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const TTL_MS = 20 * 60 * 1000;
 const STORE_PREFIX = 'ebook_transfer_';
@@ -31,9 +31,8 @@ function doGet(e) {
   const action = String((e && e.parameter && e.parameter.action) || '').toLowerCase();
   const p = (e && e.parameter) || {};
   if (action === 'health') {
-    const maintenance = maintainScriptProperties();
     return ContentService
-      .createTextOutput(JSON.stringify({ ok: true, version: BROKER_API_VERSION, maintenance: maintenance }))
+      .createTextOutput(JSON.stringify({ ok: true, version: BROKER_API_VERSION }))
       .setMimeType(ContentService.MimeType.JSON);
   }
   if (action === 'food-search') return fatSecretFoodSearchPage(p);
