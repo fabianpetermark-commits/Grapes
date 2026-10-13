@@ -8,7 +8,7 @@ val samsungSdk = file("libs/samsung-health-data-api-1.1.0.aar")
 
 android {
     namespace = "hu.grapes.healthconnect"
-    compileSdk = 35
+    compileSdk = 36
     defaultConfig {
         applicationId = "hu.grapes.healthconnect"
         minSdk = 29
