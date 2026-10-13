@@ -1,5 +1,5 @@
 const CODE_LENGTH = 6;
-const BROKER_API_VERSION = 14;
+const BROKER_API_VERSION = 15;
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const TTL_MS = 20 * 60 * 1000;
 const STORE_PREFIX = 'ebook_transfer_';
@@ -101,8 +101,8 @@ function searchFatSecretFoods(kind, value) {
 
 function fatSecretBasicSearch(value) {
   const token = fatSecretAccessToken('basic');
-  const response = fatSecretGetWithToken('https://platform.fatsecret.com/rest/server.api', {
-    method: 'foods.search', search_expression: value, page_number: 0, max_results: 12, format: 'json',
+  const response = fatSecretGetWithToken('https://platform.fatsecret.com/rest/foods/search/v1', {
+    search_expression: value, page_number: 0, max_results: 12, format: 'json',
   }, token);
   const foods = asFatSecretArray(response.foods && response.foods.food);
   for (let i = 0; i < foods.length; i++) {
