@@ -27,7 +27,7 @@ The adapter requests read-only `WATER_INTAKE` permission and maps each record to
 
 ## Build and device check
 
-Prerequisites: Node.js 24, Android Studio with JDK 17, Android SDK 35, and an Android 10+ Google Play device. From the repository root, run `npm run build:android-web`, then open this directory as a standalone Android project, sync Gradle and install the `app` debug variant.
+Prerequisites: Node.js 24, Android Studio with JDK 17, Android SDK 35, and an Android 10+ Google Play device. From the repository root, run `npm run build:android-web`, then open this directory as a standalone Android project, sync Gradle and install the `app` debug variant. The `Build Android APK` GitHub Actions workflow performs the same build and uploads `grapes-debug-apk`.
 
 1. Enable Samsung Health/YAZIO sharing in Health Connect.
 2. Grant Nutrition, Hydration and history permissions.
