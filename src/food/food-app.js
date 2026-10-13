@@ -34,6 +34,7 @@ let recipeVariantOf = ''
 let saveTimer = null
 let pendingHealthImport = null
 let modalReturnFocus = null
+let barcodeScanTarget = 'foods'
 
 const $ = selector => root.querySelector(selector)
 function localDate(date = new Date()) { const offset = date.getTimezoneOffset() * 60000; return new Date(date.getTime() - offset).toISOString().slice(0, 10) }
@@ -97,6 +98,18 @@ function appMarkup() {
   <section data-food-panel="targets" class="hidden"><form id="food-target-form" class="food__target-card"><div><p class="food__eyebrow">NAPI CÉLÉRTÉKEK</p><h2>Személyes célok</h2><p>Az új értékek a kiválasztott naptól érvényesek; a korábbi napok célja változatlan marad.</p></div><label>Érvényes ettől<input id="food-target-date" type="date" required></label><label>Energia (kcal)<input id="food-target-energy" type="number" min="1" required></label><label>Fehérje (g)<input id="food-target-protein" type="number" min="1"></label><label>Szénhidrát (g)<input id="food-target-carbohydrate" type="number" min="1"></label><label>Zsír (g)<input id="food-target-fat" type="number" min="1"></label><button class="btn btn--primary" type="submit">Célok mentése</button><p id="food-target-warning" class="food__warning" role="status"></p></form></section></main>
   <div id="food-health-preview" class="food__health-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="food-health-title"><section class="food__health-dialog"><div class="food__health-heading"><div><p class="food__eyebrow">HEALTH CONNECT / SAMSUNG HEALTH</p><h2 id="food-health-title">Import előnézete</h2></div><button id="food-health-close" class="btn btn--ghost" type="button" aria-label="Bezárás">Bezárás</button></div><p id="food-health-summary" class="food__health-summary"></p><div id="food-health-records" class="food__health-records"></div><div class="food__health-actions"><button id="food-health-cancel" class="btn" type="button">Mégse</button><button id="food-health-confirm" class="btn btn--primary" type="button">Kijelöltek importálása</button></div></section></div>
   <div id="food-ocr-preview" class="food__health-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="food-ocr-title"><section class="food__health-dialog food__ocr-dialog"><div class="food__health-heading"><div><p class="food__eyebrow">HELYI KÉPFELISMERÉS</p><h2 id="food-ocr-title">Tápértékcímke ellenőrzése</h2></div><button id="food-ocr-close" class="btn btn--ghost" type="button">Bezárás</button></div><p id="food-ocr-warning" class="food__health-summary"></p><div class="food__ocr-grid"><label>Adatok alapja<select id="food-ocr-basis"><option value="per100">100 g / 100 ml</option><option value="serving">Egy adag</option></select></label><label>Alapegység<select id="food-ocr-unit"><option value="g">g</option><option value="ml">ml</option></select></label><label>Adag mérete<input id="food-ocr-serving" type="number" min="0.01" step="0.01" placeholder="csak adagonkénti címkénél"></label>${CORE_NUTRIENTS.map(key => `<label>${NUTRIENT_LABELS[key]} (${NUTRIENT_UNITS[key]})<input id="food-ocr-${key}" type="number" min="0" step="0.01"></label>`).join('')}</div><details><summary>Felismert nyers szöveg</summary><pre id="food-ocr-raw"></pre></details><div class="food__health-actions"><button id="food-ocr-cancel" class="btn" type="button">Mégse</button><button id="food-ocr-apply" class="btn btn--primary" type="button">Értékek átvétele ellenőrzésre</button></div></section></div>`
+}
+
+function addDiaryScannerButton() {
+  const form = $('#food-entry-form')
+  const submit = form.querySelector('button[type="submit"]')
+  const button = document.createElement('button')
+  button.id = 'food-entry-scan'
+  button.className = 'btn'
+  button.type = 'button'
+  button.textContent = 'Vonalkód fotózása'
+  button.setAttribute('aria-label', 'Vonalkód fotózása és kiválasztása naplózáshoz')
+  form.insertBefore(button, submit)
 }
 
 function renderSummary() {
@@ -337,7 +350,40 @@ function editRecipe(id) { fillRecipeForm(project.recipes.find(item => item.id ==
 function createRecipeVariant(id) { fillRecipeForm(project.recipes.find(item => item.id === id), { asVariant: true }) }
 function deleteRecipe(id) { const recipe = project.recipes.find(item => item.id === id); if (!recipe || !confirm('Törlöd ezt a receptet? A korábbi naplóbejegyzések megmaradnak.')) return; project.recipes = project.recipes.filter(item => item.id !== id).map(item => item.variantOfRecipeId === id ? { ...item, variantOfRecipeId: recipe.variantOfRecipeId || '' } : item); project.customFoods = project.customFoods.filter(item => item.id !== recipe.foodId); project.favorites = project.favorites.filter(item => item !== recipe.foodId); scheduleSave(); render() }
 
-async function lookupBarcode() { const status = $('#food-api-status'); status.textContent = 'Termék keresése…'; try { pendingProduct = await lookupOpenFoodFactsProduct($('#food-item-barcode').value); $('#food-item-name').value = pendingProduct.name; $('#food-item-category').value = pendingProduct.category; $('#food-item-base-unit').value = pendingProduct.baseUnit; for (const key of CORE_NUTRIENTS) $(`#food-item-${key}`).value = pendingProduct.nutrients[key] ?? ''; status.textContent = 'Open Food Facts találat betöltve. Ellenőrizd, majd mentsd.' } catch (error) { status.textContent = error.message } }
+function selectFoodForDiary(food, saved) {
+  activeTab = 'diary'; render()
+  $('#food-entry-food').value = food.id
+  $('#food-entry-amount').value = 100
+  updateEntryUnits(food.baseUnit)
+  $('#food-entry-amount').focus()
+  $('#food-entry-form').scrollIntoView({ behavior: 'smooth', block: 'center' })
+  setStatus(saved ? `${food.name} elmentve az Ételek közé · add meg a mennyiséget a naplózáshoz` : `${food.name} már szerepel az Ételek között · kiválasztva naplózáshoz`, 'saved')
+}
+
+function saveScannedProductForDiary(product) {
+  const existing = project.customFoods.find(food => food.barcode && food.barcode === product.barcode)
+  if (existing) { pendingProduct = null; selectFoodForDiary(existing, false); return }
+  const now = new Date().toISOString()
+  const food = normalizeFoodItem({ ...product, id: createFoodId('food'), servings: [], createdAt: now, updatedAt: now })
+  project.customFoods = [...project.customFoods, food]
+  refreshRecipeFoods({ strict: true })
+  pendingProduct = null
+  scheduleSave()
+  selectFoodForDiary(food, true)
+}
+
+async function lookupBarcode({ forDiary = false } = {}) {
+  const status = $('#food-api-status')
+  const report = (message, state = '') => forDiary ? setStatus(message, state) : status.textContent = message
+  report('Termék keresése…', 'saving')
+  try {
+    pendingProduct = await lookupOpenFoodFactsProduct($('#food-item-barcode').value)
+    if (forDiary) { saveScannedProductForDiary(pendingProduct); return }
+    $('#food-item-name').value = pendingProduct.name; $('#food-item-category').value = pendingProduct.category; $('#food-item-base-unit').value = pendingProduct.baseUnit
+    for (const key of CORE_NUTRIENTS) $(`#food-item-${key}`).value = pendingProduct.nutrients[key] ?? ''
+    report('Open Food Facts találat betöltve. Ellenőrizd, majd mentsd.')
+  } catch (error) { report(error.message, 'error') }
+}
 async function barcodeImageSource(file) {
   if ('createImageBitmap' in window) return { source: await createImageBitmap(file), release(source) { source.close?.() } }
   const url = URL.createObjectURL(file)
@@ -351,17 +397,19 @@ async function selectBarcodePhoto(event) {
   const file = event.target.files?.[0]
   event.target.value = ''
   if (!file) return
+  const forDiary = barcodeScanTarget === 'diary'
   const status = $('#food-api-status')
+  const report = (message, state = '') => forDiary ? setStatus(message, state) : status.textContent = message
   if (!('BarcodeDetector' in window)) {
-    status.textContent = 'A fotós vonalkódfelismerés ezen a böngészőn nem támogatott. Írd be kézzel a kódot.'
-    $('#food-item-barcode').focus()
+    report('A fotós vonalkódfelismerés ezen a böngészőn nem támogatott. Az Ételek fülön írd be kézzel a kódot.', 'error')
+    if (!forDiary) $('#food-item-barcode').focus()
     return
   }
   if (!file.type.startsWith('image/') || file.size > 12 * 1024 * 1024) {
-    status.textContent = 'Legfeljebb 12 MB-os képet készíts vagy válassz.'
+    report('Legfeljebb 12 MB-os képet készíts vagy válassz.', 'error')
     return
   }
-  status.textContent = 'Vonalkód keresése a fotón…'
+  report('Vonalkód keresése a fotón…', 'saving')
   let image
   try {
     image = await barcodeImageSource(file)
@@ -370,13 +418,14 @@ async function selectBarcodePhoto(event) {
     const rawValue = String(codes[0]?.rawValue || '').replace(/\D/g, '')
     if (!/^\d{7,14}$/.test(rawValue)) throw new Error('A fotón nem található olvasható EAN/UPC vonalkód. Fotózd le közelebbről, jó fényben.')
     $('#food-item-barcode').value = rawValue
-    status.textContent = `${rawValue} beolvasva · termék keresése…`
-    await lookupBarcode()
+    report(`${rawValue} beolvasva · termék keresése…`, 'saving')
+    await lookupBarcode({ forDiary })
   } catch (error) {
-    status.textContent = error.message || 'A vonalkód felismerése nem sikerült.'
-    $('#food-item-barcode').focus()
+    report(error.message || 'A vonalkód felismerése nem sikerült.', 'error')
+    if (!forDiary) $('#food-item-barcode').focus()
   } finally {
     image?.release(image.source)
+    barcodeScanTarget = 'foods'
   }
 }
 function restoreModalFocus() { const target = modalReturnFocus; modalReturnFocus = null; target?.isConnected && target.focus() }
@@ -503,7 +552,7 @@ function bindEvents() {
   })
   $('#food-date').addEventListener('change', event => { selectedDate = event.target.value || localDate(); render() }); $('#food-date-prev').addEventListener('click', () => shiftDate(-1)); $('#food-date-next').addEventListener('click', () => shiftDate(1)); $('#food-date-today').addEventListener('click', () => { selectedDate = localDate(); render() })
   $('#food-search').addEventListener('input', renderFoodItems); $('#food-category-filter').addEventListener('change', renderFoodItems); $('#food-entry-food').addEventListener('change', () => updateEntryUnits()); $('#food-entry-form').addEventListener('submit', saveEntry); $('#food-entry-cancel').addEventListener('click', resetEntryForm)
-  $('#food-item-form').addEventListener('submit', saveFood); $('#food-item-cancel').addEventListener('click', resetFoodForm); $('#food-lookup').addEventListener('click', lookupBarcode); $('#food-scan').addEventListener('click', () => $('#food-barcode-input').click()); $('#food-barcode-input').addEventListener('change', selectBarcodePhoto); $('#food-label-ocr').addEventListener('click', event => { modalReturnFocus = event.currentTarget; $('#food-label-input').click() }); $('#food-label-input').addEventListener('change', selectNutritionLabel); $('#food-ocr-apply').addEventListener('click', applyLabelOcr); $('#food-ocr-close').addEventListener('click', closeLabelOcr); $('#food-ocr-cancel').addEventListener('click', closeLabelOcr); $('#food-ocr-preview').addEventListener('click', event => { if (event.target.id === 'food-ocr-preview') closeLabelOcr() })
+  $('#food-item-form').addEventListener('submit', saveFood); $('#food-item-cancel').addEventListener('click', resetFoodForm); $('#food-lookup').addEventListener('click', () => lookupBarcode()); $('#food-entry-scan').addEventListener('click', () => { barcodeScanTarget = 'diary'; $('#food-barcode-input').click() }); $('#food-scan').addEventListener('click', () => { barcodeScanTarget = 'foods'; $('#food-barcode-input').click() }); $('#food-barcode-input').addEventListener('change', selectBarcodePhoto); $('#food-label-ocr').addEventListener('click', event => { modalReturnFocus = event.currentTarget; $('#food-label-input').click() }); $('#food-label-input').addEventListener('change', selectNutritionLabel); $('#food-ocr-apply').addEventListener('click', applyLabelOcr); $('#food-ocr-close').addEventListener('click', closeLabelOcr); $('#food-ocr-cancel').addEventListener('click', closeLabelOcr); $('#food-ocr-preview').addEventListener('click', event => { if (event.target.id === 'food-ocr-preview') closeLabelOcr() })
   $('#food-recipe-form').addEventListener('submit', saveRecipe); $('#food-recipe-cancel').addEventListener('click', resetRecipeForm); $('#food-recipe-add-ingredient').addEventListener('click', addRecipeIngredient); $('#food-recipe-ingredient-food').addEventListener('change', () => updateRecipeIngredientUnits()); for (const id of ['#food-recipe-name', '#food-recipe-prepared-weight', '#food-recipe-yield-count', '#food-recipe-yield-unit', '#food-recipe-unit-weight']) $(id).addEventListener('input', renderRecipePreview)
   $('#food-library-create').addEventListener('submit', createFamilyLibrary); $('#food-library-connect').addEventListener('submit', connectFamilyLibrary)
   for (const id of ['#food-stats-period', '#food-stats-nutrient', '#food-stats-compare', '#food-stats-granularity']) $(id).addEventListener('change', renderStats)
@@ -512,4 +561,4 @@ function bindEvents() {
   $('#food-health-import').addEventListener('click', event => { modalReturnFocus = event.currentTarget; $('#food-health-input').click() }); $('#food-health-input').addEventListener('change', selectHealthImport); $('#food-health-confirm').addEventListener('click', applyHealthImport); $('#food-health-close').addEventListener('click', closeHealthPreview); $('#food-health-cancel').addEventListener('click', closeHealthPreview); $('#food-health-preview').addEventListener('click', event => { if (event.target.id === 'food-health-preview') closeHealthPreview() })
 }
 
-export async function initFoodApp() { root = document.querySelector('#food-app'); if (!initialized) { root.innerHTML = appMarkup(); bindEvents(); initialized = true } setStatus('Betöltés…'); await loadProject(); resetEntryForm(); resetRecipeForm(); render(); setStatus(driveFileId ? 'Drive-ról betöltve' : 'Helyi napló', 'saved') }
+export async function initFoodApp() { root = document.querySelector('#food-app'); if (!initialized) { root.innerHTML = appMarkup(); addDiaryScannerButton(); bindEvents(); initialized = true } setStatus('Betöltés…'); await loadProject(); resetEntryForm(); resetRecipeForm(); render(); setStatus(driveFileId ? 'Drive-ról betöltve' : 'Helyi napló', 'saved') }
