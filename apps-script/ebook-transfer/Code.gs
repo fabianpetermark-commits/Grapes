@@ -1,5 +1,5 @@
 const CODE_LENGTH = 6;
-const BROKER_API_VERSION = 13;
+const BROKER_API_VERSION = 14;
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const TTL_MS = 20 * 60 * 1000;
 const STORE_PREFIX = 'ebook_transfer_';
@@ -61,7 +61,10 @@ function fatSecretFoodSearchPage(p) {
     console.error('FatSecret request failed: ' + detail);
     let message = 'A FatSecret kereső most nem érhető el.';
     if (detail.indexOf('Missing FatSecret script properties') >= 0) message = 'A FatSecret Client ID vagy Client Secret hiányzik az Apps Script tulajdonságai közül.';
-    else if (detail.indexOf('FatSecret OAuth HTTP') >= 0) message = 'A FatSecret hitelesítés sikertelen. Ellenőrizd a Client ID és Client Secret értékét.';
+    else if (detail.indexOf('FatSecret OAuth invalid_client') >= 0) message = 'A FatSecret nem fogadja el a Client ID és Client Secret párost (invalid_client).';
+    else if (detail.indexOf('FatSecret OAuth invalid_scope') >= 0) message = 'A FatSecret-fiók nem engedélyezi a szükséges basic jogosultságot (invalid_scope).';
+    else if (detail.indexOf('FatSecret OAuth HTTP 403') >= 0 || detail.indexOf('FatSecret OAuth access_denied') >= 0) message = 'A FatSecret blokkolja az Apps Script szerverét; ellenőrizd az alkalmazás IP-korlátozását.';
+    else if (detail.indexOf('FatSecret OAuth') >= 0) message = 'A FatSecret OAuth-hitelesítés sikertelen (' + fatSecretSafeOAuthDiagnostic(detail) + ').';
     else if (detail.indexOf('FatSecret HTTP') >= 0) message = 'A FatSecret fiók nem engedélyezi ezt a keresési jogosultságot.';
     return fatSecretBridgePage({ type: 'grapes-fatsecret-result', nonce: nonce, status: 'error', message: message });
   }
@@ -168,11 +171,22 @@ function fatSecretAccessToken(scope) {
     headers: { Authorization: 'Basic ' + Utilities.base64Encode(clientId + ':' + clientSecret) },
     payload: { grant_type: 'client_credentials', scope: scope }, muteHttpExceptions: true,
   });
-  if (response.getResponseCode() < 200 || response.getResponseCode() >= 300) throw new Error('FatSecret OAuth HTTP ' + response.getResponseCode());
-  const payload = JSON.parse(response.getContentText());
+  const responseText = response.getContentText();
+  if (response.getResponseCode() < 200 || response.getResponseCode() >= 300) {
+    let errorCode = '';
+    try { errorCode = String(JSON.parse(responseText).error || '').trim(); } catch (err) {}
+    if (!/^[a-z0-9_-]{1,80}$/i.test(errorCode)) errorCode = 'HTTP ' + response.getResponseCode();
+    throw new Error('FatSecret OAuth ' + errorCode);
+  }
+  const payload = JSON.parse(responseText);
   if (!payload.access_token) throw new Error('FatSecret access token missing');
   cache.put(cacheKey, payload.access_token, Math.max(60, Math.min(3500, Number(payload.expires_in) - 60 || 3500)));
   return payload.access_token;
+}
+
+function fatSecretSafeOAuthDiagnostic(detail) {
+  const match = String(detail || '').match(/FatSecret OAuth ([a-z0-9_-]+|HTTP \d{3})/i);
+  return match ? match[1] : 'ismeretlen hiba';
 }
 
 function asFatSecretArray(value) { return Array.isArray(value) ? value : (value ? [value] : []); }
