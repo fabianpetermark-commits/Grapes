@@ -1,5 +1,5 @@
 const CODE_LENGTH = 6;
-const BROKER_API_VERSION = 18;
+const BROKER_API_VERSION = 19;
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const TTL_MS = 20 * 60 * 1000;
 const STORE_PREFIX = 'ebook_transfer_';
@@ -84,7 +84,9 @@ function searchFatSecretFoods(kind, value) {
   const cached = cache.get(cacheKey);
   if (cached) return JSON.parse(cached);
   let response;
-  if (kind === 'barcode') {
+  if (fatSecretHasOAuth1Credentials()) {
+    response = kind === 'barcode' ? fatSecretOAuth1Barcode(value) : fatSecretOAuth1Search(value);
+  } else if (kind === 'barcode') {
     response = fatSecretAuthorizedGet('https://platform.fatsecret.com/rest/food/barcode/find-by-id/v2', { barcode: value, format: 'json' }, 'basic barcode localization', true);
   } else {
     try {
@@ -99,6 +101,60 @@ function searchFatSecretFoods(kind, value) {
   }
   cache.put(cacheKey, JSON.stringify(products), 600);
   return products;
+}
+
+function fatSecretHasOAuth1Credentials() {
+  const props = PropertiesService.getScriptProperties();
+  return !!(String(props.getProperty('FATSECRET_CONSUMER_KEY') || '').trim() && String(props.getProperty('FATSECRET_SHARED_SECRET') || '').trim());
+}
+
+function fatSecretOAuth1Search(value) {
+  const response = fatSecretOAuth1Request({ method: 'foods.search', search_expression: value, page_number: 0, max_results: 12, format: 'json' });
+  const searchResult = response.foods || response.foods_search || {};
+  const foods = asFatSecretArray(searchResult.food);
+  for (let i = 0; i < foods.length; i++) {
+    try {
+      const detail = fatSecretOAuth1Request({ method: 'food.get.v4', food_id: foods[i].food_id, format: 'json' });
+      foods[i] = detail.food || detail;
+    } catch (err) { foods[i] = fatSecretFoodFromDescription(foods[i]); }
+  }
+  return { foods: { food: foods } };
+}
+
+function fatSecretOAuth1Barcode(barcode) {
+  const match = fatSecretOAuth1Request({ method: 'food.find_id_for_barcode', barcode: barcode, format: 'json' });
+  const rawId = match.food_id && typeof match.food_id === 'object' ? match.food_id.value : match.food_id;
+  const foodId = String(rawId || '').trim();
+  if (!/^\d+$/.test(foodId)) return { food: null };
+  return fatSecretOAuth1Request({ method: 'food.get.v4', food_id: foodId, format: 'json' });
+}
+
+function fatSecretOAuth1Request(apiParams) {
+  const props = PropertiesService.getScriptProperties();
+  const consumerKey = String(props.getProperty('FATSECRET_CONSUMER_KEY') || '').trim();
+  const sharedSecret = String(props.getProperty('FATSECRET_SHARED_SECRET') || '').trim();
+  if (!consumerKey || !sharedSecret) throw new Error('Missing FatSecret OAuth1 script properties');
+  const endpoint = 'https://platform.fatsecret.com/rest/server.api';
+  const params = {};
+  Object.keys(apiParams).forEach(function (key) { params[key] = String(apiParams[key]); });
+  params.oauth_consumer_key = consumerKey;
+  params.oauth_nonce = Utilities.getUuid().replace(/-/g, '');
+  params.oauth_signature_method = 'HMAC-SHA1';
+  params.oauth_timestamp = String(Math.floor(Date.now() / 1000));
+  params.oauth_version = '1.0';
+  const encoded = Object.keys(params).map(function (key) { return [fatSecretOAuthEncode(key), fatSecretOAuthEncode(params[key])]; });
+  encoded.sort(function (left, right) { return left[0] === right[0] ? (left[1] < right[1] ? -1 : left[1] > right[1] ? 1 : 0) : (left[0] < right[0] ? -1 : 1); });
+  const normalized = encoded.map(function (pair) { return pair[0] + '=' + pair[1]; }).join('&');
+  const baseString = 'POST&' + fatSecretOAuthEncode(endpoint) + '&' + fatSecretOAuthEncode(normalized);
+  const signingKey = fatSecretOAuthEncode(sharedSecret) + '&';
+  params.oauth_signature = Utilities.base64Encode(Utilities.computeHmacSignature(Utilities.MacAlgorithm.HMAC_SHA_1, baseString, signingKey));
+  const response = UrlFetchApp.fetch(endpoint, { method: 'post', contentType: 'application/x-www-form-urlencoded', payload: params, muteHttpExceptions: true });
+  if (response.getResponseCode() < 200 || response.getResponseCode() >= 300) throw new Error('FatSecret HTTP ' + response.getResponseCode());
+  return fatSecretParseApiResponse(response.getContentText());
+}
+
+function fatSecretOAuthEncode(value) {
+  return encodeURIComponent(String(value)).replace(/[!'()*]/g, function (character) { return '%' + character.charCodeAt(0).toString(16).toUpperCase(); });
 }
 
 function fatSecretBasicSearch(value) {

@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
-import { webcrypto } from 'node:crypto'
+import { createHmac, webcrypto } from 'node:crypto'
 
 // Exercise the browser module with isolated DOM/Google/HTTP boundaries.
 const source = readFileSync(new URL('../src/ebook-library.js', import.meta.url), 'utf8')
@@ -1407,7 +1407,7 @@ test('automatic broker deployment stays aligned with every live client URL', () 
   assert.equal(deploymentId(readerPageSource), expected)
   assert.match(brokerWorkflowSource, /clasp push --force/)
   assert.match(brokerWorkflowSource, /clasp deploy --deploymentId/)
-  assert.match(brokerSource, /BROKER_API_VERSION = 18/)
+  assert.match(brokerSource, /BROKER_API_VERSION = 19/)
   assert.match(brokerSource, /action === 'health'/)
   assert.match(brokerSource, /action === 'food-search'/)
 })
@@ -1424,6 +1424,39 @@ test('reader manifests use larger UTF-8-safe property chunks and retain explicit
   assert.ok(chunks.every(chunk => Buffer.byteLength(chunk, 'utf8') <= 7000))
   assert.match(brokerSource, /function maintainScriptProperties\(\)/)
   assert.doesNotMatch(brokerSource, /action === 'health'[\s\S]{0,200}maintainScriptProperties\(\)/)
+})
+
+test('FatSecret broker prefers OAuth 1.0 signed requests without an IP-bound access token', () => {
+  const cache = new Map()
+  const requests = []
+  const response = (status, body) => ({ getResponseCode: () => status, getContentText: () => JSON.stringify(body) })
+  const properties = { FATSECRET_CONSUMER_KEY: 'consumer-key', FATSECRET_SHARED_SECRET: 'shared-secret', FATSECRET_CLIENT_ID: 'unused', FATSECRET_CLIENT_SECRET: 'unused' }
+  const c = vm.createContext({
+    console,
+    HtmlService: { XFrameOptionsMode: { ALLOWALL: 'ALLOWALL' }, createHtmlOutput: html => ({ html, setXFrameOptionsMode() { return this } }) },
+    PropertiesService: { getScriptProperties: () => ({ getProperty: key => properties[key] }) },
+    CacheService: { getScriptCache: () => ({ get: key => cache.get(key), put: (key, value) => cache.set(key, value) }) },
+    Utilities: {
+      MacAlgorithm: { HMAC_SHA_1: 'sha1' }, getUuid: () => '12345678-1234-1234-1234-123456789abc',
+      base64Encode: value => Buffer.from(value).toString('base64'), base64EncodeWebSafe: value => Buffer.from(value).toString('base64url'),
+      computeHmacSignature: (algorithm, value, key) => [...createHmac('sha1', key).update(value).digest()],
+    },
+    UrlFetchApp: { fetch: (url, options) => {
+      requests.push({ url, options })
+      if (options.payload.method === 'foods.search') return response(200, { foods: { food: [{ food_id: '77', food_name: 'OAuth1 étel', food_description: 'Per 100g - Calories: 111kcal | Fat: 2g | Carbs: 3g | Protein: 4g' }] } })
+      if (options.payload.method === 'food.get.v4') return response(200, { food: { food_id: '77', food_name: 'OAuth1 étel', servings: { serving: { metric_serving_unit: 'g', metric_serving_amount: '100', calories: '111', fat: '2', carbohydrate: '3', protein: '4' } } } })
+      return response(500, {})
+    } },
+  })
+  vm.runInContext(brokerSource, c)
+  const result = c.doGet({ parameter: { action: 'food-search', kind: 'name', value: 'oauth1', nonce: 'c'.repeat(48) } })
+  assert.match(result.html, /OAuth1 étel/)
+  assert.equal(requests.length, 2)
+  assert.ok(requests.every(request => request.url.endsWith('/rest/server.api') && request.options.method === 'post'))
+  assert.equal(requests[0].options.payload.oauth_consumer_key, 'consumer-key')
+  assert.equal(requests[0].options.payload.oauth_signature_method, 'HMAC-SHA1')
+  assert.match(requests[0].options.payload.oauth_signature, /^[A-Za-z0-9+/]+={0,2}$/)
+  assert.doesNotMatch(result.html, /consumer-key|shared-secret/)
 })
 
 test('FatSecret broker keeps credentials server-side and maps Hungarian-region food results', () => {
