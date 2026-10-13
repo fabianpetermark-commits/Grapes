@@ -1407,7 +1407,7 @@ test('automatic broker deployment stays aligned with every live client URL', () 
   assert.equal(deploymentId(readerPageSource), expected)
   assert.match(brokerWorkflowSource, /clasp push --force/)
   assert.match(brokerWorkflowSource, /clasp deploy --deploymentId/)
-  assert.match(brokerSource, /BROKER_API_VERSION = 9/)
+  assert.match(brokerSource, /BROKER_API_VERSION = 10/)
   assert.match(brokerSource, /action === 'health'/)
   assert.match(brokerSource, /action === 'food-search'/)
 })
@@ -1436,6 +1436,28 @@ test('FatSecret broker keeps credentials server-side and maps Hungarian-region f
   assert.doesNotMatch(result.html, /client-secret|server-token/)
   assert.match(requests[1].url, /region=HU/)
   assert.equal(requests[1].options.headers.Authorization, 'Bearer server-token')
+})
+
+test('FatSecret broker falls back to the basic food API when premier scope is unavailable', () => {
+  const cache = new Map()
+  const response = (status, body) => ({ getResponseCode: () => status, getContentText: () => JSON.stringify(body) })
+  const c = vm.createContext({
+    console,
+    HtmlService: { XFrameOptionsMode: { ALLOWALL: 'ALLOWALL' }, createHtmlOutput: html => ({ html, setXFrameOptionsMode() { return this } }) },
+    PropertiesService: { getScriptProperties: () => ({ getProperty: key => ({ FATSECRET_CLIENT_ID: 'id', FATSECRET_CLIENT_SECRET: 'secret' })[key] }) },
+    CacheService: { getScriptCache: () => ({ get: key => cache.get(key), put: (key, value) => cache.set(key, value) }) },
+    Utilities: { base64Encode: value => Buffer.from(value).toString('base64'), base64EncodeWebSafe: value => Buffer.from(value).toString('base64url') },
+    UrlFetchApp: { fetch: (url, options) => {
+      if (url.includes('/connect/token')) return options.payload.scope === 'basic' ? response(200, { access_token: 'basic-token', expires_in: 3600 }) : response(403, {})
+      if (url.includes('method=foods.search')) return response(200, { foods: { food: [{ food_id: '7', food_name: 'Basic találat', food_description: 'Per 100g - Calories: 123kcal | Fat: 4g | Carbs: 5g | Protein: 6g' }] } })
+      return response(403, {})
+    } },
+  })
+  vm.runInContext(brokerSource, c)
+  const result = c.doGet({ parameter: { action: 'food-search', kind: 'name', value: 'basic', nonce: 'b'.repeat(48) } })
+  assert.match(result.html, /Basic találat/)
+  assert.match(result.html, /"energyKcal":123/)
+  assert.match(result.html, /"protein":6/)
 })
 
 test('only explicit embedded creation pages allow framing, including readable errors', () => {

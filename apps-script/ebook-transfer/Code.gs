@@ -1,5 +1,5 @@
 const CODE_LENGTH = 6;
-const BROKER_API_VERSION = 9;
+const BROKER_API_VERSION = 10;
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const TTL_MS = 20 * 60 * 1000;
 const STORE_PREFIX = 'ebook_transfer_';
@@ -77,7 +77,9 @@ function searchFatSecretFoods(kind, value) {
   if (kind === 'barcode') {
     response = fatSecretAuthorizedGet('https://platform.fatsecret.com/rest/food/barcode/find-by-id/v2', { barcode: value, format: 'json' }, 'basic barcode localization', true);
   } else {
-    response = fatSecretAuthorizedGet('https://platform.fatsecret.com/rest/foods/search/v5', { search_expression: value, page_number: 0, max_results: 12, format: 'json' }, 'basic premier localization', true);
+    try {
+      response = fatSecretAuthorizedGet('https://platform.fatsecret.com/rest/foods/search/v5', { search_expression: value, page_number: 0, max_results: 12, format: 'json' }, 'basic premier localization', true);
+    } catch (err) { response = fatSecretBasicSearch(value); }
   }
   const rawFoods = kind === 'barcode' ? [response.food || response] : asFatSecretArray(response.foods && response.foods.food);
   const products = [];
@@ -87,6 +89,44 @@ function searchFatSecretFoods(kind, value) {
   }
   cache.put(cacheKey, JSON.stringify(products), 600);
   return products;
+}
+
+function fatSecretBasicSearch(value) {
+  const token = fatSecretAccessToken('basic');
+  const response = fatSecretGetWithToken('https://platform.fatsecret.com/rest/server.api', {
+    method: 'foods.search', search_expression: value, page_number: 0, max_results: 12, format: 'json',
+  }, token);
+  const foods = asFatSecretArray(response.foods && response.foods.food);
+  for (let i = 0; i < foods.length; i++) {
+    try {
+      const detail = fatSecretGetWithToken('https://platform.fatsecret.com/rest/food/v4', { food_id: foods[i].food_id, format: 'json' }, token);
+      foods[i] = detail.food || detail;
+    } catch (err) { foods[i] = fatSecretFoodFromDescription(foods[i]); }
+  }
+  return { foods: { food: foods } };
+}
+
+function fatSecretGetWithToken(endpoint, params, token) {
+  const query = [];
+  Object.keys(params).forEach(function (key) { query.push(encodeURIComponent(key) + '=' + encodeURIComponent(params[key])); });
+  const response = UrlFetchApp.fetch(endpoint + '?' + query.join('&'), { method: 'get', headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true });
+  if (response.getResponseCode() < 200 || response.getResponseCode() >= 300) throw new Error('FatSecret HTTP ' + response.getResponseCode());
+  return JSON.parse(response.getContentText());
+}
+
+function fatSecretFoodFromDescription(food) {
+  const description = String(food && food.food_description || '');
+  const unitMatch = description.match(/Per\s+100\s*(g|ml)\b/i);
+  if (!unitMatch) return food;
+  const nutrient = function (label) {
+    const match = description.match(new RegExp(label + ':\\s*([0-9.]+)', 'i'));
+    return match ? match[1] : null;
+  };
+  food.servings = { serving: {
+    metric_serving_unit: unitMatch[1].toLowerCase(), metric_serving_amount: '100',
+    calories: nutrient('Calories'), fat: nutrient('Fat'), carbohydrate: nutrient('Carbs'), protein: nutrient('Protein'),
+  } };
+  return food;
 }
 
 function fatSecretAuthorizedGet(endpoint, params, scope, preferHungary) {
