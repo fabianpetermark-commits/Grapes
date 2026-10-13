@@ -43,6 +43,13 @@ try {
   await context.route('https://world.openfoodfacts.org/api/v2/product/**', route => route.fulfill({
     status: 200, contentType: 'application/json', body: JSON.stringify({ status: 1, product: { product_name_hu: 'Kamerával beolvasott termék', categories_tags: ['hu:teszt'], product_quantity_unit: 'g', nutriments: { 'energy-kcal_100g': 321, proteins_100g: 12 } } }),
   }))
+  await context.route('https://search.openfoodfacts.org/search**', route => route.fulfill({
+    status: 200, contentType: 'application/json', body: JSON.stringify({ count: 1, page: 1, hits: [{
+      code: '5999999999999', product_name_hu: 'Név alapján talált mogyorókrém',
+      categories_tags: ['en:spreads', 'en:chocolate-spreads'], product_quantity_unit: 'g',
+      nutriments: { 'energy-kcal_100g': 555, proteins_100g: 6 }, last_modified_t: 123,
+    }] }),
+  }))
   const page = await context.newPage()
   await page.goto(`${baseUrl}/?module=food`)
   await page.locator('#food-save-status').filter({ hasText: 'Helyi napló' }).waitFor()
@@ -79,6 +86,17 @@ try {
   assert.match((await downloadPromise).suggestedFilename(), /^grapes-food-\d{4}-\d{2}-\d{2}\.json$/)
 
   await page.locator('[data-food-tab="foods"]').tap()
+  await page.locator('#food-search').fill('mogyorókrém')
+  await page.locator('#food-off-search').tap()
+  const remoteResult = page.locator('.food__off-result', { hasText: 'Név alapján talált mogyorókrém' })
+  await remoteResult.waitFor()
+  await remoteResult.locator('[data-off-result]').tap()
+  assert.equal(await page.locator('#food-item-name').inputValue(), 'Név alapján talált mogyorókrém')
+  assert.equal(await page.locator('#food-item-barcode').inputValue(), '5999999999999')
+  assert.equal(await page.locator('#food-item-energyKcal').inputValue(), '555')
+  await page.locator('#food-item-form button[type="submit"]').tap()
+  await page.locator('.food__food-row', { hasText: 'Név alapján talált mogyorókrém' }).waitFor()
+  await page.locator('#food-search').fill('')
   await page.locator('#food-item-name').fill('Teszt csirkemell')
   await page.locator('#food-item-category').fill('Hús')
   await page.locator('#food-item-energyKcal').fill('120')
@@ -194,7 +212,7 @@ try {
   await page.locator('[data-food-tab="foods"]').tap()
   assert.equal(await page.locator('#food-barcode-input').getAttribute('capture'), 'environment')
   await page.locator('#food-barcode-input').setInputFiles({ name: 'barcode.jpg', mimeType: 'image/jpeg', buffer: Buffer.from('fake-barcode-image') })
-  await page.locator('#food-api-status').filter({ hasText: 'Open Food Facts találat betöltve' }).waitFor()
+  await page.locator('#food-api-status').filter({ hasText: 'már szerepel az Ételek között' }).waitFor()
   assert.equal(await page.locator('#food-item-barcode').inputValue(), '5991234567890')
   assert.equal(await page.locator('#food-item-name').inputValue(), 'Kamerával beolvasott termék')
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))

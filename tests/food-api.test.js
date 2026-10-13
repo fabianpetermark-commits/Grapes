@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { lookupOpenFoodFactsProduct } from '../src/food/food-api.js'
+import { lookupOpenFoodFactsProduct, searchOpenFoodFactsProducts } from '../src/food/food-api.js'
 
 const response = (body, { ok = true, status = 200 } = {}) => ({ ok, status, async json() { return body } })
 
@@ -31,4 +31,39 @@ test('a termék API hibáit és az érvénytelen vonalkódot érthetően jelzi',
   await assert.rejects(() => lookupOpenFoodFactsProduct('5991234567890', { fetchImpl: async () => response({}, { ok: false, status: 503 }) }), /503/)
   await assert.rejects(() => lookupOpenFoodFactsProduct('5991234567890', { fetchImpl: async () => response({ status: 0 }) }), /Nem található termék/)
   await assert.rejects(() => lookupOpenFoodFactsProduct('5991234567890', { fetchImpl: async () => response({ status: 1, product: { nutriments: {} } }) }), /használható név/)
+})
+
+test('név alapján keres az Open Food Factsban és kiszűri a használhatatlan találatokat', async () => {
+  let requestedUrl = ''
+  const result = await searchOpenFoodFactsProducts('mogyorókrém', {
+    baseUrl: 'https://search.example/',
+    fetchImpl: async url => {
+      requestedUrl = url
+      return response({ count: 2, page: 1, hits: [
+        {
+          code: '5991111111111', product_name_hu: 'Magyar mogyorókrém',
+          categories_tags: ['en:spreads', 'en:chocolate-spreads'], product_quantity_unit: 'g',
+          image_front_small_url: 'https://images.example/product.jpg', last_modified_t: 123,
+          nutriments: { 'energy-kcal_100g': 500, proteins_100g: 6 },
+        },
+        { code: 'hibás', product_name: 'Kihagyandó találat', nutriments: {} },
+      ] })
+    },
+  })
+  const url = new URL(requestedUrl)
+  assert.equal(url.origin, 'https://search.example')
+  assert.equal(url.pathname, '/search')
+  assert.equal(url.searchParams.get('q'), 'mogyorókrém')
+  assert.equal(url.searchParams.get('langs'), 'hu,en')
+  assert.match(url.searchParams.get('fields'), /code,product_name_hu,product_name/)
+  assert.equal(result.count, 2)
+  assert.equal(result.products.length, 1)
+  assert.equal(result.products[0].name, 'Magyar mogyorókrém')
+  assert.equal(result.products[0].category, 'chocolate spreads')
+  assert.equal(result.products[0].nutrients.energyKcal, 500)
+})
+
+test('a név szerinti keresés validációs és hálózati hibáit jelzi', async () => {
+  await assert.rejects(() => searchOpenFoodFactsProducts('a'), /legalább 2.*karakter/)
+  await assert.rejects(() => searchOpenFoodFactsProducts('müzli', { fetchImpl: async () => response({}, { ok: false, status: 429 }) }), /429/)
 })

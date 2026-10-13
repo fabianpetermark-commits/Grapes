@@ -1,8 +1,29 @@
 const DEFAULT_OPEN_FOOD_FACTS_URL = 'https://world.openfoodfacts.org'
+const DEFAULT_OPEN_FOOD_FACTS_SEARCH_URL = 'https://search.openfoodfacts.org'
 
 function numberOrNull(value) {
   const number = Number(value)
   return Number.isFinite(number) && number >= 0 ? number : null
+}
+
+function productFromOpenFoodFacts(product, fallbackBarcode = '') {
+  const nutrients = product.nutriments || {}
+  const name = product.product_name_hu || product.product_name || product.generic_name_hu || product.generic_name
+  if (!name) throw new Error('A termékhez nem tartozik használható név.')
+  const barcode = String(product.code || fallbackBarcode || '').trim()
+  if (!/^\d{7,14}$/.test(barcode)) throw new Error('A termékhez nem tartozik használható vonalkód.')
+  const categoryTag = product.categories_tags?.at?.(-1) || product.categories_tags?.[0] || ''
+  return {
+    kind: 'product', name, barcode, category: categoryTag.replace(/^..:/, '').replaceAll('-', ' ') || 'Csomagolt élelmiszer',
+    baseUnit: product.product_quantity_unit === 'ml' ? 'ml' : 'g', imageUrl: product.image_front_small_url || '',
+    nutrients: {
+      energyKcal: numberOrNull(nutrients['energy-kcal_100g']), protein: numberOrNull(nutrients.proteins_100g),
+      carbohydrate: numberOrNull(nutrients.carbohydrates_100g), fat: numberOrNull(nutrients.fat_100g),
+      fiber: numberOrNull(nutrients.fiber_100g), sugar: numberOrNull(nutrients.sugars_100g),
+      saturatedFat: numberOrNull(nutrients['saturated-fat_100g']), salt: numberOrNull(nutrients.salt_100g),
+    },
+    source: { type: 'openfoodfacts', id: barcode, revision: product.last_modified_t || '', attribution: 'Open Food Facts contributors' },
+  }
 }
 
 export async function lookupOpenFoodFactsProduct(barcode, { signal, baseUrl = import.meta.env?.VITE_FOOD_API_URL || DEFAULT_OPEN_FOOD_FACTS_URL, fetchImpl = globalThis.fetch } = {}) {
@@ -14,19 +35,25 @@ export async function lookupOpenFoodFactsProduct(barcode, { signal, baseUrl = im
   if (!response.ok) throw new Error(`A termékadatbázis nem érhető el (${response.status}).`)
   const payload = await response.json()
   if (payload.status !== 1 || !payload.product) throw new Error('Nem található termék ezzel a vonalkóddal.')
-  const product = payload.product
-  const nutrients = product.nutriments || {}
-  const name = product.product_name_hu || product.product_name || product.generic_name_hu || product.generic_name
-  if (!name) throw new Error('A termékhez nem tartozik használható név.')
-  return {
-    kind: 'product', name, barcode: code, category: product.categories_tags?.[0]?.replace(/^..:/, '') || 'Csomagolt élelmiszer',
-    baseUnit: product.product_quantity_unit === 'ml' ? 'ml' : 'g', imageUrl: product.image_front_small_url || '',
-    nutrients: {
-      energyKcal: numberOrNull(nutrients['energy-kcal_100g']), protein: numberOrNull(nutrients.proteins_100g),
-      carbohydrate: numberOrNull(nutrients.carbohydrates_100g), fat: numberOrNull(nutrients.fat_100g),
-      fiber: numberOrNull(nutrients.fiber_100g), sugar: numberOrNull(nutrients.sugars_100g),
-      saturatedFat: numberOrNull(nutrients['saturated-fat_100g']), salt: numberOrNull(nutrients.salt_100g),
-    },
-    source: { type: 'openfoodfacts', id: code, revision: product.last_modified_t || '', attribution: 'Open Food Facts contributors' },
+  return productFromOpenFoodFacts(payload.product, code)
+}
+
+export async function searchOpenFoodFactsProducts(query, { page = 1, pageSize = 12, signal, baseUrl = import.meta.env?.VITE_FOOD_SEARCH_API_URL || DEFAULT_OPEN_FOOD_FACTS_SEARCH_URL, fetchImpl = globalThis.fetch } = {}) {
+  const term = String(query || '').trim().replace(/\s+/g, ' ')
+  if (term.length < 2 || term.length > 120) throw new Error('A terméknév legalább 2, legfeljebb 120 karakter legyen.')
+  if (typeof fetchImpl !== 'function') throw new Error('A termékadatbázis ezen a környezeten nem érhető el.')
+  const params = new URLSearchParams({
+    q: term, page: String(Math.max(1, Number(page) || 1)), page_size: String(Math.min(24, Math.max(1, Number(pageSize) || 12))),
+    langs: 'hu,en', boost_phrase: 'true',
+    fields: 'code,product_name_hu,product_name,generic_name_hu,generic_name,categories_tags,product_quantity_unit,image_front_small_url,nutriments,last_modified_t',
+  })
+  const endpoint = `${String(baseUrl || DEFAULT_OPEN_FOOD_FACTS_SEARCH_URL).replace(/\/$/, '')}/search?${params}`
+  const response = await fetchImpl(endpoint, { signal })
+  if (!response.ok) throw new Error(`A név szerinti termékkereső nem érhető el (${response.status}).`)
+  const payload = await response.json()
+  const products = []
+  for (const hit of payload.hits || []) {
+    try { products.push(productFromOpenFoodFacts(hit)) } catch {}
   }
+  return { count: Number(payload.count) || products.length, page: Number(payload.page) || 1, products }
 }

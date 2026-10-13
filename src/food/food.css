@@ -53,6 +53,12 @@
 .food__chart-bars i.is-compare { background: var(--color-success); }
 .food__donut::before { background: var(--color-bg-surface); }
 .food__warning, .food__stats-note { color: var(--color-warning); }
+.food__off-results { display: grid; gap: .55rem; margin: 0 0 1rem; padding: .75rem; border: 1px solid var(--color-border); border-radius: 14px; background: var(--color-bg-surface); }
+.food__off-results.hidden { display: none; }
+.food__off-result { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .75rem; padding: .65rem; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-bg-raised); }
+.food__off-result img { width: 52px; height: 52px; object-fit: contain; border-radius: 7px; background: #fff; }
+.food__off-result > div { display: grid; gap: .2rem; min-width: 0; }
+.food__off-result span { color: var(--color-text-muted); font-size: .78rem; overflow-wrap: anywhere; }
 
 @media (max-width: 620px) {
   .food__header-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; max-width: none; gap: .5rem; }
@@ -61,4 +67,6 @@
   .food__tabs button { flex: 0 0 auto; }
   .food__food-row { grid-template-columns: auto minmax(0, 1fr) auto auto; }
   .food__food-row [data-food-delete], .food__food-row [data-recipe-delete] { grid-column: auto; }
+  .food__off-result { grid-template-columns: auto minmax(0, 1fr); }
+  .food__off-result .btn { grid-column: 1 / -1; width: 100%; }
 }
