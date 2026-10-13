@@ -1407,9 +1407,22 @@ test('automatic broker deployment stays aligned with every live client URL', () 
   assert.equal(deploymentId(readerPageSource), expected)
   assert.match(brokerWorkflowSource, /clasp push --force/)
   assert.match(brokerWorkflowSource, /clasp deploy --deploymentId/)
-  assert.match(brokerSource, /BROKER_API_VERSION = 11/)
+  assert.match(brokerSource, /BROKER_API_VERSION = 12/)
   assert.match(brokerSource, /action === 'health'/)
   assert.match(brokerSource, /action === 'food-search'/)
+})
+
+test('reader manifests use larger UTF-8-safe property chunks and expose maintenance on health checks', () => {
+  const c = vm.createContext({
+    Utilities: { newBlob: value => ({ getBytes: () => Buffer.from(value, 'utf8') }) },
+  })
+  vm.runInContext(brokerSource, c)
+  const payload = JSON.stringify(Array.from({ length: 500 }, (_, index) => ['id-' + index, 'Árvíztűrő tükörfúrógép ' + index + '.epub', index]))
+  const chunks = Array.from(c.splitReaderBookPayload(payload))
+  assert.ok(chunks.length > 1)
+  assert.equal(chunks.join(''), payload)
+  assert.ok(chunks.every(chunk => Buffer.byteLength(chunk, 'utf8') <= 7000))
+  assert.match(brokerSource, /const maintenance = maintainScriptProperties\(\)/)
 })
 
 test('FatSecret broker keeps credentials server-side and maps Hungarian-region food results', () => {

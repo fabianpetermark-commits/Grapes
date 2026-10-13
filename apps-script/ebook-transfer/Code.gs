@@ -1,12 +1,12 @@
 const CODE_LENGTH = 6;
-const BROKER_API_VERSION = 11;
+const BROKER_API_VERSION = 12;
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const TTL_MS = 20 * 60 * 1000;
 const STORE_PREFIX = 'ebook_transfer_';
 const READER_PAIR_PREFIX = 'ebook_reader_pair_';
 const READER_TOKEN_PREFIX = 'ebook_reader_token_';
 const READER_BOOKS_PREFIX = 'ebook_reader_books_';
-const READER_BOOK_CHUNK_LENGTH = 1800;
+const READER_BOOK_CHUNK_MAX_BYTES = 7000;
 const READER_TOKEN_TTL_MS = 180 * 24 * 60 * 60 * 1000;
 const READER_MARKER_TTL_MS = 10 * 60 * 1000;
 const FOLDER_NAME = 'Grapes E-book Library';
@@ -31,8 +31,9 @@ function doGet(e) {
   const action = String((e && e.parameter && e.parameter.action) || '').toLowerCase();
   const p = (e && e.parameter) || {};
   if (action === 'health') {
+    const maintenance = maintainScriptProperties();
     return ContentService
-      .createTextOutput(JSON.stringify({ ok: true, version: BROKER_API_VERSION }))
+      .createTextOutput(JSON.stringify({ ok: true, version: BROKER_API_VERSION, maintenance: maintenance }))
       .setMimeType(ContentService.MimeType.JSON);
   }
   if (action === 'food-search') return fatSecretFoodSearchPage(p);
@@ -256,9 +257,42 @@ function normalizeReaderBookRows(raw) {
 
 function writeReaderBookChunks(props, ownerKey, books) {
   const raw = JSON.stringify(books);
-  const count = Math.max(1, Math.ceil(raw.length / READER_BOOK_CHUNK_LENGTH));
-  for (let i = 0; i < count; i++) props.setProperty(READER_BOOKS_PREFIX + ownerKey + '_' + i, raw.slice(i * READER_BOOK_CHUNK_LENGTH, (i + 1) * READER_BOOK_CHUNK_LENGTH));
-  return count;
+  const chunks = splitReaderBookPayload(raw);
+  for (let i = 0; i < chunks.length; i++) props.setProperty(READER_BOOKS_PREFIX + ownerKey + '_' + i, chunks[i]);
+  return chunks.length;
+}
+
+function splitReaderBookPayload(raw) {
+  const chunks = [];
+  let offset = 0;
+  while (offset < raw.length) {
+    let low = offset + 1;
+    let high = raw.length;
+    let end = low;
+    while (low <= high) {
+      const middle = Math.floor((low + high) / 2);
+      if (readerUtf8ByteLength(raw.slice(offset, middle)) <= READER_BOOK_CHUNK_MAX_BYTES) {
+        end = middle;
+        low = middle + 1;
+      } else high = middle - 1;
+    }
+    if (end < raw.length && /[\uD800-\uDBFF]/.test(raw.charAt(end - 1))) end--;
+    chunks.push(raw.slice(offset, end));
+    offset = end;
+  }
+  return chunks.length ? chunks : [''];
+}
+
+function readerUtf8ByteLength(value) {
+  let bytes = 0;
+  for (let i = 0; i < value.length; i++) {
+    const code = value.charCodeAt(i);
+    if (code <= 0x7F) bytes++;
+    else if (code <= 0x7FF) bytes += 2;
+    else if (code >= 0xD800 && code <= 0xDBFF && i + 1 < value.length && value.charCodeAt(i + 1) >= 0xDC00 && value.charCodeAt(i + 1) <= 0xDFFF) { bytes += 4; i++; }
+    else bytes += 3;
+  }
+  return bytes;
 }
 
 function readReaderBookChunks(props, ownerKey, count) {
@@ -658,6 +692,35 @@ function readerExpiredPage(title, message) {
 function readerMessagePage(title, message, link) {
   const href = link || READER_RETURN_URL;
   return HtmlService.createHtmlOutput('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + escapeHtml(title) + '</title><style>body{font-family:Arial,sans-serif;max-width:620px;margin:0 auto;padding:28px;text-align:center}a{color:#111}</style></head><body><h1>' + escapeHtml(title) + '</h1><p>' + escapeHtml(message) + '</p><p><a href="' + escapeHtml(href) + '">E-olvasó oldal</a></p></body></html>');
+}
+
+function maintainScriptProperties() {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    cleanupExpiredRecords();
+    const props = PropertiesService.getScriptProperties();
+    const records = props.getProperties();
+    let rewrittenOwners = 0;
+    Object.keys(records).forEach(function (key) {
+      if (key.indexOf(READER_PAIR_PREFIX) !== 0 && key.indexOf(READER_TOKEN_PREFIX) !== 0) return;
+      try {
+        const record = JSON.parse(records[key]);
+        const oldCount = Number(record.bookChunks || 0);
+        if (oldCount <= 0) return;
+        const ownerKey = key.indexOf(READER_PAIR_PREFIX) === 0 ? key.slice(READER_PAIR_PREFIX.length) : key.slice(READER_TOKEN_PREFIX.length);
+        const books = readReaderBookChunks(props, ownerKey, oldCount);
+        const newCount = writeReaderBookChunks(props, ownerKey, books);
+        record.bookChunks = newCount;
+        props.setProperty(key, JSON.stringify(record));
+        for (let i = newCount; i < oldCount; i++) props.deleteProperty(READER_BOOKS_PREFIX + ownerKey + '_' + i);
+        rewrittenOwners++;
+      } catch (err) {
+        console.error('Reader book chunk compaction skipped for ' + key + ': ' + String(err && err.message || err));
+      }
+    });
+    return { rewrittenOwners: rewrittenOwners, propertyCount: Object.keys(props.getProperties()).length };
+  } finally { lock.releaseLock(); }
 }
 
 function cleanupExpiredRecords() {
