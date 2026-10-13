@@ -71,3 +71,20 @@ test('a bridge saját rekordot kizár és stabil kliensazonosítóval ír', asyn
   assert.match(source, /filterNot \{ it\.sourcePackage == context\.packageName \}/);
   assert.match(source, /pageToken = token/g);
 });
+
+test('az Android Google Drive kapcsolat natív AuthorizationClientet használ', async () => {
+  const activity = await read(
+    'app/src/main/java/hu/grapes/healthconnect/MainActivity.kt',
+  );
+  const build = await read('app/build.gradle.kts');
+  const webBridge = await read('../src/android-bridge.js');
+  const drive = await read('../src/storage/grapes-drive.js');
+  assert.match(build, /play-services-auth:21\.5\.0/);
+  assert.match(activity, /Identity\.getAuthorizationClient/);
+  assert.match(activity, /AuthorizationRequest\.builder\(\)/);
+  assert.match(activity, /DRIVE_FILE_SCOPE/);
+  assert.match(activity, /DRIVE_READ_SCOPE/);
+  assert.match(webBridge, /authorizeGoogleDrive/);
+  assert.match(drive, /authorizeAndroidGoogleDrive/);
+});
+

@@ -47,9 +47,7 @@ el('#pick-ebook-organizer').addEventListener('click', () => {
 })
 
 function renderAccount() {
-  const account = getGrapesAccount() || (androidApp
-    ? { name: 'Helyi Grapes', email: 'Android alkalmazás', photo: '' }
-    : { name: 'Google', email: '', photo: '' })
+  const account = getGrapesAccount() || { name: 'Google', email: '', photo: '' }
   el('#grapes-account-name').textContent = account.name || 'Google'
   el('#grapes-account-email').textContent = account.email || ''
   el('#grapes-account-initial').textContent = (account.name || account.email || 'G').trim().charAt(0).toUpperCase()
@@ -59,8 +57,7 @@ function renderAccount() {
   else photo.removeAttribute('src')
   photo.onerror = () => { photo.hidden = true }
   el('#grapes-drive-status').dataset.connected = isGrapesDriveConnected() ? 'true' : 'false'
-  if (androidApp && !isGrapesDriveConnected()) el('#grapes-drive-status').textContent = 'Helyi mód'
-  el('#grapes-sign-out').hidden = androidApp && !isGrapesDriveConnected()
+  el('#grapes-sign-out').hidden = !isGrapesDriveConnected()
   initDeveloperMenu(account)
   applyModuleAvailability()
 }
@@ -77,9 +74,7 @@ async function renderRecentProjects() {
   el('#recent-projects-source').textContent = t('recent.drive')
   list.innerHTML = `<p class="recent-projects__empty">${t('recent.loading')}</p>`
   if (!isGrapesDriveConnected()) {
-    list.innerHTML = androidApp
-      ? '<p class="recent-projects__empty">A helyi projektjeid az egyes modulokban érhetők el.</p>'
-      : `<p class="recent-projects__empty">${t('recent.empty')}</p>`
+    list.innerHTML = `<p class="recent-projects__empty">${t('recent.empty')}</p>`
     return
   }
   try {
@@ -170,8 +165,7 @@ onLanguageChange(() => {
 
 onGrapesDriveChange((connected) => {
   if (connected) renderAccount()
-  else if (!hasEbookPair && !androidApp) showLogin()
-  else if (androidApp) showAuthenticatedStart()
+  else if (!hasEbookPair) showLogin()
 })
 
 for (const selector of [
@@ -182,7 +176,7 @@ for (const selector of [
 }
 
 function goToMainMenu() {
-  if (isGrapesDriveConnected() || androidApp) {
+  if (isGrapesDriveConnected()) {
     renderRecentProjects()
     showScreen('splash')
   } else showLogin()
@@ -192,5 +186,5 @@ document.addEventListener('grapes:open-main-menu', goToMainMenu)
 
 if (hasEbookPair) showScreen('ebook')
 else if (isGrapesDriveConnected()) showAuthenticatedStart()
-else if (androidApp) showAuthenticatedStart()
 else showLogin()
+

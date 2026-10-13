@@ -11,20 +11,29 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.health.connect.client.HealthConnectClient
 import androidx.lifecycle.lifecycleScope
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewCompat
+import com.google.android.gms.auth.api.identity.AuthorizationRequest
+import com.google.android.gms.auth.api.identity.AuthorizationResult
+import com.google.android.gms.auth.api.identity.ClearTokenRequest
+import com.google.android.gms.auth.api.identity.Identity
+import com.google.android.gms.common.api.Scope
 import kotlinx.coroutines.launch
+import org.json.JSONArray
 import org.json.JSONObject
 import java.time.LocalDate
 
 class MainActivity : ComponentActivity() {
     private val healthConnect by lazy { HealthConnectBridge(this) }
+    private val googleAuthorization by lazy { Identity.getAuthorizationClient(this) }
     private lateinit var webView: WebView
     private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
     private var pendingHealthRequest: PendingHealthRequest? = null
+    private var pendingDriveRequestId: String? = null
 
     private data class PendingHealthRequest(val from: LocalDate, val requestId: String)
 
@@ -38,6 +47,21 @@ class MainActivity : ComponentActivity() {
         val request = pendingHealthRequest ?: return@registerForActivityResult
         pendingHealthRequest = null
         readHealthData(request.from, request.requestId, allowPermissionRequest = false)
+    }
+
+    private val googleAuthorizationLauncher = registerForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { activityResult ->
+        val requestId = pendingDriveRequestId ?: return@registerForActivityResult
+        pendingDriveRequestId = null
+        val data = activityResult.data
+        if (activityResult.resultCode != RESULT_OK || data == null) {
+            sendError(requestId, "A Google-bejelentkezés megszakadt.")
+            return@registerForActivityResult
+        }
+        runCatching { googleAuthorization.getAuthorizationResultFromIntent(data) }
+            .onSuccess { sendGoogleAuthorizationResult(requestId, it) }
+            .onFailure { sendError(requestId, it.message ?: "Google-bejelentkezési hiba.") }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -113,8 +137,65 @@ class MainActivity : ComponentActivity() {
                 }
                 readHealthData(from, requestId)
             }
+            "authorizeGoogleDrive" -> authorizeGoogleDrive(
+                message.optJSONArray("args")?.optBoolean(0, false) == true,
+                requestId
+            )
+            "disconnectGoogleDrive" -> disconnectGoogleDrive(
+                message.optJSONArray("args")?.optString(0).orEmpty(),
+                requestId
+            )
             else -> sendError(requestId, "Ismeretlen Android-művelet.")
         }
+    }
+
+    private fun authorizeGoogleDrive(fullRead: Boolean, requestId: String) {
+        val scopes = mutableListOf(Scope(DRIVE_FILE_SCOPE))
+        if (fullRead) scopes += Scope(DRIVE_READ_SCOPE)
+        val request = AuthorizationRequest.builder()
+            .setRequestedScopes(scopes)
+            .setPrompt(AuthorizationRequest.Prompt.SELECT_ACCOUNT)
+            .build()
+        googleAuthorization.authorize(request)
+            .addOnSuccessListener { result ->
+                if (!result.hasResolution()) {
+                    sendGoogleAuthorizationResult(requestId, result)
+                    return@addOnSuccessListener
+                }
+                val pendingIntent = result.pendingIntent
+                if (pendingIntent == null) {
+                    sendError(requestId, "A Google nem tudta megnyitni a bejelentkezést.")
+                    return@addOnSuccessListener
+                }
+                pendingDriveRequestId = requestId
+                googleAuthorizationLauncher.launch(
+                    IntentSenderRequest.Builder(pendingIntent.intentSender).build()
+                )
+            }
+            .addOnFailureListener { sendError(requestId, it.message ?: "Google-bejelentkezési hiba.") }
+    }
+
+    private fun sendGoogleAuthorizationResult(requestId: String, result: AuthorizationResult) {
+        val token = result.accessToken
+        if (token.isNullOrBlank()) {
+            sendError(requestId, "A Google nem adott Drive-hozzáférési tokent.")
+            return
+        }
+        sendResult(requestId, JSONObject().apply {
+            put("accessToken", token)
+            put("grantedScopes", JSONArray(result.grantedScopes))
+            put("expiresIn", 3300)
+        }.toString())
+    }
+
+    private fun disconnectGoogleDrive(token: String, requestId: String) {
+        if (token.isBlank()) {
+            sendResult(requestId, "{}")
+            return
+        }
+        googleAuthorization.clearToken(ClearTokenRequest.builder().setToken(token).build())
+            .addOnSuccessListener { sendResult(requestId, "{}") }
+            .addOnFailureListener { sendError(requestId, it.message ?: "A Google-kijelentkezés nem sikerült.") }
     }
 
     private fun readHealthData(
@@ -170,6 +251,9 @@ class MainActivity : ComponentActivity() {
         private const val APP_HOST = "appassets.androidplatform.net"
         private const val APP_ORIGIN = "https://$APP_HOST"
         private const val APP_URL = "https://$APP_HOST/assets/index.html"
+        private const val DRIVE_FILE_SCOPE = "https://www.googleapis.com/auth/drive.file"
+        private const val DRIVE_READ_SCOPE = "https://www.googleapis.com/auth/drive.readonly"
     }
 }
+
 

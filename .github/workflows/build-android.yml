@@ -21,6 +21,9 @@ permissions:
 jobs:
   debug-apk:
     runs-on: ubuntu-latest
+    env:
+      VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
+      VITE_GOOGLE_APP_ID: 991532871119
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -46,3 +49,4 @@ jobs:
           name: grapes-debug-apk
           path: android-health-connect-poc/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+

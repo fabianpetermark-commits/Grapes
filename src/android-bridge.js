@@ -31,3 +31,13 @@ function nativeRequest(method, ...args) {
 export function readAndroidHealthExport(fromDate) {
   return nativeRequest('readHealthData', fromDate)
 }
+
+export async function authorizeAndroidGoogleDrive(fullRead = false) {
+  const payload = await nativeRequest('authorizeGoogleDrive', Boolean(fullRead))
+  return JSON.parse(payload)
+}
+
+export function disconnectAndroidGoogleDrive(accessToken = '') {
+  return nativeRequest('disconnectGoogleDrive', accessToken)
+}
+
