@@ -86,8 +86,10 @@ try {
   assert.match((await downloadPromise).suggestedFilename(), /^grapes-food-\d{4}-\d{2}-\d{2}\.json$/)
 
   await page.locator('[data-food-tab="foods"]').tap()
-  await page.locator('#food-search').fill('mogyorókrém')
-  await page.locator('#food-off-search').tap()
+  assert.match(await page.locator('#food-lookup').textContent(), /név vagy vonalkód alapján/)
+  await page.locator('#food-item-name').fill('mogyorókrém')
+  await page.locator('#food-item-barcode').fill('')
+  await page.locator('#food-lookup').tap()
   const remoteResult = page.locator('.food__off-result', { hasText: 'Név alapján talált mogyorókrém' })
   await remoteResult.waitFor()
   await remoteResult.locator('[data-off-result]').tap()
