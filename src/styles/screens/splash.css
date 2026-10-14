@@ -165,8 +165,21 @@
 }
 
 @media (max-width: 420px) {
+  .login-screen { padding: 72px 12px max(20px, env(safe-area-inset-bottom)); }
+  .login-card { padding: 24px 18px; border-radius: var(--radius-lg); }
+  .login-card__logo { width: 56px; height: 56px; margin-bottom: var(--space-4); }
+  .login-card h1 { font-size: 28px; }
+  .login-card > p:not(.login-card__eyebrow, .login-card__status) { margin-bottom: var(--space-5); font-size: var(--text-sm); }
+  .dashboard__header { align-items: center; gap: var(--space-2); padding-inline: 12px; }
+  .dashboard__brand { gap: var(--space-2); }
+  .dashboard__brand-mark { width: 34px; height: 34px; }
   .dashboard__brand strong { font-size: var(--text-md); }
   .dashboard__account { gap: var(--space-1); }
+  .dashboard__main { padding-inline: 12px; }
+  .module-group { border-radius: var(--radius-lg); }
+  .module-group__heading h2 { font-size: var(--text-xl); }
+  .card { gap: var(--space-1) var(--space-3); }
+  .card__icon { width: 44px; height: 44px; }
 }
 
 @media (pointer: coarse) {

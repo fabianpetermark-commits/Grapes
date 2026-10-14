@@ -328,3 +328,7 @@
   .email-studio__code { height: 100%; }
   #email-code-editor { min-height: 0; height: calc(100% - 92px); }
 }
+
+@media (max-width: 380px) {
+  .email-studio__brand strong { display: none; }
+}

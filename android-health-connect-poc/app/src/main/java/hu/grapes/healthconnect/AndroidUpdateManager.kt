@@ -30,31 +30,35 @@ class AndroidUpdateManager(private val context: Context) {
         val now = System.currentTimeMillis()
         val lastCheck = preferences.getLong(LAST_CHECK_KEY, 0L)
         if (!force && now - lastCheck < CHECK_INTERVAL_MS) return@withContext null
-        preferences.edit().putLong(LAST_CHECK_KEY, now).apply()
 
         val connection = openConnection(RELEASE_API_URL, "application/vnd.github+json")
         try {
             check(connection.responseCode in 200..299) { "A frissítési kiszolgáló nem érhető el (${connection.responseCode})." }
             val release = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
             val versionCode = ANDROID_TAG.matchEntire(release.optString("tag_name"))
-                ?.groupValues?.getOrNull(1)?.toIntOrNull() ?: return@withContext null
-            if (versionCode <= BuildConfig.VERSION_CODE) return@withContext null
-
-            val assets = release.optJSONArray("assets") ?: return@withContext null
-            for (index in 0 until assets.length()) {
-                val asset = assets.optJSONObject(index) ?: continue
-                if (!asset.optString("name").endsWith(".apk", ignoreCase = true)) continue
-                val digest = asset.optString("digest").removePrefix("sha256:").lowercase()
-                if (!digest.matches(SHA256_PATTERN)) continue
-                return@withContext Release(
-                    versionCode = versionCode,
-                    versionName = release.optString("name", "Grapes $versionCode"),
-                    notes = release.optString("body"),
-                    downloadUrl = asset.getString("browser_download_url"),
-                    sha256 = digest
-                )
+                ?.groupValues?.getOrNull(1)?.toIntOrNull()
+            var availableRelease: Release? = null
+            if (versionCode != null && versionCode > BuildConfig.VERSION_CODE) {
+                val assets = release.optJSONArray("assets")
+                if (assets != null) {
+                    for (index in 0 until assets.length()) {
+                        val asset = assets.optJSONObject(index) ?: continue
+                        if (!asset.optString("name").endsWith(".apk", ignoreCase = true)) continue
+                        val digest = asset.optString("digest").removePrefix("sha256:").lowercase()
+                        if (!digest.matches(SHA256_PATTERN)) continue
+                        availableRelease = Release(
+                            versionCode = versionCode,
+                            versionName = release.optString("name", "Grapes $versionCode"),
+                            notes = release.optString("body"),
+                            downloadUrl = asset.getString("browser_download_url"),
+                            sha256 = digest
+                        )
+                        break
+                    }
+                }
             }
-            null
+            preferences.edit().putLong(LAST_CHECK_KEY, now).apply()
+            availableRelease
         } finally {
             connection.disconnect()
         }
@@ -67,12 +71,17 @@ class AndroidUpdateManager(private val context: Context) {
         val connection = openConnection(release.downloadUrl, "application/vnd.android.package-archive")
         try {
             check(connection.responseCode in 200..299) { "A frissítés letöltése sikertelen (${connection.responseCode})." }
+            val announcedSize = connection.contentLengthLong
+            check(announcedSize < 0 || announcedSize <= MAX_DOWNLOAD_BYTES) { "A frissítés túl nagy." }
             connection.inputStream.use { input ->
                 temporary.outputStream().use { output ->
                     val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                    var downloadedBytes = 0L
                     while (true) {
                         val count = input.read(buffer)
                         if (count < 0) break
+                        downloadedBytes += count
+                        check(downloadedBytes <= MAX_DOWNLOAD_BYTES) { "A frissítés túl nagy." }
                         digest.update(buffer, 0, count)
                         output.write(buffer, 0, count)
                     }
@@ -90,6 +99,7 @@ class AndroidUpdateManager(private val context: Context) {
     }
 
     fun requestInstall(apk: File) {
+        check(apk.isFile) { "A frissítési fájl nem található." }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !context.packageManager.canRequestPackageInstalls()) {
             preferences.edit().putBoolean(PENDING_INSTALL_KEY, true).apply()
             context.startActivity(Intent(
@@ -127,6 +137,7 @@ class AndroidUpdateManager(private val context: Context) {
         private const val LAST_CHECK_KEY = "last-check"
         private const val PENDING_INSTALL_KEY = "pending-install"
         private const val CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000L
+        private const val MAX_DOWNLOAD_BYTES = 250L * 1024 * 1024
         private val ANDROID_TAG = Regex("android-v(\\d+)")
         private val SHA256_PATTERN = Regex("[0-9a-f]{64}")
     }

@@ -97,7 +97,9 @@ async function inspectLayout(page, moduleName, screenSelector, width) {
       .filter(element => !element.closest('.canvas-container, .gjs-cv-canvas'))
     const targets = mobile
       ? interactive.map(element => {
-            const box = element.getBoundingClientRect()
+            const hitTarget = ['checkbox', 'radio'].includes(element.type) && element.closest('label')
+              ? element.closest('label') : element
+            const box = hitTarget.getBoundingClientRect()
             return {
               label: element.getAttribute('aria-label') || element.textContent?.trim().slice(0, 50) || element.id,
               width: Math.round(box.width),
@@ -122,6 +124,15 @@ async function inspectLayout(page, moduleName, screenSelector, width) {
           right: Math.round(box.right),
         }
       }).filter(target => target.left < -1 || target.right > window.innerWidth + 1).slice(0, 12),
+      overflowingElements: [...screen.querySelectorAll('*')].map(element => {
+        const box = element.getBoundingClientRect()
+        return {
+          selector: element.id ? `#${element.id}` : element.className,
+          left: Math.round(box.left),
+          right: Math.round(box.right),
+          width: Math.round(box.width),
+        }
+      }).filter(item => item.left < -1 || item.right > window.innerWidth + 1).slice(0, 12),
       visibleButtons: targets.length,
     }
   }, { screenSelector, mobile: width <= 768 })

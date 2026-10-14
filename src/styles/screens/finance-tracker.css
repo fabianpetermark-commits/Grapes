@@ -316,11 +316,14 @@
 @media (max-width: 768px) {
   .finance input:not([type='checkbox']):not([type='radio']), .finance select, .finance__type-switch button { min-height: var(--touch-target); }
   .finance__planned-toggle input[type='checkbox'] { width: 22px; height: 22px; min-height: 22px; }
+  .finance__tabs button { min-height: var(--touch-target); }
 }
 
 @media (max-width: 700px) {
   .finance__header { display: grid; }
-  .finance__tabs { position: static; }
+  .finance__tabs { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: visible; }
+  .finance__tabs button { min-width: 0; min-height: var(--touch-target); padding-inline: var(--space-2); white-space: normal; }
+  .finance__tabs button:last-child { grid-column: 1 / -1; }
   .finance__header-actions { justify-content: flex-start; }
   .finance__save-status { width: 100%; }
   .finance__summary { grid-template-columns: 1fr; }

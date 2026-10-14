@@ -24,6 +24,7 @@ import com.google.android.gms.auth.api.identity.AuthorizationResult
 import com.google.android.gms.auth.api.identity.ClearTokenRequest
 import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.common.api.Scope
+import com.google.android.gms.common.api.ApiException
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
@@ -58,13 +59,13 @@ class MainActivity : ComponentActivity() {
         val requestId = pendingDriveRequestId ?: return@registerForActivityResult
         pendingDriveRequestId = null
         val data = activityResult.data
-        if (activityResult.resultCode != RESULT_OK || data == null) {
+        if (data == null) {
             sendError(requestId, "A Google-bejelentkezés megszakadt.")
             return@registerForActivityResult
         }
         runCatching { googleAuthorization.getAuthorizationResultFromIntent(data) }
             .onSuccess { sendGoogleAuthorizationResult(requestId, it) }
-            .onFailure { sendError(requestId, it.message ?: "Google-bejelentkezési hiba.") }
+            .onFailure { sendError(requestId, googleAuthorizationError(it)) }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -82,7 +83,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        updateManager.resumePendingInstall()
+        runCatching { updateManager.resumePendingInstall() }
+            .onFailure { showUpdateError(it) }
     }
 
     private fun checkForAppUpdate() {
@@ -108,16 +110,21 @@ class MainActivity : ComponentActivity() {
     private fun downloadUpdate(release: AndroidUpdateManager.Release) {
         Toast.makeText(this, "A Grapes frissítése letöltődik…", Toast.LENGTH_LONG).show()
         lifecycleScope.launch {
-            runCatching { updateManager.download(release) }
-                .onSuccess { updateManager.requestInstall(it) }
-                .onFailure {
-                    Toast.makeText(
-                        this@MainActivity,
-                        it.message ?: "A frissítés letöltése nem sikerült.",
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
+            runCatching {
+                val apk = updateManager.download(release)
+                updateManager.requestInstall(apk)
+            }.onFailure {
+                showUpdateError(it)
+            }
         }
+    }
+
+    private fun showUpdateError(error: Throwable) {
+        Toast.makeText(
+            this,
+            error.message ?: "A frissítés nem sikerült.",
+            Toast.LENGTH_LONG
+        ).show()
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -144,7 +151,14 @@ class MainActivity : ComponentActivity() {
 
                 override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                     if (request.url.host == APP_HOST) return false
-                    startActivity(Intent(Intent.ACTION_VIEW, request.url))
+                    runCatching { startActivity(Intent(Intent.ACTION_VIEW, request.url)) }
+                        .onFailure {
+                            Toast.makeText(
+                                this@MainActivity,
+                                "A hivatkozás nem nyitható meg.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
                     return true
                 }
             }
@@ -216,7 +230,20 @@ class MainActivity : ComponentActivity() {
                     IntentSenderRequest.Builder(pendingIntent.intentSender).build()
                 )
             }
-            .addOnFailureListener { sendError(requestId, it.message ?: "Google-bejelentkezési hiba.") }
+            .addOnFailureListener { sendError(requestId, googleAuthorizationError(it)) }
+    }
+
+    private fun googleAuthorizationError(error: Throwable): String {
+        val statusCode = (error as? ApiException)?.statusCode
+        return when (statusCode) {
+            10 -> "Google OAuth-konfigurációs hiba (10). Az Android kliens csomagnevét és SHA-1 ujjlenyomatát ellenőrizni kell."
+            4 -> "Nincs használható Google-fiók bejelentkezve az eszközön (4)."
+            7 -> "A Google-bejelentkezés hálózati hiba miatt nem sikerült (7)."
+            15 -> "A Google-bejelentkezés túllépte az időkorlátot (15)."
+            16 -> "A Google-bejelentkezés megszakadt (16)."
+            null -> error.message ?: "Google-bejelentkezési hiba."
+            else -> "Google-bejelentkezési hiba ($statusCode): ${error.message ?: "ismeretlen hiba"}"
+        }
     }
 
     private fun sendGoogleAuthorizationResult(requestId: String, result: AuthorizationResult) {

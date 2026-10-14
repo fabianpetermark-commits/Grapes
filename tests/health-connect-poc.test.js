@@ -79,11 +79,14 @@ test('az Android Google Drive kapcsolat natív AuthorizationClientet használ', 
   const build = await read('app/build.gradle.kts');
   const webBridge = await read('../src/android-bridge.js');
   const drive = await read('../src/storage/grapes-drive.js');
+  const manifest = await read('app/src/main/AndroidManifest.xml');
   assert.match(build, /play-services-auth:21\.5\.0/);
   assert.match(activity, /Identity\.getAuthorizationClient/);
   assert.match(activity, /AuthorizationRequest\.builder\(\)/);
   assert.match(activity, /DRIVE_FILE_SCOPE/);
   assert.match(activity, /DRIVE_READ_SCOPE/);
+  assert.match(activity, /Google OAuth-konfigurációs hiba \(10\)/);
+  assert.match(manifest, /android:icon="@drawable\/ic_launcher"/);
   assert.match(webBridge, /authorizeGoogleDrive/);
   assert.match(drive, /authorizeAndroidGoogleDrive/);
 });
@@ -98,7 +101,15 @@ test('az Android frissítő csak ellenőrzött GitHub Release APK-t ad át a ren
   assert.match(manifest, /androidx\.core\.content\.FileProvider/);
   assert.match(updater, /releases\/latest/);
   assert.match(updater, /MessageDigest\.getInstance\("SHA-256"\)/);
+  assert.match(updater, /downloadedBytes <= MAX_DOWNLOAD_BYTES/);
+  assert.match(updater, /check\(apk\.isFile\)/);
+  assert.match(updater, /putLong\(LAST_CHECK_KEY, now\)/);
   assert.match(updater, /canRequestPackageInstalls/);
+  const activity = await read(
+    'app/src/main/java/hu/grapes/healthconnect/MainActivity.kt',
+  );
+  assert.match(activity, /val apk = updateManager\.download\(release\)[\s\S]*updateManager\.requestInstall\(apk\)/);
+  assert.match(activity, /runCatching \{ updateManager\.resumePendingInstall\(\) \}/);
   assert.match(workflow, /ANDROID_KEYSTORE_BASE64/);
   assert.match(workflow, /gh release create/);
 });
