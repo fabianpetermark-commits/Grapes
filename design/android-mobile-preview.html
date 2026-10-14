@@ -211,15 +211,19 @@
     .reader-heading { padding: 3px 4px; }
     .reader-heading strong, .reader-heading span { display: block; }
     .reader-heading span { margin-top: 2px; color: var(--muted); font-size: 10px; }
-    .reader-toolbar { display: grid; grid-template-columns: minmax(0,1fr) auto auto; gap: 7px; align-items: end; }
+    .reader-toolbar { display: grid; grid-template-columns: minmax(0,1fr) auto auto auto; gap: 7px; align-items: end; }
     .reader-toolbar .reader-select { min-width: 0; height: 42px; min-height: 42px; font-size: 11px; }
-    .reader-font { width: 42px; height: 42px; color: var(--text); background: var(--raised); border: 1px solid var(--line); border-radius: 12px; font-weight: 850; }
+    .reader-font, .reader-fullscreen { width: 42px; height: 42px; padding: 0; color: var(--text); background: var(--raised); border: 1px solid var(--line); border-radius: 12px; font-weight: 850; }
+    .reader-fullscreen { font-size: 19px; }
     .reader-page { height: 470px; padding: 24px 20px; overflow-y: auto; color: #25303b; background: #f5f0e5; border-radius: 16px; box-shadow: inset 0 0 0 1px rgb(20 30 40 / 9%); scroll-behavior: smooth; }
     .reader-page h1, .reader-page h2, .reader-page h3 { font-family: Georgia, serif; line-height: 1.25; }
     .reader-page p, .reader-page li, .reader-page blockquote { font-family: Georgia, serif; font-size: var(--reader-font-size, 16px); line-height: 1.72; }
     .reader-page img { display: block; max-width: 100%; height: auto; margin: 14px auto; }
     .reader-controls { display: grid; grid-template-columns: 44px 1fr 44px; gap: 9px; align-items: center; color: var(--muted); font-size: 10px; }
     .reader-controls button { width: 44px; height: 44px; color: var(--text); background: var(--raised); border: 1px solid var(--line); border-radius: 12px; font-size: 18px; }
+    .reader-shell.is-fullscreen { position: fixed; inset: 0; z-index: 100; grid-template-rows: auto auto minmax(0,1fr) auto; width: 100%; height: 100dvh; padding: calc(env(safe-area-inset-top) + 10px) 10px calc(env(safe-area-inset-bottom) + 10px); background: var(--bg); border: 0; border-radius: 0; }
+    .reader-shell.is-fullscreen .reader-page { width: 100%; height: auto; min-height: 0; border-radius: 12px; }
+    .reader-shell.is-fullscreen .reader-controls { padding-bottom: 2px; }
     .reader-progress-copy { display: grid; gap: 5px; text-align: center; }
     .reader-status { min-height: 17px; margin: 8px 2px 0; color: var(--muted); font-size: 10px; line-height: 1.4; }
     .reader-status[data-kind="error"] { color: var(--danger); }
@@ -410,6 +414,7 @@
               <label for="mobile-reader-chapter">Fejezet<select id="mobile-reader-chapter" class="reader-select" data-reader-chapter></select></label>
               <button class="reader-font" data-reader-font="-1" aria-label="Kisebb betűméret">A−</button>
               <button class="reader-font" data-reader-font="1" aria-label="Nagyobb betűméret">A＋</button>
+              <button class="reader-fullscreen" data-reader-fullscreen aria-label="Teljes képernyős olvasás" aria-pressed="false">⛶</button>
             </div>
             <article class="reader-page" data-reader-page tabindex="0"></article>
             <div class="reader-controls">

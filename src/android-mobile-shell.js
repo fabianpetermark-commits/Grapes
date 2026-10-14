@@ -76,6 +76,7 @@ function closeSheet() {
 
 function showPage(page) {
   if (mobileReader && !['reader'].includes(page)) persistReaderProgress().catch(() => {})
+  if (page !== 'reader') setReaderFullscreen(false)
   toast.classList.remove('is-visible')
   $$('[data-page]').forEach(node => { node.hidden = node.dataset.page !== page })
   $$('[data-nav]').forEach(node => node.classList.toggle('is-active', node.dataset.nav === page))
@@ -310,17 +311,32 @@ async function startReader(bookId) {
 async function moveReaderPage(direction) {
   if (!mobileReader) return
   const page = $('[data-reader-page]')
-  const distance = Math.max(180, page.clientHeight * .86)
+  const distance = Math.max(180, page.clientHeight - 32)
   const max = Math.max(0, page.scrollHeight - page.clientHeight)
-  if (direction > 0 && page.scrollTop < max - 4) page.scrollBy({ top: distance, behavior: 'smooth' })
-  else if (direction < 0 && page.scrollTop > 4) page.scrollBy({ top: -distance, behavior: 'smooth' })
+  if (direction > 0 && page.scrollTop < max - 4) page.scrollTop = Math.min(max, page.scrollTop + distance)
+  else if (direction < 0 && page.scrollTop > 4) page.scrollTop = Math.max(0, page.scrollTop - distance)
   else {
     const next = mobileReaderChapterIndex + direction
     if (next < 0 || next >= mobileReader.chapters.length) return showToast(direction > 0 ? 'A könyv végére értél.' : 'Ez a könyv eleje.')
     await persistReaderProgress().catch(() => {})
     await showReaderChapter(next, direction > 0 ? 0 : 1)
-    scheduleReaderProgressSave()
   }
+  scheduleReaderProgressSave()
+}
+
+function setReaderFullscreen(active) {
+  const shell = $('[data-reader-shell]')
+  const button = $('[data-reader-fullscreen]')
+  const next = Boolean(active && mobileReader && !shell.hidden)
+  shell.classList.toggle('is-fullscreen', next)
+  document.documentElement.classList.toggle('is-reader-fullscreen', next)
+  button.setAttribute('aria-pressed', String(next))
+  button.setAttribute('aria-label', next ? 'Teljes képernyő bezárása' : 'Teljes képernyős olvasás')
+  button.textContent = next ? '×' : '⛶'
+  if (next) {
+    shell.requestFullscreen?.().catch(() => {})
+    $('[data-reader-page]').focus({ preventScroll: true })
+  } else if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {})
 }
 
 async function renderTransferPicker() {
@@ -663,6 +679,13 @@ $('[data-reader-chapter]').addEventListener('change', async event => {
 $('[data-reader-page]').addEventListener('scroll', scheduleReaderProgressSave, { passive: true })
 $('[data-reader-prev]').addEventListener('click', () => moveReaderPage(-1))
 $('[data-reader-next]').addEventListener('click', () => moveReaderPage(1))
+$('[data-reader-fullscreen]').addEventListener('click', () => setReaderFullscreen(!$('[data-reader-shell]').classList.contains('is-fullscreen')))
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement && $('[data-reader-shell]').classList.contains('is-fullscreen')) setReaderFullscreen(false)
+})
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && $('[data-reader-shell]').classList.contains('is-fullscreen')) setReaderFullscreen(false)
+})
 $$('[data-reader-font]').forEach(button => button.addEventListener('click', () => {
   const page = $('[data-reader-page]')
   const current = Number(page.dataset.fontSize) || 16

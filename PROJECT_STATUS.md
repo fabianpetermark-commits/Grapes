@@ -78,6 +78,8 @@ Ez a Grapes modulokon átívelő elsődleges fejlesztési naplója. A részletes
 
 **Kész:** a mobil Olvasó valódi EPUB-fejezeteket jelenít meg biztonságosan, fejezetválasztással, lapozással és betűméret-állítással. A pozíció helyben és külön Drive-oldalkocsifájlban mentődik, majd a frissebb példány alapján visszaáll; az alkalmazáson belüli olvasás tudatosan EPUB-only.
 
+**Kész:** az EPUB Olvasó előre/hátra gombjai Android WebView-kompatibilis, közvetlen oldalpozíciót használnak. A teljes képernyős olvasómód eltakarja az alkalmazás többi felületét, a könyvnek adja a teljes rendelkezésre álló magasságot, és saját bezárógombbal rendelkezik.
+
 **Kész:** az Átvitel külön mobilnézetbe került: egy könyv QR-kódos küldése, teljes könyvtár párosítása és az ideiglenes nyilvános hozzáférés visszavonása ugyanitt érhető el, önálló telefonos letöltés nélkül.
 
 **Kész:** az opcionális teljes Drive-keresés látható műveletet kapott, az egykönyves e-olvasó átvitel pedig célzottan visszavonhatja az adott fájl nyilvános olvasói jogosultságát anélkül, hogy a név szerinti megosztásokat törölné.
