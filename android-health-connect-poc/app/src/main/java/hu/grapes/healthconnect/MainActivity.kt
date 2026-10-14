@@ -1,9 +1,12 @@
 package hu.grapes.healthconnect
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
@@ -15,6 +18,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.health.connect.client.HealthConnectClient
 import androidx.lifecycle.lifecycleScope
 import androidx.webkit.WebViewAssetLoader
@@ -38,6 +42,12 @@ class MainActivity : ComponentActivity() {
     private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
     private var pendingHealthRequest: PendingHealthRequest? = null
     private var pendingDriveRequestId: String? = null
+
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) checkForAppUpdate(force = true)
+    }
 
     private data class PendingHealthRequest(val from: LocalDate, val requestId: String)
 
@@ -72,13 +82,24 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         configureWebView()
         setContentView(webView)
+        UpdateNotifications.createChannel(this)
+        UpdateCheckWorker.schedule(this)
         webView.loadUrl(APP_URL)
-        checkForAppUpdate()
+        checkForAppUpdate(intent.getBooleanExtra(UpdateNotifications.EXTRA_OPEN_UPDATE, false))
+        maybeRequestUpdateNotificationPermission()
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 if (webView.canGoBack()) webView.goBack() else finish()
             }
         })
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.getBooleanExtra(UpdateNotifications.EXTRA_OPEN_UPDATE, false)) {
+            checkForAppUpdate(force = true)
+        }
     }
 
     override fun onResume() {
@@ -87,11 +108,32 @@ class MainActivity : ComponentActivity() {
             .onFailure { showUpdateError(it) }
     }
 
-    private fun checkForAppUpdate() {
+    private fun checkForAppUpdate(force: Boolean = false) {
         lifecycleScope.launch {
-            runCatching { updateManager.findAvailableRelease() }
-                .onSuccess { release -> if (release != null && !isFinishing) showUpdateDialog(release) }
+            runCatching { updateManager.findAvailableRelease(force) }
+                .onSuccess { release ->
+                    if (release != null && !isFinishing) {
+                        UpdateNotifications.showAvailable(this@MainActivity, release)
+                        showUpdateDialog(release)
+                    }
+                }
         }
+    }
+
+    private fun maybeRequestUpdateNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return
+        val preferences = getSharedPreferences(NOTIFICATION_PREFERENCES, MODE_PRIVATE)
+        if (preferences.getBoolean(NOTIFICATION_PERMISSION_EXPLAINED, false)) return
+        preferences.edit().putBoolean(NOTIFICATION_PERMISSION_EXPLAINED, true).apply()
+        AlertDialog.Builder(this)
+            .setTitle("Értesítés az új verziókról")
+            .setMessage("A Grapes szólhat, amikor új, aláírt alkalmazásfrissítés érhető el.")
+            .setPositiveButton("Engedélyezem") { _, _ ->
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            .setNegativeButton("Most nem", null)
+            .show()
     }
 
     private fun showUpdateDialog(release: AndroidUpdateManager.Release) {
@@ -324,6 +366,8 @@ class MainActivity : ComponentActivity() {
         private const val APP_URL = "https://$APP_HOST/assets/index.html"
         private const val DRIVE_FILE_SCOPE = "https://www.googleapis.com/auth/drive.file"
         private const val DRIVE_READ_SCOPE = "https://www.googleapis.com/auth/drive.readonly"
+        private const val NOTIFICATION_PREFERENCES = "grapes-notifications"
+        private const val NOTIFICATION_PERMISSION_EXPLAINED = "update-permission-explained"
     }
 }
 

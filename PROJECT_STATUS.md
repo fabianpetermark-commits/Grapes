@@ -24,6 +24,8 @@ Ez a Grapes modulokon átívelő elsődleges fejlesztési naplója. A részletes
 
 **Folyamatban:** elkészült az Android-only telefonos UI első terve és az APK-ba csomagolt, Androidon külön kártyáról indítható interaktív előnézete. A próbanézet Food, Víz, Samsung Health kapcsolati állapot és E-book folyamatokat tartalmaz; a webes nézet változatlan marad. A felület még nem az alapértelmezett production shell. Terv: https://www.figma.com/design/02WS3MuvHQ9OMyfUu7KABN
 
+**Kész:** az Android app a háttérben hatóránként ellenőrzi az új aláírt GitHub Release-t, és engedély esetén rendszerértesítést küld; az értesítés a meglévő, SHA-256-tal ellenőrzött frissítési folyamatba vezet.
+
 ## Marketing
 
 ### E-mail Stúdió

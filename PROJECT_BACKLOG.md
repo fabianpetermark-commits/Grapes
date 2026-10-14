@@ -19,6 +19,7 @@ Szerkeszthető Figma-terv: https://www.figma.com/design/02WS3MuvHQ9OMyfUu7KABN
 
 - [ ] A Figma mobil UI terv felhasználói átnézése és véglegesítése.
 - [x] Android-specifikus mobil UI előnézet csomagolása és app-only indítókártya úgy, hogy a webes nézet változatlan maradjon.
+- [x] Android rendszerértesítés az új, aláírt GitHub Release-ekről háttér-ellenőrzéssel.
 - [ ] A jóváhagyott mobil UI alapértelmezett Android alkalmazáskeretté alakítása.
 - [ ] Telefonos belépési képernyő megvalósítása, helyi mód és Google-belépés állapotaival.
 - [ ] Telefonos kezdőlap, alsó navigáció, legutóbbi projektek és modulindító kártyák megvalósítása.

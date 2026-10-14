@@ -17,6 +17,7 @@ Android application shell for the complete Grapes web interface, with a native H
 - deletes only that Grapes test record;
 - authorizes Google Drive through Android's native Google authorization flow;
 - checks the latest signed GitHub Release and offers verified in-app APK updates;
+- periodically checks for releases in the background and posts an Android update notification when permission is granted;
 - never performs background health-data sync.
 - optionally reads Samsung Health `WaterIntake` directly through Samsung Health Data SDK 1.1.0.
 
@@ -50,6 +51,8 @@ Run the `Release Android APK` GitHub Actions workflow with a monotonically incre
 - `ANDROID_KEY_PASSWORD`.
 
 Never commit the keystore or its passwords. Back them up securely: every update must be signed with the same key. The workflow publishes a release tagged `android-v<version_code>`. On startup the installed app checks the latest release at most once every six hours, verifies the APK against GitHub's SHA-256 digest, and opens Android's package installer. Android still requires the user to approve installation, and the first update may require enabling “Install unknown apps” for Grapes.
+
+The app also schedules a six-hour periodic background check. On Android 13 or newer it first explains and requests notification permission. When granted, an available release appears in the system notification tray; tapping it reopens the verified in-app update flow.
 
 The Android OAuth client in Google Cloud must use package `hu.grapes.healthconnect` and the SHA-1 fingerprint of this same release certificate.
 
