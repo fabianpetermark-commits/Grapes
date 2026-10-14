@@ -22,7 +22,7 @@ Ez a Grapes modulokon átívelő elsődleges fejlesztési naplója. A részletes
 
 **Korlát:** a GitHub Pages statikus alkalmazás. A kliensoldali e-mail- és PIN-kapu, a felhasználói nyilvántartás és a helyi kapcsolók nem szerveroldali biztonsági, belépést tiltó vagy globális feature-flag rendszer. Ezekhez hitelesített backend szükséges.
 
-**Folyamatban:** elkészült az Android-only telefonos UI első, teljesen szerkeszthető Figma-terve belépés, kezdőlap, projektek, szinkron és Ételnapló képernyőkkel. A terv még felhasználói finomítás alatt áll; a production alkalmazás és a webes nézet ettől még nem változott. Terv: https://www.figma.com/design/02WS3MuvHQ9OMyfUu7KABN
+**Folyamatban:** elkészült az Android-only telefonos UI első terve és az APK-ba csomagolt, Androidon külön kártyáról indítható interaktív előnézete. A próbanézet Food, Víz, Samsung Health kapcsolati állapot és E-book folyamatokat tartalmaz; a webes nézet változatlan marad. A felület még nem az alapértelmezett production shell. Terv: https://www.figma.com/design/02WS3MuvHQ9OMyfUu7KABN
 
 ## Marketing
 

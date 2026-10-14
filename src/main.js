@@ -22,6 +22,12 @@ const requestedScreen = moduleScreens.includes(requestedModule) ? requestedModul
 const androidApp = isGrapesAndroidApp()
 const LOCAL_MODE_KEY = 'grapes-local-mode'
 
+const mobilePreviewButton = el('#pick-mobile-preview')
+mobilePreviewButton.hidden = !androidApp
+mobilePreviewButton.addEventListener('click', () => {
+  window.location.href = new URL('./design/android-mobile-preview.html', window.location.href).href
+})
+
 function isLocalMode() {
   try { return localStorage.getItem(LOCAL_MODE_KEY) === '1' } catch { return false }
 }

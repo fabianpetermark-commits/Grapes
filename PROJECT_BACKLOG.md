@@ -18,7 +18,8 @@ Ez az elsődleges lista a még el nem kezdett, parkolt vagy külső feltétel mi
 Szerkeszthető Figma-terv: https://www.figma.com/design/02WS3MuvHQ9OMyfUu7KABN
 
 - [ ] A Figma mobil UI terv felhasználói átnézése és véglegesítése.
-- [ ] Android-specifikus alkalmazáskeret bevezetése úgy, hogy a webes nézet változatlan maradjon.
+- [x] Android-specifikus mobil UI előnézet csomagolása és app-only indítókártya úgy, hogy a webes nézet változatlan maradjon.
+- [ ] A jóváhagyott mobil UI alapértelmezett Android alkalmazáskeretté alakítása.
 - [ ] Telefonos belépési képernyő megvalósítása, helyi mód és Google-belépés állapotaival.
 - [ ] Telefonos kezdőlap, alsó navigáció, legutóbbi projektek és modulindító kártyák megvalósítása.
 - [ ] Projektek képernyő: keresés, kétoszlopos kártyarács és új projekt művelet.

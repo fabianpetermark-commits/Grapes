@@ -5,6 +5,7 @@ Android application shell for the complete Grapes web interface, with a native H
 ## Current scope
 
 - packages the complete Grapes interface inside the APK;
+- packages an Android-only interactive mobile UI preview for Food, Water and E-book without changing the web dashboard;
 - keeps the embedded app on the secure `appassets.androidplatform.net` origin;
 - exposes the native bridge only to the top-level trusted Grapes frame;
 - supports Android file selection for imports, photos and documents;
