@@ -38,6 +38,13 @@ try {
   await page.locator('[data-sheet-close]').click({ position: { x: 10, y: 10 } })
   await page.waitForTimeout(300)
 
+  await page.locator('[data-water-open]').click()
+  await page.locator('[data-page="water"]').waitFor({ state: 'visible' })
+  await page.locator('[data-page="water"] [data-water-add="250"]').click()
+  assert.equal((await page.locator('[data-water-total]').textContent()).replace(/\s/g, ''), '1500ml')
+  assert.match(await page.locator('[data-water-remaining]').textContent(), /500 ml/)
+  await page.screenshot({ path: 'mobile-water.png', fullPage: true })
+
   await page.locator('[data-nav="home"]').click()
   await page.locator('[data-module="ebook"]').click()
   await page.locator('[data-page="ebook"]').waitFor({ state: 'visible' })

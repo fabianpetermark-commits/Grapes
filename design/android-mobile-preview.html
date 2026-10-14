@@ -103,6 +103,7 @@
     .meal strong, .meal span { display: block; }
     .meal span { margin-top: 4px; color: var(--muted); font-size: 11px; }
     .fab { position: absolute; right: 18px; bottom: 92px; z-index: 8; display: grid; place-items: center; width: 58px; height: 58px; color: #031014; cursor: pointer; background: linear-gradient(135deg, #62eff8, #55a6ff); border: 0; border-radius: 20px; box-shadow: 0 15px 35px rgb(77 143 255 / 35%); font-size: 28px; }
+    .fab[hidden] { display: none; }
     .toast { position: absolute; right: 16px; bottom: 90px; left: 16px; z-index: 30; padding: 13px 15px; color: #cbd7e4; background: #17222e; border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 16px 40px rgb(0 0 0 / 45%); font-size: 12px; transform: translateY(20px); opacity: 0; pointer-events: none; transition: .2s ease; }
     .toast.is-visible { transform: none; opacity: 1; }
     .module-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; margin: 0 0 18px; background: #0d151e; border: 1px solid var(--line); border-radius: 15px; }
@@ -127,7 +128,33 @@
     .water-card div { min-width: 0; flex: 1; }
     .water-card strong, .water-card span { display: block; }
     .water-card span { margin-top: 3px; color: var(--muted); font-size: 11px; }
+    .water-card--button { width: 100%; color: inherit; text-align: left; cursor: pointer; }
     .mini-add { min-width: 42px; min-height: 38px; color: var(--accent); background: var(--accent-soft); border: 0; border-radius: 12px; cursor: pointer; font-weight: 900; }
+    .water-hero { display: grid; justify-items: center; padding: 20px 18px 18px; overflow: hidden; background: radial-gradient(circle at 50% 10%, rgb(77 143 255 / 24%), transparent 48%), var(--surface); border: 1px solid rgb(77 143 255 / 28%); border-radius: 24px; }
+    .water-ring { --water-progress: 62.5%; display: grid; place-items: center; width: 156px; height: 156px; background: conic-gradient(#52c7ff 0 var(--water-progress), #1c2b38 var(--water-progress) 100%); border-radius: 50%; box-shadow: 0 18px 50px rgb(51 162 232 / 14%); transition: background .25s ease; }
+    .water-ring::after { grid-area: 1 / 1; width: 122px; height: 122px; content: ""; background: linear-gradient(145deg, #101b26, #0c141d); border-radius: 50%; }
+    .water-ring__value { z-index: 1; grid-area: 1 / 1; text-align: center; }
+    .water-ring__value strong, .water-ring__value span { display: block; }
+    .water-ring__value strong { font-size: 31px; letter-spacing: -.05em; }
+    .water-ring__value span { margin-top: 3px; color: var(--muted); font-size: 10px; }
+    .water-hero h2 { margin: 15px 0 4px; font-size: 17px; }
+    .water-hero > p { margin: 0; color: var(--muted); font-size: 11px; }
+    .water-quick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; margin-top: 17px; }
+    .water-amount { min-height: 48px; padding: 6px; color: var(--text); background: #142330; border: 1px solid #294359; border-radius: 14px; cursor: pointer; font-size: 11px; font-weight: 800; }
+    .water-amount span { display: block; margin-bottom: 2px; color: #74d5ff; font-size: 15px; }
+    .week-card { padding: 15px 14px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; }
+    .week-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .week-head strong { font-size: 13px; }
+    .week-head span { color: var(--success); font-size: 10px; }
+    .week-bars { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; align-items: end; height: 84px; }
+    .week-day { display: grid; grid-template-rows: 1fr auto; gap: 7px; justify-items: center; height: 100%; color: var(--muted); font-size: 9px; }
+    .week-day i { align-self: end; width: 13px; min-height: 10px; background: linear-gradient(#52c7ff, #3178d4); border-radius: 7px 7px 3px 3px; }
+    .week-day.is-today { color: var(--accent); font-weight: 800; }
+    .water-log { display: grid; grid-template-columns: 42px 1fr auto; gap: 12px; align-items: center; min-height: 62px; border-bottom: 1px solid var(--line); }
+    .water-log__icon { display: grid; place-items: center; width: 38px; height: 38px; color: #70d4ff; background: rgb(77 143 255 / 12%); border-radius: 12px; }
+    .water-log strong, .water-log span { display: block; }
+    .water-log span { margin-top: 3px; color: var(--muted); font-size: 10px; }
+    .water-log b { color: #9edfff; font-size: 12px; }
     .book-continue { display: grid; grid-template-columns: 82px 1fr; gap: 16px; padding: 15px; background: linear-gradient(145deg, rgb(77 143 255 / 15%), var(--surface)); border: 1px solid rgb(77 143 255 / 28%); border-radius: 22px; }
     .book-cover { position: relative; display: grid; align-content: end; width: 82px; height: 116px; padding: 9px; overflow: hidden; background: linear-gradient(145deg, #7357ff, #224a86 62%, #0c1824); border-radius: 10px 15px 15px 10px; box-shadow: 0 12px 30px rgb(0 0 0 / 28%); }
     .book-cover::before { position: absolute; inset: 0 auto 0 7px; width: 1px; content: ""; background: rgb(255 255 255 / 22%); }
@@ -259,11 +286,35 @@
               <div class="macro"><span>Zsír</span><div class="progress"><i style="width:55%"></i></div><b>44 g</b></div>
             </div></div>
           </div>
-          <div class="water-card"><span class="water-card__icon">◇</span><div><strong>Víz</strong><span>5 / 8 pohár · 1,25 l</span></div><button class="mini-add" data-action="water">+</button></div>
+          <div class="water-card water-card--button" data-water-open role="button" tabindex="0"><span class="water-card__icon">◇</span><div><strong>Víz</strong><span><b data-water-summary>5 / 8 pohár · 1,25 l</b></span></div><button class="mini-add" data-water-add="250" aria-label="250 milliliter víz hozzáadása">+</button></div>
           <div class="section-head"><h2>Étkezések</h2><button data-action="details">Napló</button></div>
           <div class="meal"><div class="meal__icon">☕</div><div><strong>Reggeli</strong><span>Zabkása, kávé · 08:10</span></div><b>420</b></div>
           <div class="meal"><div class="meal__icon">☀</div><div><strong>Ebéd</strong><span>Csirkés saláta · 12:34</span></div><b>610</b></div>
           <div class="meal"><div class="meal__icon">◌</div><div><strong>Uzsonna</strong><span>Joghurt, gyümölcs · 16:02</span></div><b>390</b></div>
+        </div>
+
+        <div class="content module-preview" data-page="water" hidden>
+          <p class="eyebrow">Egészség</p><h1>Víz</h1><p class="lead">Október 14., szerda · napi cél 2 liter</p>
+          <section class="water-hero">
+            <div class="water-ring" data-water-ring><div class="water-ring__value"><strong data-water-total>1 250 ml</strong><span>2 000 ml cél</span></div></div>
+            <h2 data-water-message>Mindjárt megvan!</h2><p data-water-remaining>Még 750 ml hiányzik a napi célhoz.</p>
+            <div class="water-quick">
+              <button class="water-amount" data-water-add="200"><span>＋</span>200 ml</button>
+              <button class="water-amount" data-water-add="250"><span>＋</span>250 ml</button>
+              <button class="water-amount" data-water-add="500"><span>＋</span>500 ml</button>
+            </div>
+          </section>
+          <div class="section-head"><h2>Heti ritmus</h2><button data-action="water-goal">Cél: 2 l</button></div>
+          <section class="week-card"><div class="week-head"><strong>Átlagosan 1,8 liter</strong><span>5 nap teljesítve</span></div><div class="week-bars">
+            <div class="week-day"><i style="height:72%"></i><span>Cs</span></div><div class="week-day"><i style="height:88%"></i><span>P</span></div><div class="week-day"><i style="height:100%"></i><span>Szo</span></div><div class="week-day"><i style="height:81%"></i><span>V</span></div><div class="week-day"><i style="height:94%"></i><span>H</span></div><div class="week-day"><i style="height:100%"></i><span>K</span></div><div class="week-day is-today"><i data-water-today-bar style="height:62.5%"></i><span>Ma</span></div>
+          </div></section>
+          <div class="section-head"><h2>Mai bevitel</h2><button data-action="water-history">Előzmények</button></div>
+          <div data-water-log>
+            <div class="water-log"><span class="water-log__icon">◇</span><div><strong>Pohár víz</strong><span>16:18 · kézi hozzáadás</span></div><b>250 ml</b></div>
+            <div class="water-log"><span class="water-log__icon">◇</span><div><strong>Kulacs</strong><span>13:02 · gyors hozzáadás</span></div><b>500 ml</b></div>
+            <div class="water-log"><span class="water-log__icon">◇</span><div><strong>Pohár víz</strong><span>09:26 · kézi hozzáadás</span></div><b>250 ml</b></div>
+            <div class="water-log"><span class="water-log__icon">◇</span><div><strong>Pohár víz</strong><span>07:48 · kézi hozzáadás</span></div><b>250 ml</b></div>
+          </div>
         </div>
 
         <div class="content module-preview" data-page="ebook" hidden>
@@ -339,7 +390,8 @@
     const toast = document.querySelector('.toast')
     const sheet = document.querySelector('.bottom-sheet')
     const sheetBackdrop = document.querySelector('.sheet-backdrop')
-    const labels = { home: ['Grapes', 'Helyi mód'], projects: ['Projektek', 'Helyi és Drive'], sync: ['Szinkron', 'Adatok és fiók'], more: ['Továbbiak', 'Beállítások'], food: ['Ételnapló', 'Mai áttekintés'], ebook: ['E-book', 'Könyvtár'], reader: ['A csend térképe', '3. fejezet'], transfer: ['E-book átvitel', 'Kindle Paperwhite'] }
+    const labels = { home: ['Grapes', 'Helyi mód'], projects: ['Projektek', 'Helyi és Drive'], sync: ['Szinkron', 'Adatok és fiók'], more: ['Továbbiak', 'Beállítások'], food: ['Ételnapló', 'Mai áttekintés'], water: ['Víz', 'Napi folyadékbevitel'], ebook: ['E-book', 'Könyvtár'], reader: ['A csend térképe', '3. fejezet'], transfer: ['E-book átvitel', 'Kindle Paperwhite'] }
+    let waterTotal = 1250
 
     function showToast(message = 'Ez egy látványterv — a művelet még nem ment adatot.') {
       toast.textContent = message
@@ -366,15 +418,42 @@
       sheetBackdrop.classList.remove('is-open')
     }
 
+    function formatWater(amount) {
+      return `${new Intl.NumberFormat('hu-HU').format(amount)} ml`
+    }
+
+    function updateWater(amount = 0) {
+      waterTotal = Math.min(3000, waterTotal + amount)
+      const percent = Math.min(100, waterTotal / 2000 * 100)
+      document.querySelector('[data-water-total]').textContent = formatWater(waterTotal)
+      document.querySelector('[data-water-ring]').style.setProperty('--water-progress', `${percent}%`)
+      document.querySelector('[data-water-today-bar]').style.height = `${percent}%`
+      document.querySelector('[data-water-summary]').textContent = `${Math.round(waterTotal / 250)} / 8 pohár · ${(waterTotal / 1000).toLocaleString('hu-HU', { maximumFractionDigits: 2 })} l`
+      const remaining = Math.max(0, 2000 - waterTotal)
+      document.querySelector('[data-water-message]').textContent = remaining ? (remaining <= 500 ? 'Már csak egy kicsi!' : 'Jó úton haladsz') : 'Megvan a napi cél!'
+      document.querySelector('[data-water-remaining]').textContent = remaining ? `Még ${formatWater(remaining)} hiányzik a napi célhoz.` : 'Szép munka — a mai cél teljesítve.'
+      if (amount) {
+        const row = document.createElement('div')
+        row.className = 'water-log'
+        row.innerHTML = `<span class="water-log__icon">◇</span><div><strong>Most hozzáadva</strong><span>${new Date().toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })} · gyors hozzáadás</span></div><b>${formatWater(amount)}</b>`
+        document.querySelector('[data-water-log]').prepend(row)
+        showToast(`${formatWater(amount)} víz hozzáadva.`)
+      }
+    }
+
     document.querySelector('[data-local]').addEventListener('click', () => { login.hidden = true; app.hidden = false; showPage('home') })
     document.querySelector('[data-login]').addEventListener('click', () => showToast('A prototípusban válaszd a helyi módot.'))
     document.querySelectorAll('[data-nav]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.nav)))
     document.querySelectorAll('[data-module]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.module === 'ebook' ? 'ebook' : 'food')))
     document.querySelectorAll('[data-ebook-view]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.ebookView)))
+    document.querySelector('[data-water-open]').addEventListener('click', event => { if (!event.target.closest('[data-water-add]')) showPage('water') })
+    document.querySelector('[data-water-open]').addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') showPage('water') })
+    document.querySelectorAll('[data-water-add]').forEach(button => button.addEventListener('click', event => { event.stopPropagation(); updateWater(Number(button.dataset.waterAdd)) }))
     document.querySelectorAll('[data-action]').forEach(button => button.addEventListener('click', () => showToast()))
     fab.addEventListener('click', openSheet)
     sheetBackdrop.addEventListener('click', closeSheet)
     document.addEventListener('keydown', event => { if (event.key === 'Escape') closeSheet() })
+    updateWater()
   </script>
 </body>
 </html>
