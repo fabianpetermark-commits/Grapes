@@ -15,17 +15,21 @@ Ez az elsődleges lista a még el nem kezdett, parkolt vagy külső feltétel mi
 
 ### Android alkalmazás – telefonos UI
 
-Szerkeszthető Figma-terv: https://www.figma.com/design/02WS3MuvHQ9OMyfUu7KABN
+Az első terv az APK-ban futó HTML/CSS előnézetként szerkeszthető tovább; a Figma használata opcionális, nem feltétele a megvalósításnak. Meglévő Figma-terv: https://www.figma.com/design/02WS3MuvHQ9OMyfUu7KABN
 
-- [ ] A Figma mobil UI terv felhasználói átnézése és véglegesítése.
+- [ ] A mobil UI felhasználói átnézése és vizuális véglegesítése közvetlenül az Android-előnézetben, Figma nélkül is.
 - [x] Android-specifikus mobil UI előnézet csomagolása és app-only indítókártya úgy, hogy a webes nézet változatlan maradjon.
 - [x] Android rendszerértesítés az új, aláírt GitHub Release-ekről háttér-ellenőrzéssel.
+- [x] Friss kiadás ellenőrzése minden alkalmazásindításkor; a hatórás korlát csak a háttérellenőrzésre vonatkozik.
+- [ ] Android Google-bejelentkezés regisztrációs hibájának (`UNREGISTERED_ON_API_CONSOLE`) javítása és valódi készüléktesztje.
+- [ ] Google Drive bejelentkezés, projektmentés és visszatöltés teljes Android készüléktesztje.
 - [ ] A jóváhagyott mobil UI alapértelmezett Android alkalmazáskeretté alakítása.
 - [ ] Telefonos belépési képernyő megvalósítása, helyi mód és Google-belépés állapotaival.
 - [ ] Telefonos kezdőlap, alsó navigáció, legutóbbi projektek és modulindító kártyák megvalósítása.
 - [ ] Projektek képernyő: keresés, kétoszlopos kártyarács és új projekt művelet.
 - [ ] Szinkron képernyő: helyi mentési állapot, eszközök és Google Drive kapcsolat.
 - [ ] Ételnapló mintamodul telefonos nézetének megvalósítása.
+- [ ] Víznapló előnézetének valódi, menthető Android-modullá alakítása.
 - [ ] A többi modul egységes mobilmintáinak megtervezése és fokozatos átültetése.
 - [ ] Végső telefonos akadálymentességi, érintési célméret-, görgetési és valódi készülékteszt.
 - [ ] Végleges Grapes alkalmazásikon és logó elkészítése.
@@ -55,7 +59,7 @@ Szerkeszthető Figma-terv: https://www.figma.com/design/02WS3MuvHQ9OMyfUu7KABN
 
 ### Food ételnapló
 
-- [ ] Health Connect Android build JDK 17 + Android SDK 35 környezetben.
+- [x] Aláírt Health Connect Android build GitHub Actionsben JDK 17 + Android SDK környezetben.
 - [ ] Valódi Android-készülékteszt: engedélyek, történeti olvasás, írás és visszavonás.
 - [ ] Samsung Health Data SDK AAR beszerzése, adapter build és készülékteszt.
 - [ ] Nyilvános Samsung-integráció előtt partnerjóváhagyás.

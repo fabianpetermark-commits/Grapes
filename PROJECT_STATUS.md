@@ -22,9 +22,11 @@ Ez a Grapes modulokon átívelő elsődleges fejlesztési naplója. A részletes
 
 **Korlát:** a GitHub Pages statikus alkalmazás. A kliensoldali e-mail- és PIN-kapu, a felhasználói nyilvántartás és a helyi kapcsolók nem szerveroldali biztonsági, belépést tiltó vagy globális feature-flag rendszer. Ezekhez hitelesített backend szükséges.
 
-**Folyamatban:** elkészült az Android-only telefonos UI első terve és az APK-ba csomagolt, Androidon külön kártyáról indítható interaktív előnézete. A próbanézet Food, Víz, Samsung Health kapcsolati állapot és E-book folyamatokat tartalmaz; a webes nézet változatlan marad. A felület még nem az alapértelmezett production shell. Terv: https://www.figma.com/design/02WS3MuvHQ9OMyfUu7KABN
+**Folyamatban:** elkészült az Android-only telefonos UI első terve és az APK-ba csomagolt, Androidon külön kártyáról indítható interaktív előnézete. A próbanézet Food, Víz, Samsung Health kapcsolati állapot és E-book folyamatokat tartalmaz; a webes nézet változatlan marad. A felület közvetlenül HTML/CSS-ben, Figma nélkül is továbbfejleszthető; a Figma csak opcionális tervezési segédlet. A felület még nem az alapértelmezett production shell. Terv: https://www.figma.com/design/02WS3MuvHQ9OMyfUu7KABN
 
-**Kész:** az Android app a háttérben hatóránként ellenőrzi az új aláírt GitHub Release-t, és engedély esetén rendszerértesítést küld; az értesítés a meglévő, SHA-256-tal ellenőrzött frissítési folyamatba vezet.
+**Kész:** az Android app minden indításkor frissen ellenőrzi az új aláírt GitHub Release-t, a háttérben pedig hatóránként ellenőriz; engedély esetén rendszerértesítést küld, amely a meglévő, SHA-256-tal ellenőrzött frissítési folyamatba vezet.
+
+**Ismert Android-hiba:** a Google-bejelentkezés `UNREGISTERED_ON_API_CONSOLE` hibával megszakad, ezért a Drive-kapcsolatot is újra kell konfigurálni és valódi készüléken végigtesztelni.
 
 ## Marketing
 
@@ -86,17 +88,19 @@ Ez a Grapes modulokon átívelő elsődleges fejlesztési naplója. A részletes
 
 **Kész:** saját ételek, Open Food Facts, vonalkód, napló, célértékek, receptek, receptvariánsok, pillanatképek, statisztika, helyi és Drive-mentés; verziózott Health Connect/Samsung JSON-import előnézettel és `externalKey` deduplikációval; jóváhagyásos tápértékcímke-OCR; külön Drive-fájlos családi receptkönyvtár olvasó/szerkesztő jogosultsággal és visszavonással.
 
-**Blokkolt:** az Android Health Connect POC forrása elkészült, de a gépen csak Java 8 található; JDK 17, Android SDK 35/Gradle és valódi Android-készülék nélkül a natív build, jogosultság-, történeti olvasás-, írás- és visszavonásteszt nem igazolható.
+**Folyamatban:** az Android Health Connect POC aláírt APK-ja GitHub Actionsben elkészül. A jogosultság-, történeti olvasás-, írás- és visszavonástesztet még valódi Android-készüléken kell igazolni.
 
 **Blokkolt:** közvetlen Samsung Health Data SDK vízadapter. A forrás elkészült, de a Samsung AAR, JDK 17/SDK 35 build, készülékteszt és nyilvános terjesztéshez a későbbi Samsung partnerjóváhagyás hiányzik.
 
 **Ellenőrzés:** 211/211 teljes repository egységteszt, fejlesztői menü böngészőteszt, Food mobil böngészőteszt és production build sikeres.
 
-**Következő:** Android Studio/JDK 17/SDK 35 környezetben valódi készülékteszt; sikeres eredmény nélkül a Grapes → Health Connect/Samsung Health képesség nem tekinthető késznek.
+**Következő:** valódi készülékteszt; sikeres eredmény nélkül a Grapes → Health Connect/Samsung Health képesség nem tekinthető késznek.
 
 ## Javasolt sorrend
 
-1. Hitelesített backend a globális felhasználó- és moduljogosultságokhoz.
-2. E-book ismert hibák és production kiadás lezárása.
-3. 3D Pattern / Array.
-4. Food Android készülékteszt, amikor újra napirendre kerül.
+1. Android Google-bejelentkezés és Drive-kapcsolat javítása.
+2. A telefonos UI véglegesítése és alapértelmezett Android alkalmazáskeretté alakítása.
+3. Hitelesített backend a globális felhasználó- és moduljogosultságokhoz.
+4. E-book ismert hibák és production kiadás lezárása.
+5. Food/Víz Android készülékteszt és Health Connect ellenőrzés.
+6. 3D Pattern / Array.
