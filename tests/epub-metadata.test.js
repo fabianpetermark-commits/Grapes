@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import JSZip from 'jszip'
 import { rewriteEpubMetadata } from '../src/ebook/epub-metadata.js'
 
-async function fixture(version = '3.0', { cover = false, protectedFile = false } = {}) {
+async function fixture(version = '3.0', { cover = false, protectedFile = false, signed = false } = {}) {
   const zip = new JSZip()
   zip.file('mimetype', 'application/epub+zip', { compression: 'STORE' })
   zip.file('META-INF/container.xml', '<?xml version="1.0"?><container xmlns="urn:oasis:names:tc:opendocument:xmlns:container" version="1.0"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>')
@@ -11,6 +11,7 @@ async function fixture(version = '3.0', { cover = false, protectedFile = false }
   zip.file('OEBPS/chapter.xhtml', '<html xmlns="http://www.w3.org/1999/xhtml"><body>Untouched book text</body></html>')
   if (cover) zip.file('OEBPS/old-cover.jpg', new Uint8Array([255, 216, 255, 217]))
   if (protectedFile) zip.file('META-INF/encryption.xml', '<encryption/>')
+  if (signed) zip.file('META-INF/signatures.xml', '<signatures/>')
   return zip.generateAsync({ type: 'blob', mimeType: 'application/epub+zip' })
 }
 
@@ -48,6 +49,7 @@ test('EPUB 2 keeps series in the catalogue only and sets the legacy cover marker
 
 test('protected, malformed, oversized and wrongly typed covers cannot be rewritten', async () => {
   await assert.rejects(rewriteEpubMetadata(await fixture('3.0', { protectedFile: true }), values), /védett/)
+  await assert.rejects(rewriteEpubMetadata(await fixture('3.0', { signed: true }), values), /aláírt EPUB/)
   await assert.rejects(rewriteEpubMetadata(new Blob(['not a zip']), values), /Corrupted zip|end of central directory/i)
   await assert.rejects(rewriteEpubMetadata({ size: 100 * 1024 * 1024 + 1 }, values), /100 MiB/)
   await assert.rejects(rewriteEpubMetadata(await fixture(), values, { mimeType: 'image/png', bytes: new Uint8Array([255, 216, 255]) }), /JPG vagy PNG/)

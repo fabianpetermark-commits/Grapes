@@ -1367,6 +1367,7 @@ async function openContentBook() {
     renderContentChapters()
     renderContentFonts()
     renderStructuralSuggestions()
+    showEditorTab('text')
     const encodingButton = $('#ebook-editor-encoding-scan')
     if (encodingButton) encodingButton.disabled = false
     const encodingSummary = $('#ebook-editor-encoding-summary')

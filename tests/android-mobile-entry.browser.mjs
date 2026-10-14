@@ -46,7 +46,7 @@ try {
   await page.locator('#pick-mobile-preview').waitFor({ state: 'visible' })
   await page.locator('#pick-mobile-preview').click()
   await page.waitForURL('**/design/android-mobile-preview.html')
-  await page.locator('[data-local]').click()
+  if (await page.locator('[data-local]').isVisible()) await page.locator('[data-local]').click()
   await page.locator('[data-module="food"]').last().click()
   await page.locator('[data-water-open]').click()
   await page.locator('[data-page="water"]').waitFor({ state: 'visible' })

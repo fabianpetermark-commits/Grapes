@@ -1,6 +1,7 @@
 import { grapesDriveRequest, isGrapesDriveConnected } from './storage/grapes-drive.js'
 
 const FOLDER_NAME = 'Grapes E-book Library'
+const SUPPORTED_BOOK_EXTENSIONS = new Set(['epub', 'pdf', 'mobi', 'azw', 'azw3', 'prc', 'txt', 'cbz', 'cbr'])
 const DB_NAME = 'grapes-ebook-reader-sync'
 let readerRoot = null
 let driveBooks = []
@@ -13,7 +14,7 @@ const $ = selector => document.querySelector(selector)
 const showSuccess = (visible) => { const node = $('#ebook-sync-success'); if (node) node.hidden = !visible }
 const status = (message, kind = '') => { const node = $('#ebook-sync-status'); if (node) { node.textContent = message; node.dataset.kind = kind }; if (kind !== 'success') showSuccess(false) }
 const supports = () => typeof window.showDirectoryPicker === 'function' && typeof window.indexedDB !== 'undefined'
-const candidate = name => Boolean(String(name || '').trim()) && !String(name).startsWith('.') && !/^(desktop\.ini|thumbs\.db)$/i.test(name)
+const candidate = name => SUPPORTED_BOOK_EXTENSIONS.has(String(name || '').trim().toLocaleLowerCase('hu-HU').split('.').pop())
 const normalize = name => String(name || '').normalize('NFKC').trim().toLocaleLowerCase('hu-HU')
 function nameFingerprint(value = '') {
   const normalized = normalize(value)
@@ -85,19 +86,29 @@ async function scanDirectory(directory, prefix = '') {
   }
   return result
 }
-async function findLibraryFolder() {
+async function findLibraryFolders() {
   const query = `name = '${FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`
-  const data = await (await grapesDriveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)&pageSize=100`)).json()
-  return data.files?.[0]?.id || null
+  const result = []
+  let pageToken = ''
+  do {
+    const data = await (await grapesDriveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=nextPageToken,files(id,name)&pageSize=100&pageToken=${encodeURIComponent(pageToken)}`)).json()
+    result.push(...(data.files || []).map(folder => folder.id).filter(Boolean))
+    pageToken = data.nextPageToken || ''
+  } while (pageToken)
+  return [...new Set(result)]
 }
-async function listDriveBooks(folderId) {
-  if (!folderId) return []
-  const result = [], pending = [folderId], visited = new Set()
+async function listDriveBooks(folderIds) {
+  if (!folderIds?.length) return []
+  const result = [], pending = [...folderIds], visited = new Set()
   while (pending.length) {
     const folder = pending.shift(); if (visited.has(folder)) continue; visited.add(folder)
     const query = `'${folder}' in parents and trashed = false`
-    const data = await (await grapesDriveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,size,modifiedTime,md5Checksum,mimeType,parents,appProperties)&pageSize=1000`)).json()
-    for (const file of data.files || []) file.mimeType === 'application/vnd.google-apps.folder' ? pending.push(file.id) : candidate(file.name) && result.push(file)
+    let pageToken = ''
+    do {
+      const data = await (await grapesDriveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=nextPageToken,files(id,name,size,modifiedTime,md5Checksum,mimeType,parents,appProperties)&pageSize=1000&pageToken=${encodeURIComponent(pageToken)}`)).json()
+      for (const file of data.files || []) file.mimeType === 'application/vnd.google-apps.folder' ? pending.push(file.id) : candidate(file.name) && result.push(file)
+      pageToken = data.nextPageToken || ''
+    } while (pageToken)
   }
   return result
 }
@@ -114,8 +125,8 @@ function renderInventory() {
 }
 async function refreshInventory() {
   if (!isGrapesDriveConnected()) throw new Error('Előbb csatlakoztasd a Google Drive-ot a főmenüben.')
-  const folder = await findLibraryFolder()
-  driveBooks = await listDriveBooks(folder)
+  const folders = await findLibraryFolders()
+  driveBooks = await listDriveBooks(folders)
   readerBooks = await verifyReaderAccess() ? await scanDirectory(readerRoot) : []
   renderInventory()
 }
@@ -162,7 +173,7 @@ async function synchronize() {
   if (!readerRoot || !await verifyReaderAccess()) return status('Az e-reader nem érhető el. Csatlakoztasd USB-kábellel, majd válaszd ki újra a mappáját.', 'error')
   try {
     showSuccess(false)
-    await refreshInventory(); const folderId = await findLibraryFolder(); let toReader = 0, toDrive = 0
+    await refreshInventory(); const folderId = (await findLibraryFolders())[0]; let toReader = 0, toDrive = 0
     const readerByName = new Map(readerBooks.map(book => [normalize(book.name), book]))
     const readerByFingerprint = new Map(readerBooks.map(book => [nameFingerprint(book.name), book]))
     const claimedReaderPaths = new Set()
@@ -177,6 +188,7 @@ async function synchronize() {
       else cleanupQueue.push(...previous.filter(item => item.path !== current.path))
     }
     const driveQueue = readerBooks.filter(book => !claimedReaderPaths.has(book.path))
+    if (driveQueue.length && !folderId) throw new Error('A Grapes E-book Library Drive-mappa nem található. Előbb tölts fel egy könyvet a könyvtárból.')
     const total = readerQueue.length + driveQueue.length + cleanupQueue.length
     updateProgress(0, total, total ? 'Előkészítés…' : 'Minden könyv szinkronban van')
     let completed = 0

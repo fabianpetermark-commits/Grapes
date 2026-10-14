@@ -216,6 +216,10 @@ for (const selector of [
 }
 
 function goToMainMenu() {
+  if (androidApp) {
+    window.location.href = new URL('./design/android-mobile-preview.html', window.location.href).href
+    return
+  }
   if (isGrapesDriveConnected() || isLocalMode()) {
     renderRecentProjects()
     showScreen('splash')

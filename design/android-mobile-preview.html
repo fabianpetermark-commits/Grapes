@@ -47,6 +47,7 @@
     .primary { color: #041014; background: linear-gradient(135deg, #62eff8, #55a6ff); border: 0; font-weight: 800; box-shadow: 0 12px 30px rgb(77 143 255 / 20%); }
     .secondary { margin-top: 10px; color: var(--text); background: var(--raised); border: 1px solid var(--line); font-weight: 700; }
     .login__fine { margin-top: 18px; color: #74869a; font-size: 11px; line-height: 1.5; }
+    .login__status { min-height: 36px; margin: 12px 0 0; color: var(--danger); font-size: 12px; line-height: 1.45; }
     .appbar { display: flex; gap: 12px; align-items: center; min-height: 58px; padding: 8px 16px; border-bottom: 1px solid var(--line); }
     .appbar__logo { width: 36px; height: 36px; border-radius: 11px; }
     .appbar__title { min-width: 0; flex: 1; }
@@ -86,6 +87,9 @@
     .project-row__icon { display: grid; place-items: center; width: 46px; height: 46px; color: var(--accent); background: var(--accent-soft); border-radius: 14px; }
     .project-row strong, .project-row span { display: block; }
     .project-row span { margin-top: 4px; color: var(--muted); font-size: 11px; }
+    .project-row--button { width: 100%; color: inherit; text-align: left; cursor: pointer; }
+    .empty-state { padding: 22px 16px; color: var(--muted); text-align: center; background: var(--surface); border: 1px dashed var(--line); border-radius: 16px; font-size: 12px; }
+    .module-cta { margin-top: 16px; }
     .sync-hero { display: grid; justify-items: center; padding: 26px 18px; text-align: center; background: linear-gradient(145deg, rgb(242 184 75 / 10%), var(--surface)); border: 1px solid rgb(242 184 75 / 26%); border-radius: 22px; }
     .sync-hero__icon { display: grid; place-items: center; width: 64px; height: 64px; margin-bottom: 14px; color: var(--warning); background: rgb(242 184 75 / 12%); border-radius: 21px; font-size: 28px; }
     .sync-hero h2 { margin: 0; }
@@ -229,6 +233,7 @@
         <button class="primary" data-login>Bejelentkezés Google-fiókkal</button>
         <button class="secondary" data-local>Folytatás helyi módban</button>
         <p class="login__fine">A fájljaid a saját eszközödön vagy Google Drive-odban maradnak.</p>
+        <p class="login__status" data-login-status role="status"></p>
       </section>
 
       <section id="app" class="screen" hidden>
@@ -243,9 +248,9 @@
           <p class="eyebrow">Jó reggelt</p>
           <h1>Mit készítünk ma?</h1>
           <p class="lead">A legfontosabb eszközeid gyorsan, telefonra rendezve.</p>
-          <div class="state-card"><div class="state-card__icon">⌁</div><div><strong>Helyi mód</strong><span>A Drive később csatlakoztatható</span></div></div>
+          <div class="state-card" data-account-card><div class="state-card__icon">⌁</div><div><strong data-account-title>Helyi mód</strong><span data-account-detail>A Drive később csatlakoztatható</span></div></div>
           <div class="section-head"><h2>Legutóbbi projektek</h2><button data-nav="projects">Összes</button></div>
-          <div class="recent">
+          <div class="recent" data-recent-projects>
             <button class="project-card" data-module="food"><span class="project-card__icon">◉</span><strong>Mai napló</strong><span>Ételnapló · ma</span></button>
             <button class="project-card" data-module="qr"><span class="project-card__icon">▦</span><strong>Kampány QR</strong><span>QR Stúdió · tegnap</span></button>
           </div>
@@ -260,15 +265,13 @@
 
         <div class="content" data-page="projects" hidden>
           <p class="eyebrow">Munkáid</p><h1>Projektek</h1><p class="lead">Minden helyi és Drive-projekt egy helyen.</p>
-          <input class="search" placeholder="Projekt keresése…">
-          <div class="project-row"><div class="project-row__icon">◉</div><div><strong>Mai étkezések</strong><span>Ételnapló · helyi · ma 09:12</span></div><button class="icon-btn">⋮</button></div>
-          <div class="project-row"><div class="project-row__icon">▦</div><div><strong>Őszi kampány</strong><span>QR Stúdió · Drive · tegnap</span></div><button class="icon-btn">⋮</button></div>
-          <div class="project-row"><div class="project-row__icon">▤</div><div><strong>Olvasólista</strong><span>E-book · Drive · október 11.</span></div><button class="icon-btn">⋮</button></div>
+          <input class="search" data-project-search placeholder="Projekt keresése…">
+          <div data-project-list></div>
         </div>
 
         <div class="content" data-page="sync" hidden>
           <p class="eyebrow">Adatok</p><h1>Szinkron</h1><p class="lead">Te döntöd el, hol legyenek a projektjeid.</p>
-          <div class="sync-hero"><div class="sync-hero__icon">⌁</div><h2>Jelenleg helyi mód</h2><p>Az app internet nélkül is használható. A Drive csatlakoztatása után választhatsz, mit töltesz fel.</p><button class="primary" data-action="connect">Google Drive csatlakoztatása</button></div>
+          <div class="sync-hero"><div class="sync-hero__icon">⌁</div><h2 data-sync-title>Jelenleg helyi mód</h2><p data-sync-detail>Az app internet nélkül is használható. A Drive csatlakoztatása után választhatsz, mit töltesz fel.</p><button class="primary" data-connect-drive>Google Drive csatlakoztatása</button></div>
           <div class="section-head"><h2>Tárolás</h2></div>
           <div class="setting"><div class="setting__icon">▣</div><div><strong>Helyi projektek</strong><span>3 projekt · 18,4 MB</span></div><span>›</span></div>
           <div class="setting"><div class="setting__icon">↻</div><div><strong>Automatikus mentés</strong><span>Bekapcsolva</span></div><span>›</span></div>
@@ -276,10 +279,10 @@
 
         <div class="content" data-page="more" hidden>
           <p class="eyebrow">Beállítások</p><h1>Továbbiak</h1><p class="lead">Fiók, nyelv és alkalmazásbeállítások.</p>
-          <div class="setting"><div class="setting__icon">S</div><div><strong>Saját eszköz</strong><span>Helyi mód</span></div><span>›</span></div>
+          <div class="setting"><div class="setting__icon">S</div><div><strong>Saját eszköz</strong><span data-account-mode>Helyi mód</span></div><span>›</span></div>
           <div class="setting"><div class="setting__icon">HU</div><div><strong>Nyelv</strong><span>Magyar</span></div><span>›</span></div>
           <div class="setting"><div class="setting__icon">◐</div><div><strong>Megjelenés</strong><span>Rendszerbeállítás</span></div><span>›</span></div>
-          <div class="setting"><div class="setting__icon">i</div><div><strong>A Grapes névjegye</strong><span>Android prototípus</span></div><span>›</span></div>
+          <div class="setting"><div class="setting__icon">i</div><div><strong>A Grapes névjegye</strong><span>Android mobilalkalmazás</span></div><span>›</span></div>
         </div>
 
         <div class="content module-preview" data-page="food" hidden>
@@ -297,12 +300,13 @@
           <div class="meal"><div class="meal__icon">☕</div><div><strong>Reggeli</strong><span>Zabkása, kávé · 08:10</span></div><b>420</b></div>
           <div class="meal"><div class="meal__icon">☀</div><div><strong>Ebéd</strong><span>Csirkés saláta · 12:34</span></div><b>610</b></div>
           <div class="meal"><div class="meal__icon">◌</div><div><strong>Uzsonna</strong><span>Joghurt, gyümölcs · 16:02</span></div><b>390</b></div>
+          <button class="primary module-cta" data-open-module="food">Teljes Ételnapló megnyitása</button>
         </div>
 
         <div class="content module-preview" data-page="water" hidden>
-          <p class="eyebrow">Egészség</p><h1>Víz</h1><p class="lead">Október 14., szerda · napi cél 2 liter</p>
+          <p class="eyebrow">Egészség</p><h1>Víz</h1><p class="lead" data-water-date>Napi folyadékbevitel</p>
           <section class="water-hero">
-            <div class="water-ring" data-water-ring><div class="water-ring__value"><strong data-water-total>1 250 ml</strong><span>2 000 ml cél</span></div></div>
+            <div class="water-ring" data-water-ring><div class="water-ring__value"><strong data-water-total>0 ml</strong><span data-water-goal-label>2 000 ml cél</span></div></div>
             <h2 data-water-message>Mindjárt megvan!</h2><p data-water-remaining>Még 750 ml hiányzik a napi célhoz.</p>
             <div class="water-quick">
               <button class="water-amount" data-water-add="200"><span>＋</span>200 ml</button>
@@ -316,12 +320,7 @@
             <div class="week-day"><i style="height:72%"></i><span>Cs</span></div><div class="week-day"><i style="height:88%"></i><span>P</span></div><div class="week-day"><i style="height:100%"></i><span>Szo</span></div><div class="week-day"><i style="height:81%"></i><span>V</span></div><div class="week-day"><i style="height:94%"></i><span>H</span></div><div class="week-day"><i style="height:100%"></i><span>K</span></div><div class="week-day is-today"><i data-water-today-bar style="height:62.5%"></i><span>Ma</span></div>
           </div></section>
           <div class="section-head"><h2>Mai bevitel</h2><button data-action="water-history">Előzmények</button></div>
-          <div data-water-log>
-            <div class="water-log"><span class="water-log__icon">◇</span><div><strong>Pohár víz</strong><span>16:18 · kézi hozzáadás</span></div><b>250 ml</b></div>
-            <div class="water-log"><span class="water-log__icon">◇</span><div><strong>Kulacs</strong><span>13:02 · gyors hozzáadás</span></div><b>500 ml</b></div>
-            <div class="water-log"><span class="water-log__icon">◇</span><div><strong>Pohár víz</strong><span>09:26 · kézi hozzáadás</span></div><b>250 ml</b></div>
-            <div class="water-log"><span class="water-log__icon">◇</span><div><strong>Pohár víz</strong><span>07:48 · kézi hozzáadás</span></div><b>250 ml</b></div>
-          </div>
+          <div data-water-log></div>
         </div>
 
         <div class="content module-preview" data-page="ebook" hidden>
@@ -338,6 +337,7 @@
             <button class="book-tile"><span class="book-cover"><span>Északi fény</span></span><strong>Északi fény</strong><small>12% elolvasva</small></button>
             <button class="book-tile"><span class="book-cover"><span>Otthon</span></span><strong>Hazafelé</strong><small>Új könyv</small></button>
           </div>
+          <button class="primary module-cta" data-open-module="ebook">Valódi E-book könyvtár megnyitása</button>
         </div>
 
         <div class="content module-preview" data-page="reader" hidden>
@@ -377,18 +377,18 @@
         <input class="search" placeholder="Keresés az ételek között…">
         <div class="quick-grid"><button class="quick-action"><i>▦</i><span>Vonalkód</span></button><button class="quick-action"><i>◉</i><span>Fotó alapján</span></button><button class="quick-action"><i>☆</i><span>Kedvencek</span></button><button class="quick-action"><i>＋</i><span>Saját étel</span></button></div>
       </section>
-      <div class="toast" role="status">Ez egy látványterv — a művelet még nem ment adatot.</div>
+      <div class="toast" role="status"></div>
     </div>
 
     <aside class="notes">
-      <p class="notes__eyebrow">Interaktív látványterv</p>
+      <p class="notes__eyebrow">Android alkalmazásfelület</p>
       <h1>Grapes,<br>telefonra tervezve.</h1>
-      <p>Kattints a telefonon a helyi módra, az alsó navigációra és az Ételnapló modulra. Ez még nem a kész app, hanem a közös design irány működő előnézete.</p>
+      <p>Az Android-app új kezdőfelülete, valódi modulindítással, projektlistával és helyben mentett Víz naplóval.</p>
       <ul><li>48 px-es érintési célok</li><li>egységes felső és alsó navigáció</li><li>helyi és Drive-állapot külön kezelve</li><li>modulonként újrahasznosítható minták</li></ul>
       <div class="prototype-note">A webes Grapes ettől teljesen független marad.</div>
     </aside>
   </main>
-  <script>
+  <script type="application/json" id="legacy-mobile-shell">
     const login = document.querySelector('#login')
     const app = document.querySelector('#app')
     const title = document.querySelector('#app-title')
@@ -469,5 +469,6 @@
     document.addEventListener('keydown', event => { if (event.key === 'Escape') closeSheet() })
     updateWater()
   </script>
+  <script type="module" src="../src/android-mobile-shell.js"></script>
 </body>
 </html>

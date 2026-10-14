@@ -25,6 +25,11 @@ jobs:
     env:
       VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
       VITE_GOOGLE_APP_ID: 991532871119
+      VITE_GOOGLE_PICKER_API_KEY: ${{ secrets.GOOGLE_PICKER_API_KEY }}
+      VITE_GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
+      VITE_EBOOK_EPUB_WRITE_ENABLED: 'true'
+      VITE_EBOOK_TRANSFER_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
+      VITE_FOOD_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
       GRAPES_VERSION_CODE: ${{ inputs.version_code }}
       GRAPES_VERSION_NAME: ${{ inputs.version_name }}
       RELEASE_NOTES: ${{ inputs.release_notes }}

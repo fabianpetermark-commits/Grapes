@@ -49,3 +49,11 @@ No live account mutations, commits, pushes or deployments were performed during 
 ## Live return URL fix
 
 Apps Script deployment version 2 now replaces unsupported new URL() validation with an exact comparison to the canonical Grapes return URL. Verified live code creation, visible QR, and code submission through the permanent receiver page to the correct download link. This deployment applies only the return URL fix to the previously deployed source; repository-only locking/cleanup/revocation enhancements remain pending a separate broker update. No sharing or OAuth settings changed.
+
+## Android shell and final e-book fixes
+
+- The Android release now includes the production broker and Picker/Books build configuration instead of an unconfigured e-book shell.
+- USB reader sync accepts only supported e-book extensions, follows Drive pagination, and merges all accessible Grapes library folders.
+- Metadata rewriting rejects `META-INF/signatures.xml` before modifying a signed EPUB.
+- Opening an EPUB switches directly to the text editor. The browser regression now confirms the complete approved edit, EPUBCheck, upload, and Drive save path.
+- The full unit suite, responsive editor layout, content browser test, and Android asset build pass locally. Production Apps Script deployment remains a separate workflow operation whose result must be checked after release.

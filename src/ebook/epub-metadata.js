@@ -135,6 +135,7 @@ async function inspectEpub(blob) {
   const mimetype = zip.file('mimetype')
   if (!mimetype || (await mimetype.async('string')).trim() !== 'application/epub+zip') throw new Error('Nem érvényes EPUB: hiányzik a mimetype.')
   if (zip.file('META-INF/encryption.xml')) throw new Error('A védett vagy titkosított EPUB nem szerkeszthető.')
+  if (zip.file('META-INF/signatures.xml')) throw new Error('Az aláírt EPUB nem írható át, mert a módosítás érvénytelenítené a digitális aláírást.')
   const container = zip.file('META-INF/container.xml')
   if (!container) throw new Error('Nem érvényes EPUB: hiányzik a container.xml.')
   const containerDoc = parseXml(await container.async('string'), 'container.xml')

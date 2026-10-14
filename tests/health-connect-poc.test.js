@@ -29,7 +29,7 @@ test('a Grapes felület helyi Android assetként fut és csak a fő keret kap na
   const webBridge = await read('../src/android-bridge.js');
   const foodApp = await read('../src/food/food-app.js');
   assert.match(activity, /WebViewAssetLoader\.AssetsPathHandler/);
-  assert.match(activity, /https:\/\/\$APP_HOST\/assets\/index\.html/);
+  assert.match(activity, /https:\/\/\$APP_HOST\/assets\/design\/android-mobile-preview\.html/);
   assert.match(activity, /WebViewCompat\.addWebMessageListener/);
   assert.match(activity, /if \(!isMainFrame\)/);
   assert.match(activity, /allowFileAccess = false/);
@@ -86,7 +86,8 @@ test('az Android Google Drive kapcsolat natív AuthorizationClientet használ', 
   assert.match(activity, /DRIVE_FILE_SCOPE/);
   assert.match(activity, /DRIVE_READ_SCOPE/);
   assert.match(activity, /Google OAuth-konfigurációs hiba \(10\)/);
-  assert.match(manifest, /android:icon="@drawable\/ic_launcher"/);
+  assert.match(manifest, /android:icon="@mipmap\/ic_launcher"/);
+  assert.match(manifest, /android:roundIcon="@mipmap\/ic_launcher_round"/);
   assert.match(webBridge, /authorizeGoogleDrive/);
   assert.match(drive, /authorizeAndroidGoogleDrive/);
 });

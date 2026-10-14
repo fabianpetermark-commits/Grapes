@@ -23,16 +23,16 @@ Az első terv az APK-ban futó HTML/CSS előnézetként szerkeszthető tovább; 
 - [x] Friss kiadás ellenőrzése minden alkalmazásindításkor; a hatórás korlát csak a háttérellenőrzésre vonatkozik.
 - [ ] Android Google-bejelentkezés regisztrációs hibájának (`UNREGISTERED_ON_API_CONSOLE`) javítása és valódi készüléktesztje.
 - [ ] Google Drive bejelentkezés, projektmentés és visszatöltés teljes Android készüléktesztje.
-- [ ] A jóváhagyott mobil UI alapértelmezett Android alkalmazáskeretté alakítása.
-- [ ] Telefonos belépési képernyő megvalósítása, helyi mód és Google-belépés állapotaival.
-- [ ] Telefonos kezdőlap, alsó navigáció, legutóbbi projektek és modulindító kártyák megvalósítása.
-- [ ] Projektek képernyő: keresés, kétoszlopos kártyarács és új projekt művelet.
+- [x] A jóváhagyott mobil UI alapértelmezett Android alkalmazáskeretté alakítása.
+- [x] Telefonos belépési képernyő megvalósítása, helyi mód és Google-belépés állapotaival.
+- [x] Telefonos kezdőlap, alsó navigáció, legutóbbi projektek és modulindító kártyák megvalósítása.
+- [x] Projektek képernyő: keresés, helyi gyorsindítók és Drive-projektlista.
 - [ ] Szinkron képernyő: helyi mentési állapot, eszközök és Google Drive kapcsolat.
-- [ ] Ételnapló mintamodul telefonos nézetének megvalósítása.
-- [ ] Víznapló előnézetének valódi, menthető Android-modullá alakítása.
+- [x] Ételnapló csiszolt telefonos áttekintője és átjárás a teljes Food modulba.
+- [x] Víznapló valódi, dátum szerint helyben mentett Android-modullá alakítása szerkeszthető céllal és törölhető bejegyzésekkel.
 - [ ] A többi modul egységes mobilmintáinak megtervezése és fokozatos átültetése.
 - [ ] Végső telefonos akadálymentességi, érintési célméret-, görgetési és valódi készülékteszt.
-- [ ] Végleges Grapes alkalmazásikon és logó elkészítése.
+- [x] Végleges Grapes vektorlogó és natív Android adaptive alkalmazásikon elkészítése.
 
 ### 3D Nyomtatási Stúdió
 
@@ -43,11 +43,11 @@ Az első terv az APK-ban futó HTML/CSS előnézetként szerkeszthető tovább; 
 
 ### E-book
 
-- [ ] USB-szinkron fájltípus-szűrése.
+- [x] USB-szinkron fájltípus-szűrése.
 - [ ] Korábban kiosztott Drive-megosztások áttekintése és visszavonása.
-- [ ] Aláírt EPUB biztonságos elutasítása vagy külön kezelése.
-- [ ] Több olvasói könyvtármappa és lapozott fájllista.
-- [ ] Megnyitáskor automatikus váltás a szöveges nézetre.
+- [x] Aláírt EPUB biztonságos elutasítása.
+- [x] Több olvasói könyvtármappa és lapozott fájllista.
+- [x] Megnyitáskor automatikus váltás a szöveges nézetre.
 
 ### Pénzügy
 

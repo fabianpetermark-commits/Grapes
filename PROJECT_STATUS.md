@@ -22,7 +22,9 @@ Ez a Grapes modulokon átívelő elsődleges fejlesztési naplója. A részletes
 
 **Korlát:** a GitHub Pages statikus alkalmazás. A kliensoldali e-mail- és PIN-kapu, a felhasználói nyilvántartás és a helyi kapcsolók nem szerveroldali biztonsági, belépést tiltó vagy globális feature-flag rendszer. Ezekhez hitelesített backend szükséges.
 
-**Folyamatban:** elkészült az Android-only telefonos UI első terve és az APK-ba csomagolt, Androidon külön kártyáról indítható interaktív előnézete. A próbanézet Food, Víz, Samsung Health kapcsolati állapot és E-book folyamatokat tartalmaz; a webes nézet változatlan marad. A felület közvetlenül HTML/CSS-ben, Figma nélkül is továbbfejleszthető; a Figma csak opcionális tervezési segédlet. A felület még nem az alapértelmezett production shell. Terv: https://www.figma.com/design/02WS3MuvHQ9OMyfUu7KABN
+**Kész:** az Android app alapértelmezett felülete a telefonos Grapes shell: belépés/helyi mód, kezdőlap, alsó navigáció, kereshető projektlista, Drive-projektek és modulindítás. A Food és E-book csiszolt mobil áttekintőt kapott, a Víz pedig dátum szerint helyben mentett bejegyzésekkel és állítható céllal működik. A webes nézet változatlan maradt. A felület közvetlenül HTML/CSS-ben, Figma nélkül is továbbfejleszthető. Terv: https://www.figma.com/design/02WS3MuvHQ9OMyfUu7KABN
+
+**Kész:** a meglévő Grapes vektorlogóból natív Android adaptive ikon készült, sötét rendszer-sávokkal illesztve a mobil shellhez.
 
 **Kész:** az Android app minden indításkor frissen ellenőrzi az új aláírt GitHub Release-t, a háttérben pedig hatóránként ellenőriz; engedély esetén rendszerértesítést küld, amely a meglévő, SHA-256-tal ellenőrzött frissítési folyamatba vezet.
 
@@ -62,11 +64,11 @@ Ez a Grapes modulokon átívelő elsődleges fejlesztési naplója. A részletes
 
 **Kész:** Drive-könyvtár, feltöltés, opcionális teljes Drive-olvasás, metaadatkezelés és e-olvasó átviteli alapok.
 
-**Folyamatban:** repositoryban elkészült broker-módosítások külön telepítésre várnak; kiadás előtt ebook teszt és production build szükséges.
+**Folyamatban:** az E-book tartalmi és reszponzív tesztjei sikeresek; az USB-szinkron támogatott fájltípusokra szűr, több Drive-könyvtármappát és lapozást kezel, az aláírt EPUB-ot elutasítja, megnyitás után pedig a szöveges nézetre vált. A broker repository-verziójának production deploymentje külön GitHub workflow-ban történik.
 
-**Parkol:** USB-fájltípus-szűrés; Drive-megosztások visszavonása; aláírt EPUB kezelése; több olvasói mappa és lapozás; automatikus szöveges nézet.
+**Parkol:** korábban kiosztott Drive-megosztások áttekintése és visszavonása.
 
-**Ismert hiba:** az EPUB-megnyitás tartalmi böngészőtesztje hibás. Részletek: `GRAPES_BACKLOG.md`, `EBOOK_DEBUG_REPORT.md`, `CODEX_HANDOFF.md`.
+**Ellenőrzés:** az EPUB-megnyitás, automatikus szövegnézet, jóváhagyott tartalommódosítás és Drive-visszaírás böngészőtesztje sikeres. Részletek: `EBOOK_DEBUG_REPORT.md`, `CODEX_HANDOFF.md`.
 
 ## Pénzügy
 

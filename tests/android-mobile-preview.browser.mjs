@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict'
+import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright-core'
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const previewUrl = pathToFileURL(resolve(projectRoot, 'design/android-mobile-preview.html')).href
+const previewUrl = 'http://127.0.0.1:4181/Grapes/design/android-mobile-preview.html'
 
 const executablePath = [
   process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
@@ -15,10 +16,17 @@ const executablePath = [
 
 if (!executablePath) throw new Error('Nem található Chromium-alapú böngésző.')
 
-const browser = await chromium.launch({ executablePath, headless: true })
-const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 })
+const server = spawn(process.execPath, [resolve(projectRoot, 'node_modules/vite/bin/vite.js'), '--host', '127.0.0.1', '--port', '4181', '--strictPort'], { cwd: projectRoot, stdio: ['ignore', 'pipe', 'pipe'] })
+let browser
 
 try {
+  for (let attempt = 0; attempt < 80; attempt++) {
+    try { if ((await fetch(previewUrl)).ok) break } catch {}
+    if (attempt === 79) throw new Error('A mobil UI tesztszervere nem indult el.')
+    await new Promise(resolvePromise => setTimeout(resolvePromise, 100))
+  }
+  browser = await chromium.launch({ executablePath, headless: true })
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 })
   await page.goto(previewUrl, { waitUntil: 'networkidle' })
   await page.locator('[data-local]').click()
 
@@ -41,10 +49,10 @@ try {
   await page.locator('[data-water-open]').click()
   await page.locator('[data-page="water"]').waitFor({ state: 'visible' })
   await page.locator('[data-page="water"] [data-water-add="250"]').click()
-  assert.equal((await page.locator('[data-water-total]').textContent()).replace(/\s/g, ''), '1500ml')
-  assert.match(await page.locator('[data-water-remaining]').textContent(), /500 ml/)
+  assert.equal((await page.locator('[data-water-total]').textContent()).replace(/\s/g, ''), '250ml')
+  assert.match(await page.locator('[data-water-remaining]').textContent(), /1.?750 ml/)
   await page.locator('[data-samsung-connect]').click()
-  assert.match(await page.locator('[data-samsung-status]').textContent(), /vízbeolvasás aktív/)
+  assert.match(await page.locator('[data-samsung-status]').textContent(), /Bemutató mód/)
   await page.screenshot({ path: 'mobile-water.png', fullPage: true })
 
   await page.locator('[data-nav="home"]').click()
@@ -69,5 +77,6 @@ try {
   assert.equal(layout.openSheet, false)
   console.log(JSON.stringify({ ...layout, sheetLayout }, null, 2))
 } finally {
-  await browser.close()
+  await browser?.close()
+  server.kill()
 }

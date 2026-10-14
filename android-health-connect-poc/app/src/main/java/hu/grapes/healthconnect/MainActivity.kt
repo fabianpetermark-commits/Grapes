@@ -365,7 +365,7 @@ class MainActivity : ComponentActivity() {
     companion object {
         private const val APP_HOST = "appassets.androidplatform.net"
         private const val APP_ORIGIN = "https://$APP_HOST"
-        private const val APP_URL = "https://$APP_HOST/assets/index.html"
+        private const val APP_URL = "https://$APP_HOST/assets/design/android-mobile-preview.html"
         private const val DRIVE_FILE_SCOPE = "https://www.googleapis.com/auth/drive.file"
         private const val DRIVE_READ_SCOPE = "https://www.googleapis.com/auth/drive.readonly"
         private const val NOTIFICATION_PREFERENCES = "grapes-notifications"

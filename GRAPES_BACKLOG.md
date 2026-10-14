@@ -4,13 +4,9 @@
 
 Ezeket a pénzügyi modul után vesszük elő:
 
-1. Az USB-szinkron csak támogatott ebook-fájlokat fogadjon el; jelenleg a kiválasztott mappa más, nem rejtett fájljai is bekerülhetnek.
-2. A Google Drive-megosztás ne maradjon észrevétlenül nyilvános a későbbi feltöltéseknél, és a leválasztás kezelje a korábban kiosztott jogosultságokat is.
-3. Aláírt EPUB (`META-INF/signatures.xml`) metaadat-módosítását biztonságosan el kell utasítani vagy külön kezelni.
-4. Az USB-szinkron több olvasói könyvtármappát és lapozott fájllistát is kezeljen.
-5. EPUB megnyitásakor a felület váltson a szöveges nézetre; a kapcsolódó böngészőteszt jelenleg hibát jelez.
+1. A Google Drive-megosztás ne maradjon észrevétlenül nyilvános a későbbi feltöltéseknél, és a leválasztás kezelje a korábban kiosztott jogosultságokat is.
 
-Ellenőrzési alap: a unit tesztek, az elrendezésteszt és az EPUBCheck futása sikeres volt; az EPUB-megnyitás tartalmi böngészőtesztje maradt hibás.
+Lezárva: USB-fájltípus-szűrés; aláírt EPUB elutasítása; több Drive-könyvtármappa és lapozott fájllista; automatikus szövegnézet. Az egység-, elrendezés- és tartalmi böngészőtesztek sikeresek.
 
 ## Pénzügyi modul – Excel/XLSM import terve
 

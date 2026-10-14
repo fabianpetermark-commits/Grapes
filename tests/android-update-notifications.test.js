@@ -33,3 +33,8 @@ test('minden appindítás frissen ellenőrzi az elérhető kiadást', () => {
   const activity = read('src/main/java/hu/grapes/healthconnect/MainActivity.kt')
   assert.match(activity, /webView\.loadUrl\(APP_URL\)[\s\S]*checkForAppUpdate\(force = true\)/)
 })
+
+test('az Android app közvetlenül a telefonos alkalmazáskeretet nyitja meg', () => {
+  const activity = read('src/main/java/hu/grapes/healthconnect/MainActivity.kt')
+  assert.match(activity, /assets\/design\/android-mobile-preview\.html/)
+})

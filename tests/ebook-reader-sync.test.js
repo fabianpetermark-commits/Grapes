@@ -15,8 +15,16 @@ function syncHelpers() {
     Blob,
     crypto,
   })
-  return vm.runInContext(`${source}\n({ nameFingerprint, shouldCopyToReader })`, context)
+  return vm.runInContext(`${source}\n({ candidate, nameFingerprint, shouldCopyToReader })`, context)
 }
+
+test('reader sync accepts only supported e-book files', () => {
+  const { candidate } = syncHelpers()
+  assert.equal(candidate('Könyv.EPUB'), true)
+  assert.equal(candidate('notes.txt'), true)
+  assert.equal(candidate('cover.jpg'), false)
+  assert.equal(candidate('desktop.ini'), false)
+})
 
 test('reader sync recopies a same-size book changed less than two seconds later', () => {
   const { shouldCopyToReader } = syncHelpers()

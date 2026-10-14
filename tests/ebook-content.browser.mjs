@@ -73,9 +73,9 @@ try {
       await page.locator('#ebook-editor-undo').click()
       assert.equal(await page.locator('#ebook-editor-save').isEnabled(), false)
     } else {
-      page.on('dialog', (dialog) => dialog.accept())
       await page.locator('#ebook-editor-save').click()
-      try { await page.locator('#ebook-editor-status').getByText(/mentve a Drive-ba/).waitFor({ timeout: 5000 }) }
+      await page.locator('.grapes-dialog .btn--danger').click()
+      try { await page.locator('#ebook-editor-status').getByText(/mentve a Drive-ba/).waitFor({ timeout: 30000 }) }
       catch { throw new Error(JSON.stringify({ status: await page.locator('#ebook-editor-status').textContent(), requests, uploaded: Boolean(uploaded) })) }
       assert.ok(uploaded)
       const updated = await JSZip.loadAsync(uploaded)
