@@ -105,6 +105,75 @@
     .fab { position: absolute; right: 18px; bottom: 92px; z-index: 8; display: grid; place-items: center; width: 58px; height: 58px; color: #031014; cursor: pointer; background: linear-gradient(135deg, #62eff8, #55a6ff); border: 0; border-radius: 20px; box-shadow: 0 15px 35px rgb(77 143 255 / 35%); font-size: 28px; }
     .toast { position: absolute; right: 16px; bottom: 90px; left: 16px; z-index: 30; padding: 13px 15px; color: #cbd7e4; background: #17222e; border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 16px 40px rgb(0 0 0 / 45%); font-size: 12px; transform: translateY(20px); opacity: 0; pointer-events: none; transition: .2s ease; }
     .toast.is-visible { transform: none; opacity: 1; }
+    .module-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; margin: 0 0 18px; background: #0d151e; border: 1px solid var(--line); border-radius: 15px; }
+    .module-tab { min-height: 38px; padding: 0 8px; color: var(--muted); background: transparent; border: 0; border-radius: 11px; cursor: pointer; font-size: 11px; font-weight: 750; }
+    .module-tab.is-active { color: var(--text); background: var(--raised); box-shadow: 0 5px 15px rgb(0 0 0 / 22%); }
+    .daily-card { display: grid; grid-template-columns: 106px minmax(0, 1fr); gap: 18px; align-items: center; padding: 17px; background: linear-gradient(145deg, rgb(59 220 242 / 11%), var(--surface)); border: 1px solid rgb(59 220 242 / 24%); border-radius: 22px; }
+    .energy-ring { display: grid; place-items: center; width: 106px; height: 106px; background: conic-gradient(var(--accent) 0 71%, #1d2b38 71% 100%); border-radius: 50%; }
+    .energy-ring::after { grid-area: 1 / 1; width: 78px; height: 78px; content: ""; background: var(--surface); border-radius: 50%; }
+    .energy-ring__value { z-index: 1; grid-area: 1 / 1; text-align: center; }
+    .energy-ring__value strong, .energy-ring__value small { display: block; }
+    .energy-ring__value strong { font-size: 21px; letter-spacing: -.04em; }
+    .energy-ring__value small { margin-top: 2px; color: var(--muted); font-size: 9px; }
+    .daily-copy h2 { margin: 0 0 5px; font-size: 17px; }
+    .daily-copy > span { color: var(--muted); font-size: 11px; }
+    .macro-list { display: grid; gap: 9px; margin-top: 13px; }
+    .macro { display: grid; grid-template-columns: 42px 1fr 34px; gap: 7px; align-items: center; color: var(--muted); font-size: 10px; }
+    .macro b { color: var(--text); font-weight: 700; text-align: right; }
+    .progress { height: 5px; overflow: hidden; background: #213140; border-radius: 99px; }
+    .progress > i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); border-radius: inherit; }
+    .water-card { display: flex; gap: 12px; align-items: center; padding: 13px 14px; margin-top: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 17px; }
+    .water-card__icon { display: grid; place-items: center; width: 42px; height: 42px; color: #7bc8ff; background: rgb(77 143 255 / 12%); border-radius: 13px; }
+    .water-card div { min-width: 0; flex: 1; }
+    .water-card strong, .water-card span { display: block; }
+    .water-card span { margin-top: 3px; color: var(--muted); font-size: 11px; }
+    .mini-add { min-width: 42px; min-height: 38px; color: var(--accent); background: var(--accent-soft); border: 0; border-radius: 12px; cursor: pointer; font-weight: 900; }
+    .book-continue { display: grid; grid-template-columns: 82px 1fr; gap: 16px; padding: 15px; background: linear-gradient(145deg, rgb(77 143 255 / 15%), var(--surface)); border: 1px solid rgb(77 143 255 / 28%); border-radius: 22px; }
+    .book-cover { position: relative; display: grid; align-content: end; width: 82px; height: 116px; padding: 9px; overflow: hidden; background: linear-gradient(145deg, #7357ff, #224a86 62%, #0c1824); border-radius: 10px 15px 15px 10px; box-shadow: 0 12px 30px rgb(0 0 0 / 28%); }
+    .book-cover::before { position: absolute; inset: 0 auto 0 7px; width: 1px; content: ""; background: rgb(255 255 255 / 22%); }
+    .book-cover span { position: relative; color: white; font-size: 10px; font-weight: 850; line-height: 1.15; text-transform: uppercase; }
+    .book-copy { min-width: 0; }
+    .book-copy .eyebrow { margin-top: 2px; }
+    .book-copy h2 { margin: 0; font-size: 19px; line-height: 1.16; }
+    .book-copy > span { display: block; margin-top: 5px; color: var(--muted); font-size: 11px; }
+    .book-progress { margin: 16px 0 7px; }
+    .book-progress + small { color: var(--muted); }
+    .continue-btn { min-height: 38px; padding: 0 14px; margin-top: 13px; color: #041014; background: var(--accent); border: 0; border-radius: 12px; cursor: pointer; font-size: 11px; font-weight: 850; }
+    .book-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .book-tile { min-width: 0; padding: 0; text-align: left; color: inherit; background: transparent; border: 0; cursor: pointer; }
+    .book-tile .book-cover { width: 100%; height: 132px; }
+    .book-tile:nth-child(2) .book-cover { background: linear-gradient(145deg, #ec6f66, #6c2746 65%, #1d1119); }
+    .book-tile:nth-child(3) .book-cover { background: linear-gradient(145deg, #36bd91, #164b50 65%, #0b1a1b); }
+    .book-tile strong, .book-tile small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .book-tile strong { margin-top: 8px; font-size: 11px; }
+    .book-tile small { margin-top: 3px; color: var(--muted); font-size: 9px; }
+    .reader-page { min-height: 520px; padding: 22px 20px; color: #25303b; background: #f5f0e5; border-radius: 20px; box-shadow: inset 0 0 0 1px rgb(20 30 40 / 9%); }
+    .reader-page small { color: #8a8174; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+    .reader-page h2 { margin: 20px 0 15px; font-family: Georgia, serif; font-size: 26px; line-height: 1.2; }
+    .reader-page p { margin: 0 0 15px; font-family: Georgia, serif; font-size: 15px; line-height: 1.72; }
+    .reader-controls { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 12px 4px 0; color: var(--muted); font-size: 10px; }
+    .transfer-card { padding: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; }
+    .transfer-device { display: grid; grid-template-columns: 52px 1fr auto; gap: 12px; align-items: center; }
+    .transfer-device__icon { display: grid; place-items: center; width: 52px; height: 52px; color: var(--accent); background: var(--accent-soft); border-radius: 16px; font-size: 23px; }
+    .transfer-device strong, .transfer-device span { display: block; }
+    .transfer-device span { margin-top: 4px; color: var(--muted); font-size: 11px; }
+    .status-dot { width: 10px; height: 10px; background: var(--success); border-radius: 50%; box-shadow: 0 0 0 5px rgb(71 216 155 / 12%); }
+    .step-list { display: grid; gap: 16px; margin: 20px 0 0; }
+    .step { display: grid; grid-template-columns: 30px 1fr; gap: 11px; align-items: start; }
+    .step__number { display: grid; place-items: center; width: 30px; height: 30px; color: var(--accent); background: var(--accent-soft); border-radius: 10px; font-size: 11px; font-weight: 900; }
+    .step strong, .step span { display: block; }
+    .step span { margin-top: 4px; color: var(--muted); font-size: 11px; line-height: 1.4; }
+    .sheet-backdrop { position: absolute; inset: 0; z-index: 39; background: rgb(0 0 0 / 58%); opacity: 0; pointer-events: none; transition: .2s ease; }
+    .sheet-backdrop.is-open { opacity: 1; pointer-events: auto; }
+    .bottom-sheet { position: absolute; right: 0; bottom: 0; left: 0; z-index: 40; padding: 10px 18px 24px; background: #111a24; border: 1px solid var(--line); border-radius: 26px 26px 0 0; box-shadow: 0 -20px 70px rgb(0 0 0 / 45%); transform: translateY(105%); transition: .24s ease; }
+    .bottom-sheet.is-open { transform: none; }
+    .sheet-handle { width: 42px; height: 4px; margin: 0 auto 16px; background: #435364; border-radius: 99px; }
+    .bottom-sheet h2 { margin: 0 0 5px; font-size: 21px; }
+    .bottom-sheet > p { margin: 0 0 16px; color: var(--muted); font-size: 12px; }
+    .quick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 12px; }
+    .quick-action { display: grid; grid-template-columns: 38px 1fr; gap: 9px; align-items: center; min-height: 60px; padding: 9px; text-align: left; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 15px; cursor: pointer; }
+    .quick-action i { display: grid; place-items: center; width: 38px; height: 38px; color: var(--accent); background: var(--accent-soft); border-radius: 12px; font-style: normal; }
+    .quick-action span { font-size: 11px; font-weight: 750; }
     @media (max-width: 820px) {
       body { background: var(--bg); }
       .stage { display: block; min-height: 100vh; padding: 0; }
@@ -120,7 +189,7 @@
       <div class="statusbar"><span>9:41</span><span>● ◔ 87%</span></div>
 
       <section id="login" class="login">
-        <img class="logo" src="../grapes-logo.svg" alt="Grapes">
+        <img class="logo" src="../public/grapes-logo.svg" alt="Grapes">
         <p class="eyebrow">Grapes Workspace</p>
         <h2>Minden eszközöd,<br>egy helyen</h2>
         <p class="login__copy">Kapcsold össze a Drive-odat, vagy kezdd el azonnal helyi módban.</p>
@@ -131,7 +200,7 @@
 
       <section id="app" class="screen" hidden>
         <header class="appbar">
-          <img class="appbar__logo" src="../grapes-logo.svg" alt="">
+          <img class="appbar__logo" src="../public/grapes-logo.svg" alt="">
           <div class="appbar__title"><strong id="app-title">Grapes</strong><span id="app-subtitle">Helyi mód</span></div>
           <button class="icon-btn" data-action="search" aria-label="Keresés">⌕</button>
           <button class="icon-btn" data-nav="more" aria-label="Továbbiak">⋮</button>
@@ -180,13 +249,60 @@
           <div class="setting"><div class="setting__icon">i</div><div><strong>A Grapes névjegye</strong><span>Android prototípus</span></div><span>›</span></div>
         </div>
 
-        <div class="content module-preview" data-page="module" hidden>
-          <p class="eyebrow">Ételnapló</p><h1>Ma</h1><p class="lead">Október 14., szerda</p>
-          <div class="summary-card"><small>Napi energia</small><strong>1 420 kcal</strong><small>580 kcal maradt a célodból</small></div>
-          <div class="section-head"><h2>Étkezések</h2><button>Részletek</button></div>
-          <div class="meal"><div class="meal__icon">☕</div><div><strong>Reggeli</strong><span>Zabkása, kávé</span></div><b>420</b></div>
-          <div class="meal"><div class="meal__icon">☀</div><div><strong>Ebéd</strong><span>Csirkés saláta</span></div><b>610</b></div>
-          <div class="meal"><div class="meal__icon">◌</div><div><strong>Uzsonna</strong><span>Joghurt, gyümölcs</span></div><b>390</b></div>
+        <div class="content module-preview" data-page="food" hidden>
+          <p class="eyebrow">Ételnapló</p><h1>Ma</h1><p class="lead">Október 14., szerda · 3 étkezés</p>
+          <div class="daily-card">
+            <div class="energy-ring"><div class="energy-ring__value"><strong>1 420</strong><small>2 000 kcal</small></div></div>
+            <div class="daily-copy"><h2>Jó úton haladsz</h2><span>580 kcal maradt mára</span><div class="macro-list">
+              <div class="macro"><span>Fehérje</span><div class="progress"><i style="width:68%"></i></div><b>82 g</b></div>
+              <div class="macro"><span>Szénhidrát</span><div class="progress"><i style="width:74%"></i></div><b>164 g</b></div>
+              <div class="macro"><span>Zsír</span><div class="progress"><i style="width:55%"></i></div><b>44 g</b></div>
+            </div></div>
+          </div>
+          <div class="water-card"><span class="water-card__icon">◇</span><div><strong>Víz</strong><span>5 / 8 pohár · 1,25 l</span></div><button class="mini-add" data-action="water">+</button></div>
+          <div class="section-head"><h2>Étkezések</h2><button data-action="details">Napló</button></div>
+          <div class="meal"><div class="meal__icon">☕</div><div><strong>Reggeli</strong><span>Zabkása, kávé · 08:10</span></div><b>420</b></div>
+          <div class="meal"><div class="meal__icon">☀</div><div><strong>Ebéd</strong><span>Csirkés saláta · 12:34</span></div><b>610</b></div>
+          <div class="meal"><div class="meal__icon">◌</div><div><strong>Uzsonna</strong><span>Joghurt, gyümölcs · 16:02</span></div><b>390</b></div>
+        </div>
+
+        <div class="content module-preview" data-page="ebook" hidden>
+          <p class="eyebrow">E-book</p><h1>A könyvtárad</h1><p class="lead">Olvass ott tovább, ahol abbahagytad.</p>
+          <div class="module-tabs">
+            <button class="module-tab is-active" data-ebook-view="ebook">Könyvtár</button>
+            <button class="module-tab" data-ebook-view="reader">Olvasó</button>
+            <button class="module-tab" data-ebook-view="transfer">Átvitel</button>
+          </div>
+          <div class="book-continue"><div class="book-cover"><span>A csend<br>térképe</span></div><div class="book-copy"><p class="eyebrow">Folytatás</p><h2>A csend térképe</h2><span>Anna Kovács</span><div class="progress book-progress"><i style="width:42%"></i></div><small>42% · 18 perc a fejezetből</small><br><button class="continue-btn" data-ebook-view="reader">Olvasás folytatása</button></div></div>
+          <div class="section-head"><h2>Saját könyvek</h2><button data-action="import">Importálás</button></div>
+          <div class="book-grid">
+            <button class="book-tile" data-ebook-view="reader"><span class="book-cover"><span>A csend térképe</span></span><strong>A csend térképe</strong><small>42% elolvasva</small></button>
+            <button class="book-tile"><span class="book-cover"><span>Északi fény</span></span><strong>Északi fény</strong><small>12% elolvasva</small></button>
+            <button class="book-tile"><span class="book-cover"><span>Otthon</span></span><strong>Hazafelé</strong><small>Új könyv</small></button>
+          </div>
+        </div>
+
+        <div class="content module-preview" data-page="reader" hidden>
+          <div class="module-tabs">
+            <button class="module-tab" data-ebook-view="ebook">Könyvtár</button>
+            <button class="module-tab is-active" data-ebook-view="reader">Olvasó</button>
+            <button class="module-tab" data-ebook-view="transfer">Átvitel</button>
+          </div>
+          <article class="reader-page"><small>3. fejezet · A part</small><h2>Az első reggel</h2><p>A város még aludt, amikor elindult a folyó felé. A kövek nedvesen csillogtak, a levegőben pedig ott maradt az éjszaka hűvössége.</p><p>Nem sietett. Tudta, hogy néha éppen az út csendes részei mondják el a legtöbbet.</p><p>A hídnál megállt, és végignézett a vízen.</p></article>
+          <div class="reader-controls"><span>Aa</span><div class="progress"><i style="width:42%"></i></div><span>42%</span></div>
+        </div>
+
+        <div class="content module-preview" data-page="transfer" hidden>
+          <p class="eyebrow">E-book</p><h1>Küldés olvasóra</h1><p class="lead">Egyszerű, vezetett átvitel kábellel vagy a helyi hálózaton.</p>
+          <div class="module-tabs">
+            <button class="module-tab" data-ebook-view="ebook">Könyvtár</button>
+            <button class="module-tab" data-ebook-view="reader">Olvasó</button>
+            <button class="module-tab is-active" data-ebook-view="transfer">Átvitel</button>
+          </div>
+          <div class="transfer-card"><div class="transfer-device"><span class="transfer-device__icon">▤</span><div><strong>Kindle Paperwhite</strong><span>Elérhető · ugyanazon a hálózaton</span></div><span class="status-dot"></span></div>
+            <div class="step-list"><div class="step"><span class="step__number">1</span><div><strong>Válassz könyvet</strong><span>A csend térképe · EPUB · 3,2 MB</span></div></div><div class="step"><span class="step__number">2</span><div><strong>Formátum ellenőrzése</strong><span>Kompatibilis, nincs szükség átalakításra.</span></div></div><div class="step"><span class="step__number">3</span><div><strong>Küldés az eszközre</strong><span>A folyamat alatt maradj ezen a hálózaton.</span></div></div></div>
+          </div>
+          <button class="primary" style="margin-top:14px" data-action="send-book">Küldés a Kindle-re</button>
         </div>
 
         <nav class="bottom-nav" aria-label="Alsó navigáció">
@@ -196,6 +312,12 @@
           <button class="nav-item" data-nav="more"><i>•••</i><span>Továbbiak</span></button>
         </nav>
         <button class="fab" data-fab hidden aria-label="Új étkezés">+</button>
+      </section>
+      <div class="sheet-backdrop" data-sheet-close></div>
+      <section class="bottom-sheet" aria-label="Étel hozzáadása">
+        <div class="sheet-handle"></div><h2>Étel hozzáadása</h2><p>Keresés vagy gyors bevitel — amelyik most kényelmesebb.</p>
+        <input class="search" placeholder="Keresés az ételek között…">
+        <div class="quick-grid"><button class="quick-action"><i>▦</i><span>Vonalkód</span></button><button class="quick-action"><i>◉</i><span>Fotó alapján</span></button><button class="quick-action"><i>☆</i><span>Kedvencek</span></button><button class="quick-action"><i>＋</i><span>Saját étel</span></button></div>
       </section>
       <div class="toast" role="status">Ez egy látványterv — a művelet még nem ment adatot.</div>
     </div>
@@ -215,7 +337,9 @@
     const subtitle = document.querySelector('#app-subtitle')
     const fab = document.querySelector('[data-fab]')
     const toast = document.querySelector('.toast')
-    const labels = { home: ['Grapes', 'Helyi mód'], projects: ['Projektek', 'Helyi és Drive'], sync: ['Szinkron', 'Adatok és fiók'], more: ['Továbbiak', 'Beállítások'], module: ['Ételnapló', 'Mai áttekintés'] }
+    const sheet = document.querySelector('.bottom-sheet')
+    const sheetBackdrop = document.querySelector('.sheet-backdrop')
+    const labels = { home: ['Grapes', 'Helyi mód'], projects: ['Projektek', 'Helyi és Drive'], sync: ['Szinkron', 'Adatok és fiók'], more: ['Továbbiak', 'Beállítások'], food: ['Ételnapló', 'Mai áttekintés'], ebook: ['E-book', 'Könyvtár'], reader: ['A csend térképe', '3. fejezet'], transfer: ['E-book átvitel', 'Kindle Paperwhite'] }
 
     function showToast(message = 'Ez egy látványterv — a művelet még nem ment adatot.') {
       toast.textContent = message
@@ -228,15 +352,29 @@
       document.querySelectorAll('[data-page]').forEach(node => { node.hidden = node.dataset.page !== page })
       document.querySelectorAll('[data-nav]').forEach(node => node.classList.toggle('is-active', node.dataset.nav === page))
       ;[title.textContent, subtitle.textContent] = labels[page] || labels.home
-      fab.hidden = page !== 'module'
+      fab.hidden = page !== 'food'
+      closeSheet()
+    }
+
+    function openSheet() {
+      sheet.classList.add('is-open')
+      sheetBackdrop.classList.add('is-open')
+    }
+
+    function closeSheet() {
+      sheet.classList.remove('is-open')
+      sheetBackdrop.classList.remove('is-open')
     }
 
     document.querySelector('[data-local]').addEventListener('click', () => { login.hidden = true; app.hidden = false; showPage('home') })
     document.querySelector('[data-login]').addEventListener('click', () => showToast('A prototípusban válaszd a helyi módot.'))
     document.querySelectorAll('[data-nav]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.nav)))
-    document.querySelectorAll('[data-module]').forEach(button => button.addEventListener('click', () => showPage('module')))
+    document.querySelectorAll('[data-module]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.module === 'ebook' ? 'ebook' : 'food')))
+    document.querySelectorAll('[data-ebook-view]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.ebookView)))
     document.querySelectorAll('[data-action]').forEach(button => button.addEventListener('click', () => showToast()))
-    fab.addEventListener('click', () => showToast('Itt nyílna meg az új étkezés alsó lapja.'))
+    fab.addEventListener('click', openSheet)
+    sheetBackdrop.addEventListener('click', closeSheet)
+    document.addEventListener('keydown', event => { if (event.key === 'Escape') closeSheet() })
   </script>
 </body>
 </html>
