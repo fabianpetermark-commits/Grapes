@@ -72,6 +72,8 @@ Ez a Grapes modulokon átívelő elsődleges fejlesztési naplója. A részletes
 
 **Kész:** az Android appban a könyvtár, feltöltés és e-olvasó párosítás, a könyvadatlap, valamint a szöveg- és szerkezeti EPUB-szerkesztő egységes, nagy érintési célú telefonos felületet használ. A módosítás nem érinti a webes nézetet.
 
+**Kész:** a kártyás Android E-book könyvtár már nem látványterv: közvetlenül a valódi `Grapes E-book Library` Drive-mappát és annak metaadatait jeleníti meg, saját Importálás művelettel. A könyvkártya az adott könyv szerkesztőjét nyitja meg; a korábbi mintakönyvek és a második, duplikált könyvtárba vezető gomb megszűnt.
+
 **Kész:** az opcionális teljes Drive-keresés látható műveletet kapott, az egykönyves e-olvasó átvitel pedig célzottan visszavonhatja az adott fájl nyilvános olvasói jogosultságát anélkül, hogy a név szerinti megosztásokat törölné.
 
 **Parkol:** korábban kiosztott Drive-megosztások áttekintése és visszavonása.

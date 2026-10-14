@@ -71,11 +71,6 @@ try {
   await page.locator('[data-page="ebook"]').waitFor({ state: 'visible' })
   await page.screenshot({ path: 'mobile-ebook-library.png', fullPage: true })
 
-  await page.locator('[data-ebook-view="reader"]').first().click()
-  await page.locator('[data-page="reader"]').waitFor({ state: 'visible' })
-  await page.locator('[data-page="reader"] [data-ebook-view="transfer"]').click()
-  await page.locator('[data-page="transfer"]').waitFor({ state: 'visible' })
-
   const layout = await page.evaluate(() => ({
     viewportWidth: window.innerWidth,
     documentWidth: document.documentElement.scrollWidth,
@@ -84,7 +79,7 @@ try {
   }))
 
   assert.equal(layout.documentWidth, layout.viewportWidth, 'Az előnézet vízszintesen kilóg a mobil viewportból.')
-  assert.deepEqual(layout.visiblePages, ['transfer'])
+  assert.deepEqual(layout.visiblePages, ['ebook'])
   assert.equal(layout.openSheet, false)
   console.log(JSON.stringify({ ...layout, sheetLayout }, null, 2))
 } finally {

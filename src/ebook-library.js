@@ -2008,7 +2008,11 @@ function showEbookOrganizer() {
   const manager = $('#ebook-manager-view')
   if (manager) { manager.hidden = false; manager.dataset.ebookTab = 'metadata' }
   setEbookMode('organizer')
-  if (accessTokenAvailable()) refreshLibrary()
+  let requestedBookId = ''
+  try { requestedBookId = window.sessionStorage?.getItem('grapes-ebook-open-book') || ''; window.sessionStorage?.removeItem('grapes-ebook-open-book') } catch {}
+  if (accessTokenAvailable()) refreshLibrary().then(() => {
+    if (requestedBookId && currentBooks.some((book) => book.id === requestedBookId)) openMetadataEditor(requestedBookId, { scroll: false })
+  })
 }
 function navigateToEbookOrganizer() {
   try { window.sessionStorage?.setItem('grapes-ebook-view', 'organizer') } catch {}

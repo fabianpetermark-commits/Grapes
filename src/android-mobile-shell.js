@@ -7,6 +7,7 @@ import {
   onGrapesDriveChange,
 } from './storage/grapes-drive.js'
 import { listLocalProjects } from './storage/local-project-store.js'
+import { listMobileEbooks, uploadMobileEbook } from './ebook-mobile-library.js'
 
 const $ = selector => document.querySelector(selector)
 const $$ = selector => [...document.querySelectorAll(selector)]
@@ -68,6 +69,7 @@ function showPage(page) {
   if (page === 'projects') renderProjects()
   if (page === 'sync') renderSync()
   if (page === 'water') renderWater()
+  if (page === 'ebook') renderMobileEbooks()
 }
 
 function openModule(module, project = null) {
@@ -78,6 +80,84 @@ function openModule(module, project = null) {
   target.searchParams.set('module', module)
   target.searchParams.set('android-shell', '1')
   window.location.href = target.href
+}
+
+function openEbook(bookId = '', view = 'organizer') {
+  try {
+    sessionStorage.setItem('grapes-ebook-view', view)
+    if (bookId) sessionStorage.setItem('grapes-ebook-open-book', bookId)
+    else sessionStorage.removeItem('grapes-ebook-open-book')
+  } catch {}
+  openModule('ebook')
+}
+
+function ebookCover(title, index = 0) {
+  const cover = document.createElement('span')
+  cover.className = 'book-cover'
+  cover.style.background = [
+    'linear-gradient(145deg,#7357ff,#224a86 62%,#0c1824)',
+    'linear-gradient(145deg,#ec6f66,#6c2746 65%,#1d1119)',
+    'linear-gradient(145deg,#36bd91,#164b50 65%,#0b1a1b)',
+    'linear-gradient(145deg,#31bde0,#31519c 65%,#111b35)',
+  ][index % 4]
+  const label = document.createElement('span')
+  label.textContent = title
+  cover.append(label)
+  return cover
+}
+
+function renderEbookCards(books) {
+  const grid = $('[data-ebook-books]')
+  const featured = $('[data-ebook-featured]')
+  grid.replaceChildren()
+  if (!books.length) {
+    grid.innerHTML = `<div class="ebook-empty">${isGrapesDriveConnected() ? 'A Grapes Drive-könyvtár még üres. Importálj egy könyvet!' : 'A könyvtárhoz csatlakoztasd a Google Drive-ot a Szinkron oldalon.'}</div>`
+    featured.hidden = true
+    return
+  }
+  const latest = books[0]
+  featured.replaceChildren()
+  featured.append(ebookCover(latest.title, 0))
+  const copy = document.createElement('div'); copy.className = 'book-copy'
+  const eyebrow = document.createElement('p'); eyebrow.className = 'eyebrow'; eyebrow.textContent = 'LEGUTÓBB HOZZÁADVA'
+  const heading = document.createElement('h2'); heading.textContent = latest.title
+  const author = document.createElement('span'); author.textContent = latest.author || latest.name
+  const action = document.createElement('button'); action.type = 'button'; action.className = 'continue-btn'; action.textContent = 'Könyv megnyitása'
+  action.addEventListener('click', () => openEbook(latest.id))
+  copy.append(eyebrow, heading, author, document.createElement('br'), action)
+  featured.append(copy); featured.hidden = false
+  books.forEach((book, index) => {
+    const button = document.createElement('button'); button.type = 'button'; button.className = 'book-tile'
+    const title = document.createElement('strong'); title.textContent = book.title
+    const meta = document.createElement('small'); meta.textContent = book.author || book.name.split('.').pop().toUpperCase()
+    button.append(ebookCover(book.title, index), title, meta)
+    button.addEventListener('click', () => openEbook(book.id))
+    grid.append(button)
+  })
+}
+
+async function renderMobileEbooks() {
+  const status = $('[data-ebook-status]')
+  status.textContent = isGrapesDriveConnected() ? 'Drive-könyvtár frissítése…' : ''
+  try {
+    const books = await listMobileEbooks()
+    renderEbookCards(books)
+    status.textContent = books.length ? `${books.length} könyv a Grapes Drive-könyvtárban.` : ''
+  } catch (error) {
+    renderEbookCards([])
+    status.textContent = `A könyvtár nem tölthető be. ${error?.message || ''}`
+  }
+}
+
+async function importMobileEbook(file) {
+  if (!file) return
+  const status = $('[data-ebook-status]')
+  status.textContent = `${file.name} feltöltése…`
+  try {
+    const books = await uploadMobileEbook(file)
+    renderEbookCards(books)
+    status.textContent = `${file.name} hozzáadva a Drive-könyvtárhoz.`
+  } catch (error) { status.textContent = `A feltöltés nem sikerült. ${error?.message || ''}` }
 }
 
 function renderAccount() {
@@ -225,7 +305,7 @@ function projectRow(project) {
   const arrow = document.createElement('span')
   arrow.textContent = '›'
   button.append(icon, copy, arrow)
-  button.addEventListener('click', () => openModule(project.module, project.id ? project : null))
+  button.addEventListener('click', () => project.module === 'ebook' && !project.id ? showPage('ebook') : openModule(project.module, project.id ? project : null))
   return button
 }
 
@@ -258,7 +338,7 @@ async function renderProjects() {
       const strong = document.createElement('strong'); strong.textContent = String(project.name).replace(/\.grapes\.json$/i, '')
       const meta = document.createElement('span'); meta.textContent = project.folder
       button.append(icon, strong, meta)
-      button.addEventListener('click', () => project.water ? showPage('water') : openModule(project.module, project.id ? project : null))
+      button.addEventListener('click', () => project.water ? showPage('water') : project.module === 'ebook' && !project.id ? showPage('ebook') : openModule(project.module, project.id ? project : null))
       return button
     }))
   } catch (error) {
@@ -364,7 +444,10 @@ $$('[data-module]').forEach(button => button.addEventListener('click', () => {
   else openModule(module)
 }))
 $$('[data-open-module]').forEach(button => button.addEventListener('click', () => openModule(button.dataset.openModule)))
-$$('[data-ebook-view]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.ebookView)))
+$('[data-ebook-editor]').addEventListener('click', () => openEbook('', 'organizer'))
+$('[data-ebook-transfer]').addEventListener('click', () => openEbook('', 'library'))
+$('[data-ebook-import]').addEventListener('click', () => $('[data-ebook-file]').click())
+$('[data-ebook-file]').addEventListener('change', event => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''; importMobileEbook(file) })
 $('[data-water-open]').addEventListener('click', event => { if (!event.target.closest('[data-water-add]')) showPage('water') })
 $('[data-water-open]').addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') showPage('water') })
 $$('[data-water-add]').forEach(button => button.addEventListener('click', event => { event.stopPropagation(); addWater(Number(button.dataset.waterAdd)) }))

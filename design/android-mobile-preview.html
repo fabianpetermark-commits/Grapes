@@ -200,6 +200,8 @@
     .book-tile strong, .book-tile small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .book-tile strong { margin-top: 8px; font-size: 11px; }
     .book-tile small { margin-top: 3px; color: var(--muted); font-size: 9px; }
+    .ebook-empty { grid-column: 1 / -1; padding: 26px 16px; color: var(--muted); text-align: center; background: var(--surface); border: 1px dashed var(--line); border-radius: 18px; }
+    .ebook-status { min-height: 18px; margin: 10px 2px 0; color: var(--muted); font-size: 11px; }
     .reader-page { min-height: 520px; padding: 22px 20px; color: #25303b; background: #f5f0e5; border-radius: 20px; box-shadow: inset 0 0 0 1px rgb(20 30 40 / 9%); }
     .reader-page small { color: #8a8174; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
     .reader-page h2 { margin: 20px 0 15px; font-family: Georgia, serif; font-size: 26px; line-height: 1.2; }
@@ -351,40 +353,14 @@
           <p class="eyebrow">E-book</p><h1>A könyvtárad</h1><p class="lead">Olvass ott tovább, ahol abbahagytad.</p>
           <div class="module-tabs">
             <button class="module-tab is-active" data-ebook-view="ebook">Könyvtár</button>
-            <button class="module-tab" data-ebook-view="reader">Olvasó</button>
-            <button class="module-tab" data-ebook-view="transfer">Átvitel</button>
+            <button class="module-tab" data-ebook-editor>Szerkesztő</button>
+            <button class="module-tab" data-ebook-transfer>Átvitel</button>
           </div>
-          <div class="book-continue"><div class="book-cover"><span>A csend<br>térképe</span></div><div class="book-copy"><p class="eyebrow">Folytatás</p><h2>A csend térképe</h2><span>Anna Kovács</span><div class="progress book-progress"><i style="width:42%"></i></div><small>42% · 18 perc a fejezetből</small><br><button class="continue-btn" data-ebook-view="reader">Olvasás folytatása</button></div></div>
-          <div class="section-head"><h2>Saját könyvek</h2><button data-action="import">Importálás</button></div>
-          <div class="book-grid">
-            <button class="book-tile" data-ebook-view="reader"><span class="book-cover"><span>A csend térképe</span></span><strong>A csend térképe</strong><small>42% elolvasva</small></button>
-            <button class="book-tile"><span class="book-cover"><span>Északi fény</span></span><strong>Északi fény</strong><small>12% elolvasva</small></button>
-            <button class="book-tile"><span class="book-cover"><span>Otthon</span></span><strong>Hazafelé</strong><small>Új könyv</small></button>
-          </div>
-          <button class="primary module-cta" data-open-module="ebook">Valódi E-book könyvtár megnyitása</button>
-        </div>
-
-        <div class="content module-preview" data-page="reader" hidden>
-          <div class="module-tabs">
-            <button class="module-tab" data-ebook-view="ebook">Könyvtár</button>
-            <button class="module-tab is-active" data-ebook-view="reader">Olvasó</button>
-            <button class="module-tab" data-ebook-view="transfer">Átvitel</button>
-          </div>
-          <article class="reader-page"><small>3. fejezet · A part</small><h2>Az első reggel</h2><p>A város még aludt, amikor elindult a folyó felé. A kövek nedvesen csillogtak, a levegőben pedig ott maradt az éjszaka hűvössége.</p><p>Nem sietett. Tudta, hogy néha éppen az út csendes részei mondják el a legtöbbet.</p><p>A hídnál megállt, és végignézett a vízen.</p></article>
-          <div class="reader-controls"><span>Aa</span><div class="progress"><i style="width:42%"></i></div><span>42%</span></div>
-        </div>
-
-        <div class="content module-preview" data-page="transfer" hidden>
-          <p class="eyebrow">E-book</p><h1>Küldés olvasóra</h1><p class="lead">Egyszerű, vezetett átvitel kábellel vagy a helyi hálózaton.</p>
-          <div class="module-tabs">
-            <button class="module-tab" data-ebook-view="ebook">Könyvtár</button>
-            <button class="module-tab" data-ebook-view="reader">Olvasó</button>
-            <button class="module-tab is-active" data-ebook-view="transfer">Átvitel</button>
-          </div>
-          <div class="transfer-card"><div class="transfer-device"><span class="transfer-device__icon">▤</span><div><strong>Kindle Paperwhite</strong><span>Elérhető · ugyanazon a hálózaton</span></div><span class="status-dot"></span></div>
-            <div class="step-list"><div class="step"><span class="step__number">1</span><div><strong>Válassz könyvet</strong><span>A csend térképe · EPUB · 3,2 MB</span></div></div><div class="step"><span class="step__number">2</span><div><strong>Formátum ellenőrzése</strong><span>Kompatibilis, nincs szükség átalakításra.</span></div></div><div class="step"><span class="step__number">3</span><div><strong>Küldés az eszközre</strong><span>A folyamat alatt maradj ezen a hálózaton.</span></div></div></div>
-          </div>
-          <button class="primary" style="margin-top:14px" data-action="send-book">Küldés a Kindle-re</button>
+          <div class="book-continue" data-ebook-featured hidden></div>
+          <div class="section-head"><h2>Saját könyvek</h2><button data-ebook-import>Importálás</button></div>
+          <div class="book-grid" data-ebook-books><div class="ebook-empty">A Drive-könyvtár betöltése…</div></div>
+          <p class="ebook-status" data-ebook-status role="status"></p>
+          <input data-ebook-file type="file" accept=".epub,.pdf,.mobi,.azw,.azw3,.prc,.fb2,.cbz,.cbr,.txt" hidden>
         </div>
 
         <nav class="bottom-nav" aria-label="Alsó navigáció">
