@@ -26,6 +26,7 @@ Az első terv az APK-ban futó HTML/CSS előnézetként szerkeszthető tovább; 
 - [ ] Google Drive bejelentkezés, projektmentés és visszatöltés teljes Android készüléktesztje.
 - [x] A jóváhagyott mobil UI alapértelmezett Android alkalmazáskeretté alakítása.
 - [x] Telefonos belépési képernyő megvalósítása, helyi mód és Google-belépés állapotaival.
+- [ ] A bejelentkezési képernyő visszaállítása az Android appban, valamint mindig elérhető Kijelentkezés / fiókváltás útvonal hozzáadása a kezdőlapról és a beállításokból.
 - [x] Telefonos kezdőlap, alsó navigáció, legutóbbi projektek és modulindító kártyák megvalósítása.
 - [x] Projektek képernyő: keresés, helyi gyorsindítók és Drive-projektlista.
 - [x] Szinkron képernyő: valós helyi projektszám és tárhely, függő mentések, utolsó ellenőrzés, Drive-állapot és kézi frissítés.
