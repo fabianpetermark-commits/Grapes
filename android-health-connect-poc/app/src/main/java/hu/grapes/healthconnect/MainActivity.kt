@@ -85,7 +85,9 @@ class MainActivity : ComponentActivity() {
         UpdateNotifications.createChannel(this)
         UpdateCheckWorker.schedule(this)
         webView.loadUrl(APP_URL)
-        checkForAppUpdate(intent.getBooleanExtra(UpdateNotifications.EXTRA_OPEN_UPDATE, false))
+        // A foreground launch must always see a release published since the previous
+        // background check. The six-hour throttle only belongs to WorkManager.
+        checkForAppUpdate(force = true)
         maybeRequestUpdateNotificationPermission()
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {

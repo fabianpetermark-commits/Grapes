@@ -28,3 +28,8 @@ test('a frissítési értesítés az app frissítési folyamatába vezet vissza'
   assert.match(activity, /findAvailableRelease\(force\)/)
   assert.match(activity, /showUpdateDialog\(release\)/)
 })
+
+test('minden appindítás frissen ellenőrzi az elérhető kiadást', () => {
+  const activity = read('src/main/java/hu/grapes/healthconnect/MainActivity.kt')
+  assert.match(activity, /webView\.loadUrl\(APP_URL\)[\s\S]*checkForAppUpdate\(force = true\)/)
+})
