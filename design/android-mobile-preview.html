@@ -40,7 +40,7 @@
     .screen[hidden] { display: none; }
     .login { display: grid; align-content: center; padding: 72px 22px 28px; overflow-y: auto; text-align: center; }
     .login[hidden] { display: none; }
-    .logo { width: 66px; height: 66px; margin: 0 auto 22px; border-radius: 18px; box-shadow: 0 14px 30px rgb(0 194 230 / 18%); }
+    .logo { width: 76px; height: 76px; padding: 7px; margin: 0 auto 22px; background: radial-gradient(circle, rgb(59 220 242 / 15%), transparent 68%); filter: drop-shadow(0 12px 22px rgb(0 194 230 / 20%)); }
     .login h2 { margin: 0; font-size: 31px; line-height: 1.08; letter-spacing: -.04em; }
     .login__copy { margin: 14px 8px 26px; color: var(--muted); font-size: 14px; line-height: 1.55; }
     .primary, .secondary { width: 100%; min-height: 52px; border-radius: 14px; cursor: pointer; }
@@ -49,7 +49,7 @@
     .login__fine { margin-top: 18px; color: #74869a; font-size: 11px; line-height: 1.5; }
     .login__status { min-height: 36px; margin: 12px 0 0; color: var(--danger); font-size: 12px; line-height: 1.45; }
     .appbar { display: flex; gap: 12px; align-items: center; min-height: 58px; padding: 8px 16px; border-bottom: 1px solid var(--line); }
-    .appbar__logo { width: 36px; height: 36px; border-radius: 11px; }
+    .appbar__logo { width: 36px; height: 36px; padding: 3px; filter: drop-shadow(0 5px 10px rgb(0 194 230 / 20%)); }
     .appbar__title { min-width: 0; flex: 1; }
     .appbar__title strong, .appbar__title span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .appbar__title strong { font-size: 16px; }
@@ -226,7 +226,7 @@
       <div class="statusbar"><span>9:41</span><span>● ◔ 87%</span></div>
 
       <section id="login" class="login">
-        <img class="logo" src="../public/grapes-logo.svg" alt="Grapes">
+        <img class="logo" src="../public/grapes-mark.svg" alt="Grapes">
         <p class="eyebrow">Grapes Workspace</p>
         <h2>Minden eszközöd,<br>egy helyen</h2>
         <p class="login__copy">Kapcsold össze a Drive-odat, vagy kezdd el azonnal helyi módban.</p>
@@ -238,7 +238,7 @@
 
       <section id="app" class="screen" hidden>
         <header class="appbar">
-          <img class="appbar__logo" src="../public/grapes-logo.svg" alt="">
+          <img class="appbar__logo" src="../public/grapes-mark.svg" alt="">
           <div class="appbar__title"><strong id="app-title">Grapes</strong><span id="app-subtitle">Helyi mód</span></div>
           <button class="icon-btn" data-action="search" aria-label="Keresés">⌕</button>
           <button class="icon-btn" data-nav="more" aria-label="Továbbiak">⋮</button>
