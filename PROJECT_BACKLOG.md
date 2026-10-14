@@ -30,6 +30,8 @@ Az első terv az APK-ban futó HTML/CSS előnézetként szerkeszthető tovább; 
 - [x] Projektek képernyő: keresés, helyi gyorsindítók és Drive-projektlista.
 - [x] Szinkron képernyő: valós helyi projektszám és tárhely, függő mentések, utolsó ellenőrzés, Drive-állapot és kézi frissítés.
 - [x] Ételnapló csiszolt telefonos áttekintője és a teljes Food modul Android-only mobilrétege nagy érintési célokkal, mobil űrlapokkal és alsó ellenőrző panelekkel.
+- [x] E-book teljes Android-only mobilfelülete a könyvtártól a metaadat-, szöveg- és szerkezeti szerkesztésig.
+- [x] Pénzügyi Napló teljes Android-only mobilfelülete kártyás áttekintéssel, mobil űrlapokkal és gyors tételrögzítéssel.
 - [x] Víznapló valódi, dátum szerint helyben mentett Android-modullá alakítása szerkeszthető céllal és törölhető bejegyzésekkel.
 - [ ] A többi modul egységes mobilmintáinak megtervezése és fokozatos átültetése.
 - [ ] Végső telefonos akadálymentességi, érintési célméret-, görgetési és valódi készülékteszt.

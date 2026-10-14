@@ -356,3 +356,123 @@
   .finance__table td:last-child::before { margin-right:auto; }
   .finance__table-footer { display:grid; gap:var(--space-1); }
 }
+
+.finance__mobile-add{display:none}
+
+/* Complete Android app-only finance layer. */
+html.is-grapes-android-module:has(#finance-app:not(.hidden)),
+html.is-grapes-android-module:has(#finance-app:not(.hidden)) body{height:100%;overflow:hidden}
+html.is-grapes-android-module #finance-app{position:relative;background:radial-gradient(circle at 12% 0%,rgb(59 220 242 / 10%),transparent 28%),var(--color-bg-app)}
+html.is-grapes-android-module .finance__header{
+  position:sticky;
+  top:0;
+  z-index:var(--z-sticky);
+  display:grid;
+  gap:10px;
+  min-height:0;
+  padding:calc(8px + env(safe-area-inset-top)) 12px 10px;
+  background:rgb(9 14 20 / 95%);
+  border-bottom-color:color-mix(in srgb,var(--color-accent) 16%,var(--color-border));
+  backdrop-filter:blur(18px)
+}
+html.is-grapes-android-module .finance__header .module-brand{display:grid;grid-template-columns:42px minmax(0,1fr);gap:10px;align-items:center}
+html.is-grapes-android-module .finance__header .toolbar__brand-mark{width:42px;height:42px;object-fit:contain;border:0;border-radius:0;background:transparent;box-shadow:none}
+html.is-grapes-android-module .finance__header h1{font-size:18px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html.is-grapes-android-module .finance__header .finance__eyebrow{margin-bottom:2px!important;font-size:10px}
+html.is-grapes-android-module .finance__header-actions{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;width:100%;align-items:center}
+html.is-grapes-android-module .finance__header-actions>.btn{min-height:44px;padding-inline:12px;border-radius:12px;white-space:nowrap}
+html.is-grapes-android-module #finance-drive-save{overflow:hidden;max-width:150px;text-overflow:ellipsis}
+html.is-grapes-android-module #finance-back-to-menu-btn{width:44px;min-width:44px;padding:0;font-size:0}
+html.is-grapes-android-module #finance-back-to-menu-btn::before{content:'⌂';font-size:24px;line-height:1}
+html.is-grapes-android-module .finance__save-status{grid-column:1/-1;grid-row:2;width:auto;min-height:18px;font-size:12px}
+html.is-grapes-android-module .finance__main{gap:12px;width:100%;padding:12px 12px calc(94px + env(safe-area-inset-bottom))}
+html.is-grapes-android-module .finance__tabs{
+  position:sticky;
+  top:calc(128px + env(safe-area-inset-top));
+  z-index:calc(var(--z-sticky) - 1);
+  display:flex;
+  grid-template-columns:none;
+  gap:5px;
+  margin:0;
+  padding:5px;
+  overflow-x:auto;
+  border-radius:15px;
+  scroll-snap-type:x proximity;
+  scrollbar-width:none
+}
+html.is-grapes-android-module .finance__tabs::-webkit-scrollbar{display:none}
+html.is-grapes-android-module .finance__tabs button,
+html.is-grapes-android-module .finance__tabs button:last-child{grid-column:auto;flex:0 0 auto;min-width:max-content;min-height:44px;padding:0 16px;white-space:nowrap;scroll-snap-align:start}
+html.is-grapes-android-module .finance__summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+html.is-grapes-android-module .finance__metric{gap:5px;padding:14px;border-radius:16px}
+html.is-grapes-android-module .finance__metric strong{font-size:20px;line-height:1.2;overflow-wrap:anywhere}
+html.is-grapes-android-module .finance__metric span,
+html.is-grapes-android-module .finance__metric small{font-size:12px}
+html.is-grapes-android-module .finance__metric:nth-child(3){grid-column:1/-1;min-height:106px;align-content:center}
+html.is-grapes-android-module .finance__panel{padding:16px;border-radius:18px;box-shadow:0 12px 32px rgb(0 0 0 / 16%)}
+html.is-grapes-android-module .finance__panel-head{display:grid;gap:10px;margin-bottom:16px}
+html.is-grapes-android-module .finance__panel-head h2{font-size:18px}
+html.is-grapes-android-module .finance__legend{justify-content:flex-start;font-size:12px}
+html.is-grapes-android-module .finance__chart{grid-template-columns:repeat(6,minmax(42px,1fr));gap:7px;min-width:348px;min-height:220px;padding-inline:0}
+html.is-grapes-android-module .finance__chart-group{height:205px}
+html.is-grapes-android-module .finance__bars{min-height:176px}
+html.is-grapes-android-module .finance__category-row{grid-template-columns:minmax(76px,100px) minmax(50px,1fr) auto;gap:8px;font-size:12px}
+html.is-grapes-android-module .finance__form,
+html.is-grapes-android-module .finance__compact-form,
+html.is-grapes-android-module .finance__forecast-controls,
+html.is-grapes-android-module .finance__forecast-metrics{grid-template-columns:1fr;gap:13px}
+html.is-grapes-android-module .finance input:not([type=checkbox]):not([type=radio]),
+html.is-grapes-android-module .finance select,
+html.is-grapes-android-module .finance__type-switch button{min-height:48px;border-radius:12px}
+html.is-grapes-android-module .finance__type-switch{min-height:52px;border-radius:14px}
+html.is-grapes-android-module .finance__planned-toggle{min-height:58px;border-radius:14px}
+html.is-grapes-android-module .finance__receipt{min-height:82px;border-radius:14px}
+html.is-grapes-android-module .finance__receipt-tools .btn,
+html.is-grapes-android-module .finance__form-actions .btn,
+html.is-grapes-android-module .finance__compact-form>.btn{min-height:48px}
+html.is-grapes-android-module .finance__saving-row{grid-template-columns:minmax(70px,.8fr) minmax(0,1fr);gap:8px;padding:12px;border:1px solid var(--color-border);border-radius:13px}
+html.is-grapes-android-module .finance__saving-row .finance__record-actions{grid-column:1/-1;justify-content:flex-end}
+html.is-grapes-android-module .finance__record-actions .btn{width:44px;min-width:44px;min-height:44px}
+html.is-grapes-android-module .finance__forecast-row{gap:8px;padding:12px;border:1px solid var(--color-border);border-radius:12px}
+html.is-grapes-android-module .finance__import{overflow:hidden}
+html.is-grapes-android-module .finance__import-intro,
+html.is-grapes-android-module .finance__import-block-head{gap:12px;padding:14px}
+html.is-grapes-android-module .finance__import-grid-wrap,
+html.is-grapes-android-module .finance__import-review-wrap{max-width:100%;overscroll-behavior-x:contain}
+html.is-grapes-android-module .finance__filters{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%}
+html.is-grapes-android-module .finance__filters>*{min-width:0!important;width:100%;min-height:44px}
+html.is-grapes-android-module .finance__filters input[type=search]{grid-column:1/-1}
+html.is-grapes-android-module .finance__table tr{gap:9px;padding:14px;border-radius:16px}
+html.is-grapes-android-module .finance__table td{grid-template-columns:minmax(80px,.75fr) minmax(0,1fr);gap:8px}
+html.is-grapes-android-module .finance__table td:last-child{min-height:44px;align-items:center}
+html.is-grapes-android-module .finance__table-footer{font-size:12px;line-height:1.4}
+html.is-grapes-android-module .finance__mobile-add{
+  position:fixed;
+  right:16px;
+  bottom:calc(16px + env(safe-area-inset-bottom));
+  z-index:calc(var(--z-sticky) + 1);
+  display:flex;
+  gap:8px;
+  align-items:center;
+  min-height:54px;
+  padding:0 20px;
+  color:#061316;
+  font:inherit;
+  font-weight:800;
+  background:linear-gradient(135deg,#62eaf5,#3bdcf2);
+  border:0;
+  border-radius:18px;
+  box-shadow:0 14px 34px rgb(21 208 231 / 30%);
+  touch-action:manipulation
+}
+html.is-grapes-android-module .finance__mobile-add span:first-child{font-size:26px;font-weight:500;line-height:1}
+html.is-grapes-android-module .finance__mobile-add:active{transform:translateY(1px)}
+html.is-grapes-android-module #finance-app:has([data-finance-tab="transaction"].is-active) .finance__mobile-add{display:none}
+@media(max-width:370px){
+  html.is-grapes-android-module .finance__header h1{font-size:16px}
+  html.is-grapes-android-module #finance-drive-save{max-width:118px;padding-inline:9px}
+  html.is-grapes-android-module .finance__summary{grid-template-columns:1fr}
+  html.is-grapes-android-module .finance__metric:nth-child(3){grid-column:auto}
+  html.is-grapes-android-module .finance__filters{grid-template-columns:1fr}
+  html.is-grapes-android-module .finance__filters input[type=search]{grid-column:auto}
+}

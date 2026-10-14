@@ -23,7 +23,12 @@ const androidApp = isGrapesAndroidApp()
 const androidModuleShell = params.get('android-shell') === '1'
 const LOCAL_MODE_KEY = 'grapes-local-mode'
 
-if (androidModuleShell) document.documentElement.classList.add('is-grapes-android-module')
+if (androidModuleShell) {
+  document.documentElement.classList.add('is-grapes-android-module')
+  document.querySelectorAll('#ebook-app .toolbar__brand-mark, #finance-app .toolbar__brand-mark').forEach((mark) => {
+    mark.src = './grapes-mark.svg'
+  })
+}
 
 const mobilePreviewButton = el('#pick-mobile-preview')
 mobilePreviewButton.hidden = !androidApp

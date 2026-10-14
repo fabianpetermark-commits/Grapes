@@ -22,7 +22,7 @@ Ez a Grapes modulokon átívelő elsődleges fejlesztési naplója. A részletes
 
 **Korlát:** a GitHub Pages statikus alkalmazás. A kliensoldali e-mail- és PIN-kapu, a felhasználói nyilvántartás és a helyi kapcsolók nem szerveroldali biztonsági, belépést tiltó vagy globális feature-flag rendszer. Ezekhez hitelesített backend szükséges.
 
-**Kész:** az Android app alapértelmezett felülete a telefonos Grapes shell: belépés/helyi mód, kezdőlap, alsó navigáció, kereshető projektlista, Drive-projektek és modulindítás. A Szinkron képernyő valódi helyi projektszámot, tárhelyhasználatot, Drive-projektszámot, függő mentést és utolsó ellenőrzést mutat. A Food teljes modulja külön Android-stílusréteget kapott, az E-book csiszolt mobil áttekintőt, a Víz pedig dátum szerint helyben mentett bejegyzésekkel és állítható céllal működik. A webes nézet változatlan maradt. A felület közvetlenül HTML/CSS-ben, Figma nélkül is továbbfejleszthető. Terv: https://www.figma.com/design/02WS3MuvHQ9OMyfUu7KABN
+**Kész:** az Android app alapértelmezett felülete a telefonos Grapes shell: belépés/helyi mód, kezdőlap, alsó navigáció, kereshető projektlista, Drive-projektek és modulindítás. A Szinkron képernyő valódi helyi projektszámot, tárhelyhasználatot, Drive-projektszámot, függő mentést és utolsó ellenőrzést mutat. A Food, az E-book teljes könyvtár- és szerkesztőfolyamata, valamint a Pénzügyi Napló teljes modulja külön Android-stílusréteget kapott; a Víz dátum szerint helyben mentett bejegyzésekkel és állítható céllal működik. A webes nézet változatlan maradt. A felület közvetlenül HTML/CSS-ben, Figma nélkül is továbbfejleszthető. Terv: https://www.figma.com/design/02WS3MuvHQ9OMyfUu7KABN
 
 **Kész:** a meglévő Grapes vektorlogóból natív Android adaptive ikon készült, sötét rendszer-sávokkal illesztve a mobil shellhez.
 
@@ -66,6 +66,8 @@ Ez a Grapes modulokon átívelő elsődleges fejlesztési naplója. A részletes
 
 **Kész:** az E-book tartalmi és reszponzív tesztjei sikeresek; az USB-szinkron támogatott fájltípusokra szűr, több Drive-könyvtármappát és lapozást kezel, az aláírt EPUB-ot elutasítja, megnyitás után pedig a szöveges nézetre vált. A repository broker production deploymentje sikeres, az élő health végpont API v19-et jelez.
 
+**Kész:** az Android appban a könyvtár, feltöltés és e-olvasó párosítás, a könyvadatlap, valamint a szöveg- és szerkezeti EPUB-szerkesztő egységes, nagy érintési célú telefonos felületet használ. A módosítás nem érinti a webes nézetet.
+
 **Parkol:** korábban kiosztott Drive-megosztások áttekintése és visszavonása.
 
 **Ellenőrzés:** az EPUB-megnyitás, automatikus szövegnézet, jóváhagyott tartalommódosítás és Drive-visszaírás böngészőtesztje sikeres. Részletek: `EBOOK_DEBUG_REPORT.md`, `CODEX_HANDOFF.md`.
@@ -75,6 +77,8 @@ Ez a Grapes modulokon átívelő elsődleges fejlesztési naplója. A részletes
 ### Pénzügyi Napló
 
 **Kész:** bevételek, tényleges/tervezett kiadások, megtakarítások, kimutatások, kép-alapú nyugta-OCR alapok, valamint jóváhagyásos XLS/XLSX/XLSM/CSV munkafüzet-import több munkalap és adatblokk felismerésével.
+
+**Kész:** a teljes Pénzügyi Napló Android-only telefonos felületet kapott: kártyás összesítés, görgethető nézetfülek, egyoszlopos űrlapok, mobil tranzakciókártyák és mindig elérhető „Új tétel” gyorsgomb.
 
 **Parkol:** kategória-tanulás; AI-alapú jelentésfelismerés; makróértelmezés; Excel-visszaírás; PDF-nyugta OCR.
 

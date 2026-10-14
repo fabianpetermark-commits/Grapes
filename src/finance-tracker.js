@@ -883,6 +883,12 @@ function bindControls() {
     notifySuccess('A CSV-export elkészült. A bizonylatfájlokhoz használd a Teljes mentést.')
   })
   el('#finance-import-btn').addEventListener('click', () => setFinanceTab('import'))
+  el('#finance-mobile-add')?.addEventListener('click', () => {
+    resetTransactionEditor()
+    setFinanceTab('transaction')
+    el('#finance-amount').focus({ preventScroll: true })
+    el('.finance')?.scrollTo({ top: 0, behavior: 'smooth' })
+  })
   el('#finance-drive-save').addEventListener('click', () => saveToDrive(true))
 }
 

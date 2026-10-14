@@ -18,6 +18,7 @@
     "test:finance:mobile": "node tests/finance-planned-mobile.browser.mjs",
     "test:food:browser": "node tests/food-app.browser.mjs",
     "test:android:food": "node tests/android-food-mobile.browser.mjs",
+    "test:android:ebook-finance": "node tests/android-ebook-finance-mobile.browser.mjs",
     "test:android:shell": "node tests/android-mobile-preview.browser.mjs",
     "test:responsive": "node tests/responsive-layout.browser.mjs",
     "dev": "vite",

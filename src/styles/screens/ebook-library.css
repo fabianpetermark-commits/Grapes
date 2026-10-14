@@ -195,3 +195,86 @@
 .ebook-library__editor-global-actions #ebook-editor-save{grid-column:1;justify-self:center}
 @media(max-width:760px){#ebook-manager-view[data-ebook-mode="organizer"] .ebook-library__editor-topbar{display:grid;grid-template-columns:minmax(0,1fr)}.ebook-library__editor-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.ebook-library__editor-tabs .btn{min-width:0;min-height:44px;padding-inline:5px}.ebook-library__editor-topbar #ebook-editor-open{width:100%;margin-left:0;min-height:44px}.ebook-library__editor-buttons .btn,.ebook-library__editor-pagination .btn{flex:1 1 140px;min-height:44px}.ebook-library__editor-global-actions #ebook-editor-save{max-width:100%;min-width:0;min-height:44px;white-space:normal}}
 @media(max-width:768px){.ebook-library__panel-head--actions .btn{min-height:44px}}
+
+/* Android app-only mobile layout. The browser version intentionally keeps the
+   responsive desktop design above. */
+html.is-grapes-android-module:has(#ebook-app:not(.hidden)),
+html.is-grapes-android-module:has(#ebook-app:not(.hidden)) body{height:100%;overflow:hidden}
+html.is-grapes-android-module #ebook-app{background:radial-gradient(circle at 12% 0%,rgb(59 220 242 / 10%),transparent 25%),var(--color-bg-app)}
+html.is-grapes-android-module #ebook-toolbar{
+  min-height:calc(58px + env(safe-area-inset-top));
+  padding:env(safe-area-inset-top) 12px 0;
+  border-bottom-color:color-mix(in srgb,var(--color-accent) 16%,var(--color-border));
+  background:rgb(9 14 20 / 94%);
+  backdrop-filter:blur(18px)
+}
+html.is-grapes-android-module #ebook-toolbar .toolbar__brand{gap:8px;min-width:0}
+html.is-grapes-android-module #ebook-toolbar .toolbar__brand-mark{width:38px;height:38px;object-fit:contain;border:0;border-radius:0;background:transparent;box-shadow:none}
+html.is-grapes-android-module #ebook-toolbar .toolbar__brand-name{font-size:15px}
+html.is-grapes-android-module #ebook-toolbar .toolbar__brand-sub{max-width:145px;overflow:hidden;font-size:12px;text-overflow:ellipsis;white-space:nowrap}
+html.is-grapes-android-module #ebook-back-to-menu-btn{width:44px;min-width:44px;height:44px;padding:0;border-radius:14px}
+html.is-grapes-android-module #ebook-back-to-menu-btn .btn__label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+html.is-grapes-android-module #ebook-manager-view{scroll-padding-top:12px}
+html.is-grapes-android-module .ebook-library__body{width:100%;padding:14px 12px calc(26px + env(safe-area-inset-bottom))}
+html.is-grapes-android-module .ebook-library__hero{display:grid;gap:14px;margin-bottom:12px}
+html.is-grapes-android-module .ebook-library__title{font-size:28px;line-height:1.08}
+html.is-grapes-android-module .ebook-library__subtitle{font-size:13px;line-height:1.45}
+html.is-grapes-android-module .ebook-library__actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+html.is-grapes-android-module .ebook-library__actions .btn{min-width:0;min-height:48px;padding-inline:10px;white-space:normal}
+html.is-grapes-android-module #ebook-refresh-btn{grid-column:1/-1}
+html.is-grapes-android-module .ebook-library__status{margin-bottom:12px;padding:12px;font-size:13px;line-height:1.4;border-radius:14px}
+html.is-grapes-android-module .ebook-library__panel{border-radius:18px;box-shadow:0 12px 32px rgb(0 0 0 / 16%)}
+html.is-grapes-android-module .ebook-library__quick-add{gap:12px;margin-bottom:12px;padding:16px}
+html.is-grapes-android-module .ebook-library__quick-add-heading{display:grid;gap:4px;justify-content:initial}
+html.is-grapes-android-module .ebook-library__quick-add-heading h2{font-size:18px}
+html.is-grapes-android-module .ebook-library__quick-add-actions{flex:none;width:100%}
+html.is-grapes-android-module .ebook-library__quick-group{gap:8px;padding-top:12px}
+html.is-grapes-android-module .ebook-library__quick-group--pair{grid-template-columns:1fr}
+html.is-grapes-android-module .ebook-library__quick-add .btn,
+html.is-grapes-android-module .ebook-library__pair-control{min-height:48px;border-radius:12px}
+html.is-grapes-android-module .ebook-library__grid{gap:12px}
+html.is-grapes-android-module .ebook-library__panel-head{padding:15px 16px}
+html.is-grapes-android-module .ebook-library__panel-head--actions{justify-content:space-between}
+html.is-grapes-android-module .ebook-library__panel-head--actions .btn{min-height:44px}
+html.is-grapes-android-module .ebook-library__book{grid-template-columns:48px minmax(0,1fr);gap:10px 12px;padding:15px 16px}
+html.is-grapes-android-module .ebook-library__book-icon{width:48px;height:60px;border-radius:9px}
+html.is-grapes-android-module .ebook-library__book-main span{line-height:1.45;overflow-wrap:anywhere}
+html.is-grapes-android-module .ebook-library__book-actions{grid-column:1/-1;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+html.is-grapes-android-module .ebook-library__book-actions .btn{min-height:44px;border-radius:11px}
+html.is-grapes-android-module .ebook-library__side{padding:16px}
+html.is-grapes-android-module .ebook-library__reader-sync-actions .btn{min-height:48px}
+html.is-grapes-android-module .ebook-library__transfer{align-items:end;padding:10px 10px max(10px,env(safe-area-inset-bottom));overflow:hidden}
+html.is-grapes-android-module .ebook-library__transfer-card{width:100%;max-height:90dvh;padding:18px;border-radius:22px 22px 16px 16px}
+html.is-grapes-android-module .ebook-library__transfer-grid{gap:18px}
+html.is-grapes-android-module .ebook-library__transfer-grid canvas{width:min(230px,100%)}
+html.is-grapes-android-module .ebook-library__transfer-info .btn,
+html.is-grapes-android-module .ebook-library__receiver .btn,
+html.is-grapes-android-module .ebook-library__receiver input{min-height:48px}
+html.is-grapes-android-module .ebook-library__metadata{margin-top:0;border:0;border-radius:0;background:transparent;box-shadow:none;overflow:visible}
+html.is-grapes-android-module .ebook-library__metadata>.ebook-library__panel-head{padding:4px 2px 14px;border:0}
+html.is-grapes-android-module .ebook-library__detail-back{width:100%;justify-content:flex-start;margin-bottom:14px}
+html.is-grapes-android-module .ebook-library__metadata-layout{min-height:0;border:1px solid var(--color-border);border-radius:18px;overflow:hidden;background:var(--color-bg-surface)}
+html.is-grapes-android-module .ebook-library__metadata-picker{padding:14px}
+html.is-grapes-android-module .ebook-library__metadata-workspace{gap:14px;padding:14px}
+html.is-grapes-android-module .ebook-library__metadata-workspace input:not([type=checkbox]):not([type=radio]),
+html.is-grapes-android-module .ebook-library__metadata-workspace select,
+html.is-grapes-android-module .ebook-library__metadata-picker input,
+html.is-grapes-android-module .ebook-library__metadata-picker select{min-height:48px}
+html.is-grapes-android-module .ebook-library__metadata-preview{padding:13px}
+html.is-grapes-android-module .ebook-library__metadata-cover{display:grid}
+html.is-grapes-android-module .ebook-library__metadata-cover img{width:84px;height:120px}
+html.is-grapes-android-module .ebook-library__metadata-actions{bottom:-1px;margin:0 -14px -14px;padding:20px 14px calc(14px + env(safe-area-inset-bottom));background:linear-gradient(transparent 0,var(--color-bg-surface) 16px)}
+html.is-grapes-android-module .ebook-library__editor-topbar{gap:10px}
+html.is-grapes-android-module .ebook-library__editor-tabs{display:flex!important;gap:6px;margin-inline:-14px;padding:0 14px 4px;overflow-x:auto;scrollbar-width:none}
+html.is-grapes-android-module .ebook-library__editor-tabs .btn{flex:0 0 auto;min-width:max-content;padding-inline:14px}
+html.is-grapes-android-module .ebook-library__editor-section{gap:14px;padding:14px;border-radius:14px}
+html.is-grapes-android-module .ebook-library__editor-buttons,
+html.is-grapes-android-module .ebook-library__editor-pagination{display:grid;grid-template-columns:1fr 1fr}
+html.is-grapes-android-module .ebook-library__editor-pagination span{grid-column:1/-1;grid-row:1}
+html.is-grapes-android-module .ebook-library__editor-result{display:grid;grid-template-columns:auto minmax(0,1fr)}
+html.is-grapes-android-module .ebook-library__editor-result button{grid-column:1/-1;min-height:44px}
+@media(max-width:370px){
+  html.is-grapes-android-module .ebook-library__actions{grid-template-columns:1fr}
+  html.is-grapes-android-module #ebook-refresh-btn{grid-column:auto}
+  html.is-grapes-android-module .ebook-library__book-actions{grid-template-columns:1fr}
+}
