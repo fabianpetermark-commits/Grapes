@@ -119,11 +119,14 @@ function setStatus(message, kind = '') {
     editorStatus.textContent = message
     editorStatus.dataset.kind = kind
   }
-  if ($('#ebook-manager-view')?.dataset.ebookMode === 'organizer') setContentStatus(message, kind)
 }
 function setContentStatus(message, kind = '') {
   const status = $('#ebook-editor-status')
-  if (status) { status.textContent = message; status.dataset.kind = kind }
+  if (status) {
+    status.textContent = message
+    status.dataset.kind = kind
+    status.dataset.idle = String(/^(?:Nyisd meg az EPUB|Válassz EPUB-könyvet|Válassz egy könyvet|Ehhez a formátumhoz|A tartalomhoz)/.test(String(message || '')))
+  }
 }
 function clearEpubValidation() {
   contentValidationResult = null
@@ -1001,10 +1004,33 @@ function renderMetadataProposals(matches) {
     }
     select.value = field !== 'coverUrl' && !($(`#ebook-metadata-${field}`)?.value || '').trim() ? String(available[0].index) : ''
     metadataProposalControls.set(field, select)
+    if (document.documentElement?.classList?.contains('is-grapes-android-module')) select.addEventListener('change', () => applyMobileMetadataProposals([field]))
     row.append(name, select)
     container.append(row)
   }
   container.hidden = metadataProposalControls.size === 0
+  if (document.documentElement?.classList?.contains('is-grapes-android-module')) applyMobileMetadataProposals()
+}
+function applyMobileMetadataProposals(fields = [...metadataProposalControls.keys()]) {
+  let count = 0
+  for (const field of fields) {
+    const control = metadataProposalControls.get(field)
+    if (!control || control.value === '') continue
+    const value = metadataSearchMatches[Number(control.value)]?.suggestion[field]
+    if (!value) continue
+    if (field === 'coverUrl') {
+      pendingCoverBlob = null; pendingCoverUrl = value; pendingCoverRemoved = false; coverChangeSerial++
+      renderCoverPreview(value)
+    } else {
+      const input = $(`#ebook-metadata-${field}`)
+      if (input) input.value = proposalText(value)
+    }
+    count++
+  }
+  if (!count) return
+  setMetadataDirty(true)
+  updateMetadataPreview()
+  setMetadataMessage(`${count} katalógusmező az adatlapra került. A Drive csak a mentés gombbal módosul.`, 'success')
 }
 function applyMetadataSuggestion() {
   if (!metadataSearchMatches.length) { setMetadataMessage('Nincs alkalmazható javaslat.', 'error'); return }
@@ -1035,7 +1061,8 @@ function selectMetadataSource() {
   if ($('#ebook-metadata-apply')) $('#ebook-metadata-apply').disabled = !pendingMetadataSuggestion
   const index = metadataSearchMatches.indexOf(match)
   for (const [field, control] of metadataProposalControls) if (control.value !== '' && match?.suggestion[field]) control.value = String(index)
-  if (match) setMetadataMessage(`Kiválasztva: ${match.source} — ${match.suggestion.title}${match.suggestion.author ? ` — ${match.suggestion.author}` : ''}. A mentés csak a Javaslat alkalmazása után történik.`, 'success')
+  if (document.documentElement?.classList?.contains('is-grapes-android-module')) applyMobileMetadataProposals()
+  else if (match) setMetadataMessage(`Kiválasztva: ${match.source} — ${match.suggestion.title}${match.suggestion.author ? ` — ${match.suggestion.author}` : ''}. A mentés csak a Javaslat alkalmazása után történik.`, 'success')
 }
 function parseFilenameMetadata(name = '') {
   const clean = name.replace(/(?:\.(?:fb2\.zip|epub|mobi|azw3?|pdf|prc|fb2|djvu|txt))+$/i, '').replace(/[_]+/g, ' ').replace(/\s+/g, ' ').trim()

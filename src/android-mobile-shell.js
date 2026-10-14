@@ -7,7 +7,15 @@ import {
   onGrapesDriveChange,
 } from './storage/grapes-drive.js'
 import { listLocalProjects } from './storage/local-project-store.js'
-import { listMobileEbooks, uploadMobileEbook } from './ebook-mobile-library.js'
+import { listMobileEbooks, saveMobileReadingProgress, uploadMobileEbook } from './ebook-mobile-library.js'
+import { isMobileReadableEpub, normalizedReadingProgress, openMobileEpub } from './ebook-mobile-reader.js'
+import {
+  isMobileShareableBook,
+  isTrustedPairingMessage,
+  prepareMobileBookTransfer,
+  prepareMobileLibraryPairing,
+  revokeMobileBookTransfer,
+} from './ebook-mobile-transfer.js'
 
 const $ = selector => document.querySelector(selector)
 const $$ = selector => [...document.querySelectorAll(selector)]
@@ -31,6 +39,13 @@ const moduleFolders = [
   ['3D Studio', 'studio', '⬡'],
   ['E-mail Stúdió', 'email', '✉'],
 ]
+let mobileEbooks = []
+let mobileReader = null
+let mobileReaderBook = null
+let mobileReaderChapterIndex = 0
+let mobileReaderSaveTimer = null
+let activeTransferBookId = ''
+let activePairingNonce = ''
 const labels = {
   home: ['Grapes', 'Mobil munkaterület'], projects: ['Projektek', 'Helyi és Drive'],
   sync: ['Szinkron', 'Adatok és fiók'], more: ['Továbbiak', 'Beállítások'],
@@ -60,6 +75,7 @@ function closeSheet() {
 }
 
 function showPage(page) {
+  if (mobileReader && !['reader'].includes(page)) persistReaderProgress().catch(() => {})
   toast.classList.remove('is-visible')
   $$('[data-page]').forEach(node => { node.hidden = node.dataset.page !== page })
   $$('[data-nav]').forEach(node => node.classList.toggle('is-active', node.dataset.nav === page))
@@ -70,6 +86,11 @@ function showPage(page) {
   if (page === 'sync') renderSync()
   if (page === 'water') renderWater()
   if (page === 'ebook') renderMobileEbooks()
+  if (page === 'reader') renderReaderPicker()
+  if (page === 'transfer') renderTransferPicker()
+  if (['ebook', 'reader', 'transfer'].includes(page)) {
+    $$('[data-ebook-view]').forEach(button => button.classList.toggle('is-active', button.dataset.ebookView === page))
+  }
 }
 
 function openModule(module, project = null) {
@@ -115,21 +136,28 @@ function renderEbookCards(books) {
     featured.hidden = true
     return
   }
-  const latest = books[0]
+  const readable = books.filter(isMobileReadableEpub)
+  const latest = [...readable].sort((left, right) => Date.parse(right.reading?.updatedAt || '') - Date.parse(left.reading?.updatedAt || ''))[0] || readable[0]
+  if (!latest) { featured.hidden = true }
+  else {
   featured.replaceChildren()
   featured.append(ebookCover(latest.title, 0))
   const copy = document.createElement('div'); copy.className = 'book-copy'
-  const eyebrow = document.createElement('p'); eyebrow.className = 'eyebrow'; eyebrow.textContent = 'LEGUTÓBB HOZZÁADVA'
+  const eyebrow = document.createElement('p'); eyebrow.className = 'eyebrow'; eyebrow.textContent = latest.reading ? 'FOLYTATÁS' : 'KÖVETKEZŐ OLVASMÁNY'
   const heading = document.createElement('h2'); heading.textContent = latest.title
   const author = document.createElement('span'); author.textContent = latest.author || latest.name
-  const action = document.createElement('button'); action.type = 'button'; action.className = 'continue-btn'; action.textContent = 'Könyv megnyitása'
-  action.addEventListener('click', () => openEbook(latest.id))
-  copy.append(eyebrow, heading, author, document.createElement('br'), action)
+  const progress = document.createElement('div'); progress.className = 'progress book-progress'
+  const progressBar = document.createElement('i'); progressBar.style.width = `${Math.round(latest.reading?.overallPercent || 0)}%`; progress.append(progressBar)
+  const progressText = document.createElement('small'); progressText.textContent = latest.reading ? `${Math.round(latest.reading.overallPercent)}% elolvasva` : 'Még nem kezdted el'
+  const action = document.createElement('button'); action.type = 'button'; action.className = 'continue-btn'; action.textContent = latest.reading ? 'Olvasás folytatása' : 'Olvasás megkezdése'
+  action.addEventListener('click', () => startReader(latest.id))
+  copy.append(eyebrow, heading, author, progress, progressText, document.createElement('br'), action)
   featured.append(copy); featured.hidden = false
+  }
   books.forEach((book, index) => {
     const button = document.createElement('button'); button.type = 'button'; button.className = 'book-tile'
     const title = document.createElement('strong'); title.textContent = book.title
-    const meta = document.createElement('small'); meta.textContent = book.author || book.name.split('.').pop().toUpperCase()
+    const meta = document.createElement('small'); meta.textContent = book.reading ? `${Math.round(book.reading.overallPercent)}% elolvasva` : (book.author || book.name.split('.').pop().toUpperCase())
     button.append(ebookCover(book.title, index), title, meta)
     button.addEventListener('click', () => openEbook(book.id))
     grid.append(button)
@@ -141,8 +169,9 @@ async function renderMobileEbooks() {
   status.textContent = isGrapesDriveConnected() ? 'Drive-könyvtár frissítése…' : ''
   try {
     const books = await listMobileEbooks()
+    mobileEbooks = books
     renderEbookCards(books)
-    status.textContent = books.length ? `${books.length} könyv a Grapes Drive-könyvtárban.` : ''
+    status.textContent = ''
   } catch (error) {
     renderEbookCards([])
     status.textContent = `A könyvtár nem tölthető be. ${error?.message || ''}`
@@ -155,9 +184,187 @@ async function importMobileEbook(file) {
   status.textContent = `${file.name} feltöltése…`
   try {
     const books = await uploadMobileEbook(file)
+    mobileEbooks = books
     renderEbookCards(books)
     status.textContent = `${file.name} hozzáadva a Drive-könyvtárhoz.`
   } catch (error) { status.textContent = `A feltöltés nem sikerült. ${error?.message || ''}` }
+}
+
+async function ensureMobileEbooks() {
+  if (!isGrapesDriveConnected()) return []
+  if (!mobileEbooks.length) mobileEbooks = await listMobileEbooks()
+  return mobileEbooks
+}
+
+function fillBookSelect(select, books, { readableOnly = false } = {}) {
+  const previous = select.value
+  select.replaceChildren(new Option('Válassz könyvet…', ''))
+  for (const book of books.filter(book => !readableOnly || isMobileReadableEpub(book))) {
+    select.append(new Option(`${book.title}${book.author ? ` — ${book.author}` : ''}`, book.id))
+  }
+  if (books.some(book => book.id === previous && (!readableOnly || isMobileReadableEpub(book)))) select.value = previous
+}
+
+async function renderReaderPicker() {
+  const status = $('[data-reader-status]')
+  try {
+    status.dataset.kind = ''
+    status.textContent = isGrapesDriveConnected() ? 'EPUB-könyvek betöltése…' : 'Az Olvasóhoz csatlakoztasd a Google Drive-ot a Szinkron oldalon.'
+    const books = await ensureMobileEbooks()
+    const readable = books.filter(isMobileReadableEpub)
+    fillBookSelect($('[data-reader-book]'), books, { readableOnly: true })
+    if (!mobileReader) {
+      $('[data-reader-picker]').hidden = false
+      $('[data-reader-shell]').hidden = true
+      const recent = [...readable].sort((left, right) => Date.parse(right.reading?.updatedAt || '') - Date.parse(left.reading?.updatedAt || ''))[0]
+      if (recent) $('[data-reader-book]').value = recent.id
+    }
+    status.textContent = readable.length ? '' : (books.length ? 'A könyvtárban még nincs EPUB-formátumú könyv.' : status.textContent)
+  } catch (error) { status.textContent = `Az EPUB-lista nem tölthető be. ${error?.message || ''}`; status.dataset.kind = 'error' }
+}
+
+function readerProgressSnapshot() {
+  const page = $('[data-reader-page]')
+  const max = Math.max(0, page.scrollHeight - page.clientHeight)
+  const chapterProgress = max ? Math.min(1, Math.max(0, page.scrollTop / max)) : 1
+  return {
+    chapterId: mobileReader?.chapters[mobileReaderChapterIndex]?.id || '',
+    chapterIndex: mobileReaderChapterIndex,
+    chapterProgress,
+    overallPercent: normalizedReadingProgress({ chapterIndex: mobileReaderChapterIndex, chapterCount: mobileReader?.chapters.length, chapterProgress }),
+  }
+}
+
+function updateReaderProgress() {
+  if (!mobileReader) return
+  const value = readerProgressSnapshot()
+  $('[data-reader-progress]').style.width = `${value.overallPercent}%`
+  $('[data-reader-progress-label]').textContent = `${Math.round(value.overallPercent)}%`
+}
+
+async function persistReaderProgress() {
+  window.clearTimeout(mobileReaderSaveTimer)
+  mobileReaderSaveTimer = null
+  if (!mobileReader || !mobileReaderBook) return
+  const value = readerProgressSnapshot()
+  mobileReaderBook.reading = await saveMobileReadingProgress(mobileReaderBook, value)
+  updateReaderProgress()
+}
+
+function scheduleReaderProgressSave() {
+  updateReaderProgress()
+  window.clearTimeout(mobileReaderSaveTimer)
+  mobileReaderSaveTimer = window.setTimeout(() => persistReaderProgress().catch(error => {
+    const status = $('[data-reader-status]'); status.textContent = `A haladás helyben megmaradt, de a Drive-szinkron nem sikerült. ${error?.message || ''}`; status.dataset.kind = 'error'
+  }), 1200)
+}
+
+async function showReaderChapter(index, progress = 0) {
+  if (!mobileReader) return
+  mobileReaderChapterIndex = Math.min(mobileReader.chapters.length - 1, Math.max(0, Number(index) || 0))
+  const chapter = mobileReader.chapters[mobileReaderChapterIndex]
+  const page = $('[data-reader-page]')
+  const status = $('[data-reader-status]')
+  status.textContent = 'Fejezet megnyitása…'; status.dataset.kind = ''
+  const content = await mobileReader.getChapter(chapter.id)
+  page.innerHTML = content.html || '<p>Ez a fejezet nem tartalmaz megjeleníthető szöveget.</p>'
+  $('[data-reader-chapter]').value = chapter.id
+  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+  page.scrollTop = Math.max(0, page.scrollHeight - page.clientHeight) * Math.min(1, Math.max(0, Number(progress) || 0))
+  updateReaderProgress()
+  status.textContent = ''; status.dataset.kind = ''
+}
+
+async function startReader(bookId) {
+  showPage('reader')
+  const status = $('[data-reader-status]')
+  try {
+    const books = await ensureMobileEbooks()
+    const book = books.find(item => item.id === bookId)
+    if (!book) throw new Error('A kiválasztott könyv már nem található a Drive-könyvtárban.')
+    if (!isMobileReadableEpub(book)) throw new Error('Az alkalmazáson belüli Olvasó jelenleg csak EPUB-könyvet támogat.')
+    status.textContent = `${book.title} letöltése és ellenőrzése…`; status.dataset.kind = ''
+    mobileReader = await openMobileEpub(book)
+    mobileReaderBook = book
+    $('[data-reader-title]').textContent = book.title
+    $('[data-reader-author]').textContent = book.author || 'EPUB'
+    const chapterSelect = $('[data-reader-chapter]')
+    chapterSelect.replaceChildren(...mobileReader.chapters.map(chapter => new Option(chapter.title, chapter.id)))
+    $('[data-reader-picker]').hidden = true
+    $('[data-reader-shell]').hidden = false
+    const stored = book.reading || {}
+    const changedSinceReading = Boolean(stored.bookModifiedTime && book.modifiedTime && stored.bookModifiedTime !== book.modifiedTime)
+    const saved = changedSinceReading ? {} : stored
+    const matching = mobileReader.chapters.findIndex(chapter => chapter.id === saved.chapterId)
+    const index = matching >= 0 ? matching : Math.min(mobileReader.chapters.length - 1, Number(saved.chapterIndex) || 0)
+    await showReaderChapter(index, saved.chapterProgress || 0)
+    status.textContent = saved.updatedAt ? 'A Drive-on mentett olvasási pozíció visszaállítva.' : (changedSinceReading ? 'A könyv megváltozott, ezért az olvasás az elejéről indul.' : '')
+    status.dataset.kind = saved.updatedAt ? 'success' : ''
+  } catch (error) {
+    mobileReader = null; mobileReaderBook = null
+    $('[data-reader-picker]').hidden = false; $('[data-reader-shell]').hidden = true
+    status.textContent = error?.message || 'Az EPUB nem nyitható meg.'; status.dataset.kind = 'error'
+  }
+}
+
+async function moveReaderPage(direction) {
+  if (!mobileReader) return
+  const page = $('[data-reader-page]')
+  const distance = Math.max(180, page.clientHeight * .86)
+  const max = Math.max(0, page.scrollHeight - page.clientHeight)
+  if (direction > 0 && page.scrollTop < max - 4) page.scrollBy({ top: distance, behavior: 'smooth' })
+  else if (direction < 0 && page.scrollTop > 4) page.scrollBy({ top: -distance, behavior: 'smooth' })
+  else {
+    const next = mobileReaderChapterIndex + direction
+    if (next < 0 || next >= mobileReader.chapters.length) return showToast(direction > 0 ? 'A könyv végére értél.' : 'Ez a könyv eleje.')
+    await persistReaderProgress().catch(() => {})
+    await showReaderChapter(next, direction > 0 ? 0 : 1)
+    scheduleReaderProgressSave()
+  }
+}
+
+async function renderTransferPicker() {
+  const status = $('[data-transfer-status]')
+  try {
+    status.dataset.kind = ''
+    status.textContent = isGrapesDriveConnected() ? 'Könyvek betöltése…' : 'Az átvitelhez csatlakoztasd a Google Drive-ot a Szinkron oldalon.'
+    const books = await ensureMobileEbooks()
+    fillBookSelect($('[data-transfer-book]'), books.filter(isMobileShareableBook))
+    status.textContent = books.some(isMobileShareableBook) ? '' : (books.length ? 'Nincs e-olvasóra küldhető könyv.' : status.textContent)
+  } catch (error) { status.textContent = `Az átviteli lista nem tölthető be. ${error?.message || ''}`; status.dataset.kind = 'error' }
+}
+
+async function prepareTransfer() {
+  const status = $('[data-transfer-status]')
+  const book = mobileEbooks.find(item => item.id === $('[data-transfer-book]').value)
+  if (!book) { status.textContent = 'Válassz ki egy könyvet.'; status.dataset.kind = 'error'; return }
+  status.textContent = 'Biztonságos letöltési kapcsolat előkészítése…'; status.dataset.kind = ''
+  try {
+    const result = await prepareMobileBookTransfer(book)
+    activeTransferBookId = book.id
+    $('[data-transfer-qr]').src = result.qrUrl
+    $('[data-transfer-code]').dataset.url = result.codeUrl
+    $('[data-transfer-frame]').hidden = true
+    $('[data-transfer-result]').hidden = false
+    status.textContent = 'A könyv küldésre kész. Olvasd be a QR-kódot, vagy kérj párosítási kódot.'; status.dataset.kind = 'success'
+  } catch (error) { status.textContent = `Az átvitel nem készíthető elő. ${error?.message || ''}`; status.dataset.kind = 'error' }
+}
+
+async function pairMobileLibrary() {
+  const status = $('[data-transfer-status]')
+  const button = $('[data-reader-pair]')
+  button.disabled = true
+  try {
+    const books = await ensureMobileEbooks()
+    status.textContent = 'A könyvtár párosításának előkészítése…'; status.dataset.kind = ''
+    const pairing = await prepareMobileLibraryPairing(books)
+    activePairingNonce = pairing.nonce
+    $('[data-reader-pair-value]').value = ''
+    const frame = $('[data-reader-pair-frame]')
+    frame.removeAttribute('src'); frame.srcdoc = pairing.srcdoc; frame.hidden = false
+    status.textContent = `${pairing.count} könyv előkészítve.${pairing.omittedCount ? ` ${pairing.omittedCount} nem támogatott könyv kimaradt.` : ''}`
+  } catch (error) { status.textContent = `A párosítás nem sikerült. ${error?.message || ''}`; status.dataset.kind = 'error' }
+  finally { button.disabled = false }
 }
 
 function renderAccount() {
@@ -444,10 +651,54 @@ $$('[data-module]').forEach(button => button.addEventListener('click', () => {
   else openModule(module)
 }))
 $$('[data-open-module]').forEach(button => button.addEventListener('click', () => openModule(button.dataset.openModule)))
-$('[data-ebook-editor]').addEventListener('click', () => openEbook('', 'organizer'))
-$('[data-ebook-transfer]').addEventListener('click', () => openEbook('', 'library'))
+$$('[data-ebook-view]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.ebookView)))
 $('[data-ebook-import]').addEventListener('click', () => $('[data-ebook-file]').click())
 $('[data-ebook-file]').addEventListener('change', event => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''; importMobileEbook(file) })
+$('[data-reader-open]').addEventListener('click', () => startReader($('[data-reader-book]').value))
+$('[data-reader-chapter]').addEventListener('change', async event => {
+  await persistReaderProgress().catch(() => {})
+  const index = mobileReader?.chapters.findIndex(chapter => chapter.id === event.currentTarget.value) ?? -1
+  if (index >= 0) { await showReaderChapter(index, 0); scheduleReaderProgressSave() }
+})
+$('[data-reader-page]').addEventListener('scroll', scheduleReaderProgressSave, { passive: true })
+$('[data-reader-prev]').addEventListener('click', () => moveReaderPage(-1))
+$('[data-reader-next]').addEventListener('click', () => moveReaderPage(1))
+$$('[data-reader-font]').forEach(button => button.addEventListener('click', () => {
+  const page = $('[data-reader-page]')
+  const current = Number(page.dataset.fontSize) || 16
+  const next = Math.min(24, Math.max(13, current + Number(button.dataset.readerFont)))
+  page.dataset.fontSize = String(next)
+  page.style.setProperty('--reader-font-size', `${next}px`)
+  scheduleReaderProgressSave()
+}))
+$('[data-transfer-prepare]').addEventListener('click', prepareTransfer)
+$('[data-transfer-code]').addEventListener('click', event => {
+  const frame = $('[data-transfer-frame]')
+  frame.src = event.currentTarget.dataset.url || ''
+  frame.hidden = !frame.src
+})
+$('[data-transfer-revoke]').addEventListener('click', async () => {
+  if (!activeTransferBookId || !window.confirm('A korábbi QR-kód és letöltési link többé nem fog működni. Visszavonod?')) return
+  const status = $('[data-transfer-status]')
+  try {
+    const count = await revokeMobileBookTransfer(activeTransferBookId)
+    $('[data-transfer-result]').hidden = true; activeTransferBookId = ''
+    status.textContent = count ? 'A könyv nyilvános hozzáférése visszavonva.' : 'A könyvhöz már nem tartozott nyilvános hozzáférés.'; status.dataset.kind = 'success'
+  } catch (error) { status.textContent = `A visszavonás nem sikerült. ${error?.message || ''}`; status.dataset.kind = 'error' }
+})
+$('[data-reader-pair]').addEventListener('click', pairMobileLibrary)
+window.addEventListener('message', event => {
+  if (!activePairingNonce || !isTrustedPairingMessage(event, activePairingNonce)) return
+  const status = $('[data-transfer-status]')
+  if (event.data?.type === 'grapes-reader-pairing-error') {
+    status.textContent = String(event.data?.message || 'A párosítási kód nem készült el.'); status.dataset.kind = 'error'
+  } else if (event.data?.type === 'grapes-reader-pairing-code' && /^[A-Z0-9]{6}$/.test(String(event.data?.code || ''))) {
+    $('[data-reader-pair-value]').value = String(event.data.code).toUpperCase()
+    status.textContent = 'A párosítási kód elkészült.'; status.dataset.kind = 'success'
+  } else return
+  activePairingNonce = ''
+  $('[data-reader-pair-frame]').hidden = true
+})
 $('[data-water-open]').addEventListener('click', event => { if (!event.target.closest('[data-water-add]')) showPage('water') })
 $('[data-water-open]').addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') showPage('water') })
 $$('[data-water-add]').forEach(button => button.addEventListener('click', event => { event.stopPropagation(); addWater(Number(button.dataset.waterAdd)) }))
@@ -470,7 +721,12 @@ $$('[data-action]').forEach(button => {
 fab.addEventListener('click', () => { sheet.classList.add('is-open'); sheetBackdrop.classList.add('is-open') })
 sheetBackdrop.addEventListener('click', closeSheet)
 document.addEventListener('keydown', event => { if (event.key === 'Escape') closeSheet() })
-onGrapesDriveChange(() => { renderAccount(); renderProjects(); renderSync() })
+onGrapesDriveChange(() => {
+  mobileEbooks = []
+  if (!isGrapesDriveConnected()) { mobileReader = null; mobileReaderBook = null }
+  renderAccount(); renderProjects(); renderSync()
+})
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') persistReaderProgress().catch(() => {}) })
 
 renderWater()
 if (isGrapesDriveConnected() || localMode()) showApp()

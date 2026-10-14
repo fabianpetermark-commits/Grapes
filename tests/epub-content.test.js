@@ -40,6 +40,15 @@ for (const version of ['2.0.1', '3.0']) test(`EPUB ${version} edits chapters and
   assert.equal(two.path, 'OPS/two.xhtml')
 })
 
+test('reader chapter keeps safe text and embedded images without executable navigation', async () => {
+  const editor = await openEpubContent(await fixture())
+  const chapter = await editor.getReadingChapter(editor.chapters[0].id)
+  assert.match(chapter.html, /Első fejezet/)
+  assert.match(chapter.html, /data:image\/png;base64,/)
+  assert.doesNotMatch(chapter.html, /href="two\.xhtml/)
+  assert.doesNotMatch(chapter.html, /<script/i)
+})
+
 test('literal replacements keep links and support per-action undo', async () => {
   const editor = await openEpubContent(await fixture())
   const matches = editor.getMatches('Rossz', { wholeWord: true })

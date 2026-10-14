@@ -69,6 +69,11 @@ try {
   await ebook.locator('#ebook-editor-tabs').waitFor({ state: 'visible' })
   assert.equal(await ebook.locator('#ebook-manager-view').getAttribute('data-ebook-mode'), 'organizer')
   assert.ok(await ebook.locator('#ebook-editor-metadata-tab').evaluate((button) => button.getBoundingClientRect().height >= 44))
+  assert.equal(await ebook.locator('#ebook-metadata-apply').isVisible(), false, 'Az Android szerkesztőben nem maradhat külön javaslat-alkalmazó gomb.')
+  assert.equal(await ebook.locator('#ebook-editor-status').isVisible(), false, 'Az üres EPUB-súgósor nem foglalhat helyet.')
+  assert.equal(await ebook.locator('.ebook-library__hero').isVisible(), false, 'A szerkesztő mögött nem jelenhet meg a régi Drive-fejléc.')
+  assert.equal(await ebook.locator('.ebook-library__quick-add').isVisible(), false, 'A szerkesztő mögött nem jelenhet meg a régi feltöltési blokk.')
+  assert.equal(await ebook.locator('.ebook-library__grid').isVisible(), false, 'A szerkesztő mögött nem jelenhet meg a régi könyvlista.')
   assert.equal(await ebook.evaluate(() => document.documentElement.scrollWidth), 390)
   await ebook.close()
 

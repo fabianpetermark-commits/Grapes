@@ -214,6 +214,8 @@ html.is-grapes-android-module #ebook-toolbar .toolbar__brand-name{font-size:15px
 html.is-grapes-android-module #ebook-toolbar .toolbar__brand-sub{max-width:145px;overflow:hidden;font-size:12px;text-overflow:ellipsis;white-space:nowrap}
 html.is-grapes-android-module #ebook-back-to-menu-btn{width:44px;min-width:44px;height:44px;padding:0;border-radius:14px}
 html.is-grapes-android-module #ebook-back-to-menu-btn .btn__label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+html.is-grapes-android-module #ebook-metadata-apply,
+html.is-grapes-android-module #ebook-editor-status[data-idle="true"]{display:none}
 html.is-grapes-android-module #ebook-manager-view{scroll-padding-top:12px}
 html.is-grapes-android-module .ebook-library__body{width:100%;padding:14px 12px calc(26px + env(safe-area-inset-bottom))}
 html.is-grapes-android-module .ebook-library__hero{display:grid;gap:14px;margin-bottom:12px}

@@ -74,6 +74,12 @@ Ez a Grapes modulokon átívelő elsődleges fejlesztési naplója. A részletes
 
 **Kész:** a kártyás Android E-book könyvtár már nem látványterv: közvetlenül a valódi `Grapes E-book Library` Drive-mappát és annak metaadatait jeleníti meg, saját Importálás művelettel. A könyvkártya az adott könyv szerkesztőjét nyitja meg; a korábbi mintakönyvek és a második, duplikált könyvtárba vezető gomb megszűnt.
 
+**Kész:** az Android E-book modul egyetlen, tiszta háromfüles folyammá állt össze (`Könyvtár`, `Olvasó`, `Átvitel`). Az Android-only régi Drive-vezérlők, könyvszámláló, USB-kapcsolat, duplikált könyvlista és passzív szerkesztői segédszövegek eltűntek; a webes felület változatlan maradt.
+
+**Kész:** a mobil Olvasó valódi EPUB-fejezeteket jelenít meg biztonságosan, fejezetválasztással, lapozással és betűméret-állítással. A pozíció helyben és külön Drive-oldalkocsifájlban mentődik, majd a frissebb példány alapján visszaáll; az alkalmazáson belüli olvasás tudatosan EPUB-only.
+
+**Kész:** az Átvitel külön mobilnézetbe került: egy könyv QR-kódos küldése, teljes könyvtár párosítása és az ideiglenes nyilvános hozzáférés visszavonása ugyanitt érhető el, önálló telefonos letöltés nélkül.
+
 **Kész:** az opcionális teljes Drive-keresés látható műveletet kapott, az egykönyves e-olvasó átvitel pedig célzottan visszavonhatja az adott fájl nyilvános olvasói jogosultságát anélkül, hogy a név szerinti megosztásokat törölné.
 
 **Parkol:** korábban kiosztott Drive-megosztások áttekintése és visszavonása.
@@ -106,15 +112,15 @@ Ez a Grapes modulokon átívelő elsődleges fejlesztési naplója. A részletes
 
 **Blokkolt:** közvetlen Samsung Health Data SDK vízadapter. A forrás elkészült, de a Samsung AAR, JDK 17/SDK 35 build, készülékteszt és nyilvános terjesztéshez a későbbi Samsung partnerjóváhagyás hiányzik.
 
-**Ellenőrzés:** 231/231 teljes repository egységteszt, Android shell és Food mobil böngészőteszt, valamint production build sikeres.
+**Ellenőrzés:** 234/234 teljes repository egységteszt, Android shell és Food mobil böngészőteszt, valamint production build sikeres.
 
 **Következő:** valódi készülékteszt; sikeres eredmény nélkül a Grapes → Health Connect/Samsung Health képesség nem tekinthető késznek.
 
 ## Javasolt sorrend
 
 1. Android Google-bejelentkezés és Drive-kapcsolat javítása.
-2. A telefonos UI véglegesítése és alapértelmezett Android alkalmazáskeretté alakítása.
+2. Az Android Google-bejelentkezés és az új E-book olvasó valódi készüléktesztje.
 3. Hitelesített backend a globális felhasználó- és moduljogosultságokhoz.
-4. E-book ismert hibák és production kiadás lezárása.
+4. E-book további formátumok támogatásának későbbi mérlegelése; addig EPUB-only olvasás.
 5. Food/Víz Android készülékteszt és Health Connect ellenőrzés.
 6. 3D Pattern / Array.

@@ -20,6 +20,7 @@
     "test:android:food": "node tests/android-food-mobile.browser.mjs",
     "test:android:ebook-finance": "node tests/android-ebook-finance-mobile.browser.mjs",
     "test:android:ebook-shelf": "node tests/android-ebook-shelf.browser.mjs",
+    "test:android:ebook-reader": "node tests/android-ebook-reader.browser.mjs",
     "test:android:shell": "node tests/android-mobile-preview.browser.mjs",
     "test:responsive": "node tests/responsive-layout.browser.mjs",
     "dev": "vite",
