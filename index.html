@@ -87,6 +87,9 @@
           </svg>
           <span data-i18n="login.button">Bejelentkezés Google-fiókkal</span>
         </button>
+        <div class="login-card__divider"><span data-i18n="login.or">vagy</span></div>
+        <button id="continue-local" class="btn login-card__local" type="button" data-i18n="login.local">Folytatás helyi módban</button>
+        <small class="login-card__local-hint" data-i18n="login.localHint">A Drive később is csatlakoztatható.</small>
         <p id="login-status" class="login-card__status" role="status" aria-live="polite"></p>
         <div class="login-card__trust">
           <span data-i18n="login.private">A fájljaid a saját Google Drive-odban maradnak.</span>
@@ -124,7 +127,7 @@
         <section class="dashboard__hero">
           <p class="dashboard__eyebrow" data-i18n="dashboard.eyebrow">GRAPES ALKALMAZÁSCSOMAG</p>
           <h1 data-i18n="dashboard.title">Mit szeretnél készíteni?</h1>
-          <p data-i18n="dashboard.subtitle">Válassz egy munkaterületet. A projektjeid automatikusan a csatlakoztatott Drive-fiókot használják.</p>
+          <p id="dashboard-subtitle" data-i18n="dashboard.subtitle">Válassz egy munkaterületet. A projektjeid automatikusan a csatlakoztatott Drive-fiókot használják.</p>
         </section>
 
         <section id="developer-panel" class="developer-panel" aria-labelledby="developer-panel-title" hidden>

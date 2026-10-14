@@ -20,6 +20,18 @@ const requestedModule = params.get('module')
 const moduleScreens = ['brochure', 'studio', 'qr', 'ebook', 'email', 'finance', 'billing', 'food']
 const requestedScreen = moduleScreens.includes(requestedModule) ? requestedModule : null
 const androidApp = isGrapesAndroidApp()
+const LOCAL_MODE_KEY = 'grapes-local-mode'
+
+function isLocalMode() {
+  try { return localStorage.getItem(LOCAL_MODE_KEY) === '1' } catch { return false }
+}
+
+function setLocalMode(enabled) {
+  try {
+    if (enabled) localStorage.setItem(LOCAL_MODE_KEY, '1')
+    else localStorage.removeItem(LOCAL_MODE_KEY)
+  } catch {}
+}
 
 const projectModules = [
   { drive: 'Számla és árajánlat', screen: 'billing' },
@@ -47,7 +59,11 @@ el('#pick-ebook-organizer').addEventListener('click', () => {
 })
 
 function renderAccount() {
-  const account = getGrapesAccount() || { name: 'Google', email: '', photo: '' }
+  const connected = isGrapesDriveConnected()
+  const local = !connected && isLocalMode()
+  const account = connected
+    ? (getGrapesAccount() || { name: 'Google', email: '', photo: '' })
+    : { name: t('account.local'), email: '', photo: '' }
   el('#grapes-account-name').textContent = account.name || 'Google'
   el('#grapes-account-email').textContent = account.email || ''
   el('#grapes-account-initial').textContent = (account.name || account.email || 'G').trim().charAt(0).toUpperCase()
@@ -56,8 +72,11 @@ function renderAccount() {
   if (account.photo) photo.src = account.photo
   else photo.removeAttribute('src')
   photo.onerror = () => { photo.hidden = true }
-  el('#grapes-drive-status').dataset.connected = isGrapesDriveConnected() ? 'true' : 'false'
-  el('#grapes-sign-out').hidden = !isGrapesDriveConnected()
+  el('#grapes-drive-status').dataset.connected = connected ? 'true' : 'false'
+  el('#grapes-drive-status').textContent = connected ? t('drive.connected') : t('drive.local')
+  el('#grapes-sign-out').hidden = !connected && !local
+  el('#grapes-sign-out').textContent = connected ? t('account.logout') : t('account.connect')
+  el('#dashboard-subtitle').textContent = local ? t('dashboard.subtitle.local') : t('dashboard.subtitle')
   initDeveloperMenu(account)
   applyModuleAvailability()
 }
@@ -71,7 +90,7 @@ function openProject(project) {
 
 async function renderRecentProjects() {
   const list = el('#recent-projects-list')
-  el('#recent-projects-source').textContent = t('recent.drive')
+  el('#recent-projects-source').textContent = isGrapesDriveConnected() ? t('recent.drive') : t('recent.local')
   list.innerHTML = `<p class="recent-projects__empty">${t('recent.loading')}</p>`
   if (!isGrapesDriveConnected()) {
     list.innerHTML = `<p class="recent-projects__empty">${t('recent.empty')}</p>`
@@ -137,6 +156,7 @@ el('#google-sign-in').addEventListener('click', async () => {
   el('#login-status').textContent = t('login.connecting')
   try {
     await connectGrapesDrive()
+    setLocalMode(false)
     el('#login-status').textContent = ''
     showAuthenticatedStart()
   } catch (error) {
@@ -146,10 +166,19 @@ el('#google-sign-in').addEventListener('click', async () => {
   }
 })
 
+el('#continue-local').addEventListener('click', () => {
+  setLocalMode(true)
+  el('#login-status').textContent = ''
+  showAuthenticatedStart()
+})
+
 el('#grapes-sign-out').addEventListener('click', async () => {
   const button = el('#grapes-sign-out')
   button.disabled = true
-  try { await disconnectGrapesDrive({ forgetAccount: true }) } finally {
+  try {
+    if (isGrapesDriveConnected()) await disconnectGrapesDrive({ forgetAccount: true })
+    setLocalMode(false)
+  } finally {
     button.disabled = false
     showLogin()
   }
@@ -160,12 +189,17 @@ for (const button of document.querySelectorAll('[data-language]')) {
 }
 applyTranslations()
 onLanguageChange(() => {
-  if (isGrapesDriveConnected()) renderRecentProjects()
+  if (isGrapesDriveConnected() || isLocalMode()) {
+    renderAccount()
+    renderRecentProjects()
+  }
 })
 
 onGrapesDriveChange((connected) => {
-  if (connected) renderAccount()
-  else if (!hasEbookPair) showLogin()
+  if (connected) {
+    setLocalMode(false)
+    renderAccount()
+  } else if (!hasEbookPair && !isLocalMode()) showLogin()
 })
 
 for (const selector of [
@@ -176,7 +210,7 @@ for (const selector of [
 }
 
 function goToMainMenu() {
-  if (isGrapesDriveConnected()) {
+  if (isGrapesDriveConnected() || isLocalMode()) {
     renderRecentProjects()
     showScreen('splash')
   } else showLogin()
@@ -185,6 +219,6 @@ function goToMainMenu() {
 document.addEventListener('grapes:open-main-menu', goToMainMenu)
 
 if (hasEbookPair) showScreen('ebook')
-else if (isGrapesDriveConnected()) showAuthenticatedStart()
+else if (isGrapesDriveConnected() || isLocalMode()) showAuthenticatedStart()
 else showLogin()
 

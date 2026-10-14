@@ -22,6 +22,10 @@
 .google-sign-in:hover:not(:disabled) { background: color-mix(in srgb, var(--color-paper) 90%, var(--color-accent)); }
 .google-sign-in:disabled { cursor: wait; opacity: .7; }
 .google-sign-in__mark { flex: 0 0 auto; width: 18px; height: 18px; }
+.login-card__divider { display: flex; gap: var(--space-3); align-items: center; width: 100%; margin: var(--space-4) 0; color: var(--color-text-subtle); font-size: var(--text-xs); }
+.login-card__divider::before, .login-card__divider::after { flex: 1; height: 1px; content: ''; background: var(--color-border); }
+.login-card__local { width: 100%; min-height: 48px; border-color: var(--color-border-strong); }
+.login-card__local-hint { margin-top: var(--space-2); color: var(--color-text-subtle); }
 .login-card__status { min-height: 20px; margin: var(--space-3) 0 0; color: var(--color-danger); font-size: var(--text-sm); }
 .login-card__trust { display: grid; gap: var(--space-1); width: 100%; padding-top: var(--space-5); margin-top: var(--space-5); color: var(--color-text-subtle); font-size: var(--text-xs); border-top: 1px solid var(--color-border); }
 

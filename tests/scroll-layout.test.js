@@ -29,14 +29,14 @@ test('mobile editor toolbars keep primary actions visible without horizontal scr
   assert.doesNotMatch(studio, /\.studio__inspector\s*\{\s*max-height:\s*4[48]vh/)
 })
 
-test('every direct module route is preserved behind the authentication gate', async () => {
+test('every direct module route is preserved after choosing Drive or local mode', async () => {
   const main = await read('src/main.js')
   for (const module of ['brochure', 'studio', 'qr', 'ebook', 'email', 'finance']) {
     assert.ok(main.includes(`'${module}'`), `${module} direct route is missing`)
   }
   assert.match(main, /requestedScreen = moduleScreens\.includes\(requestedModule\)/)
   assert.match(main, /showScreen\(requestedScreen \|\| 'splash'\)/)
-  assert.match(main, /isGrapesDriveConnected\(\)\) showAuthenticatedStart\(\)/)
+  assert.match(main, /isGrapesDriveConnected\(\) \|\| isLocalMode\(\)\) showAuthenticatedStart\(\)/)
   assert.match(main, /hasEbookPair\) showScreen\('ebook'\)/)
 })
 
