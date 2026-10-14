@@ -8,7 +8,8 @@ Ez az elsődleges lista a még el nem kezdett, parkolt vagy külső feltétel mi
 
 - [ ] Központi, szerveroldali felhasználói jogosultságkezelés. A fejlesztői menü jelenlegi felhasználólistája az admin Google Drive-jában vezetett nyilvántartás; önmagában még nem tiltja le a bejelentkezést.
 - [ ] Globális modulkapcsolók hitelesített backenddel. A jelenlegi kapcsolók böngészőnkénti előnézeti beállítások.
-- [ ] E-book broker production telepítésének és az izolált EPUB write pilotnak a lezárása.
+- [x] E-book broker repository-verziójának production telepítése és élő health ellenőrzése (API v19).
+- [ ] Az izolált EPUB write pilot valódi Google-fiókos elfogadási próbája.
 - [ ] Az ismert EPUB-megnyitási böngészőteszt javítása.
 
 ## P1 – következő fejlesztési blokkok

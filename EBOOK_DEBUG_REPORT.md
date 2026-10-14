@@ -57,3 +57,5 @@ Apps Script deployment version 2 now replaces unsupported new URL() validation w
 - Metadata rewriting rejects `META-INF/signatures.xml` before modifying a signed EPUB.
 - Opening an EPUB switches directly to the text editor. The browser regression now confirms the complete approved edit, EPUBCheck, upload, and Drive save path.
 - The full unit suite, responsive editor layout, content browser test, and Android asset build pass locally. Production Apps Script deployment remains a separate workflow operation whose result must be checked after release.
+
+Production follow-up: the Apps Script deployment workflow completed successfully and the public health endpoint returned `{ "ok": true, "version": 19 }`.

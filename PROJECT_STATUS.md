@@ -64,7 +64,7 @@ Ez a Grapes modulokon átívelő elsődleges fejlesztési naplója. A részletes
 
 **Kész:** Drive-könyvtár, feltöltés, opcionális teljes Drive-olvasás, metaadatkezelés és e-olvasó átviteli alapok.
 
-**Folyamatban:** az E-book tartalmi és reszponzív tesztjei sikeresek; az USB-szinkron támogatott fájltípusokra szűr, több Drive-könyvtármappát és lapozást kezel, az aláírt EPUB-ot elutasítja, megnyitás után pedig a szöveges nézetre vált. A broker repository-verziójának production deploymentje külön GitHub workflow-ban történik.
+**Kész:** az E-book tartalmi és reszponzív tesztjei sikeresek; az USB-szinkron támogatott fájltípusokra szűr, több Drive-könyvtármappát és lapozást kezel, az aláírt EPUB-ot elutasítja, megnyitás után pedig a szöveges nézetre vált. A repository broker production deploymentje sikeres, az élő health végpont API v19-et jelez.
 
 **Parkol:** korábban kiosztott Drive-megosztások áttekintése és visszavonása.
 
