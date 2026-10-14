@@ -1,6 +1,6 @@
 # Grapes – központi projektállapot
 
-Utolsó frissítés: 2026-10-12
+Utolsó frissítés: 2026-10-14
 
 Ez a Grapes modulokon átívelő elsődleges fejlesztési naplója. A részletes moduljegyzetek megmaradnak, de minden új, lezárt, parkolt vagy blokkolt munkát itt is át kell vezetni.
 
@@ -21,6 +21,8 @@ Ez a Grapes modulokon átívelő elsődleges fejlesztési naplója. A részletes
 **Kész:** a fejlesztői menüben olvasható és letölthető `PROJECT_BACKLOG.md`, valamint hozzáadható/eltávolítható, az admin Google Drive-jába mentett felhasználói nyilvántartás.
 
 **Korlát:** a GitHub Pages statikus alkalmazás. A kliensoldali e-mail- és PIN-kapu, a felhasználói nyilvántartás és a helyi kapcsolók nem szerveroldali biztonsági, belépést tiltó vagy globális feature-flag rendszer. Ezekhez hitelesített backend szükséges.
+
+**Folyamatban:** elkészült az Android-only telefonos UI első, teljesen szerkeszthető Figma-terve belépés, kezdőlap, projektek, szinkron és Ételnapló képernyőkkel. A terv még felhasználói finomítás alatt áll; a production alkalmazás és a webes nézet ettől még nem változott. Terv: https://www.figma.com/design/02WS3MuvHQ9OMyfUu7KABN
 
 ## Marketing
 

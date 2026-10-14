@@ -1,6 +1,6 @@
 # Grapes – egyesített fejlesztési backlog
 
-Utolsó frissítés: 2026-10-12
+Utolsó frissítés: 2026-10-14
 
 Ez az elsődleges lista a még el nem kezdett, parkolt vagy külső feltétel miatt blokkolt munkákhoz. A kész funkciók a `PROJECT_STATUS.md` fájlban, a részletes műszaki jegyzetek a modulonkénti dokumentumokban maradnak.
 
@@ -12,6 +12,21 @@ Ez az elsődleges lista a még el nem kezdett, parkolt vagy külső feltétel mi
 - [ ] Az ismert EPUB-megnyitási böngészőteszt javítása.
 
 ## P1 – következő fejlesztési blokkok
+
+### Android alkalmazás – telefonos UI
+
+Szerkeszthető Figma-terv: https://www.figma.com/design/02WS3MuvHQ9OMyfUu7KABN
+
+- [ ] A Figma mobil UI terv felhasználói átnézése és véglegesítése.
+- [ ] Android-specifikus alkalmazáskeret bevezetése úgy, hogy a webes nézet változatlan maradjon.
+- [ ] Telefonos belépési képernyő megvalósítása, helyi mód és Google-belépés állapotaival.
+- [ ] Telefonos kezdőlap, alsó navigáció, legutóbbi projektek és modulindító kártyák megvalósítása.
+- [ ] Projektek képernyő: keresés, kétoszlopos kártyarács és új projekt művelet.
+- [ ] Szinkron képernyő: helyi mentési állapot, eszközök és Google Drive kapcsolat.
+- [ ] Ételnapló mintamodul telefonos nézetének megvalósítása.
+- [ ] A többi modul egységes mobilmintáinak megtervezése és fokozatos átültetése.
+- [ ] Végső telefonos akadálymentességi, érintési célméret-, görgetési és valódi készülékteszt.
+- [ ] Végleges Grapes alkalmazásikon és logó elkészítése.
 
 ### 3D Nyomtatási Stúdió
 
