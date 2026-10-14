@@ -72,6 +72,7 @@ let readerPairExpiryTimer = null
 let readerPairNonce = ''
 let pickerLoadPromise = null
 let pickerPending = false
+let transferFileId = ''
 const $ = (selector) => document.querySelector(selector)
 const ext = (name = '') => name.includes('.') ? name.split('.').pop().toLowerCase() : 'FILE'
 const safeFilePart = (value = '') => String(value).replace(/[<>:"/\\|?*\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').replace(/[. ]+$/g, '').trim()
@@ -247,6 +248,7 @@ function buildBrokerUrl(params = {}) {
 function closeTransfer() {
   const panel = $('#ebook-transfer-panel'); if (panel) panel.hidden = true
   const frame = $('#ebook-transfer-code'); if (frame) { frame.hidden = true; frame.removeAttribute('src') }
+  transferFileId = ''
 }
 function showPairingFrame(selector, url) {
   const frame = $(selector)
@@ -327,6 +329,11 @@ function renderDriveConnection() {
   }
   const button = $('#ebook-drive-connect')
   if (button) { button.disabled = connected; button.textContent = connected ? 'Google Drive csatlakoztatva' : 'Google Drive csatlakoztatása' }
+  const fullScan = $('#ebook-drive-full-scan')
+  if (fullScan) {
+    fullScan.disabled = !connected || grapesDriveHasFullReadAccess()
+    fullScan.textContent = grapesDriveHasFullReadAccess() ? 'Teljes Drive-keresés aktív' : 'Keresés a teljes Drive-ban'
+  }
   const disconnect = $('#ebook-drive-disconnect')
   if (disconnect) disconnect.disabled = !connected
   setUploadState(connected ? '● Drive csatlakoztatva · feltöltésre kész' : '○ A Drive nincs csatlakoztatva', connected ? 'success' : '')
@@ -1685,6 +1692,16 @@ async function connectDrive() {
     setStatus(`Google bejelentkezési hiba: ${error.message}`, 'error')
   }
 }
+async function enableFullDriveSearch() {
+  try {
+    await connectGrapesDrive({ fullRead: true })
+    renderDriveConnection()
+    setStatus('A teljes Drive-keresés engedélyezve. A könyvek betöltése…', 'success')
+    await refreshLibrary({ forceFullScan: true })
+  } catch (error) {
+    setStatus(`A teljes Drive-keresés nem engedélyezhető. ${error.message}`, 'error')
+  }
+}
 async function disconnectDrive() {
   await disconnectGrapesDrive()
   setStatus('A Google Drive kapcsolat leválasztva. A Drive-on lévő fájlok nem változtak.', 'success')
@@ -1760,15 +1777,26 @@ async function getReaderLibraryBooks() {
   return { folderId, books: [...new Map(books.map((file) => [file.id, file])).values()].filter((file) => isShareableBook(file.name)) }
 }
 async function ensurePublicRead(fileId) {
-  try {
-    await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/permissions`, {
+  const existing = await listPublicReadPermissions(fileId)
+  if (existing[0]) return existing[0]
+  const response = await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/permissions?fields=id,type,role,allowFileDiscovery`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'anyone', role: 'reader', allowFileDiscovery: false }),
-    })
-  } catch (error) {
-    if (!String(error.message || '').toLowerCase().includes('already')) throw error
+  })
+  return response.json()
+}
+async function listPublicReadPermissions(fileId) {
+  const response = await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/permissions?fields=permissions(id,type,role,allowFileDiscovery)&pageSize=100`)
+  const data = await response.json()
+  return (data.permissions || []).filter((permission) => permission.type === 'anyone' && permission.role === 'reader')
+}
+async function revokePublicRead(fileId) {
+  const permissions = await listPublicReadPermissions(fileId)
+  for (const permission of permissions) {
+    await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/permissions/${encodeURIComponent(permission.id)}`, { method: 'DELETE' })
   }
+  return permissions.length
 }
 async function createReaderMarker(folderId) {
   const nonce = createReaderNonce()
@@ -1911,13 +1939,7 @@ async function sendBook(fileId) {
   if (!TRANSFER_BROKER_URL) return setStatus('Az E-book Transfer broker nincs konfigurálva.', 'error')
   try {
     const meta = await (await driveRequest(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=name`)).json()
-    await driveRequest(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'anyone', role: 'reader', allowFileDiscovery: false }),
-    }).catch((error) => {
-      if (!String(error.message).toLowerCase().includes('already')) throw error
-    })
+    await ensurePublicRead(fileId)
     const brokerUrl = buildBrokerUrl({ action: 'create', fileId, returnUrl: APP_RETURN_URL })
     const downloadUrl = `https://drive.usercontent.google.com/download?id=${encodeURIComponent(fileId)}&export=download&confirm=t`
     const readerUrl = new URL(APP_RETURN_URL)
@@ -1927,8 +1949,10 @@ async function sendBook(fileId) {
     $('#ebook-transfer-pair').dataset.brokerUrl = brokerUrl
     $('#ebook-transfer-code').hidden = true
     $('#ebook-transfer-code').removeAttribute('src')
+    $('#ebook-transfer-pair').disabled = false
     $('#ebook-reader-url').value = readerUrl.toString()
     $('#ebook-transfer-panel').hidden = false
+    transferFileId = fileId
     const canvas = $('#ebook-transfer-qr')
     canvas.hidden = true
     $('#ebook-qr-status').textContent = ''
@@ -1940,6 +1964,27 @@ async function sendBook(fileId) {
   } catch (error) {
     setStatus(`Az átvitel előkészítése nem sikerült. ${error.message}`, 'error')
   }
+}
+async function revokeTransferAccess() {
+  if (!transferFileId) return setStatus('Nincs aktív könyvmegosztás.', 'error')
+  const confirmed = await showGrapesConfirm({
+    title: 'Nyilvános hozzáférés visszavonása',
+    message: 'A korábbi QR-kód és közvetlen letöltési link többé nem fog működni. Folytatod?',
+    confirmLabel: 'Visszavonás',
+    danger: true,
+  })
+  if (!confirmed) return
+  const button = $('#ebook-transfer-revoke')
+  button.disabled = true
+  try {
+    const count = await revokePublicRead(transferFileId)
+    $('#ebook-transfer-url').value = ''
+    $('#ebook-transfer-qr').hidden = true
+    $('#ebook-transfer-pair').disabled = true
+    setStatus(count ? 'A könyv nyilvános Drive-hozzáférése visszavonva.' : 'A könyvhöz már nem tartozott nyilvános Drive-hozzáférés.', 'success')
+  } catch (error) {
+    setStatus(`A megosztás visszavonása nem sikerült. ${error.message}`, 'error')
+  } finally { button.disabled = false }
 }
 function setEbookMode(mode = 'library') {
   const manager = $('#ebook-manager-view')
@@ -2009,6 +2054,7 @@ export function initEbookLibrary() {
   $('#ebook-file-input')?.addEventListener('change',(e)=>{const file=e.target.files?.[0];if(file)uploadBook(file);e.target.value=''})
   $('#ebook-upload-btn')?.addEventListener('click',()=>$('#ebook-file-input')?.click())
   $('#ebook-refresh-btn')?.addEventListener('click', () => refreshLibrary({ forceFullScan: true }))
+  $('#ebook-drive-full-scan')?.addEventListener('click', enableFullDriveSearch)
   $('#ebook-metadata-filter')?.addEventListener('input', renderMetadataOptions)
   $('#ebook-metadata-book')?.addEventListener('change', selectMetadataBook)
   $('#ebook-detail-back')?.addEventListener('click', () => closeBookDetail())
@@ -2140,6 +2186,7 @@ export function initEbookLibrary() {
     } catch (error) { setContentStatus(`A szerkezeti javítás nem alkalmazható: ${error.message}`, 'error') }
   })
   $('#ebook-transfer-close')?.addEventListener('click', closeTransfer)
+  $('#ebook-transfer-revoke')?.addEventListener('click', revokeTransferAccess)
   $('#ebook-transfer-pair')?.addEventListener('click', () => {
     const url = $('#ebook-transfer-pair').dataset.brokerUrl
     if (url) showPairingFrame('#ebook-transfer-code', url)

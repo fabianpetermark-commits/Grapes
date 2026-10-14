@@ -51,6 +51,10 @@ try {
   await page.locator('[data-water-open]').click()
   await page.locator('[data-page="water"]').waitFor({ state: 'visible' })
   assert.equal(await page.locator('#app-title').textContent(), 'Víz')
+  await page.locator('[data-nav="more"]').last().click()
+  await page.locator('[data-account-login]').click()
+  await page.locator('#login').waitFor({ state: 'visible' })
+  assert.equal(await page.locator('#app').isHidden(), true)
   console.log('Android-only mobile preview entry and Water flow: OK')
 } finally {
   await browser.close()

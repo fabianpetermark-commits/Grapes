@@ -110,6 +110,7 @@
     .sync-actions button:first-child { color: var(--text); background: var(--raised); border: 1px solid var(--line); }
     .sync-actions button:last-child { color: #041014; background: var(--accent); border: 0; }
     .setting { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; gap: 12px; align-items: center; min-height: 66px; padding: 10px 6px; border-bottom: 1px solid var(--line); }
+    button.setting { width: 100%; color: inherit; text-align: left; background: transparent; border: 0; border-bottom: 1px solid var(--line); cursor: pointer; }
     .setting__icon { display: grid; place-items: center; width: 42px; height: 42px; background: var(--raised); border-radius: 13px; }
     .setting strong, .setting span { display: block; }
     .setting span { margin-top: 3px; color: var(--muted); font-size: 11px; }
@@ -302,7 +303,7 @@
 
         <div class="content" data-page="more" hidden>
           <p class="eyebrow">Beállítások</p><h1>Továbbiak</h1><p class="lead">Fiók, nyelv és alkalmazásbeállítások.</p>
-          <div class="setting"><div class="setting__icon">S</div><div><strong>Saját eszköz</strong><span data-account-mode>Helyi mód</span></div><span>›</span></div>
+          <button class="setting" type="button" data-account-login><span class="setting__icon">G</span><span><strong data-account-action>Google-fiók csatlakoztatása</strong><span data-account-mode>Helyi mód</span></span><span>›</span></button>
           <div class="setting"><div class="setting__icon">HU</div><div><strong>Nyelv</strong><span>Magyar</span></div><span>›</span></div>
           <div class="setting"><div class="setting__icon">◐</div><div><strong>Megjelenés</strong><span>Rendszerbeállítás</span></div><span>›</span></div>
           <div class="setting"><div class="setting__icon">i</div><div><strong>A Grapes névjegye</strong><span>Android mobilalkalmazás</span></div><span>›</span></div>

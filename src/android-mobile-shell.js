@@ -91,11 +91,37 @@ function renderAccount() {
     ? 'A projektjeid menthetők és megnyithatók a saját Google Drive-odból.'
     : 'Az app internet nélkül is használható. A Drive csatlakoztatása után választhatsz, mit töltesz fel.'
   $('[data-connect-drive]').textContent = connected ? 'Drive leválasztása' : 'Google Drive csatlakoztatása'
+  $('[data-account-action]').textContent = connected ? 'Kijelentkezés a Google-fiókból' : 'Google-fiók csatlakoztatása'
   const badge = $('[data-sync-badge]')
   if (badge) {
     badge.textContent = connected ? 'Drive aktív' : 'Csak ezen az eszközön'
     badge.dataset.state = connected ? 'connected' : 'local'
   }
+}
+
+function showLogin(message = '') {
+  app.hidden = true
+  login.hidden = false
+  const status = $('[data-login-status]')
+  if (status) status.textContent = message
+  closeSheet()
+}
+
+async function openAccountLogin() {
+  if (!isGrapesDriveConnected()) {
+    setLocalMode(false)
+    showLogin()
+    return
+  }
+  const button = $('[data-account-login]')
+  button.disabled = true
+  try {
+    await disconnectGrapesDrive({ forgetAccount: true })
+    setLocalMode(false)
+    showLogin()
+  } catch (error) {
+    showToast(error?.message || 'A kijelentkezés nem sikerült.')
+  } finally { button.disabled = false }
 }
 
 function formatStorage(bytes) {
@@ -328,6 +354,7 @@ function changeWaterGoal() {
 $('[data-local]').addEventListener('click', () => { setLocalMode(true); showApp() })
 $('[data-login]').addEventListener('click', connectDrive)
 $('[data-connect-drive]').addEventListener('click', connectDrive)
+$('[data-account-login]').addEventListener('click', openAccountLogin)
 $('[data-sync-refresh]').addEventListener('click', () => renderSync({ refreshed: true }))
 $('[data-sync-projects]').addEventListener('click', () => showPage('projects'))
 $$('[data-nav]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.nav)))

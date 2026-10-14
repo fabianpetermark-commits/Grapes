@@ -132,6 +132,26 @@ test('full Drive reading asks for both scopes and preserves the previous token i
   assert.equal(JSON.parse(a.session.get('grapes-drive-session')).scopes, config.scope)
 })
 
+test('E-book full Drive action requests the optional read scope and refreshes the full library', async () => {
+  const a = app(async url => {
+    const request = new URL(url)
+    if (request.pathname.endsWith('/about')) return json({ user: { emailAddress: 'reader@example.com' } })
+    if ((request.searchParams.get('q') || '').includes("name = 'Grapes E-book Library'")) return folder()
+    return json({ files: [] })
+  })
+  let config
+  a.context.window.google = { accounts: { oauth2: { initTokenClient(options) {
+    config = options
+    return { requestAccessToken() { options.callback({ access_token: 'full-token', expires_in: 3600, scope: options.scope }) } }
+  } } } }
+  await a.run('enableFullDriveSearch()')
+  assert.match(config.scope, /drive\.file/)
+  assert.match(config.scope, /drive\.readonly/)
+  assert.equal(a.run('grapesDriveHasFullReadAccess()'), true)
+  assert.equal(a.nodes.get('#ebook-drive-full-scan').disabled, true)
+  assert.match(a.nodes.get('#ebook-status').textContent, /teljes Google Drive/)
+})
+
 test('previously granted full read is requested again on reconnect and cleared on disconnect', async () => {
   const local = new Map([['grapes-drive-full-read', '1']])
   const a = app(async () => json({}), { connected: false, local })
@@ -276,16 +296,48 @@ test('expired token enables reconnect and reports actionable error', async () =>
 
 test('transfer renders a download QR and offers a code plus a stable reader address', async () => {
   const calls = []
-  const a = app(async (url, options) => { calls.push({ url, options }); return json(url.includes('permissions') ? {} : { name: 'book.pdf' }) })
+  const a = app(async (url, options) => {
+    calls.push({ url, options })
+    if (url.includes('/permissions') && (!options || options.method !== 'POST')) return json({ permissions: [] })
+    if (url.includes('/permissions')) return json({ id: 'public-reader', type: 'anyone', role: 'reader' })
+    return json({ name: 'book.pdf' })
+  })
   a.context.window.location.href = 'https://fabianpetermark-commits.github.io/Grapes/ebook-pilot/?module=ebook'
   await a.run('sendBook("book")')
-  assert.deepEqual(JSON.parse(calls[1].options.body), { type: 'anyone', role: 'reader', allowFileDiscovery: false })
+  const permissionCreate = calls.find(call => call.options?.method === 'POST' && call.url.includes('/permissions'))
+  assert.deepEqual(JSON.parse(permissionCreate.options.body), { type: 'anyone', role: 'reader', allowFileDiscovery: false })
   const broker = new URL(a.nodes.get('#ebook-transfer-pair').dataset.brokerUrl)
   assert.equal(broker.searchParams.get('fileId'), 'book')
   assert.equal(broker.searchParams.get('returnUrl'), 'https://fabianpetermark-commits.github.io/Grapes/')
   assert.equal(a.nodes.get('#ebook-reader-url').value, 'https://fabianpetermark-commits.github.io/Grapes/?ebook-reader=1')
   assert.equal(a.nodes.get('#ebook-transfer-qr').qrValue, a.nodes.get('#ebook-transfer-url').value)
   assert.equal(a.nodes.get('#ebook-transfer-qr').hidden, false)
+})
+
+test('transfer revocation removes only anyone reader permissions and disables the old link', async () => {
+  let permissionReads = 0
+  const calls = []
+  const a = app(async (url, options) => {
+    calls.push({ url, options })
+    if (url.includes('/permissions') && (!options || !options.method)) {
+      permissionReads += 1
+      return json({ permissions: permissionReads === 1 ? [] : [
+        { id: 'public-reader', type: 'anyone', role: 'reader' },
+        { id: 'named-writer', type: 'user', role: 'writer' },
+      ] })
+    }
+    if (url.includes('/permissions') && options?.method === 'POST') return json({ id: 'public-reader', type: 'anyone', role: 'reader' })
+    if (options?.method === 'DELETE') return new Response(null, { status: 204 })
+    return json({ name: 'book.epub' })
+  })
+  await a.run('sendBook("book")')
+  await a.run('revokeTransferAccess()')
+  const deletes = calls.filter(call => call.options?.method === 'DELETE')
+  assert.equal(deletes.length, 1)
+  assert.match(deletes[0].url, /public-reader$/)
+  assert.equal(a.nodes.get('#ebook-transfer-url').value, '')
+  assert.equal(a.nodes.get('#ebook-transfer-pair').disabled, true)
+  assert.match(a.nodes.get('#ebook-status').textContent, /visszavonva/)
 })
 
 test('stable receiver opens without a book code and prefills incoming pair links', () => {

@@ -40,3 +40,15 @@ A felhasználó végzi el a GitHub eszközkód böngészős jóváhagyását. Je
 5. Siker után ellenőrizni kell, hogy az új GitHub Release tartalmazza a névre átírt, aláírt APK-t.
 
 Az aláíróadatokat kizárólag a GitHub Actions Repository Secrets tárolja; ezeket nem kell és nem szabad helyi fájlba írni.
+
+## Google Drive Android OAuth
+
+A natív Android-bejelentkezés nem a `VITE_GOOGLE_CLIENT_ID` webes kliensazonosítót használja. Ugyanabban a Google Cloud projektben külön **Android OAuth client** szükséges az alábbi kötött adatokkal:
+
+- Google Cloud projektszám: `991532871119`
+- package name: `hu.grapes.healthconnect`
+- release SHA-1: `86:98:E6:55:68:2B:5D:3A:A0:E5:6C:E1:A4:4A:29:32:D0:65:4A:61`
+
+A Drive API-nak engedélyezve kell lennie. Ha az OAuth consent screen tesztelési állapotú, a valódi készüléken használt Google-fiókot fel kell venni tesztfelhasználónak. A `UNREGISTERED_ON_API_CONSOLE` / status 10 hiba ezeknek az adatoknak az eltérését jelzi; alkalmazáskódból nem kerülhető meg.
+
+Az alapbejelentkezés `drive.file` jogosultságot kér. Az E-book „Keresés a teljes Drive-ban” művelete külön, felhasználói döntésre hozzáadja a `drive.readonly` jogosultságot, ugyanúgy, mint a webes nézet.

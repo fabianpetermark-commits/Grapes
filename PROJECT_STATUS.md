@@ -32,6 +32,8 @@ Ez a Grapes modulokon átívelő elsődleges fejlesztési naplója. A részletes
 
 **Ismert Android-hiba:** a Google-bejelentkezés `UNREGISTERED_ON_API_CONSOLE` hibával megszakad, ezért a Drive-kapcsolatot is újra kell konfigurálni és valódi készüléken végigtesztelni.
 
+**Folyamatban:** az Android shellből ismét elérhető a bejelentkezési képernyő, a teljes kijelentkezés és a fiókváltás. A natív belépés a webbel közös Drive-réteget használja: `drive.file` az alapkapcsolat, az E-book teljes Drive-keresése pedig külön kérhető `drive.readonly` engedély. A Google Cloud Android OAuth-kliens külső regisztrációja és a valódi készülékteszt még szükséges.
+
 ## Marketing
 
 ### E-mail Stúdió
@@ -69,6 +71,8 @@ Ez a Grapes modulokon átívelő elsődleges fejlesztési naplója. A részletes
 **Kész:** az E-book tartalmi és reszponzív tesztjei sikeresek; az USB-szinkron támogatott fájltípusokra szűr, több Drive-könyvtármappát és lapozást kezel, az aláírt EPUB-ot elutasítja, megnyitás után pedig a szöveges nézetre vált. A repository broker production deploymentje sikeres, az élő health végpont API v19-et jelez.
 
 **Kész:** az Android appban a könyvtár, feltöltés és e-olvasó párosítás, a könyvadatlap, valamint a szöveg- és szerkezeti EPUB-szerkesztő egységes, nagy érintési célú telefonos felületet használ. A módosítás nem érinti a webes nézetet.
+
+**Kész:** az opcionális teljes Drive-keresés látható műveletet kapott, az egykönyves e-olvasó átvitel pedig célzottan visszavonhatja az adott fájl nyilvános olvasói jogosultságát anélkül, hogy a név szerinti megosztásokat törölné.
 
 **Parkol:** korábban kiosztott Drive-megosztások áttekintése és visszavonása.
 
