@@ -28,6 +28,8 @@ Ez a Grapes modulokon átívelő elsődleges fejlesztési naplója. A részletes
 
 **Kész:** az Android app minden indításkor frissen ellenőrzi az új aláírt GitHub Release-t, a háttérben pedig hatóránként ellenőriz; engedély esetén rendszerértesítést küld, amely a meglévő, SHA-256-tal ellenőrzött frissítési folyamatba vezet.
 
+**Kiadási leírás:** a helyes GitHub-ágat, hitelesítést és aláírt APK-workflow-t az `ANDROID_RELEASE_RUNBOOK.md` rögzíti.
+
 **Ismert Android-hiba:** a Google-bejelentkezés `UNREGISTERED_ON_API_CONSOLE` hibával megszakad, ezért a Drive-kapcsolatot is újra kell konfigurálni és valódi készüléken végigtesztelni.
 
 ## Marketing
