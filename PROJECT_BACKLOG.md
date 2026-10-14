@@ -28,8 +28,8 @@ Az első terv az APK-ban futó HTML/CSS előnézetként szerkeszthető tovább; 
 - [x] Telefonos belépési képernyő megvalósítása, helyi mód és Google-belépés állapotaival.
 - [x] Telefonos kezdőlap, alsó navigáció, legutóbbi projektek és modulindító kártyák megvalósítása.
 - [x] Projektek képernyő: keresés, helyi gyorsindítók és Drive-projektlista.
-- [ ] Szinkron képernyő: helyi mentési állapot, eszközök és Google Drive kapcsolat.
-- [x] Ételnapló csiszolt telefonos áttekintője és átjárás a teljes Food modulba.
+- [x] Szinkron képernyő: valós helyi projektszám és tárhely, függő mentések, utolsó ellenőrzés, Drive-állapot és kézi frissítés.
+- [x] Ételnapló csiszolt telefonos áttekintője és a teljes Food modul Android-only mobilrétege nagy érintési célokkal, mobil űrlapokkal és alsó ellenőrző panelekkel.
 - [x] Víznapló valódi, dátum szerint helyben mentett Android-modullá alakítása szerkeszthető céllal és törölhető bejegyzésekkel.
 - [ ] A többi modul egységes mobilmintáinak megtervezése és fokozatos átültetése.
 - [ ] Végső telefonos akadálymentességi, érintési célméret-, görgetési és valódi készülékteszt.

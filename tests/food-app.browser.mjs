@@ -7,7 +7,7 @@ import { chromium } from 'playwright-core'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const baseUrl = 'http://127.0.0.1:4181'
-const screenshotPath = 'C:\\Users\\uszan\\.codex\\visualizations\\2026\\10\\12\\01a13009-ffc7-7101-913b-e4248074c839\\grapes-food-mobile.png'
+const screenshotPath = 'mobile-food-browser.png'
 const executablePath = [
   process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
   'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',

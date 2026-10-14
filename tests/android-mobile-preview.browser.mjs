@@ -30,6 +30,17 @@ try {
   await page.goto(previewUrl, { waitUntil: 'networkidle' })
   await page.locator('[data-local]').click()
 
+  await page.locator('[data-nav="sync"]').click()
+  await page.locator('[data-page="sync"]').waitFor({ state: 'visible' })
+  assert.match(await page.locator('[data-sync-local-count]').textContent(), /\d+ projekt/)
+  assert.equal(await page.locator('[data-sync-drive-count]').textContent(), 'Nincs csatlakoztatva')
+  await page.locator('[data-sync-refresh]').click()
+  await page.waitForFunction(() => !document.querySelector('[data-sync-last-check]')?.textContent.includes('Még nem'))
+  assert.doesNotMatch(await page.locator('[data-sync-last-check]').textContent(), /Még nem/)
+  await page.screenshot({ path: 'mobile-sync.png', fullPage: true })
+
+  await page.locator('[data-nav="home"]').click()
+
   await page.locator('[data-module="food"]').last().click()
   await page.locator('[data-page="food"]').waitFor({ state: 'visible' })
   await page.locator('[data-fab]').click()

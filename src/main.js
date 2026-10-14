@@ -20,7 +20,10 @@ const requestedModule = params.get('module')
 const moduleScreens = ['brochure', 'studio', 'qr', 'ebook', 'email', 'finance', 'billing', 'food']
 const requestedScreen = moduleScreens.includes(requestedModule) ? requestedModule : null
 const androidApp = isGrapesAndroidApp()
+const androidModuleShell = params.get('android-shell') === '1'
 const LOCAL_MODE_KEY = 'grapes-local-mode'
+
+if (androidModuleShell) document.documentElement.classList.add('is-grapes-android-module')
 
 const mobilePreviewButton = el('#pick-mobile-preview')
 mobilePreviewButton.hidden = !androidApp

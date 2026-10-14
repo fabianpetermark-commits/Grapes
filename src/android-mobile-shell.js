@@ -6,6 +6,7 @@ import {
   listGrapesProjects,
   onGrapesDriveChange,
 } from './storage/grapes-drive.js'
+import { listLocalProjects } from './storage/local-project-store.js'
 
 const $ = selector => document.querySelector(selector)
 const $$ = selector => [...document.querySelectorAll(selector)]
@@ -19,6 +20,7 @@ const sheet = $('.bottom-sheet')
 const sheetBackdrop = $('.sheet-backdrop')
 const LOCAL_MODE_KEY = 'grapes-local-mode'
 const WATER_STORE_KEY = 'grapes-water-v1'
+const SYNC_CHECK_KEY = 'grapes-sync-last-check-v1'
 const moduleFolders = [
   ['Ételnapló', 'food', '◉'],
   ['Pénzügyi Napló', 'finance', '⌁'],
@@ -64,6 +66,7 @@ function showPage(page) {
   fab.hidden = page !== 'food'
   closeSheet()
   if (page === 'projects') renderProjects()
+  if (page === 'sync') renderSync()
   if (page === 'water') renderWater()
 }
 
@@ -88,6 +91,61 @@ function renderAccount() {
     ? 'A projektjeid menthetők és megnyithatók a saját Google Drive-odból.'
     : 'Az app internet nélkül is használható. A Drive csatlakoztatása után választhatsz, mit töltesz fel.'
   $('[data-connect-drive]').textContent = connected ? 'Drive leválasztása' : 'Google Drive csatlakoztatása'
+  const badge = $('[data-sync-badge]')
+  if (badge) {
+    badge.textContent = connected ? 'Drive aktív' : 'Csak ezen az eszközön'
+    badge.dataset.state = connected ? 'connected' : 'local'
+  }
+}
+
+function formatStorage(bytes) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 KB'
+  const units = ['B', 'KB', 'MB', 'GB']
+  const index = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)))
+  return `${new Intl.NumberFormat('hu-HU', { maximumFractionDigits: index > 1 ? 1 : 0 }).format(bytes / 1024 ** index)} ${units[index]}`
+}
+
+function formatSyncTime(value) {
+  if (!value) return 'Még nem ellenőrizve'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'Még nem ellenőrizve'
+  return date.toLocaleString('hu-HU', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
+async function driveProjectCount() {
+  if (!isGrapesDriveConnected()) return 0
+  const groups = await Promise.all(moduleFolders.map(([folder]) => listGrapesProjects(folder).catch(() => [])))
+  return groups.reduce((sum, projects) => sum + projects.length, 0)
+}
+
+async function renderSync({ refreshed = false } = {}) {
+  const status = $('[data-sync-status]')
+  if (!status) return
+  status.textContent = 'Állapot ellenőrzése…'
+  status.dataset.state = 'working'
+  try {
+    const [projects, estimate, driveCount] = await Promise.all([
+      listLocalProjects(1000).catch(() => []),
+      navigator.storage?.estimate ? navigator.storage.estimate().catch(() => null) : Promise.resolve(null),
+      driveProjectCount(),
+    ])
+    const dirtyCount = projects.filter(project => project?.data?.syncState?.localDirty).length
+    const localBytes = estimate?.usage || new Blob(projects.map(project => JSON.stringify(project))).size
+    const now = refreshed ? new Date().toISOString() : localStorage.getItem(SYNC_CHECK_KEY)
+    if (refreshed) localStorage.setItem(SYNC_CHECK_KEY, now)
+    $('[data-sync-local-count]').textContent = `${projects.length} projekt`
+    $('[data-sync-local-size]').textContent = formatStorage(localBytes)
+    $('[data-sync-drive-count]').textContent = isGrapesDriveConnected() ? `${driveCount} projekt` : 'Nincs csatlakoztatva'
+    $('[data-sync-pending-count]').textContent = dirtyCount ? `${dirtyCount} mentés várakozik` : 'Minden helyi adat mentve'
+    $('[data-sync-last-check]').textContent = formatSyncTime(now)
+    status.textContent = isGrapesDriveConnected()
+      ? (dirtyCount ? 'Van helyben módosított projekt.' : 'A Drive-kapcsolat elérhető.')
+      : 'A helyi mentések internet nélkül is használhatók.'
+    status.dataset.state = dirtyCount ? 'pending' : 'ready'
+  } catch (error) {
+    status.textContent = `Az állapot most nem ellenőrizhető. ${error?.message || ''}`
+    status.dataset.state = 'error'
+  }
 }
 
 function showApp() {
@@ -104,6 +162,7 @@ async function connectDrive() {
     await disconnectGrapesDrive({ forgetAccount: false })
     setLocalMode(true)
     renderAccount()
+    renderSync({ refreshed: true })
     showToast('A Drive leválasztva. A helyi adatok megmaradtak.')
     return
   }
@@ -114,6 +173,7 @@ async function connectDrive() {
     status.textContent = ''
     showApp()
     showToast('Google Drive csatlakoztatva.')
+    renderSync({ refreshed: true })
   } catch (error) {
     status.textContent = error?.message || 'A Google-bejelentkezés nem sikerült.'
     if (!login.hidden) return
@@ -268,6 +328,8 @@ function changeWaterGoal() {
 $('[data-local]').addEventListener('click', () => { setLocalMode(true); showApp() })
 $('[data-login]').addEventListener('click', connectDrive)
 $('[data-connect-drive]').addEventListener('click', connectDrive)
+$('[data-sync-refresh]').addEventListener('click', () => renderSync({ refreshed: true }))
+$('[data-sync-projects]').addEventListener('click', () => showPage('projects'))
 $$('[data-nav]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.nav)))
 $$('[data-module]').forEach(button => button.addEventListener('click', () => {
   const module = button.dataset.module
@@ -292,13 +354,13 @@ $('[data-project-search]').addEventListener('input', event => {
   $$('[data-project-name]').forEach(row => { row.hidden = query && !row.dataset.projectName.includes(query) })
 })
 $$('[data-action]').forEach(button => {
-  if (button.dataset.action === 'water-goal') return
+  if (button.dataset.action === 'water-goal' || button.matches('[data-sync-refresh], [data-sync-projects]')) return
   button.addEventListener('click', () => showToast('Ez a művelet a következő mobilos körben kap saját nézetet.'))
 })
 fab.addEventListener('click', () => { sheet.classList.add('is-open'); sheetBackdrop.classList.add('is-open') })
 sheetBackdrop.addEventListener('click', closeSheet)
 document.addEventListener('keydown', event => { if (event.key === 'Escape') closeSheet() })
-onGrapesDriveChange(() => { renderAccount(); renderProjects() })
+onGrapesDriveChange(() => { renderAccount(); renderProjects(); renderSync() })
 
 renderWater()
 if (isGrapesDriveConnected() || localMode()) showApp()

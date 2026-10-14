@@ -94,6 +94,21 @@
     .sync-hero__icon { display: grid; place-items: center; width: 64px; height: 64px; margin-bottom: 14px; color: var(--warning); background: rgb(242 184 75 / 12%); border-radius: 21px; font-size: 28px; }
     .sync-hero h2 { margin: 0; }
     .sync-hero p { margin: 8px 0 18px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .sync-badge { display: inline-flex; align-items: center; min-height: 30px; padding: 0 10px; margin-bottom: 12px; color: var(--warning); background: rgb(242 184 75 / 12%); border: 1px solid rgb(242 184 75 / 24%); border-radius: 999px; font-size: 10px; font-weight: 800; }
+    .sync-badge[data-state="connected"] { color: var(--success); background: rgb(71 216 155 / 10%); border-color: rgb(71 216 155 / 24%); }
+    .sync-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+    .sync-stat { min-width: 0; padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 17px; }
+    .sync-stat span, .sync-stat strong { display: block; }
+    .sync-stat span { color: var(--muted); font-size: 10px; }
+    .sync-stat strong { margin-top: 5px; overflow: hidden; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
+    .sync-status { padding: 12px 14px; margin-top: 10px; color: var(--muted); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; font-size: 11px; line-height: 1.45; }
+    .sync-status[data-state="ready"] { color: var(--success); }
+    .sync-status[data-state="pending"] { color: var(--warning); }
+    .sync-status[data-state="error"] { color: var(--danger); }
+    .sync-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 14px; }
+    .sync-actions button { min-height: 48px; border-radius: 14px; cursor: pointer; font-size: 11px; font-weight: 800; }
+    .sync-actions button:first-child { color: var(--text); background: var(--raised); border: 1px solid var(--line); }
+    .sync-actions button:last-child { color: #041014; background: var(--accent); border: 0; }
     .setting { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; gap: 12px; align-items: center; min-height: 66px; padding: 10px 6px; border-bottom: 1px solid var(--line); }
     .setting__icon { display: grid; place-items: center; width: 42px; height: 42px; background: var(--raised); border-radius: 13px; }
     .setting strong, .setting span { display: block; }
@@ -271,10 +286,18 @@
 
         <div class="content" data-page="sync" hidden>
           <p class="eyebrow">Adatok</p><h1>Szinkron</h1><p class="lead">Te döntöd el, hol legyenek a projektjeid.</p>
-          <div class="sync-hero"><div class="sync-hero__icon">⌁</div><h2 data-sync-title>Jelenleg helyi mód</h2><p data-sync-detail>Az app internet nélkül is használható. A Drive csatlakoztatása után választhatsz, mit töltesz fel.</p><button class="primary" data-connect-drive>Google Drive csatlakoztatása</button></div>
-          <div class="section-head"><h2>Tárolás</h2></div>
-          <div class="setting"><div class="setting__icon">▣</div><div><strong>Helyi projektek</strong><span>3 projekt · 18,4 MB</span></div><span>›</span></div>
-          <div class="setting"><div class="setting__icon">↻</div><div><strong>Automatikus mentés</strong><span>Bekapcsolva</span></div><span>›</span></div>
+          <div class="sync-hero"><div class="sync-hero__icon">⌁</div><span class="sync-badge" data-sync-badge data-state="local">Csak ezen az eszközön</span><h2 data-sync-title>Jelenleg helyi mód</h2><p data-sync-detail>Az app internet nélkül is használható. A Drive csatlakoztatása után választhatsz, mit töltesz fel.</p><button class="primary" data-connect-drive>Google Drive csatlakoztatása</button></div>
+          <div class="sync-grid" aria-label="Szinkronizálási összefoglaló">
+            <div class="sync-stat"><span>Helyi projektek</span><strong data-sync-local-count>Betöltés…</strong></div>
+            <div class="sync-stat"><span>Helyfoglalás</span><strong data-sync-local-size>Betöltés…</strong></div>
+            <div class="sync-stat"><span>Drive-projektek</span><strong data-sync-drive-count>—</strong></div>
+            <div class="sync-stat"><span>Függőben</span><strong data-sync-pending-count>—</strong></div>
+          </div>
+          <p class="sync-status" data-sync-status role="status" aria-live="polite">Állapot ellenőrzése…</p>
+          <div class="section-head"><h2>Mentés és ellenőrzés</h2></div>
+          <div class="setting"><div class="setting__icon">↻</div><div><strong>Automatikus helyi mentés</strong><span>Bekapcsolva · internet nélkül is működik</span></div><span>✓</span></div>
+          <div class="setting"><div class="setting__icon">◷</div><div><strong>Utolsó ellenőrzés</strong><span data-sync-last-check>Még nem ellenőrizve</span></div><span>›</span></div>
+          <div class="sync-actions"><button type="button" data-sync-projects>Projektek</button><button type="button" data-sync-refresh>Frissítés</button></div>
         </div>
 
         <div class="content" data-page="more" hidden>

@@ -22,7 +22,7 @@ Ez a Grapes modulokon átívelő elsődleges fejlesztési naplója. A részletes
 
 **Korlát:** a GitHub Pages statikus alkalmazás. A kliensoldali e-mail- és PIN-kapu, a felhasználói nyilvántartás és a helyi kapcsolók nem szerveroldali biztonsági, belépést tiltó vagy globális feature-flag rendszer. Ezekhez hitelesített backend szükséges.
 
-**Kész:** az Android app alapértelmezett felülete a telefonos Grapes shell: belépés/helyi mód, kezdőlap, alsó navigáció, kereshető projektlista, Drive-projektek és modulindítás. A Food és E-book csiszolt mobil áttekintőt kapott, a Víz pedig dátum szerint helyben mentett bejegyzésekkel és állítható céllal működik. A webes nézet változatlan maradt. A felület közvetlenül HTML/CSS-ben, Figma nélkül is továbbfejleszthető. Terv: https://www.figma.com/design/02WS3MuvHQ9OMyfUu7KABN
+**Kész:** az Android app alapértelmezett felülete a telefonos Grapes shell: belépés/helyi mód, kezdőlap, alsó navigáció, kereshető projektlista, Drive-projektek és modulindítás. A Szinkron képernyő valódi helyi projektszámot, tárhelyhasználatot, Drive-projektszámot, függő mentést és utolsó ellenőrzést mutat. A Food teljes modulja külön Android-stílusréteget kapott, az E-book csiszolt mobil áttekintőt, a Víz pedig dátum szerint helyben mentett bejegyzésekkel és állítható céllal működik. A webes nézet változatlan maradt. A felület közvetlenül HTML/CSS-ben, Figma nélkül is továbbfejleszthető. Terv: https://www.figma.com/design/02WS3MuvHQ9OMyfUu7KABN
 
 **Kész:** a meglévő Grapes vektorlogóból natív Android adaptive ikon készült, sötét rendszer-sávokkal illesztve a mobil shellhez.
 
@@ -94,7 +94,7 @@ Ez a Grapes modulokon átívelő elsődleges fejlesztési naplója. A részletes
 
 **Blokkolt:** közvetlen Samsung Health Data SDK vízadapter. A forrás elkészült, de a Samsung AAR, JDK 17/SDK 35 build, készülékteszt és nyilvános terjesztéshez a későbbi Samsung partnerjóváhagyás hiányzik.
 
-**Ellenőrzés:** 211/211 teljes repository egységteszt, fejlesztői menü böngészőteszt, Food mobil böngészőteszt és production build sikeres.
+**Ellenőrzés:** 231/231 teljes repository egységteszt, Android shell és Food mobil böngészőteszt, valamint production build sikeres.
 
 **Következő:** valódi készülékteszt; sikeres eredmény nélkül a Grapes → Health Connect/Samsung Health képesség nem tekinthető késznek.
 
