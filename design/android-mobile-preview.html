@@ -155,6 +155,12 @@
     .water-log strong, .water-log span { display: block; }
     .water-log span { margin-top: 3px; color: var(--muted); font-size: 10px; }
     .water-log b { color: #9edfff; font-size: 12px; }
+    .health-sync { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 13px; margin-top: 12px; background: linear-gradient(145deg, rgb(71 216 155 / 8%), var(--surface)); border: 1px solid rgb(71 216 155 / 24%); border-radius: 17px; }
+    .health-sync__icon { display: grid; place-items: center; width: 44px; height: 44px; color: #70e5b3; background: rgb(71 216 155 / 12%); border-radius: 14px; font-size: 18px; }
+    .health-sync strong, .health-sync span { display: block; }
+    .health-sync span { margin-top: 3px; color: var(--muted); font-size: 10px; }
+    .health-sync__button { min-height: 38px; padding: 0 11px; color: #75e8b7; background: rgb(71 216 155 / 11%); border: 1px solid rgb(71 216 155 / 25%); border-radius: 12px; cursor: pointer; font-size: 10px; font-weight: 800; }
+    .health-sync.is-connected .health-sync__button { color: var(--text); background: var(--raised); border-color: var(--line); }
     .book-continue { display: grid; grid-template-columns: 82px 1fr; gap: 16px; padding: 15px; background: linear-gradient(145deg, rgb(77 143 255 / 15%), var(--surface)); border: 1px solid rgb(77 143 255 / 28%); border-radius: 22px; }
     .book-cover { position: relative; display: grid; align-content: end; width: 82px; height: 116px; padding: 9px; overflow: hidden; background: linear-gradient(145deg, #7357ff, #224a86 62%, #0c1824); border-radius: 10px 15px 15px 10px; box-shadow: 0 12px 30px rgb(0 0 0 / 28%); }
     .book-cover::before { position: absolute; inset: 0 auto 0 7px; width: 1px; content: ""; background: rgb(255 255 255 / 22%); }
@@ -304,6 +310,7 @@
               <button class="water-amount" data-water-add="500"><span>＋</span>500 ml</button>
             </div>
           </section>
+          <section class="health-sync" data-samsung-sync><span class="health-sync__icon">S</span><div><strong>Samsung Health</strong><span data-samsung-status>Nincs összekapcsolva</span></div><button class="health-sync__button" data-samsung-connect>Kapcsolódás</button></section>
           <div class="section-head"><h2>Heti ritmus</h2><button data-action="water-goal">Cél: 2 l</button></div>
           <section class="week-card"><div class="week-head"><strong>Átlagosan 1,8 liter</strong><span>5 nap teljesítve</span></div><div class="week-bars">
             <div class="week-day"><i style="height:72%"></i><span>Cs</span></div><div class="week-day"><i style="height:88%"></i><span>P</span></div><div class="week-day"><i style="height:100%"></i><span>Szo</span></div><div class="week-day"><i style="height:81%"></i><span>V</span></div><div class="week-day"><i style="height:94%"></i><span>H</span></div><div class="week-day"><i style="height:100%"></i><span>K</span></div><div class="week-day is-today"><i data-water-today-bar style="height:62.5%"></i><span>Ma</span></div>
@@ -449,6 +456,13 @@
     document.querySelector('[data-water-open]').addEventListener('click', event => { if (!event.target.closest('[data-water-add]')) showPage('water') })
     document.querySelector('[data-water-open]').addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') showPage('water') })
     document.querySelectorAll('[data-water-add]').forEach(button => button.addEventListener('click', event => { event.stopPropagation(); updateWater(Number(button.dataset.waterAdd)) }))
+    document.querySelector('[data-samsung-connect]').addEventListener('click', event => {
+      const card = document.querySelector('[data-samsung-sync]')
+      const connected = card.classList.toggle('is-connected')
+      document.querySelector('[data-samsung-status]').textContent = connected ? 'Csatlakoztatva · vízbeolvasás aktív' : 'Nincs összekapcsolva'
+      event.currentTarget.textContent = connected ? 'Leválasztás' : 'Kapcsolódás'
+      showToast(connected ? 'Samsung Health kapcsolat bemutató bekapcsolva.' : 'Samsung Health kapcsolat bontva.')
+    })
     document.querySelectorAll('[data-action]').forEach(button => button.addEventListener('click', () => showToast()))
     fab.addEventListener('click', openSheet)
     sheetBackdrop.addEventListener('click', closeSheet)
