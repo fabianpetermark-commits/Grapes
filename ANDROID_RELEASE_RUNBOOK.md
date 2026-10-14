@@ -26,6 +26,12 @@ Ilyenkor:
 3. Bejelentkezés: `gh auth login --hostname github.com --git-protocol https --web`.
 4. Ellenőrzés: `gh auth status --hostname github.com`.
 
+Ha a Windows Git Credential Managerben a GitHub-belépés már él, a törölt hordozható `gh.exe` bejegyzés újratelepítés nélkül, az adott parancsra felülírható:
+
+`git -c credential.https://github.com.helper= -c credential.https://github.com.helper=manager push origin HEAD:codex/android-app`
+
+Az első üres URL-specifikus helper törli az örökölt, hibás helperláncot, a második pedig kifejezetten a Windows Credential Managert választja. A felülírás csak erre az egy Git-parancsra érvényes, nem írja át a felhasználó globális Git-beállításait.
+
 A felhasználó végzi el a GitHub eszközkód böngészős jóváhagyását. Jelszó vagy kétlépcsős kód nem kerül a repositoryba.
 
 ## Aláírt APK kiadása
