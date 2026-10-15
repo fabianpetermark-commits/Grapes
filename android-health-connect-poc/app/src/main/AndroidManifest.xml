@@ -7,7 +7,6 @@
         <package android:name="com.google.android.apps.healthdata" />
     </queries>
     <uses-permission android:name="android.permission.health.READ_NUTRITION" />
-    <uses-permission android:name="android.permission.health.WRITE_NUTRITION" />
     <uses-permission android:name="android.permission.health.READ_HYDRATION" />
     <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_HISTORY" />
     <application android:allowBackup="false" android:label="@string/app_name"

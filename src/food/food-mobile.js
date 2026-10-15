@@ -791,29 +791,30 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
         ...hydrationKeys.map(externalKey => ({ externalKey })),
       ]
       pendingHealthImport = prepareHealthBridgeImport(source, { profileId: profile.id, existingEntries })
+      if (!pendingHealthImport.records.length) throw new Error('Nem érkezett étel- vagy vízadat. Ellenőrizd a Health Connect engedélyeit és a Samsung Health adatmegosztását.')
       closeSheets(); renderHealthPreview()
-    } catch (error) { pendingHealthImport = null; showToast(error.message) }
+      return pendingHealthImport
+    } catch (error) { pendingHealthImport = null; showToast(error.message); throw error }
   }
 
-  async function openHealthImport({ provider = 'Health Connect', samsung = false } = {}) {
+  async function openHealthImport({ provider = 'Health Connect', samsung = false, fromDate = selectedDate } = {}) {
     closeSheets()
     if (!isGrapesAndroidApp()) return $('[data-food-health-input]').click()
     showToast(`${provider}-adatok olvasása…`)
     try {
-      await prepareHealthImport(await (samsung ? readAndroidSamsungHealthExport(selectedDate) : readAndroidHealthExport(selectedDate)))
-      return true
+      return await prepareHealthImport(await (samsung ? readAndroidSamsungHealthExport(fromDate) : readAndroidHealthExport(fromDate)))
     } catch (error) { showToast(error.message); throw error }
   }
 
-  async function openSamsungImport() {
+  async function openSamsungImport({ fromDate = selectedDate } = {}) {
     try {
-      return await openHealthImport({ provider: 'Samsung Health', samsung: true })
+      return await openHealthImport({ provider: 'Samsung Health', samsung: true, fromDate })
     } catch (error) {
       // The direct Samsung SDK is optional in the distributable APK. Samsung
       // Health can still share the same records through Health Connect.
       if (!/Samsung Health Data SDK|partner hozzáférés/i.test(String(error?.message || ''))) throw error
       showToast('Közvetlen Samsung-kapcsolat nincs; Health Connectből olvasunk.')
-      return openHealthImport({ provider: 'Health Connect' })
+      return openHealthImport({ provider: 'Health Connect', fromDate })
     }
   }
 

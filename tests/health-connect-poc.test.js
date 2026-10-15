@@ -9,13 +9,13 @@ test('az Android alkalmazás csak a szükséges Health Connect jogokat kéri', a
   const manifest = await read('app/src/main/AndroidManifest.xml');
   for (const permission of [
     'READ_NUTRITION',
-    'WRITE_NUTRITION',
     'READ_HYDRATION',
-    'READ_HEALTH_DATA_HISTORY',
   ]) {
     assert.match(manifest, new RegExp(`android\\.permission\\.health\\.${permission}`));
   }
   assert.doesNotMatch(manifest, /WRITE_HYDRATION/);
+  assert.doesNotMatch(manifest, /WRITE_NUTRITION/);
+  assert.match(manifest, /READ_HEALTH_DATA_HISTORY/);
   assert.match(manifest, /ACTION_SHOW_PERMISSIONS_RATIONALE/);
   assert.match(manifest, /VIEW_PERMISSION_USAGE/);
   assert.match(manifest, /android\.permission\.INTERNET/);
@@ -28,14 +28,14 @@ test('a Grapes felület helyi Android assetként fut és csak a fő keret kap na
     'app/src/main/java/hu/grapes/healthconnect/MainActivity.kt',
   );
   const webBridge = await read('../src/android-bridge.js');
-  const foodApp = await read('../src/food/food-app.js');
+  const mobileFood = await read('../src/food/food-mobile.js');
   assert.match(activity, /WebViewAssetLoader\.AssetsPathHandler/);
   assert.match(activity, /https:\/\/\$APP_HOST\/assets\/design\/android-mobile-preview\.html/);
   assert.match(activity, /WebViewCompat\.addWebMessageListener/);
   assert.match(activity, /if \(!isMainFrame\)/);
   assert.match(activity, /allowFileAccess = false/);
   assert.match(webBridge, /GrapesAndroid\.postMessage/);
-  assert.match(foodApp, /readAndroidHealthExport\(selectedDate\)/);
+  assert.match(mobileFood, /readAndroidHealthExport\(fromDate\)/);
 });
 
 test('az Android vissza gomb előbb a mobilfelület belső nézetét zárja be', async () => {
@@ -72,12 +72,10 @@ test('a Samsung-víz adapter opcionális, csak olvasási jogosultságot kér', a
   assert.match(stub, /override val available = false/);
 });
 
-test('a bridge saját rekordot kizár és stabil kliensazonosítóval ír', async () => {
+test('a bridge saját rekordot kizár és lapozva olvas', async () => {
   const source = await read(
     'app/src/main/java/hu/grapes/healthconnect/HealthConnectBridge.kt',
   );
-  assert.match(source, /TEST_CLIENT_RECORD_ID = "grapes-poc-nutrition-v1"/);
-  assert.match(source, /clientRecordVersion = 1/);
   assert.match(source, /filterNot \{ it\.sourcePackage == context\.packageName \}/);
   assert.match(source, /pageToken = token/g);
 });

@@ -13,7 +13,7 @@ import { createMobileFoodController } from './food/food-mobile.js'
 import { createYazioApiPanel } from './food/yazio-api-panel.js'
 import { registerFoodSharing, sendMealShare, sendRecipeShare } from './food/food-sharing-client.js'
 import { hydrateMobileIcons, mobileIconSvg } from './android-mobile-icons.js'
-import { getAndroidAppUpdate, installAndroidAppUpdate, isGrapesAndroidApp } from './android-bridge.js'
+import { getAndroidAppUpdate, installAndroidAppUpdate, isGrapesAndroidApp, openAndroidHealthConnectSettings } from './android-bridge.js'
 import {
   isMobileShareableBook,
   isTrustedPairingMessage,
@@ -113,6 +113,9 @@ function openSyncImport(provider) {
   const details = $('[data-sync-import-details]')
   const confirm = $('[data-sync-import-confirm]')
   const undo = $('[data-yazio-undo]')
+  const healthRange = $('[data-sync-health-range]')
+  const healthFrom = $('[data-sync-health-from]')
+  const healthSettings = $('[data-sync-health-settings]')
   const configs = {
     health: {
       title: 'Health Connect import', action: 'Egészségadatok beolvasása',
@@ -135,6 +138,14 @@ function openSyncImport(provider) {
   details.replaceChildren(...config.details.map(text => { const row = document.createElement('div'); row.className = 'sheet-result'; row.textContent = text; return row }))
   $('[data-sync-import-status]').textContent = ''
   undo.hidden = provider !== 'yazio'
+  healthRange.hidden = !['health', 'samsung'].includes(provider)
+  healthSettings.hidden = healthRange.hidden || !isGrapesAndroidApp()
+  if (!healthRange.hidden) {
+    const today = new Date(), from = new Date()
+    from.setFullYear(from.getFullYear() - 1)
+    const localDay = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+    healthFrom.max = localDay(today); healthFrom.value = localDay(from)
+  }
   openSheet($('[data-sync-import-sheet]'))
 }
 
@@ -147,10 +158,14 @@ async function runSyncImport() {
   }
   status.textContent = 'Kapcsolat előkészítése…'
   try {
+    const needsHealthDate = ['health', 'samsung'].includes(provider)
+    const fromDate = needsHealthDate ? $('[data-sync-health-from]').value : ''
+    if (needsHealthDate && !fromDate) throw new Error('Válassz kezdődátumot.')
     closeSheet(); await mobileFood.load()
-    if (provider === 'samsung') await mobileFood.openSamsungImport()
-    else await mobileFood.openHealthImport()
-    setSyncProviderStatus(provider === 'samsung' ? 'A Samsung Health-import előnézete megnyílt.' : 'A Health Connect-import előnézete megnyílt.')
+    const preview = provider === 'samsung'
+      ? await mobileFood.openSamsungImport({ fromDate })
+      : await mobileFood.openHealthImport({ fromDate })
+    if (preview) setSyncProviderStatus(`${provider === 'samsung' ? 'Samsung Health / Health Connect' : 'Health Connect'}: ${preview.counts.ready} új, ${preview.counts.duplicate} korábbi, ${preview.counts.invalid} hibás rekord.`)
   } catch (error) {
     setSyncProviderStatus(error?.message || 'Az import most nem indítható el.', 'error')
   }
@@ -905,6 +920,10 @@ const yazioApiPanel = createYazioApiPanel({ openSheet, closeSheet,
   getProfileKey: () => { const account = getGrapesAccount(); return account?.id || account?.email || 'local-food-profile' } })
 $('[data-yazio-import]').addEventListener('click', () => yazioApiPanel.open())
 $('[data-sync-import-confirm]').addEventListener('click', () => runSyncImport())
+$('[data-sync-health-settings]').addEventListener('click', async () => {
+  try { await openAndroidHealthConnectSettings(); $('[data-sync-import-status]').textContent = 'A Health Connect beállításai megnyíltak.' }
+  catch (error) { $('[data-sync-import-status]').textContent = error?.message || 'A Health Connect beállításai nem nyithatók meg.' }
+})
 $('[data-yazio-undo]').addEventListener('click', async () => {
   try {
     await mobileFood.undoYazio()

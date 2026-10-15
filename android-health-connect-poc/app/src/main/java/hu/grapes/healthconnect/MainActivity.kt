@@ -231,6 +231,7 @@ class MainActivity : ComponentActivity() {
                 val from = runCatching { LocalDate.parse(fromDate) }.getOrElse {
                     return sendError(requestId, "Érvénytelen kezdődátum.")
                 }
+                if (from.isAfter(LocalDate.now())) return sendError(requestId, "Jövőbeli kezdődátum nem választható.")
                 readHealthData(from, requestId)
             }
             "readSamsungHealthData" -> {
@@ -240,6 +241,7 @@ class MainActivity : ComponentActivity() {
                 }
                 readSamsungHealthData(from, requestId)
             }
+            "openHealthConnectSettings" -> openHealthConnectSettings(requestId)
             "authorizeGoogleDrive" -> authorizeGoogleDrive(
                 message.optJSONArray("args")?.optBoolean(0, false) == true,
                 requestId
@@ -359,7 +361,7 @@ class MainActivity : ComponentActivity() {
                 check(healthConnect.sdkStatus() == HealthConnectClient.SDK_AVAILABLE) {
                     "A Health Connect nem érhető el vagy frissítésre szorul."
                 }
-                val missing = healthConnect.requestedPermissions() - healthConnect.grantedPermissions()
+                val missing = healthConnect.requestedPermissions(from) - healthConnect.grantedPermissions()
                 if (missing.isNotEmpty()) {
                     check(allowPermissionRequest) { "A szükséges Health Connect-engedélyek nem lettek megadva." }
                     pendingHealthRequest = PendingHealthRequest(from, requestId)
@@ -384,6 +386,18 @@ class MainActivity : ComponentActivity() {
             }.onSuccess { sendResult(requestId, it) }
                 .onFailure { sendError(requestId, it.message ?: it.javaClass.simpleName) }
         }
+    }
+
+    private fun openHealthConnectSettings(requestId: String) {
+        val intents = listOf(
+            Intent("android.health.connect.action.HEALTH_CONNECT_SETTINGS"),
+            Intent("androidx.health.ACTION_HEALTH_CONNECT_SETTINGS").setPackage(HealthConnectBridge.PROVIDER_PACKAGE)
+        )
+        val opened = intents.any { intent ->
+            intent.resolveActivity(packageManager) != null && runCatching { startActivity(intent); true }.getOrDefault(false)
+        }
+        if (opened) sendResult(requestId, "{}")
+        else sendError(requestId, "A Health Connect beállításai nem nyithatók meg ezen a telefonon.")
     }
 
     private fun sendResult(requestId: String, payload: String) = dispatchResult(JSONObject().apply {
