@@ -32,6 +32,10 @@ export function readAndroidHealthExport(fromDate) {
   return nativeRequest('readHealthData', fromDate)
 }
 
+export function readAndroidSamsungHealthExport(fromDate) {
+  return nativeRequest('readSamsungHealthData', fromDate)
+}
+
 export async function authorizeAndroidGoogleDrive(fullRead = false) {
   const payload = await nativeRequest('authorizeGoogleDrive', Boolean(fullRead))
   return JSON.parse(payload)

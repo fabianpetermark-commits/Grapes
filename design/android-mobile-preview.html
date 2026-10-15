@@ -375,10 +375,9 @@
           <div class="section-head"><h2>Egészség és napló</h2></div>
           <div class="sync-providers">
             <div class="sync-provider"><span class="sync-provider__icon" data-mobile-icon="health"></span><div><strong>Health Connect</strong><span>Ételek és víz beolvasása a telefon egészségadataiból</span></div><button type="button" data-health-sync>Beolvasás</button></div>
-            <div class="sync-provider"><span class="sync-provider__icon" data-mobile-icon="samsung"></span><div><strong>Samsung Health</strong><span>Samsung-adatok átvétele Health Connecten keresztül</span></div><button type="button" data-samsung-sync-action>Beolvasás</button></div>
+            <div class="sync-provider"><span class="sync-provider__icon" data-mobile-icon="samsung"></span><div><strong>Samsung Health</strong><span>Vízadatok közvetlen beolvasása vagy Health Connecten át</span></div><button type="button" data-samsung-sync-action>Beolvasás</button></div>
             <div class="sync-provider"><span class="sync-provider__icon" data-mobile-icon="yazio"></span><div><strong>Yazio</strong><span>JSON-előzmények vagy nutrition_log.csv importálása</span></div><button type="button" data-yazio-import>Import</button></div>
           </div>
-          <button type="button" class="quick-action" data-yazio-undo>Utolsó YAZIO JSON-import visszavonása</button>
           <p class="sync-provider-status" data-yazio-status role="status" aria-live="polite"></p>
           <input type="file" accept=".json,application/json,.csv,text/csv" data-yazio-input hidden>
         </div>
@@ -606,6 +605,13 @@
         <div class="sheet-results" data-food-health-records></div>
         <button class="primary module-cta" type="button" data-food-health-confirm>Kijelöltek importálása</button>
         <p data-food-health-status role="status"></p>
+      </section>
+      <section class="bottom-sheet" data-sync-import-sheet role="dialog" aria-modal="true" aria-label="Adatimport" aria-hidden="true" inert>
+        <div class="sheet-handle"></div><h2 data-sync-import-title>Adatimport</h2><p data-sync-import-copy></p>
+        <div class="sheet-results" data-sync-import-details></div>
+        <button class="primary module-cta" type="button" data-sync-import-confirm>Folytatás</button>
+        <button class="quick-action" type="button" data-yazio-undo hidden><span>Utolsó YAZIO-import visszavonása</span></button>
+        <p data-sync-import-status role="status" aria-live="polite"></p>
       </section>
       <section class="bottom-sheet" data-food-recipe-edit-sheet role="dialog" aria-modal="true" aria-label="Recept szerkesztése" aria-hidden="true" inert>
         <div class="sheet-handle"></div><h2 data-food-recipe-editor-title>Új recept</h2><p>A receptből naplózható étel készül.</p>

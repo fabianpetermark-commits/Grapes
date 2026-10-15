@@ -36,6 +36,7 @@ import java.time.LocalDate
 
 class MainActivity : ComponentActivity() {
     private val healthConnect by lazy { HealthConnectBridge(this) }
+    private val samsungWaterBridge by lazy { SamsungWaterBridgeFactory.create(this) }
     private val googleAuthorization by lazy { Identity.getAuthorizationClient(this) }
     private val updateManager by lazy { AndroidUpdateManager(this) }
     private lateinit var webView: WebView
@@ -226,6 +227,13 @@ class MainActivity : ComponentActivity() {
                 }
                 readHealthData(from, requestId)
             }
+            "readSamsungHealthData" -> {
+                val fromDate = message.optJSONArray("args")?.optString(0).orEmpty()
+                val from = runCatching { LocalDate.parse(fromDate) }.getOrElse {
+                    return sendError(requestId, "Érvénytelen kezdődátum.")
+                }
+                readSamsungHealthData(from, requestId)
+            }
             "authorizeGoogleDrive" -> authorizeGoogleDrive(
                 message.optJSONArray("args")?.optBoolean(0, false) == true,
                 requestId
@@ -356,6 +364,19 @@ class MainActivity : ComponentActivity() {
             }.onSuccess { payload ->
                 if (payload != null) sendResult(requestId, payload)
             }.onFailure { sendError(requestId, it.message ?: it.javaClass.simpleName) }
+        }
+    }
+
+    private fun readSamsungHealthData(from: LocalDate, requestId: String) {
+        lifecycleScope.launch {
+            runCatching {
+                check(samsungWaterBridge.available) { samsungWaterBridge.availabilityMessage }
+                check(samsungWaterBridge.requestReadPermission(this@MainActivity)) {
+                    "A Samsung Health olvasási engedélyét nem kaptuk meg."
+                }
+                BridgeExport(java.time.Instant.now().toString(), samsungWaterBridge.readWater(from)).toJson()
+            }.onSuccess { sendResult(requestId, it) }
+                .onFailure { sendError(requestId, it.message ?: it.javaClass.simpleName) }
         }
     }
 

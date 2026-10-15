@@ -68,6 +68,8 @@ try {
   })
   const healthChooserPromise = page.waitForEvent('filechooser')
   await page.locator('[data-health-sync]').click()
+  await page.locator('[data-sync-import-sheet].is-open').waitFor({ state: 'visible' })
+  await page.locator('[data-sync-import-confirm]').click()
   const healthChooser = await healthChooserPromise
   await healthChooser.setFiles({
     name: 'health-export.json', mimeType: 'application/json', buffer: Buffer.from(healthExport),
@@ -158,6 +160,8 @@ try {
   await page.locator('[data-nav="sync"]').click()
   const retryChooserPromise = page.waitForEvent('filechooser')
   await page.locator('[data-health-sync]').click()
+  await page.locator('[data-sync-import-sheet].is-open').waitFor({ state: 'visible' })
+  await page.locator('[data-sync-import-confirm]').click()
   const retryChooser = await retryChooserPromise
   await retryChooser.setFiles({ name: 'health-export.json', mimeType: 'application/json', buffer: Buffer.from(healthExport) })
   await page.locator('[data-food-health-sheet].is-open').waitFor({ state: 'visible' })

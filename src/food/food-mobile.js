@@ -9,7 +9,7 @@ import { healthImportEntries, prepareHealthBridgeImport } from './food-health-im
 import { prepareYazioCsvImport, yazioImportEntries } from './yazio-import.js'
 import { getGrapesAccount, isGrapesDriveConnected, listGrapesProjects, loadGrapesProject, saveGrapesProject } from '../storage/grapes-drive.js'
 import { loadLocalProject, saveLocalProject } from '../storage/local-project-store.js'
-import { isGrapesAndroidApp, readAndroidHealthExport } from '../android-bridge.js'
+import { isGrapesAndroidApp, readAndroidHealthExport, readAndroidSamsungHealthExport } from '../android-bridge.js'
 import { mobileIconSvg } from '../android-mobile-icons.js'
 
 const MODULE = 'Ételnapló'
@@ -795,12 +795,26 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     } catch (error) { pendingHealthImport = null; showToast(error.message) }
   }
 
-  async function openHealthImport() {
+  async function openHealthImport({ provider = 'Health Connect', samsung = false } = {}) {
     closeSheets()
     if (!isGrapesAndroidApp()) return $('[data-food-health-input]').click()
-    showToast('Health-adatok olvasása…')
-    try { await prepareHealthImport(await readAndroidHealthExport(selectedDate)) }
-    catch (error) { showToast(error.message) }
+    showToast(`${provider}-adatok olvasása…`)
+    try {
+      await prepareHealthImport(await (samsung ? readAndroidSamsungHealthExport(selectedDate) : readAndroidHealthExport(selectedDate)))
+      return true
+    } catch (error) { showToast(error.message); throw error }
+  }
+
+  async function openSamsungImport() {
+    try {
+      return await openHealthImport({ provider: 'Samsung Health', samsung: true })
+    } catch (error) {
+      // The direct Samsung SDK is optional in the distributable APK. Samsung
+      // Health can still share the same records through Health Connect.
+      if (!/Samsung Health Data SDK|partner hozzáférés/i.test(String(error?.message || ''))) throw error
+      showToast('Közvetlen Samsung-kapcsolat nincs; Health Connectből olvasunk.')
+      return openHealthImport({ provider: 'Health Connect' })
+    }
   }
 
   async function selectHealthImport(event) {
@@ -1030,7 +1044,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   bind()
-  return { load, render, closeMeal, handleBack, isDetailOpen: () => Boolean(selectedMeal), flush, openHealthImport, importYazioCsv, importYazio, undoYazio }
+  return { load, render, closeMeal, handleBack, isDetailOpen: () => Boolean(selectedMeal), flush, openHealthImport, openSamsungImport, importYazioCsv, importYazio, undoYazio }
 }
 
 function escapeHtml(value) {

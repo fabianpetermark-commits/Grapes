@@ -54,6 +54,7 @@ let activePairingNonce = ''
 let mobileFood = null
 let activePage = 'home'
 let availableAppUpdate = null
+let activeSyncImport = ''
 const labels = {
   home: ['Grapes', 'Mobil munkaterület'], projects: ['Projektek', 'Helyi és Drive'],
   sync: ['Szinkron', 'Adatok és fiók'], more: ['Továbbiak', 'Beállítások'],
@@ -95,6 +96,63 @@ function closeSheet() {
     node.inert = true
   })
   sheetBackdrop.classList.remove('is-open')
+}
+
+function setSyncProviderStatus(message, state = '') {
+  const status = $('[data-yazio-status]')
+  if (!status) return
+  status.textContent = message
+  status.dataset.state = state
+}
+
+function openSyncImport(provider) {
+  activeSyncImport = provider
+  const title = $('[data-sync-import-title]')
+  const copy = $('[data-sync-import-copy]')
+  const details = $('[data-sync-import-details]')
+  const confirm = $('[data-sync-import-confirm]')
+  const undo = $('[data-yazio-undo]')
+  const configs = {
+    health: {
+      title: 'Health Connect import', action: 'Egészségadatok beolvasása',
+      copy: 'A Grapes csak az általad engedélyezett étel- és vízbejegyzéseket olvassa. Az Android szükség esetén engedélyt kér.',
+      details: ['Az import előtt átnézheted a találatokat.', 'A már korábban átvett rekordok nem kerülnek be kétszer.'],
+    },
+    samsung: {
+      title: 'Samsung Health import', action: 'Samsung-adatok beolvasása',
+      copy: 'A Grapes először a Samsung Health közvetlen vízadatait próbálja beolvasni. Ha a Samsung-adatkapcsolat nincs elérhető, a Health Connect megosztást kell bekapcsolnod a Samsung Healthben.',
+      details: ['Samsung Health: Beállítások → Health Connect → Adatmegosztás.', 'Az import előtt mindig megjelenik az előnézet.'],
+    },
+    yazio: {
+      title: 'YAZIO export importálása', action: 'Fájl kiválasztása',
+      copy: 'Válaszd ki a YAZIO-ból exportált JSON-fájlt vagy a nutrition_log.csv fájlt. A következő Android fájlválasztó a rendszer része; a Grapes az import előtt ellenőrzi a fájlt.',
+      details: ['JSON esetén előnézetet kapsz, és csak jóváhagyás után változik a napló.', 'Legfeljebb 40 MB-os export importálható.'],
+    },
+  }
+  const config = configs[provider]
+  title.textContent = config.title; copy.textContent = config.copy; confirm.textContent = config.action
+  details.replaceChildren(...config.details.map(text => { const row = document.createElement('div'); row.className = 'sheet-result'; row.textContent = text; return row }))
+  $('[data-sync-import-status]').textContent = ''
+  undo.hidden = provider !== 'yazio'
+  openSheet($('[data-sync-import-sheet]'))
+}
+
+async function runSyncImport() {
+  const provider = activeSyncImport
+  const status = $('[data-sync-import-status]')
+  if (!provider) return
+  if (provider === 'yazio') {
+    closeSheet(); setSyncProviderStatus('Válaszd ki a YAZIO-exportot a fájlválasztóban.'); $('[data-yazio-input]').click(); return
+  }
+  status.textContent = 'Kapcsolat előkészítése…'
+  try {
+    closeSheet(); await mobileFood.load()
+    if (provider === 'samsung') await mobileFood.openSamsungImport()
+    else await mobileFood.openHealthImport()
+    setSyncProviderStatus(provider === 'samsung' ? 'A Samsung Health-import előnézete megnyílt.' : 'A Health Connect-import előnézete megnyílt.')
+  } catch (error) {
+    setSyncProviderStatus(error?.message || 'Az import most nem indítható el.', 'error')
+  }
 }
 
 function openSheet(node) {
@@ -839,16 +897,17 @@ $('[data-water-open]').addEventListener('click', event => { if (!event.target.cl
 $('[data-water-open]').addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') showPage('water') })
 $$('[data-water-add]').forEach(button => button.addEventListener('click', event => { event.stopPropagation(); addWater(Number(button.dataset.waterAdd)) }))
 $('[data-action="water-goal"]').addEventListener('click', changeWaterGoal)
-$('[data-health-sync]').addEventListener('click', async () => {
-  await mobileFood.load()
-  mobileFood.openHealthImport()
+$('[data-health-sync]').addEventListener('click', () => openSyncImport('health'))
+$$('[data-samsung-sync-action]').forEach(button => button.addEventListener('click', () => openSyncImport('samsung')))
+$('[data-yazio-import]').addEventListener('click', () => openSyncImport('yazio'))
+$('[data-sync-import-confirm]').addEventListener('click', () => runSyncImport())
+$('[data-yazio-undo]').addEventListener('click', async () => {
+  try {
+    await mobileFood.undoYazio()
+    closeSheet()
+    setSyncProviderStatus('Az utolsó YAZIO-import visszavonva.')
+  } catch (error) { showToast(error.message) }
 })
-$$('[data-samsung-sync-action]').forEach(button => button.addEventListener('click', async () => {
-  await mobileFood.load()
-  mobileFood.openHealthImport()
-}))
-$('[data-yazio-import]').addEventListener('click', () => $('[data-yazio-input]').click())
-$('[data-yazio-undo]').addEventListener('click', () => mobileFood.undoYazio().catch(error => showToast(error.message)))
 $('[data-yazio-input]').addEventListener('change', async event => {
   const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''
   if (!file) return
