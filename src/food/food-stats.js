@@ -13,7 +13,7 @@ export function buildDailyNutritionSeries(entries, profileId) {
   const groups = new Map()
   for (const entry of entries) {
     if (entry.profileId !== profileId) continue
-    const date = localDateKey(entry.occurredAt)
+    const date = entry.origin?.sourceDate || localDateKey(entry.occurredAt)
     if (!groups.has(date)) groups.set(date, [])
     groups.get(date).push(entry)
   }
