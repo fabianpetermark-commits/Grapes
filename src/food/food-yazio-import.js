@@ -106,8 +106,6 @@ function entryForRow(row, profileId, externalKey, sourceRecordId, sourcePayload)
   const actualAmount = amount === null ? 1 : amount
   const name = text(row.product) || 'Névtelen YAZIO-étel'
   const nutrients = nutrientsFromRow(row)
-  if (Object.values(nutrients).every(value => value === null || (typeof value === 'object' && !Object.keys(value).length)))
-    throw new Error('Nem áll rendelkezésre importálható tápanyag.')
   return normalizeDiaryEntry({
     id: createFoodId('entry'), profileId,
     occurredAt, mealType: mealMap[text(row.meal).toLowerCase()] || 'snack',
@@ -124,9 +122,10 @@ function entryForRow(row, profileId, externalKey, sourceRecordId, sourcePayload)
 function similar(a, b) {
   if (a.profileId !== b.profileId) return false
   if (a.occurredAt !== b.occurredAt) return false
-  if (a.snapshot?.name?.toLocaleLowerCase() !== b.snapshot?.name?.toLocaleLowerCase()) return false
+  const sameName = a.snapshot?.name?.toLocaleLowerCase() === b.snapshot?.name?.toLocaleLowerCase()
   const left = a.snapshot?.nutrients || {}, right = b.snapshot?.nutrients || {}
-  return ['energyKcal', 'protein', 'carbohydrate', 'fat'].every(key => left[key] == null || right[key] == null || Math.abs(left[key] - right[key]) < 0.1)
+  const sameMacros = ['energyKcal', 'protein', 'carbohydrate', 'fat'].every(key => left[key] == null || right[key] == null || Math.abs(left[key] - right[key]) < 0.1)
+  return sameName || ((b.externalKey || '').startsWith('healthconnect:') && sameMacros)
 }
 function dailyWarnings(data, records) {
   const rowsByDate = new Map()
@@ -154,7 +153,7 @@ export function prepareYazioImport(source, { profileId, existingEntries = [] } =
   if (!text(profileId)) throw new Error('Import előtt válassz célprofilt.')
   const parsed = typeof source === 'string' ? parseYazioExport(source) : source
   const { data, meta } = parsed
-  const seenKeys = new Set(), occurrence = new Map()
+  const seenKeys = new Map(), occurrence = new Map()
   const existing = existingEntries.filter(item => item.profileId === profileId)
   const byExternal = new Map(existing.map(item => [item.externalKey, item]).filter(([key]) => key))
   const records = data.nutrition_log.map((record, index) => {
@@ -169,9 +168,10 @@ export function prepareYazioImport(source, { profileId, existingEntries = [] } =
       const entry = entryForRow(record, profileId, externalKey, stableId, sourcePayload)
       const old = byExternal.get(externalKey)
       let status = seenKeys.has(externalKey) || old ? 'duplicate' : 'ready'
-      if (old && canonical(old.origin?.sourcePayload?.log) !== canonical(record)) status = 'uncertain'
+      if (old && (!old.origin?.sourcePayload?.log || canonical(old.origin.sourcePayload.log) !== canonical(record))) status = 'uncertain'
+      if (seenKeys.has(externalKey) && seenKeys.get(externalKey) !== canonical(record)) status = 'uncertain'
       if (status === 'ready' && existing.some(item => similar(item, entry))) status = 'uncertain'
-      seenKeys.add(externalKey)
+      seenKeys.set(externalKey, canonical(record))
       return { index, status, entry, record, error: '' }
     } catch (error) { return { index, status: 'invalid', entry: null, record, error: error.message } }
   })
