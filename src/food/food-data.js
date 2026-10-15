@@ -227,6 +227,16 @@ export function normalizeDiaryEntry(value = {}, foodValue = null) {
       nutrients: normalizeNutrients(snapshot.nutrients),
     },
     externalKey: cleanText(value.externalKey),
+    ...(value.origin && typeof value.origin === 'object' ? { origin: {
+      profileId: requiredId(value.origin.profileId || value.profileId, 'Forrás profilazonosító'),
+      source: cleanText(value.origin.source), sourceRecordId: cleanText(value.origin.sourceRecordId),
+      externalKey: cleanText(value.origin.externalKey || value.externalKey),
+      importBatchId: cleanText(value.origin.importBatchId), sourceDate: cleanText(value.origin.sourceDate),
+      sourceTimestamp: cleanText(value.origin.sourceTimestamp),
+      sourcePayload: value.origin.sourcePayload === undefined ? null : value.origin.sourcePayload,
+      importedAt: cleanText(value.origin.importedAt),
+      schemaVersion: Number(value.origin.schemaVersion) || 1,
+    } } : {}),
     createdAt: isoDateTime(value.createdAt || new Date().toISOString(), 'Létrehozási idő'),
     updatedAt: isoDateTime(value.updatedAt || value.createdAt || new Date().toISOString(), 'Módosítási idő'),
   }
@@ -260,7 +270,7 @@ export function localDateKey(value) {
 
 export function createEmptyFoodProject(profile) {
   const normalizedProfile = normalizeProfile(profile)
-  return { version: FOOD_PROJECT_VERSION, profile: normalizedProfile, targets: [{ id: createFoodId('target'), effectiveFrom: new Date().toISOString().slice(0, 10), values: normalizeTargets({}) }], customFoods: [], recipes: [], diaryEntries: [], favorites: [], recentFoods: [], recipeLibraries: [], syncState: {}, settings: {} }
+  return { version: FOOD_PROJECT_VERSION, profile: normalizedProfile, targets: [{ id: createFoodId('target'), effectiveFrom: new Date().toISOString().slice(0, 10), values: normalizeTargets({}) }], customFoods: [], recipes: [], diaryEntries: [], favorites: [], recentFoods: [], recipeLibraries: [], importBatches: [], syncState: {}, settings: {} }
 }
 
 export function normalizeFoodProject(value = {}, expectedProfileId = '') {
@@ -279,7 +289,7 @@ export function normalizeFoodProject(value = {}, expectedProfileId = '') {
   if (recipes.some(item => item.variantOfRecipeId && (item.variantOfRecipeId === item.id || !recipeIds.has(item.variantOfRecipeId)))) throw new Error('Érvénytelen receptvariáns-kapcsolat a mentésben.')
   if (new Set(diaryEntries.map(item => item.id)).size !== diaryEntries.length) throw new Error('Ismétlődő naplóazonosító a mentésben.')
   const targets = (value.targets || []).map(item => ({ id: requiredId(item.id || createFoodId('target')), effectiveFrom: /^\d{4}-\d{2}-\d{2}$/.test(item.effectiveFrom) ? item.effectiveFrom : new Date().toISOString().slice(0, 10), values: normalizeTargets(item.values) }))
-  return { version: FOOD_PROJECT_VERSION, profile, targets: targets.length ? targets : createEmptyFoodProject(profile).targets, customFoods, recipes, diaryEntries, favorites: [...new Set(value.favorites || [])], recentFoods: [...new Set(value.recentFoods || [])].slice(0, 50), recipeLibraries: Array.isArray(value.recipeLibraries) ? value.recipeLibraries : [], syncState: value.syncState || {}, settings: value.settings || {} }
+  return { version: FOOD_PROJECT_VERSION, profile, targets: targets.length ? targets : createEmptyFoodProject(profile).targets, customFoods, recipes, diaryEntries, favorites: [...new Set(value.favorites || [])], recentFoods: [...new Set(value.recentFoods || [])].slice(0, 50), recipeLibraries: Array.isArray(value.recipeLibraries) ? value.recipeLibraries : [], importBatches: Array.isArray(value.importBatches) ? value.importBatches : [], syncState: value.syncState || {}, settings: value.settings || {} }
 }
 
 export function currentTargets(project, date = new Date().toISOString().slice(0, 10)) {
