@@ -68,6 +68,7 @@ try {
   await page.locator('[data-yazio-cancel]').click()
   page.once('dialog', dialog => dialog.accept())
   await page.locator('[data-yazio-import]').click()
+  await page.locator('[data-yazio-api-files]').click()
   await page.locator('[data-sync-import-sheet].is-open').waitFor()
   await page.locator('[data-yazio-undo]').click()
   await page.waitForFunction(async () => {

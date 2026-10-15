@@ -10,6 +10,7 @@ import { listLocalProjects } from './storage/local-project-store.js'
 import { listMobileEbooks, saveMobileReadingProgress, uploadMobileEbook } from './ebook-mobile-library.js'
 import { isMobileReadableEpub, normalizedReadingProgress, openMobileEpub } from './ebook-mobile-reader.js'
 import { createMobileFoodController } from './food/food-mobile.js'
+import { createYazioApiPanel } from './food/yazio-api-panel.js'
 import { registerFoodSharing, sendMealShare, sendRecipeShare } from './food/food-sharing-client.js'
 import { hydrateMobileIcons, mobileIconSvg } from './android-mobile-icons.js'
 import { getAndroidAppUpdate, installAndroidAppUpdate, isGrapesAndroidApp } from './android-bridge.js'
@@ -899,7 +900,10 @@ $$('[data-water-add]').forEach(button => button.addEventListener('click', event 
 $('[data-action="water-goal"]').addEventListener('click', changeWaterGoal)
 $('[data-health-sync]').addEventListener('click', () => openSyncImport('health'))
 $$('[data-samsung-sync-action]').forEach(button => button.addEventListener('click', () => openSyncImport('samsung')))
-$('[data-yazio-import]').addEventListener('click', () => openSyncImport('yazio'))
+const yazioApiPanel = createYazioApiPanel({ openSheet, closeSheet,
+  importBundle: source => mobileFood.importYazio(source), openFileImport: () => openSyncImport('yazio'),
+  getProfileKey: () => { const account = getGrapesAccount(); return account?.id || account?.email || 'local-food-profile' } })
+$('[data-yazio-import]').addEventListener('click', () => yazioApiPanel.open())
 $('[data-sync-import-confirm]').addEventListener('click', () => runSyncImport())
 $('[data-yazio-undo]').addEventListener('click', async () => {
   try {

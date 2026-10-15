@@ -36,6 +36,7 @@ import java.time.LocalDate
 
 class MainActivity : ComponentActivity() {
     private val healthConnect by lazy { HealthConnectBridge(this) }
+    private val yazioApi = YazioApi()
     private val samsungWaterBridge by lazy { SamsungWaterBridgeFactory.create(this) }
     private val googleAuthorization by lazy { Identity.getAuthorizationClient(this) }
     private val updateManager by lazy { AndroidUpdateManager(this) }
@@ -220,6 +221,11 @@ class MainActivity : ComponentActivity() {
         val requestId = message.optString("requestId")
         if (requestId.isBlank()) return
         when (message.optString("method")) {
+            "yazio" -> lifecycleScope.launch {
+                runCatching { yazioApi.execute(message.optJSONArray("args") ?: JSONArray()) }
+                    .onSuccess { sendResult(requestId, it) }
+                    .onFailure { sendError(requestId, it.message ?: "A YAZIO-kapcsolat nem sikerült.") }
+            }
             "readHealthData" -> {
                 val fromDate = message.optJSONArray("args")?.optString(0).orEmpty()
                 val from = runCatching { LocalDate.parse(fromDate) }.getOrElse {
