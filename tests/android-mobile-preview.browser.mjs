@@ -49,6 +49,27 @@ try {
   await page.locator('[data-page="sync"]').waitFor({ state: 'visible' })
   assert.match(await page.locator('[data-sync-local-count]').textContent(), /\d+ projekt/)
   assert.equal(await page.locator('[data-sync-drive-count]').textContent(), 'Nincs csatlakoztatva')
+  assert.equal(await page.locator('[data-health-sync]').count(), 1)
+  assert.equal(await page.locator('[data-samsung-sync-action]').count(), 1)
+  assert.equal(await page.locator('[data-yazio-import]').count(), 1)
+  const healthChooserPromise = page.waitForEvent('filechooser')
+  await page.locator('[data-health-sync]').click()
+  const healthChooser = await healthChooserPromise
+  await healthChooser.setFiles({
+    name: 'health-export.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({
+      schemaVersion: 1, producer: 'hu.grapes.healthconnect', generatedAt: '2026-10-15T08:00:00.000Z', records: [
+        { type: 'nutrition', externalId: 'healthconnect:com.samsung.android.app.healthdata:sync-n1', sourcePackage: 'com.samsung.android.app.healthdata', startTime: '2026-10-15T06:10:00.000Z', endTime: '2026-10-15T06:20:00.000Z', name: 'Samsung reggeli', mealType: 'breakfast', energyKcal: 320, proteinGrams: 18, carbohydrateGrams: 42, fatGrams: 9, volumeMilliliters: null },
+        { type: 'hydration', externalId: 'healthconnect:com.samsung.android.app.healthdata:sync-h1', sourcePackage: 'com.samsung.android.app.healthdata', startTime: '2026-10-15T07:00:00.000Z', endTime: '2026-10-15T07:00:00.000Z', name: 'Víz', mealType: null, energyKcal: null, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, volumeMilliliters: 300 },
+      ],
+    })),
+  })
+  await page.locator('[data-food-health-sheet].is-open').waitFor({ state: 'visible' })
+  await page.locator('[data-food-health-confirm]').click()
+  page.once('dialog', dialog => dialog.accept())
+  await page.locator('[data-yazio-input]').setInputFiles({
+    name: 'nutrition_log.csv', mimeType: 'text/csv', buffer: Buffer.from('Date,Time,Meal,Product,Amount,Unit,Portions,Calories/g,Calories total,Protein/g,Fat/g,Carbs/g,Protein total,Fat total,Carbs total\n2026-10-15,2026-10-15 10:30:00,snacks,Alma,120,gram,1,0.5,60,0.002,0.001,0.14,0.2,0.1,16.8'),
+  })
+  await page.waitForFunction(() => document.querySelector('[data-yazio-status]')?.textContent.includes('1 étkezés importálva'))
   await page.locator('[data-sync-refresh]').click()
   await page.waitForFunction(() => !document.querySelector('[data-sync-last-check]')?.textContent.includes('Még nem'))
   assert.doesNotMatch(await page.locator('[data-sync-last-check]').textContent(), /Még nem/)
@@ -116,10 +137,8 @@ try {
   await page.locator('[data-water-open]').click()
   await page.locator('[data-page="water"]').waitFor({ state: 'visible' })
   await page.locator('[data-page="water"] [data-water-add="250"]').click()
-  assert.equal((await page.locator('[data-water-total]').textContent()).replace(/\s/g, ''), '250ml')
-  assert.match(await page.locator('[data-water-remaining]').textContent(), /1.?750 ml/)
-  await page.locator('[data-samsung-connect]').click()
-  assert.match(await page.locator('[data-samsung-status]').textContent(), /Bemutató mód/)
+  assert.equal((await page.locator('[data-water-total]').textContent()).replace(/\s/g, ''), '550ml')
+  assert.match(await page.locator('[data-water-remaining]').textContent(), /1.?450 ml/)
   await page.screenshot({ path: 'mobile-water.png', fullPage: true })
 
   await page.locator('[data-nav="home"]').click()

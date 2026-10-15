@@ -661,9 +661,33 @@ function currentWaterDay() {
 function saveWaterDay(day) {
   const { store, key } = currentWaterDay()
   store[key] = day
+  saveWaterStore(store)
+}
+
+function saveWaterStore(store) {
   const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 60)
   for (const savedKey of Object.keys(store)) if (savedKey < dateKey(cutoff)) delete store[savedKey]
   localStorage.setItem(WATER_STORE_KEY, JSON.stringify(store))
+}
+
+function importHydrationEntries(entries = []) {
+  const store = loadWaterStore()
+  const existingKeys = new Set(Object.values(store).flatMap(day => day?.entries || []).map(entry => entry.externalKey).filter(Boolean))
+  let imported = 0
+  for (const entry of entries) {
+    if (!entry?.externalKey || existingKeys.has(entry.externalKey)) continue
+    const at = new Date(entry.occurredAt)
+    if (Number.isNaN(at.getTime())) continue
+    const key = dateKey(at)
+    const day = store[key] && typeof store[key] === 'object' ? store[key] : { goal: 2000, entries: [] }
+    day.entries = Array.isArray(day.entries) ? day.entries : []
+    day.entries.push({ id: crypto.randomUUID(), amount: Number(entry.amount), at: at.toISOString(), externalKey: entry.externalKey, source: entry.snapshot?.source?.attribution || 'Health Connect' })
+    store[key] = day
+    existingKeys.add(entry.externalKey)
+    imported += 1
+  }
+  if (imported) { saveWaterStore(store); renderWater() }
+  return imported
 }
 
 function formatWater(amount) {
@@ -808,12 +832,27 @@ $('[data-water-open]').addEventListener('click', event => { if (!event.target.cl
 $('[data-water-open]').addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') showPage('water') })
 $$('[data-water-add]').forEach(button => button.addEventListener('click', event => { event.stopPropagation(); addWater(Number(button.dataset.waterAdd)) }))
 $('[data-action="water-goal"]').addEventListener('click', changeWaterGoal)
-$('[data-samsung-connect]').addEventListener('click', event => {
-  const card = $('[data-samsung-sync]')
-  const connected = card.classList.toggle('is-connected')
-  $('[data-samsung-status]').textContent = connected ? 'Bemutató mód · az SDK-kapcsolat még tesztelésre vár' : 'Nincs összekapcsolva'
-  event.currentTarget.textContent = connected ? 'Leválasztás' : 'Kapcsolódás'
-  showToast(connected ? 'A Samsung Health felület bemutató módba kapcsolt.' : 'Samsung Health leválasztva.')
+$('[data-health-sync]').addEventListener('click', async () => {
+  await mobileFood.load()
+  mobileFood.openHealthImport()
+})
+$$('[data-samsung-sync-action]').forEach(button => button.addEventListener('click', async () => {
+  await mobileFood.load()
+  mobileFood.openHealthImport()
+}))
+$('[data-yazio-import]').addEventListener('click', () => $('[data-yazio-input]').click())
+$('[data-yazio-input]').addEventListener('change', async event => {
+  const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''
+  if (!file) return
+  const status = $('[data-yazio-status]'); status.textContent = 'Yazio-adatok ellenőrzése…'
+  try {
+    const result = await mobileFood.importYazioCsv(await file.text())
+    status.textContent = result.cancelled
+      ? 'Az import megszakítva.'
+      : result.imported
+        ? `${result.imported} étkezés importálva.${result.duplicate ? ` ${result.duplicate} korábbi sor kihagyva.` : ''}`
+        : `Nincs új étkezés. ${result.duplicate} korábbi sor kihagyva, ${result.invalid} hibás sor.`
+  } catch (error) { status.textContent = error?.message || 'A Yazio-import nem sikerült.' }
 })
 $('[data-project-search]').addEventListener('input', event => {
   const query = event.currentTarget.value.trim().toLocaleLowerCase('hu-HU')
@@ -849,6 +888,7 @@ mobileFood = createMobileFoodController({
   openLegacy: (module, view, itemId, action) => openModule(module, null, view, itemId, action),
   sendMeal: sendMealShare,
   sendRecipe: sendRecipeShare,
+  onHydrationImport: importHydrationEntries,
 })
 hydrateMobileIcons()
 refreshUpdateInbox()

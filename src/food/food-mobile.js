@@ -3,6 +3,7 @@ import { acceptMealShare, acceptRecipeShare, rememberSharingContact } from './fo
 import { listFoodShares, loadFoodShare, setFoodShareState } from './food-sharing-client.js'
 import { lookupFatSecretProduct, lookupOpenFoodFactsProduct, searchFatSecretProducts, searchOpenFoodFactsProducts } from './food-api.js'
 import { healthImportEntries, prepareHealthBridgeImport } from './food-health-import.js'
+import { prepareYazioCsvImport, yazioImportEntries } from './yazio-import.js'
 import { getGrapesAccount, isGrapesDriveConnected, listGrapesProjects, loadGrapesProject, saveGrapesProject } from '../storage/grapes-drive.js'
 import { loadLocalProject, saveLocalProject } from '../storage/local-project-store.js'
 import { isGrapesAndroidApp, readAndroidHealthExport } from '../android-bridge.js'
@@ -20,7 +21,7 @@ const localDate = (date = new Date()) => new Date(date.getTime() - date.getTimez
 const number = (value, digits = 0) => new Intl.NumberFormat('hu-HU', { maximumFractionDigits: digits }).format(Number(value) || 0)
 const nutrient = (value, digits = 0, suffix = '') => value === null || value === undefined ? '—' : `${number(value, digits)}${suffix}`
 
-export function createMobileFoodController({ root = document, fab, addSheet, backdrop, showToast, openLegacy, sendMeal = null, sendRecipe = null }) {
+export function createMobileFoodController({ root = document, fab, addSheet, backdrop, showToast, openLegacy, sendMeal = null, sendRecipe = null, onHydrationImport = null }) {
   let project = null
   let profile = null
   let driveFileId = null
@@ -178,7 +179,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     }
   }
 
-  function selectedEntries() { return entriesForLocalDay(project.diaryEntries, selectedDate, profile.id) }
+  function selectedEntries() { return entriesForLocalDay(project.diaryEntries, selectedDate, profile.id).filter(entry => entry.snapshot?.category !== 'Folyadék') }
   function setBar(selector, value, target) { $(selector).style.width = `${target ? Math.min(100, (Number(value) || 0) / target * 100) : 0}%` }
 
   function renderOverview() {
@@ -758,8 +759,22 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const entries = healthImportEntries(pendingHealthImport, selected).filter(entry => !existingKeys.has(entry.externalKey))
     if (!entries.length) { $('[data-food-health-status]').textContent = 'Nincs új, kijelölt Health-rekord.'; return }
     project.diaryEntries = [...project.diaryEntries, ...entries]
+    const hydration = entries.filter(entry => entry.snapshot?.category === 'Folyadék')
+    if (hydration.length) onHydrationImport?.(hydration)
     selectedDate = localDate(new Date([...entries].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))[0].occurredAt))
     pendingHealthImport = null; scheduleSave(); closeSheets(); render(); showToast(`${entries.length} Health-rekord importálva.`)
+  }
+
+  async function importYazioCsv(source) {
+    await load()
+    const preview = prepareYazioCsvImport(source, { profileId: profile.id, existingEntries: project.diaryEntries })
+    const entries = yazioImportEntries(preview)
+    if (!entries.length) return { ...preview.counts, imported: 0 }
+    if (!window.confirm(`${entries.length} új Yazio-étkezést importálunk az Ételnaplóba. Folytatod?`)) return { ...preview.counts, imported: 0, cancelled: true }
+    project.diaryEntries = [...project.diaryEntries, ...entries]
+    selectedDate = localDate(new Date([...entries].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))[0].occurredAt))
+    scheduleSave(); render()
+    return { ...preview.counts, imported: entries.length }
   }
 
   function handleMenuAction(action) {
@@ -935,7 +950,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   bind()
-  return { load, render, closeMeal, handleBack, isDetailOpen: () => Boolean(selectedMeal), flush }
+  return { load, render, closeMeal, handleBack, isDetailOpen: () => Boolean(selectedMeal), flush, openHealthImport, importYazioCsv }
 }
 
 function escapeHtml(value) {

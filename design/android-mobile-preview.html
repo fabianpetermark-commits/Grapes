@@ -105,6 +105,13 @@
     .sync-actions button { min-height: 48px; border-radius: 14px; cursor: pointer; font-size: 11px; font-weight: 800; }
     .sync-actions button:first-child { color: var(--text); background: var(--raised); border: 1px solid var(--line); }
     .sync-actions button:last-child { color: #041014; background: var(--accent); border: 0; }
+    .sync-providers { display: grid; gap: 9px; margin-top: 10px; }
+    .sync-provider { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; gap: 12px; align-items: center; min-height: 76px; padding: 10px 10px 10px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 17px; }
+    .sync-provider__icon { display: grid; place-items: center; width: 46px; height: 46px; color: var(--accent); background: var(--accent-soft); border-radius: 14px; font-size: 13px; font-weight: 900; }
+    .sync-provider strong, .sync-provider span { display: block; }
+    .sync-provider span { margin-top: 4px; color: var(--muted); font-size: 11px; line-height: 1.35; }
+    .sync-provider button { min-height: 38px; padding: 0 12px; color: var(--accent); background: transparent; border: 1px solid rgb(59 220 242 / 35%); border-radius: 12px; cursor: pointer; font-size: 10px; font-weight: 850; }
+    .sync-provider-status { min-height: 18px; margin: 7px 4px 0; color: var(--muted); font-size: 11px; }
     .setting { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; gap: 12px; align-items: center; min-height: 66px; padding: 10px 6px; border-bottom: 1px solid var(--line); }
     button.setting { width: 100%; color: inherit; text-align: left; background: transparent; border: 0; border-bottom: 1px solid var(--line); cursor: pointer; }
     .setting__icon { display: grid; place-items: center; width: 42px; height: 42px; background: var(--raised); border-radius: 13px; }
@@ -203,12 +210,6 @@
     .water-log strong, .water-log span { display: block; }
     .water-log span { margin-top: 3px; color: var(--muted); font-size: 10px; }
     .water-log b { color: #9edfff; font-size: 12px; }
-    .health-sync { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 13px; margin-top: 12px; background: linear-gradient(145deg, rgb(71 216 155 / 8%), var(--surface)); border: 1px solid rgb(71 216 155 / 24%); border-radius: 17px; }
-    .health-sync__icon { display: grid; place-items: center; width: 44px; height: 44px; color: #70e5b3; background: rgb(71 216 155 / 12%); border-radius: 14px; font-size: 18px; }
-    .health-sync strong, .health-sync span { display: block; }
-    .health-sync span { margin-top: 3px; color: var(--muted); font-size: 10px; }
-    .health-sync__button { min-height: 38px; padding: 0 11px; color: #75e8b7; background: rgb(71 216 155 / 11%); border: 1px solid rgb(71 216 155 / 25%); border-radius: 12px; cursor: pointer; font-size: 10px; font-weight: 800; }
-    .health-sync.is-connected .health-sync__button { color: var(--text); background: var(--raised); border-color: var(--line); }
     .book-continue { display: grid; grid-template-columns: 82px 1fr; gap: 16px; padding: 15px; background: linear-gradient(145deg, rgb(77 143 255 / 15%), var(--surface)); border: 1px solid rgb(77 143 255 / 28%); border-radius: 22px; }
     .book-cover { position: relative; display: grid; align-content: end; width: 82px; height: 116px; padding: 9px; overflow: hidden; background: linear-gradient(145deg, #7357ff, #224a86 62%, #0c1824); border-radius: 10px 15px 15px 10px; box-shadow: 0 12px 30px rgb(0 0 0 / 28%); }
     .book-cover::before { position: absolute; inset: 0 auto 0 7px; width: 1px; content: ""; background: rgb(255 255 255 / 22%); }
@@ -365,6 +366,14 @@
           <div class="setting"><div class="setting__icon">↻</div><div><strong>Automatikus helyi mentés</strong><span>Bekapcsolva · internet nélkül is működik</span></div><span>✓</span></div>
           <div class="setting"><div class="setting__icon">◷</div><div><strong>Utolsó ellenőrzés</strong><span data-sync-last-check>Még nem ellenőrizve</span></div><span>›</span></div>
           <div class="sync-actions"><button type="button" data-sync-projects>Projektek</button><button type="button" data-sync-refresh>Frissítés</button></div>
+          <div class="section-head"><h2>Egészség és napló</h2></div>
+          <div class="sync-providers">
+            <div class="sync-provider"><span class="sync-provider__icon">HC</span><div><strong>Health Connect</strong><span>Ételek és víz beolvasása a telefon egészségadataiból</span></div><button type="button" data-health-sync>Beolvasás</button></div>
+            <div class="sync-provider"><span class="sync-provider__icon">S</span><div><strong>Samsung Health</strong><span>Samsung-adatok átvétele Health Connecten keresztül</span></div><button type="button" data-samsung-sync-action>Beolvasás</button></div>
+            <div class="sync-provider"><span class="sync-provider__icon">Y</span><div><strong>Yazio</strong><span>A Yazio Exporter nutrition_log.csv fájljának importálása</span></div><button type="button" data-yazio-import>Import</button></div>
+          </div>
+          <p class="sync-provider-status" data-yazio-status role="status" aria-live="polite"></p>
+          <input type="file" accept=".csv,text/csv" data-yazio-input hidden>
         </div>
 
         <div class="content" data-page="more" hidden>
@@ -421,7 +430,6 @@
               <button class="water-amount" data-water-add="500"><span>＋</span>500 ml</button>
             </div>
           </section>
-          <section class="health-sync" data-samsung-sync><span class="health-sync__icon">S</span><div><strong>Samsung Health</strong><span data-samsung-status>Nincs összekapcsolva</span></div><button class="health-sync__button" data-samsung-connect>Kapcsolódás</button></section>
           <div class="section-head"><h2>Heti ritmus</h2><button data-action="water-goal">Cél: 2 l</button></div>
           <section class="week-card"><div class="week-head"><strong>Átlagosan 1,8 liter</strong><span>5 nap teljesítve</span></div><div class="week-bars">
             <div class="week-day"><i style="height:72%"></i><span>Cs</span></div><div class="week-day"><i style="height:88%"></i><span>P</span></div><div class="week-day"><i style="height:100%"></i><span>Szo</span></div><div class="week-day"><i style="height:81%"></i><span>V</span></div><div class="week-day"><i style="height:94%"></i><span>H</span></div><div class="week-day"><i style="height:100%"></i><span>K</span></div><div class="week-day is-today"><i data-water-today-bar style="height:62.5%"></i><span>Ma</span></div>
@@ -569,7 +577,7 @@
       </section>
       <section class="bottom-sheet" data-food-menu-sheet role="dialog" aria-modal="true" aria-label="Ételnapló menü" aria-hidden="true" inert>
         <div class="sheet-handle"></div><h2>Ételnapló menü</h2><p>Elemzés, célok és adatkezelés.</p>
-        <div class="sheet-results"><button class="sheet-result" type="button" data-food-menu="stats"><strong>Statisztika</strong><span>Trendek és átlagok</span></button><button class="sheet-result" type="button" data-food-menu="targets"><strong>Napi célok</strong><span>Kalória és makrók</span></button><button class="sheet-result" type="button" data-food-menu="health"><strong>Health import</strong><span>Health Connect / Samsung Health</span></button><button class="sheet-result" type="button" data-food-menu="backup-export"><strong>Biztonsági mentés exportja</strong><span>JSON-fájl letöltése</span></button><button class="sheet-result" type="button" data-food-menu="backup-import"><strong>Biztonsági mentés visszaállítása</strong><span>Korábbi JSON-fájl kiválasztása</span></button></div>
+        <div class="sheet-results"><button class="sheet-result" type="button" data-food-menu="stats"><strong>Statisztika</strong><span>Trendek és átlagok</span></button><button class="sheet-result" type="button" data-food-menu="targets"><strong>Napi célok</strong><span>Kalória és makrók</span></button><button class="sheet-result" type="button" data-food-menu="backup-export"><strong>Biztonsági mentés exportja</strong><span>JSON-fájl letöltése</span></button><button class="sheet-result" type="button" data-food-menu="backup-import"><strong>Biztonsági mentés visszaállítása</strong><span>Korábbi JSON-fájl kiválasztása</span></button></div>
       </section>
       <section class="bottom-sheet" data-food-stats-sheet role="dialog" aria-modal="true" aria-label="Ételnapló statisztika" aria-hidden="true" inert>
         <div class="sheet-handle"></div><h2>7 napos statisztika</h2><p>A kiválasztott nappal záródó időszak.</p>
@@ -695,13 +703,6 @@
     document.querySelector('[data-water-open]').addEventListener('click', event => { if (!event.target.closest('[data-water-add]')) showPage('water') })
     document.querySelector('[data-water-open]').addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') showPage('water') })
     document.querySelectorAll('[data-water-add]').forEach(button => button.addEventListener('click', event => { event.stopPropagation(); updateWater(Number(button.dataset.waterAdd)) }))
-    document.querySelector('[data-samsung-connect]').addEventListener('click', event => {
-      const card = document.querySelector('[data-samsung-sync]')
-      const connected = card.classList.toggle('is-connected')
-      document.querySelector('[data-samsung-status]').textContent = connected ? 'Csatlakoztatva · vízbeolvasás aktív' : 'Nincs összekapcsolva'
-      event.currentTarget.textContent = connected ? 'Leválasztás' : 'Kapcsolódás'
-      showToast(connected ? 'Samsung Health kapcsolat bemutató bekapcsolva.' : 'Samsung Health kapcsolat bontva.')
-    })
     document.querySelectorAll('[data-action]').forEach(button => button.addEventListener('click', () => showToast()))
     fab.addEventListener('click', openSheet)
     sheetBackdrop.addEventListener('click', closeSheet)
