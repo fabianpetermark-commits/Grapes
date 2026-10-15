@@ -202,12 +202,26 @@ export function applyYazioBatch(projectValue, preview, selectedIndexes, batchId 
     added.push(entry.id)
     keys.add(entry.externalKey)
   }
-  if (added.length) project.importBatches.push({
-    id: batchId, profileId: preview.profileId, source: 'yazio', importedAt: now,
-    recordIds: added, status: 'completed', schemaVersion: YAZIO_IMPORT_SCHEMA_VERSION,
-    sourceArchive: preview.sourceArchive,
-  })
+  if (added.length) {
+    const batch = project.importBatches.find(item => item.id === batchId)
+    if (batch) {
+      if (batch.profileId !== preview.profileId || batch.source !== 'yazio') throw new Error('Importköteg profilütközés.')
+      batch.recordIds.push(...added)
+      batch.status = 'in-progress'
+    } else project.importBatches.push({
+      id: batchId, profileId: preview.profileId, source: 'yazio', importedAt: now,
+      recordIds: added, status: 'in-progress', schemaVersion: YAZIO_IMPORT_SCHEMA_VERSION,
+      sourceArchive: preview.sourceArchive,
+    })
+  }
   return { project, batchId, added: added.length }
+}
+export function markYazioBatchComplete(projectValue, batchId) {
+  const project = normalizeFoodProject(projectValue)
+  const batch = project.importBatches.find(item => item.id === batchId && item.source === 'yazio')
+  if (!batch || batch.profileId !== project.profile.id) throw new Error('A köteg nem található.')
+  batch.status = 'completed'
+  return project
 }
 export function undoYazioBatch(projectValue, batchId) {
   const project = normalizeFoodProject(projectValue)
