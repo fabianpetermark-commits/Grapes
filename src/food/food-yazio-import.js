@@ -208,10 +208,11 @@ export function applyYazioBatch(projectValue, preview, selectedIndexes, batchId 
     if (batch) {
       if (batch.profileId !== preview.profileId || batch.source !== 'yazio') throw new Error('Importköteg profilütközés.')
       batch.recordIds.push(...added)
+      batch.entryFingerprints = { ...(batch.entryFingerprints || {}), ...Object.fromEntries(project.diaryEntries.filter(item => added.includes(item.id)).map(item => [item.id, hash(item)])) }
       batch.status = 'in-progress'
     } else project.importBatches.push({
       id: batchId, profileId: preview.profileId, source: 'yazio', importedAt: now,
-      recordIds: added, status: 'in-progress', schemaVersion: YAZIO_IMPORT_SCHEMA_VERSION,
+      recordIds: added, entryFingerprints: Object.fromEntries(project.diaryEntries.filter(item => added.includes(item.id)).map(item => [item.id, hash(item)])), status: 'in-progress', schemaVersion: YAZIO_IMPORT_SCHEMA_VERSION,
       exportFingerprint: preview.exportFingerprint, sourceArchive: preview.sourceArchive,
     })
   }
@@ -229,8 +230,11 @@ export function undoYazioBatch(projectValue, batchId) {
   const batch = project.importBatches.find(item => item.id === batchId && item.source === 'yazio')
   if (!batch || batch.profileId !== project.profile.id) throw new Error('A köteg nem található ennél a profilnál.')
   const ids = new Set(batch.recordIds)
-  const modified = project.diaryEntries.filter(item => ids.has(item.id) && item.origin?.importBatchId === batchId &&
-    item.updatedAt !== item.createdAt).map(item => item.id)
+  const modified = project.diaryEntries.filter(item => ids.has(item.id) && (
+    item.origin?.importBatchId !== batchId || item.profileId !== batch.profileId ||
+    item.updatedAt !== item.createdAt ||
+    (batch.entryFingerprints?.[item.id] && batch.entryFingerprints[item.id] !== hash(item))
+  )).map(item => item.id)
   const protectedIds = new Set(modified)
   const before = project.diaryEntries.length
   project.diaryEntries = project.diaryEntries.filter(item => !ids.has(item.id) || protectedIds.has(item.id) ||
