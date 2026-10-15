@@ -30,19 +30,19 @@ export function createFoodId(prefix = 'food') {
   return `${prefix}-${uuid}`
 }
 
-export function normalizeNutrients(value = {}) {
+export function normalizeNutrients(value = {}, digits = 2) {
   const result = {}
   for (const key of CORE_NUTRIENTS) {
     const number = finiteOrNull(value[key])
     if (number !== null && (!Number.isFinite(number) || number < 0)) throw new Error(`A(z) ${key} tápérték nem lehet negatív vagy érvénytelen.`)
-    result[key] = number === null ? null : rounded(number)
+    result[key] = number === null ? null : rounded(number, digits)
   }
   const extras = {}
   for (const [key, nutrient] of Object.entries(value.extras || {})) {
     const amount = finiteOrNull(nutrient?.amount)
     const unit = cleanText(nutrient?.unit)
     if (!key || amount === null || !Number.isFinite(amount) || amount < 0 || !unit) continue
-    extras[key] = { amount: rounded(amount), unit }
+    extras[key] = { amount: rounded(amount, digits), unit }
   }
   return { ...result, extras }
 }
@@ -224,7 +224,7 @@ export function normalizeDiaryEntry(value = {}, foodValue = null) {
     snapshot: {
       foodId: cleanText(snapshot.foodId), name: cleanText(snapshot.name), category: cleanText(snapshot.category),
       source: snapshot.source || { type: 'manual' }, baseAmount: Number(snapshot.baseAmount), baseUnit: snapshot.baseUnit,
-      nutrients: normalizeNutrients(snapshot.nutrients),
+      nutrients: normalizeNutrients(snapshot.nutrients, value.origin?.source === 'yazio' ? 8 : 2),
     },
     externalKey: cleanText(value.externalKey),
     ...(value.origin && typeof value.origin === 'object' ? { origin: {
@@ -259,7 +259,7 @@ export function summarizeEntries(entries = []) {
 }
 
 export function entriesForLocalDay(entries, date, profileId) {
-  return entries.filter(entry => entry.profileId === profileId && localDateKey(entry.occurredAt) === date)
+  return entries.filter(entry => entry.profileId === profileId && (entry.origin?.sourceDate || localDateKey(entry.occurredAt)) === date)
 }
 
 export function localDateKey(value) {
