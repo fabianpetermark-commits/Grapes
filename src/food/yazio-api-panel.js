@@ -8,7 +8,6 @@ export function createYazioApiPanel({ openSheet, closeSheet, importBundle, openF
   sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-modal', 'true')
   sheet.setAttribute('aria-label', 'YAZIO-kapcsolat'); sheet.setAttribute('aria-hidden', 'true'); sheet.inert = true
   sheet.innerHTML = `<div class="sheet-handle"></div><h2>YAZIO-kapcsolat</h2>
-    <p>Az étkezéseidet közvetlenül a YAZIO-ból kérjük le. Mentés előtt átnézheted a találatokat.</p>
     <form data-yazio-api-form class="sheet-form">
       <label>E-mail<input class="search" name="email" type="email" autocomplete="off" required></label>
       <label>YAZIO-jelszó<input class="search" name="password" type="password" autocomplete="off" required></label>
@@ -39,6 +38,11 @@ export function createYazioApiPanel({ openSheet, closeSheet, importBundle, openF
     [data-yazio-api-sheet] .yazio-api-guide-navigation button { min-width:80px; min-height:42px; border-radius:12px; }
     [data-yazio-api-sheet] .yazio-api-guide-dots { font-size:.8rem; letter-spacing:2px; color:#54d6e8; }
     [data-yazio-api-sheet] .yazio-api-guide-next { padding:8px 12px; }
+    [data-yazio-api-sheet] .yazio-api-guide-heading .quick-action { width:auto; padding:8px 12px; min-height:38px; }
+    [data-yazio-api-sheet] .yazio-api-guide-navigation .quick-action { width:auto; padding:8px 12px; }
+    [data-yazio-api-sheet] .yazio-api-guide-navigation button:disabled { opacity:.35; }
+    [data-yazio-api-sheet] .yazio-api-guide-slide p { overflow-wrap:anywhere; }
+    @media (max-width: 370px) { [data-yazio-api-sheet] .yazio-api-guide { padding:12px; } [data-yazio-api-sheet] .yazio-api-guide-dots { letter-spacing:0; } }
   `
   sheet.append(tutorialStyle)
   document.querySelector('.phone').append(sheet)
@@ -71,6 +75,7 @@ export function createYazioApiPanel({ openSheet, closeSheet, importBundle, openF
   let busy = false, cancelled = false
   new MutationObserver(() => {
     if (!sheet.classList.contains('is-open')) {
+      guide.hidden = true
       form.elements.password.value = ''
       if (busy) cancelled = true
     }
