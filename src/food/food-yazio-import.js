@@ -170,7 +170,7 @@ export function prepareYazioImport(source, { profileId, existingEntries = [] } =
       let status = seenKeys.has(externalKey) || old ? 'duplicate' : 'ready'
       if (old && (!old.origin?.sourcePayload?.log || canonical(old.origin.sourcePayload.log) !== canonical(record))) status = 'uncertain'
       if (seenKeys.has(externalKey) && seenKeys.get(externalKey) !== canonical(record)) status = 'uncertain'
-      if (status === 'ready' && existing.some(item => similar(item, entry))) status = 'uncertain'
+      if (status === 'ready' && existing.some(item => (!stableId || !item.externalKey?.startsWith('yazio:')) && similar(item, entry))) status = 'uncertain'
       seenKeys.set(externalKey, canonical(record))
       return { index, status, entry, record, error: '' }
     } catch (error) { return { index, status: 'invalid', entry: null, record, error: error.message } }
