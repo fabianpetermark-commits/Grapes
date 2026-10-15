@@ -1,4 +1,4 @@
-import { createEmptyFoodProject, createFoodId, currentTargets, entriesForLocalDay, normalizeDiaryEntry, normalizeFoodProject, summarizeEntries } from './food-data.js'
+import { createEmptyFoodProject, createFoodId, currentTargets, entriesForLocalDay, normalizeDiaryEntry, normalizeFoodItem, normalizeFoodProject, summarizeEntries } from './food-data.js'
 import { acceptMealShare, acceptRecipeShare, rememberSharingContact } from './food-sharing.js'
 import { listFoodShares, loadFoodShare, setFoodShareState } from './food-sharing-client.js'
 import { getGrapesAccount, isGrapesDriveConnected, listGrapesProjects, loadGrapesProject, saveGrapesProject } from '../storage/grapes-drive.js'
@@ -215,6 +215,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
 
   function closeSheets() {
     addSheet.classList.remove('is-open')
+    $('[data-food-custom-sheet]').classList.remove('is-open')
     $('[data-food-share-sheet]').classList.remove('is-open')
     $('[data-food-inbox-sheet]').classList.remove('is-open')
     $('[data-food-edit-sheet]').classList.remove('is-open')
@@ -222,12 +223,51 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     backdrop.classList.remove('is-open')
   }
 
-  function renderFoodSearch(query) {
+  function openCustomFoodSheet() {
+    closeSheets()
+    $('[data-food-custom-name]').value = ''
+    $('[data-food-custom-category]').value = 'Egyéb'
+    $('[data-food-custom-unit]').value = 'g'
+    for (const key of ['energy', 'protein', 'carbohydrate', 'fat']) $(`[data-food-custom-${key}]`).value = ''
+    $('[data-food-custom-status]').textContent = ''
+    $('[data-food-custom-sheet]').classList.add('is-open'); backdrop.classList.add('is-open')
+    setTimeout(() => $('[data-food-custom-name]').focus(), 100)
+  }
+
+  function saveCustomFood() {
+    const status = $('[data-food-custom-status]')
+    try {
+      const now = new Date().toISOString()
+      const food = normalizeFoodItem({
+        id: createFoodId('food'),
+        kind: 'manual',
+        name: $('[data-food-custom-name]').value,
+        category: $('[data-food-custom-category]').value,
+        baseUnit: $('[data-food-custom-unit]').value,
+        nutrients: {
+          energyKcal: $('[data-food-custom-energy]').value,
+          protein: $('[data-food-custom-protein]').value,
+          carbohydrate: $('[data-food-custom-carbohydrate]').value,
+          fat: $('[data-food-custom-fat]').value,
+        },
+        source: { type: 'manual' },
+        createdAt: now,
+        updatedAt: now,
+      })
+      project.customFoods.push(food)
+      addFood(food)
+    } catch (error) { status.textContent = error.message }
+  }
+
+  function renderFoodSearch(query, { favoritesOnly = false } = {}) {
     const normalized = query.trim().toLocaleLowerCase('hu-HU')
-    let foods = project.customFoods.filter(item => !normalized || `${item.name} ${item.category}`.toLocaleLowerCase('hu-HU').includes(normalized))
+    let foods = project.customFoods.filter(item => (!favoritesOnly || project.favorites.includes(item.id)) && (!normalized || `${item.name} ${item.category}`.toLocaleLowerCase('hu-HU').includes(normalized)))
     foods = foods.sort((a, b) => (project.favorites.includes(b.id) ? 1 : 0) - (project.favorites.includes(a.id) ? 1 : 0)).slice(0, 15)
     const container = $('[data-food-search-results]'); container.replaceChildren()
-    if (!foods.length) { if (normalized) container.innerHTML = '<div class="food-empty">Nincs találat. A Saját étel gombbal hozhatsz létre újat.</div>'; return }
+    if (!foods.length) {
+      container.innerHTML = `<div class="food-empty">${favoritesOnly ? 'Még nincs kedvencnek jelölt ételed.' : normalized ? 'Nincs találat. A Saját étel gombbal hozhatsz létre újat.' : 'Még nincs saját ételed. A Saját étel gombbal hozhatsz létre egyet.'}</div>`
+      return
+    }
     for (const food of foods) {
       const button = document.createElement('button'); button.type = 'button'; button.className = 'sheet-result'
       button.innerHTML = `<strong>${escapeHtml(food.name)}</strong><span>${number(food.nutrients.energyKcal, 1)} kcal / 100 ${food.baseUnit}</span>`
@@ -415,13 +455,21 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-edit-save]').addEventListener('click', saveEntryEdit)
     $('[data-food-edit-repeat]').addEventListener('click', () => { const id = activeEditId; closeSheets(); repeatEntry(id) })
     $('[data-food-edit-delete]').addEventListener('click', () => { const id = activeEditId; closeSheets(); deleteEntry(id) })
+    $('[data-food-custom-save]').addEventListener('click', saveCustomFood)
     fab.addEventListener('click', openAddSheet)
     backdrop.addEventListener('click', closeSheets)
     root.addEventListener('click', event => {
       const remove = event.target.closest('[data-entry-delete]'); if (remove) return deleteEntry(remove.dataset.entryDelete)
       const repeat = event.target.closest('[data-entry-repeat]'); if (repeat) return repeatEntry(repeat.dataset.entryRepeat)
       const edit = event.target.closest('[data-entry-edit]'); if (edit) return openEntryEditor(edit.dataset.entryEdit)
-      const quick = event.target.closest('[data-food-quick]'); if (quick) return openLegacy('food', quick.dataset.foodQuick === 'favorites' ? 'foods' : 'foods', '', quick.dataset.foodQuick)
+      const quick = event.target.closest('[data-food-quick]')
+      if (quick?.dataset.foodQuick === 'custom') return openCustomFoodSheet()
+      if (quick?.dataset.foodQuick === 'favorites') {
+        $('[data-food-search]').value = ''
+        renderFoodSearch('', { favoritesOnly: true })
+        return
+      }
+      if (quick) return showToast('A vonalkód- és fotókereső hamarosan ezen a mobilpanelen is elérhető lesz.')
       const menu = event.target.closest('[data-food-menu]'); if (menu) return openLegacy('food', menu.dataset.foodMenu === 'stats' || menu.dataset.foodMenu === 'targets' ? menu.dataset.foodMenu : 'diary', '', menu.dataset.foodMenu)
     })
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && isGrapesDriveConnected()) refreshInbox().catch(() => {}) })

@@ -73,7 +73,7 @@ function showToast(message) {
 }
 
 function closeSheet() {
-  sheet.classList.remove('is-open')
+  $$('.bottom-sheet').forEach(node => node.classList.remove('is-open'))
   sheetBackdrop.classList.remove('is-open')
 }
 

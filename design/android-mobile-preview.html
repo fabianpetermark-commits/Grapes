@@ -515,6 +515,20 @@
         <div class="sheet-results" data-food-search-results></div>
         <div class="quick-grid"><button class="quick-action" data-food-quick="barcode"><i>▦</i><span>Vonalkód</span></button><button class="quick-action" data-food-quick="photo"><i>◉</i><span>Fotó alapján</span></button><button class="quick-action" data-food-quick="favorites"><i>☆</i><span>Kedvencek</span></button><button class="quick-action" data-food-quick="custom"><i>＋</i><span>Saját étel</span></button></div>
       </section>
+      <section class="bottom-sheet" data-food-custom-sheet aria-label="Saját étel létrehozása">
+        <div class="sheet-handle"></div><h2>Saját étel</h2><p>Az értékeket 100 grammra vagy 100 milliliterre add meg.</p>
+        <div class="sheet-form">
+          <label>Név<input class="search" maxlength="180" data-food-custom-name></label>
+          <label>Kategória<input class="search" maxlength="80" value="Egyéb" data-food-custom-category></label>
+          <label>Alapegység<select class="search" data-food-custom-unit><option value="g">100 g</option><option value="ml">100 ml</option></select></label>
+          <label>Kalória<input class="search" type="number" min="0" step="0.01" inputmode="decimal" data-food-custom-energy></label>
+          <label>Fehérje (g)<input class="search" type="number" min="0" step="0.01" inputmode="decimal" data-food-custom-protein></label>
+          <label>Szénhidrát (g)<input class="search" type="number" min="0" step="0.01" inputmode="decimal" data-food-custom-carbohydrate></label>
+          <label>Zsír (g)<input class="search" type="number" min="0" step="0.01" inputmode="decimal" data-food-custom-fat></label>
+        </div>
+        <button class="primary module-cta" type="button" data-food-custom-save>Mentés és hozzáadás</button>
+        <p data-food-custom-status role="status"></p>
+      </section>
       <section class="bottom-sheet" data-food-share-sheet aria-label="Megosztás">
         <div class="sheet-handle"></div><h2 data-food-share-title>Étkezés megosztása</h2><p>Csak regisztrált Grapes-felhasználóval osztható meg.</p>
         <input class="search" type="email" data-food-share-email list="food-share-contacts" placeholder="E-mail-cím">
