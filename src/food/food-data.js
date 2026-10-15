@@ -1,7 +1,7 @@
-export const FOOD_PROJECT_VERSION = 1
+export const FOOD_PROJECT_VERSION = 2
 export const FOOD_BACKUP_VERSION = 1
 
-export const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snack']
+export const MEAL_TYPES = ['breakfast', 'morningSnack', 'lunch', 'afternoonSnack', 'dinner']
 export const FOOD_BASE_UNITS = ['g', 'ml']
 export const FOOD_AMOUNT_UNITS = ['g', 'ml', 'piece', 'slice', 'serving', 'package']
 export const CORE_NUTRIENTS = ['energyKcal', 'protein', 'carbohydrate', 'fat', 'fiber', 'sugar', 'saturatedFat', 'salt']
@@ -204,7 +204,13 @@ export function calculateRecipeFood(recipeValue, foods = []) {
 }
 
 export function normalizeDiaryEntry(value = {}, foodValue = null) {
-  const mealType = MEAL_TYPES.includes(value.mealType) ? value.mealType : 'snack'
+  const occurredAt = isoDateTime(value.occurredAt || new Date().toISOString(), 'Étkezés időpontja')
+  const legacyHour = new Date(occurredAt).getHours()
+  const mealType = MEAL_TYPES.includes(value.mealType)
+    ? value.mealType
+    : value.mealType === 'snack'
+      ? (legacyHour < 13 ? 'morningSnack' : 'afternoonSnack')
+      : 'afternoonSnack'
   const amount = Number(value.amount)
   if (!Number.isFinite(amount) || amount <= 0) throw new Error('A naplózott mennyiségnek nullánál nagyobbnak kell lennie.')
   const unit = FOOD_AMOUNT_UNITS.includes(value.unit) ? value.unit : 'g'
@@ -219,7 +225,7 @@ export function normalizeDiaryEntry(value = {}, foodValue = null) {
     id: requiredId(value.id || createFoodId('entry'), 'Naplóazonosító'),
     profileId: requiredId(value.profileId, 'Profilazonosító'),
     mealType,
-    occurredAt: isoDateTime(value.occurredAt || new Date().toISOString(), 'Étkezés időpontja'),
+    occurredAt,
     amount: rounded(amount), unit, servingId: cleanText(value.servingId), note: cleanText(value.note),
     snapshot: {
       foodId: cleanText(snapshot.foodId), name: cleanText(snapshot.name), category: cleanText(snapshot.category),
@@ -260,7 +266,14 @@ export function localDateKey(value) {
 
 export function createEmptyFoodProject(profile) {
   const normalizedProfile = normalizeProfile(profile)
-  return { version: FOOD_PROJECT_VERSION, profile: normalizedProfile, targets: [{ id: createFoodId('target'), effectiveFrom: new Date().toISOString().slice(0, 10), values: normalizeTargets({}) }], customFoods: [], recipes: [], diaryEntries: [], favorites: [], recentFoods: [], recipeLibraries: [], syncState: {}, settings: {} }
+  return { version: FOOD_PROJECT_VERSION, profile: normalizedProfile, targets: [{ id: createFoodId('target'), effectiveFrom: new Date().toISOString().slice(0, 10), values: normalizeTargets({}) }], customFoods: [], recipes: [], diaryEntries: [], favorites: [], recentFoods: [], recipeLibraries: [], sharingContacts: [], processedShareIds: [], syncState: {}, settings: {} }
+}
+
+function normalizeSharingContact(value = {}) {
+  const email = cleanText(value.email).toLocaleLowerCase('hu-HU')
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return null
+  const lastUsedAt = value.lastUsedAt ? isoDateTime(value.lastUsedAt, 'Kapcsolat használati ideje') : new Date(0).toISOString()
+  return { email, name: cleanText(value.name), lastUsedAt }
 }
 
 export function normalizeFoodProject(value = {}, expectedProfileId = '') {
@@ -279,7 +292,9 @@ export function normalizeFoodProject(value = {}, expectedProfileId = '') {
   if (recipes.some(item => item.variantOfRecipeId && (item.variantOfRecipeId === item.id || !recipeIds.has(item.variantOfRecipeId)))) throw new Error('Érvénytelen receptvariáns-kapcsolat a mentésben.')
   if (new Set(diaryEntries.map(item => item.id)).size !== diaryEntries.length) throw new Error('Ismétlődő naplóazonosító a mentésben.')
   const targets = (value.targets || []).map(item => ({ id: requiredId(item.id || createFoodId('target')), effectiveFrom: /^\d{4}-\d{2}-\d{2}$/.test(item.effectiveFrom) ? item.effectiveFrom : new Date().toISOString().slice(0, 10), values: normalizeTargets(item.values) }))
-  return { version: FOOD_PROJECT_VERSION, profile, targets: targets.length ? targets : createEmptyFoodProject(profile).targets, customFoods, recipes, diaryEntries, favorites: [...new Set(value.favorites || [])], recentFoods: [...new Set(value.recentFoods || [])].slice(0, 50), recipeLibraries: Array.isArray(value.recipeLibraries) ? value.recipeLibraries : [], syncState: value.syncState || {}, settings: value.settings || {} }
+  const sharingContacts = (value.sharingContacts || []).map(normalizeSharingContact).filter(Boolean)
+    .sort((left, right) => right.lastUsedAt.localeCompare(left.lastUsedAt))
+  return { version: FOOD_PROJECT_VERSION, profile, targets: targets.length ? targets : createEmptyFoodProject(profile).targets, customFoods, recipes, diaryEntries, favorites: [...new Set(value.favorites || [])], recentFoods: [...new Set(value.recentFoods || [])].slice(0, 50), recipeLibraries: Array.isArray(value.recipeLibraries) ? value.recipeLibraries : [], sharingContacts: [...new Map(sharingContacts.map(item => [item.email, item])).values()].slice(0, 50), processedShareIds: [...new Set((value.processedShareIds || []).map(cleanText).filter(Boolean))].slice(-500), syncState: value.syncState || {}, settings: value.settings || {} }
 }
 
 export function currentTargets(project, date = new Date().toISOString().slice(0, 10)) {

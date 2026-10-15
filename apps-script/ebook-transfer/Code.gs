@@ -1,5 +1,5 @@
 const CODE_LENGTH = 6;
-const BROKER_API_VERSION = 19;
+const BROKER_API_VERSION = 20;
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const TTL_MS = 20 * 60 * 1000;
 const STORE_PREFIX = 'ebook_transfer_';
@@ -14,16 +14,169 @@ const ALLOWED_RETURN_URL = 'https://fabianpetermark-commits.github.io/Grapes/';
 const ALLOWED_PARENT_ORIGIN = 'https://fabianpetermark-commits.github.io';
 const READER_RETURN_URL = 'https://fabianpetermark-commits.github.io/Grapes/ebook-reader.html';
 const ALLOWED_BOOK_EXTENSIONS = ['epub', 'pdf', 'mobi', 'azw', 'azw3', 'prc', 'txt', 'cbz', 'cbr'];
+const FOOD_ACCOUNT_PREFIX = 'food_account_';
+const FOOD_INBOX_PREFIX = 'food_inbox_';
+const FOOD_OUTBOX_PREFIX = 'food_outbox_';
+const FOOD_SHARE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 // Compatibility for older open Grapes tabs. The retired provider is never called.
 function doPost(e) {
   const p = (e && e.parameter) || {};
+  if (String(p.action || '').indexOf('food-share-') === 0) return foodShareAction(p);
   if (p.action === 'create-reader-pairing') return pairingOutput(createReaderPairingManifestPage(p), p);
   if (p.action !== 'lookup-isbndb') return HtmlService.createHtmlOutput('Unsupported action');
   const nonce = String(p.nonce || '');
   if (!/^[a-f0-9]{48}$/.test(nonce)) return HtmlService.createHtmlOutput('Invalid request');
   const payload = JSON.stringify({ type: 'grapes-isbndb-result', nonce: nonce, status: 'ok', books: [] });
   return HtmlService.createHtmlOutput('<!doctype html><html><body><script>window.top.postMessage(' + payload + ',' + JSON.stringify(ALLOWED_PARENT_ORIGIN) + ')</script></body></html>')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function foodShareAction(p) {
+  const nonce = String(p.nonce || '').trim().toLowerCase();
+  if (!/^[a-f0-9]{48}$/.test(nonce)) return foodShareBridgePage(nonce, { status: 'error', message: 'Érvénytelen kérés.' });
+  try {
+    const user = verifyFoodShareToken(String(p.accessToken || ''));
+    registerFoodShareAccount(user);
+    const action = String(p.action || '');
+    if (action === 'food-share-register') return foodShareBridgePage(nonce, { status: 'ok', account: { name: user.displayName || '', email: user.emailAddress } });
+    if (action === 'food-share-recipient') {
+      const email = normalizeFoodShareEmail(p.email);
+      return foodShareBridgePage(nonce, { status: 'ok', registered: !!PropertiesService.getScriptProperties().getProperty(FOOD_ACCOUNT_PREFIX + foodShareEmailHash(email)) });
+    }
+    if (action === 'food-share-send') return foodShareSend(p, user, nonce);
+    if (action === 'food-share-inbox') return foodShareInbox(user, nonce);
+    if (action === 'food-share-outbox') return foodShareOutbox(user, nonce);
+    if (action === 'food-share-clean') return foodShareClean(p, user, nonce);
+    if (action === 'food-share-state') return foodShareState(p, user, nonce);
+    throw new Error('Ismeretlen megosztási művelet.');
+  } catch (err) {
+    console.error('Food share request failed: ' + String(err && err.message || err));
+    return foodShareBridgePage(nonce, { status: 'error', message: String(err && err.message || 'A megosztás nem sikerült.') });
+  }
+}
+
+function verifyFoodShareToken(token) {
+  if (!token || token.length > 4096) throw new Error('A Google-kapcsolat hiányzik vagy lejárt.');
+  const response = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/about?fields=user(displayName,emailAddress,permissionId)', { headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true });
+  if (response.getResponseCode() !== 200) throw new Error('A Google-kapcsolat lejárt. Csatlakoztasd újra.');
+  const user = JSON.parse(response.getContentText()).user || {};
+  user.emailAddress = normalizeFoodShareEmail(user.emailAddress);
+  if (!user.emailAddress) throw new Error('A Google-fiók e-mail-címe nem ellenőrizhető.');
+  return user;
+}
+
+function registerFoodShareAccount(user) {
+  PropertiesService.getScriptProperties().setProperty(FOOD_ACCOUNT_PREFIX + foodShareEmailHash(user.emailAddress), JSON.stringify({ name: String(user.displayName || '').slice(0, 120), updatedAt: Date.now() }));
+}
+
+function foodShareSend(p, user, nonce) {
+  const recipient = normalizeFoodShareEmail(p.recipientEmail);
+  if (recipient === user.emailAddress) throw new Error('Saját magaddal nem oszthatsz meg elemet.');
+  const props = PropertiesService.getScriptProperties();
+  const recipientHash = foodShareEmailHash(recipient);
+  const recipientAccount = props.getProperty(FOOD_ACCOUNT_PREFIX + recipientHash);
+  if (!recipientAccount) throw new Error('Ez az e-mail-cím még nincs regisztrálva a Grapes megosztási postafiókjába.');
+  const type = String(p.shareType || '');
+  if (type !== 'meal' && type !== 'recipe') throw new Error('Érvénytelen megosztástípus.');
+  const id = String(p.shareId || '');
+  const fileId = String(p.fileId || '');
+  if (!/^share-[A-Za-z0-9-]{8,200}$/.test(id) || !/^[A-Za-z0-9_-]{10,200}$/.test(fileId)) throw new Error('A megosztási fájl adatai hiányosak.');
+  verifyFoodShareFile(String(p.accessToken || ''), fileId, recipient);
+  const key = FOOD_INBOX_PREFIX + recipientHash;
+  const lock = LockService.getScriptLock(); lock.waitLock(10000);
+  try {
+    const now = Date.now();
+    const inbox = foodShareReadInbox(props, key, now).filter(function(item) { return item.id !== id; });
+    inbox.unshift({ id: id, type: type, fileId: fileId, senderName: String(user.displayName || '').slice(0, 120), senderEmail: user.emailAddress, createdAt: now, status: 'pending' });
+    props.setProperty(key, JSON.stringify(inbox.slice(0, 50)));
+    const outboxKey = FOOD_OUTBOX_PREFIX + foodShareEmailHash(user.emailAddress);
+    const outbox = foodShareReadInbox(props, outboxKey, now).filter(function(item) { return item.id !== id; });
+    outbox.unshift({ id: id, fileId: fileId, createdAt: now, status: 'pending' });
+    props.setProperty(outboxKey, JSON.stringify(outbox.slice(0, 50)));
+  } finally { lock.releaseLock(); }
+  let name = '';
+  try { name = JSON.parse(recipientAccount).name || ''; } catch (ignore) {}
+  return foodShareBridgePage(nonce, { status: 'ok', recipientName: name });
+}
+
+function verifyFoodShareFile(token, fileId, recipient) {
+  const url = 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId) + '?fields=id,ownedByMe,permissions(type,emailAddress,role)';
+  const response = UrlFetchApp.fetch(url, { headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true });
+  if (response.getResponseCode() !== 200) throw new Error('A megosztási fájl nem ellenőrizhető.');
+  const file = JSON.parse(response.getContentText()) || {};
+  const shared = (file.permissions || []).some(function(permission) { return permission.type === 'user' && String(permission.emailAddress || '').toLowerCase() === recipient && (permission.role === 'reader' || permission.role === 'writer'); });
+  if (!file.ownedByMe || !shared) throw new Error('A megosztási fájl vagy a címzett Drive-hozzáférése nem ellenőrizhető.');
+}
+
+function foodShareInbox(user, nonce) {
+  const props = PropertiesService.getScriptProperties();
+  const key = FOOD_INBOX_PREFIX + foodShareEmailHash(user.emailAddress);
+  const inbox = foodShareReadInbox(props, key, Date.now());
+  props.setProperty(key, JSON.stringify(inbox));
+  return foodShareBridgePage(nonce, { status: 'ok', items: inbox.filter(function(item) { return item.status === 'pending'; }) });
+}
+
+function foodShareState(p, user, nonce) {
+  const id = String(p.shareId || '');
+  const state = String(p.state || '');
+  if (state !== 'accepted' && state !== 'rejected') throw new Error('Érvénytelen megosztási állapot.');
+  const props = PropertiesService.getScriptProperties();
+  const key = FOOD_INBOX_PREFIX + foodShareEmailHash(user.emailAddress);
+  const lock = LockService.getScriptLock(); lock.waitLock(10000);
+  try {
+    const inbox = foodShareReadInbox(props, key, Date.now());
+    const item = inbox.find(function(value) { return value.id === id; });
+    if (!item) throw new Error('A megosztás már nem található.');
+    item.status = state; item.processedAt = Date.now();
+    props.setProperty(key, JSON.stringify(inbox));
+    const outboxKey = FOOD_OUTBOX_PREFIX + foodShareEmailHash(item.senderEmail);
+    const outbox = foodShareReadInbox(props, outboxKey, Date.now());
+    const sent = outbox.find(function(value) { return value.id === id; });
+    if (sent) { sent.status = state; sent.processedAt = item.processedAt; props.setProperty(outboxKey, JSON.stringify(outbox)); }
+  } finally { lock.releaseLock(); }
+  return foodShareBridgePage(nonce, { status: 'ok' });
+}
+
+function foodShareOutbox(user, nonce) {
+  const props = PropertiesService.getScriptProperties();
+  const key = FOOD_OUTBOX_PREFIX + foodShareEmailHash(user.emailAddress);
+  const outbox = foodShareReadInbox(props, key, Date.now());
+  props.setProperty(key, JSON.stringify(outbox));
+  return foodShareBridgePage(nonce, { status: 'ok', items: outbox.filter(function(item) { return item.status === 'accepted' || item.status === 'rejected'; }) });
+}
+
+function foodShareClean(p, user, nonce) {
+  const id = String(p.shareId || '');
+  const props = PropertiesService.getScriptProperties();
+  const key = FOOD_OUTBOX_PREFIX + foodShareEmailHash(user.emailAddress);
+  const lock = LockService.getScriptLock(); lock.waitLock(10000);
+  try { props.setProperty(key, JSON.stringify(foodShareReadInbox(props, key, Date.now()).filter(function(item) { return item.id !== id; }))); }
+  finally { lock.releaseLock(); }
+  return foodShareBridgePage(nonce, { status: 'ok' });
+}
+
+function foodShareReadInbox(props, key, now) {
+  let inbox = [];
+  try { inbox = JSON.parse(props.getProperty(key) || '[]'); } catch (ignore) {}
+  return Array.isArray(inbox) ? inbox.filter(function(item) { return item && Number(item.createdAt) + FOOD_SHARE_TTL_MS > now; }) : [];
+}
+
+function normalizeFoodShareEmail(value) {
+  const email = String(value || '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Érvényes e-mail-cím szükséges.');
+  return email;
+}
+
+function foodShareEmailHash(email) {
+  const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, email, Utilities.Charset.UTF_8);
+  return digest.map(function(byte) { const value = byte < 0 ? byte + 256 : byte; return ('0' + value.toString(16)).slice(-2); }).join('');
+}
+
+function foodShareBridgePage(nonce, payload) {
+  payload.type = 'grapes-food-share-result'; payload.nonce = nonce;
+  const safePayload = JSON.stringify(payload).replace(/</g, '\\u003c');
+  return HtmlService.createHtmlOutput('<!doctype html><html><body><script>window.top.postMessage(' + safePayload + ',"*");<\/script></body></html>')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 

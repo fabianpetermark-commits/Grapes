@@ -122,6 +122,35 @@
     .meal__icon { display: grid; place-items: center; width: 48px; height: 48px; background: var(--raised); border-radius: 15px; font-size: 20px; }
     .meal strong, .meal span { display: block; }
     .meal span { margin-top: 4px; color: var(--muted); font-size: 11px; }
+    button.meal { width: 100%; color: inherit; text-align: left; cursor: pointer; background: transparent; border: 0; border-bottom: 1px solid var(--line); }
+    .meal b { font-size: 12px; }
+    .food-datebar { display: grid; grid-template-columns: 44px 1fr 44px; gap: 8px; align-items: center; margin-bottom: 16px; }
+    .food-datebar button, .food-datebar input { min-height: 44px; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 13px; }
+    .food-datebar input { width: 100%; padding: 0 10px; text-align: center; color-scheme: dark; }
+    .food-empty { padding: 14px 0; color: var(--muted); font-size: 12px; }
+    .food-detail-head { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; }
+    .food-detail-head button { flex: 0 0 44px; height: 44px; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 13px; }
+    .food-detail-head div { min-width: 0; flex: 1; }
+    .food-detail-head h1, .food-detail-head p { margin: 0; }
+    .food-detail-head p { margin-top: 3px; color: var(--muted); font-size: 11px; }
+    .food-share { font-size: 18px; }
+    .food-entry-card { padding: 14px; margin-bottom: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 17px; }
+    .food-entry-card__head { display: flex; gap: 10px; justify-content: space-between; }
+    .food-entry-card span { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; }
+    .food-entry-card__actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 12px; }
+    .food-entry-card__actions button { min-height: 38px; color: var(--text); background: var(--raised); border: 1px solid var(--line); border-radius: 11px; font-size: 10px; }
+    .food-recipes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+    .food-recipe { min-width: 0; padding: 0; overflow: hidden; color: inherit; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 15px; }
+    .food-recipe__cover { display: grid; place-items: end start; height: 96px; padding: 9px; background: linear-gradient(145deg,#7357ff,#224a86 62%,#0c1824); font-size: 10px; font-weight: 800; }
+    .food-recipe small { display: block; padding: 8px; overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
+    .inbox-badge { position: relative; }
+    .inbox-badge[data-count]:not([data-count="0"])::after { position: absolute; top: 4px; right: 3px; display: grid; place-items: center; min-width: 17px; height: 17px; padding: 0 4px; color: #041014; content: attr(data-count); background: var(--accent); border-radius: 99px; font-size: 9px; font-weight: 900; }
+    .sheet-results { display: grid; gap: 7px; max-height: 220px; margin-top: 10px; overflow-y: auto; }
+    .sheet-result { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 48px; padding: 8px 10px; color: var(--text); text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+    .sheet-result span { color: var(--muted); font-size: 10px; }
+    .sheet-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .sheet-form label { display: grid; gap: 5px; color: var(--muted); font-size: 10px; }
+    .sheet-form label:last-child { grid-column: 1 / -1; }
     .fab { position: absolute; right: 18px; bottom: 92px; z-index: 8; display: grid; place-items: center; width: 58px; height: 58px; color: #031014; cursor: pointer; background: linear-gradient(135deg, #62eff8, #55a6ff); border: 0; border-radius: 20px; box-shadow: 0 15px 35px rgb(77 143 255 / 35%); font-size: 28px; }
     .fab[hidden] { display: none; }
     .toast { position: absolute; right: 16px; bottom: 90px; left: 16px; z-index: 30; padding: 13px 15px; color: #cbd7e4; background: #17222e; border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 16px 40px rgb(0 0 0 / 45%); font-size: 12px; transform: translateY(20px); opacity: 0; pointer-events: none; transition: .2s ease; }
@@ -129,7 +158,8 @@
     .module-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; margin: 0 0 18px; background: #0d151e; border: 1px solid var(--line); border-radius: 15px; }
     .module-tab { min-height: 38px; padding: 0 8px; color: var(--muted); background: transparent; border: 0; border-radius: 11px; cursor: pointer; font-size: 11px; font-weight: 750; }
     .module-tab.is-active { color: var(--text); background: var(--raised); box-shadow: 0 5px 15px rgb(0 0 0 / 22%); }
-    .daily-card { display: grid; grid-template-columns: 106px minmax(0, 1fr); gap: 18px; align-items: center; padding: 17px; background: linear-gradient(145deg, rgb(59 220 242 / 11%), var(--surface)); border: 1px solid rgb(59 220 242 / 24%); border-radius: 22px; }
+    .daily-card { position: relative; display: grid; grid-template-columns: 106px minmax(0, 1fr); gap: 18px; align-items: center; padding: 17px; background: linear-gradient(145deg, rgb(59 220 242 / 11%), var(--surface)); border: 1px solid rgb(59 220 242 / 24%); border-radius: 22px; }
+    .daily-card__menu { position: absolute; top: 5px; right: 5px; width: 36px; height: 36px; color: var(--muted); background: transparent; border: 0; border-radius: 11px; }
     .energy-ring { display: grid; place-items: center; width: 106px; height: 106px; background: conic-gradient(var(--accent) 0 71%, #1d2b38 71% 100%); border-radius: 50%; }
     .energy-ring::after { grid-area: 1 / 1; width: 78px; height: 78px; content: ""; background: var(--surface); border-radius: 50%; }
     .energy-ring__value { z-index: 1; grid-area: 1 / 1; text-align: center; }
@@ -345,21 +375,37 @@
         </div>
 
         <div class="content module-preview" data-page="food" hidden>
-          <p class="eyebrow">Ételnapló</p><h1>Ma</h1><p class="lead">Október 14., szerda · 3 étkezés</p>
+          <section data-food-overview>
+          <div class="section-head" style="margin-top:0"><p class="eyebrow">Ételnapló</p><button type="button" class="inbox-badge" data-food-inbox data-count="0">Megosztva velem</button></div><h1 data-food-day-title>Ma</h1><p class="lead" data-food-day-copy></p>
+          <div class="food-datebar"><button type="button" data-food-date-prev aria-label="Előző nap">‹</button><input type="date" data-food-date aria-label="Kiválasztott nap"><button type="button" data-food-date-next aria-label="Következő nap">›</button></div>
           <div class="daily-card">
-            <div class="energy-ring"><div class="energy-ring__value"><strong>1 420</strong><small>2 000 kcal</small></div></div>
-            <div class="daily-copy"><h2>Jó úton haladsz</h2><span>580 kcal maradt mára</span><div class="macro-list">
-              <div class="macro"><span>Fehérje</span><div class="progress"><i style="width:68%"></i></div><b>82 g</b></div>
-              <div class="macro"><span>Szénhidrát</span><div class="progress"><i style="width:74%"></i></div><b>164 g</b></div>
-              <div class="macro"><span>Zsír</span><div class="progress"><i style="width:55%"></i></div><b>44 g</b></div>
+            <button class="daily-card__menu" type="button" data-food-summary-menu aria-label="Statisztika és célok">⋮</button>
+            <div class="energy-ring" data-food-energy-ring><div class="energy-ring__value"><strong data-food-energy>0</strong><small data-food-energy-target>2 000 kcal</small></div></div>
+            <div class="daily-copy"><h2 data-food-message>Kezdjük a napot</h2><span data-food-remaining></span><div class="macro-list">
+              <div class="macro"><span>Fehérje</span><div class="progress"><i data-food-protein-bar style="width:0%"></i></div><b data-food-protein>0 g</b></div>
+              <div class="macro"><span>Szénhidrát</span><div class="progress"><i data-food-carbohydrate-bar style="width:0%"></i></div><b data-food-carbohydrate>0 g</b></div>
+              <div class="macro"><span>Zsír</span><div class="progress"><i data-food-fat-bar style="width:0%"></i></div><b data-food-fat>0 g</b></div>
             </div></div>
           </div>
           <div class="water-card water-card--button" data-water-open role="button" tabindex="0"><span class="water-card__icon">◇</span><div><strong>Víz</strong><span><b data-water-summary>5 / 8 pohár · 1,25 l</b></span></div><button class="mini-add" data-water-add="250" aria-label="250 milliliter víz hozzáadása">+</button></div>
-          <div class="section-head"><h2>Étkezések</h2><button data-action="details">Napló</button></div>
-          <div class="meal"><div class="meal__icon">☕</div><div><strong>Reggeli</strong><span>Zabkása, kávé · 08:10</span></div><b>420</b></div>
-          <div class="meal"><div class="meal__icon">☀</div><div><strong>Ebéd</strong><span>Csirkés saláta · 12:34</span></div><b>610</b></div>
-          <div class="meal"><div class="meal__icon">◌</div><div><strong>Uzsonna</strong><span>Joghurt, gyümölcs · 16:02</span></div><b>390</b></div>
-          <button class="primary module-cta" data-open-module="food">Teljes Ételnapló megnyitása</button>
+          <div class="section-head"><h2>Étkezések</h2></div>
+          <div data-food-meals></div>
+          <div class="section-head"><h2>Legutóbbi receptek</h2><button type="button" data-food-open-recipes>Mind</button></div>
+          <div class="food-recipes" data-food-recipes></div>
+          </section>
+          <section data-food-detail hidden>
+            <div class="food-detail-head"><button type="button" data-food-back aria-label="Vissza">‹</button><div><h1 data-food-detail-title>Étkezés</h1><p data-food-detail-copy></p></div><button type="button" class="food-share" data-food-share aria-label="Étkezés megosztása">⌯</button></div>
+            <div data-food-entries></div>
+          </section>
+          <section data-food-recipes-view hidden>
+            <div class="food-detail-head"><button type="button" data-food-recipes-back aria-label="Vissza">‹</button><div><h1>Receptek</h1><p>Saját és megosztott receptjeid</p></div><button type="button" class="food-share" data-food-recipes-new aria-label="Új recept">＋</button></div>
+            <div data-food-recipes-list></div>
+          </section>
+          <section data-food-recipe-detail hidden>
+            <div class="food-detail-head"><button type="button" data-food-recipe-back aria-label="Vissza">‹</button><div><h1 data-food-recipe-title>Recept</h1><p data-food-recipe-copy></p></div><button type="button" class="food-share" data-food-recipe-share aria-label="Recept megosztása">⌯</button></div>
+            <div class="food-entry-card" data-food-recipe-content></div>
+            <button class="primary module-cta" type="button" data-food-recipe-edit>Recept szerkesztése</button>
+          </section>
         </div>
 
         <div class="content module-preview" data-page="water" hidden>
@@ -460,13 +506,43 @@
           <button class="nav-item" data-nav="sync"><i>↻</i><span>Szinkron</span></button>
           <button class="nav-item" data-nav="more"><i>•••</i><span>Továbbiak</span></button>
         </nav>
-        <button class="fab" data-fab hidden aria-label="Új étkezés">+</button>
+        <button class="fab" data-fab hidden aria-label="Étel hozzáadása">+</button>
       </section>
       <div class="sheet-backdrop" data-sheet-close></div>
-      <section class="bottom-sheet" aria-label="Étel hozzáadása">
+      <section class="bottom-sheet" data-food-add-sheet aria-label="Étel hozzáadása">
         <div class="sheet-handle"></div><h2>Étel hozzáadása</h2><p>Keresés vagy gyors bevitel — amelyik most kényelmesebb.</p>
-        <input class="search" placeholder="Keresés az ételek között…">
-        <div class="quick-grid"><button class="quick-action"><i>▦</i><span>Vonalkód</span></button><button class="quick-action"><i>◉</i><span>Fotó alapján</span></button><button class="quick-action"><i>☆</i><span>Kedvencek</span></button><button class="quick-action"><i>＋</i><span>Saját étel</span></button></div>
+        <input class="search" data-food-search placeholder="Keresés az ételek között…">
+        <div class="sheet-results" data-food-search-results></div>
+        <div class="quick-grid"><button class="quick-action" data-food-quick="barcode"><i>▦</i><span>Vonalkód</span></button><button class="quick-action" data-food-quick="photo"><i>◉</i><span>Fotó alapján</span></button><button class="quick-action" data-food-quick="favorites"><i>☆</i><span>Kedvencek</span></button><button class="quick-action" data-food-quick="custom"><i>＋</i><span>Saját étel</span></button></div>
+      </section>
+      <section class="bottom-sheet" data-food-share-sheet aria-label="Megosztás">
+        <div class="sheet-handle"></div><h2 data-food-share-title>Étkezés megosztása</h2><p>Csak regisztrált Grapes-felhasználóval osztható meg.</p>
+        <input class="search" type="email" data-food-share-email list="food-share-contacts" placeholder="E-mail-cím">
+        <datalist id="food-share-contacts" data-food-share-contacts></datalist>
+        <button class="primary module-cta" type="button" data-food-share-send>Megosztás</button>
+        <p data-food-share-status role="status"></p>
+      </section>
+      <section class="bottom-sheet" data-food-inbox-sheet aria-label="Megosztva velem">
+        <div class="sheet-handle"></div><h2>Megosztva velem</h2><p>Étkezések és receptek, amelyeket jóváhagyásra küldtek neked.</p>
+        <div class="sheet-results" data-food-inbox-items></div>
+        <div data-food-inbox-preview hidden>
+          <p data-food-inbox-summary></p>
+          <label data-food-inbox-date-label>Dátum<input class="search" type="date" data-food-inbox-date></label>
+          <label data-food-inbox-replace-label><input type="checkbox" data-food-inbox-replace> A meglévő étkezés cseréje</label>
+          <div class="quick-grid"><button class="quick-action" type="button" data-food-inbox-reject><i>×</i><span>Elutasítás</span></button><button class="quick-action" type="button" data-food-inbox-accept><i>✓</i><span>Elfogadás</span></button></div>
+        </div>
+        <p data-food-inbox-status role="status"></p>
+      </section>
+      <section class="bottom-sheet" data-food-edit-sheet aria-label="Naplóbejegyzés szerkesztése">
+        <div class="sheet-handle"></div><h2 data-food-edit-title>Étel szerkesztése</h2><p>Módosítsd a mennyiséget, az időt vagy a megjegyzést.</p>
+        <div class="sheet-form"><label>Mennyiség<input class="search" type="number" min="0.01" step="0.01" data-food-edit-amount></label><label>Egység<select class="search" data-food-edit-unit></select></label><label>Idő<input class="search" type="time" data-food-edit-time></label><label>Megjegyzés<input class="search" maxlength="240" data-food-edit-note></label></div>
+        <button class="primary module-cta" type="button" data-food-edit-save>Változások mentése</button>
+        <div class="quick-grid"><button class="quick-action" type="button" data-food-edit-repeat><i>↻</i><span>Ismétlés</span></button><button class="quick-action" type="button" data-food-edit-delete><i>×</i><span>Törlés</span></button></div>
+        <p data-food-edit-status role="status"></p>
+      </section>
+      <section class="bottom-sheet" data-food-menu-sheet aria-label="Ételnapló menü">
+        <div class="sheet-handle"></div><h2>Ételnapló menü</h2><p>Elemzés, célok és adatkezelés.</p>
+        <div class="sheet-results"><button class="sheet-result" type="button" data-food-menu="stats"><strong>Statisztika</strong><span>Trendek és átlagok</span></button><button class="sheet-result" type="button" data-food-menu="targets"><strong>Napi célok</strong><span>Kalória és makrók</span></button><button class="sheet-result" type="button" data-food-menu="health"><strong>Health import</strong><span>Health Connect / Samsung Health</span></button><button class="sheet-result" type="button" data-food-menu="backup-export"><strong>Biztonsági mentés exportja</strong><span>JSON-fájl letöltése</span></button><button class="sheet-result" type="button" data-food-menu="backup-import"><strong>Biztonsági mentés visszaállítása</strong><span>Korábbi JSON-fájl kiválasztása</span></button></div>
       </section>
       <div class="toast" role="status"></div>
     </div>

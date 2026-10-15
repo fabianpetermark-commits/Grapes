@@ -9,6 +9,8 @@ import {
 import { listLocalProjects } from './storage/local-project-store.js'
 import { listMobileEbooks, saveMobileReadingProgress, uploadMobileEbook } from './ebook-mobile-library.js'
 import { isMobileReadableEpub, normalizedReadingProgress, openMobileEpub } from './ebook-mobile-reader.js'
+import { createMobileFoodController } from './food/food-mobile.js'
+import { registerFoodSharing, sendMealShare, sendRecipeShare } from './food/food-sharing-client.js'
 import {
   isMobileShareableBook,
   isTrustedPairingMessage,
@@ -46,6 +48,7 @@ let mobileReaderChapterIndex = 0
 let mobileReaderSaveTimer = null
 let activeTransferBookId = ''
 let activePairingNonce = ''
+let mobileFood = null
 const labels = {
   home: ['Grapes', 'Mobil munkaterület'], projects: ['Projektek', 'Helyi és Drive'],
   sync: ['Szinkron', 'Adatok és fiók'], more: ['Továbbiak', 'Beállítások'],
@@ -81,11 +84,12 @@ function showPage(page) {
   $$('[data-page]').forEach(node => { node.hidden = node.dataset.page !== page })
   $$('[data-nav]').forEach(node => node.classList.toggle('is-active', node.dataset.nav === page))
   ;[title.textContent, subtitle.textContent] = labels[page] || labels.home
-  fab.hidden = page !== 'food'
+  fab.hidden = page !== 'food' || !mobileFood?.isDetailOpen()
   closeSheet()
   if (page === 'projects') renderProjects()
   if (page === 'sync') renderSync()
   if (page === 'water') renderWater()
+  if (page === 'food') mobileFood?.load()
   if (page === 'ebook') renderMobileEbooks()
   if (page === 'reader') renderReaderPicker()
   if (page === 'transfer') renderTransferPicker()
@@ -94,11 +98,12 @@ function showPage(page) {
   }
 }
 
-function openModule(module, project = null) {
+function openModule(module, project = null, view = '', itemId = '', action = '') {
   if (project) {
     try { sessionStorage.setItem('grapes-open-project', JSON.stringify({ module: project.folder, source: 'Drive', id: project.id })) } catch {}
   }
   const target = new URL('../index.html', window.location.href)
+  if (module === 'food' && view) try { sessionStorage.setItem('grapes-food-mobile-request', JSON.stringify({ view, itemId, action })) } catch {}
   target.searchParams.set('module', module)
   target.searchParams.set('android-shell', '1')
   window.location.href = target.href
@@ -741,15 +746,24 @@ $$('[data-action]').forEach(button => {
   if (button.dataset.action === 'water-goal' || button.matches('[data-sync-refresh], [data-sync-projects]')) return
   button.addEventListener('click', () => showToast('Ez a művelet a következő mobilos körben kap saját nézetet.'))
 })
-fab.addEventListener('click', () => { sheet.classList.add('is-open'); sheetBackdrop.classList.add('is-open') })
-sheetBackdrop.addEventListener('click', closeSheet)
 document.addEventListener('keydown', event => { if (event.key === 'Escape') closeSheet() })
 onGrapesDriveChange(() => {
   mobileEbooks = []
   if (!isGrapesDriveConnected()) { mobileReader = null; mobileReaderBook = null }
+  else registerFoodSharing().catch(() => {})
   renderAccount(); renderProjects(); renderSync()
 })
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') persistReaderProgress().catch(() => {}) })
 
+mobileFood = createMobileFoodController({
+  fab,
+  addSheet: sheet,
+  backdrop: sheetBackdrop,
+  showToast,
+  openLegacy: (module, view, itemId, action) => openModule(module, null, view, itemId, action),
+  sendMeal: sendMealShare,
+  sendRecipe: sendRecipeShare,
+})
 renderWater()
+if (isGrapesDriveConnected()) registerFoodSharing().catch(() => {})
 if (isGrapesDriveConnected() || localMode()) showApp()

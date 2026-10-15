@@ -43,19 +43,25 @@ try {
 
   await page.locator('[data-module="food"]').last().click()
   await page.locator('[data-page="food"]').waitFor({ state: 'visible' })
+  assert.equal(await page.locator('[data-fab]').isVisible(), false, 'A + gomb a főképernyőn nem jelenhet meg.')
+  assert.equal(await page.locator('[data-food-meals] .meal').count(), 5, 'Mind az öt étkezésnek látszania kell.')
+  await page.locator('[data-food-meals] .meal').first().click()
+  assert.equal(await page.locator('[data-fab]').isVisible(), true, 'A + gomb az étkezés részletein jelenjen meg.')
   await page.locator('[data-fab]').click()
   await page.locator('.bottom-sheet.is-open').waitFor({ state: 'visible' })
   await page.waitForTimeout(300)
   const sheetLayout = await page.evaluate(() => {
     const sheet = document.querySelector('.bottom-sheet').getBoundingClientRect()
-    const lastAction = [...document.querySelectorAll('.quick-action')].at(-1).getBoundingClientRect()
+    const lastAction = [...document.querySelectorAll('[data-food-add-sheet] .quick-action')].at(-1).getBoundingClientRect()
     return { sheetTop: sheet.top, sheetBottom: sheet.bottom, lastActionBottom: lastAction.bottom, viewportHeight: innerHeight }
   })
+  console.log(JSON.stringify({ sheetLayout }))
   assert.ok(sheetLayout.sheetTop >= 0, 'Az ételfelvétel panel teteje kilóg a képernyőről.')
   assert.ok(sheetLayout.lastActionBottom <= sheetLayout.viewportHeight, 'Az ételfelvétel utolsó gyorsgombja nem látható.')
   await page.screenshot({ path: 'mobile-food-v2.png', fullPage: true })
   await page.locator('[data-sheet-close]').click({ position: { x: 10, y: 10 } })
   await page.waitForTimeout(300)
+  await page.locator('[data-food-back]').click()
 
   await page.locator('[data-water-open]').click()
   await page.locator('[data-page="water"]').waitFor({ state: 'visible' })
