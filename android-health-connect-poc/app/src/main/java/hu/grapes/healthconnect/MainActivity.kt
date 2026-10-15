@@ -42,6 +42,7 @@ class MainActivity : ComponentActivity() {
     private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
     private var pendingHealthRequest: PendingHealthRequest? = null
     private var pendingDriveRequestId: String? = null
+    private var availableUpdate: AndroidUpdateManager.Release? = null
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -119,8 +120,10 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             runCatching { updateManager.findAvailableRelease(force) }
                 .onSuccess { release ->
+                    availableUpdate = release
                     if (release != null && !isFinishing) {
                         UpdateNotifications.showAvailable(this@MainActivity, release)
+                        publishAvailableUpdate(release)
                         showUpdateDialog(release)
                     }
                 }
@@ -252,8 +255,36 @@ class MainActivity : ComponentActivity() {
                 message.optJSONArray("args")?.optString(0).orEmpty(),
                 requestId
             )
+            "getAvailableUpdate" -> sendResult(
+                requestId,
+                availableUpdate?.toJson()?.toString() ?: "null"
+            )
+            "installAvailableUpdate" -> {
+                val requestedVersion = message.optJSONArray("args")?.optInt(0, -1) ?: -1
+                val release = availableUpdate
+                if (release == null || release.versionCode != requestedVersion) {
+                    sendError(requestId, "Ez a frissítés már nem érhető el. Ellenőrizd újra az értesítéseket.")
+                } else {
+                    sendResult(requestId, "{}")
+                    downloadUpdate(release)
+                }
+            }
             else -> sendError(requestId, "Ismeretlen Android-művelet.")
         }
+    }
+
+    private fun AndroidUpdateManager.Release.toJson() = JSONObject().apply {
+        put("versionCode", versionCode)
+        put("versionName", versionName)
+        put("notes", notes)
+    }
+
+    private fun publishAvailableUpdate(release: AndroidUpdateManager.Release) {
+        val detail = release.toJson()
+        webView.evaluateJavascript(
+            "window.dispatchEvent(new CustomEvent('grapes:android-update',{detail:$detail}))",
+            null
+        )
     }
 
     private fun authorizeGoogleDrive(fullRead: Boolean, requestId: String) {

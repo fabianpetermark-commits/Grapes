@@ -12,6 +12,7 @@ import { isMobileReadableEpub, normalizedReadingProgress, openMobileEpub } from 
 import { createMobileFoodController } from './food/food-mobile.js'
 import { registerFoodSharing, sendMealShare, sendRecipeShare } from './food/food-sharing-client.js'
 import { hydrateMobileIcons, mobileIconSvg } from './android-mobile-icons.js'
+import { getAndroidAppUpdate, installAndroidAppUpdate, isGrapesAndroidApp } from './android-bridge.js'
 import {
   isMobileShareableBook,
   isTrustedPairingMessage,
@@ -28,11 +29,12 @@ const title = $('#app-title')
 const subtitle = $('#app-subtitle')
 const fab = $('[data-fab]')
 const toast = $('.toast')
-const sheet = $('.bottom-sheet')
+const sheet = $('[data-food-add-sheet]')
 const sheetBackdrop = $('.sheet-backdrop')
 const LOCAL_MODE_KEY = 'grapes-local-mode'
 const WATER_STORE_KEY = 'grapes-water-v1'
 const SYNC_CHECK_KEY = 'grapes-sync-last-check-v1'
+const UPDATE_READ_KEY = 'grapes-update-read-v1'
 const moduleFolders = [
   ['Ételnapló', 'food', 'food'],
   ['Pénzügyi Napló', 'finance', 'finance'],
@@ -51,6 +53,7 @@ let activeTransferBookId = ''
 let activePairingNonce = ''
 let mobileFood = null
 let activePage = 'home'
+let availableAppUpdate = null
 const labels = {
   home: ['Grapes', 'Mobil munkaterület'], projects: ['Projektek', 'Helyi és Drive'],
   sync: ['Szinkron', 'Adatok és fiók'], more: ['Továbbiak', 'Beállítások'],
@@ -92,6 +95,58 @@ function closeSheet() {
     node.inert = true
   })
   sheetBackdrop.classList.remove('is-open')
+}
+
+function openSheet(node) {
+  if (!node) return
+  closeSheet()
+  node.inert = false
+  node.setAttribute('aria-hidden', 'false')
+  node.classList.add('is-open')
+  sheetBackdrop.classList.add('is-open')
+}
+
+function normalizeAppUpdate(value) {
+  const versionCode = Number(value?.versionCode)
+  if (!Number.isInteger(versionCode) || versionCode <= 0) return null
+  return {
+    versionCode,
+    versionName: String(value?.versionName || `Grapes ${versionCode}`),
+    notes: String(value?.notes || '').trim(),
+  }
+}
+
+function renderUpdateInbox() {
+  const badge = $('[data-notifications-badge]')
+  const empty = $('[data-notifications-empty]')
+  const card = $('[data-update-notification]')
+  const update = availableAppUpdate
+  const readVersion = Number(localStorage.getItem(UPDATE_READ_KEY) || 0)
+  badge.hidden = !update || readVersion === update.versionCode
+  empty.hidden = Boolean(update)
+  card.hidden = !update
+  if (!update) return
+  $('[data-update-title]').textContent = `${update.versionName} elérhető`
+  $('[data-update-notes]').textContent = update.notes || 'Új Grapes-verzió tölthető le.'
+}
+
+function setAvailableAppUpdate(value) {
+  availableAppUpdate = normalizeAppUpdate(value)
+  renderUpdateInbox()
+}
+
+async function refreshUpdateInbox() {
+  if (!isGrapesAndroidApp()) return renderUpdateInbox()
+  try { setAvailableAppUpdate(await getAndroidAppUpdate()) }
+  catch { renderUpdateInbox() }
+}
+
+function openUpdateInbox() {
+  if (availableAppUpdate) {
+    localStorage.setItem(UPDATE_READ_KEY, String(availableAppUpdate.versionCode))
+    renderUpdateInbox()
+  }
+  openSheet($('[data-notifications-sheet]'))
 }
 
 function showPage(page) {
@@ -671,6 +726,20 @@ $('[data-local]').addEventListener('click', () => { setLocalMode(true); showApp(
 $('[data-login]').addEventListener('click', connectDrive)
 $('[data-connect-drive]').addEventListener('click', connectDrive)
 $('[data-account-login]').addEventListener('click', openAccountLogin)
+$('[data-notifications]').addEventListener('click', openUpdateInbox)
+$('[data-update-install]').addEventListener('click', async event => {
+  if (!availableAppUpdate) return
+  const status = $('[data-update-status]')
+  event.currentTarget.disabled = true
+  status.textContent = 'A frissítés letöltése elindul…'
+  try {
+    await installAndroidAppUpdate(availableAppUpdate.versionCode)
+    status.textContent = 'A letöltés elindult. A telepítő hamarosan megnyílik.'
+  } catch (error) {
+    status.textContent = error?.message || 'A frissítés most nem indítható el.'
+    event.currentTarget.disabled = false
+  }
+})
 $('[data-sync-refresh]').addEventListener('click', () => renderSync({ refreshed: true }))
 $('[data-sync-projects]').addEventListener('click', () => showPage('projects'))
 $$('[data-nav]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.nav)))
@@ -755,6 +824,8 @@ $$('[data-action]').forEach(button => {
   button.addEventListener('click', () => showToast('Ez a művelet a következő mobilos körben kap saját nézetet.'))
 })
 document.addEventListener('keydown', event => { if (event.key === 'Escape') closeSheet() })
+sheetBackdrop.addEventListener('click', closeSheet)
+window.addEventListener('grapes:android-update', event => setAvailableAppUpdate(event.detail))
 onGrapesDriveChange(() => {
   mobileEbooks = []
   if (!isGrapesDriveConnected()) { mobileReader = null; mobileReaderBook = null }
@@ -780,7 +851,9 @@ mobileFood = createMobileFoodController({
   sendRecipe: sendRecipeShare,
 })
 hydrateMobileIcons()
+refreshUpdateInbox()
 window.grapesHandleAndroidBack = () => {
+  if ($('[data-notifications-sheet].is-open')) { closeSheet(); return true }
   if (activePage === 'food' && mobileFood?.handleBack()) return true
   if ($('.bottom-sheet.is-open')) { closeSheet(); return true }
   if ($('[data-reader-shell]').classList.contains('is-fullscreen')) { setReaderFullscreen(false); return true }

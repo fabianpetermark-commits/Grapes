@@ -27,6 +27,9 @@ test('a frissítési értesítés az app frissítési folyamatába vezet vissza'
   assert.match(notifications, /EXTRA_OPEN_UPDATE/)
   assert.match(activity, /findAvailableRelease\(force\)/)
   assert.match(activity, /showUpdateDialog\(release\)/)
+  assert.match(activity, /publishAvailableUpdate\(release\)/)
+  assert.match(activity, /"getAvailableUpdate"/)
+  assert.match(activity, /"installAvailableUpdate"/)
 })
 
 test('minden appindítás frissen ellenőrzi az elérhető kiadást', () => {

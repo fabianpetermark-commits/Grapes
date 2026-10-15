@@ -41,3 +41,12 @@ export function disconnectAndroidGoogleDrive(accessToken = '') {
   return nativeRequest('disconnectGoogleDrive', accessToken)
 }
 
+export async function getAndroidAppUpdate() {
+  const payload = await nativeRequest('getAvailableUpdate')
+  return JSON.parse(payload || 'null')
+}
+
+export function installAndroidAppUpdate(versionCode) {
+  return nativeRequest('installAvailableUpdate', Number(versionCode))
+}
+

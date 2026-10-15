@@ -34,6 +34,15 @@ try {
   assert.equal(await page.locator('[data-recent-projects]').count(), 0, 'A legutóbbi projektek blokk nem maradhat a kezdőlapon.')
   assert.equal(await page.locator('[data-page="home"] .module__icon svg').count(), 4, 'Minden kezdőlapi modulnak egységes SVG ikon kell.')
   assert.match(await page.locator('[data-home-greeting]').textContent(), /^Jó (reggelt|napot|estét)$/)
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent('grapes:android-update', { detail: { versionCode: 99, versionName: 'Grapes 99', notes: 'Tesztfrissítés' } })))
+  assert.equal(await page.locator('[data-notifications-badge]').isVisible(), true, 'Az új frissítésnek jelvényt kell mutatnia.')
+  await page.locator('[data-notifications]').click()
+  await page.locator('[data-notifications-sheet].is-open').waitFor({ state: 'visible' })
+  assert.equal(await page.locator('[data-update-title]').textContent(), 'Grapes 99 elérhető')
+  assert.equal(await page.locator('[data-notifications-badge]').isVisible(), false, 'Megnyitás után a frissítés olvasott legyen.')
+  await page.waitForTimeout(300)
+  await page.screenshot({ path: 'mobile-update-inbox.png', fullPage: true })
+  await page.keyboard.press('Escape')
   await page.screenshot({ path: 'mobile-home-icons.png', fullPage: true })
 
   await page.locator('[data-nav="sync"]').click()
@@ -58,7 +67,7 @@ try {
   await page.locator('.bottom-sheet.is-open').waitFor({ state: 'visible' })
   await page.waitForTimeout(300)
   const sheetLayout = await page.evaluate(() => {
-    const sheet = document.querySelector('.bottom-sheet').getBoundingClientRect()
+    const sheet = document.querySelector('[data-food-add-sheet]').getBoundingClientRect()
     const lastAction = [...document.querySelectorAll('[data-food-add-sheet] .quick-action')].at(-1).getBoundingClientRect()
     return { sheetTop: sheet.top, sheetBottom: sheet.bottom, lastActionBottom: lastAction.bottom, viewportHeight: innerHeight }
   })
