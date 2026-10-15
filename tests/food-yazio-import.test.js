@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createEmptyFoodProject } from '../src/food/food-data.js'
-import { buildDailyNutritionSeries } from '../src/food/food-stats.js'
+import { aggregateNutritionSeries, buildDailyNutritionSeries } from '../src/food/food-stats.js'
 import { parseYazioExport, prepareYazioImport, applyYazioBatch, markYazioBatchComplete, undoYazioBatch } from '../src/food/food-yazio-import.js'
 const profile = { id: 'profile-one', name: 'Teszt' }
 const row = (override = {}) => ({ date: '2024-01-02', logged_at: '2024-01-02 12:00:00', meal: 'lunch', entry_id: 'id1', source_id: 'p1', product: 'Alma', type: 'product', amount: 100, energy_kcal: 88.00001, protein_g: 1, carbs_g: 19, fat_g: 0, sodium_mg: 1.123456, fiber_g: null, ...override })
@@ -49,4 +49,11 @@ test('azonos rekord különböző exportban forrás-ID nélkül bizonytalan mara
   const later = plan([base, row({entry_id:'another',logged_at:'2024-01-02 13:00:00'})], first.diaryEntries)
   assert.equal(later.records[0].status, 'uncertain')
   assert.notEqual(later.records[0].entry.externalKey, first.diaryEntries[0].externalKey)
+})
+
+test('mikrotápanyagok saját statisztikaként összesíthetők', () => {
+  const p = plan([row({folate_ug:2.234567})])
+  const series = buildDailyNutritionSeries(apply(p).project.diaryEntries, profile.id)
+  assert.equal(series[0].nutrients['extra:folate'], 2.234567)
+  assert.equal(aggregateNutritionSeries(series, 'extra:folate')[0].value, 2.23)
 })
