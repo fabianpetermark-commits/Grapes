@@ -180,7 +180,7 @@ function updateUnitSelect(select, food, preferred = '') {
   if (units.some(unit => unit.value === previous)) select.value = previous
 }
 function updateEntryUnits(preferred = '') { updateUnitSelect($('#food-entry-unit'), project.customFoods.find(food => food.id === $('#food-entry-food').value), preferred) }
-function entryFoodOptions() { const select = $('#food-entry-food'); const selected = select.value; select.replaceChildren(); for (const food of searchFoods(project.customFoods, '', { favorites: project.favorites, entries: project.diaryEntries })) { const option = document.createElement('option'); option.value = food.id; option.textContent = food.name; select.append(option) } if ([...select.options].some(option => option.value === selected)) select.value = selected; updateEntryUnits() }
+function entryFoodOptions() { const select = $('#food-entry-food'); const selected = select.value; const query = $('#food-entry-search')?.value || ''; select.replaceChildren(); for (const food of searchFoods(project.customFoods, query, { favorites: project.favorites, entries: project.diaryEntries })) { const option = document.createElement('option'); option.value = food.id; option.textContent = food.name; select.append(option) } if ([...select.options].some(option => option.value === selected)) select.value = selected; updateEntryUnits() }
 
 function renderMeals() {
   const container = $('#food-meals'); container.replaceChildren(); const daily = entriesForLocalDay(project.diaryEntries, selectedDate, profile.id)
@@ -195,7 +195,7 @@ function renderMeals() {
 function renderFoodItems() {
   const container = $('#food-items'); container.replaceChildren(); const categorySelect = $('#food-category-filter'); const selectedCategory = categorySelect.value; const categories = [...new Set(project.customFoods.map(food => food.category))].sort((a, b) => a.localeCompare(b, 'hu-HU')); categorySelect.replaceChildren(new Option('Minden kategória', ''), ...categories.map(category => new Option(category, category))); categorySelect.value = categories.includes(selectedCategory) ? selectedCategory : ''
   const results = searchFoods(project.customFoods, $('#food-search').value, { favorites: project.favorites, entries: project.diaryEntries, category: categorySelect.value })
-  if (!results.length) { const empty = document.createElement('p'); empty.className = 'food__empty'; empty.textContent = project.customFoods.length ? 'Nincs találat.' : 'Adj hozzá egy saját ételt vagy keress rá egy vonalkódra.'; container.append(empty); return }
+  if (!results.length) { const empty = document.createElement('p'); empty.className = 'food__empty'; empty.textContent = project.customFoods.length ? 'Nincs találat a saját ételek között. Nézd meg az adatbázis-találatokat alább.' : 'Még nincs saját étel. Írj be egy ételnevet, hogy az adatbázisokban is keressünk.'; container.append(empty); return }
   for (const food of results) {
     const row = document.createElement('article'); row.className = 'food__food-row'
     const favorite = document.createElement('button'); favorite.type = 'button'; favorite.className = 'food__favorite'; favorite.dataset.foodFavorite = food.id; favorite.setAttribute('aria-label', `${food.name}: kedvenc állapot váltása`); favorite.setAttribute('aria-pressed', String(project.favorites.includes(food.id))); favorite.textContent = project.favorites.includes(food.id) ? '★' : '☆'
@@ -338,17 +338,47 @@ async function lookupProductFromForm() {
   $('#food-off-results').scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
-function loadOpenFoodFactsResult(index) {
+
+function loadOpenFoodFactsResult(index, context = 'foods') {
+  // A result is always opened for verification, never written to the diary automatically.
+  if (context !== catalogSearchContext) return
   const product = openFoodFactsResults[Number(index)]
   if (!product) return
-  $('#food-off-results').classList.add('hidden')
-  const existing = project.customFoods.find(food => (product.barcode && food.barcode === product.barcode) || (food.source.type === product.source.type && food.source.id === product.source.id))
-  if (existing) { fillFoodForm(existing); $('#food-api-status').textContent = 'Ez a vonalkód már szerepel az Ételek között. A meglévő adatokat nyitottam meg.'; return }
-  resetFoodForm(); pendingProduct = product
-  $('#food-item-name').value = product.name; $('#food-item-category').value = product.category; $('#food-item-barcode').value = product.barcode; $('#food-item-base-unit').value = product.baseUnit
-  for (const key of CORE_NUTRIENTS) $(`#food-item-${key}`).value = product.nutrients[key] ?? ''
+  catalogElements(context).results.classList.add('hidden')
+  const existing = project.customFoods.find(food =>
+    (product.barcode && food.barcode === product.barcode) ||
+    (food.source.type === product.source.type && food.source.id === product.source.id))
+  if (context === 'diary' && existing) {
+    $('#food-entry-search').value = ''
+    entryFoodOptions()
+    $('#food-entry-food').value = existing.id
+    updateEntryUnits()
+    $('#food-entry-food').focus()
+    setStatus(existing.name + ' kiválasztva. Add meg a mennyiséget, majd naplózd.', 'saved')
+    return
+  }
+  if (context === 'diary') {
+    activeTab = 'foods'
+    render()
+  }
+  if (existing) {
+    fillFoodForm(existing)
+    $('#food-api-status').textContent = 'Ez a termék már szerepel az Ételek között. Nem írtam felül.'
+    return
+  }
+  resetFoodForm()
+  returnToDiaryAfterSave = context === 'diary'
+  pendingProduct = product
+  $('#food-item-name').value = product.name
+  $('#food-item-category').value = product.category
+  $('#food-item-barcode').value = product.barcode
+  $('#food-item-base-unit').value = product.baseUnit
+  for (const key of CORE_NUTRIENTS) $('#food-item-' + key).value = product.nutrients[key] ?? ''
   const sourceLabel = product.source.type === 'fatsecret' ? 'FatSecret' : 'Open Food Facts'
-  $('#food-item-cancel').classList.remove('hidden'); $('#food-api-status').textContent = `${sourceLabel} találat betöltve. Ellenőrizd az adatokat, majd mentsd.`; $('#food-item-form').scrollIntoView({ behavior: 'smooth', block: 'start' })
+  $('#food-item-cancel').classList.remove('hidden')
+  $('#food-api-status').textContent = sourceLabel + ' találat. Ellenőrizd az értékeket és mentsd.' +
+    (context === 'diary' ? ' Mentés után visszatérünk a naplóhoz.' : '')
+  $('#food-item-form').scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 function recipeIngredientFoodOptions() { const select = $('#food-recipe-ingredient-food'); const selected = select.value; select.replaceChildren(); for (const food of project.customFoods.filter(item => item.kind !== 'recipe')) { const option = document.createElement('option'); option.value = food.id; option.textContent = food.name; select.append(option) } if ([...select.options].some(option => option.value === selected)) select.value = selected; updateRecipeIngredientUnits() }
@@ -587,14 +617,23 @@ function render() {
 }
 
 function resetEntryForm() { $('#food-entry-form').reset(); $('#food-entry-id').value = ''; $('#food-entry-amount').value = 100; $('#food-entry-time').value = new Date().toTimeString().slice(0, 5); $('#food-entry-cancel').classList.add('hidden'); updateEntryUnits() }
-function resetFoodForm() { $('#food-item-form').reset(); $('#food-item-id').value = ''; $('#food-item-category').value = 'Egyéb'; $('#food-item-base-unit').value = 'g'; $('#food-item-cancel').classList.add('hidden'); pendingProduct = null; $('#food-api-status').textContent = '' }
+function resetFoodForm() { returnToDiaryAfterSave = false; $('#food-item-form').reset(); $('#food-item-id').value = ''; $('#food-item-category').value = 'Egyéb'; $('#food-item-base-unit').value = 'g'; $('#food-item-cancel').classList.add('hidden'); pendingProduct = null; $('#food-api-status').textContent = '' }
 function resetRecipeForm() { $('#food-recipe-form').reset(); $('#food-recipe-id').value = ''; $('#food-recipe-category').value = 'Saját recept'; recipeIngredients = []; recipeVariantOf = ''; $('#food-recipe-cancel').classList.add('hidden'); renderRecipeIngredients() }
 function shiftDate(days) { const date = new Date(`${selectedDate}T12:00:00`); date.setDate(date.getDate() + days); selectedDate = localDate(date); render() }
 
 function saveEntry(event) { event.preventDefault(); const food = project.customFoods.find(item => item.id === $('#food-entry-food').value); if (!food) return setStatus('Előbb adj hozzá egy ételt.', 'error'); try { const existingId = $('#food-entry-id').value; const previous = project.diaryEntries.find(item => item.id === existingId); const entry = normalizeDiaryEntry({ id: existingId || createFoodId('entry'), profileId: profile.id, mealType: $('#food-entry-meal').value, amount: $('#food-entry-amount').value, unit: $('#food-entry-unit').value, servingId: food.servings.find(item => item.unit === $('#food-entry-unit').value)?.id || '', note: $('#food-entry-note').value, occurredAt: selectedIsoTime($('#food-entry-time').value), createdAt: previous?.createdAt || new Date().toISOString() }, food); project.diaryEntries = existingId ? project.diaryEntries.map(item => item.id === existingId ? entry : item) : [...project.diaryEntries, entry]; project.recentFoods = [food.id, ...project.recentFoods.filter(id => id !== food.id)].slice(0, 50); resetEntryForm(); scheduleSave(); render() } catch (error) { setStatus(error.message, 'error') } }
 function handleEntryAction(action, id) { const entry = project.diaryEntries.find(item => item.id === id); if (!entry) return; if (action === 'delete') { if (confirm('Törlöd ezt a naplóbejegyzést?')) { project.diaryEntries = project.diaryEntries.filter(item => item.id !== id); scheduleSave(); render() }; return } if (action === 'repeat') { project.diaryEntries.push(normalizeDiaryEntry({ ...entry, id: createFoodId('entry'), externalKey: '', origin: undefined, occurredAt: selectedIsoTime(new Date().toTimeString().slice(0, 5)), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })); scheduleSave(); render(); return } if (action !== 'edit') return; const food = project.customFoods.find(item => item.id === entry.snapshot.foodId); if (!food) return setStatus('A bejegyzés forrásétele már nem érhető el, ezért nem szerkeszthető. Ismételni vagy törölni továbbra is lehet.', 'error'); $('#food-entry-id').value = entry.id; $('#food-entry-meal').value = entry.mealType; $('#food-entry-food').value = food.id; $('#food-entry-amount').value = entry.amount; updateEntryUnits(entry.unit); $('#food-entry-time').value = new Date(entry.occurredAt).toTimeString().slice(0, 5); $('#food-entry-note').value = entry.note; $('#food-entry-cancel').classList.remove('hidden'); $('#food-entry-form').scrollIntoView({ behavior: 'smooth', block: 'center' }) }
 
-function saveFood(event) { event.preventDefault(); const previousFoods = project.customFoods; let recalculatingRecipes = false; try { const existingId = $('#food-item-id').value; const previous = project.customFoods.find(item => item.id === existingId); const servingSize = Number($('#food-item-serving').value); const baseUnit = $('#food-item-base-unit').value; const item = normalizeFoodItem({ ...pendingProduct, id: existingId || createFoodId('food'), kind: pendingProduct?.kind || previous?.kind || 'manual', name: $('#food-item-name').value, category: $('#food-item-category').value, barcode: $('#food-item-barcode').value, baseUnit, nutrients: Object.fromEntries(CORE_NUTRIENTS.map(key => [key, $(`#food-item-${key}`).value])), servings: servingSize > 0 ? [{ id: previous?.servings?.[0]?.id || createFoodId('serving'), name: 'Adag', unit: 'serving', ...(baseUnit === 'g' ? { grams: servingSize } : { milliliters: servingSize }) }] : [], source: pendingProduct?.source || previous?.source || { type: 'manual' }, createdAt: previous?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() }); project.customFoods = existingId ? project.customFoods.map(food => food.id === existingId ? item : food) : [...project.customFoods, item]; recalculatingRecipes = true; refreshRecipeFoods({ strict: true }); resetFoodForm(); scheduleSave(); render() } catch (error) { project.customFoods = previousFoods; $('#food-api-status').textContent = recalculatingRecipes ? `Az étel nem menthető, mert egy recept érvénytelenné válna. ${error.message}` : error.message } }
+function saveFood(event) { event.preventDefault(); const previousFoods = project.customFoods; let recalculatingRecipes = false; try { const existingId = $('#food-item-id').value; const previous = project.customFoods.find(item => item.id === existingId); const servingSize = Number($('#food-item-serving').value); const baseUnit = $('#food-item-base-unit').value; const item = normalizeFoodItem({ ...pendingProduct, id: existingId || createFoodId('food'), kind: pendingProduct?.kind || previous?.kind || 'manual', name: $('#food-item-name').value, category: $('#food-item-category').value, barcode: $('#food-item-barcode').value, baseUnit, nutrients: Object.fromEntries(CORE_NUTRIENTS.map(key => [key, $(`#food-item-${key}`).value])), servings: servingSize > 0 ? [{ id: previous?.servings?.[0]?.id || createFoodId('serving'), name: 'Adag', unit: 'serving', ...(baseUnit === 'g' ? { grams: servingSize } : { milliliters: servingSize }) }] : [], source: pendingProduct?.source || previous?.source || { type: 'manual' }, createdAt: previous?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() }); project.customFoods = existingId ? project.customFoods.map(food => food.id === existingId ? item : food) : [...project.customFoods, item]; recalculatingRecipes = true; refreshRecipeFoods({ strict: true }); const returnToDiary = returnToDiaryAfterSave; resetFoodForm(); scheduleSave()
+    if (returnToDiary) {
+      activeTab = 'diary'
+      $('#food-entry-search').value = ''
+      render()
+      $('#food-entry-food').value = item.id
+      updateEntryUnits()
+      setStatus('Az étel mentve és kiválasztva. Add meg a mennyiséget.', 'saved')
+      $('#food-entry-food').focus()
+    } else render() } catch (error) { project.customFoods = previousFoods; $('#food-api-status').textContent = recalculatingRecipes ? `Az étel nem menthető, mert egy recept érvénytelenné válna. ${error.message}` : error.message } }
 function fillFoodForm(food) { if (!food) return; $('#food-item-id').value = food.id; $('#food-item-name').value = food.name; $('#food-item-category').value = food.category; $('#food-item-barcode').value = food.barcode; $('#food-item-base-unit').value = food.baseUnit; for (const key of CORE_NUTRIENTS) $(`#food-item-${key}`).value = food.nutrients[key] ?? ''; $('#food-item-serving').value = food.baseUnit === 'g' ? food.servings[0]?.grams || '' : food.servings[0]?.milliliters || ''; pendingProduct = { kind: food.kind, source: food.source }; $('#food-item-cancel').classList.remove('hidden'); $('#food-item-form').scrollIntoView({ behavior: 'smooth', block: 'start' }) }
 
 function deleteFoodItem(id) {
@@ -999,7 +1038,7 @@ function bindEvents() {
     const entryAction = event.target.closest('[data-entry-action]'); if (entryAction) return handleEntryAction(entryAction.dataset.entryAction, entryAction.dataset.entryId)
     const favorite = event.target.closest('[data-food-favorite]'); if (favorite) { const id = favorite.dataset.foodFavorite; project.favorites = project.favorites.includes(id) ? project.favorites.filter(item => item !== id) : [...project.favorites, id]; scheduleSave(); renderFoodItems(); return }
     const sharedCopy = event.target.closest('[data-library-copy-food]'); if (sharedCopy) return copySharedRecipe(sharedCopy.dataset.libraryCopyFood)
-    const offResult = event.target.closest('[data-off-result]'); if (offResult) return loadOpenFoodFactsResult(offResult.dataset.offResult)
+    const offResult = event.target.closest('[data-off-result]'); if (offResult) return loadOpenFoodFactsResult(offResult.dataset.offResult, offResult.dataset.catalogContext || 'foods')
     const editFood = event.target.closest('[data-food-edit]'); if (editFood) return fillFoodForm(project.customFoods.find(item => item.id === editFood.dataset.foodEdit))
     const deleteFood = event.target.closest('[data-food-delete]'); if (deleteFood) return deleteFoodItem(deleteFood.dataset.foodDelete)
     const removeIngredient = event.target.closest('[data-recipe-ingredient-delete]'); if (removeIngredient) { recipeIngredients = recipeIngredients.filter(item => item.id !== removeIngredient.dataset.recipeIngredientDelete); renderRecipeIngredients(); return }
@@ -1026,7 +1065,17 @@ function bindEvents() {
     else if (!$('#food-yazio-preview').classList.contains('hidden')) closeYazioPreview()
   })
   $('#food-date').addEventListener('change', event => { selectedDate = event.target.value || localDate(); render() }); $('#food-date-prev').addEventListener('click', () => shiftDate(-1)); $('#food-date-next').addEventListener('click', () => shiftDate(1)); $('#food-date-today').addEventListener('click', () => { selectedDate = localDate(); render() })
-  $('#food-search').addEventListener('input', renderFoodItems); $('#food-search').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); searchOpenFoodFactsByName() } }); $('#food-off-search').addEventListener('click', searchOpenFoodFactsByName); $('#food-category-filter').addEventListener('change', renderFoodItems); $('#food-entry-food').addEventListener('change', () => updateEntryUnits()); $('#food-entry-form').addEventListener('submit', saveEntry); $('#food-entry-cancel').addEventListener('click', resetEntryForm)
+  $('#food-search').addEventListener('input', () => { renderFoodItems(); queueCatalogSearch('foods') })
+  $('#food-search').addEventListener('keydown', event => {
+    if (event.key === 'Enter') { event.preventDefault(); searchOpenFoodFactsByName('', 'foods') }
+  })
+  $('#food-off-search').addEventListener('click', () => searchOpenFoodFactsByName('', 'foods'))
+  $('#food-entry-search').addEventListener('input', () => { entryFoodOptions(); queueCatalogSearch('diary') })
+  $('#food-entry-search').addEventListener('keydown', event => {
+    if (event.key === 'Enter') { event.preventDefault(); searchOpenFoodFactsByName('', 'diary') }
+  })
+  $('#food-entry-catalog-button').addEventListener('click', () => searchOpenFoodFactsByName('', 'diary'))
+  $('#food-category-filter').addEventListener('change', renderFoodItems); $('#food-entry-food').addEventListener('change', () => updateEntryUnits()); $('#food-entry-form').addEventListener('submit', saveEntry); $('#food-entry-cancel').addEventListener('click', resetEntryForm)
   $('#food-item-form').addEventListener('submit', saveFood); $('#food-item-cancel').addEventListener('click', resetFoodForm); $('#food-lookup').addEventListener('click', lookupProductFromForm); $('#food-entry-scan').addEventListener('click', () => { barcodeScanTarget = 'diary'; $('#food-barcode-input').click() }); $('#food-scan').addEventListener('click', () => { barcodeScanTarget = 'foods'; $('#food-barcode-input').click() }); $('#food-barcode-input').addEventListener('change', selectBarcodePhoto); $('#food-label-ocr').addEventListener('click', event => { modalReturnFocus = event.currentTarget; $('#food-label-input').click() }); $('#food-label-input').addEventListener('change', selectNutritionLabel); $('#food-ocr-apply').addEventListener('click', applyLabelOcr); $('#food-ocr-close').addEventListener('click', closeLabelOcr); $('#food-ocr-cancel').addEventListener('click', closeLabelOcr); $('#food-ocr-preview').addEventListener('click', event => { if (event.target.id === 'food-ocr-preview') closeLabelOcr() })
   $('#food-recipe-form').addEventListener('submit', saveRecipe); $('#food-recipe-cancel').addEventListener('click', resetRecipeForm); $('#food-recipe-add-ingredient').addEventListener('click', addRecipeIngredient); $('#food-recipe-ingredient-food').addEventListener('change', () => updateRecipeIngredientUnits()); for (const id of ['#food-recipe-name', '#food-recipe-prepared-weight', '#food-recipe-yield-count', '#food-recipe-yield-unit', '#food-recipe-unit-weight']) $(id).addEventListener('input', renderRecipePreview)
   $('#food-library-create').addEventListener('submit', createFamilyLibrary); $('#food-library-connect').addEventListener('submit', connectFamilyLibrary)
