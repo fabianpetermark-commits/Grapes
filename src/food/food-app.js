@@ -5,6 +5,7 @@ import {
   normalizeFoodItem, normalizeFoodProject, normalizeRecipe, normalizeTargets, summarizeEntries,
 } from './food-data.js'
 import { searchFoods } from './food-search.js'
+import { searchFoodCatalog } from './food-catalog-search.js'
 import { lookupFatSecretProduct, lookupOpenFoodFactsProduct, searchFatSecretProducts, searchOpenFoodFactsProducts } from './food-api.js'
 import { healthImportEntries, prepareHealthBridgeImport } from './food-health-import.js'
 import { MAX_YAZIO_JSON_BYTES, applyYazioBatch, markYazioBatchComplete, prepareYazioImport, undoYazioBatch } from './food-yazio-import.js'
@@ -41,6 +42,12 @@ const YAZIO_PAGE_SIZE = 200
 let modalReturnFocus = null
 let barcodeScanTarget = 'foods'
 let openFoodFactsResults = []
+let catalogSearchContext = 'foods'
+let catalogRequestId = 0
+let catalogSearchTimer = null
+let catalogCache = new Map()
+let catalogSearchResult = null
+let returnToDiaryAfterSave = false
 
 const $ = selector => root.querySelector(selector)
 function localDate(date = new Date()) { const offset = date.getTimezoneOffset() * 60000; return new Date(date.getTime() - offset).toISOString().slice(0, 10) }
@@ -133,6 +140,32 @@ function addOpenFoodFactsSearchUi() {
   results.className = 'food__off-results hidden'
   results.setAttribute('aria-live', 'polite')
   searchBar.after(results)
+
+  // The diary uses exactly the same remote search and product validation path.
+  const diaryForm = $('#food-entry-form')
+  const diarySearch = document.createElement('div')
+  diarySearch.className = 'food__search food__diary-catalog-search'
+  const diaryLabel = document.createElement('label')
+  diaryLabel.textContent = 'Étel keresése a naplóhoz'
+  const diaryInput = document.createElement('input')
+  diaryInput.id = 'food-entry-search'
+  diaryInput.type = 'search'
+  diaryInput.autocomplete = 'off'
+  diaryInput.placeholder = 'Saját ételek és külső adatbázisok'
+  diaryInput.setAttribute('aria-controls', 'food-entry-catalog-results')
+  diaryLabel.append(diaryInput)
+  const diaryButton = document.createElement('button')
+  diaryButton.id = 'food-entry-catalog-button'
+  diaryButton.type = 'button'
+  diaryButton.className = 'btn'
+  diaryButton.textContent = 'Keresés az adatbázisokban'
+  diarySearch.append(diaryLabel, diaryButton)
+  const diaryResults = document.createElement('section')
+  diaryResults.id = 'food-entry-catalog-results'
+  diaryResults.className = 'food__off-results hidden'
+  diaryResults.setAttribute('aria-live', 'polite')
+  diaryForm.before(diarySearch)
+  diarySearch.after(diaryResults)
 }
 
 function renderSummary() {
