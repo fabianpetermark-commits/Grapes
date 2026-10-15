@@ -9,13 +9,13 @@ export function createYazioApiPanel({ openSheet, closeSheet, importBundle, openF
   sheet.setAttribute('aria-label', 'YAZIO-kapcsolat'); sheet.setAttribute('aria-hidden', 'true'); sheet.inert = true
   sheet.innerHTML = `<div class="sheet-handle"></div><h2>YAZIO-kapcsolat</h2>
     <p>Az étkezéseidet közvetlenül a YAZIO-ból kérjük le. Mentés előtt átnézheted a találatokat.</p>
-    <p>Nem hivatalos kapcsolat. E-mailes YAZIO-belépés szükséges; Google- vagy Apple-belépés itt nem használható. A jelszó csak a YAZIO-hoz kerül, nem mentjük el.</p>
+    <p>Nem hivatalos kapcsolat. YAZIO e-mail és jelszó szükséges. Google-fiókkal regisztrált felhasználók külön YAZIO-jelszót is beállíthatnak, ha ezt a YAZIO engedélyezi. A jelszót nem mentjük el.</p>
     <form data-yazio-api-form class="sheet-form">
       <label>E-mail<input class="search" name="email" type="email" autocomplete="off" required></label>
       <label>YAZIO-jelszó<input class="search" name="password" type="password" autocomplete="off" required></label>
       <label>Ettől<input class="search" name="from" type="date" required></label>
       <label>Eddig<input class="search" name="to" type="date" required></label>
-      <p>Legfeljebb 31 nap. Az API-s import most a termékként naplózott ételeket veszi át; a kimaradó recepteket és egyéb tételeket jelzi.</p>
+      <p>Legfeljebb 366 nap; a napokat automatikusan, 31 napos időszakokban dolgozzuk fel. Az API-s import most a termékként naplózott ételeket veszi át; a kimaradó recepteket és egyéb tételeket jelzi.</p>
       <button class="primary module-cta" type="submit">Belépés és beolvasás</button>
     </form>
     <p data-yazio-api-status role="status" aria-live="polite"></p>
@@ -77,7 +77,7 @@ export function createYazioApiPanel({ openSheet, closeSheet, importBundle, openF
   })
   return { open() {
     if (!busy) {
-      const today = new Date(), start = new Date(); start.setDate(start.getDate() - 6)
+      const today = new Date(), start = new Date(today.getFullYear(), 0, 1)
       form.elements.from.value = dateString(start)
       form.elements.to.value = dateString(today)
       form.elements.to.max = dateString(today); form.elements.from.max = dateString(today)
