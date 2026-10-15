@@ -20,6 +20,7 @@ test('az Android alkalmazás csak a szükséges Health Connect jogokat kéri', a
   assert.match(manifest, /VIEW_PERMISSION_USAGE/);
   assert.match(manifest, /android\.permission\.INTERNET/);
   assert.match(manifest, /usesCleartextTraffic="false"/);
+  assert.match(manifest, /android:name="\.MainActivity"[\s\S]*android:screenOrientation="portrait"/);
 });
 
 test('a Grapes felület helyi Android assetként fut és csak a fő keret kap natív hidat', async () => {

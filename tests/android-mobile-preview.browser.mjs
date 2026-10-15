@@ -30,6 +30,12 @@ try {
   await page.goto(previewUrl, { waitUntil: 'networkidle' })
   await page.locator('[data-local]').click()
 
+  assert.equal(await page.locator('[data-account-card]').count(), 0, 'A fiókkártya nem maradhat a kezdőlapon.')
+  assert.equal(await page.locator('[data-recent-projects]').count(), 0, 'A legutóbbi projektek blokk nem maradhat a kezdőlapon.')
+  assert.equal(await page.locator('[data-page="home"] .module__icon svg').count(), 4, 'Minden kezdőlapi modulnak egységes SVG ikon kell.')
+  assert.match(await page.locator('[data-home-greeting]').textContent(), /^Jó (reggelt|napot|estét)$/)
+  await page.screenshot({ path: 'mobile-home-icons.png', fullPage: true })
+
   await page.locator('[data-nav="sync"]').click()
   await page.locator('[data-page="sync"]').waitFor({ state: 'visible' })
   assert.match(await page.locator('[data-sync-local-count]').textContent(), /\d+ projekt/)

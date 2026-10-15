@@ -59,21 +59,14 @@
     .content { min-height: 0; padding: 20px 16px 30px; overflow-y: auto; overscroll-behavior: contain; }
     .content h1 { margin: 0; font-size: 28px; line-height: 1.08; letter-spacing: -.04em; }
     .lead { margin: 9px 0 20px; color: var(--muted); font-size: 14px; line-height: 1.5; }
-    .state-card { display: flex; gap: 12px; align-items: center; padding: 14px; margin-bottom: 18px; background: linear-gradient(145deg, rgb(242 184 75 / 12%), var(--surface)); border: 1px solid rgb(242 184 75 / 28%); border-radius: 18px; }
-    .state-card__icon { display: grid; place-items: center; flex: 0 0 42px; width: 42px; height: 42px; color: var(--warning); background: rgb(242 184 75 / 12%); border-radius: 13px; }
-    .state-card strong, .state-card span { display: block; }
-    .state-card span { margin-top: 3px; color: var(--muted); font-size: 12px; }
     .section-head { display: flex; align-items: end; justify-content: space-between; margin: 20px 2px 10px; }
     .section-head h2 { margin: 0; font-size: 17px; }
     .section-head button { min-height: 36px; color: var(--accent); background: none; border: 0; cursor: pointer; }
-    .recent { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .project-card { min-width: 0; padding: 14px; text-align: left; cursor: pointer; background: var(--surface); border: 1px solid var(--line); border-radius: 17px; }
-    .project-card__icon { display: grid; place-items: center; width: 38px; height: 38px; margin-bottom: 18px; color: var(--accent); background: var(--accent-soft); border-radius: 12px; }
-    .project-card strong, .project-card span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .project-card span { margin-top: 5px; color: var(--muted); font-size: 11px; }
     .module-list { display: grid; gap: 8px; }
     .module { display: grid; grid-template-columns: 46px minmax(0, 1fr) 32px; gap: 12px; align-items: center; width: 100%; min-height: 72px; padding: 10px 10px 10px 12px; text-align: left; cursor: pointer; background: var(--surface); border: 1px solid var(--line); border-radius: 17px; }
-    .module__icon { display: grid; place-items: center; width: 46px; height: 46px; color: var(--accent); background: var(--accent-soft); border: 1px solid rgb(59 220 242 / 16%); border-radius: 14px; font-size: 20px; }
+    .module__icon { display: grid; place-items: center; width: 46px; height: 46px; color: var(--accent); background: var(--accent-soft); border: 1px solid rgb(59 220 242 / 16%); border-radius: 14px; }
+    .mobile-icon { width: 24px; height: 24px; }
+    .project-row__icon .mobile-icon { width: 23px; height: 23px; }
     .module strong, .module small { display: block; }
     .module small { margin-top: 4px; color: var(--muted); font-size: 11px; }
     .module__arrow { color: #6f8397; font-size: 20px; }
@@ -328,21 +321,15 @@
         </header>
 
         <div class="content" data-page="home">
-          <p class="eyebrow">Jó reggelt</p>
+          <p class="eyebrow" data-home-greeting>Jó napot</p>
           <h1>Mit készítünk ma?</h1>
           <p class="lead">A legfontosabb eszközeid gyorsan, telefonra rendezve.</p>
-          <div class="state-card" data-account-card><div class="state-card__icon">⌁</div><div><strong data-account-title>Helyi mód</strong><span data-account-detail>A Drive később csatlakoztatható</span></div></div>
-          <div class="section-head"><h2>Legutóbbi projektek</h2><button data-nav="projects">Összes</button></div>
-          <div class="recent" data-recent-projects>
-            <button class="project-card" data-module="food"><span class="project-card__icon">◉</span><strong>Mai napló</strong><span>Ételnapló · ma</span></button>
-            <button class="project-card" data-module="qr"><span class="project-card__icon">▦</span><strong>Kampány QR</strong><span>QR Stúdió · tegnap</span></button>
-          </div>
-          <div class="section-head"><h2>Alkalmazások</h2><button data-action="filter">Szűrés</button></div>
+          <div class="section-head" style="margin-top:8px"><h2>Alkalmazások</h2><button data-action="filter">Szűrés</button></div>
           <div class="module-list">
-            <button class="module" data-module="food"><span class="module__icon">◉</span><span><strong>Ételnapló</strong><small>Étkezések és napi célok</small></span><span class="module__arrow">›</span></button>
-            <button class="module" data-module="finance"><span class="module__icon">⌁</span><span><strong>Pénzügyi Napló</strong><small>Kiadások és megtakarítások</small></span><span class="module__arrow">›</span></button>
-            <button class="module" data-module="qr"><span class="module__icon">▦</span><span><strong>QR Stúdió</strong><small>QR-kódok és kampánylinkek</small></span><span class="module__arrow">›</span></button>
-            <button class="module" data-module="ebook"><span class="module__icon">▤</span><span><strong>E-book Könyvtár</strong><small>Könyvek és e-olvasó</small></span><span class="module__arrow">›</span></button>
+            <button class="module" data-module="food"><span class="module__icon" data-module-icon="food"></span><span><strong>Ételnapló</strong><small>Étkezések és napi célok</small></span><span class="module__arrow">›</span></button>
+            <button class="module" data-module="finance"><span class="module__icon" data-module-icon="finance"></span><span><strong>Pénzügyi Napló</strong><small>Kiadások és megtakarítások</small></span><span class="module__arrow">›</span></button>
+            <button class="module" data-module="qr"><span class="module__icon" data-module-icon="qr"></span><span><strong>QR Stúdió</strong><small>QR-kódok és kampánylinkek</small></span><span class="module__arrow">›</span></button>
+            <button class="module" data-module="ebook"><span class="module__icon" data-module-icon="ebook"></span><span><strong>E-book Könyvtár</strong><small>Könyvek és e-olvasó</small></span><span class="module__arrow">›</span></button>
           </div>
         </div>
 

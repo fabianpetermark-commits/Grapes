@@ -11,6 +11,7 @@ import { listMobileEbooks, saveMobileReadingProgress, uploadMobileEbook } from '
 import { isMobileReadableEpub, normalizedReadingProgress, openMobileEpub } from './ebook-mobile-reader.js'
 import { createMobileFoodController } from './food/food-mobile.js'
 import { registerFoodSharing, sendMealShare, sendRecipeShare } from './food/food-sharing-client.js'
+import { hydrateMobileIcons, mobileIconSvg } from './android-mobile-icons.js'
 import {
   isMobileShareableBook,
   isTrustedPairingMessage,
@@ -33,13 +34,13 @@ const LOCAL_MODE_KEY = 'grapes-local-mode'
 const WATER_STORE_KEY = 'grapes-water-v1'
 const SYNC_CHECK_KEY = 'grapes-sync-last-check-v1'
 const moduleFolders = [
-  ['Ételnapló', 'food', '◉'],
-  ['Pénzügyi Napló', 'finance', '⌁'],
-  ['QR & Barcode', 'qr', '▦'],
-  ['Számla és árajánlat', 'billing', '▤'],
-  ['2D Studio', 'brochure', '◆'],
-  ['3D Studio', 'studio', '⬡'],
-  ['E-mail Stúdió', 'email', '✉'],
+  ['Ételnapló', 'food', 'food'],
+  ['Pénzügyi Napló', 'finance', 'finance'],
+  ['QR & Barcode', 'qr', 'qr'],
+  ['Számla és árajánlat', 'billing', 'billing'],
+  ['2D Studio', 'brochure', 'brochure'],
+  ['3D Studio', 'studio', 'studio'],
+  ['E-mail Stúdió', 'email', 'email'],
 ]
 let mobileEbooks = []
 let mobileReader = null
@@ -64,6 +65,17 @@ function localMode() {
 
 function setLocalMode(enabled) {
   try { enabled ? localStorage.setItem(LOCAL_MODE_KEY, '1') : localStorage.removeItem(LOCAL_MODE_KEY) } catch {}
+}
+
+function updateHomeGreeting(date = new Date()) {
+  const hour = date.getHours()
+  const greeting = hour >= 5 && hour < 11
+    ? 'Jó reggelt'
+    : hour >= 11 && hour < 18
+      ? 'Jó napot'
+      : 'Jó estét'
+  const label = $('[data-home-greeting]')
+  if (label) label.textContent = greeting
 }
 
 function showToast(message) {
@@ -399,8 +411,6 @@ async function pairMobileLibrary() {
 function renderAccount() {
   const connected = isGrapesDriveConnected()
   const account = getGrapesAccount()
-  $('[data-account-title]').textContent = connected ? (account?.name || 'Google Drive') : 'Helyi mód'
-  $('[data-account-detail]').textContent = connected ? (account?.email || 'Drive csatlakoztatva') : 'A Drive később csatlakoztatható'
   $('[data-account-mode]').textContent = connected ? (account?.email || 'Drive csatlakoztatva') : 'Helyi mód'
   $('[data-sync-title]').textContent = connected ? 'Google Drive csatlakoztatva' : 'Jelenleg helyi mód'
   $('[data-sync-detail]').textContent = connected
@@ -493,6 +503,7 @@ async function renderSync({ refreshed = false } = {}) {
 function showApp() {
   login.hidden = true
   app.hidden = false
+  updateHomeGreeting()
   renderAccount()
   showPage('home')
   renderProjects()
@@ -530,7 +541,7 @@ function projectRow(project) {
   button.dataset.projectName = `${project.name} ${project.folder}`.toLocaleLowerCase('hu-HU')
   const icon = document.createElement('span')
   icon.className = 'project-row__icon'
-  icon.textContent = project.icon || '◆'
+  icon.innerHTML = mobileIconSvg(project.icon || project.module)
   const copy = document.createElement('span')
   const strong = document.createElement('strong')
   strong.textContent = String(project.name || 'Névtelen projekt').replace(/\.grapes\.json$/i, '')
@@ -547,9 +558,9 @@ function projectRow(project) {
 
 async function collectProjects() {
   const local = [
-    { name: 'Mai étkezések', folder: 'Ételnapló', module: 'food', icon: '◉' },
-    { name: 'Víznapló', folder: 'Egészség', module: 'food', icon: '◇', water: true },
-    { name: 'E-book könyvtár', folder: 'E-book', module: 'ebook', icon: '▤' },
+    { name: 'Mai étkezések', folder: 'Ételnapló', module: 'food', icon: 'food' },
+    { name: 'Víznapló', folder: 'Egészség', module: 'food', icon: 'water', water: true },
+    { name: 'E-book könyvtár', folder: 'E-book', module: 'ebook', icon: 'ebook' },
   ]
   if (!isGrapesDriveConnected()) return local
   const groups = await Promise.all(moduleFolders.map(async ([folder, module, icon]) => {
@@ -561,22 +572,11 @@ async function collectProjects() {
 
 async function renderProjects() {
   const list = $('[data-project-list]')
-  const recent = $('[data-recent-projects]')
-  if (!list || !recent) return
+  if (!list) return
   list.innerHTML = '<div class="empty-state">Projektek betöltése…</div>'
   try {
     const projects = await collectProjects()
     list.replaceChildren(...projects.map(projectRow))
-    recent.replaceChildren(...projects.slice(0, 2).map(project => {
-      const button = document.createElement('button')
-      button.type = 'button'; button.className = 'project-card'
-      const icon = document.createElement('span'); icon.className = 'project-card__icon'; icon.textContent = project.icon
-      const strong = document.createElement('strong'); strong.textContent = String(project.name).replace(/\.grapes\.json$/i, '')
-      const meta = document.createElement('span'); meta.textContent = project.folder
-      button.append(icon, strong, meta)
-      button.addEventListener('click', () => project.water ? showPage('water') : project.module === 'ebook' && !project.id ? showPage('ebook') : openModule(project.module, project.id ? project : null))
-      return button
-    }))
   } catch (error) {
     const empty = document.createElement('div')
     empty.className = 'empty-state'
@@ -763,6 +763,7 @@ onGrapesDriveChange(() => {
   renderAccount(); renderProjects(); renderSync()
 })
 document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') updateHomeGreeting()
   if (document.visibilityState === 'hidden') {
     persistReaderProgress().catch(() => {})
     mobileFood?.flush().catch(() => {})
@@ -778,6 +779,7 @@ mobileFood = createMobileFoodController({
   sendMeal: sendMealShare,
   sendRecipe: sendRecipeShare,
 })
+hydrateMobileIcons()
 window.grapesHandleAndroidBack = () => {
   if (activePage === 'food' && mobileFood?.handleBack()) return true
   if ($('.bottom-sheet.is-open')) { closeSheet(); return true }
