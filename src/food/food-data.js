@@ -258,7 +258,7 @@ export function summarizeEntries(entries = []) {
   // Imported micronutrients are keyed separately to keep the original Food core schema intact.
   const extraTotals = new Map()
   for (const entry of entries) for (const [name, nutrient] of Object.entries(entry.snapshot?.nutrients?.extras || {})) {
-    if (!/^\\w+$/.test(name) || !Number.isFinite(Number(nutrient?.amount))) continue
+    if (!/^[a-zA-Z0-9_]+$/.test(name) || !Number.isFinite(Number(nutrient?.amount))) continue
     const key = 'extra:' + name
     extraTotals.set(key, (extraTotals.get(key) || 0) + Number(nutrient.amount))
   }
