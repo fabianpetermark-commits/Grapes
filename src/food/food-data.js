@@ -108,7 +108,7 @@ export function normalizeFoodItem(value = {}) {
     nutrients: normalizeNutrients(value.nutrients),
     servings: Array.isArray(value.servings) ? value.servings.map(normalizeServing) : [],
     source: {
-      type: ['manual', 'openfoodfacts', 'fatsecret', 'recipe', 'shared-recipe', 'verified'].includes(value.source?.type) ? value.source.type : 'manual',
+      type: ['manual', 'openfoodfacts', 'fatsecret', 'usda', 'recipe', 'shared-recipe', 'verified'].includes(value.source?.type) ? value.source.type : 'manual',
       id: cleanText(value.source?.id),
       revision: cleanText(value.source?.revision),
       attribution: cleanText(value.source?.attribution),
