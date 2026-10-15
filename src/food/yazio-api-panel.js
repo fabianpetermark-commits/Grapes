@@ -23,6 +23,24 @@ export function createYazioApiPanel({ openSheet, closeSheet, importBundle, openF
       <div class="yazio-api-guide-slide" aria-live="polite"><span class="yazio-api-guide-icon" data-yazio-guide-icon></span><h3 data-yazio-guide-title></h3><p data-yazio-guide-description></p></div>
       <div class="yazio-api-guide-navigation"><button type="button" class="quick-action" data-yazio-guide-prev>Előző</button><div class="yazio-api-guide-dots" data-yazio-guide-dots></div><button type="button" class="primary yazio-api-guide-next" data-yazio-guide-next>Következő</button></div>
     </div>`
+  const tutorialStyle = document.createElement('style')
+  tutorialStyle.textContent = `
+    [data-yazio-api-sheet] .yazio-api-actions { display:flex; flex-direction:column; align-items:center; gap:12px; margin:14px 0 8px; }
+    [data-yazio-api-sheet] .yazio-api-action { box-sizing:border-box; width:min(100%, 270px); min-height:46px; height:auto; padding:12px 20px; border-radius:16px; font-size:1rem; line-height:1.2; text-align:center; }
+    [data-yazio-api-sheet] .yazio-api-guide-button { background:linear-gradient(110deg, #35d5df, #69aaf9); color:#071b29; }
+    [data-yazio-api-sheet] .yazio-api-guide[hidden] { display:none; }
+    [data-yazio-api-sheet] .yazio-api-guide { margin:18px 0; padding:16px; border:1px solid #33475b; border-radius:22px; background:#101c29; }
+    [data-yazio-api-sheet] .yazio-api-guide-heading, [data-yazio-api-sheet] .yazio-api-guide-navigation { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    [data-yazio-api-sheet] .yazio-api-guide-heading { color:#a8bed0; font-size:.85rem; }
+    [data-yazio-api-sheet] .yazio-api-guide-slide { min-height:230px; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:18px 6px; }
+    [data-yazio-api-sheet] .yazio-api-guide-icon { display:grid; place-items:center; width:70px; height:70px; border-radius:22px; background:#193a4d; color:#53dbe9; font-size:2.2rem; }
+    [data-yazio-api-sheet] .yazio-api-guide-slide h3 { font-size:1.2rem; margin:18px 0 8px; }
+    [data-yazio-api-sheet] .yazio-api-guide-slide p { line-height:1.55; font-size:.95rem; margin:0; }
+    [data-yazio-api-sheet] .yazio-api-guide-navigation button { min-width:80px; min-height:42px; border-radius:12px; }
+    [data-yazio-api-sheet] .yazio-api-guide-dots { font-size:.8rem; letter-spacing:2px; color:#54d6e8; }
+    [data-yazio-api-sheet] .yazio-api-guide-next { padding:8px 12px; }
+  `
+  sheet.append(tutorialStyle)
   document.querySelector('.phone').append(sheet)
   const form = sheet.querySelector('form'), status = sheet.querySelector('[role="status"]')
   const submit = form.querySelector('button[type="submit"]')
