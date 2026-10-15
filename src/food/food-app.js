@@ -720,7 +720,8 @@ function renderYazioRecords() {
   $('#food-yazio-page').textContent = (yazioPage + 1) + '/' + pages + ' · ' + records.length + ' rekord · ' + yazioSelected.size + ' kijelölve'
   $('#food-yazio-prev').disabled = yazioPage === 0 || yazioImportBusy
   $('#food-yazio-next').disabled = yazioPage + 1 >= pages || yazioImportBusy
-  $('#food-yazio-confirm').disabled = !yazioSelected.size || yazioImportBusy
+  const resumable = (project.importBatches || []).some(batch => batch.source === 'yazio' && batch.profileId === profile.id && batch.status === 'in-progress' && batch.exportFingerprint === pendingYazioImport.exportFingerprint)
+  $('#food-yazio-confirm').disabled = (!yazioSelected.size && !resumable) || yazioImportBusy
 }
 function renderYazioPreview() {
   if (!pendingYazioImport) return
@@ -784,7 +785,8 @@ async function applyYazioImport() {
   if (!pendingYazioImport || yazioImportBusy || $('#food-yazio-profile').value !== profile.id) return
   const plan = pendingYazioImport
   const indexes = [...yazioSelected].sort((a, b) => a - b)
-  if (!indexes.length || !confirm('A kijelölt ' + indexes.length +
+  if (!indexes.length && !(project.importBatches || []).some(batch => batch.source === 'yazio' && batch.profileId === profile.id && batch.status === 'in-progress' && batch.exportFingerprint === plan.exportFingerprint)) return
+  if (!confirm('A kijelölt ' + indexes.length +
     ' rekordot hozzáadod a(z) ' + profile.name + ' profilhoz? Meglévő rekord nem íródik felül.')) return
   yazioImportBusy = true
   $('#food-yazio-confirm').disabled = true; $('#food-yazio-cancel').disabled = true
@@ -795,7 +797,7 @@ async function applyYazioImport() {
   // Reuse an interrupted batch only for an identical upstream export and active profile.
   const previous = (project.importBatches || []).find(batch =>
     batch.source === 'yazio' && batch.profileId === profile.id && batch.status === 'in-progress' &&
-    JSON.stringify(batch.sourceArchive?.meta) === JSON.stringify(plan.sourceArchive.meta))
+    batch.exportFingerprint === plan.exportFingerprint)
   const batchId = previous?.id || createFoodId('yazio-batch')
   try {
     clearTimeout(saveTimer)
