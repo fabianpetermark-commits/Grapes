@@ -81,6 +81,7 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$SOURCE"
           mv "$SOURCE" "$TARGET"
           echo "APK_PATH=$TARGET" >> "$GITHUB_ENV"
+          echo "RELEASE_TARGET=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -88,5 +89,5 @@ jobs:
           gh release create "android-v${GRAPES_VERSION_CODE}" "$APK_PATH" \
             --title "Grapes Android ${GRAPES_VERSION_NAME}" \
             --notes "$RELEASE_NOTES" \
-            --target "${GITHUB_SHA}" \
+            --target "${RELEASE_TARGET}" \
             --latest
