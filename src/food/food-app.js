@@ -247,6 +247,55 @@ function renderRecipePreview() { const target = $('#food-recipe-preview'); if (!
 function renderRecipeIngredients() { const container = $('#food-recipe-ingredients'); container.replaceChildren(); if (!recipeIngredients.length) { const empty = document.createElement('p'); empty.className = 'food__empty'; empty.textContent = 'Még nincs hozzávaló.'; container.append(empty) } for (const ingredient of recipeIngredients) { const food = project.customFoods.find(item => item.id === ingredient.foodId); const row = document.createElement('div'); const text = document.createElement('span'); text.textContent = `${food?.name || 'Hiányzó étel'} · ${formatNumber(ingredient.amount, 2)} ${ingredient.unit}`; const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'btn btn--sm'; remove.dataset.recipeIngredientDelete = ingredient.id; remove.textContent = 'Eltávolítás'; row.append(text, remove); container.append(row) } renderRecipePreview() }
 function renderRecipes() { recipeIngredientFoodOptions(); renderRecipeIngredients(); const container = $('#food-recipes'); container.replaceChildren(); if (!project.recipes.length) { const empty = document.createElement('p'); empty.className = 'food__empty'; empty.textContent = 'Még nincs saját recept.'; container.append(empty); return } for (const recipe of project.recipes) { const food = project.customFoods.find(item => item.id === recipe.foodId); const parent = project.recipes.find(item => item.id === recipe.variantOfRecipeId); const row = document.createElement('article'); row.className = 'food__recipe-row'; const info = document.createElement('div'); const name = document.createElement('strong'); name.textContent = recipe.name; const meta = document.createElement('span'); meta.textContent = `${recipe.category} · ${formatNumber(food?.nutrients.energyKcal, 1)} kcal / 100 g · ${recipe.ingredients.length} hozzávaló · v${recipe.revision}${parent ? ` · ${parent.name} variánsa` : ''}`; info.append(name, meta); const variant = document.createElement('button'); variant.type = 'button'; variant.className = 'btn btn--sm'; variant.dataset.recipeVariant = recipe.id; variant.textContent = 'Variáns'; const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'btn btn--sm'; edit.dataset.recipeEdit = recipe.id; edit.textContent = 'Szerkesztés'; const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'btn btn--sm'; remove.dataset.recipeDelete = recipe.id; remove.textContent = 'Törlés'; row.append(info, variant, edit, remove); container.append(row) } }
 
+
+function renderArchivedYazioRecipes() {
+  if (activeTab !== 'recipes') return
+  const container = $('#food-recipes')
+  const seen = new Set()
+  let displayed = 0
+  for (const batch of project.importBatches || []) {
+    if (batch.source !== 'yazio' || batch.profileId !== profile.id || batch.status === 'undone') continue
+    const archive = batch.sourceArchive || {}
+    for (const recipe of archive.recipes || []) {
+      const key = String(recipe.recipe_id || '')
+      if (!key || seen.has(key)) continue
+      seen.add(key)
+      if (displayed >= 400) continue
+      displayed++
+      const box = document.createElement('details')
+      box.className = 'food__recipe-row food__yazio-archive-recipe'
+      const summary = document.createElement('summary')
+      summary.textContent = (recipe.name || 'Névtelen recept') + ' · YAZIO forrásrecept · csak olvasható'
+      const ingredients = (archive.recipe_ingredients || []).filter(item => String(item.recipe_id) === key)
+      const list = document.createElement('ul')
+      for (const item of ingredients) {
+        const li = document.createElement('li')
+        const product = (archive.products || []).find(p => String(p.product_id) === String(item.product_id))
+        li.textContent = (product?.name || item.name || 'Ismeretlen hozzávaló') + ' · ' +
+          formatNumber(item.amount, 2) + ' ' + (item.base_unit || 'egység')
+        list.append(li)
+      }
+      const instructions = (archive.recipe_instructions || []).filter(item => String(item.recipe_id) === key)
+      const description = document.createElement('p')
+      description.textContent = 'YAZIO receptazonosító: ' + key + ' · ' +
+        formatNumber(recipe.energy_kcal, 1) + ' kcal/adag' +
+        ' · ' + instructions.length + ' elkészítési lépés. Szerkeszthető Grapes-receptté nem konvertálódik automatikusan.'
+      box.append(summary, description, list)
+      if (instructions.length) {
+        const steps = document.createElement('ol')
+        for (const step of instructions) { const li = document.createElement('li'); li.textContent = String(step.text || ''); steps.append(li) }
+        box.append(steps)
+      }
+      container.append(box)
+    }
+  }
+  if (seen.size > displayed) {
+    const note = document.createElement('p'); note.className = 'food__stats-note'
+    note.textContent = 'A YAZIO-archívum ' + seen.size + ' receptet tartalmaz; ebből ' + displayed + ' jelenik meg. A többi a biztonsági mentésben változatlanul elérhető.'
+    container.append(note)
+  }
+}
+
 function libraryLink(id) { return project.recipeLibraries.find(item => item.data?.id === id) }
 function setLibraryStatus(message, state = '') { const target = $('#food-library-status'); target.textContent = message; target.dataset.state = state }
 function renderLibraries() {
@@ -398,7 +447,7 @@ function render() {
     panel.setAttribute('aria-labelledby', `food-tab-${panel.dataset.foodPanel}`)
     panel.classList.toggle('hidden', !selected)
   }
-  entryFoodOptions(); renderSummary(); renderMeals(); renderFoodItems(); renderRecipes(); renderLibraries(); renderStats(); renderTargets()
+  entryFoodOptions(); renderSummary(); renderMeals(); renderFoodItems(); renderRecipes(); renderArchivedYazioRecipes(); renderLibraries(); renderStats(); renderTargets()
 }
 
 function resetEntryForm() { $('#food-entry-form').reset(); $('#food-entry-id').value = ''; $('#food-entry-amount').value = 100; $('#food-entry-time').value = new Date().toTimeString().slice(0, 5); $('#food-entry-cancel').classList.add('hidden'); updateEntryUnits() }
