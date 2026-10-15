@@ -34,3 +34,19 @@ test('megszakított import folytatása', () => { const p=plan([row(),row({entry_
 test('statisztika eredeti forrásnap szerint', () => { assert.equal(buildDailyNutritionSeries(apply(plan()).project.diaryEntries,profile.id)[0].date,'2024-01-02') })
 test('napi eltérés megjelenik', () => { assert.equal(plan([row()],[],{daily_summary:[{date:'2024-01-02',energy_kcal:300}]}).discrepancies.length>0,true) })
 test('meglévő katalógust nem módosít', () => {const start=createEmptyFoodProject(profile);start.customFoods=[{id:'x',name:'X',nutrients:{energyKcal:2}}];const after=apply(plan(),start).project;assert.equal(after.customFoods[0].name,'X') })
+
+test('csendben módosított tápértékek sem törölhetők visszavonáskor', () => {
+  const first = apply(plan())
+  first.project.diaryEntries[0].snapshot.nutrients.energyKcal = 999
+  const reverted = undoYazioBatch(first.project, first.batchId)
+  assert.equal(reverted.removed, 0)
+  assert.equal(reverted.modified.length, 1)
+})
+test('azonos rekord különböző exportban forrás-ID nélkül bizonytalan marad', () => {
+  const base = row({ entry_id: null })
+  const firstPlan = plan([base])
+  const first = apply(firstPlan).project
+  const later = plan([base, row({entry_id:'another',logged_at:'2024-01-02 13:00:00'})], first.diaryEntries)
+  assert.equal(later.records[0].status, 'uncertain')
+  assert.notEqual(later.records[0].entry.externalKey, first.diaryEntries[0].externalKey)
+})
