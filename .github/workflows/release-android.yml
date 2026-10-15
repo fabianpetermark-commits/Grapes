@@ -88,4 +88,5 @@ jobs:
           gh release create "android-v${GRAPES_VERSION_CODE}" "$APK_PATH" \
             --title "Grapes Android ${GRAPES_VERSION_NAME}" \
             --notes "$RELEASE_NOTES" \
+            --target "${GITHUB_SHA}" \
             --latest
