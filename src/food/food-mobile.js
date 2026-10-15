@@ -21,7 +21,7 @@ const localDate = (date = new Date()) => new Date(date.getTime() - date.getTimez
 const number = (value, digits = 0) => new Intl.NumberFormat('hu-HU', { maximumFractionDigits: digits }).format(Number(value) || 0)
 const nutrient = (value, digits = 0, suffix = '') => value === null || value === undefined ? '—' : `${number(value, digits)}${suffix}`
 
-export function createMobileFoodController({ root = document, fab, addSheet, backdrop, showToast, openLegacy, sendMeal = null, sendRecipe = null, onHydrationImport = null }) {
+export function createMobileFoodController({ root = document, fab, addSheet, backdrop, showToast, openLegacy, sendMeal = null, sendRecipe = null, onHydrationImport = null, getHydrationExternalKeys = null }) {
   let project = null
   let profile = null
   let driveFileId = null
@@ -109,6 +109,17 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       driveFileId = nextDriveFileId
       loadedProfileId = nextProfile.id
       changeRevision = 0
+      const legacyHydration = project.diaryEntries.filter(entry => entry.snapshot?.category === 'Folyadék')
+      if (legacyHydration.length && onHydrationImport) {
+        try {
+          onHydrationImport(legacyHydration)
+          project.diaryEntries = project.diaryEntries.filter(entry => entry.snapshot?.category !== 'Folyadék')
+          project.syncState = { ...project.syncState, localDirty: true }
+          changeRevision += 1
+        } catch (error) {
+          showToast(`A korábbi vízadatok átköltöztetése nem sikerült. ${error?.message || ''}`.trim())
+        }
+      }
       await persistLocal()
       render()
       if (isGrapesDriveConnected()) {
@@ -734,7 +745,12 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
 
   async function prepareHealthImport(source) {
     try {
-      pendingHealthImport = prepareHealthBridgeImport(source, { profileId: profile.id, existingEntries: project.diaryEntries })
+      const hydrationKeys = typeof getHydrationExternalKeys === 'function' ? getHydrationExternalKeys() : []
+      const existingEntries = [
+        ...project.diaryEntries.filter(entry => entry.snapshot?.category !== 'Folyadék'),
+        ...hydrationKeys.map(externalKey => ({ externalKey })),
+      ]
+      pendingHealthImport = prepareHealthBridgeImport(source, { profileId: profile.id, existingEntries })
       closeSheets(); renderHealthPreview()
     } catch (error) { pendingHealthImport = null; showToast(error.message) }
   }
@@ -755,14 +771,29 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   function applyHealthImport() {
     if (!pendingHealthImport) return
     const selected = [...root.querySelectorAll('[data-food-health-record]:checked')].map(input => Number(input.value))
-    const existingKeys = new Set(project.diaryEntries.map(entry => entry.externalKey).filter(Boolean))
+    const hydrationKeys = typeof getHydrationExternalKeys === 'function' ? getHydrationExternalKeys() : []
+    const existingKeys = new Set([...project.diaryEntries.map(entry => entry.externalKey), ...hydrationKeys].filter(Boolean))
     const entries = healthImportEntries(pendingHealthImport, selected).filter(entry => !existingKeys.has(entry.externalKey))
     if (!entries.length) { $('[data-food-health-status]').textContent = 'Nincs új, kijelölt Health-rekord.'; return }
-    project.diaryEntries = [...project.diaryEntries, ...entries]
     const hydration = entries.filter(entry => entry.snapshot?.category === 'Folyadék')
-    if (hydration.length) onHydrationImport?.(hydration)
+    const nutrition = entries.filter(entry => entry.snapshot?.category !== 'Folyadék')
+    let importedHydration = 0
+    try {
+      if (hydration.length) {
+        if (!onHydrationImport) throw new Error('A Víz modul nem érhető el az importhoz.')
+        importedHydration = onHydrationImport(hydration)
+      }
+    } catch (error) {
+      $('[data-food-health-status]').textContent = error?.message || 'A vízadatok mentése nem sikerült.'
+      return
+    }
+    if (nutrition.length) project.diaryEntries = [...project.diaryEntries, ...nutrition]
+    const imported = nutrition.length + importedHydration
+    if (!imported) { $('[data-food-health-status]').textContent = 'Nincs új, kijelölt Health-rekord.'; return }
     selectedDate = localDate(new Date([...entries].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))[0].occurredAt))
-    pendingHealthImport = null; scheduleSave(); closeSheets(); render(); showToast(`${entries.length} Health-rekord importálva.`)
+    pendingHealthImport = null
+    if (nutrition.length) scheduleSave()
+    closeSheets(); render(); showToast(`${imported} Health-rekord importálva.`)
   }
 
   async function importYazioCsv(source) {

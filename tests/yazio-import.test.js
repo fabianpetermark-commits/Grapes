@@ -22,6 +22,21 @@ test('a Yazio import ismételt sorokat nem kettőz meg', () => {
   assert.deepEqual(repeated.counts, { ready: 0, duplicate: 2, invalid: 0 })
 })
 
+test('a Yazio import a javított makróértékű sort nem téveszti duplikációnak', () => {
+  const first = yazioImportEntries(prepareYazioCsvImport(csv, { profileId: 'profile-1' }))
+  const corrected = csv.replace(',24,14,48\n', ',25,14,48\n')
+  const repeated = prepareYazioCsvImport(corrected, { profileId: 'profile-1', existingEntries: first })
+  assert.deepEqual(repeated.counts, { ready: 1, duplicate: 1, invalid: 0 })
+  assert.match(yazioImportEntries(repeated)[0].externalKey, /^yazio:[0-9a-f]{16}$/)
+})
+
+test('a korábbi 32 bites Yazio-azonosítóval importált sort továbbra is felismeri', () => {
+  const [legacyEntry] = yazioImportEntries(prepareYazioCsvImport(csv, { profileId: 'profile-1' }))
+  legacyEntry.externalKey = 'yazio:29f92e20'
+  const repeated = prepareYazioCsvImport(csv, { profileId: 'profile-1', existingEntries: [legacyEntry] })
+  assert.deepEqual(repeated.counts, { ready: 1, duplicate: 1, invalid: 0 })
+})
+
 test('a Yazio import elutasít más CSV-formátumot', () => {
   assert.throws(() => prepareYazioCsvImport('name,value\na,1', { profileId: 'profile-1' }), /nutrition_log/)
 })

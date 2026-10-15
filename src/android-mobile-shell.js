@@ -690,6 +690,13 @@ function importHydrationEntries(entries = []) {
   return imported
 }
 
+function hydrationExternalKeys() {
+  return Object.values(loadWaterStore())
+    .flatMap(day => Array.isArray(day?.entries) ? day.entries : [])
+    .map(entry => entry.externalKey)
+    .filter(Boolean)
+}
+
 function formatWater(amount) {
   return `${new Intl.NumberFormat('hu-HU').format(amount)} ml`
 }
@@ -889,6 +896,7 @@ mobileFood = createMobileFoodController({
   sendMeal: sendMealShare,
   sendRecipe: sendRecipeShare,
   onHydrationImport: importHydrationEntries,
+  getHydrationExternalKeys: hydrationExternalKeys,
 })
 hydrateMobileIcons()
 refreshUpdateInbox()

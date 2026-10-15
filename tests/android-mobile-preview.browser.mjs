@@ -52,16 +52,17 @@ try {
   assert.equal(await page.locator('[data-health-sync]').count(), 1)
   assert.equal(await page.locator('[data-samsung-sync-action]').count(), 1)
   assert.equal(await page.locator('[data-yazio-import]').count(), 1)
+  const healthExport = JSON.stringify({
+    schemaVersion: 1, producer: 'hu.grapes.healthconnect', generatedAt: '2026-10-15T08:00:00.000Z', records: [
+      { type: 'nutrition', externalId: 'healthconnect:com.samsung.android.app.healthdata:sync-n1', sourcePackage: 'com.samsung.android.app.healthdata', startTime: '2026-10-15T06:10:00.000Z', endTime: '2026-10-15T06:20:00.000Z', name: 'Samsung reggeli', mealType: 'breakfast', energyKcal: 320, proteinGrams: 18, carbohydrateGrams: 42, fatGrams: 9, volumeMilliliters: null },
+      { type: 'hydration', externalId: 'healthconnect:com.samsung.android.app.healthdata:sync-h1', sourcePackage: 'com.samsung.android.app.healthdata', startTime: '2026-10-15T07:00:00.000Z', endTime: '2026-10-15T07:00:00.000Z', name: 'Víz', mealType: null, energyKcal: null, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, volumeMilliliters: 300 },
+    ],
+  })
   const healthChooserPromise = page.waitForEvent('filechooser')
   await page.locator('[data-health-sync]').click()
   const healthChooser = await healthChooserPromise
   await healthChooser.setFiles({
-    name: 'health-export.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({
-      schemaVersion: 1, producer: 'hu.grapes.healthconnect', generatedAt: '2026-10-15T08:00:00.000Z', records: [
-        { type: 'nutrition', externalId: 'healthconnect:com.samsung.android.app.healthdata:sync-n1', sourcePackage: 'com.samsung.android.app.healthdata', startTime: '2026-10-15T06:10:00.000Z', endTime: '2026-10-15T06:20:00.000Z', name: 'Samsung reggeli', mealType: 'breakfast', energyKcal: 320, proteinGrams: 18, carbohydrateGrams: 42, fatGrams: 9, volumeMilliliters: null },
-        { type: 'hydration', externalId: 'healthconnect:com.samsung.android.app.healthdata:sync-h1', sourcePackage: 'com.samsung.android.app.healthdata', startTime: '2026-10-15T07:00:00.000Z', endTime: '2026-10-15T07:00:00.000Z', name: 'Víz', mealType: null, energyKcal: null, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, volumeMilliliters: 300 },
-      ],
-    })),
+    name: 'health-export.json', mimeType: 'application/json', buffer: Buffer.from(healthExport),
   })
   await page.locator('[data-food-health-sheet].is-open').waitFor({ state: 'visible' })
   await page.locator('[data-food-health-confirm]').click()
@@ -139,6 +140,24 @@ try {
   await page.locator('[data-page="water"] [data-water-add="250"]').click()
   assert.equal((await page.locator('[data-water-total]').textContent()).replace(/\s/g, ''), '550ml')
   assert.match(await page.locator('[data-water-remaining]').textContent(), /1.?450 ml/)
+  await page.locator('[data-water-log] button').filter({ hasText: '300 ml' }).click()
+  assert.equal((await page.locator('[data-water-total]').textContent()).replace(/\s/g, ''), '250ml', 'A Health-víz törölhető legyen.')
+
+  await page.locator('[data-nav="sync"]').click()
+  const retryChooserPromise = page.waitForEvent('filechooser')
+  await page.locator('[data-health-sync]').click()
+  const retryChooser = await retryChooserPromise
+  await retryChooser.setFiles({ name: 'health-export.json', mimeType: 'application/json', buffer: Buffer.from(healthExport) })
+  await page.locator('[data-food-health-sheet].is-open').waitFor({ state: 'visible' })
+  assert.equal(await page.locator('[data-food-health-record]:checked').count(), 1, 'A törölt víz rekord újra importálható legyen.')
+  await page.locator('[data-food-health-confirm]').click()
+  await page.waitForFunction(() => !document.querySelector('[data-food-health-sheet]')?.classList.contains('is-open'))
+  await page.locator('[data-nav="home"]').click()
+  await page.locator('[data-page="home"]').waitFor({ state: 'visible' })
+  await page.locator('[data-module="food"]').last().click()
+  await page.locator('[data-page="food"]').waitFor({ state: 'visible' })
+  await page.locator('[data-water-open]').click()
+  assert.equal((await page.locator('[data-water-total]').textContent()).replace(/\s/g, ''), '550ml')
   await page.screenshot({ path: 'mobile-water.png', fullPage: true })
 
   await page.locator('[data-nav="home"]').click()

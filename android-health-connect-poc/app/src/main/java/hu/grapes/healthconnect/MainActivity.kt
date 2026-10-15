@@ -124,7 +124,6 @@ class MainActivity : ComponentActivity() {
                     if (release != null && !isFinishing) {
                         UpdateNotifications.showAvailable(this@MainActivity, release)
                         publishAvailableUpdate(release)
-                        showUpdateDialog(release)
                     }
                 }
         }
@@ -146,29 +145,9 @@ class MainActivity : ComponentActivity() {
             .show()
     }
 
-    private fun showUpdateDialog(release: AndroidUpdateManager.Release) {
-        val details = release.notes.trim().take(600)
-        AlertDialog.Builder(this)
-            .setTitle("Frissítés érhető el")
-            .setMessage(buildString {
-                append("${release.versionName} letölthető.")
-                if (details.isNotBlank()) append("\n\n$details")
-            })
-            .setPositiveButton("Frissítés") { _, _ -> downloadUpdate(release) }
-            .setNegativeButton("Később", null)
-            .show()
-    }
-
-    private fun downloadUpdate(release: AndroidUpdateManager.Release) {
-        Toast.makeText(this, "A Grapes frissítése letöltődik…", Toast.LENGTH_LONG).show()
-        lifecycleScope.launch {
-            runCatching {
-                val apk = updateManager.download(release)
-                updateManager.requestInstall(apk)
-            }.onFailure {
-                showUpdateError(it)
-            }
-        }
+    private suspend fun downloadAndInstallUpdate(release: AndroidUpdateManager.Release) {
+        val apk = updateManager.download(release)
+        updateManager.requestInstall(apk)
     }
 
     private fun showUpdateError(error: Throwable) {
@@ -265,8 +244,15 @@ class MainActivity : ComponentActivity() {
                 if (release == null || release.versionCode != requestedVersion) {
                     sendError(requestId, "Ez a frissítés már nem érhető el. Ellenőrizd újra az értesítéseket.")
                 } else {
-                    sendResult(requestId, "{}")
-                    downloadUpdate(release)
+                    Toast.makeText(this, "A Grapes frissítése letöltődik…", Toast.LENGTH_LONG).show()
+                    lifecycleScope.launch {
+                        runCatching { downloadAndInstallUpdate(release) }
+                            .onSuccess { sendResult(requestId, "{}") }
+                            .onFailure {
+                                sendError(requestId, it.message ?: "A frissítés nem sikerült.")
+                                showUpdateError(it)
+                            }
+                    }
                 }
             }
             else -> sendError(requestId, "Ismeretlen Android-művelet.")

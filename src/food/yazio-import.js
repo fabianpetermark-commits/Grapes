@@ -58,6 +58,15 @@ function mealType(value, occurredAt) {
 }
 
 function stableKey(parts) {
+  let hash = 14695981039346656037n
+  for (const character of parts.join('\u001f')) {
+    hash ^= BigInt(character.charCodeAt(0))
+    hash = BigInt.asUintN(64, hash * 1099511628211n)
+  }
+  return `yazio:${hash.toString(16).padStart(16, '0')}`
+}
+
+function legacyStableKey(parts) {
   let hash = 2166136261
   for (const character of parts.join('\u001f')) {
     hash ^= character.charCodeAt(0)
@@ -65,6 +74,9 @@ function stableKey(parts) {
   }
   return `yazio:${(hash >>> 0).toString(16).padStart(8, '0')}`
 }
+
+const sameNutrients = (entry, nutrients) => ['energyKcal', 'protein', 'fat', 'carbohydrate']
+  .every(key => (entry?.snapshot?.nutrients?.[key] ?? null) === (nutrients[key] ?? null))
 
 export function prepareYazioCsvImport(source, { profileId, existingEntries = [] } = {}) {
   const rows = parseCsvRows(source)
@@ -78,7 +90,7 @@ export function prepareYazioCsvImport(source, { profileId, existingEntries = [] 
     protein: column('Protein total', 'Fehérje összesen'), fat: column('Fat total', 'Zsír összesen'), carbohydrate: column('Carbs total', 'Szénhidrát összesen'),
   }
   for (const required of ['date', 'meal', 'product', 'energy']) if (columns[required] < 0) throw new Error('Nem a támogatott Yazio nutrition_log.csv fájlt választottad.')
-  const existingKeys = new Set(existingEntries.map(entry => entry.externalKey).filter(Boolean))
+  const existingByKey = new Map(existingEntries.filter(entry => entry.externalKey).map(entry => [entry.externalKey, entry]))
   const seen = new Set()
   const records = rows.slice(1).map((row, index) => {
     try {
@@ -93,13 +105,18 @@ export function prepareYazioCsvImport(source, { profileId, existingEntries = [] 
         fat: numberValue(get('fat')),
       }
       if (nutrients.energyKcal === null) throw new Error('Hiányzó kalóriaérték.')
-      const externalKey = stableKey([get('date'), get('time'), get('meal'), name, get('amount'), get('unit'), get('energy')])
+      const externalKey = stableKey([
+        get('date'), get('time'), get('meal'), name, get('amount'), get('unit'), get('energy'),
+        get('protein'), get('fat'), get('carbohydrate'),
+      ])
+      const legacyKey = legacyStableKey([get('date'), get('time'), get('meal'), name, get('amount'), get('unit'), get('energy')])
       const entry = normalizeDiaryEntry({
         id: createFoodId('entry'), profileId, mealType: mealType(get('meal'), occurredAt), occurredAt, amount: 1, unit: 'serving', externalKey,
         note: `Yazio import · ${String(get('amount') || '').trim()} ${String(get('unit') || '').trim()}`.trim(),
         snapshot: { foodId: '', name, category: 'Yazio', source: { type: 'manual', id: externalKey, attribution: 'YAZIO' }, baseAmount: 1, baseUnit: 'serving', nutrients },
       })
-      const duplicate = existingKeys.has(externalKey) || seen.has(externalKey)
+      const legacyEntry = existingByKey.get(legacyKey)
+      const duplicate = existingByKey.has(externalKey) || (legacyEntry && sameNutrients(legacyEntry, nutrients)) || seen.has(externalKey)
       seen.add(externalKey)
       return { index, status: duplicate ? 'duplicate' : 'ready', entry, error: '' }
     } catch (error) { return { index, status: 'invalid', entry: null, error: error.message } }
