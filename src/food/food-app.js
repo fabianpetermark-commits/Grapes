@@ -212,51 +212,129 @@ function renderFoodItems() {
   }
 }
 
-function renderOpenFoodFactsResults(message = '') {
-  const container = $('#food-off-results')
-  container.replaceChildren()
-  container.classList.remove('hidden')
-  if (message) { const status = document.createElement('p'); status.className = 'food__form-status'; status.textContent = message; container.append(status) }
+
+function catalogElements(context = 'foods') {
+  return context === 'diary'
+    ? { input: $('#food-entry-search'), button: $('#food-entry-catalog-button'), results: $('#food-entry-catalog-results') }
+    : { input: $('#food-search'), button: $('#food-off-search'), results: $('#food-off-results') }
+}
+
+function renderOpenFoodFactsResults(message = '', context = catalogSearchContext) {
+  const target = catalogElements(context).results
+  target.replaceChildren()
+  target.classList.remove('hidden')
+  const heading = document.createElement('h3')
+  heading.textContent = 'Külső élelmiszer-adatbázisok'
+  target.append(heading)
+  if (message) {
+    const status = document.createElement('p')
+    status.className = 'food__form-status'
+    status.textContent = message
+    target.append(status)
+  }
   if (!openFoodFactsResults.length) return
   for (const [index, food] of openFoodFactsResults.entries()) {
-    const row = document.createElement('article'); row.className = 'food__off-result'
-    if (food.imageUrl) { const image = document.createElement('img'); image.src = food.imageUrl; image.alt = ''; image.loading = 'lazy'; row.append(image) }
+    const row = document.createElement('article')
+    row.className = 'food__off-result'
+    if (food.imageUrl) {
+      const image = document.createElement('img')
+      image.src = food.imageUrl; image.alt = ''; image.loading = 'lazy'; row.append(image)
+    }
     const sourceLabel = food.source.type === 'fatsecret' ? 'FatSecret' : 'Open Food Facts'
-    const info = document.createElement('div'); const name = document.createElement('strong'); name.textContent = food.name; const meta = document.createElement('span'); meta.textContent = `${food.category} · ${formatNumber(food.nutrients.energyKcal, 1)} kcal / 100 ${food.baseUnit}${food.barcode ? ` · ${food.barcode}` : ''} · ${sourceLabel}`; info.append(name, meta)
-    const exists = project.customFoods.some(item => (food.barcode && item.barcode === food.barcode) || (item.source.type === food.source.type && item.source.id === food.source.id))
-    const button = document.createElement('button'); button.type = 'button'; button.className = 'btn btn--sm'; button.dataset.offResult = String(index); button.textContent = exists ? 'Megnyitás' : 'Betöltés'
-    row.append(info, button); container.append(row)
+    const info = document.createElement('div')
+    const name = document.createElement('strong'); name.textContent = food.name
+    const meta = document.createElement('span')
+    meta.textContent = food.category + ' · ' + formatNumber(food.nutrients.energyKcal, 1) +
+      ' kcal / 100 ' + food.baseUnit + (food.barcode ? ' · ' + food.barcode : '') + ' · ' + sourceLabel
+    info.append(name, meta)
+    const exists = project.customFoods.some(item =>
+      (food.barcode && item.barcode === food.barcode) ||
+      (item.source.type === food.source.type && item.source.id === food.source.id))
+    const button = document.createElement('button')
+    button.type = 'button'; button.className = 'btn btn--sm'
+    button.dataset.offResult = String(index)
+    button.dataset.catalogContext = context
+    button.textContent = exists ? (context === 'diary' ? 'Kiválasztás' : 'Megnyitás')
+      : (context === 'diary' ? 'Mentés a naplóhoz' : 'Betöltés')
+    row.append(info, button); target.append(row)
   }
 }
 
-async function searchOpenFoodFactsByName(queryOverride = '') {
-  const button = $('#food-off-search'); const query = typeof queryOverride === 'string' && queryOverride ? queryOverride.trim() : $('#food-search').value.trim()
-  button.disabled = true; button.textContent = 'Keresés…'; openFoodFactsResults = []; renderOpenFoodFactsResults('Keresés az Open Food Facts és FatSecret adatbázisban…')
+async function searchOpenFoodFactsByName(queryOverride = '', context = 'foods') {
+  const elements = catalogElements(context)
+  const query = typeof queryOverride === 'string' && queryOverride
+    ? queryOverride.trim() : elements.input.value.trim()
+  clearTimeout(catalogSearchTimer)
+  const requestId = ++catalogRequestId
+  catalogSearchContext = context
+  openFoodFactsResults = []
+  const otherContext = context === 'diary' ? 'foods' : 'diary'
+  catalogElements(otherContext).results.classList.add('hidden')
+  if (query.length < 2) {
+    renderOpenFoodFactsResults('Írj be legalább 2 karaktert.', context)
+    return false
+  }
+  elements.button.disabled = true
+  elements.button.textContent = 'Keresés…'
+  renderOpenFoodFactsResults('Keresés az Open Food Facts és FatSecret adatbázisában…', context)
   try {
-    const searches = await Promise.allSettled([searchOpenFoodFactsProducts(query), searchFatSecretProducts(query)])
-    const successful = searches.filter(result => result.status === 'fulfilled').map(result => result.value)
-    if (!successful.length) throw new Error(searches.map(result => result.reason?.message).filter(Boolean).join(' '))
-    const seen = new Set()
-    openFoodFactsResults = successful.flatMap(result => result.products).filter(product => {
-      const key = product.barcode ? `barcode:${product.barcode}` : `${product.source.type}:${product.source.id}`
-      if (seen.has(key)) return false
-      seen.add(key); return true
-    })
-    const total = successful.reduce((sum, result) => sum + result.count, 0)
-    renderOpenFoodFactsResults(openFoodFactsResults.length ? `${total} találatból az első ${openFoodFactsResults.length}. Válassz egy terméket, majd ellenőrizd és mentsd.` : 'Nem található használható termék ezzel a névvel. Próbálj rövidebb vagy márkanevet is tartalmazó keresést.')
-    return true
-  } catch (error) { renderOpenFoodFactsResults(error.message); return false }
-  finally { button.disabled = false; button.textContent = 'Keresés termékadatbázisokban' }
+    // Avoid repeating queries while navigating tabs, and respect public API rate limits.
+    const cacheKey = query.toLocaleLowerCase('hu-HU')
+    const cached = catalogCache.get(cacheKey)
+    const result = cached && Date.now() - cached.at < 120000
+      ? cached.result : await searchFoodCatalog(query)
+    if (requestId !== catalogRequestId) return false
+    if (!cached || Date.now() - cached.at >= 120000) {
+      catalogCache.set(cacheKey, { at: Date.now(), result })
+      if (catalogCache.size > 25) catalogCache.delete(catalogCache.keys().next().value)
+    }
+    catalogSearchResult = result
+    openFoodFactsResults = result.products
+    const description = result.unavailable
+      ? 'A külső adatbázisok jelenleg nem érhetők el.'
+      : result.products.length
+        ? result.products.length + ' elérhető találat. Ellenőrizd az adatokat mentés előtt.'
+        : 'Nincs találat a külső adatbázisokban.'
+    const warnings = result.errors.length
+      ? ' Részleges vagy sikertelen kapcsolat: ' + result.errors.join(' | ')
+      : ''
+    renderOpenFoodFactsResults(description + warnings, context)
+    return !result.unavailable
+  } catch (error) {
+    if (requestId === catalogRequestId) renderOpenFoodFactsResults(
+      'Az adatbázis-keresés sikertelen: ' + (error.message || 'Ismeretlen hiba.'), context)
+    return false
+  } finally {
+    if (requestId === catalogRequestId) {
+      elements.button.disabled = false
+      elements.button.textContent = 'Keresés az adatbázisokban'
+    }
+  }
+}
+
+function queueCatalogSearch(context) {
+  clearTimeout(catalogSearchTimer)
+  const elements = catalogElements(context)
+  const query = elements.input.value.trim()
+  ++catalogRequestId
+  elements.button.disabled = false
+  elements.button.textContent = 'Keresés az adatbázisokban'
+  elements.results.classList.add('hidden')
+  openFoodFactsResults = []
+  catalogSearchContext = context
+  if (query.length < 3 || query.length > 120) return
+  // Deliberately only query after the user has stopped typing.
+  catalogSearchTimer = setTimeout(() => { searchOpenFoodFactsByName(query, context) }, 1100)
 }
 
 async function lookupProductFromForm() {
   if ($('#food-item-barcode').value.trim()) return lookupBarcode()
   const name = $('#food-item-name').value.trim()
-  if (name.length < 2) { report('Adj meg legalább 2 karakteres terméknevet vagy egy 7–14 számjegyű vonalkódot.', 'error'); return }
+  if (name.length < 2) { $('#food-api-status').textContent = 'Adj meg legalább 2 karakteres terméknevet vagy egy 7–14 számjegyű vonalkódot.'; return }
   $('#food-search').value = name
   renderFoodItems()
   const searched = await searchOpenFoodFactsByName(name)
-  if (searched) report('A név szerinti találatokból válaszd ki a megfelelő terméket.')
+  if (searched) $('#food-api-status').textContent = 'A találatokból válaszd ki a megfelelő terméket.'
   $('#food-off-results').scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
