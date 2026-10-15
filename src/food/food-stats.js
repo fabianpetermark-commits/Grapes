@@ -13,7 +13,7 @@ export function buildDailyNutritionSeries(entries, profileId) {
   const groups = new Map()
   for (const entry of entries) {
     if (entry.profileId !== profileId) continue
-    const date = localDateKey(entry.occurredAt)
+    const date = entry.origin?.sourceDate || localDateKey(entry.occurredAt)
     if (!groups.has(date)) groups.set(date, [])
     groups.get(date).push(entry)
   }
@@ -31,13 +31,13 @@ export function filterNutritionPeriod(series, period = 'all', today = new Date()
 }
 
 export function aggregateNutritionSeries(series, nutrient, granularity = 'day') {
-  if (!CORE_NUTRIENTS.includes(nutrient)) throw new Error('Ismeretlen statisztikai tápanyag.')
+  if (!CORE_NUTRIENTS.includes(nutrient) && !/^extra:[a-z0-9_]+$/.test(nutrient)) throw new Error('Ismeretlen statisztikai tápanyag.')
   const groups = new Map()
   for (const item of series) {
     const key = granularity === 'month' ? item.date.slice(0, 7) : granularity === 'week' ? weekKey(item.date) : item.date
     if (!groups.has(key)) groups.set(key, { key, value: 0, availableDays: 0, loggedDays: 0 })
     const group = groups.get(key); group.loggedDays += 1
-    if (item.nutrients[nutrient] !== null) { group.value += item.nutrients[nutrient]; group.availableDays += 1 }
+    if (Number.isFinite(item.nutrients[nutrient])) { group.value += item.nutrients[nutrient]; group.availableDays += 1 }
   }
   return [...groups.values()].map(item => ({ ...item, value: item.availableDays ? rounded(item.value) : null }))
 }

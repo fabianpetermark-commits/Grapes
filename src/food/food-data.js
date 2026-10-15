@@ -30,19 +30,19 @@ export function createFoodId(prefix = 'food') {
   return `${prefix}-${uuid}`
 }
 
-export function normalizeNutrients(value = {}) {
+export function normalizeNutrients(value = {}, digits = 2) {
   const result = {}
   for (const key of CORE_NUTRIENTS) {
     const number = finiteOrNull(value[key])
     if (number !== null && (!Number.isFinite(number) || number < 0)) throw new Error(`A(z) ${key} tápérték nem lehet negatív vagy érvénytelen.`)
-    result[key] = number === null ? null : rounded(number)
+    result[key] = number === null ? null : rounded(number, digits)
   }
   const extras = {}
   for (const [key, nutrient] of Object.entries(value.extras || {})) {
     const amount = finiteOrNull(nutrient?.amount)
     const unit = cleanText(nutrient?.unit)
     if (!key || amount === null || !Number.isFinite(amount) || amount < 0 || !unit) continue
-    extras[key] = { amount: rounded(amount), unit }
+    extras[key] = { amount: rounded(amount, digits), unit }
   }
   return { ...result, extras }
 }
@@ -204,6 +204,7 @@ export function calculateRecipeFood(recipeValue, foods = []) {
 }
 
 export function normalizeDiaryEntry(value = {}, foodValue = null) {
+  const createdAt = isoDateTime(value.createdAt || new Date().toISOString(), 'Létrehozási idő')
   const occurredAt = isoDateTime(value.occurredAt || new Date().toISOString(), 'Étkezés időpontja')
   const legacyHour = new Date(occurredAt).getHours()
   const mealType = MEAL_TYPES.includes(value.mealType)
@@ -230,11 +231,21 @@ export function normalizeDiaryEntry(value = {}, foodValue = null) {
     snapshot: {
       foodId: cleanText(snapshot.foodId), name: cleanText(snapshot.name), category: cleanText(snapshot.category),
       source: snapshot.source || { type: 'manual' }, baseAmount: Number(snapshot.baseAmount), baseUnit: snapshot.baseUnit,
-      nutrients: normalizeNutrients(snapshot.nutrients),
+      nutrients: normalizeNutrients(snapshot.nutrients, value.origin?.source === 'yazio' ? 8 : 2),
     },
     externalKey: cleanText(value.externalKey),
-    createdAt: isoDateTime(value.createdAt || new Date().toISOString(), 'Létrehozási idő'),
-    updatedAt: isoDateTime(value.updatedAt || value.createdAt || new Date().toISOString(), 'Módosítási idő'),
+    ...(value.origin && typeof value.origin === 'object' ? { origin: {
+      profileId: requiredId(value.origin.profileId || value.profileId, 'Forrás profilazonosító'),
+      source: cleanText(value.origin.source), sourceRecordId: cleanText(value.origin.sourceRecordId),
+      externalKey: cleanText(value.origin.externalKey || value.externalKey),
+      importBatchId: cleanText(value.origin.importBatchId), sourceDate: cleanText(value.origin.sourceDate),
+      sourceTimestamp: cleanText(value.origin.sourceTimestamp),
+      sourcePayload: value.origin.sourcePayload === undefined ? null : value.origin.sourcePayload,
+      importedAt: cleanText(value.origin.importedAt),
+      schemaVersion: Number(value.origin.schemaVersion) || 1,
+    } } : {}),
+    createdAt,
+    updatedAt: isoDateTime(value.updatedAt || createdAt, 'Módosítási idő'),
   }
 }
 
@@ -251,11 +262,19 @@ export function summarizeEntries(entries = []) {
     }
   }
   for (const key of CORE_NUTRIENTS) result[key] = availability[key] ? rounded(result[key]) : null
+  // Imported micronutrients are keyed separately to keep the original Food core schema intact.
+  const extraTotals = new Map()
+  for (const entry of entries) for (const [name, nutrient] of Object.entries(entry.snapshot?.nutrients?.extras || {})) {
+    if (!/^[a-zA-Z0-9_]+$/.test(name) || !Number.isFinite(Number(nutrient?.amount))) continue
+    const key = 'extra:' + name
+    extraTotals.set(key, (extraTotals.get(key) || 0) + Number(nutrient.amount))
+  }
+  for (const [key, total] of extraTotals) result[key] = rounded(total, 8)
   return result
 }
 
 export function entriesForLocalDay(entries, date, profileId) {
-  return entries.filter(entry => entry.profileId === profileId && localDateKey(entry.occurredAt) === date)
+  return entries.filter(entry => entry.profileId === profileId && (entry.origin?.sourceDate || localDateKey(entry.occurredAt)) === date)
 }
 
 export function localDateKey(value) {
@@ -266,7 +285,7 @@ export function localDateKey(value) {
 
 export function createEmptyFoodProject(profile) {
   const normalizedProfile = normalizeProfile(profile)
-  return { version: FOOD_PROJECT_VERSION, profile: normalizedProfile, targets: [{ id: createFoodId('target'), effectiveFrom: new Date().toISOString().slice(0, 10), values: normalizeTargets({}) }], customFoods: [], recipes: [], diaryEntries: [], favorites: [], recentFoods: [], recipeLibraries: [], sharingContacts: [], processedShareIds: [], syncState: {}, settings: {} }
+  return { version: FOOD_PROJECT_VERSION, profile: normalizedProfile, targets: [{ id: createFoodId('target'), effectiveFrom: new Date().toISOString().slice(0, 10), values: normalizeTargets({}) }], customFoods: [], recipes: [], diaryEntries: [], favorites: [], recentFoods: [], recipeLibraries: [], importBatches: [], sharingContacts: [], processedShareIds: [], syncState: {}, settings: {} }
 }
 
 function normalizeSharingContact(value = {}) {
@@ -294,7 +313,7 @@ export function normalizeFoodProject(value = {}, expectedProfileId = '') {
   const targets = (value.targets || []).map(item => ({ id: requiredId(item.id || createFoodId('target')), effectiveFrom: /^\d{4}-\d{2}-\d{2}$/.test(item.effectiveFrom) ? item.effectiveFrom : new Date().toISOString().slice(0, 10), values: normalizeTargets(item.values) }))
   const sharingContacts = (value.sharingContacts || []).map(normalizeSharingContact).filter(Boolean)
     .sort((left, right) => right.lastUsedAt.localeCompare(left.lastUsedAt))
-  return { version: FOOD_PROJECT_VERSION, profile, targets: targets.length ? targets : createEmptyFoodProject(profile).targets, customFoods, recipes, diaryEntries, favorites: [...new Set(value.favorites || [])], recentFoods: [...new Set(value.recentFoods || [])].slice(0, 50), recipeLibraries: Array.isArray(value.recipeLibraries) ? value.recipeLibraries : [], sharingContacts: [...new Map(sharingContacts.map(item => [item.email, item])).values()].slice(0, 50), processedShareIds: [...new Set((value.processedShareIds || []).map(cleanText).filter(Boolean))].slice(-500), syncState: value.syncState || {}, settings: value.settings || {} }
+  return { version: FOOD_PROJECT_VERSION, profile, targets: targets.length ? targets : createEmptyFoodProject(profile).targets, customFoods, recipes, diaryEntries, favorites: [...new Set(value.favorites || [])], recentFoods: [...new Set(value.recentFoods || [])].slice(0, 50), recipeLibraries: Array.isArray(value.recipeLibraries) ? value.recipeLibraries : [], importBatches: Array.isArray(value.importBatches) ? value.importBatches : [], sharingContacts: [...new Map(sharingContacts.map(item => [item.email, item])).values()].slice(0, 50), processedShareIds: [...new Set((value.processedShareIds || []).map(cleanText).filter(Boolean))].slice(-500), syncState: value.syncState || {}, settings: value.settings || {} }
 }
 
 export function currentTargets(project, date = new Date().toISOString().slice(0, 10)) {

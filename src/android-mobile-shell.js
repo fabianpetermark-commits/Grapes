@@ -848,12 +848,15 @@ $$('[data-samsung-sync-action]').forEach(button => button.addEventListener('clic
   mobileFood.openHealthImport()
 }))
 $('[data-yazio-import]').addEventListener('click', () => $('[data-yazio-input]').click())
+$('[data-yazio-undo]').addEventListener('click', () => mobileFood.undoYazio().catch(error => showToast(error.message)))
 $('[data-yazio-input]').addEventListener('change', async event => {
   const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''
   if (!file) return
+  if (file.size > 40 * 1024 * 1024) { $('[data-yazio-status]').textContent = 'A YAZIO-export legfeljebb 40 MB lehet.'; return }
   const status = $('[data-yazio-status]'); status.textContent = 'Yazio-adatok ellenőrzése…'
   try {
-    const result = await mobileFood.importYazioCsv(await file.text())
+    const result = await mobileFood.importYazio(await file.text())
+    if (result.pending) { status.textContent = 'JSON-import előnézete megnyitva. Még nem került be új rekord.'; return }
     status.textContent = result.cancelled
       ? 'Az import megszakítva.'
       : result.imported

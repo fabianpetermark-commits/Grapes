@@ -5,8 +5,10 @@ import {
   normalizeFoodItem, normalizeFoodProject, normalizeRecipe, normalizeTargets, summarizeEntries,
 } from './food-data.js'
 import { searchFoods } from './food-search.js'
+import { searchFoodCatalog } from './food-catalog-search.js'
 import { lookupFatSecretProduct, lookupOpenFoodFactsProduct, searchFatSecretProducts, searchOpenFoodFactsProducts } from './food-api.js'
 import { healthImportEntries, prepareHealthBridgeImport } from './food-health-import.js'
+import { MAX_YAZIO_JSON_BYTES, applyYazioBatch, markYazioBatchComplete, prepareYazioImport, undoYazioBatch } from './food-yazio-import.js'
 import { nutritionSuggestionPer100, recognizeNutritionLabelImage } from './food-label-ocr.js'
 import { FOOD_LIBRARY_MODULE, buildRecipeLibrary, copyLibraryRecipeToProject, libraryRole, normalizeRecipeLibrary, sharedFoodsFromLibraries } from './food-library.js'
 import { aggregateNutritionSeries, buildDailyNutritionSeries, filterNutritionPeriod, macroEnergyDistribution, nutritionStatistics, targetAchievement } from './food-stats.js'
@@ -34,9 +36,19 @@ let recipeIngredients = []
 let recipeVariantOf = ''
 let saveTimer = null
 let pendingHealthImport = null
+let pendingYazioImport = null
+let yazioSelected = new Set()
+let yazioPage = 0
+const YAZIO_PAGE_SIZE = 200
 let modalReturnFocus = null
 let barcodeScanTarget = 'foods'
 let openFoodFactsResults = []
+let catalogSearchContext = 'foods'
+let catalogRequestId = 0
+let catalogSearchTimer = null
+let catalogCache = new Map()
+let catalogSearchResult = null
+let returnToDiaryAfterSave = false
 
 const $ = selector => root.querySelector(selector)
 function localDate(date = new Date()) { const offset = date.getTimezoneOffset() * 60000; return new Date(date.getTime() - offset).toISOString().slice(0, 10) }
@@ -88,7 +100,7 @@ async function loadProject() {
 
 function appMarkup() {
   return `
-  <header class="food__header"><div class="food__brand"><img src="./grapes-mark.svg" alt=""><div><p>GRAPES · FOOD</p><h1>Ételnapló</h1></div></div><div class="food__header-actions"><span id="food-save-status" class="food__save-status" aria-live="polite">Betöltés…</span><button id="food-health-import" class="btn" type="button">Health import</button><button id="food-backup-export" class="btn" type="button">Mentés export</button><button id="food-backup-import" class="btn" type="button">Mentés visszaállítása</button><button id="food-drive-save" class="btn btn--primary" type="button">Mentés Drive-ra</button><button id="food-back-to-menu-btn" class="btn btn--ghost" type="button">Főmenü</button></div><input id="food-health-input" type="file" accept=".json,application/json" hidden><input id="food-backup-input" type="file" accept=".json,application/json" hidden></header>
+  <header class="food__header"><div class="food__brand"><img src="./grapes-mark.svg" alt=""><div><p>GRAPES · FOOD</p><h1>Ételnapló</h1></div></div><div class="food__header-actions"><span id="food-save-status" class="food__save-status" aria-live="polite">Betöltés…</span><button id="food-health-import" class="btn" type="button">Health import</button><button id="food-yazio-import" class="btn" type="button">YAZIO import</button><button id="food-yazio-history" class="btn" type="button">YAZIO visszavonás</button><button id="food-backup-export" class="btn" type="button">Mentés export</button><button id="food-backup-import" class="btn" type="button">Mentés visszaállítása</button><button id="food-drive-save" class="btn btn--primary" type="button">Mentés Drive-ra</button><button id="food-back-to-menu-btn" class="btn btn--ghost" type="button">Főmenü</button></div><input id="food-health-input" type="file" accept=".json,application/json" hidden><input id="food-yazio-input" type="file" accept=".json,application/json" hidden><input id="food-backup-input" type="file" accept=".json,application/json" hidden></header>
   <main class="food__main"><nav class="food__tabs" role="tablist" aria-label="Food modul nézetei"><button id="food-tab-diary" type="button" role="tab" aria-controls="food-panel-diary" data-food-tab="diary" class="is-active">Napló</button><button id="food-tab-foods" type="button" role="tab" aria-controls="food-panel-foods" data-food-tab="foods">Ételek</button><button id="food-tab-recipes" type="button" role="tab" aria-controls="food-panel-recipes" data-food-tab="recipes">Receptek</button><button id="food-tab-libraries" type="button" role="tab" aria-controls="food-panel-libraries" data-food-tab="libraries">Családi könyvtár</button><button id="food-tab-stats" type="button" role="tab" aria-controls="food-panel-stats" data-food-tab="stats">Statisztika</button><button id="food-tab-targets" type="button" role="tab" aria-controls="food-panel-targets" data-food-tab="targets">Célok</button></nav>
   <section id="food-panel-diary" role="tabpanel" aria-labelledby="food-tab-diary" data-food-panel="diary"><div class="food__datebar"><button id="food-date-prev" class="btn" type="button" aria-label="Előző nap">←</button><label>Nap<input id="food-date" type="date"></label><button id="food-date-next" class="btn" type="button" aria-label="Következő nap">→</button><button id="food-date-today" class="btn" type="button">Ma</button></div><div id="food-summary" class="food__summary"></div>
   <form id="food-entry-form" class="food__form food__form--entry"><input id="food-entry-id" type="hidden"><label>Étkezés<select id="food-entry-meal">${MEAL_TYPES.map(type => `<option value="${type}">${MEAL_LABELS[type]}</option>`).join('')}</select></label><label>Étel<select id="food-entry-food" required></select></label><label>Mennyiség<input id="food-entry-amount" type="number" min="0.01" step="0.01" value="100" required></label><label>Egység<select id="food-entry-unit"></select></label><label>Idő<input id="food-entry-time" type="time" required></label><label>Megjegyzés<input id="food-entry-note" maxlength="240" placeholder="opcionális"></label><button class="btn btn--primary" type="submit">Hozzáadás</button><button id="food-entry-cancel" class="btn hidden" type="button">Mégse</button></form><div id="food-meals" class="food__meals"></div></section>
@@ -98,6 +110,7 @@ function appMarkup() {
   <section data-food-panel="stats" class="hidden"><div class="food__stats-controls"><label>Időtáv<select id="food-stats-period"><option value="all">Összes adat</option><option value="7">Utolsó 7 nap</option><option value="30">Utolsó 30 nap</option></select></label><label>Tápanyag<select id="food-stats-nutrient">${CORE_NUTRIENTS.map(key => `<option value="${key}">${NUTRIENT_LABELS[key]}</option>`).join('')}</select></label><label>Összehasonlítás<select id="food-stats-compare"><option value="">Nincs</option>${CORE_NUTRIENTS.map(key => `<option value="${key}">${NUTRIENT_LABELS[key]}</option>`).join('')}</select></label><label>Felbontás<select id="food-stats-granularity"><option value="day">Napi</option><option value="week">Heti</option><option value="month">Havi</option></select></label></div><div id="food-stats-summary" class="food__stats-summary"></div><div class="food__stats-grid"><article class="food__chart-card"><h2>Beviteli trend</h2><div id="food-stats-chart" class="food__chart"></div></article><article class="food__macro-card"><h2>Kalóriaeredet</h2><div id="food-macro-chart"></div></article></div><p id="food-stats-note" class="food__stats-note"></p></section>
   <section data-food-panel="libraries" class="hidden"><div class="food__library-intro"><div><p class="food__eyebrow">KÜLÖN DRIVE-DOKUMENTUM</p><h2>Családi receptkönyvtár</h2><p>Csak recepteket és hozzávalókat oszt meg. A naplód, céljaid és statisztikáid privátak maradnak.</p></div><form id="food-library-create" class="food__library-form"><label>Könyvtár neve<input id="food-library-name" value="Családi receptkönyvtár" maxlength="120" required></label><button class="btn btn--primary" type="submit">Könyvtár létrehozása</button></form><form id="food-library-connect" class="food__library-form"><label>Kapott Drive-fájlazonosító<input id="food-library-file-id" required></label><button class="btn" type="submit">Csatlakoztatás</button></form><div class="food__library-share"><label>Meghívott e-mail<input id="food-library-email" type="email" placeholder="csaladtag@example.com"></label><label>Jogosultság<select id="food-library-role"><option value="reader">Olvasó</option><option value="writer">Szerkesztő</option></select></label></div><p id="food-library-status" class="food__form-status" role="status"></p></div><div id="food-libraries" class="food__libraries"></div></section>
   <section data-food-panel="targets" class="hidden"><form id="food-target-form" class="food__target-card"><div><p class="food__eyebrow">NAPI CÉLÉRTÉKEK</p><h2>Személyes célok</h2><p>Az új értékek a kiválasztott naptól érvényesek; a korábbi napok célja változatlan marad.</p></div><label>Érvényes ettől<input id="food-target-date" type="date" required></label><label>Energia (kcal)<input id="food-target-energy" type="number" min="1" required></label><label>Fehérje (g)<input id="food-target-protein" type="number" min="1"></label><label>Szénhidrát (g)<input id="food-target-carbohydrate" type="number" min="1"></label><label>Zsír (g)<input id="food-target-fat" type="number" min="1"></label><button class="btn btn--primary" type="submit">Célok mentése</button><p id="food-target-warning" class="food__warning" role="status"></p></form></section></main>
+  <div id="food-yazio-preview" class="food__health-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="food-yazio-title"><section class="food__health-dialog food__yazio-dialog"><div class="food__health-heading"><div><p class="food__eyebrow">YAZIO · CSAK HELYI JSON-OLVASÁS</p><h2 id="food-yazio-title">Importálási előnézet</h2></div><button id="food-yazio-close" class="btn btn--ghost" type="button">Bezárás</button></div><label>Célprofil<select id="food-yazio-profile" required></select></label><p id="food-yazio-summary" class="food__health-summary"></p><p id="food-yazio-nutrients" class="food__health-summary"></p><details><summary>Figyelmeztetések, eltérések és forrásállapot</summary><pre id="food-yazio-warnings" class="food__yazio-warnings"></pre></details><div class="food__yazio-filters"><label>Dátum<input id="food-yazio-date" type="date"></label><label>Étkezés<select id="food-yazio-meal"><option value="">Összes étkezés</option><option value="breakfast">Reggeli</option><option value="lunch">Ebéd</option><option value="dinner">Vacsora</option><option value="snack">Kisétkezés</option></select></label><label>Státusz<select id="food-yazio-status"><option value="">Összes státusz</option><option value="ready">Új</option><option value="duplicate">Duplikáció</option><option value="uncertain">Bizonytalan</option><option value="invalid">Hibás</option></select></label></div><p class="food__health-summary">A bizonytalan egyezések alapértelmezetten nincsenek kijelölve. A nézet megnyitása nem ment semmit.</p><div id="food-yazio-records" class="food__health-records"></div><div class="food__health-actions"><button id="food-yazio-prev" class="btn" type="button">Előző oldal</button><span id="food-yazio-page"></span><button id="food-yazio-next" class="btn" type="button">Következő oldal</button></div><progress id="food-yazio-progress" value="0" max="100" class="hidden"></progress><p id="food-yazio-progress-label" role="status"></p><div class="food__health-actions"><button id="food-yazio-cancel" class="btn" type="button">Mégse</button><button id="food-yazio-confirm" class="btn btn--primary" type="button">Importálás indítása</button></div></section></div>
   <div id="food-health-preview" class="food__health-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="food-health-title"><section class="food__health-dialog"><div class="food__health-heading"><div><p class="food__eyebrow">HEALTH CONNECT / SAMSUNG HEALTH</p><h2 id="food-health-title">Import előnézete</h2></div><button id="food-health-close" class="btn btn--ghost" type="button" aria-label="Bezárás">Bezárás</button></div><p id="food-health-summary" class="food__health-summary"></p><div id="food-health-records" class="food__health-records"></div><div class="food__health-actions"><button id="food-health-cancel" class="btn" type="button">Mégse</button><button id="food-health-confirm" class="btn btn--primary" type="button">Kijelöltek importálása</button></div></section></div>
   <div id="food-ocr-preview" class="food__health-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="food-ocr-title"><section class="food__health-dialog food__ocr-dialog"><div class="food__health-heading"><div><p class="food__eyebrow">HELYI KÉPFELISMERÉS</p><h2 id="food-ocr-title">Tápértékcímke ellenőrzése</h2></div><button id="food-ocr-close" class="btn btn--ghost" type="button">Bezárás</button></div><p id="food-ocr-warning" class="food__health-summary"></p><div class="food__ocr-grid"><label>Adatok alapja<select id="food-ocr-basis"><option value="per100">100 g / 100 ml</option><option value="serving">Egy adag</option></select></label><label>Alapegység<select id="food-ocr-unit"><option value="g">g</option><option value="ml">ml</option></select></label><label>Adag mérete<input id="food-ocr-serving" type="number" min="0.01" step="0.01" placeholder="csak adagonkénti címkénél"></label>${CORE_NUTRIENTS.map(key => `<label>${NUTRIENT_LABELS[key]} (${NUTRIENT_UNITS[key]})<input id="food-ocr-${key}" type="number" min="0" step="0.01"></label>`).join('')}</div><details><summary>Felismert nyers szöveg</summary><pre id="food-ocr-raw"></pre></details><div class="food__health-actions"><button id="food-ocr-cancel" class="btn" type="button">Mégse</button><button id="food-ocr-apply" class="btn btn--primary" type="button">Értékek átvétele ellenőrzésre</button></div></section></div>`
 }
@@ -128,6 +141,32 @@ function addOpenFoodFactsSearchUi() {
   results.className = 'food__off-results hidden'
   results.setAttribute('aria-live', 'polite')
   searchBar.after(results)
+
+  // The diary uses exactly the same remote search and product validation path.
+  const diaryForm = $('#food-entry-form')
+  const diarySearch = document.createElement('div')
+  diarySearch.className = 'food__search food__diary-catalog-search'
+  const diaryLabel = document.createElement('label')
+  diaryLabel.textContent = 'Étel keresése a naplóhoz'
+  const diaryInput = document.createElement('input')
+  diaryInput.id = 'food-entry-search'
+  diaryInput.type = 'search'
+  diaryInput.autocomplete = 'off'
+  diaryInput.placeholder = 'Saját ételek és külső adatbázisok'
+  diaryInput.setAttribute('aria-controls', 'food-entry-catalog-results')
+  diaryLabel.append(diaryInput)
+  const diaryButton = document.createElement('button')
+  diaryButton.id = 'food-entry-catalog-button'
+  diaryButton.type = 'button'
+  diaryButton.className = 'btn'
+  diaryButton.textContent = 'Keresés az adatbázisokban'
+  diarySearch.append(diaryLabel, diaryButton)
+  const diaryResults = document.createElement('section')
+  diaryResults.id = 'food-entry-catalog-results'
+  diaryResults.className = 'food__off-results hidden'
+  diaryResults.setAttribute('aria-live', 'polite')
+  diaryForm.before(diarySearch)
+  diarySearch.after(diaryResults)
 }
 
 function renderSummary() {
@@ -142,7 +181,7 @@ function updateUnitSelect(select, food, preferred = '') {
   if (units.some(unit => unit.value === previous)) select.value = previous
 }
 function updateEntryUnits(preferred = '') { updateUnitSelect($('#food-entry-unit'), project.customFoods.find(food => food.id === $('#food-entry-food').value), preferred) }
-function entryFoodOptions() { const select = $('#food-entry-food'); const selected = select.value; select.replaceChildren(); for (const food of searchFoods(project.customFoods, '', { favorites: project.favorites, entries: project.diaryEntries })) { const option = document.createElement('option'); option.value = food.id; option.textContent = food.name; select.append(option) } if ([...select.options].some(option => option.value === selected)) select.value = selected; updateEntryUnits() }
+function entryFoodOptions() { const select = $('#food-entry-food'); const selected = select.value; const query = $('#food-entry-search')?.value || ''; select.replaceChildren(); for (const food of searchFoods(project.customFoods, query, { favorites: project.favorites, entries: project.diaryEntries })) { const option = document.createElement('option'); option.value = food.id; option.textContent = food.name; select.append(option) } if ([...select.options].some(option => option.value === selected)) select.value = selected; updateEntryUnits() }
 
 function renderMeals() {
   const container = $('#food-meals'); container.replaceChildren(); const daily = entriesForLocalDay(project.diaryEntries, selectedDate, profile.id)
@@ -157,7 +196,7 @@ function renderMeals() {
 function renderFoodItems() {
   const container = $('#food-items'); container.replaceChildren(); const categorySelect = $('#food-category-filter'); const selectedCategory = categorySelect.value; const categories = [...new Set(project.customFoods.map(food => food.category))].sort((a, b) => a.localeCompare(b, 'hu-HU')); categorySelect.replaceChildren(new Option('Minden kategória', ''), ...categories.map(category => new Option(category, category))); categorySelect.value = categories.includes(selectedCategory) ? selectedCategory : ''
   const results = searchFoods(project.customFoods, $('#food-search').value, { favorites: project.favorites, entries: project.diaryEntries, category: categorySelect.value })
-  if (!results.length) { const empty = document.createElement('p'); empty.className = 'food__empty'; empty.textContent = project.customFoods.length ? 'Nincs találat.' : 'Adj hozzá egy saját ételt vagy keress rá egy vonalkódra.'; container.append(empty); return }
+  if (!results.length) { const empty = document.createElement('p'); empty.className = 'food__empty'; empty.textContent = project.customFoods.length ? 'Nincs találat a saját ételek között. Nézd meg az adatbázis-találatokat alább.' : 'Még nincs saját étel. Írj be egy ételnevet, hogy az adatbázisokban is keressünk.'; container.append(empty); return }
   for (const food of results) {
     const row = document.createElement('article'); row.className = 'food__food-row'
     const favorite = document.createElement('button'); favorite.type = 'button'; favorite.className = 'food__favorite'; favorite.dataset.foodFavorite = food.id; favorite.setAttribute('aria-label', `${food.name}: kedvenc állapot váltása`); favorite.setAttribute('aria-pressed', String(project.favorites.includes(food.id))); favorite.textContent = project.favorites.includes(food.id) ? '★' : '☆'
@@ -174,65 +213,173 @@ function renderFoodItems() {
   }
 }
 
-function renderOpenFoodFactsResults(message = '') {
-  const container = $('#food-off-results')
-  container.replaceChildren()
-  container.classList.remove('hidden')
-  if (message) { const status = document.createElement('p'); status.className = 'food__form-status'; status.textContent = message; container.append(status) }
+
+function catalogElements(context = 'foods') {
+  return context === 'diary'
+    ? { input: $('#food-entry-search'), button: $('#food-entry-catalog-button'), results: $('#food-entry-catalog-results') }
+    : { input: $('#food-search'), button: $('#food-off-search'), results: $('#food-off-results') }
+}
+
+function renderOpenFoodFactsResults(message = '', context = catalogSearchContext) {
+  const target = catalogElements(context).results
+  target.replaceChildren()
+  target.classList.remove('hidden')
+  const heading = document.createElement('h3')
+  heading.textContent = 'Külső élelmiszer-adatbázisok'
+  target.append(heading)
+  if (message) {
+    const status = document.createElement('p')
+    status.className = 'food__form-status'
+    status.textContent = message
+    target.append(status)
+  }
   if (!openFoodFactsResults.length) return
   for (const [index, food] of openFoodFactsResults.entries()) {
-    const row = document.createElement('article'); row.className = 'food__off-result'
-    if (food.imageUrl) { const image = document.createElement('img'); image.src = food.imageUrl; image.alt = ''; image.loading = 'lazy'; row.append(image) }
+    const row = document.createElement('article')
+    row.className = 'food__off-result'
+    if (food.imageUrl) {
+      const image = document.createElement('img')
+      image.src = food.imageUrl; image.alt = ''; image.loading = 'lazy'; row.append(image)
+    }
     const sourceLabel = food.source.type === 'fatsecret' ? 'FatSecret' : 'Open Food Facts'
-    const info = document.createElement('div'); const name = document.createElement('strong'); name.textContent = food.name; const meta = document.createElement('span'); meta.textContent = `${food.category} · ${formatNumber(food.nutrients.energyKcal, 1)} kcal / 100 ${food.baseUnit}${food.barcode ? ` · ${food.barcode}` : ''} · ${sourceLabel}`; info.append(name, meta)
-    const exists = project.customFoods.some(item => (food.barcode && item.barcode === food.barcode) || (item.source.type === food.source.type && item.source.id === food.source.id))
-    const button = document.createElement('button'); button.type = 'button'; button.className = 'btn btn--sm'; button.dataset.offResult = String(index); button.textContent = exists ? 'Megnyitás' : 'Betöltés'
-    row.append(info, button); container.append(row)
+    const info = document.createElement('div')
+    const name = document.createElement('strong'); name.textContent = food.name
+    const meta = document.createElement('span')
+    meta.textContent = food.category + ' · ' + formatNumber(food.nutrients.energyKcal, 1) +
+      ' kcal / 100 ' + food.baseUnit + (food.barcode ? ' · ' + food.barcode : '') + ' · ' + sourceLabel
+    info.append(name, meta)
+    const exists = project.customFoods.some(item =>
+      (food.barcode && item.barcode === food.barcode) ||
+      (item.source.type === food.source.type && item.source.id === food.source.id))
+    const button = document.createElement('button')
+    button.type = 'button'; button.className = 'btn btn--sm'
+    button.dataset.offResult = String(index)
+    button.dataset.catalogContext = context
+    button.textContent = exists ? (context === 'diary' ? 'Kiválasztás' : 'Megnyitás')
+      : (context === 'diary' ? 'Mentés a naplóhoz' : 'Betöltés')
+    row.append(info, button); target.append(row)
   }
 }
 
-async function searchOpenFoodFactsByName(queryOverride = '') {
-  const button = $('#food-off-search'); const query = typeof queryOverride === 'string' && queryOverride ? queryOverride.trim() : $('#food-search').value.trim()
-  button.disabled = true; button.textContent = 'Keresés…'; openFoodFactsResults = []; renderOpenFoodFactsResults('Keresés az Open Food Facts és FatSecret adatbázisban…')
+async function searchOpenFoodFactsByName(queryOverride = '', context = 'foods') {
+  const elements = catalogElements(context)
+  const query = typeof queryOverride === 'string' && queryOverride
+    ? queryOverride.trim() : elements.input.value.trim()
+  clearTimeout(catalogSearchTimer)
+  const requestId = ++catalogRequestId
+  catalogSearchContext = context
+  openFoodFactsResults = []
+  const otherContext = context === 'diary' ? 'foods' : 'diary'
+  catalogElements(otherContext).results.classList.add('hidden')
+  if (query.length < 2) {
+    renderOpenFoodFactsResults('Írj be legalább 2 karaktert.', context)
+    return false
+  }
+  elements.button.disabled = true
+  elements.button.textContent = 'Keresés…'
+  renderOpenFoodFactsResults('Keresés az Open Food Facts és FatSecret adatbázisában…', context)
   try {
-    const searches = await Promise.allSettled([searchOpenFoodFactsProducts(query), searchFatSecretProducts(query)])
-    const successful = searches.filter(result => result.status === 'fulfilled').map(result => result.value)
-    if (!successful.length) throw new Error(searches.map(result => result.reason?.message).filter(Boolean).join(' '))
-    const seen = new Set()
-    openFoodFactsResults = successful.flatMap(result => result.products).filter(product => {
-      const key = product.barcode ? `barcode:${product.barcode}` : `${product.source.type}:${product.source.id}`
-      if (seen.has(key)) return false
-      seen.add(key); return true
-    })
-    const total = successful.reduce((sum, result) => sum + result.count, 0)
-    renderOpenFoodFactsResults(openFoodFactsResults.length ? `${total} találatból az első ${openFoodFactsResults.length}. Válassz egy terméket, majd ellenőrizd és mentsd.` : 'Nem található használható termék ezzel a névvel. Próbálj rövidebb vagy márkanevet is tartalmazó keresést.')
-    return true
-  } catch (error) { renderOpenFoodFactsResults(error.message); return false }
-  finally { button.disabled = false; button.textContent = 'Keresés termékadatbázisokban' }
+    // Avoid repeating queries while navigating tabs, and respect public API rate limits.
+    const cacheKey = query.toLocaleLowerCase('hu-HU')
+    const cached = catalogCache.get(cacheKey)
+    const result = cached && Date.now() - cached.at < 120000
+      ? cached.result : await searchFoodCatalog(query)
+    if (requestId !== catalogRequestId) return false
+    if (!cached || Date.now() - cached.at >= 120000) {
+      catalogCache.set(cacheKey, { at: Date.now(), result })
+      if (catalogCache.size > 25) catalogCache.delete(catalogCache.keys().next().value)
+    }
+    catalogSearchResult = result
+    openFoodFactsResults = result.products
+    const description = result.unavailable
+      ? 'A külső adatbázisok jelenleg nem érhetők el.'
+      : result.products.length
+        ? result.products.length + ' elérhető találat. Ellenőrizd az adatokat mentés előtt.'
+        : 'Nincs találat a külső adatbázisokban.'
+    const warnings = result.errors.length
+      ? ' Részleges vagy sikertelen kapcsolat: ' + result.errors.join(' | ')
+      : ''
+    renderOpenFoodFactsResults(description + warnings, context)
+    return !result.unavailable
+  } catch (error) {
+    if (requestId === catalogRequestId) renderOpenFoodFactsResults(
+      'Az adatbázis-keresés sikertelen: ' + (error.message || 'Ismeretlen hiba.'), context)
+    return false
+  } finally {
+    if (requestId === catalogRequestId) {
+      elements.button.disabled = false
+      elements.button.textContent = 'Keresés az adatbázisokban'
+    }
+  }
+}
+
+function queueCatalogSearch(context) {
+  clearTimeout(catalogSearchTimer)
+  const elements = catalogElements(context)
+  const query = elements.input.value.trim()
+  ++catalogRequestId
+  elements.button.disabled = false
+  elements.button.textContent = 'Keresés az adatbázisokban'
+  elements.results.classList.add('hidden')
+  openFoodFactsResults = []
+  catalogSearchContext = context
+  if (query.length < 3 || query.length > 120) return
+  // Deliberately only query after the user has stopped typing.
+  catalogSearchTimer = setTimeout(() => { searchOpenFoodFactsByName(query, context) }, 1100)
 }
 
 async function lookupProductFromForm() {
   if ($('#food-item-barcode').value.trim()) return lookupBarcode()
   const name = $('#food-item-name').value.trim()
-  if (name.length < 2) { report('Adj meg legalább 2 karakteres terméknevet vagy egy 7–14 számjegyű vonalkódot.', 'error'); return }
+  if (name.length < 2) { $('#food-api-status').textContent = 'Adj meg legalább 2 karakteres terméknevet vagy egy 7–14 számjegyű vonalkódot.'; return }
   $('#food-search').value = name
   renderFoodItems()
   const searched = await searchOpenFoodFactsByName(name)
-  if (searched) report('A név szerinti találatokból válaszd ki a megfelelő terméket.')
+  if (searched) $('#food-api-status').textContent = 'A találatokból válaszd ki a megfelelő terméket.'
   $('#food-off-results').scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
-function loadOpenFoodFactsResult(index) {
+
+function loadOpenFoodFactsResult(index, context = 'foods') {
+  // A result is always opened for verification, never written to the diary automatically.
+  if (context !== catalogSearchContext) return
   const product = openFoodFactsResults[Number(index)]
   if (!product) return
-  $('#food-off-results').classList.add('hidden')
-  const existing = project.customFoods.find(food => (product.barcode && food.barcode === product.barcode) || (food.source.type === product.source.type && food.source.id === product.source.id))
-  if (existing) { fillFoodForm(existing); $('#food-api-status').textContent = 'Ez a vonalkód már szerepel az Ételek között. A meglévő adatokat nyitottam meg.'; return }
-  resetFoodForm(); pendingProduct = product
-  $('#food-item-name').value = product.name; $('#food-item-category').value = product.category; $('#food-item-barcode').value = product.barcode; $('#food-item-base-unit').value = product.baseUnit
-  for (const key of CORE_NUTRIENTS) $(`#food-item-${key}`).value = product.nutrients[key] ?? ''
+  catalogElements(context).results.classList.add('hidden')
+  const existing = project.customFoods.find(food =>
+    (product.barcode && food.barcode === product.barcode) ||
+    (food.source.type === product.source.type && food.source.id === product.source.id))
+  if (context === 'diary' && existing) {
+    $('#food-entry-search').value = ''
+    entryFoodOptions()
+    $('#food-entry-food').value = existing.id
+    updateEntryUnits()
+    $('#food-entry-food').focus()
+    setStatus(existing.name + ' kiválasztva. Add meg a mennyiséget, majd naplózd.', 'saved')
+    return
+  }
+  if (context === 'diary') {
+    activeTab = 'foods'
+    render()
+  }
+  if (existing) {
+    fillFoodForm(existing)
+    $('#food-api-status').textContent = 'Ez a termék már szerepel az Ételek között. Nem írtam felül.'
+    return
+  }
+  resetFoodForm()
+  returnToDiaryAfterSave = context === 'diary'
+  pendingProduct = product
+  $('#food-item-name').value = product.name
+  $('#food-item-category').value = product.category
+  $('#food-item-barcode').value = product.barcode
+  $('#food-item-base-unit').value = product.baseUnit
+  for (const key of CORE_NUTRIENTS) $('#food-item-' + key).value = product.nutrients[key] ?? ''
   const sourceLabel = product.source.type === 'fatsecret' ? 'FatSecret' : 'Open Food Facts'
-  $('#food-item-cancel').classList.remove('hidden'); $('#food-api-status').textContent = `${sourceLabel} találat betöltve. Ellenőrizd az adatokat, majd mentsd.`; $('#food-item-form').scrollIntoView({ behavior: 'smooth', block: 'start' })
+  $('#food-item-cancel').classList.remove('hidden')
+  $('#food-api-status').textContent = sourceLabel + ' találat. Ellenőrizd az értékeket és mentsd.' +
+    (context === 'diary' ? ' Mentés után visszatérünk a naplóhoz.' : '')
+  $('#food-item-form').scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 function recipeIngredientFoodOptions() { const select = $('#food-recipe-ingredient-food'); const selected = select.value; select.replaceChildren(); for (const food of project.customFoods.filter(item => item.kind !== 'recipe')) { const option = document.createElement('option'); option.value = food.id; option.textContent = food.name; select.append(option) } if ([...select.options].some(option => option.value === selected)) select.value = selected; updateRecipeIngredientUnits() }
@@ -241,6 +388,55 @@ function recipeDraft() { const existing = project.recipes.find(item => item.id =
 function renderRecipePreview() { const target = $('#food-recipe-preview'); if (!recipeIngredients.length) { target.textContent = 'Adj hozzá legalább egy hozzávalót.'; return } try { const result = calculateRecipeFood(recipeDraft(), project.customFoods.filter(item => item.kind !== 'recipe')); target.textContent = `Összesen ${formatNumber(result.totalNutrients.energyKcal, 1)} kcal · ${formatNumber(result.preparedWeight, 1)} g készétel · 100 g: ${formatNumber(result.food.nutrients.energyKcal, 1)} kcal${result.food.servings[0] ? ` · 1 ${result.food.servings[0].name.toLocaleLowerCase('hu-HU')}: ${formatNumber(result.food.servings[0].grams, 1)} g` : ''}`; target.dataset.state = 'valid' } catch (error) { target.textContent = error.message; target.dataset.state = 'error' } }
 function renderRecipeIngredients() { const container = $('#food-recipe-ingredients'); container.replaceChildren(); if (!recipeIngredients.length) { const empty = document.createElement('p'); empty.className = 'food__empty'; empty.textContent = 'Még nincs hozzávaló.'; container.append(empty) } for (const ingredient of recipeIngredients) { const food = project.customFoods.find(item => item.id === ingredient.foodId); const row = document.createElement('div'); const text = document.createElement('span'); text.textContent = `${food?.name || 'Hiányzó étel'} · ${formatNumber(ingredient.amount, 2)} ${ingredient.unit}`; const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'btn btn--sm'; remove.dataset.recipeIngredientDelete = ingredient.id; remove.textContent = 'Eltávolítás'; row.append(text, remove); container.append(row) } renderRecipePreview() }
 function renderRecipes() { recipeIngredientFoodOptions(); renderRecipeIngredients(); const container = $('#food-recipes'); container.replaceChildren(); if (!project.recipes.length) { const empty = document.createElement('p'); empty.className = 'food__empty'; empty.textContent = 'Még nincs saját recept.'; container.append(empty); return } for (const recipe of project.recipes) { const food = project.customFoods.find(item => item.id === recipe.foodId); const parent = project.recipes.find(item => item.id === recipe.variantOfRecipeId); const row = document.createElement('article'); row.className = 'food__recipe-row'; const info = document.createElement('div'); const name = document.createElement('strong'); name.textContent = recipe.name; const meta = document.createElement('span'); meta.textContent = `${recipe.category} · ${formatNumber(food?.nutrients.energyKcal, 1)} kcal / 100 g · ${recipe.ingredients.length} hozzávaló · v${recipe.revision}${parent ? ` · ${parent.name} variánsa` : ''}`; info.append(name, meta); const variant = document.createElement('button'); variant.type = 'button'; variant.className = 'btn btn--sm'; variant.dataset.recipeVariant = recipe.id; variant.textContent = 'Variáns'; const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'btn btn--sm'; edit.dataset.recipeEdit = recipe.id; edit.textContent = 'Szerkesztés'; const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'btn btn--sm'; remove.dataset.recipeDelete = recipe.id; remove.textContent = 'Törlés'; row.append(info, variant, edit, remove); container.append(row) } }
+
+
+function renderArchivedYazioRecipes() {
+  if (activeTab !== 'recipes') return
+  const container = $('#food-recipes')
+  const seen = new Set()
+  let displayed = 0
+  for (const batch of project.importBatches || []) {
+    if (batch.source !== 'yazio' || batch.profileId !== profile.id || batch.status === 'undone') continue
+    const archive = batch.sourceArchive || {}
+    for (const recipe of archive.recipes || []) {
+      const key = String(recipe.recipe_id || '')
+      if (!key || seen.has(key)) continue
+      seen.add(key)
+      if (displayed >= 400) continue
+      displayed++
+      const box = document.createElement('details')
+      box.className = 'food__recipe-row food__yazio-archive-recipe'
+      const summary = document.createElement('summary')
+      summary.textContent = (recipe.name || 'Névtelen recept') + ' · YAZIO forrásrecept · csak olvasható'
+      const ingredients = (archive.recipe_ingredients || []).filter(item => String(item.recipe_id) === key)
+      const list = document.createElement('ul')
+      for (const item of ingredients) {
+        const li = document.createElement('li')
+        const product = (archive.products || []).find(p => String(p.product_id) === String(item.product_id))
+        li.textContent = (product?.name || item.name || 'Ismeretlen hozzávaló') + ' · ' +
+          formatNumber(item.amount, 2) + ' ' + (item.base_unit || 'egység')
+        list.append(li)
+      }
+      const instructions = (archive.recipe_instructions || []).filter(item => String(item.recipe_id) === key)
+      const description = document.createElement('p')
+      description.textContent = 'YAZIO receptazonosító: ' + key + ' · ' +
+        formatNumber(recipe.energy_kcal, 1) + ' kcal/adag' +
+        ' · ' + instructions.length + ' elkészítési lépés. Szerkeszthető Grapes-receptté nem konvertálódik automatikusan.'
+      box.append(summary, description, list)
+      if (instructions.length) {
+        const steps = document.createElement('ol')
+        for (const step of instructions) { const li = document.createElement('li'); li.textContent = String(step.text || ''); steps.append(li) }
+        box.append(steps)
+      }
+      container.append(box)
+    }
+  }
+  if (seen.size > displayed) {
+    const note = document.createElement('p'); note.className = 'food__stats-note'
+    note.textContent = 'A YAZIO-archívum ' + seen.size + ' receptet tartalmaz; ebből ' + displayed + ' jelenik meg. A többi a biztonsági mentésben változatlanul elérhető.'
+    container.append(note)
+  }
+}
 
 function libraryLink(id) { return project.recipeLibraries.find(item => item.data?.id === id) }
 function setLibraryStatus(message, state = '') { const target = $('#food-library-status'); target.textContent = message; target.dataset.state = state }
@@ -347,6 +543,31 @@ function copySharedRecipe(foodId) {
   try { const copied = copyLibraryRecipeToProject(link.data, food.source.id, profile.id); project.customFoods.push(...copied.foods); project.recipes.push(copied.recipe); refreshRecipeFoods(); scheduleSave(); render(); setStatus('A megosztott recept saját, szerkeszthető másolatként elkészült.', 'saved') } catch (error) { setStatus(error.message, 'error') }
 }
 
+
+function refreshImportedNutrientOptions() {
+  const found = new Map()
+  for (const entry of project.diaryEntries) {
+    if (entry.profileId !== profile.id) continue
+    for (const [name, nutrient] of Object.entries(entry.snapshot?.nutrients?.extras || {})) {
+      if (!/^[a-z0-9_]+$/.test(name) || !nutrient?.unit) continue
+      found.set('extra:' + name, { name, unit: nutrient.unit })
+    }
+  }
+  for (const selector of ['#food-stats-nutrient', '#food-stats-compare']) {
+    const select = $(selector), selected = select.value
+    for (const option of [...select.querySelectorAll('option[data-yazio-extra]')]) option.remove()
+    for (const [key, item] of found) {
+      const option = document.createElement('option')
+      option.value = key; option.dataset.yazioExtra = ''
+      option.textContent = item.name.replaceAll('_', ' ') + ' (' + item.unit + ')'
+      select.append(option)
+      NUTRIENT_LABELS[key] = item.name.replaceAll('_', ' ')
+      NUTRIENT_UNITS[key] = item.unit
+    }
+    if ([...select.options].some(option => option.value === selected)) select.value = selected
+  }
+}
+
 function renderStats() {
   const nutrient = $('#food-stats-nutrient').value
   const compare = $('#food-stats-compare').value
@@ -393,18 +614,27 @@ function render() {
     panel.setAttribute('aria-labelledby', `food-tab-${panel.dataset.foodPanel}`)
     panel.classList.toggle('hidden', !selected)
   }
-  entryFoodOptions(); renderSummary(); renderMeals(); renderFoodItems(); renderRecipes(); renderLibraries(); renderStats(); renderTargets()
+  entryFoodOptions(); renderSummary(); renderMeals(); renderFoodItems(); renderRecipes(); renderArchivedYazioRecipes(); renderLibraries(); refreshImportedNutrientOptions(); renderStats(); renderTargets()
 }
 
 function resetEntryForm() { $('#food-entry-form').reset(); $('#food-entry-id').value = ''; $('#food-entry-amount').value = 100; $('#food-entry-time').value = new Date().toTimeString().slice(0, 5); $('#food-entry-cancel').classList.add('hidden'); updateEntryUnits() }
-function resetFoodForm() { $('#food-item-form').reset(); $('#food-item-id').value = ''; $('#food-item-category').value = 'Egyéb'; $('#food-item-base-unit').value = 'g'; $('#food-item-cancel').classList.add('hidden'); pendingProduct = null; $('#food-api-status').textContent = '' }
+function resetFoodForm() { returnToDiaryAfterSave = false; $('#food-item-form').reset(); $('#food-item-id').value = ''; $('#food-item-category').value = 'Egyéb'; $('#food-item-base-unit').value = 'g'; $('#food-item-cancel').classList.add('hidden'); pendingProduct = null; $('#food-api-status').textContent = '' }
 function resetRecipeForm() { $('#food-recipe-form').reset(); $('#food-recipe-id').value = ''; $('#food-recipe-category').value = 'Saját recept'; recipeIngredients = []; recipeVariantOf = ''; $('#food-recipe-cancel').classList.add('hidden'); renderRecipeIngredients() }
 function shiftDate(days) { const date = new Date(`${selectedDate}T12:00:00`); date.setDate(date.getDate() + days); selectedDate = localDate(date); render() }
 
 function saveEntry(event) { event.preventDefault(); const food = project.customFoods.find(item => item.id === $('#food-entry-food').value); if (!food) return setStatus('Előbb adj hozzá egy ételt.', 'error'); try { const existingId = $('#food-entry-id').value; const previous = project.diaryEntries.find(item => item.id === existingId); const entry = normalizeDiaryEntry({ id: existingId || createFoodId('entry'), profileId: profile.id, mealType: $('#food-entry-meal').value, amount: $('#food-entry-amount').value, unit: $('#food-entry-unit').value, servingId: food.servings.find(item => item.unit === $('#food-entry-unit').value)?.id || '', note: $('#food-entry-note').value, occurredAt: selectedIsoTime($('#food-entry-time').value), createdAt: previous?.createdAt || new Date().toISOString() }, food); project.diaryEntries = existingId ? project.diaryEntries.map(item => item.id === existingId ? entry : item) : [...project.diaryEntries, entry]; project.recentFoods = [food.id, ...project.recentFoods.filter(id => id !== food.id)].slice(0, 50); resetEntryForm(); scheduleSave(); render() } catch (error) { setStatus(error.message, 'error') } }
-function handleEntryAction(action, id) { const entry = project.diaryEntries.find(item => item.id === id); if (!entry) return; if (action === 'delete') { if (confirm('Törlöd ezt a naplóbejegyzést?')) { project.diaryEntries = project.diaryEntries.filter(item => item.id !== id); scheduleSave(); render() }; return } if (action === 'repeat') { project.diaryEntries.push(normalizeDiaryEntry({ ...entry, id: createFoodId('entry'), occurredAt: selectedIsoTime(new Date().toTimeString().slice(0, 5)), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })); scheduleSave(); render(); return } if (action !== 'edit') return; const food = project.customFoods.find(item => item.id === entry.snapshot.foodId); if (!food) return setStatus('A bejegyzés forrásétele már nem érhető el, ezért nem szerkeszthető. Ismételni vagy törölni továbbra is lehet.', 'error'); $('#food-entry-id').value = entry.id; $('#food-entry-meal').value = entry.mealType; $('#food-entry-food').value = food.id; $('#food-entry-amount').value = entry.amount; updateEntryUnits(entry.unit); $('#food-entry-time').value = new Date(entry.occurredAt).toTimeString().slice(0, 5); $('#food-entry-note').value = entry.note; $('#food-entry-cancel').classList.remove('hidden'); $('#food-entry-form').scrollIntoView({ behavior: 'smooth', block: 'center' }) }
+function handleEntryAction(action, id) { const entry = project.diaryEntries.find(item => item.id === id); if (!entry) return; if (action === 'delete') { if (confirm('Törlöd ezt a naplóbejegyzést?')) { project.diaryEntries = project.diaryEntries.filter(item => item.id !== id); scheduleSave(); render() }; return } if (action === 'repeat') { project.diaryEntries.push(normalizeDiaryEntry({ ...entry, id: createFoodId('entry'), externalKey: '', origin: undefined, occurredAt: selectedIsoTime(new Date().toTimeString().slice(0, 5)), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })); scheduleSave(); render(); return } if (action !== 'edit') return; const food = project.customFoods.find(item => item.id === entry.snapshot.foodId); if (!food) return setStatus('A bejegyzés forrásétele már nem érhető el, ezért nem szerkeszthető. Ismételni vagy törölni továbbra is lehet.', 'error'); $('#food-entry-id').value = entry.id; $('#food-entry-meal').value = entry.mealType; $('#food-entry-food').value = food.id; $('#food-entry-amount').value = entry.amount; updateEntryUnits(entry.unit); $('#food-entry-time').value = new Date(entry.occurredAt).toTimeString().slice(0, 5); $('#food-entry-note').value = entry.note; $('#food-entry-cancel').classList.remove('hidden'); $('#food-entry-form').scrollIntoView({ behavior: 'smooth', block: 'center' }) }
 
-function saveFood(event) { event.preventDefault(); const previousFoods = project.customFoods; let recalculatingRecipes = false; try { const existingId = $('#food-item-id').value; const previous = project.customFoods.find(item => item.id === existingId); const servingSize = Number($('#food-item-serving').value); const baseUnit = $('#food-item-base-unit').value; const item = normalizeFoodItem({ ...pendingProduct, id: existingId || createFoodId('food'), kind: pendingProduct?.kind || previous?.kind || 'manual', name: $('#food-item-name').value, category: $('#food-item-category').value, barcode: $('#food-item-barcode').value, baseUnit, nutrients: Object.fromEntries(CORE_NUTRIENTS.map(key => [key, $(`#food-item-${key}`).value])), servings: servingSize > 0 ? [{ id: previous?.servings?.[0]?.id || createFoodId('serving'), name: 'Adag', unit: 'serving', ...(baseUnit === 'g' ? { grams: servingSize } : { milliliters: servingSize }) }] : [], source: pendingProduct?.source || previous?.source || { type: 'manual' }, createdAt: previous?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() }); project.customFoods = existingId ? project.customFoods.map(food => food.id === existingId ? item : food) : [...project.customFoods, item]; recalculatingRecipes = true; refreshRecipeFoods({ strict: true }); resetFoodForm(); scheduleSave(); render() } catch (error) { project.customFoods = previousFoods; $('#food-api-status').textContent = recalculatingRecipes ? `Az étel nem menthető, mert egy recept érvénytelenné válna. ${error.message}` : error.message } }
+function saveFood(event) { event.preventDefault(); const previousFoods = project.customFoods; let recalculatingRecipes = false; try { const existingId = $('#food-item-id').value; const previous = project.customFoods.find(item => item.id === existingId); const servingSize = Number($('#food-item-serving').value); const baseUnit = $('#food-item-base-unit').value; const item = normalizeFoodItem({ ...pendingProduct, id: existingId || createFoodId('food'), kind: pendingProduct?.kind || previous?.kind || 'manual', name: $('#food-item-name').value, category: $('#food-item-category').value, barcode: $('#food-item-barcode').value, baseUnit, nutrients: Object.fromEntries(CORE_NUTRIENTS.map(key => [key, $(`#food-item-${key}`).value])), servings: servingSize > 0 ? [{ id: previous?.servings?.[0]?.id || createFoodId('serving'), name: 'Adag', unit: 'serving', ...(baseUnit === 'g' ? { grams: servingSize } : { milliliters: servingSize }) }] : [], source: pendingProduct?.source || previous?.source || { type: 'manual' }, createdAt: previous?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() }); project.customFoods = existingId ? project.customFoods.map(food => food.id === existingId ? item : food) : [...project.customFoods, item]; recalculatingRecipes = true; refreshRecipeFoods({ strict: true }); const returnToDiary = returnToDiaryAfterSave; resetFoodForm(); scheduleSave()
+    if (returnToDiary) {
+      activeTab = 'diary'
+      $('#food-entry-search').value = ''
+      render()
+      $('#food-entry-food').value = item.id
+      updateEntryUnits()
+      setStatus('Az étel mentve és kiválasztva. Add meg a mennyiséget.', 'saved')
+      $('#food-entry-food').focus()
+    } else render() } catch (error) { project.customFoods = previousFoods; $('#food-api-status').textContent = recalculatingRecipes ? `Az étel nem menthető, mert egy recept érvénytelenné válna. ${error.message}` : error.message } }
 function fillFoodForm(food) { if (!food) return; $('#food-item-id').value = food.id; $('#food-item-name').value = food.name; $('#food-item-category').value = food.category; $('#food-item-barcode').value = food.barcode; $('#food-item-base-unit').value = food.baseUnit; for (const key of CORE_NUTRIENTS) $(`#food-item-${key}`).value = food.nutrients[key] ?? ''; $('#food-item-serving').value = food.baseUnit === 'g' ? food.servings[0]?.grams || '' : food.servings[0]?.milliliters || ''; pendingProduct = { kind: food.kind, source: food.source }; $('#food-item-cancel').classList.remove('hidden'); $('#food-item-form').scrollIntoView({ behavior: 'smooth', block: 'start' }) }
 
 function deleteFoodItem(id) {
@@ -630,13 +860,204 @@ function applyHealthImport() {
   setStatus(`${entries.length} Health-rekord importálva · Drive-mentés szükséges`, 'saved')
 }
 
+
+let yazioImportBusy = false
+
+function closeYazioPreview() {
+  if (yazioImportBusy) return
+  pendingYazioImport = null
+  yazioSelected.clear()
+  $('#food-yazio-preview').classList.add('hidden')
+  $('#food-yazio-records').replaceChildren()
+  restoreModalFocus()
+}
+function yazioFilteredRecords() {
+  if (!pendingYazioImport) return []
+  const date = $('#food-yazio-date').value
+  const meal = $('#food-yazio-meal').value
+  const status = $('#food-yazio-status').value
+  return pendingYazioImport.records.filter(item =>
+    (!date || item.record.date === date) &&
+    (!meal || item.entry?.mealType === meal) &&
+    (!status || item.status === status))
+}
+function renderYazioRecords() {
+  if (!pendingYazioImport) return
+  const records = yazioFilteredRecords()
+  const pages = Math.max(1, Math.ceil(records.length / YAZIO_PAGE_SIZE))
+  yazioPage = Math.min(yazioPage, pages - 1)
+  const container = $('#food-yazio-records'); container.replaceChildren()
+  const fragment = document.createDocumentFragment()
+  for (const item of records.slice(yazioPage * YAZIO_PAGE_SIZE, (yazioPage + 1) * YAZIO_PAGE_SIZE)) {
+    const row = document.createElement('label')
+    row.className = 'food__health-record is-' + item.status
+    const checkbox = document.createElement('input')
+    checkbox.type = 'checkbox'; checkbox.value = String(item.index)
+    checkbox.checked = yazioSelected.has(item.index)
+    checkbox.disabled = !['ready', 'uncertain'].includes(item.status) || yazioImportBusy
+    checkbox.dataset.yazioRecord = ''
+    const content = document.createElement('span')
+    const title = document.createElement('strong')
+    title.textContent = item.entry ? item.entry.snapshot.name + ' · ' + item.record.date + ' · ' +
+      (MEAL_LABELS[item.entry.mealType] || 'Étkezés') : 'Hibás rekord #' + (item.index + 1)
+    const detail = document.createElement('small')
+    const statusText = { ready: 'Új · importálható', duplicate: 'Biztos duplikáció · kihagyva',
+      uncertain: 'Bizonytalan egyezés · csak külön kijelöléssel', invalid: item.error }
+    detail.textContent = statusText[item.status] + (item.entry ? ' · ' +
+      formatNumber(item.entry.snapshot.nutrients.energyKcal, 2) + ' kcal' : '')
+    content.append(title, detail); row.append(checkbox, content); fragment.append(row)
+  }
+  if (!records.length) {
+    const empty = document.createElement('p'); empty.textContent = 'Nincs megjeleníthető rekord.'; fragment.append(empty)
+  }
+  container.append(fragment)
+  $('#food-yazio-page').textContent = (yazioPage + 1) + '/' + pages + ' · ' + records.length + ' rekord · ' + yazioSelected.size + ' kijelölve'
+  $('#food-yazio-prev').disabled = yazioPage === 0 || yazioImportBusy
+  $('#food-yazio-next').disabled = yazioPage + 1 >= pages || yazioImportBusy
+  const resumable = (project.importBatches || []).some(batch => batch.source === 'yazio' && batch.profileId === profile.id && batch.status === 'in-progress' && batch.exportFingerprint === pendingYazioImport.exportFingerprint)
+  $('#food-yazio-confirm').disabled = (!yazioSelected.size && !resumable) || yazioImportBusy
+}
+function renderYazioPreview() {
+  if (!pendingYazioImport) return
+  const plan = pendingYazioImport, counts = plan.counts
+  const profileOption = document.createElement('option')
+  profileOption.value = profile.id; profileOption.textContent = profile.name + ' (' + (profile.email || profile.id) + ')'
+  $('#food-yazio-profile').replaceChildren(profileOption)
+  $('#food-yazio-summary').textContent =
+    'Időszak: ' + plan.from + ' – ' + plan.to + ' · Napok: ' + plan.days +
+    ' · Étkezés: ' + plan.records.length + ' · Új: ' + counts.ready +
+    ' · Biztos duplikáció: ' + counts.duplicate + ' · Bizonytalan: ' + counts.uncertain +
+    ' · Hibás: ' + counts.invalid + ' · Forrásreceptek: ' + plan.recipes
+  $('#food-yazio-nutrients').textContent = CORE_NUTRIENTS.map(name =>
+    (NUTRIENT_LABELS[name] || name) + ': ' + formatNumber(plan.nutrients[name], 2) +
+    ' ' + NUTRIENT_UNITS[name]).join(' · ')
+  const messages = [
+    ...plan.warnings, ...plan.discrepancies.map(item =>
+      item.date + ' / ' + item.nutrient + ': YAZIO ' + item.expected + ', naplósorok ' + item.actual),
+  ]
+  $('#food-yazio-warnings').textContent = messages.length ? messages.join('\n') : 'Nincs ismert forrásfigyelmeztetés vagy napi eltérés.'
+  yazioPage = 0; renderYazioRecords()
+  $('#food-yazio-preview').classList.remove('hidden')
+  $('#food-yazio-close').focus()
+}
+async function selectYazioImport(event) {
+  const file = event.target.files?.[0]; event.target.value = ''
+  if (!file) return
+  try {
+    if (file.size > MAX_YAZIO_JSON_BYTES) throw new Error('A JSON-fájl meghaladja a 40 MB-os korlátot.')
+    pendingYazioImport = prepareYazioImport(await file.text(), {
+      profileId: profile.id, existingEntries: project.diaryEntries,
+    })
+    yazioSelected = new Set(pendingYazioImport.records.filter(item => item.status === 'ready').map(item => item.index))
+    $('#food-yazio-date').value = ''
+    $('#food-yazio-meal').value = ''
+    $('#food-yazio-status').value = ''
+    renderYazioPreview()
+  } catch (error) {
+    pendingYazioImport = null
+    setStatus(error.message, 'error')
+    restoreModalFocus()
+  }
+}
+function downloadYazioBackup(backup, batchId) {
+  const url = URL.createObjectURL(new Blob([backup], { type: 'application/json' }))
+  const link = document.createElement('a')
+  link.href = url; link.download = 'grapes-food-before-yazio-' + batchId + '.json'
+  link.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+async function saveYazioPreImportBackup(batchId) {
+  const backup = foodBackupToJson(project)
+  await saveLocalProject({
+    id: localProjectId() + ':yazio-backup:' + batchId,
+    module: 'Ételnapló biztonsági mentés', name: 'YAZIO előtti állapot',
+    data: foodBackupFromJson(backup, profile.id), driveFileId: null,
+  })
+  downloadYazioBackup(backup, batchId)
+}
+async function applyYazioImport() {
+  if (!pendingYazioImport || yazioImportBusy || $('#food-yazio-profile').value !== profile.id) return
+  const plan = pendingYazioImport
+  const indexes = [...yazioSelected].sort((a, b) => a - b)
+  if (!indexes.length && !(project.importBatches || []).some(batch => batch.source === 'yazio' && batch.profileId === profile.id && batch.status === 'in-progress' && batch.exportFingerprint === plan.exportFingerprint)) return
+  if (!confirm('A kijelölt ' + indexes.length +
+    ' rekordot hozzáadod a(z) ' + profile.name + ' profilhoz? Meglévő rekord nem íródik felül.')) return
+  yazioImportBusy = true
+  $('#food-yazio-confirm').disabled = true; $('#food-yazio-cancel').disabled = true
+  $('#food-yazio-close').disabled = true
+  const progress = $('#food-yazio-progress'), label = $('#food-yazio-progress-label')
+  progress.classList.remove('hidden'); progress.value = 0
+  let added = 0
+  // Reuse an interrupted batch only for an identical upstream export and active profile.
+  const previous = (project.importBatches || []).find(batch =>
+    batch.source === 'yazio' && batch.profileId === profile.id && batch.status === 'in-progress' &&
+    batch.exportFingerprint === plan.exportFingerprint)
+  const batchId = previous?.id || createFoodId('yazio-batch')
+  try {
+    clearTimeout(saveTimer)
+    if (!previous) await saveYazioPreImportBackup(batchId)
+    for (let index = 0; index < indexes.length; index += 150) {
+      const subset = indexes.slice(index, index + 150)
+      const result = applyYazioBatch(project, plan, subset, batchId)
+      project = result.project; added += result.added
+      project.syncState = { ...project.syncState, localDirty: true }
+      await persistLocal()
+      progress.value = Math.round(Math.min(1, (index + subset.length) / indexes.length) * 100)
+      label.textContent = progress.value + '% · ' + added + ' új bejegyzés'
+      await new Promise(resolve => setTimeout(resolve, 0))
+    }
+    if ((project.importBatches || []).some(batch => batch.id === batchId)) {
+      project = markYazioBatchComplete(project, batchId)
+      await persistLocal()
+    }
+    yazioImportBusy = false
+    closeYazioPreview()
+    render()
+    setStatus(added + ' YAZIO-rekord importálva · Drive-mentés szükséges', 'saved')
+  } catch (error) {
+    label.textContent = 'Az import megszakadt: ' + error.message + ' · Azonos fájllal folytatható.'
+    setStatus('YAZIO import megszakadt: ' + error.message, 'error')
+  } finally {
+    yazioImportBusy = false
+    $('#food-yazio-confirm').disabled = false
+    $('#food-yazio-cancel').disabled = false
+    $('#food-yazio-close').disabled = false
+  }
+}
+async function undoYazioImport() {
+  const batches = (project.importBatches || []).filter(batch =>
+    batch.source === 'yazio' && batch.profileId === profile.id && batch.status !== 'undone')
+  if (!batches.length) { setStatus('Nincs visszavonható YAZIO-import.', 'saved'); return }
+  const list = batches.map((batch, index) =>
+    (index + 1) + '. ' + batch.importedAt + ' · ' + batch.recordIds.length + ' naplóbejegyzés').join('\n')
+  const chosen = Number(prompt('Válaszd ki a visszavonandó YAZIO-köteget (sorszám):\n' + list))
+  if (!Number.isInteger(chosen) || chosen < 1 || chosen > batches.length) return
+  if (!confirm('Biztosan visszavonod ezt az importköteget? A módosított rekordokat megőrizzük.')) return
+  const batch = batches[chosen - 1]
+  try {
+    const backup = foodBackupToJson(project)
+    await saveLocalProject({
+      id: localProjectId() + ':before-yazio-undo:' + batch.id,
+      module: 'Ételnapló biztonsági mentés', name: 'YAZIO visszavonás előtti állapot',
+      data: foodBackupFromJson(backup, profile.id), driveFileId: null,
+    })
+    downloadYazioBackup(backup, batch.id + '-undo')
+    const result = undoYazioBatch(project, batch.id)
+    project = result.project
+    project.syncState = { ...project.syncState, localDirty: true }
+    await persistLocal(); render()
+    setStatus(result.removed + ' rekord visszavonva' +
+      (result.modified.length ? ' · ' + result.modified.length + ' módosított rekord megőrizve, külön döntés szükséges' : ''), 'saved')
+  } catch (error) { setStatus(error.message, 'error') }
+}
+
 function bindEvents() {
   root.addEventListener('click', event => {
     const tab = event.target.closest('[data-food-tab]'); if (tab) { activeTab = tab.dataset.foodTab; render(); return }
     const entryAction = event.target.closest('[data-entry-action]'); if (entryAction) return handleEntryAction(entryAction.dataset.entryAction, entryAction.dataset.entryId)
     const favorite = event.target.closest('[data-food-favorite]'); if (favorite) { const id = favorite.dataset.foodFavorite; project.favorites = project.favorites.includes(id) ? project.favorites.filter(item => item !== id) : [...project.favorites, id]; scheduleSave(); renderFoodItems(); return }
     const sharedCopy = event.target.closest('[data-library-copy-food]'); if (sharedCopy) return copySharedRecipe(sharedCopy.dataset.libraryCopyFood)
-    const offResult = event.target.closest('[data-off-result]'); if (offResult) return loadOpenFoodFactsResult(offResult.dataset.offResult)
+    const offResult = event.target.closest('[data-off-result]'); if (offResult) return loadOpenFoodFactsResult(offResult.dataset.offResult, offResult.dataset.catalogContext || 'foods')
     const editFood = event.target.closest('[data-food-edit]'); if (editFood) return fillFoodForm(project.customFoods.find(item => item.id === editFood.dataset.foodEdit))
     const deleteFood = event.target.closest('[data-food-delete]'); if (deleteFood) return deleteFoodItem(deleteFood.dataset.foodDelete)
     const removeIngredient = event.target.closest('[data-recipe-ingredient-delete]'); if (removeIngredient) { recipeIngredients = recipeIngredients.filter(item => item.id !== removeIngredient.dataset.recipeIngredientDelete); renderRecipeIngredients(); return }
@@ -660,15 +1081,45 @@ function bindEvents() {
     if (event.key !== 'Escape') return
     if (!$('#food-ocr-preview').classList.contains('hidden')) closeLabelOcr()
     else if (!$('#food-health-preview').classList.contains('hidden')) closeHealthPreview()
+    else if (!$('#food-yazio-preview').classList.contains('hidden')) closeYazioPreview()
   })
   $('#food-date').addEventListener('change', event => { selectedDate = event.target.value || localDate(); render() }); $('#food-date-prev').addEventListener('click', () => shiftDate(-1)); $('#food-date-next').addEventListener('click', () => shiftDate(1)); $('#food-date-today').addEventListener('click', () => { selectedDate = localDate(); render() })
-  $('#food-search').addEventListener('input', renderFoodItems); $('#food-search').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); searchOpenFoodFactsByName() } }); $('#food-off-search').addEventListener('click', searchOpenFoodFactsByName); $('#food-category-filter').addEventListener('change', renderFoodItems); $('#food-entry-food').addEventListener('change', () => updateEntryUnits()); $('#food-entry-form').addEventListener('submit', saveEntry); $('#food-entry-cancel').addEventListener('click', resetEntryForm)
+  $('#food-search').addEventListener('input', () => { renderFoodItems(); queueCatalogSearch('foods') })
+  $('#food-search').addEventListener('keydown', event => {
+    if (event.key === 'Enter') { event.preventDefault(); searchOpenFoodFactsByName('', 'foods') }
+  })
+  $('#food-off-search').addEventListener('click', () => searchOpenFoodFactsByName('', 'foods'))
+  $('#food-entry-search').addEventListener('input', () => { entryFoodOptions(); queueCatalogSearch('diary') })
+  $('#food-entry-search').addEventListener('keydown', event => {
+    if (event.key === 'Enter') { event.preventDefault(); searchOpenFoodFactsByName('', 'diary') }
+  })
+  $('#food-entry-catalog-button').addEventListener('click', () => searchOpenFoodFactsByName('', 'diary'))
+  $('#food-category-filter').addEventListener('change', renderFoodItems); $('#food-entry-food').addEventListener('change', () => updateEntryUnits()); $('#food-entry-form').addEventListener('submit', saveEntry); $('#food-entry-cancel').addEventListener('click', resetEntryForm)
   $('#food-item-form').addEventListener('submit', saveFood); $('#food-item-cancel').addEventListener('click', resetFoodForm); $('#food-lookup').addEventListener('click', lookupProductFromForm); $('#food-entry-scan').addEventListener('click', () => { barcodeScanTarget = 'diary'; $('#food-barcode-input').click() }); $('#food-scan').addEventListener('click', () => { barcodeScanTarget = 'foods'; $('#food-barcode-input').click() }); $('#food-barcode-input').addEventListener('change', selectBarcodePhoto); $('#food-label-ocr').addEventListener('click', event => { modalReturnFocus = event.currentTarget; $('#food-label-input').click() }); $('#food-label-input').addEventListener('change', selectNutritionLabel); $('#food-ocr-apply').addEventListener('click', applyLabelOcr); $('#food-ocr-close').addEventListener('click', closeLabelOcr); $('#food-ocr-cancel').addEventListener('click', closeLabelOcr); $('#food-ocr-preview').addEventListener('click', event => { if (event.target.id === 'food-ocr-preview') closeLabelOcr() })
   $('#food-recipe-form').addEventListener('submit', saveRecipe); $('#food-recipe-cancel').addEventListener('click', resetRecipeForm); $('#food-recipe-add-ingredient').addEventListener('click', addRecipeIngredient); $('#food-recipe-ingredient-food').addEventListener('change', () => updateRecipeIngredientUnits()); for (const id of ['#food-recipe-name', '#food-recipe-prepared-weight', '#food-recipe-yield-count', '#food-recipe-yield-unit', '#food-recipe-unit-weight']) $(id).addEventListener('input', renderRecipePreview)
   $('#food-library-create').addEventListener('submit', createFamilyLibrary); $('#food-library-connect').addEventListener('submit', connectFamilyLibrary)
   for (const id of ['#food-stats-period', '#food-stats-nutrient', '#food-stats-compare', '#food-stats-granularity']) $(id).addEventListener('change', renderStats)
   $('#food-target-form').addEventListener('submit', saveTargets); for (const id of ['#food-target-energy', '#food-target-protein', '#food-target-carbohydrate', '#food-target-fat']) $(id).addEventListener('input', renderTargetWarning)
   $('#food-drive-save').addEventListener('click', () => saveToDrive().catch(error => setStatus(error.message, 'error'))); $('#food-back-to-menu-btn').addEventListener('click', () => document.dispatchEvent(new CustomEvent('grapes:open-main-menu'))); $('#food-backup-export').addEventListener('click', exportBackup); $('#food-backup-import').addEventListener('click', () => $('#food-backup-input').click()); $('#food-backup-input').addEventListener('change', importBackup)
+  $('#food-yazio-import').addEventListener('click', event => { modalReturnFocus = event.currentTarget; $('#food-yazio-input').click() })
+  $('#food-yazio-input').addEventListener('change', selectYazioImport)
+  $('#food-yazio-history').addEventListener('click', undoYazioImport)
+  $('#food-yazio-confirm').addEventListener('click', applyYazioImport)
+  $('#food-yazio-close').addEventListener('click', closeYazioPreview)
+  $('#food-yazio-cancel').addEventListener('click', closeYazioPreview)
+  $('#food-yazio-preview').addEventListener('click', event => { if (event.target.id === 'food-yazio-preview') closeYazioPreview() })
+  $('#food-yazio-records').addEventListener('change', event => {
+    if (!event.target.matches('[data-yazio-record]')) return
+    const index = Number(event.target.value)
+    if (event.target.checked) yazioSelected.add(index)
+    else yazioSelected.delete(index)
+    renderYazioRecords()
+  })
+  for (const id of ['#food-yazio-date', '#food-yazio-meal', '#food-yazio-status']) {
+    $(id).addEventListener('change', () => { yazioPage = 0; renderYazioRecords() })
+  }
+  $('#food-yazio-prev').addEventListener('click', () => { yazioPage--; renderYazioRecords() })
+  $('#food-yazio-next').addEventListener('click', () => { yazioPage++; renderYazioRecords() })
   $('#food-health-import').addEventListener('click', event => { modalReturnFocus = event.currentTarget; if (isGrapesAndroidApp()) importAndroidHealth(); else $('#food-health-input').click() }); $('#food-health-input').addEventListener('change', selectHealthImport); $('#food-health-confirm').addEventListener('click', applyHealthImport); $('#food-health-close').addEventListener('click', closeHealthPreview); $('#food-health-cancel').addEventListener('click', closeHealthPreview); $('#food-health-preview').addEventListener('click', event => { if (event.target.id === 'food-health-preview') closeHealthPreview() })
 }
 

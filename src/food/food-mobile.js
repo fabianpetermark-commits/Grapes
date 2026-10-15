@@ -1,7 +1,9 @@
 import { calculateRecipeFood, createEmptyFoodProject, createFoodId, currentTargets, entriesForLocalDay, foodBackupFromJson, foodBackupToJson, normalizeDiaryEntry, normalizeFoodItem, normalizeFoodProject, normalizeRecipe, normalizeTargets, summarizeEntries } from './food-data.js'
 import { acceptMealShare, acceptRecipeShare, rememberSharingContact } from './food-sharing.js'
 import { listFoodShares, loadFoodShare, setFoodShareState } from './food-sharing-client.js'
-import { lookupFatSecretProduct, lookupOpenFoodFactsProduct, searchFatSecretProducts, searchOpenFoodFactsProducts } from './food-api.js'
+import { lookupFatSecretProduct, lookupOpenFoodFactsProduct } from './food-api.js'
+import { searchFoodCatalog } from './food-catalog-search.js'
+import { createMobileYazio } from './food-mobile-yazio.js'
 import { healthImportEntries, prepareHealthBridgeImport } from './food-health-import.js'
 import { prepareYazioCsvImport, yazioImportEntries } from './yazio-import.js'
 import { getGrapesAccount, isGrapesDriveConnected, listGrapesProjects, loadGrapesProject, saveGrapesProject } from '../storage/grapes-drive.js'
@@ -55,6 +57,16 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const account = getGrapesAccount() || {}
     return { id: String(account.id || account.email || 'local-food-profile').trim().toLocaleLowerCase('hu-HU'), name: account.name || account.email?.split('@')[0] || 'Grapes-felhasználó', email: account.email || '', photo: account.photo || '' }
   }
+
+  const yazio = createMobileYazio({ root, getProject: () => project, showToast,
+    openSheet: sheet => { closeSheets(); setSheetOpen(sheet, true) }, closeSheet: () => closeSheets(),
+    commit: async next => {
+      if (next.profile.id !== profile.id) throw new Error('Az aktív profil megváltozott.')
+      next.syncState = { ...next.syncState, localDirty: true }
+      await persistLocal(next)
+      project = next; changeRevision += 1; render()
+    },
+  })
 
   function migrateLocalProject(source, nextProfile) {
     const previousProfileId = source.profile.id
@@ -282,11 +294,32 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
 
   function renderRecipeList() {
     const container = $('[data-food-recipes-list]'); container.replaceChildren()
-    if (!project.recipes.length) { container.innerHTML = '<div class="empty-state">Még nincs saját recepted.</div>'; return }
+    if (!project.recipes.length) container.innerHTML = '<div class="empty-state">Még nincs saját recepted.</div>'
     for (const recipe of [...project.recipes].sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))) {
       const button = document.createElement('button'); button.type = 'button'; button.className = 'meal'
       button.innerHTML = `<span class="meal__icon">${mobileIconSvg('recipe')}</span><span><strong>${escapeHtml(recipe.name)}</strong><span>${recipe.ingredients.length} hozzávaló · ${escapeHtml(recipe.category)}</span></span><b>›</b>`
       button.addEventListener('click', () => openRecipe(recipe.id)); container.append(button)
+    }
+    const seen = new Set()
+    for (const batch of project.importBatches || []) {
+      if (batch.source !== 'yazio' || batch.profileId !== profile.id || batch.status === 'undone') continue
+      const archive = batch.sourceArchive || {}
+      for (const recipe of archive.recipes || []) {
+        const id = String(recipe.recipe_id || '')
+        if (!id || seen.has(id) || seen.size >= 400) continue
+        seen.add(id)
+        const details = document.createElement('details'); details.className = 'sync-status'
+        const summary = document.createElement('summary'); summary.textContent = `${recipe.name || 'Névtelen recept'} · YAZIO · csak olvasható`
+        details.append(summary)
+        for (const ingredient of (archive.recipe_ingredients || []).filter(item => String(item.recipe_id) === id)) {
+          const product = (archive.products || []).find(item => String(item.product_id) === String(ingredient.product_id))
+          const line = document.createElement('p'); line.textContent = `${product?.name || ingredient.name || 'Ismeretlen hozzávaló'} · ${ingredient.amount ?? '—'} ${ingredient.base_unit || ''}`; details.append(line)
+        }
+        for (const instruction of (archive.recipe_instructions || []).filter(item => String(item.recipe_id) === id)) {
+          const line = document.createElement('p'); line.textContent = instruction.text || ''; details.append(line)
+        }
+        container.append(details)
+      }
     }
   }
 
@@ -400,6 +433,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   function closeSheets() {
+    setSheetOpen($('[data-food-yazio-sheet]'), false)
     setSheetOpen(addSheet, false)
     setSheetOpen($('[data-food-custom-sheet]'), false)
     setSheetOpen($('[data-food-share-sheet]'), false)
@@ -488,7 +522,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const element = document.createElement('div'); element.className = 'sheet-result'
     const main = document.createElement('button'); main.type = 'button'; main.className = 'sheet-result__main'
     const calories = food.nutrients.energyKcal == null ? 'nincs kalóriaadat' : `${number(food.nutrients.energyKcal, 1)} kcal / 100 ${food.baseUnit}`
-    main.innerHTML = `<strong>${escapeHtml(food.name)}</strong><span>${calories}${external ? ' · online találat' : ''}</span>`
+    main.innerHTML = `<strong>${escapeHtml(food.name)}</strong><span>${calories}${external ? ` · ${food.source?.type === 'fatsecret' ? 'FatSecret' : 'Open Food Facts'}` : ''}</span>`
     const favoriteButton = document.createElement('button'); favoriteButton.type = 'button'; favoriteButton.className = 'sheet-result__favorite'; favoriteButton.hidden = external
     favoriteButton.textContent = favorite ? '★' : '☆'; favoriteButton.setAttribute('aria-label', favorite ? 'Eltávolítás a kedvencekből' : 'Hozzáadás a kedvencekhez')
     element.append(main, favoriteButton)
@@ -500,8 +534,6 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     if (existing) return existing
     const now = new Date().toISOString()
     const food = normalizeFoodItem({ ...value, id: createFoodId('food'), createdAt: now, updatedAt: now })
-    project.customFoods.push(food)
-    scheduleSave()
     return food
   }
 
@@ -512,19 +544,16 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     if (query.trim().length < 2) return
     searchTimer = setTimeout(async () => {
       renderFoodSearch(query, { loading: true })
-      const searches = await Promise.allSettled([searchOpenFoodFactsProducts(query), searchFatSecretProducts(query)])
+      let result
+      try { result = await searchFoodCatalog(query) }
+      catch (error) { if (generation === searchGeneration) renderFoodSearch(query, { remoteError: error.message }); return }
       if (generation !== searchGeneration || $('[data-food-search]').value !== query) return
-      const successful = searches.filter(result => result.status === 'fulfilled').map(result => result.value)
-      if (!successful.length) {
+      if (result.unavailable) {
         renderFoodSearch(query, { remoteError: 'Az online termékkereső most nem érhető el; a saját ételek továbbra is használhatók.' })
         return
       }
-      const seen = new Set()
-      const remoteFoods = successful.flatMap(result => result.products).filter(food => {
-        const key = foodKey(food); if (seen.has(key)) return false; seen.add(key); return true
-      })
-      renderFoodSearch(query, { remoteFoods, remoteError: remoteFoods.length ? '' : 'Nincs online találat.' })
-    }, 450)
+      renderFoodSearch(query, { remoteFoods: result.products, remoteError: result.errors.join(' · ') || (result.products.length ? '' : 'Nincs online találat.') })
+    }, 1100)
   }
 
   async function lookupBarcode(code) {
@@ -625,6 +654,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
           note: $('[data-food-edit-note]').value,
           occurredAt: new Date(`${selectedDate}T${time}:00`).toISOString(), createdAt: new Date().toISOString(),
         }, food)
+        if (!project.customFoods.some(item => item.id === food.id)) project.customFoods.push(food)
         project.diaryEntries.push(entry)
         project.recentFoods = [food.id, ...project.recentFoods.filter(id => id !== food.id)].slice(0, 50)
         scheduleSave(); closeSheets(); renderMealDetail(); showToast(`${food.name} hozzáadva.`)
@@ -645,7 +675,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   function repeatEntry(id) {
     const entry = project.diaryEntries.find(item => item.id === id); if (!entry) return
     const now = new Date()
-    project.diaryEntries.push(normalizeDiaryEntry({ ...entry, id: createFoodId('entry'), occurredAt: new Date(`${selectedDate}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`).toISOString(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }))
+    project.diaryEntries.push(normalizeDiaryEntry({ ...entry, externalKey: '', origin: undefined, id: createFoodId('entry'), occurredAt: new Date(`${selectedDate}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`).toISOString(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }))
     scheduleSave(); renderMealDetail(); showToast('Az étel megismételve.')
   }
 
@@ -808,6 +838,15 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     scheduleSave(); render()
     return { ...preview.counts, imported: entries.length }
   }
+
+  async function importYazio(source) {
+    if (yazio.isBusy()) throw new Error('Az előző import még folyamatban van.')
+    if (!source.trimStart().startsWith('{')) return importYazioCsv(source)
+    await load(); await flush()
+    return yazio.prepare(source)
+  }
+
+  async function undoYazio() { if (yazio.isBusy()) return; await load(); await flush(); return yazio.undo() }
 
   function handleMenuAction(action) {
     if (action === 'stats') return openStats()
@@ -982,7 +1021,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   bind()
-  return { load, render, closeMeal, handleBack, isDetailOpen: () => Boolean(selectedMeal), flush, openHealthImport, importYazioCsv }
+  return { load, render, closeMeal, handleBack, isDetailOpen: () => Boolean(selectedMeal), flush, openHealthImport, importYazioCsv, importYazio, undoYazio }
 }
 
 function escapeHtml(value) {

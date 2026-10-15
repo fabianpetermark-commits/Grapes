@@ -34,6 +34,7 @@
     .notes li::before { margin-right: 9px; color: var(--accent); content: "✓"; }
     .prototype-note { padding: 12px 14px; color: #b6c5d5; background: #111b25; border: 1px solid var(--line); border-radius: 14px; font-size: 13px; }
     .phone { position: relative; width: 390px; height: 844px; overflow: hidden; background: var(--bg); border: 1px solid #33465a; border-radius: 38px; box-shadow: 0 34px 100px rgb(0 0 0 / 62%), inset 0 0 0 6px #05080c; }
+    .phone { overflow: clip; }
     .phone::before { position: absolute; top: 10px; left: 50%; z-index: 20; width: 104px; height: 26px; content: ""; background: #020407; border-radius: 999px; transform: translateX(-50%); }
     .statusbar { position: absolute; inset: 0 0 auto; z-index: 12; display: flex; align-items: center; justify-content: space-between; height: 44px; padding: 8px 25px 0; color: #cad6e2; font-size: 12px; font-weight: 700; pointer-events: none; }
     .screen { position: absolute; inset: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; padding-top: 44px; background: radial-gradient(circle at 12% 0, rgb(59 220 242 / 7%), transparent 30%), var(--bg); }
@@ -207,7 +208,7 @@
     .week-day i { align-self: end; width: 13px; min-height: 10px; background: linear-gradient(#52c7ff, #3178d4); border-radius: 7px 7px 3px 3px; }
     .week-day.is-today { color: var(--accent); font-weight: 800; }
     .water-log { display: grid; grid-template-columns: 42px 1fr auto; gap: 12px; align-items: center; min-height: 62px; border-bottom: 1px solid var(--line); }
-    .water-log__icon { display: grid; place-items: center; width: 38px; height: 38px; color: #70d4ff; background: rgb(77 143 255 / 12%); border-radius: 12px; }
+    .water-log > .water-log__icon { display: grid; place-items: center; width: 38px; height: 38px; margin-top: 0; color: #70d4ff; background: rgb(77 143 255 / 12%); border-radius: 12px; }
     .water-log strong, .water-log span { display: block; }
     .water-log span { margin-top: 3px; color: var(--muted); font-size: 10px; }
     .water-log b { color: #9edfff; font-size: 12px; }
@@ -285,6 +286,10 @@
     .sheet-backdrop.is-open { opacity: 1; pointer-events: auto; }
     .bottom-sheet { position: absolute; right: 0; bottom: 0; left: 0; z-index: 40; max-height: 88dvh; padding: 10px 18px 24px; overflow-y: auto; overscroll-behavior: contain; background: #111a24; border: 1px solid var(--line); border-radius: 26px 26px 0 0; box-shadow: 0 -20px 70px rgb(0 0 0 / 45%); transform: translateY(105%); transition: .24s ease; }
     .bottom-sheet.is-open { transform: none; }
+    [data-food-yazio-sheet] .sheet-result { display: flex; align-items: center; gap: 12px; }
+    [data-food-yazio-sheet] .sheet-result input { flex: 0 0 20px; width: 20px; height: 20px; }
+    [data-food-yazio-sheet] .sheet-result span { flex: 1; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+    [data-yazio-warnings] { white-space: pre-line; max-height: 120px; overflow: auto; }
     .sheet-handle { width: 42px; height: 4px; margin: 0 auto 16px; background: #435364; border-radius: 99px; }
     .bottom-sheet h2 { margin: 0 0 5px; font-size: 21px; }
     .bottom-sheet > p { margin: 0 0 16px; color: var(--muted); font-size: 12px; }
@@ -371,10 +376,11 @@
           <div class="sync-providers">
             <div class="sync-provider"><span class="sync-provider__icon" data-mobile-icon="health"></span><div><strong>Health Connect</strong><span>Ételek és víz beolvasása a telefon egészségadataiból</span></div><button type="button" data-health-sync>Beolvasás</button></div>
             <div class="sync-provider"><span class="sync-provider__icon" data-mobile-icon="samsung"></span><div><strong>Samsung Health</strong><span>Samsung-adatok átvétele Health Connecten keresztül</span></div><button type="button" data-samsung-sync-action>Beolvasás</button></div>
-            <div class="sync-provider"><span class="sync-provider__icon" data-mobile-icon="yazio"></span><div><strong>Yazio</strong><span>A Yazio Exporter nutrition_log.csv fájljának importálása</span></div><button type="button" data-yazio-import>Import</button></div>
+            <div class="sync-provider"><span class="sync-provider__icon" data-mobile-icon="yazio"></span><div><strong>Yazio</strong><span>JSON-előzmények vagy nutrition_log.csv importálása</span></div><button type="button" data-yazio-import>Import</button></div>
           </div>
+          <button type="button" class="quick-action" data-yazio-undo>Utolsó YAZIO JSON-import visszavonása</button>
           <p class="sync-provider-status" data-yazio-status role="status" aria-live="polite"></p>
-          <input type="file" accept=".csv,text/csv" data-yazio-input hidden>
+          <input type="file" accept=".json,application/json,.csv,text/csv" data-yazio-input hidden>
         </div>
 
         <div class="content" data-page="more" hidden>
