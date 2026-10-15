@@ -401,6 +401,31 @@ function copySharedRecipe(foodId) {
   try { const copied = copyLibraryRecipeToProject(link.data, food.source.id, profile.id); project.customFoods.push(...copied.foods); project.recipes.push(copied.recipe); refreshRecipeFoods(); scheduleSave(); render(); setStatus('A megosztott recept saját, szerkeszthető másolatként elkészült.', 'saved') } catch (error) { setStatus(error.message, 'error') }
 }
 
+
+function refreshImportedNutrientOptions() {
+  const found = new Map()
+  for (const entry of project.diaryEntries) {
+    if (entry.profileId !== profile.id) continue
+    for (const [name, nutrient] of Object.entries(entry.snapshot?.nutrients?.extras || {})) {
+      if (!/^[a-z0-9_]+$/.test(name) || !nutrient?.unit) continue
+      found.set('extra:' + name, { name, unit: nutrient.unit })
+    }
+  }
+  for (const selector of ['#food-stats-nutrient', '#food-stats-compare']) {
+    const select = $(selector), selected = select.value
+    for (const option of [...select.querySelectorAll('option[data-yazio-extra]')]) option.remove()
+    for (const [key, item] of found) {
+      const option = document.createElement('option')
+      option.value = key; option.dataset.yazioExtra = ''
+      option.textContent = item.name.replaceAll('_', ' ') + ' (' + item.unit + ')'
+      select.append(option)
+      NUTRIENT_LABELS[key] = item.name.replaceAll('_', ' ')
+      NUTRIENT_UNITS[key] = item.unit
+    }
+    if ([...select.options].some(option => option.value === selected)) select.value = selected
+  }
+}
+
 function renderStats() {
   const nutrient = $('#food-stats-nutrient').value
   const compare = $('#food-stats-compare').value
@@ -447,7 +472,7 @@ function render() {
     panel.setAttribute('aria-labelledby', `food-tab-${panel.dataset.foodPanel}`)
     panel.classList.toggle('hidden', !selected)
   }
-  entryFoodOptions(); renderSummary(); renderMeals(); renderFoodItems(); renderRecipes(); renderArchivedYazioRecipes(); renderLibraries(); renderStats(); renderTargets()
+  entryFoodOptions(); renderSummary(); renderMeals(); renderFoodItems(); renderRecipes(); renderArchivedYazioRecipes(); renderLibraries(); refreshImportedNutrientOptions(); renderStats(); renderTargets()
 }
 
 function resetEntryForm() { $('#food-entry-form').reset(); $('#food-entry-id').value = ''; $('#food-entry-amount').value = 100; $('#food-entry-time').value = new Date().toTimeString().slice(0, 5); $('#food-entry-cancel').classList.add('hidden'); updateEntryUnits() }
