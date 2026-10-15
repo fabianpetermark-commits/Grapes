@@ -617,6 +617,195 @@ function applyHealthImport() {
   setStatus(`${entries.length} Health-rekord importálva · Drive-mentés szükséges`, 'saved')
 }
 
+
+let yazioImportBusy = false
+
+function closeYazioPreview() {
+  if (yazioImportBusy) return
+  pendingYazioImport = null
+  yazioSelected.clear()
+  $('#food-yazio-preview').classList.add('hidden')
+  $('#food-yazio-records').replaceChildren()
+  restoreModalFocus()
+}
+function yazioFilteredRecords() {
+  if (!pendingYazioImport) return []
+  const date = $('#food-yazio-date').value
+  const meal = $('#food-yazio-meal').value
+  const status = $('#food-yazio-status').value
+  return pendingYazioImport.records.filter(item =>
+    (!date || item.record.date === date) &&
+    (!meal || item.entry?.mealType === meal) &&
+    (!status || item.status === status))
+}
+function renderYazioRecords() {
+  if (!pendingYazioImport) return
+  const records = yazioFilteredRecords()
+  const pages = Math.max(1, Math.ceil(records.length / YAZIO_PAGE_SIZE))
+  yazioPage = Math.min(yazioPage, pages - 1)
+  const container = $('#food-yazio-records'); container.replaceChildren()
+  const fragment = document.createDocumentFragment()
+  for (const item of records.slice(yazioPage * YAZIO_PAGE_SIZE, (yazioPage + 1) * YAZIO_PAGE_SIZE)) {
+    const row = document.createElement('label')
+    row.className = 'food__health-record is-' + item.status
+    const checkbox = document.createElement('input')
+    checkbox.type = 'checkbox'; checkbox.value = String(item.index)
+    checkbox.checked = yazioSelected.has(item.index)
+    checkbox.disabled = !['ready', 'uncertain'].includes(item.status) || yazioImportBusy
+    checkbox.dataset.yazioRecord = ''
+    const content = document.createElement('span')
+    const title = document.createElement('strong')
+    title.textContent = item.entry ? item.entry.snapshot.name + ' · ' + item.record.date + ' · ' +
+      (MEAL_LABELS[item.entry.mealType] || 'Étkezés') : 'Hibás rekord #' + (item.index + 1)
+    const detail = document.createElement('small')
+    const statusText = { ready: 'Új · importálható', duplicate: 'Biztos duplikáció · kihagyva',
+      uncertain: 'Bizonytalan egyezés · csak külön kijelöléssel', invalid: item.error }
+    detail.textContent = statusText[item.status] + (item.entry ? ' · ' +
+      formatNumber(item.entry.snapshot.nutrients.energyKcal, 2) + ' kcal' : '')
+    content.append(title, detail); row.append(checkbox, content); fragment.append(row)
+  }
+  if (!records.length) {
+    const empty = document.createElement('p'); empty.textContent = 'Nincs megjeleníthető rekord.'; fragment.append(empty)
+  }
+  container.append(fragment)
+  $('#food-yazio-page').textContent = (yazioPage + 1) + '/' + pages + ' · ' + records.length + ' rekord · ' + yazioSelected.size + ' kijelölve'
+  $('#food-yazio-prev').disabled = yazioPage === 0 || yazioImportBusy
+  $('#food-yazio-next').disabled = yazioPage + 1 >= pages || yazioImportBusy
+  $('#food-yazio-confirm').disabled = !yazioSelected.size || yazioImportBusy
+}
+function renderYazioPreview() {
+  if (!pendingYazioImport) return
+  const plan = pendingYazioImport, counts = plan.counts
+  const profileOption = document.createElement('option')
+  profileOption.value = profile.id; profileOption.textContent = profile.name + ' (' + (profile.email || profile.id) + ')'
+  $('#food-yazio-profile').replaceChildren(profileOption)
+  $('#food-yazio-summary').textContent =
+    'Időszak: ' + plan.from + ' – ' + plan.to + ' · Napok: ' + plan.days +
+    ' · Étkezés: ' + plan.records.length + ' · Új: ' + counts.ready +
+    ' · Biztos duplikáció: ' + counts.duplicate + ' · Bizonytalan: ' + counts.uncertain +
+    ' · Hibás: ' + counts.invalid + ' · Forrásreceptek: ' + plan.recipes
+  $('#food-yazio-nutrients').textContent = CORE_NUTRIENTS.map(name =>
+    (NUTRIENT_LABELS[name] || name) + ': ' + formatNumber(plan.nutrients[name], 2) +
+    ' ' + NUTRIENT_UNITS[name]).join(' · ')
+  const messages = [
+    ...plan.warnings, ...plan.discrepancies.map(item =>
+      item.date + ' / ' + item.nutrient + ': YAZIO ' + item.expected + ', naplósorok ' + item.actual),
+  ]
+  $('#food-yazio-warnings').textContent = messages.length ? messages.join('\n') : 'Nincs ismert forrásfigyelmeztetés vagy napi eltérés.'
+  yazioPage = 0; renderYazioRecords()
+  $('#food-yazio-preview').classList.remove('hidden')
+  $('#food-yazio-close').focus()
+}
+async function selectYazioImport(event) {
+  const file = event.target.files?.[0]; event.target.value = ''
+  if (!file) return
+  try {
+    if (file.size > MAX_YAZIO_JSON_BYTES) throw new Error('A JSON-fájl meghaladja a 40 MB-os korlátot.')
+    pendingYazioImport = prepareYazioImport(await file.text(), {
+      profileId: profile.id, existingEntries: project.diaryEntries,
+    })
+    yazioSelected = new Set(pendingYazioImport.records.filter(item => item.status === 'ready').map(item => item.index))
+    $('#food-yazio-date').value = ''
+    $('#food-yazio-meal').value = ''
+    $('#food-yazio-status').value = ''
+    renderYazioPreview()
+  } catch (error) {
+    pendingYazioImport = null
+    setStatus(error.message, 'error')
+    restoreModalFocus()
+  }
+}
+function downloadYazioBackup(backup, batchId) {
+  const url = URL.createObjectURL(new Blob([backup], { type: 'application/json' }))
+  const link = document.createElement('a')
+  link.href = url; link.download = 'grapes-food-before-yazio-' + batchId + '.json'
+  link.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+async function saveYazioPreImportBackup(batchId) {
+  const backup = foodBackupToJson(project)
+  await saveLocalProject({
+    id: localProjectId() + ':yazio-backup:' + batchId,
+    module: 'Ételnapló biztonsági mentés', name: 'YAZIO előtti állapot',
+    data: foodBackupFromJson(backup, profile.id), driveFileId: null,
+  })
+  downloadYazioBackup(backup, batchId)
+}
+async function applyYazioImport() {
+  if (!pendingYazioImport || yazioImportBusy || $('#food-yazio-profile').value !== profile.id) return
+  const plan = pendingYazioImport
+  const indexes = [...yazioSelected].sort((a, b) => a - b)
+  if (!indexes.length || !confirm('A kijelölt ' + indexes.length +
+    ' rekordot hozzáadod a(z) ' + profile.name + ' profilhoz? Meglévő rekord nem íródik felül.')) return
+  yazioImportBusy = true
+  $('#food-yazio-confirm').disabled = true; $('#food-yazio-cancel').disabled = true
+  $('#food-yazio-close').disabled = true
+  const progress = $('#food-yazio-progress'), label = $('#food-yazio-progress-label')
+  progress.classList.remove('hidden'); progress.value = 0
+  let added = 0
+  // Reuse an interrupted batch only for an identical upstream export and active profile.
+  const previous = (project.importBatches || []).find(batch =>
+    batch.source === 'yazio' && batch.profileId === profile.id && batch.status === 'in-progress' &&
+    JSON.stringify(batch.sourceArchive?.meta) === JSON.stringify(plan.sourceArchive.meta))
+  const batchId = previous?.id || createFoodId('yazio-batch')
+  try {
+    clearTimeout(saveTimer)
+    if (!previous) await saveYazioPreImportBackup(batchId)
+    for (let index = 0; index < indexes.length; index += 150) {
+      const subset = indexes.slice(index, index + 150)
+      const result = applyYazioBatch(project, plan, subset, batchId)
+      project = result.project; added += result.added
+      project.syncState = { ...project.syncState, localDirty: true }
+      await persistLocal()
+      progress.value = Math.round(Math.min(1, (index + subset.length) / indexes.length) * 100)
+      label.textContent = progress.value + '% · ' + added + ' új bejegyzés'
+      await new Promise(resolve => setTimeout(resolve, 0))
+    }
+    if ((project.importBatches || []).some(batch => batch.id === batchId)) {
+      project = markYazioBatchComplete(project, batchId)
+      await persistLocal()
+    }
+    yazioImportBusy = false
+    closeYazioPreview()
+    render()
+    setStatus(added + ' YAZIO-rekord importálva · Drive-mentés szükséges', 'saved')
+  } catch (error) {
+    label.textContent = 'Az import megszakadt: ' + error.message + ' · Azonos fájllal folytatható.'
+    setStatus('YAZIO import megszakadt: ' + error.message, 'error')
+  } finally {
+    yazioImportBusy = false
+    $('#food-yazio-confirm').disabled = false
+    $('#food-yazio-cancel').disabled = false
+    $('#food-yazio-close').disabled = false
+  }
+}
+async function undoYazioImport() {
+  const batches = (project.importBatches || []).filter(batch =>
+    batch.source === 'yazio' && batch.profileId === profile.id && batch.status !== 'undone')
+  if (!batches.length) { setStatus('Nincs visszavonható YAZIO-import.', 'saved'); return }
+  const list = batches.map((batch, index) =>
+    (index + 1) + '. ' + batch.importedAt + ' · ' + batch.recordIds.length + ' naplóbejegyzés').join('\n')
+  const chosen = Number(prompt('Válaszd ki a visszavonandó YAZIO-köteget (sorszám):\n' + list))
+  if (!Number.isInteger(chosen) || chosen < 1 || chosen > batches.length) return
+  if (!confirm('Biztosan visszavonod ezt az importköteget? A módosított rekordokat megőrizzük.')) return
+  const batch = batches[chosen - 1]
+  try {
+    const backup = foodBackupToJson(project)
+    await saveLocalProject({
+      id: localProjectId() + ':before-yazio-undo:' + batch.id,
+      module: 'Ételnapló biztonsági mentés', name: 'YAZIO visszavonás előtti állapot',
+      data: foodBackupFromJson(backup, profile.id), driveFileId: null,
+    })
+    downloadYazioBackup(backup, batch.id + '-undo')
+    const result = undoYazioBatch(project, batch.id)
+    project = result.project
+    project.syncState = { ...project.syncState, localDirty: true }
+    await persistLocal(); render()
+    setStatus(result.removed + ' rekord visszavonva' +
+      (result.modified.length ? ' · ' + result.modified.length + ' módosított rekord megőrizve, külön döntés szükséges' : ''), 'saved')
+  } catch (error) { setStatus(error.message, 'error') }
+}
+
 function bindEvents() {
   root.addEventListener('click', event => {
     const tab = event.target.closest('[data-food-tab]'); if (tab) { activeTab = tab.dataset.foodTab; render(); return }
@@ -647,6 +836,7 @@ function bindEvents() {
     if (event.key !== 'Escape') return
     if (!$('#food-ocr-preview').classList.contains('hidden')) closeLabelOcr()
     else if (!$('#food-health-preview').classList.contains('hidden')) closeHealthPreview()
+    else if (!$('#food-yazio-preview').classList.contains('hidden')) closeYazioPreview()
   })
   $('#food-date').addEventListener('change', event => { selectedDate = event.target.value || localDate(); render() }); $('#food-date-prev').addEventListener('click', () => shiftDate(-1)); $('#food-date-next').addEventListener('click', () => shiftDate(1)); $('#food-date-today').addEventListener('click', () => { selectedDate = localDate(); render() })
   $('#food-search').addEventListener('input', renderFoodItems); $('#food-search').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); searchOpenFoodFactsByName() } }); $('#food-off-search').addEventListener('click', searchOpenFoodFactsByName); $('#food-category-filter').addEventListener('change', renderFoodItems); $('#food-entry-food').addEventListener('change', () => updateEntryUnits()); $('#food-entry-form').addEventListener('submit', saveEntry); $('#food-entry-cancel').addEventListener('click', resetEntryForm)
@@ -656,6 +846,25 @@ function bindEvents() {
   for (const id of ['#food-stats-period', '#food-stats-nutrient', '#food-stats-compare', '#food-stats-granularity']) $(id).addEventListener('change', renderStats)
   $('#food-target-form').addEventListener('submit', saveTargets); for (const id of ['#food-target-energy', '#food-target-protein', '#food-target-carbohydrate', '#food-target-fat']) $(id).addEventListener('input', renderTargetWarning)
   $('#food-drive-save').addEventListener('click', () => saveToDrive().catch(error => setStatus(error.message, 'error'))); $('#food-back-to-menu-btn').addEventListener('click', () => document.dispatchEvent(new CustomEvent('grapes:open-main-menu'))); $('#food-backup-export').addEventListener('click', exportBackup); $('#food-backup-import').addEventListener('click', () => $('#food-backup-input').click()); $('#food-backup-input').addEventListener('change', importBackup)
+  $('#food-yazio-import').addEventListener('click', event => { modalReturnFocus = event.currentTarget; $('#food-yazio-input').click() })
+  $('#food-yazio-input').addEventListener('change', selectYazioImport)
+  $('#food-yazio-history').addEventListener('click', undoYazioImport)
+  $('#food-yazio-confirm').addEventListener('click', applyYazioImport)
+  $('#food-yazio-close').addEventListener('click', closeYazioPreview)
+  $('#food-yazio-cancel').addEventListener('click', closeYazioPreview)
+  $('#food-yazio-preview').addEventListener('click', event => { if (event.target.id === 'food-yazio-preview') closeYazioPreview() })
+  $('#food-yazio-records').addEventListener('change', event => {
+    if (!event.target.matches('[data-yazio-record]')) return
+    const index = Number(event.target.value)
+    if (event.target.checked) yazioSelected.add(index)
+    else yazioSelected.delete(index)
+    renderYazioRecords()
+  })
+  for (const id of ['#food-yazio-date', '#food-yazio-meal', '#food-yazio-status']) {
+    $(id).addEventListener('change', () => { yazioPage = 0; renderYazioRecords() })
+  }
+  $('#food-yazio-prev').addEventListener('click', () => { yazioPage--; renderYazioRecords() })
+  $('#food-yazio-next').addEventListener('click', () => { yazioPage++; renderYazioRecords() })
   $('#food-health-import').addEventListener('click', event => { modalReturnFocus = event.currentTarget; $('#food-health-input').click() }); $('#food-health-input').addEventListener('change', selectHealthImport); $('#food-health-confirm').addEventListener('click', applyHealthImport); $('#food-health-close').addEventListener('click', closeHealthPreview); $('#food-health-cancel').addEventListener('click', closeHealthPreview); $('#food-health-preview').addEventListener('click', event => { if (event.target.id === 'food-health-preview') closeHealthPreview() })
 }
 
