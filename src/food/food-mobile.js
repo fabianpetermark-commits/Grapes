@@ -7,12 +7,13 @@ import { prepareYazioCsvImport, yazioImportEntries } from './yazio-import.js'
 import { getGrapesAccount, isGrapesDriveConnected, listGrapesProjects, loadGrapesProject, saveGrapesProject } from '../storage/grapes-drive.js'
 import { loadLocalProject, saveLocalProject } from '../storage/local-project-store.js'
 import { isGrapesAndroidApp, readAndroidHealthExport } from '../android-bridge.js'
+import { mobileIconSvg } from '../android-mobile-icons.js'
 
 const MODULE = 'Ételnapló'
 const PROJECT_NAME = 'Ételnapló'
 const MEALS = [
-  ['breakfast', 'Reggeli', '☕'], ['morningSnack', 'Tízórai', '◔'], ['lunch', 'Ebéd', '☀'],
-  ['afternoonSnack', 'Uzsonna', '◌'], ['dinner', 'Vacsora', '☾'],
+  ['breakfast', 'Reggeli', 'breakfast'], ['morningSnack', 'Tízórai', 'morningSnack'], ['lunch', 'Ebéd', 'lunch'],
+  ['afternoonSnack', 'Uzsonna', 'afternoonSnack'], ['dinner', 'Vacsora', 'dinner'],
 ]
 const LABELS = Object.fromEntries(MEALS.map(([id, label]) => [id, label]))
 const UNIT_LABELS = { g: 'g', ml: 'ml', serving: 'adag', piece: 'db', slice: 'szelet', package: 'csomag' }
@@ -225,7 +226,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       const button = document.createElement('button'); button.type = 'button'; button.className = 'meal'; button.dataset.meal = type
       const names = entries.slice(0, 3).map(item => item.snapshot.name).join(', ')
       const lastTime = entries.length ? new Date(entries.at(-1).occurredAt).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' }) : ''
-      button.innerHTML = `<span class="meal__icon">${icon}</span><span><strong>${label}</strong><span>${entries.length ? `${escapeHtml(names)} · ${lastTime}` : 'Még nincs rögzített étel'}</span></span><b>${nutrient(calories)}</b>`
+      button.innerHTML = `<span class="meal__icon">${mobileIconSvg(icon)}</span><span><strong>${label}</strong><span>${entries.length ? `${escapeHtml(names)} · ${lastTime}` : 'Még nincs rögzített étel'}</span></span><b>${nutrient(calories)}</b>`
       button.addEventListener('click', () => openMeal(type))
       container.append(button)
     }
@@ -284,7 +285,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     if (!project.recipes.length) { container.innerHTML = '<div class="empty-state">Még nincs saját recepted.</div>'; return }
     for (const recipe of [...project.recipes].sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))) {
       const button = document.createElement('button'); button.type = 'button'; button.className = 'meal'
-      button.innerHTML = `<span class="meal__icon">♨</span><span><strong>${escapeHtml(recipe.name)}</strong><span>${recipe.ingredients.length} hozzávaló · ${escapeHtml(recipe.category)}</span></span><b>›</b>`
+      button.innerHTML = `<span class="meal__icon">${mobileIconSvg('recipe')}</span><span><strong>${escapeHtml(recipe.name)}</strong><span>${recipe.ingredients.length} hozzávaló · ${escapeHtml(recipe.category)}</span></span><b>›</b>`
       button.addEventListener('click', () => openRecipe(recipe.id)); container.append(button)
     }
   }

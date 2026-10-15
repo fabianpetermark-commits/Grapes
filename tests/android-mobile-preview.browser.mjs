@@ -45,6 +45,11 @@ try {
   await page.keyboard.press('Escape')
   await page.screenshot({ path: 'mobile-home-icons.png', fullPage: true })
 
+  await page.locator('.bottom-nav [data-nav="more"]').click()
+  await page.locator('[data-page="more"]').waitFor({ state: 'visible' })
+  assert.equal(await page.locator('[data-page="more"] .setting__icon svg').count(), 4, 'Minden beállítássornak egységes SVG ikon kell.')
+  await page.screenshot({ path: 'mobile-more-icons.png', fullPage: true })
+
   await page.locator('[data-nav="sync"]').click()
   await page.locator('[data-page="sync"]').waitFor({ state: 'visible' })
   assert.match(await page.locator('[data-sync-local-count]').textContent(), /\d+ projekt/)
@@ -52,6 +57,9 @@ try {
   assert.equal(await page.locator('[data-health-sync]').count(), 1)
   assert.equal(await page.locator('[data-samsung-sync-action]').count(), 1)
   assert.equal(await page.locator('[data-yazio-import]').count(), 1)
+  assert.equal(await page.locator('[data-page="sync"] .sync-hero__icon svg').count(), 1, 'A Drive állapotkártyának SVG ikon kell.')
+  assert.equal(await page.locator('[data-page="sync"] .setting__icon svg').count(), 2, 'A mentési soroknak SVG ikon kell.')
+  assert.equal(await page.locator('[data-page="sync"] .sync-provider__icon svg').count(), 3, 'Minden szinkronszolgáltatónak SVG ikon kell.')
   const healthExport = JSON.stringify({
     schemaVersion: 1, producer: 'hu.grapes.healthconnect', generatedAt: '2026-10-15T08:00:00.000Z', records: [
       { type: 'nutrition', externalId: 'healthconnect:com.samsung.android.app.healthdata:sync-n1', sourcePackage: 'com.samsung.android.app.healthdata', startTime: '2026-10-15T06:10:00.000Z', endTime: '2026-10-15T06:20:00.000Z', name: 'Samsung reggeli', mealType: 'breakfast', energyKcal: 320, proteinGrams: 18, carbohydrateGrams: 42, fatGrams: 9, volumeMilliliters: null },
@@ -83,6 +91,9 @@ try {
   await page.locator('[data-food-meals] .meal').first().waitFor()
   assert.equal(await page.locator('[data-fab]').isVisible(), false, 'A + gomb a főképernyőn nem jelenhet meg.')
   assert.equal(await page.locator('[data-food-meals] .meal').count(), 5, 'Mind az öt étkezésnek látszania kell.')
+  assert.equal(await page.locator('[data-food-meals] .meal__icon svg').count(), 5, 'Mind az öt étkezésnek egységes SVG ikon kell.')
+  assert.equal(await page.locator('[data-water-open] .water-card__icon svg').count(), 1, 'A vízkártyának SVG ikon kell.')
+  await page.screenshot({ path: 'mobile-food-icons.png', fullPage: true })
   await page.locator('[data-food-meals] .meal').first().click()
   assert.equal(await page.locator('[data-fab]').isVisible(), true, 'A + gomb az étkezés részletein jelenjen meg.')
   await page.locator('[data-fab]').click()
@@ -138,6 +149,7 @@ try {
   await page.locator('[data-water-open]').click()
   await page.locator('[data-page="water"]').waitFor({ state: 'visible' })
   await page.locator('[data-page="water"] [data-water-add="250"]').click()
+  assert.ok(await page.locator('[data-water-log] .water-log__icon svg').count() >= 1, 'A víznapló sorainak SVG ikon kell.')
   assert.equal((await page.locator('[data-water-total]').textContent()).replace(/\s/g, ''), '550ml')
   assert.match(await page.locator('[data-water-remaining]').textContent(), /1.?450 ml/)
   await page.locator('[data-water-log] button').filter({ hasText: '300 ml' }).click()

@@ -725,7 +725,7 @@ function renderWater() {
     const row = document.createElement('button')
     row.type = 'button'; row.className = 'water-log project-row--button'
     row.title = 'Koppints a bejegyzés törléséhez'
-    row.innerHTML = `<span class="water-log__icon">◇</span><span><strong>Víz</strong><span>${new Date(entry.at).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })} · mentve</span></span><b>${formatWater(entry.amount)}</b>`
+    row.innerHTML = `<span class="water-log__icon">${mobileIconSvg('water')}</span><span><strong>Víz</strong><span>${new Date(entry.at).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })} · mentve</span></span><b>${formatWater(entry.amount)}</b>`
     row.addEventListener('click', () => {
       const next = currentWaterDay().day
       next.entries = next.entries.filter(item => item.id !== entry.id)

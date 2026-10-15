@@ -88,6 +88,7 @@
     .module-cta { margin-top: 16px; }
     .sync-hero { display: grid; justify-items: center; padding: 26px 18px; text-align: center; background: linear-gradient(145deg, rgb(242 184 75 / 10%), var(--surface)); border: 1px solid rgb(242 184 75 / 26%); border-radius: 22px; }
     .sync-hero__icon { display: grid; place-items: center; width: 64px; height: 64px; margin-bottom: 14px; color: var(--warning); background: rgb(242 184 75 / 12%); border-radius: 21px; font-size: 28px; }
+    .sync-hero__icon .mobile-icon { width: 30px; height: 30px; }
     .sync-hero h2 { margin: 0; }
     .sync-hero p { margin: 8px 0 18px; color: var(--muted); font-size: 13px; line-height: 1.5; }
     .sync-badge { display: inline-flex; align-items: center; min-height: 30px; padding: 0 10px; margin-bottom: 12px; color: var(--warning); background: rgb(242 184 75 / 12%); border: 1px solid rgb(242 184 75 / 24%); border-radius: 999px; font-size: 10px; font-weight: 800; }
@@ -107,14 +108,14 @@
     .sync-actions button:last-child { color: #041014; background: var(--accent); border: 0; }
     .sync-providers { display: grid; gap: 9px; margin-top: 10px; }
     .sync-provider { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; gap: 12px; align-items: center; min-height: 76px; padding: 10px 10px 10px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 17px; }
-    .sync-provider__icon { display: grid; place-items: center; width: 46px; height: 46px; color: var(--accent); background: var(--accent-soft); border-radius: 14px; font-size: 13px; font-weight: 900; }
+    .sync-provider > .sync-provider__icon { display: grid; place-items: center; width: 46px; height: 46px; margin-top: 0; color: var(--accent); background: var(--accent-soft); border-radius: 14px; font-size: 13px; font-weight: 900; }
     .sync-provider strong, .sync-provider span { display: block; }
     .sync-provider span { margin-top: 4px; color: var(--muted); font-size: 11px; line-height: 1.35; }
     .sync-provider button { min-height: 38px; padding: 0 12px; color: var(--accent); background: transparent; border: 1px solid rgb(59 220 242 / 35%); border-radius: 12px; cursor: pointer; font-size: 10px; font-weight: 850; }
     .sync-provider-status { min-height: 18px; margin: 7px 4px 0; color: var(--muted); font-size: 11px; }
     .setting { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; gap: 12px; align-items: center; min-height: 66px; padding: 10px 6px; border-bottom: 1px solid var(--line); }
     button.setting { width: 100%; color: inherit; text-align: left; background: transparent; border: 0; border-bottom: 1px solid var(--line); cursor: pointer; }
-    .setting__icon { display: grid; place-items: center; width: 42px; height: 42px; background: var(--raised); border-radius: 13px; }
+    .setting > .setting__icon { display: grid; place-items: center; width: 42px; height: 42px; margin-top: 0; color: var(--accent); background: var(--raised); border-radius: 13px; }
     .setting strong, .setting span { display: block; }
     .setting span { margin-top: 3px; color: var(--muted); font-size: 11px; }
     .module-preview .content { padding-bottom: 90px; }
@@ -122,7 +123,7 @@
     .summary-card strong { display: block; margin-top: 4px; font-size: 31px; }
     .summary-card small { color: var(--muted); }
     .meal { display: grid; grid-template-columns: 48px 1fr auto; gap: 12px; align-items: center; min-height: 70px; padding: 10px 0; border-bottom: 1px solid var(--line); }
-    .meal__icon { display: grid; place-items: center; width: 48px; height: 48px; background: var(--raised); border-radius: 15px; font-size: 20px; }
+    .meal > .meal__icon { display: grid; place-items: center; width: 48px; height: 48px; margin-top: 0; color: var(--accent); background: var(--raised); border-radius: 15px; font-size: 20px; }
     .meal strong, .meal span { display: block; }
     .meal span { margin-top: 4px; color: var(--muted); font-size: 11px; }
     button.meal { width: 100%; color: inherit; text-align: left; cursor: pointer; background: transparent; border: 0; border-bottom: 1px solid var(--line); }
@@ -179,7 +180,7 @@
     .progress { height: 5px; overflow: hidden; background: #213140; border-radius: 99px; }
     .progress > i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); border-radius: inherit; }
     .water-card { display: flex; gap: 12px; align-items: center; padding: 13px 14px; margin-top: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 17px; }
-    .water-card__icon { display: grid; place-items: center; width: 42px; height: 42px; color: #7bc8ff; background: rgb(77 143 255 / 12%); border-radius: 13px; }
+    .water-card > .water-card__icon { display: grid; place-items: center; flex: 0 0 42px; width: 42px; height: 42px; margin-top: 0; color: #7bc8ff; background: rgb(77 143 255 / 12%); border-radius: 13px; }
     .water-card div { min-width: 0; flex: 1; }
     .water-card strong, .water-card span { display: block; }
     .water-card span { margin-top: 3px; color: var(--muted); font-size: 11px; }
@@ -354,7 +355,7 @@
 
         <div class="content" data-page="sync" hidden>
           <p class="eyebrow">Adatok</p><h1>Szinkron</h1><p class="lead">Te döntöd el, hol legyenek a projektjeid.</p>
-          <div class="sync-hero"><div class="sync-hero__icon">⌁</div><span class="sync-badge" data-sync-badge data-state="local">Csak ezen az eszközön</span><h2 data-sync-title>Jelenleg helyi mód</h2><p data-sync-detail>Az app internet nélkül is használható. A Drive csatlakoztatása után választhatsz, mit töltesz fel.</p><button class="primary" data-connect-drive>Google Drive csatlakoztatása</button></div>
+          <div class="sync-hero"><div class="sync-hero__icon" data-mobile-icon="drive"></div><span class="sync-badge" data-sync-badge data-state="local">Csak ezen az eszközön</span><h2 data-sync-title>Jelenleg helyi mód</h2><p data-sync-detail>Az app internet nélkül is használható. A Drive csatlakoztatása után választhatsz, mit töltesz fel.</p><button class="primary" data-connect-drive>Google Drive csatlakoztatása</button></div>
           <div class="sync-grid" aria-label="Szinkronizálási összefoglaló">
             <div class="sync-stat"><span>Helyi projektek</span><strong data-sync-local-count>Betöltés…</strong></div>
             <div class="sync-stat"><span>Helyfoglalás</span><strong data-sync-local-size>Betöltés…</strong></div>
@@ -363,14 +364,14 @@
           </div>
           <p class="sync-status" data-sync-status role="status" aria-live="polite">Állapot ellenőrzése…</p>
           <div class="section-head"><h2>Mentés és ellenőrzés</h2></div>
-          <div class="setting"><div class="setting__icon">↻</div><div><strong>Automatikus helyi mentés</strong><span>Bekapcsolva · internet nélkül is működik</span></div><span>✓</span></div>
-          <div class="setting"><div class="setting__icon">◷</div><div><strong>Utolsó ellenőrzés</strong><span data-sync-last-check>Még nem ellenőrizve</span></div><span>›</span></div>
+          <div class="setting"><div class="setting__icon" data-mobile-icon="backup"></div><div><strong>Automatikus helyi mentés</strong><span>Bekapcsolva · internet nélkül is működik</span></div><span>✓</span></div>
+          <div class="setting"><div class="setting__icon" data-mobile-icon="clock"></div><div><strong>Utolsó ellenőrzés</strong><span data-sync-last-check>Még nem ellenőrizve</span></div><span>›</span></div>
           <div class="sync-actions"><button type="button" data-sync-projects>Projektek</button><button type="button" data-sync-refresh>Frissítés</button></div>
           <div class="section-head"><h2>Egészség és napló</h2></div>
           <div class="sync-providers">
-            <div class="sync-provider"><span class="sync-provider__icon">HC</span><div><strong>Health Connect</strong><span>Ételek és víz beolvasása a telefon egészségadataiból</span></div><button type="button" data-health-sync>Beolvasás</button></div>
-            <div class="sync-provider"><span class="sync-provider__icon">S</span><div><strong>Samsung Health</strong><span>Samsung-adatok átvétele Health Connecten keresztül</span></div><button type="button" data-samsung-sync-action>Beolvasás</button></div>
-            <div class="sync-provider"><span class="sync-provider__icon">Y</span><div><strong>Yazio</strong><span>A Yazio Exporter nutrition_log.csv fájljának importálása</span></div><button type="button" data-yazio-import>Import</button></div>
+            <div class="sync-provider"><span class="sync-provider__icon" data-mobile-icon="health"></span><div><strong>Health Connect</strong><span>Ételek és víz beolvasása a telefon egészségadataiból</span></div><button type="button" data-health-sync>Beolvasás</button></div>
+            <div class="sync-provider"><span class="sync-provider__icon" data-mobile-icon="samsung"></span><div><strong>Samsung Health</strong><span>Samsung-adatok átvétele Health Connecten keresztül</span></div><button type="button" data-samsung-sync-action>Beolvasás</button></div>
+            <div class="sync-provider"><span class="sync-provider__icon" data-mobile-icon="yazio"></span><div><strong>Yazio</strong><span>A Yazio Exporter nutrition_log.csv fájljának importálása</span></div><button type="button" data-yazio-import>Import</button></div>
           </div>
           <p class="sync-provider-status" data-yazio-status role="status" aria-live="polite"></p>
           <input type="file" accept=".csv,text/csv" data-yazio-input hidden>
@@ -378,10 +379,10 @@
 
         <div class="content" data-page="more" hidden>
           <p class="eyebrow">Beállítások</p><h1>Továbbiak</h1><p class="lead">Fiók, nyelv és alkalmazásbeállítások.</p>
-          <button class="setting" type="button" data-account-login><span class="setting__icon">G</span><span><strong data-account-action>Google-fiók csatlakoztatása</strong><span data-account-mode>Helyi mód</span></span><span>›</span></button>
-          <div class="setting"><div class="setting__icon">HU</div><div><strong>Nyelv</strong><span>Magyar</span></div><span>›</span></div>
-          <div class="setting"><div class="setting__icon">◐</div><div><strong>Megjelenés</strong><span>Rendszerbeállítás</span></div><span>›</span></div>
-          <div class="setting"><div class="setting__icon">i</div><div><strong>A Grapes névjegye</strong><span>Android mobilalkalmazás</span></div><span>›</span></div>
+          <button class="setting" type="button" data-account-login><span class="setting__icon" data-mobile-icon="google"></span><span><strong data-account-action>Google-fiók csatlakoztatása</strong><span data-account-mode>Helyi mód</span></span><span>›</span></button>
+          <div class="setting"><div class="setting__icon" data-mobile-icon="language"></div><div><strong>Nyelv</strong><span>Magyar</span></div><span>›</span></div>
+          <div class="setting"><div class="setting__icon" data-mobile-icon="appearance"></div><div><strong>Megjelenés</strong><span>Rendszerbeállítás</span></div><span>›</span></div>
+          <div class="setting"><div class="setting__icon" data-mobile-icon="info"></div><div><strong>A Grapes névjegye</strong><span>Android mobilalkalmazás</span></div><span>›</span></div>
         </div>
 
         <div class="content module-preview" data-page="food" hidden>
@@ -397,7 +398,7 @@
               <div class="macro"><span>Zsír</span><div class="progress"><i data-food-fat-bar style="width:0%"></i></div><b data-food-fat>0 g</b></div>
             </div></div>
           </div>
-          <div class="water-card water-card--button" data-water-open role="button" tabindex="0"><span class="water-card__icon">◇</span><div><strong>Víz</strong><span><b data-water-summary>5 / 8 pohár · 1,25 l</b></span></div><button class="mini-add" data-water-add="250" aria-label="250 milliliter víz hozzáadása">+</button></div>
+          <div class="water-card water-card--button" data-water-open role="button" tabindex="0"><span class="water-card__icon" data-mobile-icon="water"></span><div><strong>Víz</strong><span><b data-water-summary>5 / 8 pohár · 1,25 l</b></span></div><button class="mini-add" data-water-add="250" aria-label="250 milliliter víz hozzáadása">+</button></div>
           <div class="section-head"><h2>Étkezések</h2></div>
           <div data-food-meals></div>
           <div class="section-head"><h2>Legutóbbi receptek</h2><button type="button" data-food-open-recipes>Mind</button></div>
@@ -689,7 +690,7 @@
       if (amount) {
         const row = document.createElement('div')
         row.className = 'water-log'
-        row.innerHTML = `<span class="water-log__icon">◇</span><div><strong>Most hozzáadva</strong><span>${new Date().toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })} · gyors hozzáadás</span></div><b>${formatWater(amount)}</b>`
+        row.innerHTML = `<span class="water-log__icon">${mobileIconSvg('water')}</span><div><strong>Most hozzáadva</strong><span>${new Date().toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })} · gyors hozzáadás</span></div><b>${formatWater(amount)}</b>`
         document.querySelector('[data-water-log]').prepend(row)
         showToast(`${formatWater(amount)} víz hozzáadva.`)
       }
