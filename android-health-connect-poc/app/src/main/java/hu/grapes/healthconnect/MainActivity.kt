@@ -91,7 +91,12 @@ class MainActivity : ComponentActivity() {
         maybeRequestUpdateNotificationPermission()
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (webView.canGoBack()) webView.goBack() else finish()
+                webView.evaluateJavascript(
+                    "(() => typeof window.grapesHandleAndroidBack === 'function' && window.grapesHandleAndroidBack())()"
+                ) { handled ->
+                    if (handled == "true") return@evaluateJavascript
+                    if (webView.canGoBack()) webView.goBack() else finish()
+                }
             }
         })
     }

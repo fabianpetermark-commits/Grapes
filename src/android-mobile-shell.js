@@ -49,6 +49,7 @@ let mobileReaderSaveTimer = null
 let activeTransferBookId = ''
 let activePairingNonce = ''
 let mobileFood = null
+let activePage = 'home'
 const labels = {
   home: ['Grapes', 'Mobil munkaterület'], projects: ['Projektek', 'Helyi és Drive'],
   sync: ['Szinkron', 'Adatok és fiók'], more: ['Továbbiak', 'Beállítások'],
@@ -73,13 +74,19 @@ function showToast(message) {
 }
 
 function closeSheet() {
-  $$('.bottom-sheet').forEach(node => node.classList.remove('is-open'))
+  $$('.bottom-sheet').forEach(node => {
+    node.classList.remove('is-open')
+    node.setAttribute('aria-hidden', 'true')
+    node.inert = true
+  })
   sheetBackdrop.classList.remove('is-open')
 }
 
 function showPage(page) {
+  if (activePage === 'food' && page !== 'food') mobileFood?.flush().catch(() => {})
   if (mobileReader && !['reader'].includes(page)) persistReaderProgress().catch(() => {})
   if (page !== 'reader') setReaderFullscreen(false)
+  activePage = page
   toast.classList.remove('is-visible')
   $$('[data-page]').forEach(node => { node.hidden = node.dataset.page !== page })
   $$('[data-nav]').forEach(node => node.classList.toggle('is-active', node.dataset.nav === page))
@@ -98,7 +105,8 @@ function showPage(page) {
   }
 }
 
-function openModule(module, project = null, view = '', itemId = '', action = '') {
+async function openModule(module, project = null, view = '', itemId = '', action = '') {
+  await mobileFood?.flush({ drive: false }).catch(() => {})
   if (project) {
     try { sessionStorage.setItem('grapes-open-project', JSON.stringify({ module: project.folder, source: 'Drive', id: project.id })) } catch {}
   }
@@ -751,9 +759,15 @@ onGrapesDriveChange(() => {
   mobileEbooks = []
   if (!isGrapesDriveConnected()) { mobileReader = null; mobileReaderBook = null }
   else registerFoodSharing().catch(() => {})
+  mobileFood?.load({ force: true }).catch(() => {})
   renderAccount(); renderProjects(); renderSync()
 })
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') persistReaderProgress().catch(() => {}) })
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    persistReaderProgress().catch(() => {})
+    mobileFood?.flush().catch(() => {})
+  }
+})
 
 mobileFood = createMobileFoodController({
   fab,
@@ -764,6 +778,13 @@ mobileFood = createMobileFoodController({
   sendMeal: sendMealShare,
   sendRecipe: sendRecipeShare,
 })
+window.grapesHandleAndroidBack = () => {
+  if (activePage === 'food' && mobileFood?.handleBack()) return true
+  if ($('.bottom-sheet.is-open')) { closeSheet(); return true }
+  if ($('[data-reader-shell]').classList.contains('is-fullscreen')) { setReaderFullscreen(false); return true }
+  if (activePage !== 'home') { showPage(['reader', 'transfer'].includes(activePage) ? 'ebook' : 'home'); return true }
+  return false
+}
 renderWater()
 if (isGrapesDriveConnected()) registerFoodSharing().catch(() => {})
 if (isGrapesDriveConnected() || localMode()) showApp()

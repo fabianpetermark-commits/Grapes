@@ -3,6 +3,32 @@ import { getGrapesDriveAccessToken, grapesDriveRequest, loadGrapesProject, saveG
 
 const BROKER_URL = import.meta.env?.VITE_FOOD_BROKER_URL || import.meta.env?.VITE_EBOOK_TRANSFER_BROKER_URL || ''
 const SHARE_MODULE = 'Ételnapló megosztások'
+const SENT_FILES_KEY = 'grapes-food-share-files-v1'
+const SHARE_FILE_TTL_MS = 30 * 24 * 60 * 60 * 1000
+
+function sentFiles() {
+  try {
+    const value = JSON.parse(localStorage.getItem(SENT_FILES_KEY) || '[]')
+    return Array.isArray(value) ? value.filter(item => item?.id && item?.fileId) : []
+  } catch { return [] }
+}
+
+function storeSentFiles(items) {
+  try { localStorage.setItem(SENT_FILES_KEY, JSON.stringify(items.slice(-200))) } catch {}
+}
+
+function rememberSentFile(id, fileId) {
+  storeSentFiles([...sentFiles().filter(item => item.id !== id), { id, fileId, createdAt: Date.now() }])
+}
+
+function forgetSentFile(id) {
+  storeSentFiles(sentFiles().filter(item => item.id !== id))
+}
+
+async function deleteSentFile(id, fileId) {
+  await grapesDriveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`, { method: 'DELETE' })
+  forgetSentFile(id)
+}
 
 function nonce() {
   const bytes = new Uint8Array(24); crypto.getRandomValues(bytes)
@@ -42,9 +68,13 @@ export async function cleanupProcessedFoodShares() {
   const response = await foodShareBroker('food-share-outbox')
   for (const item of response.items || []) {
     try {
-      await grapesDriveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(item.fileId)}`, { method: 'DELETE' })
+      await deleteSentFile(item.id, item.fileId)
       await foodShareBroker('food-share-clean', { shareId: item.id })
     } catch { /* A következő kapcsolódás ismét megpróbálja a takarítást. */ }
+  }
+  const now = Date.now()
+  for (const item of sentFiles().filter(value => Number(value.createdAt) + SHARE_FILE_TTL_MS <= now)) {
+    try { await deleteSentFile(item.id, item.fileId) } catch { /* A következő kapcsolódás ismét megpróbálja. */ }
   }
 }
 
@@ -54,10 +84,12 @@ export async function sendMealShare({ project, date, mealType, email }) {
   if (!recipient.registered) throw new Error('Ez az e-mail-cím még nincs regisztrálva a Grapes megosztási postafiókjába.')
   const share = createMealShare(project, { date, mealType })
   const fileId = await saveGrapesProject({ module: SHARE_MODULE, name: share.id, data: share })
+  rememberSentFile(share.id, fileId)
   try {
     await shareGrapesProject(fileId, recipientEmail, 'reader')
     return await foodShareBroker('food-share-send', { recipientEmail, shareType: share.type, shareId: share.id, fileId })
   } catch (error) {
+    if (!/nem válaszolt időben/i.test(error.message || '')) await deleteSentFile(share.id, fileId).catch(() => {})
     throw new Error(`A megosztás nem készült el. ${error.message}`)
   }
 }
@@ -68,8 +100,14 @@ export async function sendRecipeShare({ project, recipeId, email }) {
   if (!recipient.registered) throw new Error('Ez az e-mail-cím még nincs regisztrálva a Grapes megosztási postafiókjába.')
   const share = createRecipeShare(project, recipeId)
   const fileId = await saveGrapesProject({ module: SHARE_MODULE, name: share.id, data: share })
-  await shareGrapesProject(fileId, recipientEmail, 'reader')
-  return foodShareBroker('food-share-send', { recipientEmail, shareType: share.type, shareId: share.id, fileId })
+  rememberSentFile(share.id, fileId)
+  try {
+    await shareGrapesProject(fileId, recipientEmail, 'reader')
+    return await foodShareBroker('food-share-send', { recipientEmail, shareType: share.type, shareId: share.id, fileId })
+  } catch (error) {
+    if (!/nem válaszolt időben/i.test(error.message || '')) await deleteSentFile(share.id, fileId).catch(() => {})
+    throw new Error(`A megosztás nem készült el. ${error.message}`)
+  }
 }
 
 export async function listFoodShares() {
@@ -80,6 +118,7 @@ export async function listFoodShares() {
 export async function loadFoodShare(item) {
   const file = await loadGrapesProject(item.fileId)
   if (file.module !== SHARE_MODULE || file.data?.id !== item.id) throw new Error('A megosztott tartalom nem ellenőrizhető.')
+  if (file.data?.type !== item.type || String(file.data?.sender?.email || '').trim().toLocaleLowerCase('hu-HU') !== String(item.senderEmail || '').trim().toLocaleLowerCase('hu-HU')) throw new Error('A megosztás feladója vagy típusa nem egyezik az ellenőrzött postafiók-adattal.')
   return file.data
 }
 

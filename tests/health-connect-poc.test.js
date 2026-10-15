@@ -37,6 +37,15 @@ test('a Grapes felület helyi Android assetként fut és csak a fő keret kap na
   assert.match(foodApp, /readAndroidHealthExport\(selectedDate\)/);
 });
 
+test('az Android vissza gomb előbb a mobilfelület belső nézetét zárja be', async () => {
+  const activity = await read('app/src/main/java/hu/grapes/healthconnect/MainActivity.kt');
+  const shell = await read('../src/android-mobile-shell.js');
+  assert.match(activity, /grapesHandleAndroidBack/);
+  assert.match(activity, /handled == "true"/);
+  assert.match(shell, /window\.grapesHandleAndroidBack/);
+  assert.match(shell, /mobileFood\?\.handleBack\(\)/);
+});
+
 test('az export szerződés verziózott és megköveteli a deduplikációs kulcsot', async () => {
   const schema = JSON.parse(await read('bridge-contract.schema.json'));
   assert.equal(schema.properties.schemaVersion.const, 1);

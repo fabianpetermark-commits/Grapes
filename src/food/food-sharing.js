@@ -1,4 +1,4 @@
-import { calculateRecipeFood, createFoodId, normalizeDiaryEntry, normalizeFoodItem, normalizeRecipe } from './food-data.js'
+import { calculateRecipeFood, createFoodId, MEAL_TYPES, normalizeDiaryEntry, normalizeFoodItem, normalizeRecipe } from './food-data.js'
 
 export const FOOD_SHARE_VERSION = 1
 export const FOOD_SHARE_TYPES = ['meal', 'recipe']
@@ -48,15 +48,22 @@ export function acceptMealShare(project, shareValue, { date, replace = false } =
   const share = normalizeFoodShare(shareValue)
   if (share.type !== 'meal') throw new Error('Ez nem étkezésmegosztás.')
   if ((project.processedShareIds || []).includes(share.id)) return { imported: 0, duplicate: true }
+  if (!share.payload || !Array.isArray(share.payload.entries) || !share.payload.entries.length) throw new Error('A megosztott étkezés nem tartalmaz beolvasható tételeket.')
   const targetDate = /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : share.payload.date
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) throw new Error('A megosztott étkezés dátuma érvénytelen.')
   const mealType = share.payload.mealType
-  if (replace) project.diaryEntries = project.diaryEntries.filter(entry => !(entry.profileId === project.profile.id && entry.mealType === mealType && localDate(entry.occurredAt) === targetDate))
+  if (!MEAL_TYPES.includes(mealType)) throw new Error('A megosztott étkezéstípus érvénytelen.')
+  // Validate and normalize the entire incoming meal before touching the user's
+  // existing diary. This keeps replacement atomic even for a malformed share.
   const entries = share.payload.entries.map((entry, index) => normalizeDiaryEntry({
     ...entry, id: createFoodId('entry'), profileId: project.profile.id,
     occurredAt: withDate(entry.occurredAt, targetDate), externalKey: `share:${share.id}:${index}`,
     createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
   }))
-  project.diaryEntries.push(...entries)
+  const retained = replace
+    ? project.diaryEntries.filter(entry => !(entry.profileId === project.profile.id && entry.mealType === mealType && localDate(entry.occurredAt) === targetDate))
+    : project.diaryEntries
+  project.diaryEntries = [...retained, ...entries]
   project.processedShareIds = [...(project.processedShareIds || []), share.id].slice(-500)
   return { imported: entries.length, duplicate: false }
 }

@@ -148,6 +148,8 @@
     .sheet-results { display: grid; gap: 7px; max-height: 220px; margin-top: 10px; overflow-y: auto; }
     .sheet-result { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 48px; padding: 8px 10px; color: var(--text); text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
     .sheet-result span { color: var(--muted); font-size: 10px; }
+    .sheet-result__main { display: grid; min-width: 0; flex: 1; gap: 3px; padding: 0; color: inherit; text-align: left; background: transparent; border: 0; }
+    .sheet-result__favorite { flex: 0 0 40px; width: 40px; height: 40px; color: var(--accent); background: var(--raised); border: 0; border-radius: 11px; font-size: 20px; }
     .sheet-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .sheet-form label { display: grid; gap: 5px; color: var(--muted); font-size: 10px; }
     .sheet-form label:last-child { grid-column: 1 / -1; }
@@ -283,7 +285,7 @@
     .step span { margin-top: 4px; color: var(--muted); font-size: 11px; line-height: 1.4; }
     .sheet-backdrop { position: absolute; inset: 0; z-index: 39; background: rgb(0 0 0 / 58%); opacity: 0; pointer-events: none; transition: .2s ease; }
     .sheet-backdrop.is-open { opacity: 1; pointer-events: auto; }
-    .bottom-sheet { position: absolute; right: 0; bottom: 0; left: 0; z-index: 40; padding: 10px 18px 24px; background: #111a24; border: 1px solid var(--line); border-radius: 26px 26px 0 0; box-shadow: 0 -20px 70px rgb(0 0 0 / 45%); transform: translateY(105%); transition: .24s ease; }
+    .bottom-sheet { position: absolute; right: 0; bottom: 0; left: 0; z-index: 40; max-height: 88dvh; padding: 10px 18px 24px; overflow-y: auto; overscroll-behavior: contain; background: #111a24; border: 1px solid var(--line); border-radius: 26px 26px 0 0; box-shadow: 0 -20px 70px rgb(0 0 0 / 45%); transform: translateY(105%); transition: .24s ease; }
     .bottom-sheet.is-open { transform: none; }
     .sheet-handle { width: 42px; height: 4px; margin: 0 auto 16px; background: #435364; border-radius: 99px; }
     .bottom-sheet h2 { margin: 0 0 5px; font-size: 21px; }
@@ -405,6 +407,7 @@
             <div class="food-detail-head"><button type="button" data-food-recipe-back aria-label="Vissza">‹</button><div><h1 data-food-recipe-title>Recept</h1><p data-food-recipe-copy></p></div><button type="button" class="food-share" data-food-recipe-share aria-label="Recept megosztása">⌯</button></div>
             <div class="food-entry-card" data-food-recipe-content></div>
             <button class="primary module-cta" type="button" data-food-recipe-edit>Recept szerkesztése</button>
+            <button class="secondary module-cta" type="button" data-food-recipe-delete>Recept törlése</button>
           </section>
         </div>
 
@@ -509,13 +512,15 @@
         <button class="fab" data-fab hidden aria-label="Étel hozzáadása">+</button>
       </section>
       <div class="sheet-backdrop" data-sheet-close></div>
-      <section class="bottom-sheet" data-food-add-sheet aria-label="Étel hozzáadása">
+      <section class="bottom-sheet" data-food-add-sheet role="dialog" aria-modal="true" aria-label="Étel hozzáadása" aria-hidden="true" inert>
         <div class="sheet-handle"></div><h2>Étel hozzáadása</h2><p>Keresés vagy gyors bevitel — amelyik most kényelmesebb.</p>
         <input class="search" data-food-search placeholder="Keresés az ételek között…">
+        <input type="file" accept="image/*" capture="environment" data-food-barcode-photo hidden>
         <div class="sheet-results" data-food-search-results></div>
+        <p data-food-search-status role="status"></p>
         <div class="quick-grid"><button class="quick-action" data-food-quick="barcode"><i>▦</i><span>Vonalkód</span></button><button class="quick-action" data-food-quick="photo"><i>◉</i><span>Fotó alapján</span></button><button class="quick-action" data-food-quick="favorites"><i>☆</i><span>Kedvencek</span></button><button class="quick-action" data-food-quick="custom"><i>＋</i><span>Saját étel</span></button></div>
       </section>
-      <section class="bottom-sheet" data-food-custom-sheet aria-label="Saját étel létrehozása">
+      <section class="bottom-sheet" data-food-custom-sheet role="dialog" aria-modal="true" aria-label="Saját étel létrehozása" aria-hidden="true" inert>
         <div class="sheet-handle"></div><h2>Saját étel</h2><p>Az értékeket 100 grammra vagy 100 milliliterre add meg.</p>
         <div class="sheet-form">
           <label>Név<input class="search" maxlength="180" data-food-custom-name></label>
@@ -529,14 +534,14 @@
         <button class="primary module-cta" type="button" data-food-custom-save>Mentés és hozzáadás</button>
         <p data-food-custom-status role="status"></p>
       </section>
-      <section class="bottom-sheet" data-food-share-sheet aria-label="Megosztás">
+      <section class="bottom-sheet" data-food-share-sheet role="dialog" aria-modal="true" aria-label="Megosztás" aria-hidden="true" inert>
         <div class="sheet-handle"></div><h2 data-food-share-title>Étkezés megosztása</h2><p>Csak regisztrált Grapes-felhasználóval osztható meg.</p>
         <input class="search" type="email" data-food-share-email list="food-share-contacts" placeholder="E-mail-cím">
         <datalist id="food-share-contacts" data-food-share-contacts></datalist>
         <button class="primary module-cta" type="button" data-food-share-send>Megosztás</button>
         <p data-food-share-status role="status"></p>
       </section>
-      <section class="bottom-sheet" data-food-inbox-sheet aria-label="Megosztva velem">
+      <section class="bottom-sheet" data-food-inbox-sheet role="dialog" aria-modal="true" aria-label="Megosztva velem" aria-hidden="true" inert>
         <div class="sheet-handle"></div><h2>Megosztva velem</h2><p>Étkezések és receptek, amelyeket jóváhagyásra küldtek neked.</p>
         <div class="sheet-results" data-food-inbox-items></div>
         <div data-food-inbox-preview hidden>
@@ -547,17 +552,62 @@
         </div>
         <p data-food-inbox-status role="status"></p>
       </section>
-      <section class="bottom-sheet" data-food-edit-sheet aria-label="Naplóbejegyzés szerkesztése">
+      <section class="bottom-sheet" data-food-edit-sheet role="dialog" aria-modal="true" aria-label="Naplóbejegyzés szerkesztése" aria-hidden="true" inert>
         <div class="sheet-handle"></div><h2 data-food-edit-title>Étel szerkesztése</h2><p>Módosítsd a mennyiséget, az időt vagy a megjegyzést.</p>
         <div class="sheet-form"><label>Mennyiség<input class="search" type="number" min="0.01" step="0.01" data-food-edit-amount></label><label>Egység<select class="search" data-food-edit-unit></select></label><label>Idő<input class="search" type="time" data-food-edit-time></label><label>Megjegyzés<input class="search" maxlength="240" data-food-edit-note></label></div>
         <button class="primary module-cta" type="button" data-food-edit-save>Változások mentése</button>
-        <div class="quick-grid"><button class="quick-action" type="button" data-food-edit-repeat><i>↻</i><span>Ismétlés</span></button><button class="quick-action" type="button" data-food-edit-delete><i>×</i><span>Törlés</span></button></div>
+        <div class="quick-grid" data-food-edit-actions><button class="quick-action" type="button" data-food-edit-repeat><i>↻</i><span>Ismétlés</span></button><button class="quick-action" type="button" data-food-edit-delete><i>×</i><span>Törlés</span></button></div>
         <p data-food-edit-status role="status"></p>
       </section>
-      <section class="bottom-sheet" data-food-menu-sheet aria-label="Ételnapló menü">
+      <section class="bottom-sheet" data-food-menu-sheet role="dialog" aria-modal="true" aria-label="Ételnapló menü" aria-hidden="true" inert>
         <div class="sheet-handle"></div><h2>Ételnapló menü</h2><p>Elemzés, célok és adatkezelés.</p>
         <div class="sheet-results"><button class="sheet-result" type="button" data-food-menu="stats"><strong>Statisztika</strong><span>Trendek és átlagok</span></button><button class="sheet-result" type="button" data-food-menu="targets"><strong>Napi célok</strong><span>Kalória és makrók</span></button><button class="sheet-result" type="button" data-food-menu="health"><strong>Health import</strong><span>Health Connect / Samsung Health</span></button><button class="sheet-result" type="button" data-food-menu="backup-export"><strong>Biztonsági mentés exportja</strong><span>JSON-fájl letöltése</span></button><button class="sheet-result" type="button" data-food-menu="backup-import"><strong>Biztonsági mentés visszaállítása</strong><span>Korábbi JSON-fájl kiválasztása</span></button></div>
       </section>
+      <section class="bottom-sheet" data-food-stats-sheet role="dialog" aria-modal="true" aria-label="Ételnapló statisztika" aria-hidden="true" inert>
+        <div class="sheet-handle"></div><h2>7 napos statisztika</h2><p>A kiválasztott nappal záródó időszak.</p>
+        <div class="sheet-results" data-food-stats-content></div>
+      </section>
+      <section class="bottom-sheet" data-food-targets-sheet role="dialog" aria-modal="true" aria-label="Napi célok" aria-hidden="true" inert>
+        <div class="sheet-handle"></div><h2>Napi célok</h2><p>A célok ettől a naptól lesznek érvényesek.</p>
+        <div class="sheet-form">
+          <label>Kalória (kcal)<input class="search" type="number" min="1" step="1" data-food-target-energy></label>
+          <label>Fehérje (g)<input class="search" type="number" min="0.01" step="0.01" data-food-target-protein></label>
+          <label>Szénhidrát (g)<input class="search" type="number" min="0.01" step="0.01" data-food-target-carbohydrate></label>
+          <label>Zsír (g)<input class="search" type="number" min="0.01" step="0.01" data-food-target-fat></label>
+        </div>
+        <button class="primary module-cta" type="button" data-food-target-save>Célok mentése</button>
+        <p data-food-target-status role="status"></p>
+      </section>
+      <section class="bottom-sheet" data-food-health-sheet role="dialog" aria-modal="true" aria-label="Health import" aria-hidden="true" inert>
+        <div class="sheet-handle"></div><h2>Health import</h2><p data-food-health-summary>Az import előnézete.</p>
+        <div class="sheet-results" data-food-health-records></div>
+        <button class="primary module-cta" type="button" data-food-health-confirm>Kijelöltek importálása</button>
+        <p data-food-health-status role="status"></p>
+      </section>
+      <section class="bottom-sheet" data-food-recipe-edit-sheet role="dialog" aria-modal="true" aria-label="Recept szerkesztése" aria-hidden="true" inert>
+        <div class="sheet-handle"></div><h2 data-food-recipe-editor-title>Új recept</h2><p>A receptből naplózható étel készül.</p>
+        <div class="sheet-form">
+          <label>Recept neve<input class="search" maxlength="180" data-food-recipe-name-input></label>
+          <label>Kategória<input class="search" maxlength="120" value="Saját recept" data-food-recipe-category-input></label>
+          <label>Elkészítés<textarea class="search" rows="3" data-food-recipe-instructions-input></textarea></label>
+          <label>Kész tömeg (g)<input class="search" type="number" min="0.01" step="0.01" data-food-recipe-weight-input></label>
+          <label>Hozam<input class="search" type="number" min="0.01" step="0.01" data-food-recipe-yield-input></label>
+          <label>Hozam egysége<select class="search" data-food-recipe-yield-unit><option value="serving">adag</option><option value="piece">darab</option><option value="slice">szelet</option></select></label>
+          <label>Egységtömeg (g)<input class="search" type="number" min="0.01" step="0.01" data-food-recipe-unit-weight></label>
+        </div>
+        <h3>Hozzávalók</h3>
+        <div class="sheet-form">
+          <label>Étel<select class="search" data-food-recipe-ingredient-food></select></label>
+          <label>Mennyiség<input class="search" type="number" min="0.01" step="0.01" value="100" data-food-recipe-ingredient-amount></label>
+          <label>Egység<select class="search" data-food-recipe-ingredient-unit></select></label>
+        </div>
+        <button class="quick-action" type="button" data-food-recipe-ingredient-add><span>Hozzávaló hozzáadása</span></button>
+        <div class="sheet-results" data-food-recipe-ingredients></div>
+        <button class="primary module-cta" type="button" data-food-recipe-editor-save>Recept mentése</button>
+        <p data-food-recipe-editor-status role="status"></p>
+      </section>
+      <input type="file" accept=".json,application/json" data-food-backup-input hidden>
+      <input type="file" accept=".json,application/json" data-food-health-input hidden>
       <div class="toast" role="status"></div>
     </div>
 

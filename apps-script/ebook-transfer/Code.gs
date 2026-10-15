@@ -18,6 +18,7 @@ const FOOD_ACCOUNT_PREFIX = 'food_account_';
 const FOOD_INBOX_PREFIX = 'food_inbox_';
 const FOOD_OUTBOX_PREFIX = 'food_outbox_';
 const FOOD_SHARE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const FOOD_SHARE_LIST_LIMIT = 25;
 
 // Compatibility for older open Grapes tabs. The retired provider is never called.
 function doPost(e) {
@@ -89,11 +90,11 @@ function foodShareSend(p, user, nonce) {
     const now = Date.now();
     const inbox = foodShareReadInbox(props, key, now).filter(function(item) { return item.id !== id; });
     inbox.unshift({ id: id, type: type, fileId: fileId, senderName: String(user.displayName || '').slice(0, 120), senderEmail: user.emailAddress, createdAt: now, status: 'pending' });
-    props.setProperty(key, JSON.stringify(inbox.slice(0, 50)));
+    props.setProperty(key, JSON.stringify(inbox.slice(0, FOOD_SHARE_LIST_LIMIT)));
     const outboxKey = FOOD_OUTBOX_PREFIX + foodShareEmailHash(user.emailAddress);
     const outbox = foodShareReadInbox(props, outboxKey, now).filter(function(item) { return item.id !== id; });
     outbox.unshift({ id: id, fileId: fileId, createdAt: now, status: 'pending' });
-    props.setProperty(outboxKey, JSON.stringify(outbox.slice(0, 50)));
+    props.setProperty(outboxKey, JSON.stringify(outbox.slice(0, FOOD_SHARE_LIST_LIMIT)));
   } finally { lock.releaseLock(); }
   let name = '';
   try { name = JSON.parse(recipientAccount).name || ''; } catch (ignore) {}

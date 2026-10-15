@@ -29,6 +29,18 @@ test('étkezésmegosztás elfogadáskor hozzáfűz vagy cserél és idempotens',
   assert.equal(acceptMealShare(target, share).duplicate, true)
 })
 
+test('hibás megosztás cserénél sem törli a meglévő étkezést', () => {
+  const target = createEmptyFoodProject(recipient); const food = oatmeal()
+  target.diaryEntries.push(normalizeDiaryEntry({ id: 'existing-breakfast', profileId: recipient.id, mealType: 'breakfast', amount: 100, unit: 'g', occurredAt: '2026-10-15T08:00:00+02:00' }, food))
+  const invalidShare = {
+    grapesFoodShare: true, version: 1, id: 'share-invalid-meal', type: 'meal',
+    payload: { date: '2026-10-15', mealType: 'breakfast', entries: [{ amount: 0, unit: 'g', occurredAt: '2026-10-15T09:00:00+02:00', snapshot: { name: 'Hibás étel', nutrients: {} } }] },
+  }
+  assert.throws(() => acceptMealShare(target, invalidShare, { date: '2026-10-15', replace: true }), /nullánál nagyobbnak/)
+  assert.equal(target.diaryEntries.length, 1)
+  assert.equal(target.diaryEntries[0].id, 'existing-breakfast')
+})
+
 test('receptmegosztás saját szerkeszthető másolatot készít új azonosítókkal', () => {
   const sender = createEmptyFoodProject(profile); const food = oatmeal(); sender.customFoods.push(food)
   const recipe = { id: 'recipe-1', foodId: 'food-recipe-1', ownerProfileId: profile.id, name: 'Zabkehely', category: 'Reggeli', ingredients: [{ id: 'ingredient-1', foodId: food.id, amount: 100, unit: 'g' }], preparedWeight: 100, yieldCount: 1, yieldUnit: 'serving', createdAt: '2026-10-14T06:00:00Z' }
