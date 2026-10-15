@@ -154,6 +154,7 @@ export function prepareYazioImport(source, { profileId, existingEntries = [] } =
   const parsed = typeof source === 'string' ? parseYazioExport(source) : source
   const { data, meta } = parsed
   const seenKeys = new Map(), occurrence = new Map()
+  const exportFingerprint = hash({ meta: data.meta, nutrition_log: data.nutrition_log })
   const existing = existingEntries.filter(item => item.profileId === profileId)
   const byExternal = new Map(existing.map(item => [item.externalKey, item]).filter(([key]) => key))
   const records = data.nutrition_log.map((record, index) => {
@@ -163,7 +164,7 @@ export function prepareYazioImport(source, { profileId, existingEntries = [] } =
       const signature = hash(record)
       const ordinal = occurrence.get(signature) || 0
       occurrence.set(signature, ordinal + 1)
-      const externalKey = 'yazio:' + profileId + ':' + (stableId ? 'id:' + stableId : 'row:' + signature + ':' + ordinal)
+      const externalKey = 'yazio:' + profileId + ':' + (stableId ? 'id:' + stableId : 'row:' + signature + ':' + ordinal + ':' + exportFingerprint)
       const sourcePayload = { log: record, linked: linkedSources(record, data) }
       const entry = entryForRow(record, profileId, externalKey, stableId, sourcePayload)
       const old = byExternal.get(externalKey)
@@ -184,7 +185,7 @@ export function prepareYazioImport(source, { profileId, existingEntries = [] } =
     to: dates[dates.length - 1] || meta.to, warnings, discrepancies, recipes: (data.recipes || []).length,
     products: (data.products || []).length, nutrients: summarizeEntries(records.filter(item => item.entry).map(item => item.entry)),
     // Unmodified source bundle preserves unreferenced products, recipes, relations and warnings.
-    sourceArchive: data, profileId, schemaVersion: YAZIO_IMPORT_SCHEMA_VERSION }
+    sourceArchive: data, exportFingerprint, profileId, schemaVersion: YAZIO_IMPORT_SCHEMA_VERSION }
 }
 export function applyYazioBatch(projectValue, preview, selectedIndexes, batchId = createFoodId('yazio-batch')) {
   const project = normalizeFoodProject(projectValue, preview.profileId)
@@ -211,7 +212,7 @@ export function applyYazioBatch(projectValue, preview, selectedIndexes, batchId 
     } else project.importBatches.push({
       id: batchId, profileId: preview.profileId, source: 'yazio', importedAt: now,
       recordIds: added, status: 'in-progress', schemaVersion: YAZIO_IMPORT_SCHEMA_VERSION,
-      sourceArchive: preview.sourceArchive,
+      exportFingerprint: preview.exportFingerprint, sourceArchive: preview.sourceArchive,
     })
   }
   return { project, batchId, added: added.length }
