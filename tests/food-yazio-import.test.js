@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createEmptyFoodProject } from '../src/food/food-data.js'
+import { createEmptyFoodProject, foodBackupFromJson, foodBackupToJson } from '../src/food/food-data.js'
 import { aggregateNutritionSeries, buildDailyNutritionSeries } from '../src/food/food-stats.js'
 import { parseYazioExport, prepareYazioImport, applyYazioBatch, markYazioBatchComplete, undoYazioBatch } from '../src/food/food-yazio-import.js'
 const profile = { id: 'profile-one', name: 'Teszt' }
@@ -56,4 +56,21 @@ test('mikrotápanyagok saját statisztikaként összesíthetők', () => {
   const series = buildDailyNutritionSeries(apply(p).project.diaryEntries, profile.id)
   assert.equal(series[0].nutrients['extra:folate'], 2.234567)
   assert.equal(aggregateNutritionSeries(series, 'extra:folate')[0].value, 2.23)
+})
+
+test('YAZIO előtti teljes Food backupból visszaállítható az eredeti projekt', () => {
+  const before = createEmptyFoodProject(profile)
+  before.diaryEntries = []
+  const rawBackup = foodBackupToJson(before)
+  const after = apply(plan(), before).project
+  assert.equal(after.diaryEntries.length, 1)
+  const restored = foodBackupFromJson(rawBackup, profile.id)
+  assert.equal(restored.diaryEntries.length, 0)
+  assert.equal(restored.importBatches.length, 0)
+  assert.equal(restored.profile.id, profile.id)
+})
+test('teljesen ismeretlen tápanyagtartalom is null marad, a rekord megmarad', () => {
+  const p = plan([row({energy_kcal:null, protein_g:null,carbs_g:null,fat_g:null,sodium_mg:null})])
+  assert.equal(p.counts.ready, 1)
+  assert.equal(p.records[0].entry.snapshot.nutrients.energyKcal, null)
 })
