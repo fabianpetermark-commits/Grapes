@@ -9,7 +9,7 @@ import { healthImportEntries, prepareHealthBridgeImport } from './food-health-im
 import { prepareYazioCsvImport, yazioImportEntries } from './yazio-import.js'
 import { getGrapesAccount, isGrapesDriveConnected, listGrapesProjects, loadGrapesProject, saveGrapesProject } from '../storage/grapes-drive.js'
 import { loadLocalProject, saveLocalProject } from '../storage/local-project-store.js'
-import { isGrapesAndroidApp, readAndroidHealthExport, readAndroidSamsungHealthExport } from '../android-bridge.js'
+import { isGrapesAndroidApp, readAndroidHealthExport, readAndroidHealthExportSilent, readAndroidSamsungHealthExport } from '../android-bridge.js'
 import { mobileIconSvg } from '../android-mobile-icons.js'
 
 const MODULE = 'Ételnapló'
@@ -43,6 +43,10 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   let lastFoodSyncAt = 0
   let foodSyncInProgress = null
   const FOOD_SYNC_INTERVAL_MS = 5 * 60 * 1000
+  const AUTO_HEALTH_KEY = 'grapes-food-health-auto-v1'
+  let healthAutoBusy = false
+  let lastHealthAutoAttempt = 0
+  const autoHealthEnabled = () => { try { return localStorage.getItem(AUTO_HEALTH_KEY) === '1' } catch { return false } }
   let inbox = []
   let activeInboxItem = null
   let activeInboxShare = null
@@ -110,6 +114,31 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     try { await foodSyncInProgress }
     catch (error) { showSyncStatus(`Szinkronhiba: ${error?.message || 'ismeretlen hiba'}`); throw error }
     finally { foodSyncInProgress = null }
+  }
+
+  async function autoImportHealth() {
+    if (!project || !profile || !isGrapesAndroidApp() || !autoHealthEnabled() || healthAutoBusy || document.visibilityState !== 'visible') return
+    if (Date.now() - lastHealthAutoAttempt < FOOD_SYNC_INTERVAL_MS) return
+    healthAutoBusy = true
+    lastHealthAutoAttempt = Date.now()
+    try {
+      const since = new Date()
+      since.setDate(since.getDate() - 7)
+      const existingEntries = [...project.diaryEntries, ...(typeof getHydrationExternalKeys === 'function' ? getHydrationExternalKeys().map(externalKey => ({ externalKey })) : [])]
+      const preview = prepareHealthBridgeImport(await readAndroidHealthExportSilent(localDate(since)), { profileId: profile.id, existingEntries })
+      const entries = healthImportEntries(preview)
+      const hydration = entries.filter(entry => entry.snapshot?.category === 'Folyadék')
+      const nutrition = entries.filter(entry => entry.snapshot?.category !== 'Folyadék')
+      const currentKeys = new Set(existingEntries.map(entry => entry.externalKey).filter(Boolean))
+      const freshNutrition = nutrition.filter(entry => !currentKeys.has(entry.externalKey) && (currentKeys.add(entry.externalKey), true))
+      let importedWater = 0
+      if (hydration.length && onHydrationImport) importedWater = onHydrationImport(hydration)
+      if (freshNutrition.length) project.diaryEntries.push(...freshNutrition)
+      recordImportSync('health', freshNutrition.length + importedWater)
+      scheduleSave()
+      render()
+    } catch (error) { recordImportError('health', error); render() }
+    finally { healthAutoBusy = false }
   }
 
   async function load({ force = false } = {}) {
@@ -1344,7 +1373,12 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   function bind() {
     if (initialized) return
     initialized = true
-    $('[data-food-sync-refresh]').addEventListener('click', () => syncFood({ force: true }).catch(() => {}))
+    $('[data-food-sync-refresh]').addEventListener('click', () => { syncFood({ force: true }).catch(() => {}); autoImportHealth().catch(() => {}) })
+    $('[data-food-health-auto]').checked = autoHealthEnabled()
+    $('[data-food-health-auto]').addEventListener('change', event => {
+      try { localStorage.setItem(AUTO_HEALTH_KEY, event.currentTarget.checked ? '1' : '0') } catch { event.currentTarget.checked = false }
+      if (event.currentTarget.checked) autoImportHealth().catch(() => {})
+    })
     $('[data-food-date-prev]').addEventListener('click', () => shiftDate(-1))
     $('[data-food-date-next]').addEventListener('click', () => shiftDate(1))
     $('[data-food-date]').addEventListener('change', event => { selectedDate = event.currentTarget.value || localDate(); renderOverview() })
@@ -1407,17 +1441,17 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     })
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') { stopBarcodeCamera(); flush().catch(() => {}) }
-      else if (isGrapesDriveConnected()) { refreshInbox().catch(() => {}); syncFood().catch(() => {}) }
+      else { if (isGrapesDriveConnected()) { refreshInbox().catch(() => {}); syncFood().catch(() => {}) }; autoImportHealth().catch(() => {}) }
     })
     window.setInterval(() => {
       const foodPage = root.querySelector('[data-page="food"]')
-      if (foodPage && !foodPage.hidden && document.visibilityState === 'visible') syncFood().catch(() => {})
+      if (foodPage && !foodPage.hidden && document.visibilityState === 'visible') { syncFood().catch(() => {}); autoImportHealth().catch(() => {}) }
     }, FOOD_SYNC_INTERVAL_MS)
   }
 
   bind()
   return { load, render, closeMeal, handleBack, isDetailOpen: () => Boolean(selectedMeal), flush, openHealthImport, openSamsungImport, importYazioCsv, importYazio, undoYazio,
-    syncFood, refreshInbox, openInbox, inboxSummary: () => ({ pending: inbox.length, unread: inbox.filter(item => !inboxSeen().has(item.id)).length }) }
+    syncFood, autoImportHealth, refreshInbox, openInbox, inboxSummary: () => ({ pending: inbox.length, unread: inbox.filter(item => !inboxSeen().has(item.id)).length }) }
 }
 
 function escapeHtml(value) {
