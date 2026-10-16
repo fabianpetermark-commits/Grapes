@@ -123,7 +123,22 @@ function installSheetGestures() {
     handle.setAttribute('aria-label', 'Panel bezárása')
     handle.style.touchAction = 'none'
     let drag = null
-    const reset = () => { drag = null; sheet.style.removeProperty('transform'); sheet.style.removeProperty('transition') }
+    const reset = () => {
+      drag = null
+      sheet.style.removeProperty('transform')
+      sheet.style.removeProperty('transition')
+    }
+    const snapBack = () => {
+      drag = null
+      sheet.style.transition = 'transform 180ms ease-out'
+      sheet.style.transform = 'translateY(0)'
+      sheet.addEventListener('transitionend', () => {
+        if (sheet.classList.contains('is-open')) {
+          sheet.style.removeProperty('transform')
+          sheet.style.removeProperty('transition')
+        }
+      }, { once: true })
+    }
     handle.addEventListener('pointerdown', event => {
       if (!sheet.classList.contains('is-open') || event.button !== 0) return
       drag = { id: event.pointerId, y: event.clientY, delta: 0 }
@@ -138,8 +153,11 @@ function installSheetGestures() {
     handle.addEventListener('pointerup', event => {
       if (!drag || event.pointerId !== drag.id) return
       const shouldDismiss = drag.delta >= 90
-      reset()
-      if (shouldDismiss) dismiss(sheet)
+      if (shouldDismiss && dismiss(sheet)) {
+        reset()
+      } else {
+        snapBack()
+      }
     })
     handle.addEventListener('pointercancel', reset)
     handle.addEventListener('keydown', event => {
