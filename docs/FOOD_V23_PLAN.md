@@ -85,17 +85,16 @@ A blokkokat külön commitokban, tesztekkel kell megvalósítani. A v22 kiadás 
 - Vegyes pénznemű tételek összesítése kizárólag világosan jelzett, megadott vagy ellenőrzött árfolyammal; eredeti összeg/pénznem soha nem íródik felül, árfolyam hiányában nincs megtévesztő összeadás.
 - Mentés, CSV/backup import-export, Drive szinkron, szűrés és kimutatások kompatibilitási tesztjei; korábbi v22 adatok sértetlensége.
 
-### B8.3 — Android banki és Google Wallet értesítések megvalósíthatósága
-- Android NotificationListenerService lehetőségeinek és készülék/bankfüggő korlátainak vizsgálata; az értesítések hozzáférése külön, kifejezett Android-rendszerengedélyt igényel.
-- Csak felhasználó által engedélyezett banki/Wallet alkalmazások; minimális helyi adatfeldolgozás, érzékeny értesítéstartalom naplózása és felhőbe továbbítása nélkül.
-- Kiadás/bevétel, összeg, pénznem, kereskedő és időpont felismerése kizárólag a tényleges értesítéstartalomból; ismeretlen/hiányos tartalom ne generáljon automatikus tranzakciót.
-- Beérkezett javaslatok külön ellenőrző listába kerüljenek; jóváhagyás/szerkesztés/elvetés; nincs automatikus pénzügyi könyvelés.
-- Duplikációvédelem értesítés-ismétlés, blokkból és kézzel bevitt tételek esetén; visszavonható import.
-- Engedély-visszavonás, értesítés nélküli bankok, maszkolt összegek, különböző nyelvek és Android-verziók tesztjei.
-- A Google Wallet/banki értesítés nem tekinthető teljes vagy hiteles számlatörténetnek; banki API-kapcsolat ettől külön fejlesztés lenne.
+### B8.3 — Törölve: Android banki és Google Wallet értesítésfigyelés
+
+**Döntés (2026-10-16): a felhasználó adatbiztonsági megfontolásból elvetette a funkciót.**
+- Nem készítünk és nem kapcsolunk be Android NotificationListenerService szolgáltatást.
+- Nem kérünk értesítés-hozzáférési engedélyt, nem figyeljük a banki vagy Wallet értesítéseket, és nem készítünk belőlük automatikus tranzakciójavaslatot.
+- A korábbi kísérleti, kizárólag szöveget feldolgozó parser nem kapcsolódik az alkalmazáshoz; eltávolítandó a fejlesztési ágból, hogy ne maradjon félkész funkció.
+- A manuális tranzakciórögzítés, a többpénznemes blokk-OCR és az explicit jóváhagyás változatlanul megmarad.
 
 ### B8 elfogadási feltételek
 - A jelenlegi HUF-naplóba EUR blokk felvihető úgy, hogy EUR marad; HUF összesítés csak megfelelő árfolyammal készül.
 - A v22 pénzügyi adatok megmaradnak; CSV/backup és Drive körutak nem veszítenek pénznemet.
-- A felhasználó explicit engedélye nélkül sem banki értesítésfigyelés, sem automatikus pénzügyi tranzakciómentés nem történik.
+- A Grapes nem figyel banki/Wallet értesítéseket, és nem kér ilyen rendszerengedélyt; pénzügyi tranzakció csak felhasználói jóváhagyással menthető.
 - B8 külön commitokban és ellenőrzésekkel, kizárólag a feature/food-v23 ágon készül; nincs automatikus merge vagy release.
