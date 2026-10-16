@@ -324,7 +324,7 @@ function showPage(page) {
   if (page === 'projects') renderProjects()
   if (page === 'sync') renderSync()
   if (page === 'water') renderWater()
-  if (page === 'food') mobileFood?.load()
+  if (page === 'food') mobileFood?.load().then(() => mobileFood?.autoImportHealth()).catch(() => {})
   if (page === 'ebook') renderMobileEbooks()
   if (page === 'reader') renderReaderPicker()
   if (page === 'transfer') renderTransferPicker()
