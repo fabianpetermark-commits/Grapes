@@ -933,6 +933,18 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     }
     distribution.prepend(ring)
     card('Makrók energiarészaránya (4/4/9 kcal/g)', distribution)
+    const targetRows = document.createElement('div')
+    targetRows.style.cssText = 'display:flex;flex-direction:column;gap:8px;padding-top:10px'
+    for (const [key, label, unit] of [['energyKcal', 'Kalória', 'kcal'], ['protein', 'Fehérje', 'g'], ['carbohydrate', 'Szénhidrát', 'g'], ['fat', 'Zsír', 'g']]) {
+      const known = logged.map(day => day.totals[key]).filter(value => value != null)
+      const avg = known.length ? known.reduce((sum, value) => sum + value, 0) / known.length : null
+      const goals = logged.map(day => Number(currentTargets(project, day.key)[key])).filter(value => Number.isFinite(value) && value > 0)
+      const goal = goals.length === logged.length && goals.length ? goals.reduce((sum, value) => sum + value, 0) / goals.length : null
+      const line = document.createElement('div')
+      line.textContent = `${label}: ${nutrient(avg, 1, ' ' + unit)} átlag / ${goal === null ? 'nincs beállított cél' : number(goal, 1) + ' ' + unit + ' átlagos cél'}`
+      targetRows.append(line)
+    }
+    card('Naplózott átlag és beállított célok', targetRows)
     const mealTotals = new Map(MEALS.map(([key, label]) => [key, { label, kcal: 0, entries: 0 }]))
     for (const day of days) {
       for (const entry of entriesForLocalDay(project.diaryEntries, day.key, profile.id)) {
