@@ -10,12 +10,13 @@ const food = (name, barcode, type = 'openfoodfacts') => ({
 const fulfilled = products => ({ count: products.length, page: 1, products })
 const ok = body => ({ ok: true, status: 200, json: async () => body })
 
-test('név szerinti keresés kizárólag Open Food Facts szolgáltatót használ', async () => {
+test('név szerinti keresés USDA offline és Open Food Facts találatokat hoz', async () => {
   const result = await searchFoodCatalog('vöröshagyma', {
     offSearch: async () => fulfilled([food('Vöröshagyma', '5991234567890')]),
   })
-  assert.equal(result.products.length, 1)
-  assert.deepEqual(result.providers.map(item => item.id), ['openfoodfacts'])
+  assert.equal(result.products.length, 2)
+  assert.deepEqual(result.providers.map(item => item.id), ['usda', 'openfoodfacts'])
+  assert.equal(result.products[0].source.id, '170000')
   assert.equal(result.unavailable, false)
   assert.equal(result.errors.length, 0)
 })
@@ -36,12 +37,13 @@ test('eltérő forrásazonosítójú termékeket megtartunk', () => {
   assert.equal(results.length, 2)
 })
 
-test('Open Food Facts hiba esetén az online keresés elérhetetlen', async () => {
+test('Open Food Facts hiba esetén az offline szolgáltató továbbra is sikeres', async () => {
   const result = await searchFoodCatalog('sajt', {
     offSearch: async () => { throw new Error('HTTP 503') },
   })
-  assert.equal(result.unavailable, true)
+  assert.equal(result.unavailable, false)
   assert.equal(result.products.length, 0)
+  assert.equal(result.partial, true)
   assert.equal(result.errors.length, 1)
 })
 
@@ -52,6 +54,7 @@ test('vonalkódnál kizárólag az Open Food Facts közvetlen keresése fut', as
     offBarcode: async barcode => { called.push('off:' + barcode); return food('Keksz', barcode) },
   })
   assert.deepEqual(called, ['off:5991234567890'])
+  assert.deepEqual(result.providers.map(item => item.id), ['openfoodfacts'])
   assert.equal(result.products.length, 1)
 })
 

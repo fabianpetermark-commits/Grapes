@@ -756,17 +756,17 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   function startFoodSearch(query) {
     clearTimeout(searchTimer)
     const generation = ++searchGeneration
-    const offlineFoods = searchVerifiedUsdaFoods(query)
-    renderFoodSearch(query, { remoteFoods: offlineFoods })
+    const verifiedFoods = searchVerifiedUsdaFoods(query)
+    renderFoodSearch(query, { remoteFoods: verifiedFoods })
     if (query.trim().length < 2) return
     searchTimer = setTimeout(async () => {
-      renderFoodSearch(query, { remoteFoods: offlineFoods, loading: true })
+      renderFoodSearch(query, { remoteFoods: verifiedFoods, loading: true })
       let result
       try { result = await searchFoodCatalog(query) }
-      catch (error) { if (generation === searchGeneration) renderFoodSearch(query, { remoteFoods: offlineFoods, remoteError: error.message }); return }
+      catch (error) { if (generation === searchGeneration) renderFoodSearch(query, { remoteFoods: verifiedFoods, remoteError: error.message }); return }
       if (generation !== searchGeneration || $('[data-food-search]').value !== query) return
       if (result.unavailable) {
-        renderFoodSearch(query, { remoteFoods: offlineFoods, remoteError: 'Az online kereső nem érhető el; az offline USDA és a saját ételek használhatók.' })
+        renderFoodSearch(query, { remoteFoods: verifiedFoods, remoteError: 'Az online kereső nem érhető el; az offline USDA és a saját ételek használhatók.' })
         return
       }
       renderFoodSearch(query, { remoteFoods: result.products, remoteError: result.errors.join(' · ') || (result.products.length ? '' : 'Nincs további találat.') })
