@@ -1092,7 +1092,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       if (!pendingHealthImport.records.length) throw new Error('Nem érkezett étel- vagy vízadat. Ellenőrizd a Health Connect engedélyeit és a Samsung Health adatmegosztását.')
       closeSheets(); renderHealthPreview()
       return pendingHealthImport
-    } catch (error) { pendingHealthImport = null; showToast(error.message); throw error }
+    } catch (error) { pendingHealthImport = null; recordImportError('health', error); showToast(error.message); throw error }
   }
 
   async function openHealthImport({ provider = 'Health Connect', samsung = false, fromDate = selectedDate } = {}) {
@@ -1138,6 +1138,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       }
     } catch (error) {
       $('[data-food-health-status]').textContent = error?.message || 'A vízadatok mentése nem sikerült.'
+      recordImportError('health', error)
       return
     }
     if (nutrition.length) project.diaryEntries = [...project.diaryEntries, ...nutrition]
@@ -1151,7 +1152,14 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   function recordImportSync(source, imported) {
-    project.syncState = { ...project.syncState, imports: { ...(project.syncState?.imports || {}), [source]: { lastSuccessfulAt: new Date().toISOString(), imported } } }
+    project.syncState = { ...project.syncState, imports: { ...(project.syncState?.imports || {}), [source]: { lastSuccessfulAt: new Date().toISOString(), imported, lastError: '' } } }
+  }
+
+  function recordImportError(source, error) {
+    if (!project) return
+    const previous = project.syncState?.imports?.[source] || {}
+    project.syncState = { ...project.syncState, imports: { ...(project.syncState?.imports || {}), [source]: { ...previous, lastError: String(error?.message || error || 'Ismeretlen hiba').slice(0, 200) } } }
+    scheduleSave()
   }
 
   async function importYazioCsv(source) {
