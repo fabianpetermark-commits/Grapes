@@ -26,7 +26,7 @@ test('magyar név és BL55-alakok kereshetők, vonalkódra nincs USDA-találat',
 })
 
 test('OFF hiba mellett is megmarad a megjeleníthető offline USDA', async () => {
-  const result = await searchFoodCatalog('vöröshagyma', { offSearch: async () => { throw Error('offline') } })
+  const result = await searchFoodCatalog('vöröshagyma', { offSearch: async () => { throw Error('offline') }, usdaSearch: async () => ({ count: 0, products: [] }) })
   assert.equal(result.partial, true)
   assert.equal(result.unavailable, false)
   assert.equal(result.products.length, 1)
