@@ -375,15 +375,18 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-recipe-yield-unit]').value = recipe?.yieldUnit || 'serving'
     $('[data-food-recipe-unit-weight]').value = recipe?.averageUnitWeight ?? ''
     $('[data-food-recipe-editor-status]').textContent = ''
+    $('[data-food-recipe-ingredient-search]').value = ''
     renderRecipeEditorIngredients()
     setSheetOpen($('[data-food-recipe-edit-sheet]'), true)
   }
 
   function renderRecipeEditorIngredients() {
+    const query = $('[data-food-recipe-ingredient-search]').value.trim().toLocaleLowerCase('hu-HU')
     const foods = project.customFoods.filter(item => item.kind !== 'recipe')
+    const matches = query ? foods.filter(food => food.name.toLocaleLowerCase('hu-HU').includes(query)) : foods
     const select = $('[data-food-recipe-ingredient-food]'); const selected = select.value
-    select.replaceChildren(...foods.map(food => new Option(food.name, food.id)))
-    if (foods.some(food => food.id === selected)) select.value = selected
+    select.replaceChildren(...matches.map(food => new Option(food.name, food.id)))
+    if (matches.some(food => food.id === selected)) select.value = selected
     renderRecipeIngredientUnits()
     const names = new Map(foods.map(food => [food.id, food.name]))
     const container = $('[data-food-recipe-ingredients]'); container.replaceChildren()
@@ -1043,6 +1046,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-backup-input]').addEventListener('change', importBackup)
     $('[data-food-health-input]').addEventListener('change', selectHealthImport)
     $('[data-food-health-confirm]').addEventListener('click', applyHealthImport)
+    $('[data-food-recipe-ingredient-search]').addEventListener('input', renderRecipeEditorIngredients)
     $('[data-food-recipe-ingredient-food]').addEventListener('change', renderRecipeIngredientUnits)
     $('[data-food-recipe-ingredient-add]').addEventListener('click', addRecipeIngredient)
     $('[data-food-recipe-editor-save]').addEventListener('click', saveRecipe)
