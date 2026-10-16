@@ -1210,6 +1210,24 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       $('[data-food-inbox-summary]').textContent = meal
         ? `${item.senderName || item.senderEmail} ${LABELS[activeInboxShare.payload.mealType] || 'étkezés'} étkezése · ${activeInboxShare.payload.entries.length} tétel`
         : `${item.senderName || item.senderEmail} receptje: ${activeInboxShare.payload.recipe.name}`
+      const details = $('[data-food-inbox-details]')
+      details.replaceChildren()
+      const items = meal ? activeInboxShare.payload.entries || [] : activeInboxShare.payload.recipe?.ingredients || []
+      for (const entry of items.slice(0, 30)) {
+        const row = document.createElement('div')
+        row.className = 'sheet-result'
+        const name = document.createElement('strong')
+        name.textContent = meal ? entry.snapshot?.name || 'Ismeretlen étel' : entry.name || entry.foodName || 'Hozzávaló'
+        const quantity = document.createElement('span')
+        quantity.textContent = meal ? nutrient(entry.snapshot?.nutrients?.energyKcal, 0, ' kcal / egység') : `${number(entry.amount || entry.quantity || 0, 1)} ${entry.unit || ''}`
+        row.append(name, quantity)
+        details.append(row)
+      }
+      if (items.length > 30) {
+        const more = document.createElement('p')
+        more.textContent = `További ${items.length - 30} tétel`
+        details.append(more)
+      }
       $('[data-food-inbox-date-label]').hidden = !meal
       $('[data-food-inbox-replace-label]').hidden = !meal
       $('[data-food-inbox-date]').value = meal ? activeInboxShare.payload.date : ''
