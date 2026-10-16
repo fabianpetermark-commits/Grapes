@@ -194,3 +194,26 @@ html.is-grapes-android-module .food__health-actions .btn { width: 100%; min-widt
   .food__diary-catalog-search { align-items: stretch; }
   .food__diary-catalog-search label, .food__diary-catalog-search .btn { flex: 1 1 100%; width: 100%; }
 }
+
+/* v23 Android: recipe controls must remain readable on narrow screens. */
+@media (max-width: 620px) {
+  html.is-grapes-android-module .food__ingredient-builder > div:first-of-type {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+  html.is-grapes-android-module .food__ingredient-builder > div:first-of-type > *,
+  html.is-grapes-android-module .food__recipe-actions > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+  html.is-grapes-android-module .food__ingredient-builder .btn,
+  html.is-grapes-android-module .food__recipe-actions .btn {
+    white-space: normal;
+    overflow-wrap: break-word;
+    min-height: 44px;
+  }
+  html.is-grapes-android-module .food__recipe-actions {
+    flex-wrap: wrap;
+  }
+}
