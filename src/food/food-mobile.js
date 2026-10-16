@@ -883,17 +883,31 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const maxEnergy = days.reduce((max, day) => Math.max(max, Number(day.totals[selectedNutrient]) || 0), 1)
     const trend = document.createElement('div')
     trend.style.cssText = 'display:flex;align-items:flex-end;gap:3px;height:112px;padding-top:12px;overflow:hidden'
+    trend.setAttribute('role', 'group')
+    trend.setAttribute('aria-label', `${nutrientName} napi értékei; koppints egy oszlopra a részletekért`)
     const plotted = days.length > 45 ? days.filter((_, index) => index % Math.ceil(days.length / 45) === 0) : days
     for (const day of plotted) {
       const value = Number(day.totals[selectedNutrient])
-      const bar = document.createElement('div')
-      bar.style.cssText = 'flex:1;min-width:2px;border-radius:4px 4px 0 0;background:#55dff6;opacity:.85'
+      const bar = document.createElement('button')
+      bar.type = 'button'
+      bar.style.cssText = 'flex:1;min-width:2px;padding:0;border:0;border-radius:4px 4px 0 0;background:#55dff6;opacity:.85;cursor:pointer'
       bar.style.height = `${day.totals[selectedNutrient] == null ? 2 : Math.max(2, Math.min(100, value / maxEnergy * 100))}%`
       bar.title = `${day.key}: ${nutrient(day.totals[selectedNutrient], 1, selectedNutrient === 'energyKcal' ? ' kcal' : ' g')}`
       bar.setAttribute('aria-label', bar.title)
+      bar.addEventListener('click', () => {
+        const detail = $('[data-food-stats-day-detail]')
+        detail.textContent = `${day.key} · ${nutrientName}: ${nutrient(day.totals[selectedNutrient], 1, selectedNutrient === 'energyKcal' ? ' kcal' : ' g')}`
+      })
       trend.append(bar)
     }
-    card(`${nutrientName} alakulása`, trend)
+    const trendSection = document.createElement('div')
+    trendSection.append(trend)
+    const dayDetail = document.createElement('p')
+    dayDetail.dataset.foodStatsDayDetail = ''
+    dayDetail.setAttribute('role', 'status')
+    dayDetail.textContent = 'Koppints egy oszlopra a napi értékhez.'
+    trendSection.append(dayDetail)
+    card(`${nutrientName} alakulása`, trendSection)
     const macroValues = [['Fehérje', macro('protein'), '#55dff6'], ['Szénhidrát', macro('carbohydrate'), '#a69cff'], ['Zsír', macro('fat'), '#ffc48b']]
     const energyShares = macroValues.map(([label, grams, color], index) => ({ label, kcal: grams * (index === 2 ? 9 : 4), color }))
     const macroTotal = energyShares.reduce((sum, item) => sum + item.kcal, 0)
