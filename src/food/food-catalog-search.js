@@ -1,5 +1,5 @@
 import {
-  lookupFatSecretProduct, lookupOpenFoodFactsProduct, searchFatSecretProducts, searchOpenFoodFactsProducts,
+  lookupOpenFoodFactsProduct, searchOpenFoodFactsProducts,
 } from './food-api.js'
 
 // Network searches never mutate Food projects. Selection and saving happen separately in the UI.
@@ -28,9 +28,7 @@ export function mergeFoodCatalogResults(groups = []) {
 
 export async function searchFoodCatalog(query, {
   offSearch = searchOpenFoodFactsProducts,
-  fatSecretSearch = searchFatSecretProducts,
   offBarcode = lookupOpenFoodFactsProduct,
-  fatSecretBarcode = lookupFatSecretProduct,
 } = {}) {
   const term = normalizeQuery(query)
   if (term.length < 2 || term.length > 120)
@@ -40,11 +38,7 @@ export async function searchFoodCatalog(query, {
     { id: 'openfoodfacts', label: 'Open Food Facts',
       search: () => isBarcode
         ? offBarcode(term).then(product => ({ count: 1, products: [product] }))
-        : offSearch(term) },
-    { id: 'fatsecret', label: 'FatSecret',
-      search: () => isBarcode
-        ? fatSecretBarcode(term).then(product => ({ count: 1, products: [product] }))
-        : fatSecretSearch(term) },
+        : offSearch(term) }
   ]
   const settled = await Promise.allSettled(sources.map(source => source.search()))
   const providers = sources.map((source, index) => {
