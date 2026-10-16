@@ -246,6 +246,9 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const totals = summarizeEntries(entries)
     const targets = currentTargets(project, selectedDate)
     const today = selectedDate === localDate()
+    const importSummary = Object.entries(project.syncState?.imports || {}).map(([source, state]) => `${source === 'health' ? 'Health Connect' : source === 'yazio' ? 'YAZIO' : source}: ${new Date(state.lastSuccessfulAt).toLocaleDateString('hu-HU')} (${state.imported} új)`).join(' · ')
+    const importStatus = $('[data-food-import-sync-status]')
+    if (importStatus) importStatus.textContent = importSummary || 'Health Connect és YAZIO: még nincs rögzített import'
     if (!isGrapesDriveConnected()) showSyncStatus('Csak helyi mentés · Drive nincs csatlakoztatva')
     else if (lastFoodSyncAt && !foodSyncInProgress) showSyncStatus(`Utolsó ellenőrzés: ${new Date(lastFoodSyncAt).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })}`)
     const date = new Date(`${selectedDate}T12:00:00`)
