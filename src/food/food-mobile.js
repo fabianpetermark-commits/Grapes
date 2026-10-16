@@ -3,7 +3,6 @@ import { acceptMealShare, acceptRecipeShare, rememberSharingContact } from './fo
 import { listFoodShares, loadFoodShare, setFoodShareState } from './food-sharing-client.js'
 import { lookupOpenFoodFactsProduct } from './food-api.js'
 import { searchFoodCatalog } from './food-catalog-search.js'
-import { searchOfflineBasicFoods } from './food-offline-catalog.js'
 import { createMobileYazio } from './food-mobile-yazio.js'
 import { readYazioApiBundle } from './yazio-api-import.js'
 import { prepareYazioImport } from './food-yazio-import.js'
@@ -701,15 +700,14 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     } catch (error) { status.textContent = error.message }
   }
 
-  function renderFoodSearch(query, { favoritesOnly = false, offlineFoods = [], remoteFoods = [], loading = false, remoteError = '' } = {}) {
+  function renderFoodSearch(query, { favoritesOnly = false, remoteFoods = [], loading = false, remoteError = '' } = {}) {
     const normalized = query.trim().toLocaleLowerCase('hu-HU')
     let localFoods = project.customFoods.filter(item => (!favoritesOnly || project.favorites.includes(item.id)) && (!normalized || `${item.name} ${item.category}`.toLocaleLowerCase('hu-HU').includes(normalized)))
     localFoods = localFoods.sort((a, b) => (project.favorites.includes(b.id) ? 1 : 0) - (project.favorites.includes(a.id) ? 1 : 0)).slice(0, 15)
     const localKeys = new Set(localFoods.map(foodKey))
-    const offlineKeys = new Set(offlineFoods.map(foodKey))
-    const externalFoods = favoritesOnly ? [] : remoteFoods.filter(food => !localKeys.has(foodKey(food)) && !offlineKeys.has(foodKey(food))).slice(0, 12)
+    const externalFoods = favoritesOnly ? [] : remoteFoods.filter(food => !localKeys.has(foodKey(food))).slice(0, 12)
     const container = $('[data-food-search-results]'); container.replaceChildren()
-    if (!localFoods.length && !offlineFoods.length && !externalFoods.length) {
+    if (!localFoods.length && !externalFoods.length) {
       container.innerHTML = `<div class="food-empty">${favoritesOnly ? 'Még nincs kedvencnek jelölt ételed.' : normalized ? 'Nincs találat. A Saját étel gombbal hozhatsz létre újat.' : 'Még nincs saját ételed. A Saját étel gombbal hozhatsz létre egyet.'}</div>`
     }
     for (const food of localFoods) {
@@ -719,11 +717,6 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
         project.favorites = project.favorites.includes(food.id) ? project.favorites.filter(id => id !== food.id) : [...project.favorites, food.id]
         scheduleSave(); renderFoodSearch(query, { favoritesOnly, remoteFoods })
       })
-      container.append(row.element)
-    }
-    for (const food of offlineFoods) {
-      const row = foodSearchRow(food, { external: true, offline: true })
-      row.main.addEventListener('click', () => addFood(materializeExternalFood(food)))
       container.append(row.element)
     }
     for (const food of externalFoods) {
@@ -739,11 +732,11 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     return food.barcode ? `barcode:${food.barcode}` : `${food.source?.type || 'manual'}:${food.source?.id || food.id}`
   }
 
-  function foodSearchRow(food, { favorite = false, external = false, offline = false } = {}) {
+  function foodSearchRow(food, { favorite = false, external = false } = {}) {
     const element = document.createElement('div'); element.className = 'sheet-result'
     const main = document.createElement('button'); main.type = 'button'; main.className = 'sheet-result__main'
     const calories = food.nutrients.energyKcal == null ? 'nincs kalóriaadat' : `${number(food.nutrients.energyKcal, 1)} kcal / 100 ${food.baseUnit}`
-    const sourceLabel = offline ? 'Alapadatbázis' : food.source?.type === 'usda' ? 'USDA' : 'Open Food Facts'
+    const sourceLabel = food.source?.type === 'usda' ? 'USDA' : 'Open Food Facts'
     main.innerHTML = `<strong>${escapeHtml(food.name)}</strong><span>${calories}${external ? ` · ${sourceLabel}` : ''}</span>`
     const favoriteButton = document.createElement('button'); favoriteButton.type = 'button'; favoriteButton.className = 'sheet-result__favorite'; favoriteButton.hidden = external
     favoriteButton.textContent = favorite ? '★' : '☆'; favoriteButton.setAttribute('aria-label', favorite ? 'Eltávolítás a kedvencekből' : 'Hozzáadás a kedvencekhez')
@@ -762,20 +755,19 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   function startFoodSearch(query) {
     clearTimeout(searchTimer)
     const generation = ++searchGeneration
-    const offlineFoods = searchOfflineBasicFoods(query)
-    renderFoodSearch(query, { offlineFoods })
+    renderFoodSearch(query)
     if (query.trim().length < 2) return
     searchTimer = setTimeout(async () => {
-      renderFoodSearch(query, { offlineFoods, loading: true })
+      renderFoodSearch(query, { loading: true })
       let result
       try { result = await searchFoodCatalog(query) }
-      catch (error) { if (generation === searchGeneration) renderFoodSearch(query, { offlineFoods, remoteError: error.message }); return }
+      catch (error) { if (generation === searchGeneration) renderFoodSearch(query, { remoteError: error.message }); return }
       if (generation !== searchGeneration || $('[data-food-search]').value !== query) return
       if (result.unavailable) {
-        renderFoodSearch(query, { offlineFoods, remoteError: 'Az online termékkereső most nem érhető el; az alapélelmiszerek továbbra is használhatók.' })
+        renderFoodSearch(query, { remoteError: 'Az online termékkereső most nem érhető el; a mentett saját ételeid továbbra is használhatók.' })
         return
       }
-      renderFoodSearch(query, { offlineFoods, remoteFoods: result.products, remoteError: result.errors.join(' · ') || (result.products.length ? '' : 'Nincs több online találat.') })
+      renderFoodSearch(query, { remoteFoods: result.products, remoteError: result.errors.join(' · ') || (result.products.length ? '' : 'Nincs több online találat.') })
     }, 1100)
   }
 
