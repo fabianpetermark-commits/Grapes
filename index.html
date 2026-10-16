@@ -354,7 +354,8 @@
                 <button type="button" data-finance-type="income">Bevétel</button>
               </div>
               <input id="finance-type" type="hidden" value="expense">
-              <label>Összeg<input id="finance-amount" type="text" inputmode="decimal" data-finance-money required placeholder="0"></label>
+              <label>Összeg<span class="finance__amount-combo"><input id="finance-amount" type="text" inputmode="decimal" data-finance-money required placeholder="0" aria-label="Tranzakció összege"><select id="finance-transaction-currency" aria-label="Tranzakció pénzneme"><option value="HUF">HUF Ft</option><option value="EUR">EUR €</option><option value="USD">USD $</option><option value="GBP">GBP £</option><option value="CZK">CZK Kč</option><option value="PLN">PLN zł</option></select></span></label>
+              <label id="finance-exchange-row" hidden>Átváltási árfolyam <small>(1 egység eredeti pénznem = ennyi naplópénznem; kötelező, ha eltérő)</small><input id="finance-exchange-rate" type="text" inputmode="decimal" placeholder="Pl. 395,50"></label>
               <label>Dátum<input id="finance-date" type="date" required></label>
               <label>Kategória<span class="finance__field-row"><input id="finance-category" list="finance-categories" required placeholder="Válassz kategóriát"><button id="finance-add-category" class="btn btn--ghost" type="button" aria-label="Új kategória hozzáadása">+</button></span></label>
               <datalist id="finance-categories"></datalist>
