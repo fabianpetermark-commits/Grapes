@@ -56,6 +56,10 @@ let mobileFood = null
 let activePage = 'home'
 let availableAppUpdate = null
 let activeSyncImport = ''
+document.addEventListener('grapes:food-subtitle', event => {
+  if (activePage === 'food') subtitle.textContent = event.detail?.subtitle || 'Mai áttekintés'
+})
+
 const labels = {
   home: ['Grapes', 'Mobil munkaterület'], projects: ['Projektek', 'Helyi és Drive'],
   sync: ['Szinkron', 'Adatok és fiók'], more: ['Továbbiak', 'Beállítások'],
