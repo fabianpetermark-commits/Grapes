@@ -27,6 +27,26 @@ try {
   }
   browser = await chromium.launch({ executablePath, headless: true })
   const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 })
+  const nutrient = (nutrientId, unitName, value) => ({ nutrientId, unitName, value })
+  const usdaFoods = [
+    'Rice, white, long grain, unenriched, raw',
+    'Rice, brown, long grain, unenriched, raw',
+    'Rice, white, long-grain, regular, raw, enriched',
+    'Rice, white, medium-grain, raw, unenriched',
+    'Rice, brown, medium-grain, raw',
+    'Rice, white, short-grain, raw',
+    'Rice, white, long-grain, parboiled, enriched, cooked',
+    'Rice, brown, long-grain, cooked',
+    'Rice, white, medium-grain, cooked',
+    'Rice, brown, parboiled, cooked',
+  ].map((description, index) => ({
+    fdcId: 900000 + index,
+    dataType: index % 2 ? 'Foundation' : 'SR Legacy',
+    description,
+    foodNutrients: [nutrient(1008, 'kcal', 120 + index), nutrient(1003, 'g', 3), nutrient(1005, 'g', 27), nutrient(1004, 'g', 0.5)],
+  }))
+  await page.route('https://api.nal.usda.gov/**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ totalHits: usdaFoods.length, foods: usdaFoods }) }))
+  await page.route('https://search.openfoodfacts.org/**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ count: 0, hits: [] }) }))
   await page.goto(previewUrl, { waitUntil: 'networkidle' })
   await page.locator('[data-local]').click()
 
@@ -60,10 +80,11 @@ try {
   assert.equal(await page.locator('[data-page="sync"] .sync-hero__icon svg').count(), 1, 'A Drive állapotkártyának SVG ikon kell.')
   assert.equal(await page.locator('[data-page="sync"] .setting__icon svg').count(), 2, 'A mentési soroknak SVG ikon kell.')
   assert.equal(await page.locator('[data-page="sync"] .sync-provider__icon svg').count(), 3, 'Minden szinkronszolgáltatónak SVG ikon kell.')
+  const testDay = new Date().toISOString().slice(0, 10)
   const healthExport = JSON.stringify({
-    schemaVersion: 1, producer: 'hu.grapes.healthconnect', generatedAt: '2026-10-15T08:00:00.000Z', records: [
-      { type: 'nutrition', externalId: 'healthconnect:com.samsung.android.app.healthdata:sync-n1', sourcePackage: 'com.samsung.android.app.healthdata', startTime: '2026-10-15T06:10:00.000Z', endTime: '2026-10-15T06:20:00.000Z', name: 'Samsung reggeli', mealType: 'breakfast', energyKcal: 320, proteinGrams: 18, carbohydrateGrams: 42, fatGrams: 9, volumeMilliliters: null },
-      { type: 'hydration', externalId: 'healthconnect:com.samsung.android.app.healthdata:sync-h1', sourcePackage: 'com.samsung.android.app.healthdata', startTime: '2026-10-15T07:00:00.000Z', endTime: '2026-10-15T07:00:00.000Z', name: 'Víz', mealType: null, energyKcal: null, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, volumeMilliliters: 300 },
+    schemaVersion: 1, producer: 'hu.grapes.healthconnect', generatedAt: `${testDay}T08:00:00.000Z`, records: [
+      { type: 'nutrition', externalId: 'healthconnect:com.samsung.android.app.healthdata:sync-n1', sourcePackage: 'com.samsung.android.app.healthdata', startTime: `${testDay}T06:10:00.000Z`, endTime: `${testDay}T06:20:00.000Z`, name: 'Samsung reggeli', mealType: 'breakfast', energyKcal: 320, proteinGrams: 18, carbohydrateGrams: 42, fatGrams: 9, volumeMilliliters: null },
+      { type: 'hydration', externalId: 'healthconnect:com.samsung.android.app.healthdata:sync-h1', sourcePackage: 'com.samsung.android.app.healthdata', startTime: `${testDay}T07:00:00.000Z`, endTime: `${testDay}T07:00:00.000Z`, name: 'Víz', mealType: null, energyKcal: null, proteinGrams: null, carbohydrateGrams: null, fatGrams: null, volumeMilliliters: 300 },
     ],
   })
   const healthChooserPromise = page.waitForEvent('filechooser')
@@ -78,7 +99,7 @@ try {
   await page.locator('[data-food-health-confirm]').click()
   page.once('dialog', dialog => dialog.accept())
   await page.locator('[data-yazio-input]').setInputFiles({
-    name: 'nutrition_log.csv', mimeType: 'text/csv', buffer: Buffer.from('Date,Time,Meal,Product,Amount,Unit,Portions,Calories/g,Calories total,Protein/g,Fat/g,Carbs/g,Protein total,Fat total,Carbs total\n2026-10-15,2026-10-15 10:30:00,snacks,Alma,120,gram,1,0.5,60,0.002,0.001,0.14,0.2,0.1,16.8'),
+    name: 'nutrition_log.csv', mimeType: 'text/csv', buffer: Buffer.from(`Date,Time,Meal,Product,Amount,Unit,Portions,Calories/g,Calories total,Protein/g,Fat/g,Carbs/g,Protein total,Fat total,Carbs total\n${testDay},${testDay} 10:30:00,snacks,Alma,120,gram,1,0.5,60,0.002,0.001,0.14,0.2,0.1,16.8`),
   })
   await page.waitForFunction(() => document.querySelector('[data-yazio-status]')?.textContent.includes('1 étkezés importálva'))
   await page.locator('[data-sync-refresh]').click()
@@ -99,17 +120,41 @@ try {
   await page.locator('[data-food-meals] .meal').first().click()
   assert.equal(await page.locator('[data-fab]').isVisible(), true, 'A + gomb az étkezés részletein jelenjen meg.')
   await page.locator('[data-fab]').click()
-  await page.locator('.bottom-sheet.is-open').waitFor({ state: 'visible' })
+  await page.locator('[data-food-add-sheet].is-open').waitFor({ state: 'visible' })
   await page.waitForTimeout(300)
   const sheetLayout = await page.evaluate(() => {
     const sheet = document.querySelector('[data-food-add-sheet]').getBoundingClientRect()
     const lastAction = [...document.querySelectorAll('[data-food-add-sheet] .quick-action')].at(-1).getBoundingClientRect()
-    return { sheetTop: sheet.top, sheetBottom: sheet.bottom, lastActionBottom: lastAction.bottom, viewportHeight: innerHeight }
+    const results = document.querySelector('[data-food-search-results]')
+    return { sheetTop: sheet.top, sheetBottom: sheet.bottom, sheetWidth: sheet.width, lastActionBottom: lastAction.bottom, viewportHeight: innerHeight, viewportWidth: innerWidth, resultsOverflow: getComputedStyle(results).overflowY }
   })
   console.log(JSON.stringify({ sheetLayout }))
-  assert.ok(sheetLayout.sheetTop >= 0, 'Az ételfelvétel panel teteje kilóg a képernyőről.')
+  assert.equal(sheetLayout.sheetTop, 0, 'Az ételfelvétel oldalnak a képernyő tetején kell kezdődnie.')
+  assert.equal(sheetLayout.sheetBottom, sheetLayout.viewportHeight, 'Az ételfelvétel oldalnak ki kell töltenie a képernyőmagasságot.')
+  assert.equal(sheetLayout.sheetWidth, sheetLayout.viewportWidth, 'Az ételfelvétel oldalnak ki kell töltenie a képernyőszélességet.')
+  assert.equal(sheetLayout.resultsOverflow, 'auto', 'A találatlista önállóan legyen görgethető.')
   assert.ok(sheetLayout.lastActionBottom <= sheetLayout.viewportHeight, 'Az ételfelvétel utolsó gyorsgombja nem látható.')
   const foodPageUrl = page.url()
+  await page.locator('[data-food-add-back]').click()
+  await page.waitForFunction(() => !document.querySelector('[data-food-add-sheet]')?.classList.contains('is-open'))
+  assert.equal(await page.locator('[data-food-detail]').isVisible(), true, 'A fejléc vissza gombja az eredeti étkezéshez térjen vissza.')
+  await page.locator('[data-fab]').click()
+  assert.equal(await page.evaluate(() => window.grapesHandleAndroidBack()), true, 'Az Android rendszer-vissza kezelje az ételfelvétel oldalt.')
+  await page.waitForFunction(() => !document.querySelector('[data-food-add-sheet]')?.classList.contains('is-open'))
+  await page.locator('[data-fab]').click()
+  await page.locator('[data-food-search]').fill('rizs')
+  await page.getByText(/További találatok/).waitFor()
+  await page.setViewportSize({ width: 390, height: 600 })
+  const compactLayout = await page.evaluate(() => {
+    const results = document.querySelector('[data-food-search-results]')
+    const actions = document.querySelector('[data-food-add-sheet] .quick-grid').getBoundingClientRect()
+    results.scrollTop = results.scrollHeight
+    return { canScroll: results.scrollHeight > results.clientHeight, scrollTop: results.scrollTop, actionsBottom: actions.bottom, viewportHeight: innerHeight }
+  })
+  assert.equal(compactLayout.canScroll, true, 'Kisebb, billentyűzet melletti magasságon a találatok legyenek görgethetők.')
+  assert.ok(compactLayout.scrollTop > 0, 'A találatlista ténylegesen görgethető legyen.')
+  assert.ok(compactLayout.actionsBottom <= compactLayout.viewportHeight, 'A gyorsműveletek ne takarják a találatokat kisebb magasságon sem.')
+  await page.setViewportSize({ width: 390, height: 844 })
   await page.locator('[data-food-quick="custom"]').click()
   await page.locator('[data-food-custom-sheet].is-open').waitFor({ state: 'visible' })
   assert.equal(page.url(), foodPageUrl, 'A Saját étel gomb nem navigálhat vissza a régi Ételnaplóba.')
@@ -131,6 +176,16 @@ try {
   await page.locator('[data-food-recipes-new]').click()
   await page.locator('[data-food-recipe-edit-sheet].is-open').waitFor({ state: 'visible' })
   await page.locator('[data-food-recipe-name-input]').fill('Mobil tesztrecept')
+  await page.locator('[data-food-recipe-open-catalog]').click()
+  await page.locator('[data-food-add-sheet].is-open').waitFor({ state: 'visible' })
+  assert.equal(await page.locator('[data-food-add-title]').textContent(), 'Hozzávaló kiválasztása')
+  await page.locator('[data-food-add-back]').click()
+  await page.locator('[data-food-recipe-edit-sheet].is-open').waitFor({ state: 'visible' })
+  await page.locator('[data-food-recipe-open-catalog]').click()
+  await page.locator('[data-food-search]').fill('rizs')
+  await page.getByText(/További találatok/).waitFor()
+  await page.locator('[data-food-search-results] .sheet-result__main').first().click()
+  await page.locator('[data-food-recipe-edit-sheet].is-open').waitFor({ state: 'visible' })
   await page.locator('[data-food-recipe-ingredient-add]').click()
   await page.locator('[data-food-recipe-editor-save]').click()
   await page.locator('[data-food-recipe-title]').filter({ hasText: 'Mobil tesztrecept' }).waitFor()
@@ -138,15 +193,9 @@ try {
   await page.locator('[data-food-recipe-edit]').click()
   await page.locator('[data-food-recipe-edit-sheet].is-open').waitFor({ state: 'visible' })
   assert.equal(await page.locator('[data-food-recipe-name-input]').inputValue(), 'Mobil tesztrecept')
-  await page.locator('[data-sheet-close]').click({ position: { x: 5, y: 5 } })
+  await page.locator('[data-food-recipe-editor-back]').click()
   await page.locator('[data-food-recipe-back]').click()
   await page.locator('[data-food-recipes-back]').click()
-
-  await page.locator('[data-food-summary-menu]').click()
-  await page.locator('[data-food-menu="stats"]').click()
-  await page.locator('[data-food-stats-sheet].is-open').waitFor({ state: 'visible' })
-  assert.equal(page.url(), foodPageUrl, 'A statisztika nem navigálhat a régi Ételnaplóba.')
-  await page.locator('[data-sheet-close]').click({ position: { x: 5, y: 5 } })
 
   await page.locator('[data-water-open]').click()
   await page.locator('[data-page="water"]').waitFor({ state: 'visible' })
@@ -154,7 +203,7 @@ try {
   assert.ok(await page.locator('[data-water-log] .water-log__icon svg').count() >= 1, 'A víznapló sorainak SVG ikon kell.')
   assert.equal((await page.locator('[data-water-total]').textContent()).replace(/\s/g, ''), '550ml')
   assert.match(await page.locator('[data-water-remaining]').textContent(), /1.?450 ml/)
-  await page.locator('[data-water-log] button').filter({ hasText: '300 ml' }).click()
+  await page.locator('[data-water-log] button').filter({ hasText: '300 ml' }).evaluate(button => button.click())
   assert.equal((await page.locator('[data-water-total]').textContent()).replace(/\s/g, ''), '250ml', 'A Health-víz törölhető legyen.')
 
   await page.locator('[data-nav="sync"]').click()

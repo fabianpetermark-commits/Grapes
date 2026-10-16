@@ -302,6 +302,19 @@
     .food-recipe-editor__back { display: grid; place-items: center; width: 44px; height: 44px; flex: 0 0 44px; color: var(--text); background: var(--raised); border: 1px solid var(--line); border-radius: 12px; font-size: 24px; }
     .food-recipe-editor__header h2 { margin: 0; }
     [data-food-recipe-editor-save] { position: sticky; bottom: 0; z-index: 2; width: 100%; }
+    [data-food-add-sheet] { top: 0; height: 100dvh; max-height: none; display: flex; flex-direction: column; padding: max(16px, env(safe-area-inset-top)) 18px max(16px, env(safe-area-inset-bottom)); overflow: hidden; border-radius: 0; transform: translateX(105%); }
+    [data-food-add-sheet].is-open { transform: none; }
+    [data-food-add-sheet] .food-recipe-editor__header { flex: 0 0 auto; margin-bottom: 14px; }
+    [data-food-add-sheet] .food-recipe-editor__header h2 { margin: 0 0 3px; }
+    [data-food-add-sheet] .food-recipe-editor__header p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.4; }
+    .food-add-page__body { display: flex; min-height: 0; flex: 1; flex-direction: column; }
+    [data-food-add-sheet] .sheet-results { min-height: 0; max-height: none; flex: 1; padding-bottom: 4px; }
+    [data-food-add-sheet] [data-food-search-status] { min-height: 17px; margin: 6px 2px 0; color: var(--muted); font-size: 11px; }
+    [data-food-add-sheet] .quick-grid { flex: 0 0 auto; }
+
+    @media (prefers-reduced-motion: reduce) {
+      [data-food-add-sheet] { transition-duration: .01ms; }
+    }
 
     [data-food-yazio-sheet] .sheet-result { display: flex; align-items: center; gap: 12px; }
     [data-food-yazio-sheet] .sheet-result input { flex: 0 0 20px; width: 20px; height: 20px; }
@@ -555,14 +568,16 @@
           <p data-update-status role="status" aria-live="polite"></p>
         </article>
       </section>
-      <section class="bottom-sheet" data-food-add-sheet role="dialog" aria-modal="true" aria-label="Étel hozzáadása" aria-hidden="true" inert>
-        <div class="sheet-handle"></div><h2>Étel hozzáadása</h2><p>Keresés vagy gyors bevitel — amelyik most kényelmesebb.</p>
-        <input class="search" data-food-search placeholder="Keresés az ételek között…">
-        <input type="file" accept="image/*" capture="environment" data-food-barcode-photo hidden>
-        <div data-food-live-scanner hidden><video data-food-live-video autoplay muted playsinline style="display:block;width:100%;max-height:260px;object-fit:cover;border-radius:14px"></video><button class="quick-action" type="button" data-food-live-stop>Olvasó bezárása</button></div>
-        <div class="sheet-results" data-food-search-results></div>
-        <p data-food-search-status role="status"></p>
-        <div class="quick-grid"><button class="quick-action" data-food-quick="barcode"><i>▦</i><span>Vonalkód</span></button><button class="quick-action" data-food-quick="photo"><i>◉</i><span>Fotó alapján</span></button><button class="quick-action" data-food-quick="favorites"><i>☆</i><span>Kedvencek</span></button><button class="quick-action" data-food-quick="custom"><i>＋</i><span>Saját étel</span></button></div>
+      <section class="bottom-sheet food-add-page" data-food-add-sheet role="dialog" aria-modal="true" aria-label="Étel hozzáadása" aria-hidden="true" inert>
+        <div class="food-recipe-editor__header"><button type="button" class="food-recipe-editor__back" data-food-add-back aria-label="Vissza">‹</button><div><h2 data-food-add-title>Étel hozzáadása</h2><p data-food-add-copy>Keresés vagy gyors bevitel — amelyik most kényelmesebb.</p></div></div>
+        <div class="food-add-page__body">
+          <input class="search" data-food-search placeholder="Keresés az ételek között…">
+          <input type="file" accept="image/*" capture="environment" data-food-barcode-photo hidden>
+          <div data-food-live-scanner hidden><video data-food-live-video autoplay muted playsinline style="display:block;width:100%;max-height:260px;object-fit:cover;border-radius:14px"></video><button class="quick-action" type="button" data-food-live-stop>Olvasó bezárása</button></div>
+          <div class="sheet-results" data-food-search-results></div>
+          <p data-food-search-status role="status"></p>
+          <div class="quick-grid"><button class="quick-action" data-food-quick="barcode"><i>▦</i><span>Vonalkód</span></button><button class="quick-action" data-food-quick="photo"><i>◉</i><span>Fotó alapján</span></button><button class="quick-action" data-food-quick="favorites"><i>☆</i><span>Kedvencek</span></button><button class="quick-action" data-food-quick="custom"><i>＋</i><span>Saját étel</span></button></div>
+        </div>
       </section>
       <section class="bottom-sheet" data-food-custom-sheet role="dialog" aria-modal="true" aria-label="Saját étel létrehozása" aria-hidden="true" inert>
         <div class="sheet-handle"></div><h2>Saját étel</h2><p>Az értékeket 100 grammra vagy 100 milliliterre add meg.</p>
@@ -702,11 +717,6 @@
       closeSheet()
     }
 
-    function openSheet() {
-      sheet.classList.add('is-open')
-      sheetBackdrop.classList.add('is-open')
-    }
-
     function closeSheet() {
       sheet.classList.remove('is-open')
       sheetBackdrop.classList.remove('is-open')
@@ -744,7 +754,6 @@
     document.querySelector('[data-water-open]').addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') showPage('water') })
     document.querySelectorAll('[data-water-add]').forEach(button => button.addEventListener('click', event => { event.stopPropagation(); updateWater(Number(button.dataset.waterAdd)) }))
     document.querySelectorAll('[data-action]').forEach(button => button.addEventListener('click', () => showToast()))
-    fab.addEventListener('click', openSheet)
     sheetBackdrop.addEventListener('click', closeSheet)
     document.addEventListener('keydown', event => { if (event.key === 'Escape') closeSheet() })
     updateWater()

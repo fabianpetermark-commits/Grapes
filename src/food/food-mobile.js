@@ -522,6 +522,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
 
   function openRecipeCatalog() {
     recipeCatalogActive = true
+    setAddPageMode(true)
     setSheetOpen($('[data-food-recipe-edit-sheet]'), false)
     setSheetOpen(addSheet, true)
     $('[data-food-search]').value = ''
@@ -642,9 +643,24 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
 
   function openAddSheet() {
     if (!selectedMeal && !recipeCatalogActive) return
+    setAddPageMode(recipeCatalogActive)
     setSheetOpen(addSheet, true)
     $('[data-food-search]').value = ''; startFoodSearch('')
     setTimeout(() => $('[data-food-search]').focus({ preventScroll: true }), 100)
+  }
+
+  function setAddPageMode(forRecipe) {
+    const title = forRecipe ? 'Hozzávaló kiválasztása' : 'Étel hozzáadása'
+    addSheet.setAttribute('aria-label', title)
+    $('[data-food-add-title]').textContent = title
+    $('[data-food-add-copy]').textContent = forRecipe
+      ? 'Keress a katalógusban, majd válaszd ki a recept hozzávalóját.'
+      : 'Keresés vagy gyors bevitel — amelyik most kényelmesebb.'
+  }
+
+  function closeAddPage() {
+    if (recipeCatalogActive) closeRecipeCatalog()
+    else closeSheets()
   }
 
   function closeSheets() {
@@ -1508,6 +1524,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-recipe-editor-save]').addEventListener('click', saveRecipe)
     $('[data-food-recipe-editor-back]').addEventListener('click', dismissRecipeEditor)
     $('[data-food-recipe-open-catalog]').addEventListener('click', openRecipeCatalog)
+    $('[data-food-add-back]').addEventListener('click', closeAddPage)
     fab.addEventListener('click', openAddSheet)
     backdrop.addEventListener('click', () => { if (recipeCatalogActive) closeRecipeCatalog(); else if ($('[data-food-recipe-edit-sheet]').classList.contains('is-open')) dismissRecipeEditor(); else closeSheets() })
     root.addEventListener('click', event => {
