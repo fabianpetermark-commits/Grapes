@@ -852,10 +852,16 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const range = $('[data-food-stats-range]').value
     const datedEntries = project.diaryEntries.filter(entry => entry.profileId === profile.id && entry.snapshot?.category !== 'Folyadék' && localDate(new Date(entry.occurredAt)) <= selectedDate)
     const firstDate = datedEntries.map(entry => localDate(new Date(entry.occurredAt))).sort()[0]
-    const count = range === 'all' && firstDate ? Math.max(1, Math.round((new Date(`${selectedDate}T12:00:00`) - new Date(`${firstDate}T12:00:00`)) / 86400000) + 1) : Number(range) || 7
+    const custom = range === 'custom'
+    $('[data-food-stats-custom]').hidden = !custom
+    const from = $('[data-food-stats-from]').value || selectedDate
+    const to = $('[data-food-stats-to]').value || selectedDate
+    const end = custom ? to : selectedDate
+    const start = custom ? from : range === 'all' && firstDate ? firstDate : (() => { const d = new Date(`${selectedDate}T12:00:00`); d.setDate(d.getDate() - (Number(range) || 7) + 1); return localDate(d) })()
+    const count = start <= end ? Math.round((new Date(`${end}T12:00:00`) - new Date(`${start}T12:00:00`)) / 86400000) + 1 : 0
     const days = []
     for (let offset = count - 1; offset >= 0; offset -= 1) {
-      const date = new Date(`${selectedDate}T12:00:00`); date.setDate(date.getDate() - offset)
+      const date = new Date(`${end}T12:00:00`); date.setDate(date.getDate() - offset)
       const key = localDate(date); const totals = summarizeEntries(entriesForLocalDay(project.diaryEntries, key, profile.id))
       days.push({ key, totals })
     }
@@ -872,20 +878,22 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       section.append(heading, content)
       visual.append(section)
     }
-    const maxEnergy = Math.max(1, ...days.map(day => Number(day.totals.energyKcal) || 0))
+    const selectedNutrient = $('[data-food-stats-nutrient]').value
+    const nutrientName = { energyKcal: 'Kalória (kcal)', protein: 'Fehérje (g)', carbohydrate: 'Szénhidrát (g)', fat: 'Zsír (g)' }[selectedNutrient] || 'Kalória (kcal)'
+    const maxEnergy = days.reduce((max, day) => Math.max(max, Number(day.totals[selectedNutrient]) || 0), 1)
     const trend = document.createElement('div')
     trend.style.cssText = 'display:flex;align-items:flex-end;gap:3px;height:112px;padding-top:12px;overflow:hidden'
     const plotted = days.length > 45 ? days.filter((_, index) => index % Math.ceil(days.length / 45) === 0) : days
     for (const day of plotted) {
-      const value = Number(day.totals.energyKcal)
+      const value = Number(day.totals[selectedNutrient])
       const bar = document.createElement('div')
       bar.style.cssText = 'flex:1;min-width:2px;border-radius:4px 4px 0 0;background:#55dff6;opacity:.85'
-      bar.style.height = `${day.totals.energyKcal == null ? 2 : Math.max(2, Math.min(100, value / maxEnergy * 100))}%`
-      bar.title = `${day.key}: ${nutrient(day.totals.energyKcal, 0, ' kcal')}`
+      bar.style.height = `${day.totals[selectedNutrient] == null ? 2 : Math.max(2, Math.min(100, value / maxEnergy * 100))}%`
+      bar.title = `${day.key}: ${nutrient(day.totals[selectedNutrient], 1, selectedNutrient === 'energyKcal' ? ' kcal' : ' g')}`
       bar.setAttribute('aria-label', bar.title)
       trend.append(bar)
     }
-    card('Kalóriabevitel alakulása', trend)
+    card(`${nutrientName} alakulása`, trend)
     const macroValues = [['Fehérje', macro('protein'), '#55dff6'], ['Szénhidrát', macro('carbohydrate'), '#a69cff'], ['Zsír', macro('fat'), '#ffc48b']]
     const energyShares = macroValues.map(([label, grams, color], index) => ({ label, kcal: grams * (index === 2 ? 9 : 4), color }))
     const macroTotal = energyShares.reduce((sum, item) => sum + item.kcal, 0)
@@ -1219,6 +1227,9 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-energy-target]').addEventListener('click', event => { event.stopPropagation(); openTargets() })
     $('[data-food-energy-target]').addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); openTargets() } })
     $('[data-food-stats-range]').addEventListener('change', renderStats)
+    $('[data-food-stats-nutrient]').addEventListener('change', renderStats)
+    $('[data-food-stats-from]').addEventListener('change', renderStats)
+    $('[data-food-stats-to]').addEventListener('change', renderStats)
     $('[data-food-search]').addEventListener('input', event => startFoodSearch(event.currentTarget.value))
     $('[data-food-barcode-photo]').addEventListener('change', selectBarcodePhoto)
     $('[data-food-live-stop]').addEventListener('click', stopBarcodeCamera)
