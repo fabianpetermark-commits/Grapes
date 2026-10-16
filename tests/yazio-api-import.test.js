@@ -30,7 +30,9 @@ test('az ismétlődő terméket egyszer kéri le és a kihagyott receptet jelzi'
 })
 test('érvénytelen időszak, válasz, mértékegység és hálózati hiba nem eredményez félkész importot', async () => {
   assert.throws(() => yazioDateRange('2026-02-30', '2026-03-01'))
-  assert.throws(() => yazioDateRange('2026-01-01', '2026-02-01'))
+  assert.equal(yazioDateRange('2026-01-01', '2026-10-16').length, 289)
+  assert.equal(yazioDateRange('2024-01-01', '2024-12-31').length, 366)
+  assert.throws(() => yazioDateRange('2025-01-01', '2026-01-02'), /366/)
   await assert.rejects(readYazioApiBundle({ ...options, request: async () => ({}) }), /formátuma/)
   await assert.rejects(readYazioApiBundle({ ...options, request: async op => op === 'day' ? { products: [entry] } : { ...product, base_unit: 'serving' } }), /mértékegység/)
   await assert.rejects(readYazioApiBundle({ ...options, request: async () => { throw new Error('HTTP 401') } }), /401/)
@@ -39,4 +41,18 @@ test('a megszakítás megállítja a lekérést', async () => {
   let requests = 0
   await assert.rejects(readYazioApiBundle({ ...options, checkCancelled: () => { throw new Error('cancelled') }, request: async () => { requests++ } }), /cancelled/)
   assert.equal(requests, 0)
+})
+
+test('éves import minden napot lekér, a termékadatokat gyorsítótárazza és jelzi az előrehaladást', async () => {
+  let dayCalls = 0, productCalls = 0; const progress = []
+  const bundle = await readYazioApiBundle({ from: '2026-01-01', to: '2026-10-16', onProgress: value => progress.push(value), request: async (operation, value) => {
+    if (operation === 'day') { dayCalls++; return { products: value === '2026-01-01' || value === '2026-10-16' ? [{ ...entry, id: `meal-${value}`, date: `${value} 08:30:00` }] : [] } }
+    productCalls++; return product
+  } })
+  assert.equal(dayCalls, 289)
+  assert.equal(productCalls, 1)
+  assert.equal(bundle.nutrition_log.length, 2)
+  assert.equal(bundle.raw_days.length, 289)
+  assert.match(progress.at(-1), /289\/289/)
+  assert.match(progress.at(-1), /10\/10/)
 })

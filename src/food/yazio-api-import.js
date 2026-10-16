@@ -8,7 +8,7 @@ export function yazioDateRange(from, to) {
   }
   const start = parse(from), end = parse(to)
   const length = Math.round((end - start) / 86400000) + 1
-  if (length < 1 || length > 31) throw new Error('Egyszerre 1–31 nap kérhető le.')
+  if (length < 1 || length > 366) throw new Error('Egyszerre legfeljebb 366 nap kérhető le.')
   return Array.from({ length }, (_, index) => new Date(+start + index * 86400000).toISOString().slice(0, 10))
 }
 
@@ -17,7 +17,7 @@ export async function readYazioApiBundle({ from, to, request, checkCancelled = (
   const dates = yazioDateRange(from, to)
   const products = new Map(), rows = [], warnings = [], rawDays = []
   for (const [index, date] of dates.entries()) {
-    checkCancelled(); onProgress(`${index + 1}/${dates.length}. nap beolvasása…`)
+    checkCancelled(); onProgress(`${index + 1}/${dates.length}. nap beolvasása… (${Math.ceil((index + 1) / 31)}/${Math.ceil(dates.length / 31)}. időszak)`)
     const day = await request('day', date)
     checkCancelled()
     if (!Array.isArray(day.products)) throw new Error('A YAZIO naplóformátuma megváltozott; nem történt import.')
