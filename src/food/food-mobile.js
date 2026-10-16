@@ -251,7 +251,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
 
   function renderRecipes() {
     const container = $('[data-food-recipes]'); container.replaceChildren()
-    const recipes = [...project.recipes].sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))).slice(0, 3)
+    const recipes = [...project.recipes].sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))).slice(0, 2)
     if (!recipes.length) { container.innerHTML = '<div class="food-empty" style="grid-column:1/-1">Még nincs saját recepted.</div>'; return }
     recipes.forEach((recipe, index) => {
       const button = document.createElement('button'); button.type = 'button'; button.className = 'food-recipe'
@@ -1003,6 +1003,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-recipe-edit]').addEventListener('click', () => openRecipeEditor(selectedRecipeId))
     $('[data-food-recipe-delete]').addEventListener('click', deleteRecipe)
     $('[data-food-recipes-new]').addEventListener('click', () => openRecipeEditor())
+    $('[data-food-overview-new-recipe]').addEventListener('click', () => openRecipeEditor())
     $('[data-food-share]').addEventListener('click', openShareSheet)
     $('[data-food-share-send]').addEventListener('click', submitShare)
     $('[data-food-summary-menu]').addEventListener('click', openFoodMenu)
