@@ -774,6 +774,17 @@ function bindControls() {
       renderForecast(); scheduleSave()
     })
   }
+  // Both gallery attachment and direct camera capture use the same validated OCR pipeline.
+  el('#finance-receipt-camera').addEventListener('change', (event) => {
+    const file = event.currentTarget.files?.[0]
+    event.currentTarget.value = ''
+    if (!file) return
+    const input = el('#finance-receipt')
+    const transfer = new DataTransfer()
+    transfer.items.add(file)
+    input.files = transfer.files
+    input.dispatchEvent(new Event('change', { bubbles: true }))
+  })
   el('#finance-receipt').addEventListener('change', async (event) => {
     const request = ++receiptRequest
     receiptLoading = true
