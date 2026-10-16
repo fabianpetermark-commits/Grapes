@@ -5,11 +5,13 @@ import { lookupFatSecretProduct, lookupOpenFoodFactsProduct } from './food-api.j
 import { searchFoodCatalog } from './food-catalog-search.js'
 import { searchOfflineBasicFoods } from './food-offline-catalog.js'
 import { createMobileYazio } from './food-mobile-yazio.js'
+import { readYazioApiBundle } from './yazio-api-import.js'
+import { prepareYazioImport } from './food-yazio-import.js'
 import { healthImportEntries, prepareHealthBridgeImport } from './food-health-import.js'
 import { prepareYazioCsvImport, yazioImportEntries } from './yazio-import.js'
 import { getGrapesAccount, isGrapesDriveConnected, listGrapesProjects, loadGrapesProject, saveGrapesProject } from '../storage/grapes-drive.js'
 import { loadLocalProject, saveLocalProject } from '../storage/local-project-store.js'
-import { isGrapesAndroidApp, readAndroidHealthExport, readAndroidHealthExportSilent, readAndroidSamsungHealthExport } from '../android-bridge.js'
+import { isGrapesAndroidApp, readAndroidHealthExport, readAndroidHealthExportSilent, readAndroidSamsungHealthExport, requestAndroidYazio } from '../android-bridge.js'
 import { mobileIconSvg } from '../android-mobile-icons.js'
 
 const MODULE = 'Ételnapló'
@@ -44,6 +46,10 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   let foodSyncInProgress = null
   const FOOD_SYNC_INTERVAL_MS = 5 * 60 * 1000
   const AUTO_HEALTH_KEY = 'grapes-food-health-auto-v1'
+  const AUTO_YAZIO_PREFIX = 'grapes-food-yazio-auto-v1:'
+  let yazioAutoBusy = false
+  let lastYazioAutoAttempt = 0
+  const autoYazioEnabled = () => { try { return Boolean(profile?.id) && localStorage.getItem(AUTO_YAZIO_PREFIX + profile.id) === '1' } catch { return false } }
   let healthAutoBusy = false
   let lastHealthAutoAttempt = 0
   const autoHealthEnabled = () => { try { return localStorage.getItem(AUTO_HEALTH_KEY) === '1' } catch { return false } }
@@ -139,6 +145,53 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       render()
     } catch (error) { recordImportError('health', error); render() }
     finally { healthAutoBusy = false }
+  }
+
+  async function autoImportYazio() {
+    if (!project || !profile || !isGrapesAndroidApp() || !autoYazioEnabled() || yazioAutoBusy || document.visibilityState !== 'visible') return
+    if (Date.now() - lastYazioAutoAttempt < FOOD_SYNC_INTERVAL_MS) return
+    lastYazioAutoAttempt = Date.now()
+    yazioAutoBusy = true
+    const targetProfile = profile.id
+    let session = ''
+    try {
+      const saved = await requestAndroidYazio('status')
+      if (!saved?.remembered) throw new Error('Nincs mentett YAZIO-belépés. Előbb kapcsolódj a YAZIO panelen.')
+      if (!autoYazioEnabled() || profile?.id !== targetProfile) return
+      session = (await requestAndroidYazio('loginSaved')).session
+      const since = new Date()
+      since.setDate(since.getDate() - 6)
+      const bundle = await readYazioApiBundle({
+        from: localDate(since), to: localDate(),
+        request: (operation, value) => requestAndroidYazio(operation, session, value),
+        checkCancelled: () => {
+          if (profile?.id !== targetProfile || !autoYazioEnabled() || document.visibilityState !== 'visible') throw new Error('A YAZIO automatikus import megszakadt.')
+        },
+      })
+      if (profile?.id !== targetProfile || !autoYazioEnabled()) return
+      const preview = prepareYazioImport({ data: bundle, meta: bundle.meta[0] }, { profileId: targetProfile, existingEntries: project.diaryEntries })
+      // Never silently accept uncertain, modified, malformed or unsupported records.
+      if (preview.counts.uncertain || preview.counts.invalid || preview.warnings.length || preview.discrepancies.length) {
+        throw new Error('Bizonytalan vagy nem támogatott YAZIO-adat: ellenőrizd a kézi YAZIO-import előnézetét.')
+      }
+      const keys = new Set(project.diaryEntries.map(entry => entry.externalKey).filter(Boolean))
+      const fresh = preview.records.filter(item => item.status === 'ready' && !keys.has(item.entry.externalKey))
+      if (fresh.length) {
+        const now = new Date().toISOString()
+        for (const item of fresh) {
+          if (keys.has(item.entry.externalKey)) continue
+          project.diaryEntries.push({ ...item.entry, origin: { ...item.entry.origin, importedAt: now } })
+          keys.add(item.entry.externalKey)
+        }
+        scheduleSave()
+      }
+      recordImportSync('yazio', fresh.length)
+      render()
+    } catch (error) { recordImportError('yazio', error); render() }
+    finally {
+      if (session) await requestAndroidYazio('logout', session).catch(() => {})
+      yazioAutoBusy = false
+    }
   }
 
   async function load({ force = false } = {}) {
@@ -1373,8 +1426,14 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   function bind() {
     if (initialized) return
     initialized = true
-    $('[data-food-sync-refresh]').addEventListener('click', () => { syncFood({ force: true }).catch(() => {}); autoImportHealth().catch(() => {}) })
+    $('[data-food-sync-refresh]').addEventListener('click', () => { syncFood({ force: true }).catch(() => {}); autoImportHealth().catch(() => {}); autoImportYazio().catch(() => {}) })
     $('[data-food-health-auto]').checked = autoHealthEnabled()
+    $('[data-food-yazio-auto]').checked = autoYazioEnabled()
+    $('[data-food-yazio-auto]').addEventListener('change', event => {
+      if (!profile?.id) { event.currentTarget.checked = false; return }
+      try { localStorage.setItem(AUTO_YAZIO_PREFIX + profile.id, event.currentTarget.checked ? '1' : '0') } catch { event.currentTarget.checked = false }
+      if (event.currentTarget.checked) { lastYazioAutoAttempt = 0; autoImportYazio().catch(() => {}) }
+    })
     $('[data-food-health-auto]').addEventListener('change', event => {
       try { localStorage.setItem(AUTO_HEALTH_KEY, event.currentTarget.checked ? '1' : '0') } catch { event.currentTarget.checked = false }
       if (event.currentTarget.checked) autoImportHealth().catch(() => {})
@@ -1441,17 +1500,17 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     })
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') { stopBarcodeCamera(); flush().catch(() => {}) }
-      else { if (isGrapesDriveConnected()) { refreshInbox().catch(() => {}); syncFood().catch(() => {}) }; autoImportHealth().catch(() => {}) }
+      else { if (isGrapesDriveConnected()) { refreshInbox().catch(() => {}); syncFood().catch(() => {}) }; autoImportHealth().catch(() => {}); autoImportYazio().catch(() => {}) }
     })
     window.setInterval(() => {
       const foodPage = root.querySelector('[data-page="food"]')
-      if (foodPage && !foodPage.hidden && document.visibilityState === 'visible') { syncFood().catch(() => {}); autoImportHealth().catch(() => {}) }
+      if (foodPage && !foodPage.hidden && document.visibilityState === 'visible') { syncFood().catch(() => {}); autoImportHealth().catch(() => {}); autoImportYazio().catch(() => {}) }
     }, FOOD_SYNC_INTERVAL_MS)
   }
 
   bind()
   return { load, render, closeMeal, handleBack, isDetailOpen: () => Boolean(selectedMeal), flush, openHealthImport, openSamsungImport, importYazioCsv, importYazio, undoYazio,
-    syncFood, autoImportHealth, refreshInbox, openInbox, inboxSummary: () => ({ pending: inbox.length, unread: inbox.filter(item => !inboxSeen().has(item.id)).length }) }
+    syncFood, autoImportHealth, autoImportYazio, refreshInbox, openInbox, inboxSummary: () => ({ pending: inbox.length, unread: inbox.filter(item => !inboxSeen().has(item.id)).length }) }
 }
 
 function escapeHtml(value) {
