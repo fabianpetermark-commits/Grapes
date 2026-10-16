@@ -1,6 +1,7 @@
 import {
   lookupOpenFoodFactsProduct, searchOpenFoodFactsProducts,
 } from './food-api.js'
+import { searchVerifiedUsdaFoods } from './usda-foods.js'
 
 // Network searches never mutate Food projects. Selection and saving happen separately in the UI.
 const normalizeQuery = value => String(value ?? '').trim().replace(/\s+/g, ' ')
@@ -35,6 +36,7 @@ export async function searchFoodCatalog(query, {
     throw new Error('Legalább 2, legfeljebb 120 karakterrel keress.')
   const isBarcode = barcodePattern.test(term)
   const sources = [
+    ...(!isBarcode ? [{ id: 'usda', label: 'USDA · ellenőrzött offline', search: async () => { const products = searchVerifiedUsdaFoods(term); return { count: products.length, products } } }] : []),
     { id: 'openfoodfacts', label: 'Open Food Facts',
       search: () => isBarcode
         ? offBarcode(term).then(product => ({ count: 1, products: [product] }))

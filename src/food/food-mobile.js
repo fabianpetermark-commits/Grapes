@@ -3,6 +3,7 @@ import { acceptMealShare, acceptRecipeShare, rememberSharingContact } from './fo
 import { listFoodShares, loadFoodShare, setFoodShareState } from './food-sharing-client.js'
 import { lookupOpenFoodFactsProduct } from './food-api.js'
 import { searchFoodCatalog } from './food-catalog-search.js'
+import { searchVerifiedUsdaFoods } from './usda-foods.js'
 import { createMobileYazio } from './food-mobile-yazio.js'
 import { readYazioApiBundle } from './yazio-api-import.js'
 import { prepareYazioImport } from './food-yazio-import.js'
@@ -736,7 +737,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const element = document.createElement('div'); element.className = 'sheet-result'
     const main = document.createElement('button'); main.type = 'button'; main.className = 'sheet-result__main'
     const calories = food.nutrients.energyKcal == null ? 'nincs kalóriaadat' : `${number(food.nutrients.energyKcal, 1)} kcal / 100 ${food.baseUnit}`
-    const sourceLabel = food.source?.type === 'usda' ? 'USDA' : 'Open Food Facts'
+    const sourceLabel = food.source?.type === 'usda' ? 'USDA · ellenőrzött' : 'Open Food Facts'
     main.innerHTML = `<strong>${escapeHtml(food.name)}</strong><span>${calories}${external ? ` · ${sourceLabel}` : ''}</span>`
     const favoriteButton = document.createElement('button'); favoriteButton.type = 'button'; favoriteButton.className = 'sheet-result__favorite'; favoriteButton.hidden = external
     favoriteButton.textContent = favorite ? '★' : '☆'; favoriteButton.setAttribute('aria-label', favorite ? 'Eltávolítás a kedvencekből' : 'Hozzáadás a kedvencekhez')
@@ -755,19 +756,20 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   function startFoodSearch(query) {
     clearTimeout(searchTimer)
     const generation = ++searchGeneration
-    renderFoodSearch(query)
+    const offlineFoods = searchVerifiedUsdaFoods(query)
+    renderFoodSearch(query, { remoteFoods: offlineFoods })
     if (query.trim().length < 2) return
     searchTimer = setTimeout(async () => {
-      renderFoodSearch(query, { loading: true })
+      renderFoodSearch(query, { remoteFoods: offlineFoods, loading: true })
       let result
       try { result = await searchFoodCatalog(query) }
-      catch (error) { if (generation === searchGeneration) renderFoodSearch(query, { remoteError: error.message }); return }
+      catch (error) { if (generation === searchGeneration) renderFoodSearch(query, { remoteFoods: offlineFoods, remoteError: error.message }); return }
       if (generation !== searchGeneration || $('[data-food-search]').value !== query) return
       if (result.unavailable) {
-        renderFoodSearch(query, { remoteError: 'Az online termékkereső most nem érhető el; a mentett saját ételeid továbbra is használhatók.' })
+        renderFoodSearch(query, { remoteFoods: offlineFoods, remoteError: 'Az online kereső nem érhető el; az offline USDA és a saját ételek használhatók.' })
         return
       }
-      renderFoodSearch(query, { remoteFoods: result.products, remoteError: result.errors.join(' · ') || (result.products.length ? '' : 'Nincs több online találat.') })
+      renderFoodSearch(query, { remoteFoods: result.products, remoteError: result.errors.join(' · ') || (result.products.length ? '' : 'Nincs további találat.') })
     }, 1100)
   }
 

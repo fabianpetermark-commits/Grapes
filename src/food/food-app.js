@@ -6,6 +6,7 @@ import {
 } from './food-data.js'
 import { searchFoods } from './food-search.js'
 import { searchFoodCatalog } from './food-catalog-search.js'
+import { searchVerifiedUsdaFoods } from './usda-foods.js'
 import { lookupFatSecretProduct, lookupOpenFoodFactsProduct, searchFatSecretProducts, searchOpenFoodFactsProducts } from './food-api.js'
 import { healthImportEntries, prepareHealthBridgeImport } from './food-health-import.js'
 import { MAX_YAZIO_JSON_BYTES, applyYazioBatch, markYazioBatchComplete, prepareYazioImport, undoYazioBatch } from './food-yazio-import.js'
@@ -201,7 +202,7 @@ function renderFoodItems() {
     const row = document.createElement('article'); row.className = 'food__food-row'
     const favorite = document.createElement('button'); favorite.type = 'button'; favorite.className = 'food__favorite'; favorite.dataset.foodFavorite = food.id; favorite.setAttribute('aria-label', `${food.name}: kedvenc állapot váltása`); favorite.setAttribute('aria-pressed', String(project.favorites.includes(food.id))); favorite.textContent = project.favorites.includes(food.id) ? '★' : '☆'
     const info = document.createElement('div'); const name = document.createElement('strong'); name.textContent = food.name; const meta = document.createElement('span')
-    meta.textContent = `${food.category} · ${formatNumber(food.nutrients.energyKcal, 1)} kcal / 100 ${food.baseUnit}${food.source.type === 'openfoodfacts' ? ' · Open Food Facts' : food.source.type === 'fatsecret' ? ' · FatSecret' : food.source.type === 'shared-recipe' ? ' · Megosztott recept' : food.kind === 'recipe' ? ' · Saját recept' : ''}`; info.append(name, meta)
+    meta.textContent = `${food.category} · ${formatNumber(food.nutrients.energyKcal, 1)} kcal / 100 ${food.baseUnit}${food.source.type === 'openfoodfacts' ? ' · Open Food Facts' : food.source.type === 'fatsecret' ? ' · FatSecret' : food.source.type === 'usda' ? ' · USDA' : food.source.type === 'shared-recipe' ? ' · Megosztott recept' : food.kind === 'recipe' ? ' · Saját recept' : ''}`; info.append(name, meta)
     if (food.source.type === 'shared-recipe') {
       const copy = document.createElement('button'); copy.type = 'button'; copy.className = 'btn btn--sm'; copy.textContent = 'Saját másolat'; copy.dataset.libraryCopyFood = food.id; row.append(favorite, info, copy)
     } else {
@@ -241,7 +242,7 @@ function renderOpenFoodFactsResults(message = '', context = catalogSearchContext
       const image = document.createElement('img')
       image.src = food.imageUrl; image.alt = ''; image.loading = 'lazy'; row.append(image)
     }
-    const sourceLabel = food.source.type === 'fatsecret' ? 'FatSecret' : 'Open Food Facts'
+    const sourceLabel = food.source.type === 'usda' ? 'USDA · ellenőrzött' : food.source.type === 'fatsecret' ? 'FatSecret' : 'Open Food Facts'
     const info = document.createElement('div')
     const name = document.createElement('strong'); name.textContent = food.name
     const meta = document.createElement('span')
@@ -268,7 +269,7 @@ async function searchOpenFoodFactsByName(queryOverride = '', context = 'foods') 
   clearTimeout(catalogSearchTimer)
   const requestId = ++catalogRequestId
   catalogSearchContext = context
-  openFoodFactsResults = []
+  openFoodFactsResults = searchVerifiedUsdaFoods(query)
   const otherContext = context === 'diary' ? 'foods' : 'diary'
   catalogElements(otherContext).results.classList.add('hidden')
   if (query.length < 2) {
@@ -277,7 +278,7 @@ async function searchOpenFoodFactsByName(queryOverride = '', context = 'foods') 
   }
   elements.button.disabled = true
   elements.button.textContent = 'Keresés…'
-  renderOpenFoodFactsResults('Keresés az Open Food Facts és FatSecret adatbázisában…', context)
+  renderOpenFoodFactsResults('Ellenőrzött USDA-találatok offline · Open Food Facts keresése…', context)
   try {
     // Avoid repeating queries while navigating tabs, and respect public API rate limits.
     const cacheKey = query.toLocaleLowerCase('hu-HU')
@@ -321,8 +322,9 @@ function queueCatalogSearch(context) {
   elements.button.disabled = false
   elements.button.textContent = 'Keresés az adatbázisokban'
   elements.results.classList.add('hidden')
-  openFoodFactsResults = []
+  openFoodFactsResults = query.length >= 2 && query.length <= 120 ? searchVerifiedUsdaFoods(query) : []
   catalogSearchContext = context
+  if (openFoodFactsResults.length) renderOpenFoodFactsResults('Offline USDA-alapanyagok · online keresés hamarosan…', context)
   if (query.length < 3 || query.length > 120) return
   // Deliberately only query after the user has stopped typing.
   catalogSearchTimer = setTimeout(() => { searchOpenFoodFactsByName(query, context) }, 1100)
@@ -375,7 +377,7 @@ function loadOpenFoodFactsResult(index, context = 'foods') {
   $('#food-item-barcode').value = product.barcode
   $('#food-item-base-unit').value = product.baseUnit
   for (const key of CORE_NUTRIENTS) $('#food-item-' + key).value = product.nutrients[key] ?? ''
-  const sourceLabel = product.source.type === 'fatsecret' ? 'FatSecret' : 'Open Food Facts'
+  const sourceLabel = product.source.type === 'usda' ? 'USDA · ellenőrzött' : product.source.type === 'fatsecret' ? 'FatSecret' : 'Open Food Facts'
   $('#food-item-cancel').classList.remove('hidden')
   $('#food-api-status').textContent = sourceLabel + ' találat. Ellenőrizd az értékeket és mentsd.' +
     (context === 'diary' ? ' Mentés után visszatérünk a naplóhoz.' : '')
