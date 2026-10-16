@@ -1,46 +1,61 @@
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, rename, writeFile } from 'node:fs/promises'
+import { HUNGARIAN_USDA_CATALOG } from '../src/food/hungarian-food-catalog.js'
+import { searchUsdaCandidates, validateUsdaCandidate } from '../src/food/usda-client.js'
 
 const key = process.env.USDA_FDC_API_KEY
 if (!key) throw new Error('USDA_FDC_API_KEY is missing.')
-const foods = [
-  { name: 'Vöröshagyma', query: 'Onions, raw' },
-  { name: 'Fokhagyma', query: 'Garlic, raw' },
-  { name: 'Búzafinomliszt', query: 'Wheat flour, white, all-purpose, unenriched' },
-  { name: 'Sárgarépa', query: 'Carrots, raw' },
-  { name: 'Sütőtök', query: 'Pumpkin, raw' },
-  { name: 'Édesburgonya', query: 'Sweet potato, raw' },
-  { name: 'Brokkoli', query: 'Broccoli, raw' },
-  { name: 'Cukkini', query: 'Squash, summer, zucchini, raw' },
-  { name: 'Paprika', query: 'Peppers, sweet, red, raw' },
-  { name: 'Citrom', query: 'Lemons, raw' },
-]
-const results = []
-for (const food of foods) {
-  const response = await fetch('https://api.nal.usda.gov/fdc/v1/foods/search', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Api-Key': key },
-    body: JSON.stringify({ query: food.query, dataType: ['Foundation', 'SR Legacy'], pageSize: 10 }),
-  })
-  if (!response.ok) throw new Error('USDA search failed for ' + food.name + ': HTTP ' + response.status)
-  const payload = await response.json()
-  results.push({
-    nameHu: food.name,
-    query: food.query,
-    candidates: (payload.foods || []).map(item => ({
-      fdcId: item.fdcId,
-      description: item.description,
-      dataType: item.dataType,
-      nutrients: (item.foodNutrients || []).map(n => ({
-        nutrientId: n.nutrientId,
-        nutrientName: n.nutrientName,
-        unitName: n.unitName,
-        value: n.value,
-      })),
-    })),
-  })
+
+const outputPath = 'artifacts/usda-candidates.json'
+const temporaryPath = `${outputPath}.tmp`
+const report = {
+  source: 'USDA FoodData Central',
+  catalogVersion: 'food-v23-curated-1',
+  retrievedAt: new Date().toISOString(),
+  results: [],
 }
-await mkdir('artifacts', { recursive: true })
-await writeFile('artifacts/usda-candidates.json', JSON.stringify({
-  source: 'USDA FoodData Central', retrievedAt: new Date().toISOString(), results,
-}, null, 2) + '\n')
-console.log('Retrieved candidates for ' + results.length + ' Hungarian ingredients; manual nutritional validation required.')
+
+async function checkpoint() {
+  await mkdir('artifacts', { recursive: true })
+  await writeFile(temporaryPath, `${JSON.stringify(report, null, 2)}\n`)
+  await rename(temporaryPath, outputPath)
+}
+
+let failures = 0
+for (const food of HUNGARIAN_USDA_CATALOG) {
+  try {
+    const candidates = await searchUsdaCandidates(food.usdaQuery, { apiKey: key })
+    const pinned = candidates.find(candidate => candidate.fdcId === food.fdcId)
+    const validation = pinned
+      ? validateUsdaCandidate(pinned, food)
+      : { valid: false, errors: ['verified-fdcId-not-returned'] }
+    if (!validation.valid) failures++
+    report.results.push({
+      catalogId: food.id,
+      nameHu: food.nameHu,
+      expected: {
+        fdcId: food.fdcId,
+        description: food.usdaDescription,
+        dataType: food.dataType,
+        preparation: food.preparation,
+        ediblePart: food.ediblePart,
+        processing: food.processing,
+      },
+      validation,
+      candidates,
+    })
+  } catch (error) {
+    failures++
+    report.results.push({
+      catalogId: food.id,
+      nameHu: food.nameHu,
+      expected: { fdcId: food.fdcId, description: food.usdaDescription, dataType: food.dataType },
+      validation: { valid: false, errors: ['request-failed'] },
+      error: error?.message || String(error),
+      candidates: [],
+    })
+  }
+  await checkpoint()
+}
+
+if (failures) throw new Error(`${failures} USDA catalog record(s) failed validation; partial report preserved.`)
+console.log(`Validated ${report.results.length} curated Hungarian USDA identities.`)

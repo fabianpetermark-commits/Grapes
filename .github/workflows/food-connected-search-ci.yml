@@ -5,7 +5,9 @@ on:
   pull_request:
     paths:
       - 'src/food/**'
+      - 'scripts/usda-fetch-candidates.mjs'
       - 'tests/food-*.test.js'
+      - 'docs/FOOD_SEARCH_METHOD.md'
       - '.github/workflows/food-connected-search-ci.yml'
 permissions:
   contents: read

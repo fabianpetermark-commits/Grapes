@@ -31,14 +31,6 @@ try {
       scopes: 'https://www.googleapis.com/auth/drive.file',
       account: { id: 'catalog-test-user', name: 'Catalog Test', email: 'catalog@example.com' },
     }))
-    globalThis.__GRAPES_FATSECRET_TEST__ = async (_kind, term) => {
-      if (term === 'csirkemell') throw new Error('FatSecret temporarily unavailable')
-      return [{
-        kind: 'product', name: 'FatSecret – Keksz', barcode: '', category: 'Élelmiszer', baseUnit: 'g',
-        nutrients: { energyKcal: 450, protein: 6, carbohydrate: 65, fat: 18 },
-        source: { type: 'fatsecret', id: 'fs-cookie' },
-      }]
-    }
   })
   await context.route('https://www.googleapis.com/**', route =>
     route.fulfill({ status: 200, contentType: 'application/json', body: '{"files":[]}' }))
@@ -55,7 +47,7 @@ try {
   await page.locator('#food-save-status').filter({ hasText: /Helyi napló|Drive-ról betöltve/ }).waitFor()
   await page.locator('#food-entry-search').fill('keksz')
   await page.locator('#food-entry-catalog-results .food__off-result').first().waitFor()
-  assert.equal(await page.locator('#food-entry-catalog-results .food__off-result').count(), 2)
+  assert.equal(await page.locator('#food-entry-catalog-results .food__off-result').count(), 1)
   await page.locator('#food-entry-catalog-results .food__off-result', { hasText: 'Teszt keksz' })
     .locator('[data-off-result]').click()
   await page.locator('#food-item-name').waitFor()
@@ -65,15 +57,11 @@ try {
   await page.locator('#food-entry-amount').fill('75')
   await page.locator('#food-entry-form button[type="submit"]').click()
   assert.equal(await page.locator('.food__entry', { hasText: 'Teszt keksz' }).count(), 1)
-  await page.locator('[data-food-tab="foods"]').click()
-  await page.locator('#food-search').fill('csirkemell')
-  await page.locator('#food-off-results .food__off-result').first().waitFor()
-  assert.match(await page.locator('#food-off-results').textContent(), /FatSecret temporarily unavailable/)
   await page.locator('#food-save-status').filter({ hasText: /Helyben mentve/ }).waitFor()
   await page.reload()
   await page.locator('#food-save-status').filter({ hasText: /Helyi napló|Drive-ról betöltve/ }).waitFor()
   assert.equal(await page.locator('.food__entry', { hasText: 'Teszt keksz' }).count(), 1)
-  console.log('Food catalog browser: both providers, diary selection, form review, partial failure and reload succeeded')
+  console.log('Food catalog browser: Open Food Facts selection, form review and reload succeeded')
 } finally {
   await browser?.close()
   server.kill()
