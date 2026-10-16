@@ -137,8 +137,10 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       const nutrition = entries.filter(entry => entry.snapshot?.category !== 'Folyadék')
       const currentKeys = new Set(existingEntries.map(entry => entry.externalKey).filter(Boolean))
       const freshNutrition = nutrition.filter(entry => !currentKeys.has(entry.externalKey) && (currentKeys.add(entry.externalKey), true))
+      if (!autoHealthEnabled() || profile?.id !== preview.profileId) return
       let importedWater = 0
-      if (hydration.length && onHydrationImport) importedWater = onHydrationImport(hydration)
+      if (hydration.length && onHydrationImport) importedWater = Number(await onHydrationImport(hydration)) || 0
+      if (!autoHealthEnabled() || profile?.id !== preview.profileId) return
       if (freshNutrition.length) project.diaryEntries.push(...freshNutrition)
       recordImportSync('health', freshNutrition.length + importedWater)
       scheduleSave()
@@ -186,6 +188,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
         scheduleSave()
       }
       recordImportSync('yazio', fresh.length)
+      if (!fresh.length) scheduleSave()
       render()
     } catch (error) { recordImportError('yazio', error); render() }
     finally {
@@ -324,6 +327,8 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   function setBar(selector, value, target) { $(selector).style.width = `${target ? Math.min(100, (Number(value) || 0) / target * 100) : 0}%` }
 
   function renderOverview() {
+    const yazioToggle = $('[data-food-yazio-auto]')
+    if (yazioToggle) yazioToggle.checked = autoYazioEnabled()
     const entries = selectedEntries()
     const totals = summarizeEntries(entries)
     const targets = currentTargets(project, selectedDate)
