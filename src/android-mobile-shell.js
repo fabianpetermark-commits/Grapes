@@ -103,6 +103,56 @@ function closeSheet() {
   sheetBackdrop.classList.remove('is-open')
 }
 
+// Shared drag-to-dismiss behavior: only the handle starts a drag, never the scrolling content.
+function installSheetGestures() {
+  const fields = sheet => [...sheet.querySelectorAll('input:not([type="file"]), select, textarea')]
+    .map(field => [field.name || field.id || field.dataset?.field || '', field.type === 'checkbox' ? field.checked : field.value])
+  function dismiss(sheet) {
+    const changed = sheet.dataset.sheetInitialValues !== JSON.stringify(fields(sheet))
+    const hasForm = !!sheet.querySelector('input:not([type="file"]), textarea, select')
+    if (changed && hasForm && !window.confirm('A nem mentett módosítások elvesznek. Bezárod?')) return false
+    if (activePage === 'food' && mobileFood?.handleBack()) return true
+    closeSheet()
+    return true
+  }
+  document.querySelectorAll('.bottom-sheet').forEach(sheet => {
+    const handle = sheet.querySelector('.sheet-handle')
+    if (!handle) return
+    handle.setAttribute('role', 'button')
+    handle.setAttribute('tabindex', '0')
+    handle.setAttribute('aria-label', 'Panel bezárása')
+    handle.style.touchAction = 'none'
+    let drag = null
+    const reset = () => { drag = null; sheet.style.removeProperty('transform'); sheet.style.removeProperty('transition') }
+    handle.addEventListener('pointerdown', event => {
+      if (!sheet.classList.contains('is-open') || event.button !== 0) return
+      drag = { id: event.pointerId, y: event.clientY, delta: 0 }
+      handle.setPointerCapture(event.pointerId)
+      sheet.style.transition = 'none'
+    })
+    handle.addEventListener('pointermove', event => {
+      if (!drag || event.pointerId !== drag.id) return
+      drag.delta = Math.max(0, event.clientY - drag.y)
+      sheet.style.transform = `translateY(${drag.delta}px)`
+    })
+    handle.addEventListener('pointerup', event => {
+      if (!drag || event.pointerId !== drag.id) return
+      const shouldDismiss = drag.delta >= 90
+      reset()
+      if (shouldDismiss) dismiss(sheet)
+    })
+    handle.addEventListener('pointercancel', reset)
+    handle.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); dismiss(sheet) }
+    })
+    new MutationObserver(() => {
+      if (sheet.classList.contains('is-open')) {
+        sheet.dataset.sheetInitialValues = JSON.stringify(fields(sheet))
+      } else reset()
+    }).observe(sheet, { attributes: true, attributeFilter: ['class'] })
+  })
+}
+
 function setSyncProviderStatus(message, state = '') {
   const status = $('[data-yazio-status]')
   if (!status) return
@@ -1016,6 +1066,7 @@ mobileFood = createMobileFoodController({
   getHydrationExternalKeys: hydrationExternalKeys,
 })
 hydrateMobileIcons()
+installSheetGestures()
 refreshUpdateInbox()
 window.grapesHandleAndroidBack = () => {
   if ($('[data-notifications-sheet].is-open')) { closeSheet(); return true }
