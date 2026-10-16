@@ -42,6 +42,12 @@ function roundedAmount(value) {
 export function normalizeTransaction(value = {}) {
   const type = value.type === 'income' ? 'income' : 'expense'
   const amount = roundedAmount(value.amount)
+  const originalCurrency = String(value.originalCurrency || value.currency || '').toUpperCase()
+  const originalAmount = value.originalAmount == null ? null : roundedAmount(value.originalAmount)
+  const exchangeRate = value.exchangeRate == null ? null : parseMoneyInput(value.exchangeRate)
+  if (originalCurrency && !['HUF', 'EUR', 'USD', 'GBP', 'CZK', 'PLN'].includes(originalCurrency)) throw new Error('Nem támogatott tranzakciós pénznem.')
+  if (originalAmount !== null && (!Number.isFinite(originalAmount) || originalAmount <= 0)) throw new Error('Érvénytelen eredeti összeg.')
+  if (exchangeRate !== null && (!Number.isFinite(exchangeRate) || exchangeRate <= 0)) throw new Error('Érvénytelen átváltási árfolyam.')
   const date = validDate(value.date) ? value.date : ''
   if (!Number.isFinite(amount) || amount <= 0) throw new Error('Az összegnek nullánál nagyobbnak kell lennie.')
   if (!date) throw new Error('Érvényes dátum szükséges.')
@@ -51,6 +57,9 @@ export function normalizeTransaction(value = {}) {
     type,
     planned: type === 'expense' && Boolean(value.planned),
     amount,
+    ...(originalCurrency ? { originalCurrency } : {}),
+    ...(originalAmount !== null ? { originalAmount } : {}),
+    ...(exchangeRate !== null ? { exchangeRate } : {}),
     date,
     category: String(value.category || '').trim() || (type === 'income' ? 'Egyéb bevétel' : 'Egyéb kiadás'),
     note: String(value.note || '').trim(),
