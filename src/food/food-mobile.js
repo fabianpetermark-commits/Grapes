@@ -863,6 +863,66 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const knownEnergy = logged.map(day => day.totals.energyKcal).filter(value => value !== null)
     const average = knownEnergy.length ? knownEnergy.reduce((sum, value) => sum + value, 0) / knownEnergy.length : null
     const macro = key => logged.map(day => day.totals[key]).filter(value => value != null).reduce((sum, value) => sum + value, 0)
+    const visual = $('[data-food-stats-visuals]')
+    visual.replaceChildren()
+    const card = (title, content) => {
+      const section = document.createElement('section')
+      section.className = 'food-entry-card'
+      const heading = document.createElement('strong'); heading.textContent = title
+      section.append(heading, content)
+      visual.append(section)
+    }
+    const maxEnergy = Math.max(1, ...days.map(day => Number(day.totals.energyKcal) || 0))
+    const trend = document.createElement('div')
+    trend.style.cssText = 'display:flex;align-items:flex-end;gap:3px;height:112px;padding-top:12px;overflow:hidden'
+    const plotted = days.length > 45 ? days.filter((_, index) => index % Math.ceil(days.length / 45) === 0) : days
+    for (const day of plotted) {
+      const value = Number(day.totals.energyKcal)
+      const bar = document.createElement('div')
+      bar.style.cssText = 'flex:1;min-width:2px;border-radius:4px 4px 0 0;background:#55dff6;opacity:.85'
+      bar.style.height = `${day.totals.energyKcal == null ? 2 : Math.max(2, Math.min(100, value / maxEnergy * 100))}%`
+      bar.title = `${day.key}: ${nutrient(day.totals.energyKcal, 0, ' kcal')}`
+      bar.setAttribute('aria-label', bar.title)
+      trend.append(bar)
+    }
+    card('Kalóriabevitel alakulása', trend)
+    const macroValues = [['Fehérje', macro('protein'), '#55dff6'], ['Szénhidrát', macro('carbohydrate'), '#a69cff'], ['Zsír', macro('fat'), '#ffc48b']]
+    const energyShares = macroValues.map(([label, grams, color], index) => ({ label, kcal: grams * (index === 2 ? 9 : 4), color }))
+    const macroTotal = energyShares.reduce((sum, item) => sum + item.kcal, 0)
+    const distribution = document.createElement('div')
+    distribution.style.cssText = 'display:flex;flex-direction:column;gap:8px;padding-top:10px'
+    const ring = document.createElement('div')
+    ring.style.cssText = 'height:14px;border-radius:999px;overflow:hidden;display:flex;background:#1d2b38'
+    for (const item of energyShares) {
+      const portion = document.createElement('span')
+      portion.style.width = `${macroTotal ? item.kcal / macroTotal * 100 : 0}%`
+      portion.style.background = item.color
+      ring.append(portion)
+      const label = document.createElement('span')
+      label.textContent = `${item.label}: ${macroTotal ? number(item.kcal / macroTotal * 100, 1) : 0}% · ${number(item.kcal, 0)} kcal`
+      distribution.append(label)
+    }
+    distribution.prepend(ring)
+    card('Makrók energiarészaránya (4/4/9 kcal/g)', distribution)
+    const mealTotals = new Map(MEALS.map(([key, label]) => [key, { label, kcal: 0, entries: 0 }]))
+    for (const day of days) {
+      for (const entry of entriesForLocalDay(project.diaryEntries, day.key, profile.id)) {
+        if (entry.snapshot?.category === 'Folyadék') continue
+        const row = mealTotals.get(entry.mealType)
+        if (!row) continue
+        row.entries += 1
+        const value = summarizeEntries([entry]).energyKcal
+        if (value != null) row.kcal += value
+      }
+    }
+    const mealList = document.createElement('div')
+    mealList.style.cssText = 'display:flex;flex-direction:column;gap:7px;padding-top:10px'
+    for (const row of mealTotals.values()) {
+      const line = document.createElement('div')
+      line.textContent = `${row.label}: ${number(row.kcal)} kcal · ${row.entries} bejegyzés`
+      mealList.append(line)
+    }
+    card('Étkezésenkénti összesítés', mealList)
     $('[data-food-stats-content]').innerHTML = `<div class="food-entry-card"><strong>${days.length} nap · ${logged.length} naplózott nap</strong><span>Átlag: ${nutrient(average, 0, ' kcal / nap')}</span><span>Fehérje: ${number(macro('protein'), 1)} g · Szénhidrát: ${number(macro('carbohydrate'), 1)} g · Zsír: ${number(macro('fat'), 1)} g összesen</span></div>${days.map(day => `<div class="sheet-result"><strong>${new Date(`${day.key}T12:00:00`).toLocaleDateString('hu-HU', { weekday: 'short', month: 'short', day: 'numeric' })}</strong><span>${nutrient(day.totals.energyKcal, 0, ' kcal')}</span></div>`).join('')}`
   }
 
