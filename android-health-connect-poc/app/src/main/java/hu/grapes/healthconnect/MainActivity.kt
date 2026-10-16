@@ -4,6 +4,9 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.content.Intent
+import android.provider.MediaStore
+import androidx.core.content.FileProvider
+import java.io.File
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -43,6 +46,7 @@ class MainActivity : ComponentActivity() {
     private val updateManager by lazy { AndroidUpdateManager(this) }
     private lateinit var webView: WebView
     private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
+    private var pendingCapturedPhoto: Uri? = null
     private var pendingCameraPermission: PermissionRequest? = null
     private var pendingHealthRequest: PendingHealthRequest? = null
     private var pendingDriveRequestId: String? = null
@@ -65,9 +69,36 @@ class MainActivity : ComponentActivity() {
     private data class PendingHealthRequest(val from: LocalDate, val requestId: String)
 
     private val fileChooser = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        val files = WebChromeClient.FileChooserParams.parseResult(result.resultCode, result.data)
+        val files = if (result.resultCode == RESULT_OK && pendingCapturedPhoto != null) {
+            arrayOf(pendingCapturedPhoto!!)
+        } else {
+            WebChromeClient.FileChooserParams.parseResult(result.resultCode, result.data)
+        }
         fileChooserCallback?.onReceiveValue(files)
         fileChooserCallback = null
+        pendingCapturedPhoto = null
+    }
+
+    private fun launchWebFileChooser(params: WebChromeClient.FileChooserParams) {
+        val cameraOnly = params.isCaptureEnabled &&
+            params.acceptTypes.any { it.startsWith("image/") || it == "image/*" }
+        if (!cameraOnly) {
+            pendingCapturedPhoto = null
+            fileChooser.launch(params.createIntent())
+            return
+        }
+        val directory = File(cacheDir, "camera").apply { mkdirs() }
+        val photo = File.createTempFile("receipt-", ".jpg", directory)
+        val uri = FileProvider.getUriForFile(this, "${applicationContext.packageName}.fileprovider", photo)
+        val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
+            putExtra(MediaStore.EXTRA_OUTPUT, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        }
+        if (cameraIntent.resolveActivity(packageManager) == null) {
+            throw IllegalStateException("Nem található kameralkalmazás a készüléken.")
+        }
+        pendingCapturedPhoto = uri
+        fileChooser.launch(cameraIntent)
     }
 
     private val permissionLauncher = registerForActivityResult(HealthConnectBridge.permissionContract) {
@@ -229,10 +260,11 @@ class MainActivity : ComponentActivity() {
                     fileChooserCallback?.onReceiveValue(null)
                     fileChooserCallback = callback
                     return runCatching {
-                        fileChooser.launch(params.createIntent())
+                        launchWebFileChooser(params)
                         true
                     }.getOrElse {
                         fileChooserCallback = null
+                        pendingCapturedPhoto = null
                         callback.onReceiveValue(null)
                         false
                     }
