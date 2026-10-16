@@ -1370,7 +1370,8 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       else if (isGrapesDriveConnected()) { refreshInbox().catch(() => {}); syncFood().catch(() => {}) }
     })
     window.setInterval(() => {
-      if (!root.querySelector('[data-food-overview]')?.closest('[data-page="food"]')?.hidden && document.visibilityState === 'visible') syncFood().catch(() => {})
+      const foodPage = root.querySelector('[data-page="food"]')
+      if (foodPage && !foodPage.hidden && document.visibilityState === 'visible') syncFood().catch(() => {})
     }, FOOD_SYNC_INTERVAL_MS)
   }
 
