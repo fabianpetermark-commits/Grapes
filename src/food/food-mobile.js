@@ -692,7 +692,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
         if (barcodeStream !== stream) return
         try {
           const codes = await detector.detect(video)
-          const code = String(codes.find(item => /^\\d{7,14}$/.test(item.rawValue))?.rawValue || '')
+          const code = String(codes.find(item => /^\d{7,14}$/.test(item.rawValue))?.rawValue || '')
           if (code) {
             stopBarcodeCamera()
             await addBarcode(code)
