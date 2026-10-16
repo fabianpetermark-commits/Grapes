@@ -268,8 +268,12 @@ function renderUpdateInbox() {
   const card = $('[data-update-notification]')
   const update = availableAppUpdate
   const readVersion = Number(localStorage.getItem(UPDATE_READ_KEY) || 0)
-  badge.hidden = !update || readVersion === update.versionCode
-  empty.hidden = Boolean(update)
+  const food = mobileFood?.inboxSummary() || { pending: 0, unread: 0 }
+  const foodCard = $('[data-food-share-notification]')
+  foodCard.hidden = food.pending === 0
+  $('[data-food-share-notes]').textContent = `${food.pending} függőben lévő megosztás · ${food.unread} olvasatlan`
+  badge.hidden = (!update || readVersion >= update.versionCode) && food.unread === 0
+  empty.hidden = Boolean(update) || food.pending > 0
   card.hidden = !update
   if (!update) return
   $('[data-update-title]').textContent = `${update.versionName} elérhető`
@@ -282,12 +286,18 @@ function setAvailableAppUpdate(value) {
 }
 
 async function refreshUpdateInbox() {
-  if (!isGrapesAndroidApp()) return renderUpdateInbox()
-  try { setAvailableAppUpdate(await getAndroidAppUpdate()) }
-  catch { renderUpdateInbox() }
+  if (isGrapesAndroidApp()) {
+    try { setAvailableAppUpdate(await getAndroidAppUpdate()) }
+    catch { renderUpdateInbox() }
+  }
+  if (mobileFood) {
+    try { await mobileFood.refreshInbox() } catch { /* A postaláda hálózati hibája nem akadályozhatja a verziófrissítést. */ }
+  }
+  renderUpdateInbox()
 }
 
-function openUpdateInbox() {
+async function openUpdateInbox() {
+  await refreshUpdateInbox()
   if (availableAppUpdate) {
     localStorage.setItem(UPDATE_READ_KEY, String(availableAppUpdate.versionCode))
     renderUpdateInbox()
@@ -932,6 +942,13 @@ $('[data-login]').addEventListener('click', connectDrive)
 $('[data-connect-drive]').addEventListener('click', connectDrive)
 $('[data-account-login]').addEventListener('click', openAccountLogin)
 $('[data-notifications]').addEventListener('click', openUpdateInbox)
+$('[data-food-share-open]').addEventListener('click', async () => {
+  closeSheet()
+  showPage('food')
+  await mobileFood?.load()
+  await mobileFood?.refreshInbox({ open: true })
+  renderUpdateInbox()
+})
 $('[data-update-install]').addEventListener('click', async event => {
   if (!availableAppUpdate) return
   const status = $('[data-update-status]')
