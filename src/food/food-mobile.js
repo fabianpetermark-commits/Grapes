@@ -1181,7 +1181,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       const menu = event.target.closest('[data-food-menu]'); if (menu) return handleMenuAction(menu.dataset.foodMenu)
     })
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') flush().catch(() => {})
+      if (document.visibilityState === 'hidden') { stopBarcodeCamera(); flush().catch(() => {}) }
       else if (isGrapesDriveConnected()) refreshInbox().catch(() => {})
     })
   }
