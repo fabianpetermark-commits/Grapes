@@ -19,3 +19,7 @@ test('ambiguous or missing notification values do not create transactions', () =
   assert.equal(parseFinanceNotification({ title: 'Értesítés', text: '24,90 EUR' }), null)
   assert.equal(parseFinanceNotification({ title: 'Fizetés és jóváírás', text: '24,90 EUR' }), null)
 })
+
+test('nem javasol tranzakciót, ha a banki értesítés összeget és egyenleget is tartalmaz', () => {
+  assert.equal(parseFinanceNotification({ title: 'Kártyás vásárlás', text: 'Vásárlás: 12,50 EUR. Egyenleg: 150 EUR', packageName: 'bank.app' }), null)
+})
