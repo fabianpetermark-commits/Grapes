@@ -1109,6 +1109,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     try {
       inbox = await listFoodShares()
       button.dataset.count = String(inbox.length)
+      $('[data-food-inbox-label]').textContent = inbox.length ? `${inbox.length} beérkező megosztás` : 'Beérkező receptek és étkezések'
       if (open) openInbox()
     } catch (error) { if (open) showToast(error.message) }
   }
@@ -1159,6 +1160,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       await setFoodShareState(activeInboxShare.id, 'accepted')
       inbox = inbox.filter(item => item.id !== activeInboxShare.id)
       $('[data-food-inbox]').dataset.count = String(inbox.length)
+      $('[data-food-inbox-label]').textContent = inbox.length ? `${inbox.length} beérkező megosztás` : 'Beérkező receptek és étkezések'
       scheduleSave(); activeInboxShare = null; activeInboxItem = null; $('[data-food-inbox-preview]').hidden = true; renderInboxItems(); render()
       status.textContent = 'A megosztás bekerült a saját naplódba.'
     } catch (error) { status.textContent = error.message }
@@ -1171,6 +1173,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       await setFoodShareState(activeInboxShare.id, 'rejected')
       inbox = inbox.filter(item => item.id !== activeInboxShare.id)
       $('[data-food-inbox]').dataset.count = String(inbox.length)
+      $('[data-food-inbox-label]').textContent = inbox.length ? `${inbox.length} beérkező megosztás` : 'Beérkező receptek és étkezések'
       activeInboxShare = null; activeInboxItem = null; $('[data-food-inbox-preview]').hidden = true; renderInboxItems(); status.textContent = 'A megosztást elutasítottad.'
     } catch (error) { status.textContent = error.message }
   }
@@ -1188,7 +1191,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
 
   function handleBack() {
     if (recipeCatalogActive) { closeRecipeCatalog(); return true }
-    if ($('[data-food-recipe-edit-sheet]').classList.contains('is-open')) return dismissRecipeEditor()
+    if ($('[data-food-recipe-edit-sheet]').classList.contains('is-open')) { dismissRecipeEditor(); return true }
     if (root.querySelector('.bottom-sheet.is-open')) { closeSheets(); return true }
     if (selectedMeal) { closeMeal(); return true }
     if (selectedRecipeId) { openRecipes(); return true }
