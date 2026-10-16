@@ -1074,6 +1074,7 @@ $$('[data-action]').forEach(button => {
 document.addEventListener('keydown', event => { if (event.key === 'Escape') closeSheet() })
 sheetBackdrop.addEventListener('click', closeSheet)
 window.addEventListener('grapes:android-update', event => setAvailableAppUpdate(event.detail))
+window.addEventListener('grapes:food-inbox-changed', renderUpdateInbox)
 onGrapesDriveChange(() => {
   mobileEbooks = []
   if (!isGrapesDriveConnected()) { mobileReader = null; mobileReaderBook = null }
@@ -1082,7 +1083,10 @@ onGrapesDriveChange(() => {
   renderAccount(); renderProjects(); renderSync()
 })
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') updateHomeGreeting()
+  if (document.visibilityState === 'visible') {
+    updateHomeGreeting()
+    refreshUpdateInbox().catch(() => {})
+  }
   if (document.visibilityState === 'hidden') {
     persistReaderProgress().catch(() => {})
     mobileFood?.flush().catch(() => {})
