@@ -83,3 +83,15 @@ test('a rögzített azonosító, leírás, típus, kategória és állapot együ
   assert.ok(wrong.errors.includes('description-mismatch'))
   assert.ok(wrong.errors.includes('forbidden:cooked'))
 })
+
+test('a tiltott kifejezés csak teljes szóként illeszkedik', () => {
+  const flour = {
+    fdcId: 169761, description: 'Wheat flour, white, all-purpose, unenriched',
+    dataType: 'SR Legacy', foodCategory: 'Cereal Grains and Pasta', score: 999,
+  }
+  const record = {
+    fdcId: 169761, usdaDescription: flour.description, dataType: 'SR Legacy',
+    validation: { required: ['wheat', 'flour', 'unenriched'], forbidden: ['enriched'] },
+  }
+  assert.deepEqual(validateUsdaCandidate(flour, record), { valid: true, errors: [] })
+})

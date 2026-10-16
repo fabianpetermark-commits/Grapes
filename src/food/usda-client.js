@@ -72,6 +72,8 @@ export async function searchUsdaCandidates(query, {
 }
 
 const normalizedDescription = value => String(value || '').trim().toLocaleLowerCase('en-US')
+const searchableDescription = value => ` ${normalizedDescription(value).replace(/[^a-z0-9]+/g, ' ').trim()} `
+const containsPhrase = (description, phrase) => description.includes(searchableDescription(phrase))
 
 export function validateUsdaCandidate(candidate, catalogRecord) {
   const errors = []
@@ -81,12 +83,12 @@ export function validateUsdaCandidate(candidate, catalogRecord) {
   if (candidate?.dataType !== catalogRecord.dataType) errors.push('data-type-mismatch')
   if (!Number.isFinite(candidate?.score)) errors.push('missing-score')
   if (!candidate?.foodCategory) errors.push('missing-food-category')
-  const description = normalizedDescription(candidate?.description)
+  const description = searchableDescription(candidate?.description)
   for (const term of catalogRecord.validation?.required || []) {
-    if (!description.includes(normalizedDescription(term))) errors.push(`missing:${term}`)
+    if (!containsPhrase(description, term)) errors.push(`missing:${term}`)
   }
   for (const term of catalogRecord.validation?.forbidden || []) {
-    if (description.includes(normalizedDescription(term))) errors.push(`forbidden:${term}`)
+    if (containsPhrase(description, term)) errors.push(`forbidden:${term}`)
   }
   return { valid: errors.length === 0, errors }
 }
