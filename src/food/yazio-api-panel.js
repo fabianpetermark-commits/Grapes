@@ -10,7 +10,10 @@ export function createYazioApiPanel({ openSheet, closeSheet, importBundle, openF
   sheet.innerHTML = `<div class="sheet-handle"></div><h2>YAZIO-kapcsolat</h2>
     <form data-yazio-api-form class="sheet-form">
       <label>E-mail<input class="search" name="email" type="email" autocomplete="off" required></label>
-      <label>YAZIO-jelszó<input class="search" name="password" type="password" autocomplete="off" required></label>
+      <label>YAZIO-jelszó<input class="search" name="password" type="password" autocomplete="off"></label>
+      <label><input type="checkbox" name="remember"> Belépés biztonságos megjegyzése ezen az Android-eszközön</label>
+      <p data-yazio-saved-status></p>
+      <button type="button" class="quick-action" data-yazio-forget>Mentett YAZIO-belépés törlése</button>
       <label>Ettől<input class="search" name="from" type="date" required></label>
       <label>Eddig<input class="search" name="to" type="date" required></label>
       <div class="yazio-api-actions"><button class="primary module-cta yazio-api-action" type="submit">Szinkronizálás</button>
@@ -80,7 +83,17 @@ export function createYazioApiPanel({ openSheet, closeSheet, importBundle, openF
   sheet.querySelector('[data-yazio-guide-close]').addEventListener('click', () => { guide.hidden = true })
   sheet.querySelector('[data-yazio-guide-prev]').addEventListener('click', () => { if (guideIndex > 0) { guideIndex--; renderGuide() } })
   sheet.querySelector('[data-yazio-guide-next]').addEventListener('click', () => { if (guideIndex < guideSlides.length - 1) { guideIndex++; renderGuide() } else guide.hidden = true })
-  let busy = false, cancelled = false
+  let busy = false, cancelled = false, hasSavedLogin = false
+  const savedStatus = sheet.querySelector('[data-yazio-saved-status]')
+  async function refreshSavedStatus() {
+    hasSavedLogin = isGrapesAndroidApp() && Boolean((await requestAndroidYazio('status').catch(() => ({ remembered: false }))).remembered)
+    savedStatus.textContent = hasSavedLogin ? 'Mentett belépés elérhető: üres jelszómezővel is szinkronizálhatsz.' : 'Nincs mentett YAZIO-belépés.'
+    sheet.querySelector('[data-yazio-forget]').hidden = !hasSavedLogin
+  }
+  sheet.querySelector('[data-yazio-forget]').addEventListener('click', async () => {
+    if (busy || !window.confirm('Törlöd a készüléken tárolt YAZIO-belépési adatokat?')) return
+    await requestAndroidYazio('forget'); await refreshSavedStatus()
+  })
   new MutationObserver(() => {
     if (!sheet.classList.contains('is-open')) {
       guide.hidden = true
@@ -103,7 +116,9 @@ export function createYazioApiPanel({ openSheet, closeSheet, importBundle, openF
       if (to > dateString(new Date())) throw new Error('Jövőbeli nap nem kérhető le.')
       busy = true; cancelled = false; submit.disabled = true
       status.textContent = 'Belépés a YAZIO-ba…'
-      const login = requestAndroidYazio('login', form.elements.email.value.trim(), form.elements.password.value)
+      const operation = form.elements.password.value ? (form.elements.remember.checked ? 'loginRemembered' : 'login') : 'loginSaved'
+      if (operation === 'loginSaved' && !hasSavedLogin) throw new Error('Add meg a YAZIO-jelszót, vagy kapcsolódj egy korábban mentett fiókhoz.')
+      const login = requestAndroidYazio(operation, form.elements.email.value.trim(), form.elements.password.value)
       form.elements.password.value = ''
       session = (await login).session
       checkCancelled()
@@ -135,5 +150,6 @@ export function createYazioApiPanel({ openSheet, closeSheet, importBundle, openF
       status.textContent = ''; form.elements.password.value = ''; guide.hidden = true
     }
     openSheet(sheet)
+    refreshSavedStatus().catch(() => {})
   } }
 }
