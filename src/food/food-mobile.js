@@ -233,7 +233,10 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const hasEnergyGoal = Number.isFinite(Number(targets.energyKcal)) && Number(targets.energyKcal) > 0
     const hasCompleteEnergy = entries.length > 0 && totals.energyKcal != null
     const goalReached = hasEnergyGoal && hasCompleteEnergy && totals.energyKcal >= targets.energyKcal
-    $('[data-food-message]').textContent = goalReached ? 'Megvan a napi cél!' : !entries.length ? 'Indítsuk jól ezt a napot is!' : 'Jó úton haladsz'
+    const isFuture = selectedDate > localDate()
+    const isPast = selectedDate < localDate()
+    const hour = new Date().getHours()
+    $('[data-food-message]').textContent = isFuture ? 'Tervezd meg előre az étkezéseidet' : isPast ? (entries.length ? 'Ezen a napon is naplóztál' : 'Erre a napra nincs bejegyzés') : !entries.length ? (hour < 11 ? 'Jó reggelt! Kezdődhet a naplózás' : hour < 17 ? 'Még hozzáadhatod a mai étkezéseidet' : 'A mai napot is összefoglalhatod') : goalReached ? 'Elérted a beállított napi kalóriacélt' : 'A mai étkezéseid rögzítve'
     $('[data-food-remaining]').textContent = totals.energyKcal == null ? 'Néhány ételnél hiányzik a kalóriaadat' : remaining ? `${number(remaining)} kcal maradt mára` : `${number(totals.energyKcal)} kcal naplózva`
     for (const key of ['protein', 'carbohydrate', 'fat']) {
       $(`[data-food-${key}]`).textContent = nutrient(totals[key], 1, ' g')
@@ -841,16 +844,26 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
 
   function openStats() {
     closeSheets()
+    renderStats()
+    setSheetOpen($('[data-food-stats-sheet]'), true)
+  }
+
+  function renderStats() {
+    const range = $('[data-food-stats-range]').value
+    const datedEntries = project.diaryEntries.filter(entry => entry.profileId === profile.id && entry.snapshot?.category !== 'Folyadék' && localDate(new Date(entry.occurredAt)) <= selectedDate)
+    const firstDate = datedEntries.map(entry => localDate(new Date(entry.occurredAt))).sort()[0]
+    const count = range === 'all' && firstDate ? Math.min(3650, Math.max(1, Math.round((new Date(`${selectedDate}T12:00:00`) - new Date(`${firstDate}T12:00:00`)) / 86400000) + 1)) : Number(range) || 7
     const days = []
-    for (let offset = 6; offset >= 0; offset -= 1) {
+    for (let offset = count - 1; offset >= 0; offset -= 1) {
       const date = new Date(`${selectedDate}T12:00:00`); date.setDate(date.getDate() - offset)
       const key = localDate(date); const totals = summarizeEntries(entriesForLocalDay(project.diaryEntries, key, profile.id))
       days.push({ key, totals })
     }
-    const knownEnergy = days.map(day => day.totals.energyKcal).filter(value => value !== null)
+    const logged = days.filter(day => entriesForLocalDay(project.diaryEntries, day.key, profile.id).some(entry => entry.snapshot?.category !== 'Folyadék'))
+    const knownEnergy = logged.map(day => day.totals.energyKcal).filter(value => value !== null)
     const average = knownEnergy.length ? knownEnergy.reduce((sum, value) => sum + value, 0) / knownEnergy.length : null
-    $('[data-food-stats-content]').innerHTML = `<div class="food-entry-card"><strong>7 napos átlag</strong><span>${nutrient(average, 0, ' kcal / nap')}</span></div>${days.map(day => `<div class="sheet-result"><strong>${new Date(`${day.key}T12:00:00`).toLocaleDateString('hu-HU', { weekday: 'short', month: 'short', day: 'numeric' })}</strong><span>${nutrient(day.totals.energyKcal, 0, ' kcal')}</span></div>`).join('')}`
-    setSheetOpen($('[data-food-stats-sheet]'), true)
+    const macro = key => logged.map(day => day.totals[key]).filter(value => value != null).reduce((sum, value) => sum + value, 0)
+    $('[data-food-stats-content]').innerHTML = `<div class="food-entry-card"><strong>${days.length} nap · ${logged.length} naplózott nap</strong><span>Átlag: ${nutrient(average, 0, ' kcal / nap')}</span><span>Fehérje: ${number(macro('protein'), 1)} g · Szénhidrát: ${number(macro('carbohydrate'), 1)} g · Zsír: ${number(macro('fat'), 1)} g összesen</span></div>${days.map(day => `<div class="sheet-result"><strong>${new Date(`${day.key}T12:00:00`).toLocaleDateString('hu-HU', { weekday: 'short', month: 'short', day: 'numeric' })}</strong><span>${nutrient(day.totals.energyKcal, 0, ' kcal')}</span></div>`).join('')}`
   }
 
   function openTargets() {
@@ -1139,7 +1152,10 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-overview-new-recipe]').addEventListener('click', () => openRecipeEditor())
     $('[data-food-share]').addEventListener('click', openShareSheet)
     $('[data-food-share-send]').addEventListener('click', submitShare)
-    $('[data-food-summary-menu]').addEventListener('click', openFoodMenu)
+    $('[data-food-energy-ring]').addEventListener('click', event => { if (!event.target.closest('[data-food-energy-target]')) openStats() })
+    $('[data-food-energy-target]').addEventListener('click', event => { event.stopPropagation(); openTargets() })
+    $('[data-food-energy-target]').addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); openTargets() } })
+    $('[data-food-stats-range]').addEventListener('change', renderStats)
     $('[data-food-search]').addEventListener('input', event => startFoodSearch(event.currentTarget.value))
     $('[data-food-barcode-photo]').addEventListener('change', selectBarcodePhoto)
     $('[data-food-live-stop]').addEventListener('click', stopBarcodeCamera)
