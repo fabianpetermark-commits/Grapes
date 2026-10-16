@@ -65,3 +65,35 @@ A blokkokat külön commitokban, tesztekkel kell megvalósítani. A v22 kiadás 
 - Ellenőrzés: a 5aaef00166199da486dd6dee39673c12497257e6 commit Food YAZIO import és Food connected search GitHub Actions ellenőrzése sikeres.
 - Hátralévő B3-feladatok: közös ételadatbázis-kereső, élő Android-kamerás vonalkódolvasó és tényleges készülékteszt.
 - Kiadás/merge: külön jóváhagyásig nem történik.
+
+
+## B8 — Pénzügyi napló: Grapes Mobile, többpénznemes blokkok, Android értesítések
+
+**Státusz:** újonnan felvett fejlesztési blokk; implementáció még nem kezdődött el. A B6/B7 kiadás előtti feltételeit nem helyettesíti.
+
+### B8.1 — Grapes Mobile felület
+- A pénzügyi napló főoldalának, tranzakciólistájának, hozzáadás/szerkesztés paneljének, blokkbeolvasásának és szűrőinek egységesítése a Grapes Mobile vizuális rendszerével.
+- Mobilon használható, billentyűzet- és safe-area-biztos panelek; hozzáférhető gombok, visszanavigálás, mentetlen módosítások megerősítése.
+- Meglévő tranzakciók, személyek, kategóriák, megtakarítások, bizonylatok, előrejelzések és Drive-adatok változatlan megőrzése.
+
+### B8.2 — Többpénznemes blokkbeolvasás és tranzakciók
+- A jelenlegi naplószintű HUF/EUR/USD pénznem mellett tranzakciónkénti eredeti pénznem és eredeti összeg adatmodellje, visszafelé kompatibilis migrációval.
+- OCR végösszeg-jelöltekhez pénznem és bizonyosság társítása (Ft/HUF, EUR/€, USD/$ és releváns helyi pénznemjelölések); többértelmű jelölésnél ne legyen automatikus, csendes HUF-könyvelés.
+- Blokk előnézetben az összeg és pénznem külön ellenőrizhető/javítható, és a tényleges mentés csak jóváhagyással történhet.
+- Vegyes pénznemű tételek összesítése kizárólag világosan jelzett, megadott vagy ellenőrzött árfolyammal; eredeti összeg/pénznem soha nem íródik felül, árfolyam hiányában nincs megtévesztő összeadás.
+- Mentés, CSV/backup import-export, Drive szinkron, szűrés és kimutatások kompatibilitási tesztjei; korábbi v22 adatok sértetlensége.
+
+### B8.3 — Android banki és Google Wallet értesítések megvalósíthatósága
+- Android NotificationListenerService lehetőségeinek és készülék/bankfüggő korlátainak vizsgálata; az értesítések hozzáférése külön, kifejezett Android-rendszerengedélyt igényel.
+- Csak felhasználó által engedélyezett banki/Wallet alkalmazások; minimális helyi adatfeldolgozás, érzékeny értesítéstartalom naplózása és felhőbe továbbítása nélkül.
+- Kiadás/bevétel, összeg, pénznem, kereskedő és időpont felismerése kizárólag a tényleges értesítéstartalomból; ismeretlen/hiányos tartalom ne generáljon automatikus tranzakciót.
+- Beérkezett javaslatok külön ellenőrző listába kerüljenek; jóváhagyás/szerkesztés/elvetés; nincs automatikus pénzügyi könyvelés.
+- Duplikációvédelem értesítés-ismétlés, blokkból és kézzel bevitt tételek esetén; visszavonható import.
+- Engedély-visszavonás, értesítés nélküli bankok, maszkolt összegek, különböző nyelvek és Android-verziók tesztjei.
+- A Google Wallet/banki értesítés nem tekinthető teljes vagy hiteles számlatörténetnek; banki API-kapcsolat ettől külön fejlesztés lenne.
+
+### B8 elfogadási feltételek
+- A jelenlegi HUF-naplóba EUR blokk felvihető úgy, hogy EUR marad; HUF összesítés csak megfelelő árfolyammal készül.
+- A v22 pénzügyi adatok megmaradnak; CSV/backup és Drive körutak nem veszítenek pénznemet.
+- A felhasználó explicit engedélye nélkül sem banki értesítésfigyelés, sem automatikus pénzügyi tranzakciómentés nem történik.
+- B8 külön commitokban és ellenőrzésekkel, kizárólag a feature/food-v23 ágon készül; nincs automatikus merge vagy release.
