@@ -246,6 +246,11 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     renderRecipes()
   }
 
+  function mealLimit(type) {
+    const value = Number(project.settings?.mealCalorieLimits?.[type])
+    return Number.isFinite(value) && value > 0 ? value : null
+  }
+
   function renderMeals(daily) {
     const container = $('[data-food-meals]'); container.replaceChildren()
     for (const [type, label, icon] of MEALS) {
@@ -254,7 +259,9 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       const button = document.createElement('button'); button.type = 'button'; button.className = 'meal'; button.dataset.meal = type
       const names = entries.slice(0, 3).map(item => item.snapshot.name).join(', ')
       const lastTime = entries.length ? new Date(entries.at(-1).occurredAt).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' }) : ''
-      button.innerHTML = `<span class="meal__icon">${mobileIconSvg(icon)}</span><span><strong>${label}</strong><span>${entries.length ? `${escapeHtml(names)} · ${lastTime}` : 'Még nincs rögzített étel'}</span></span><b>${nutrient(calories)}</b>`
+      const limit = mealLimit(type)
+      const state = !entries.length ? 'Nincs rögzítés' : limit === null || calories == null ? 'Nincs értékelhető keret' : calories < limit ? 'Limiten belül' : calories === limit ? 'Pontosan a keretnél' : 'Keret felett'
+      button.innerHTML = `<span class="meal__icon">${mobileIconSvg(icon)}</span><span><strong>${label}</strong><span>${entries.length ? `${escapeHtml(names)} · ${lastTime}` : 'Még nincs rögzített étel'}</span><span>${state}${limit !== null ? ` · ${number(limit)} kcal keret` : ''}</span></span><b>${nutrient(calories)}</b>`
       button.addEventListener('click', () => openMeal(type))
       container.append(button)
     }
@@ -955,6 +962,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-target-protein]').value = targets.protein ?? ''
     $('[data-food-target-carbohydrate]').value = targets.carbohydrate ?? ''
     $('[data-food-target-fat]').value = targets.fat ?? ''
+    root.querySelectorAll('[data-food-meal-limit]').forEach(input => { input.value = mealLimit(input.dataset.foodMealLimit) ?? '' })
     $('[data-food-target-status]').textContent = ''
     setSheetOpen($('[data-food-targets-sheet]'), true)
   }
@@ -969,7 +977,16 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       })
       const existing = project.targets.find(item => item.effectiveFrom === selectedDate)
       const target = { id: existing?.id || createFoodId('target'), effectiveFrom: selectedDate, values }
+      const mealCalorieLimits = {}
+      root.querySelectorAll('[data-food-meal-limit]').forEach(input => {
+        const raw = input.value.trim()
+        if (!raw) return
+        const limit = Number(raw)
+        if (!Number.isFinite(limit) || limit <= 0) throw new Error('Az étkezési keret pozitív szám legyen.')
+        mealCalorieLimits[input.dataset.foodMealLimit] = limit
+      })
       project.targets = existing ? project.targets.map(item => item.id === existing.id ? target : item) : [...project.targets, target]
+      project.settings = { ...project.settings, mealCalorieLimits }
       scheduleSave(); closeSheets(); renderOverview(); showToast('A napi célokat mentettük.')
     } catch (error) { $('[data-food-target-status]').textContent = error.message }
   }
