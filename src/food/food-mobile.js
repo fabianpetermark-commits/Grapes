@@ -570,6 +570,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const select = $('[data-food-recipe-ingredient-food]'); const selected = select.value
     select.replaceChildren(...matches.map(food => new Option(food.name, food.id)))
     if (matches.some(food => food.id === selected)) select.value = selected
+    else if (query) select.selectedIndex = -1 // Never silently use an unrelated ingredient when search has no match.
     renderRecipeIngredientUnits()
     const names = new Map(foods.map(food => [food.id, food.name]))
     const container = $('[data-food-recipe-ingredients]'); container.replaceChildren()
