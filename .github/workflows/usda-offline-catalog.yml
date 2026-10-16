@@ -1,0 +1,29 @@
+name: USDA offline catalog refresh
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      USDA_FDC_API_KEY: ${{ secrets.USDA_FDC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate USDA API key and retrieve basic food candidates
+        run: |
+          test -n "$USDA_FDC_API_KEY" || { echo "::error::Missing USDA_FDC_API_KEY repository secret"; exit 1; }
+          node scripts/usda-fetch-candidates.mjs
+      - name: Upload candidates for review (no automatic production update)
+        uses: actions/upload-artifact@v4
+        with:
+          name: usda-offline-candidates
+          path: artifacts/usda-candidates.json
+          retention-days: 14
