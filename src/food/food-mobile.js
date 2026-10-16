@@ -127,11 +127,15 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     if (Date.now() - lastHealthAutoAttempt < FOOD_SYNC_INTERVAL_MS) return
     healthAutoBusy = true
     lastHealthAutoAttempt = Date.now()
+    const targetProfile = profile.id
+    const targetProject = project
     try {
       const since = new Date()
       since.setDate(since.getDate() - 7)
       const existingEntries = [...project.diaryEntries, ...(typeof getHydrationExternalKeys === 'function' ? getHydrationExternalKeys().map(externalKey => ({ externalKey })) : [])]
-      const preview = prepareHealthBridgeImport(await readAndroidHealthExportSilent(localDate(since)), { profileId: profile.id, existingEntries })
+      const healthData = await readAndroidHealthExportSilent(localDate(since))
+      if (profile?.id !== targetProfile || project !== targetProject || !autoHealthEnabled() || document.visibilityState !== 'visible') return
+      const preview = prepareHealthBridgeImport(healthData, { profileId: targetProfile, existingEntries })
       const entries = healthImportEntries(preview)
       const hydration = entries.filter(entry => entry.snapshot?.category === 'Folyadék')
       const nutrition = entries.filter(entry => entry.snapshot?.category !== 'Folyadék')
@@ -155,11 +159,12 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     lastYazioAutoAttempt = Date.now()
     yazioAutoBusy = true
     const targetProfile = profile.id
+    const targetProject = project
     let session = ''
     try {
       const saved = await requestAndroidYazio('status')
       if (!saved?.remembered) throw new Error('Nincs mentett YAZIO-belépés. Előbb kapcsolódj a YAZIO panelen.')
-      if (!autoYazioEnabled() || profile?.id !== targetProfile) return
+      if (!autoYazioEnabled() || profile?.id !== targetProfile || project !== targetProject) return
       session = (await requestAndroidYazio('loginSaved')).session
       const since = new Date()
       since.setDate(since.getDate() - 6)
@@ -167,10 +172,10 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
         from: localDate(since), to: localDate(),
         request: (operation, value) => requestAndroidYazio(operation, session, value),
         checkCancelled: () => {
-          if (profile?.id !== targetProfile || !autoYazioEnabled() || document.visibilityState !== 'visible') throw new Error('A YAZIO automatikus import megszakadt.')
+          if (profile?.id !== targetProfile || project !== targetProject || !autoYazioEnabled() || document.visibilityState !== 'visible') throw new Error('A YAZIO automatikus import megszakadt.')
         },
       })
-      if (profile?.id !== targetProfile || !autoYazioEnabled()) return
+      if (profile?.id !== targetProfile || project !== targetProject || !autoYazioEnabled()) return
       const preview = prepareYazioImport({ data: bundle, meta: bundle.meta[0] }, { profileId: targetProfile, existingEntries: project.diaryEntries })
       // Never silently accept uncertain, modified, malformed or unsupported records.
       if (preview.counts.uncertain || preview.counts.invalid || preview.warnings.length || preview.discrepancies.length) {
