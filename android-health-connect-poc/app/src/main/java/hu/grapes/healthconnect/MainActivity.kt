@@ -251,6 +251,11 @@ class MainActivity : ComponentActivity() {
                     .onSuccess { sendResult(requestId, it) }
                     .onFailure { sendError(requestId, it.message ?: "A YAZIO-kapcsolat nem sikerült.") }
             }
+            "readHealthDataSilent" -> {
+                val from = runCatching { LocalDate.parse(args.optString(0)) }.getOrNull()
+                if (from == null) sendError(requestId, "Érvénytelen kezdődátum.")
+                else readHealthData(from, requestId, allowPermissionRequest = false)
+            }
             "readHealthData" -> {
                 val fromDate = message.optJSONArray("args")?.optString(0).orEmpty()
                 val from = runCatching { LocalDate.parse(fromDate) }.getOrElse {
