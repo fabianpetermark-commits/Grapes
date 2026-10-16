@@ -3,6 +3,14 @@
 Állapot: fejlesztés folyamatban. B2 (navigáció és panelgesztusok) kódja elkészült; a 053445e commit két kapcsolódó CI-ellenőrzése sikeres. Valódi Android-eszközön végzett gesztusteszt még szükséges a kiadáshoz. Alapág: `codex/android-app`. Fejlesztési ág: `feature/food-v23`.
 A blokkokat külön commitokban, tesztekkel kell megvalósítani. A v22 kiadás és a meglévő felhasználói adatok megőrzendők. Az ág nem olvasztható be a teljes elfogadási ellenőrzés előtt.
 
+## B3 részállapot — Receptfelület (2026-10-16)
+- Teljes képernyős receptszerkesztő, saját vissza gomb és mentési művelet.
+- Nem mentett módosítások megerősítése visszalépéskor.
+- Saját ételek név szerinti keresése a hozzávalók között, teljes szélességű hozzáadás gomb.
+- A 5daa54c commit Food YAZIO és connected search CI-ellenőrzései sikeresek.
+- **Nyitott:** közös élelmiszeradatbázis-picker, élő Android kamerás vonalkódolvasás, teljes Android-funkcionális ellenőrzés. B3 egésze még nem lezárt.
+- A felhasználó a kiadás utáni telefonos tesztelést vállalja; ez nem helyettesíti az automatizált ellenőrzéseket.
+
 ## B1 — Food főoldal és Víz UI
 - A duplikált ÉTELNAPLÓ/nagy dátum/dátum-alcím eltávolítása; dátumválasztó és nyilak megtartása.
 - „Megosztva velem” hivatkozás eltávolítása a főoldalról; a megosztások a postaládába kerülnek.
