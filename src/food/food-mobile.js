@@ -1,7 +1,7 @@
 import { calculateRecipeFood, createEmptyFoodProject, createFoodId, currentTargets, entriesForLocalDay, foodBackupFromJson, foodBackupToJson, normalizeDiaryEntry, normalizeFoodItem, normalizeFoodProject, normalizeRecipe, normalizeTargets, summarizeEntries } from './food-data.js'
 import { acceptMealShare, acceptRecipeShare, rememberSharingContact } from './food-sharing.js'
 import { listFoodShares, loadFoodShare, setFoodShareState } from './food-sharing-client.js'
-import { lookupFatSecretProduct, lookupOpenFoodFactsProduct } from './food-api.js'
+import { lookupOpenFoodFactsProduct } from './food-api.js'
 import { searchFoodCatalog } from './food-catalog-search.js'
 import { searchOfflineBasicFoods } from './food-offline-catalog.js'
 import { createMobileYazio } from './food-mobile-yazio.js'
@@ -743,7 +743,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const element = document.createElement('div'); element.className = 'sheet-result'
     const main = document.createElement('button'); main.type = 'button'; main.className = 'sheet-result__main'
     const calories = food.nutrients.energyKcal == null ? 'nincs kalóriaadat' : `${number(food.nutrients.energyKcal, 1)} kcal / 100 ${food.baseUnit}`
-    const sourceLabel = offline ? 'Alapadatbázis' : food.source?.type === 'fatsecret' ? 'FatSecret' : 'Open Food Facts'
+    const sourceLabel = offline ? 'Alapadatbázis' : food.source?.type === 'usda' ? 'USDA' : 'Open Food Facts'
     main.innerHTML = `<strong>${escapeHtml(food.name)}</strong><span>${calories}${external ? ` · ${sourceLabel}` : ''}</span>`
     const favoriteButton = document.createElement('button'); favoriteButton.type = 'button'; favoriteButton.className = 'sheet-result__favorite'; favoriteButton.hidden = external
     favoriteButton.textContent = favorite ? '★' : '☆'; favoriteButton.setAttribute('aria-label', favorite ? 'Eltávolítás a kedvencekből' : 'Hozzáadás a kedvencekhez')
@@ -782,11 +782,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   async function lookupBarcode(code) {
     const normalized = String(code || '').replace(/\D/g, '')
     if (!/^\d{7,14}$/.test(normalized)) throw new Error('A vonalkód 7–14 számjegyből állhat.')
-    try { return await lookupOpenFoodFactsProduct(normalized) }
-    catch (openFoodFactsError) {
-      try { return await lookupFatSecretProduct(normalized) }
-      catch { throw openFoodFactsError }
-    }
+    return lookupOpenFoodFactsProduct(normalized)
   }
 
   async function addBarcode(code) {
