@@ -50,6 +50,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   let pendingHealthImport = null
   let editingRecipeId = ''
   let recipeIngredients = []
+  let recipeEditorSnapshot = ''
   let sheetReturnFocus = null
   const updateSubtitle = subtitle => root.dispatchEvent(new CustomEvent('grapes:food-subtitle', { detail: { subtitle } }))
 
@@ -361,6 +362,27 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     updateSubtitle('Recept részletei')
   }
 
+  function recipeEditorState() {
+    return JSON.stringify({
+      name: $('[data-food-recipe-name-input]').value,
+      category: $('[data-food-recipe-category-input]').value,
+      instructions: $('[data-food-recipe-instructions-input]').value,
+      weight: $('[data-food-recipe-weight-input]').value,
+      yieldCount: $('[data-food-recipe-yield-input]').value,
+      yieldUnit: $('[data-food-recipe-yield-unit]').value,
+      unitWeight: $('[data-food-recipe-unit-weight]').value,
+      ingredients: recipeIngredients,
+    })
+  }
+
+  function dismissRecipeEditor() {
+    const sheet = $('[data-food-recipe-edit-sheet]')
+    if (!sheet.classList.contains('is-open')) return true
+    if (recipeEditorSnapshot !== recipeEditorState() && !window.confirm('A nem mentett receptmódosítások elvesznek. Bezárod?')) return false
+    closeSheets()
+    return true
+  }
+
   function openRecipeEditor(id = '') {
     closeSheets()
     const recipe = project.recipes.find(item => item.id === id)
@@ -377,6 +399,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-recipe-editor-status]').textContent = ''
     $('[data-food-recipe-ingredient-search]').value = ''
     renderRecipeEditorIngredients()
+    recipeEditorSnapshot = recipeEditorState()
     setSheetOpen($('[data-food-recipe-edit-sheet]'), true)
   }
 
@@ -1008,6 +1031,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   function handleBack() {
+    if ($('[data-food-recipe-edit-sheet]').classList.contains('is-open')) return dismissRecipeEditor()
     if (root.querySelector('.bottom-sheet.is-open')) { closeSheets(); return true }
     if (selectedMeal) { closeMeal(); return true }
     if (selectedRecipeId) { openRecipes(); return true }
@@ -1050,8 +1074,9 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-recipe-ingredient-food]').addEventListener('change', renderRecipeIngredientUnits)
     $('[data-food-recipe-ingredient-add]').addEventListener('click', addRecipeIngredient)
     $('[data-food-recipe-editor-save]').addEventListener('click', saveRecipe)
+    $('[data-food-recipe-editor-back]').addEventListener('click', dismissRecipeEditor)
     fab.addEventListener('click', openAddSheet)
-    backdrop.addEventListener('click', closeSheets)
+    backdrop.addEventListener('click', () => { if ($('[data-food-recipe-edit-sheet]').classList.contains('is-open')) dismissRecipeEditor(); else closeSheets() })
     root.addEventListener('click', event => {
       const remove = event.target.closest('[data-entry-delete]'); if (remove) return deleteEntry(remove.dataset.entryDelete)
       const repeat = event.target.closest('[data-entry-repeat]'); if (repeat) return repeatEntry(repeat.dataset.entryRepeat)
