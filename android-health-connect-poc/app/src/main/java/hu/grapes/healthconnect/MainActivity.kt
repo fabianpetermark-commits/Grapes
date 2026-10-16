@@ -37,7 +37,7 @@ import java.time.LocalDate
 
 class MainActivity : ComponentActivity() {
     private val healthConnect by lazy { HealthConnectBridge(this) }
-    private val yazioApi = YazioApi()
+    private val yazioApi by lazy { YazioApi(this) }
     private val samsungWaterBridge by lazy { SamsungWaterBridgeFactory.create(this) }
     private val googleAuthorization by lazy { Identity.getAuthorizationClient(this) }
     private val updateManager by lazy { AndroidUpdateManager(this) }
