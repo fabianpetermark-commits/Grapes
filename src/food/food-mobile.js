@@ -1168,11 +1168,14 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const entries = yazioImportEntries(preview)
     if (!entries.length) return { ...preview.counts, imported: 0 }
     if (!window.confirm(`${entries.length} új Yazio-étkezést importálunk az Ételnaplóba. Folytatod?`)) return { ...preview.counts, imported: 0, cancelled: true }
-    project.diaryEntries = [...project.diaryEntries, ...entries]
-    selectedDate = localDate(new Date([...entries].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))[0].occurredAt))
-    recordImportSync('yazio', entries.length)
+    const existingKeys = new Set(project.diaryEntries.map(entry => entry.externalKey).filter(Boolean))
+    const uniqueEntries = entries.filter(entry => !entry.externalKey || !existingKeys.has(entry.externalKey) && (existingKeys.add(entry.externalKey), true))
+    if (!uniqueEntries.length) return { ...preview.counts, imported: 0, duplicate: preview.counts.duplicate + entries.length }
+    project.diaryEntries = [...project.diaryEntries, ...uniqueEntries]
+    selectedDate = localDate(new Date([...uniqueEntries].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))[0].occurredAt))
+    recordImportSync('yazio', uniqueEntries.length)
     scheduleSave(); render()
-    return { ...preview.counts, imported: entries.length }
+    return { ...preview.counts, imported: uniqueEntries.length }
   }
 
   async function importYazio(source) {
