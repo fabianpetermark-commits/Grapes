@@ -34,6 +34,12 @@ android {
         versionName = grapesVersionName
     }
     buildTypes {
+        getByName("debug") {
+            // Install development builds alongside the stable Grapes app.
+            // The separate application ID also isolates Android app data.
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+        }
         getByName("release") {
             if (!releaseKeystorePath.isNullOrBlank()) signingConfig = signingConfigs.getByName("release")
         }
