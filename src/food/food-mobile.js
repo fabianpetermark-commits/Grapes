@@ -1137,8 +1137,13 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     if (!imported) { $('[data-food-health-status]').textContent = 'Nincs új, kijelölt Health-rekord.'; return }
     selectedDate = localDate(new Date([...entries].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))[0].occurredAt))
     pendingHealthImport = null
-    if (nutrition.length) scheduleSave()
+    recordImportSync('health', imported)
+    scheduleSave()
     closeSheets(); render(); showToast(`${imported} Health-rekord importálva.`)
+  }
+
+  function recordImportSync(source, imported) {
+    project.syncState = { ...project.syncState, imports: { ...(project.syncState?.imports || {}), [source]: { lastSuccessfulAt: new Date().toISOString(), imported } } }
   }
 
   async function importYazioCsv(source) {
@@ -1149,6 +1154,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     if (!window.confirm(`${entries.length} új Yazio-étkezést importálunk az Ételnaplóba. Folytatod?`)) return { ...preview.counts, imported: 0, cancelled: true }
     project.diaryEntries = [...project.diaryEntries, ...entries]
     selectedDate = localDate(new Date([...entries].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))[0].occurredAt))
+    recordImportSync('yazio', entries.length)
     scheduleSave(); render()
     return { ...preview.counts, imported: entries.length }
   }
