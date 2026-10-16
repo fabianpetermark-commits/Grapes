@@ -8,7 +8,8 @@ A blokkokat külön commitokban, tesztekkel kell megvalósítani. A v22 kiadás 
 - Nem mentett módosítások megerősítése visszalépéskor.
 - Saját ételek név szerinti keresése a hozzávalók között, teljes szélességű hozzáadás gomb.
 - A 5daa54c commit Food YAZIO és connected search CI-ellenőrzései sikeresek.
-- **Nyitott:** közös élelmiszeradatbázis-picker, élő Android kamerás vonalkódolvasás, teljes Android-funkcionális ellenőrzés. B3 egésze még nem lezárt.
+- **Megvalósítva kódban:** meglévő közös online/offline kereső megnyitása receptből, étel visszaválasztása a recepthez; élő EAN/UPC kamerakép-felismerés WebView kameraengedéllyel, fotós/kézi fallback és kamerafelszabadítás.
+- **Kiadás előtti nyitott ellenőrzés:** teljes Android build, kameraengedély és BarcodeDetector valós eszközön, receptkereső visszalépés és adatintegritás. A meglévő Food CI-k nem tesztelik a natív kamerát. B3 funkciók kódja elkészült, de teljesen tesztelt/kiadható állapot még nincs igazolva.
 - A felhasználó a kiadás utáni telefonos tesztelést vállalja; ez nem helyettesíti az automatizált ellenőrzéseket.
 
 ## B1 — Food főoldal és Víz UI
