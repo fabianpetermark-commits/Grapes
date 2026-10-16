@@ -154,3 +154,20 @@ test('complete backup includes the extended finance model and reads version one 
   const legacy = { grapesFinanceBackup: true, version: 1, data: { version: 1, currency: 'HUF', transactions: [rows[0]] } }
   assert.equal(financeBackupFromJson(JSON.stringify(legacy)).transactions.length, 1)
 })
+
+test('foreign receipt preserves EUR amount and explicit HUF conversion through backup and CSV', () => {
+  const transaction = normalizeTransaction({
+    id: 'foreign-1', type: 'expense', date: '2026-10-16', amount: 9855.45,
+    originalAmount: 24.9, originalCurrency: 'EUR', exchangeRate: 395.8,
+  })
+  assert.equal(transaction.originalCurrency, 'EUR')
+  assert.equal(transaction.originalAmount, 24.9)
+  assert.equal(calculateSummary([transaction]).expense, 9855.45)
+  const restored = financeBackupFromJson(financeBackupToJson({ currency: 'HUF', transactions: [transaction] }))
+  assert.equal(restored.transactions[0].originalAmount, 24.9)
+  const csv = transactionsToCsv([transaction], 'HUF')
+  const imported = transactionsFromCsv(csv, 'HUF')
+  assert.equal(imported[0].originalCurrency, 'EUR')
+  assert.equal(imported[0].originalAmount, 24.9)
+  assert.equal(imported[0].exchangeRate, 395.8)
+})
