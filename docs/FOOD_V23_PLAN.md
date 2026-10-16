@@ -49,3 +49,10 @@ A blokkokat külön commitokban, tesztekkel kell megvalósítani. A v22 kiadás 
 - Minden blokk külön ellenőrizhető commitokkal; nincs automatikus beolvasztás/kiadás.
 - Az adatmodell vagy importösszesítés csak kifejezetten indokolt esetben módosul.
 - A terv teljes; új igények külön egyeztetéssel.
+
+
+## B3 – Recept és keresés: részfeladat lezárás
+- Elkészült: teljes képernyős receptszerkesztő, visszalépés előtti nem mentett változások figyelmeztetése, helyi hozzávalókeresés, teljes szélességű hozzáadás.
+- Ellenőrzés: a 5aaef00166199da486dd6dee39673c12497257e6 commit Food YAZIO import és Food connected search GitHub Actions ellenőrzése sikeres.
+- Hátralévő B3-feladatok: közös ételadatbázis-kereső, élő Android-kamerás vonalkódolvasó és tényleges készülékteszt.
+- Kiadás/merge: külön jóváhagyásig nem történik.
