@@ -242,7 +242,7 @@ function renderOpenFoodFactsResults(message = '', context = catalogSearchContext
       const image = document.createElement('img')
       image.src = food.imageUrl; image.alt = ''; image.loading = 'lazy'; row.append(image)
     }
-    const sourceLabel = food.source.type === 'usda' ? 'USDA · ellenőrzött' : food.source.type === 'fatsecret' ? 'FatSecret' : 'Open Food Facts'
+    const sourceLabel = food.source.type === 'usda' ? (food.verified ? 'USDA · ellenőrzött offline' : 'USDA · online') : food.source.type === 'fatsecret' ? 'FatSecret' : 'Open Food Facts'
     const info = document.createElement('div')
     const name = document.createElement('strong'); name.textContent = food.name
     const meta = document.createElement('span')
@@ -377,7 +377,7 @@ function loadOpenFoodFactsResult(index, context = 'foods') {
   $('#food-item-barcode').value = product.barcode
   $('#food-item-base-unit').value = product.baseUnit
   for (const key of CORE_NUTRIENTS) $('#food-item-' + key).value = product.nutrients[key] ?? ''
-  const sourceLabel = product.source.type === 'usda' ? 'USDA · ellenőrzött' : product.source.type === 'fatsecret' ? 'FatSecret' : 'Open Food Facts'
+  const sourceLabel = product.source.type === 'usda' ? (product.verified ? 'USDA · ellenőrzött offline' : 'USDA · online') : product.source.type === 'fatsecret' ? 'FatSecret' : 'Open Food Facts'
   $('#food-item-cancel').classList.remove('hidden')
   $('#food-api-status').textContent = sourceLabel + ' találat. Ellenőrizd az értékeket és mentsd.' +
     (context === 'diary' ? ' Mentés után visszatérünk a naplóhoz.' : '')

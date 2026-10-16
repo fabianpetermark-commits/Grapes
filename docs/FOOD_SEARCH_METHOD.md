@@ -60,3 +60,10 @@ A regressziók lefedik a kétértelmű állapotokat, rövid prefixeket, katalóg
 ## Food felület és offline tápértékadatok (2026-10-16)
 
 Az src/food/usda-foods.js modul az egyedileg ellenőrzött fdcId-hoz 100 g-ra vonatkozó USDA FoodData Central makróértékeket rögzít. Nem szükséges API-kulcs a kliensen. A hiányzó tápérték null, nem 0. Explicit választás nélkül nincs azonosító-feloldás; naplózáskor a forrás fdcId-je és a tápérték-pillanatkép megmarad. Forrásinformáció: https://whatyoueat.io/foods/170000-onions; https://nutrientgraph.com/foods/garlic-raw-fdc-1104647/; https://calorieinsight.com/foods/sweet-potatoes-orange-flesh-without-skin-raw/; https://nutrientgraph.com/foods/broccoli-raw-fdc-747447/. További tápérték-adatok értékeit az USDA API-ból kiadáshoz külön ellenőrizni kell.
+
+
+## v23 Android natív + USDA online kereső (tesztverzió)
+
+A Food Android kliens fix API végpontokra korlátozott `FoodApiBridge` natív hálózati kapcsolatot használ. Open Food Facts keresésnél és vonalkódnál ez megkerüli a helyi WebView CORS-problémáját. Az USDA online `Foundation` és `SR Legacy` rekordokat keres: a magyar szófordítás csak keresőkifejezés-javaslat, és **nem** automatikus FDC ID-párosítás; a kiválasztás mindig a felhasználóé. A korábban ellenőrzött 10 offline rekord offline is elérhető.
+
+A USDA publikus `DEMO_KEY` próbakulcs 30 kérés/óra, 50 kérés/nap/IP korlátozással rendelkezik; éles működéshez külön szerveroldali, védett USDA kulcs szükséges, az APK-ba saját kulcs nem kerül. Az online USDA rekord `verified:false`, csak API-ban létező tápanyag számolható, hiányzó tápanyag `null`. A frissítés új APK-t igényel. Az Open Food Facts 429 korlátját nem szabad megkerülni.

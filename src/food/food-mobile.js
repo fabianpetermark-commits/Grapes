@@ -737,7 +737,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const element = document.createElement('div'); element.className = 'sheet-result'
     const main = document.createElement('button'); main.type = 'button'; main.className = 'sheet-result__main'
     const calories = food.nutrients.energyKcal == null ? 'nincs kalóriaadat' : `${number(food.nutrients.energyKcal, 1)} kcal / 100 ${food.baseUnit}`
-    const sourceLabel = food.source?.type === 'usda' ? 'USDA · ellenőrzött' : 'Open Food Facts'
+    const sourceLabel = food.source?.type === 'usda' ? (food.verified ? 'USDA · ellenőrzött offline' : 'USDA · online') : 'Open Food Facts'
     main.innerHTML = `<strong>${escapeHtml(food.name)}</strong><span>${calories}${external ? ` · ${sourceLabel}` : ''}</span>`
     const favoriteButton = document.createElement('button'); favoriteButton.type = 'button'; favoriteButton.className = 'sheet-result__favorite'; favoriteButton.hidden = external
     favoriteButton.textContent = favorite ? '★' : '☆'; favoriteButton.setAttribute('aria-label', favorite ? 'Eltávolítás a kedvencekből' : 'Hozzáadás a kedvencekhez')
@@ -770,7 +770,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
         return
       }
       renderFoodSearch(query, { remoteFoods: result.products, remoteError: result.errors.join(' · ') || (result.products.length ? '' : 'Nincs további találat.') })
-    }, 1100)
+    }, 1550)
   }
 
   async function lookupBarcode(code) {

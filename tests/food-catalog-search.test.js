@@ -13,9 +13,10 @@ const ok = body => ({ ok: true, status: 200, json: async () => body })
 test('név szerinti keresés USDA offline és Open Food Facts találatokat hoz', async () => {
   const result = await searchFoodCatalog('vöröshagyma', {
     offSearch: async () => fulfilled([food('Vöröshagyma', '5991234567890')]),
+    usdaSearch: async () => fulfilled([]),
   })
   assert.equal(result.products.length, 2)
-  assert.deepEqual(result.providers.map(item => item.id), ['usda', 'openfoodfacts'])
+  assert.deepEqual(result.providers.map(item => item.id), ['usda', 'usda-online', 'openfoodfacts'])
   assert.equal(result.products[0].source.id, '170000')
   assert.equal(result.unavailable, false)
   assert.equal(result.errors.length, 0)
@@ -40,6 +41,7 @@ test('eltérő forrásazonosítójú termékeket megtartunk', () => {
 test('Open Food Facts hiba esetén az offline szolgáltató továbbra is sikeres', async () => {
   const result = await searchFoodCatalog('sajt', {
     offSearch: async () => { throw new Error('HTTP 503') },
+    usdaSearch: async () => fulfilled([]),
   })
   assert.equal(result.unavailable, false)
   assert.equal(result.products.length, 0)

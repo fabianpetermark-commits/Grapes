@@ -1,3 +1,5 @@
+import { isGrapesAndroidApp, requestAndroidFoodApi } from '../android-bridge.js'
+
 const DEFAULT_OPEN_FOOD_FACTS_URL = 'https://world.openfoodfacts.org'
 const DEFAULT_OPEN_FOOD_FACTS_SEARCH_URL = 'https://search.openfoodfacts.org'
 const DEFAULT_FOOD_BROKER_URL = import.meta.env?.VITE_FOOD_BROKER_URL || import.meta.env?.VITE_EBOOK_TRANSFER_BROKER_URL || ''
@@ -33,9 +35,14 @@ export async function lookupOpenFoodFactsProduct(barcode, { signal, baseUrl = im
   if (!/^\d{7,14}$/.test(code)) throw new Error('A vonalkód 7–14 számjegyből állhat.')
   if (typeof fetchImpl !== 'function') throw new Error('A termékadatbázis ezen a környezeten nem érhető el.')
   const endpoint = String(baseUrl || DEFAULT_OPEN_FOOD_FACTS_URL).replace(/\/$/, '')
-  const response = await fetchImpl(`${endpoint}/api/v2/product/${encodeURIComponent(code)}.json`, { signal })
-  if (!response.ok) throw new Error(`A termékadatbázis nem érhető el (${response.status}).`)
-  const payload = await response.json()
+  let payload
+  if (isGrapesAndroidApp() && baseUrl === DEFAULT_OPEN_FOOD_FACTS_URL && fetchImpl === globalThis.fetch) {
+    payload = await requestAndroidFoodApi('offBarcode', code)
+  } else {
+    const response = await fetchImpl(`${endpoint}/api/v2/product/${encodeURIComponent(code)}.json`, { signal })
+    if (!response.ok) throw new Error(`A termékadatbázis nem érhető el (${response.status}).`)
+    payload = await response.json()
+  }
   if (payload.status !== 1 || !payload.product) throw new Error('Nem található termék ezzel a vonalkóddal.')
   return productFromOpenFoodFacts(payload.product, code)
 }
@@ -59,7 +66,11 @@ export async function searchOpenFoodFactsProducts(query, {
   })
   const endpoint = String(baseUrl || DEFAULT_OPEN_FOOD_FACTS_SEARCH_URL).replace(/\/$/, '') + '/search?' + params
   async function fetchResults(url) {
-    const response = await fetchImpl(url, { signal })
+    const useAndroid = isGrapesAndroidApp() && fetchImpl === globalThis.fetch &&
+      (url.startsWith(DEFAULT_OPEN_FOOD_FACTS_SEARCH_URL + '/search?') || url.startsWith(DEFAULT_OPEN_FOOD_FACTS_URL + '/cgi/search.pl?'))
+    const response = useAndroid
+      ? { ok: true, status: 200, json: () => requestAndroidFoodApi(url.includes('/cgi/search.pl?') ? 'offLegacySearch' : 'offSearch', term, requestedPage, requestedSize) }
+      : await fetchImpl(url, { signal })
     if (!response.ok) {
       const error = new Error('A név szerinti termékkereső nem érhető el (' + response.status + ').')
       error.status = response.status
@@ -80,7 +91,7 @@ export async function searchOpenFoodFactsProducts(query, {
     // Use documented legacy keyword search only if the new search backend fails.
     // Never bypass a rate limit, and never silently switch a custom test/proxy endpoint.
     const shouldFallback = baseUrl === DEFAULT_OPEN_FOOD_FACTS_SEARCH_URL &&
-      error?.name !== 'AbortError' && error?.status !== 429
+      error?.name !== 'AbortError' && error?.status !== 429 && !/HTTP 429/.test(error?.message || '')
     if (!shouldFallback) throw error
     const legacy = new URLSearchParams({
       search_terms: term, search_simple: '1', action: 'process', json: '1',
