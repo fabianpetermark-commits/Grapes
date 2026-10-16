@@ -1165,6 +1165,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-inbox]').dataset.count = String(unread)
     $('[data-food-inbox-label]').textContent = inbox.length ? `${inbox.length} függőben · ${unread} olvasatlan` : 'Beérkező receptek és étkezések'
     $('[data-food-inbox-count]').textContent = inbox.length ? `${inbox.length} függőben lévő megosztás, ebből ${unread} olvasatlan` : 'Nincs függőben lévő megosztás.'
+    window.dispatchEvent(new CustomEvent('grapes:food-inbox-changed', { detail: { pending: inbox.length, unread } }))
   }
 
   async function refreshInbox({ open = false } = {}) {
