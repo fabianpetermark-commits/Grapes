@@ -253,9 +253,24 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const container = $('[data-food-recipes]'); container.replaceChildren()
     const recipes = [...project.recipes].sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))).slice(0, 2)
     if (!recipes.length) { container.innerHTML = '<div class="food-empty" style="grid-column:1/-1">Még nincs saját recepted.</div>'; return }
-    recipes.forEach((recipe, index) => {
-      const button = document.createElement('button'); button.type = 'button'; button.className = 'food-recipe'
-      button.innerHTML = `<span class="food-recipe__cover" style="filter:hue-rotate(${index * 54}deg)">${escapeHtml(recipe.name)}</span><small>${recipe.ingredients.length} hozzávaló</small>`
+    recipes.forEach(recipe => {
+      const button = document.createElement('button')
+      button.type = 'button'
+      button.className = 'food-recipe food-recipe--compact'
+      const title = document.createElement('strong')
+      title.textContent = recipe.name
+      const energy = document.createElement('span')
+      energy.className = 'food-recipe__energy'
+      try {
+        const calculated = calculateRecipeFood(recipe, project.customFoods)
+        const servings = Number(recipe.yieldCount) || 0
+        energy.textContent = servings > 0 && calculated.totalNutrients.energyKcal != null
+          ? `${number(calculated.totalNutrients.energyKcal / servings)} kcal/adag`
+          : '— kcal/adag'
+      } catch {
+        energy.textContent = '— kcal/adag'
+      }
+      button.append(title, energy)
       button.addEventListener('click', () => openRecipe(recipe.id))
       container.append(button)
     })
