@@ -51,6 +51,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   let editingRecipeId = ''
   let recipeIngredients = []
   let recipeEditorSnapshot = ''
+  let recipeCatalogActive = false
   let sheetReturnFocus = null
   const updateSubtitle = subtitle => root.dispatchEvent(new CustomEvent('grapes:food-subtitle', { detail: { subtitle } }))
 
@@ -375,6 +376,21 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     })
   }
 
+  function openRecipeCatalog() {
+    recipeCatalogActive = true
+    setSheetOpen($('[data-food-recipe-edit-sheet]'), false)
+    setSheetOpen(addSheet, true)
+    $('[data-food-search]').value = ''
+    startFoodSearch('')
+    $('[data-food-search]').focus({ preventScroll: true })
+  }
+
+  function closeRecipeCatalog() {
+    recipeCatalogActive = false
+    setSheetOpen(addSheet, false)
+    setSheetOpen($('[data-food-recipe-edit-sheet]'), true)
+  }
+
   function dismissRecipeEditor() {
     const sheet = $('[data-food-recipe-edit-sheet]')
     if (!sheet.classList.contains('is-open')) return true
@@ -479,7 +495,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   function openAddSheet() {
-    if (!selectedMeal) return
+    if (!selectedMeal && !recipeCatalogActive) return
     setSheetOpen(addSheet, true)
     $('[data-food-search]').value = ''; startFoodSearch('')
     setTimeout(() => $('[data-food-search]').focus({ preventScroll: true }), 100)
@@ -664,6 +680,19 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   function addFood(food) {
+    if (recipeCatalogActive) {
+      recipeCatalogActive = false
+      setSheetOpen(addSheet, false)
+      const existing = project.customFoods.find(item => foodKey(item) === foodKey(food))
+      const ingredientFood = existing || food
+      if (!existing) project.customFoods.push(ingredientFood)
+      $('[data-food-recipe-ingredient-search]').value = ingredientFood.name
+      renderRecipeEditorIngredients()
+      $('[data-food-recipe-ingredient-food]').value = ingredientFood.id
+      renderRecipeIngredientUnits()
+      setSheetOpen($('[data-food-recipe-edit-sheet]'), true)
+      return
+    }
     activeEditId = ''
     closeSheets()
     pendingAddFood = food
@@ -1031,6 +1060,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   function handleBack() {
+    if (recipeCatalogActive) { closeRecipeCatalog(); return true }
     if ($('[data-food-recipe-edit-sheet]').classList.contains('is-open')) return dismissRecipeEditor()
     if (root.querySelector('.bottom-sheet.is-open')) { closeSheets(); return true }
     if (selectedMeal) { closeMeal(); return true }
@@ -1075,8 +1105,9 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-recipe-ingredient-add]').addEventListener('click', addRecipeIngredient)
     $('[data-food-recipe-editor-save]').addEventListener('click', saveRecipe)
     $('[data-food-recipe-editor-back]').addEventListener('click', dismissRecipeEditor)
+    $('[data-food-recipe-open-catalog]').addEventListener('click', openRecipeCatalog)
     fab.addEventListener('click', openAddSheet)
-    backdrop.addEventListener('click', () => { if ($('[data-food-recipe-edit-sheet]').classList.contains('is-open')) dismissRecipeEditor(); else closeSheets() })
+    backdrop.addEventListener('click', () => { if (recipeCatalogActive) closeRecipeCatalog(); else if ($('[data-food-recipe-edit-sheet]').classList.contains('is-open')) dismissRecipeEditor(); else closeSheets() })
     root.addEventListener('click', event => {
       const remove = event.target.closest('[data-entry-delete]'); if (remove) return deleteEntry(remove.dataset.entryDelete)
       const repeat = event.target.closest('[data-entry-repeat]'); if (repeat) return repeatEntry(repeat.dataset.entryRepeat)
