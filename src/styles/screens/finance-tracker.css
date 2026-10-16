@@ -476,3 +476,48 @@ html.is-grapes-android-module #finance-app:has([data-finance-tab="transaction"].
   html.is-grapes-android-module .finance__filters{grid-template-columns:1fr}
   html.is-grapes-android-module .finance__filters input[type=search]{grid-column:auto}
 }
+
+/* B8: Grapes Mobile-style single-surface amount + currency input. */
+.finance__amount-combo {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  min-height: 48px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 15px;
+  background: var(--color-bg-raised);
+  overflow: hidden;
+}
+.finance .finance__amount-combo input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 0;
+  font-variant-numeric: tabular-nums;
+}
+.finance .finance__amount-combo select {
+  flex: 0 0 auto;
+  width: 110px;
+  min-height: 46px;
+  padding-inline: 8px;
+  border: 0;
+  border-left: 1px solid var(--color-border-strong);
+  border-radius: 0;
+  background: var(--color-bg-surface);
+  font-weight: 650;
+  cursor: pointer;
+}
+.finance__amount-combo:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: var(--focus-ring);
+}
+.finance .finance__amount-combo :is(input,select):focus { box-shadow: none; }
+@media (max-width: 600px) {
+  .finance__main { gap: 14px; padding: 14px 12px max(24px, env(safe-area-inset-bottom)); }
+  .finance__panel { padding: 16px; border-radius: 20px; }
+  .finance__metric { padding: 14px; border-radius: 18px; }
+  .finance__header { min-height: 64px; padding: 10px 14px; }
+  .finance__tabs { top: 64px; border-radius: 16px; }
+  .finance__amount-combo { min-height: 52px; }
+}
