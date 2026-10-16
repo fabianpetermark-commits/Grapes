@@ -607,7 +607,7 @@ async function scanPendingReceipt() {
     const selected = await pickReceiptAmount(candidates, el('#finance-amount').value)
     if (selected != null) {
       el('#finance-amount').value = formatMoneyInput(selected.amount)
-      if (selected.currency) el('#finance-transaction-currency').value = selected.currency
+      el('#finance-transaction-currency').value = selected.currency || ''
       updateExchangeControls()
       el('#finance-amount').dispatchEvent(new Event('input', { bubbles: true }))
       status.textContent = `${selected.amount.toLocaleString('hu-HU')} ${selected.currency || '(pénznem ellenőrzendő)'} beírva — ellenőrizd az összeget, a pénznemet és szükség esetén az árfolyamot.`
@@ -810,6 +810,7 @@ function bindControls() {
       if (receiptLoading || receiptOcrRunning) throw new Error('Várd meg a bizonylat feldolgozását.')
       const existing = transactions.find((item) => item.id === editingTransactionId)
       const selectedCurrency = el('#finance-transaction-currency').value
+      if (!selectedCurrency) throw new Error('A blokk pénzneme bizonytalan: válaszd ki a pénznemet a mentés előtt.')
       const originalAmount = parseMoneyInput(el('#finance-amount').value)
       const foreign = selectedCurrency !== currency
       const rate = foreign ? parseMoneyInput(el('#finance-exchange-rate').value) : 1
