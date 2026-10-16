@@ -1,10 +1,10 @@
 const TOTAL_WORDS = /(?:v[eé]gösszeg|fizetend[oő]|mindösszesen|összesen|total|amount\s+due|grand\s+total)/i
 const PAYMENT_WORDS = /(?:bankk[aá]rtya|k[aá]rty[aá]val|fizetve|terhelve)/i
-const CURRENCY_WORDS = /(?:\bft\b|\bhuf\b|€|\beur\b|\busd\b|\bgbp\b|£|\bczk\b|\bkč\b|\bpln\b|\bzł\b)/i
+const CURRENCY_WORDS = /(?:\bft\b|\bhuf\b|€|\beur\b|\busd\b|\bgbp\b|£|\bczk\b|kč|\bpln\b|zł)/i
 const CURRENCY_PATTERNS = [
   ['EUR', /(?:€|\bEUR\b)/i], ['HUF', /(?:\bHUF\b|\bFt\b)/i],
   ['USD', /\bUSD\b/i], ['GBP', /(?:£|\bGBP\b)/i],
-  ['CZK', /(?:\bCZK\b|\bKč\b)/i], ['PLN', /(?:\bPLN\b|\bzł\b)/i],
+  ['CZK', /(?:\bCZK\b|Kč)/i], ['PLN', /(?:\bPLN\b|zł)/i],
 ]
 export function detectReceiptCurrency(line) {
   const matches = CURRENCY_PATTERNS.filter(([, pattern]) => pattern.test(line)).map(([code]) => code)
