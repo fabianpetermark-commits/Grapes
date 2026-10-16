@@ -221,7 +221,11 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const energyPercent = targets.energyKcal ? Math.min(100, (totals.energyKcal || 0) / targets.energyKcal * 100) : 0
     $('[data-food-energy-ring]').style.background = `conic-gradient(var(--accent) 0 ${energyPercent}%, #1d2b38 ${energyPercent}% 100%)`
     const remaining = Math.max(0, (targets.energyKcal || 0) - (totals.energyKcal || 0))
-    $('[data-food-message]').textContent = !entries.length ? 'Kezdjük a napot' : remaining ? 'Jó úton haladsz' : 'Megvan a napi cél!'
+    // A napi cél üzenete csak ismert, pozitív célérték és teljes kalóriaadat mellett lehet sikeres.
+    const hasEnergyGoal = Number.isFinite(Number(targets.energyKcal)) && Number(targets.energyKcal) > 0
+    const hasCompleteEnergy = entries.length > 0 && totals.energyKcal != null
+    const goalReached = hasEnergyGoal && hasCompleteEnergy && totals.energyKcal >= targets.energyKcal
+    $('[data-food-message]').textContent = goalReached ? 'Megvan a napi cél!' : !entries.length ? 'Indítsuk jól ezt a napot is!' : 'Jó úton haladsz'
     $('[data-food-remaining]').textContent = totals.energyKcal == null ? 'Néhány ételnél hiányzik a kalóriaadat' : remaining ? `${number(remaining)} kcal maradt mára` : `${number(totals.energyKcal)} kcal naplózva`
     for (const key of ['protein', 'carbohydrate', 'fat']) {
       $(`[data-food-${key}]`).textContent = nutrient(totals[key], 1, ' g')
