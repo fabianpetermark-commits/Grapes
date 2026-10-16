@@ -2,6 +2,11 @@ name: USDA offline catalog refresh
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - feature/food-v23
+    paths:
+      - .github/workflows/usda-offline-catalog.yml
 
 permissions:
   contents: read
