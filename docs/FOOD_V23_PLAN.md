@@ -1,6 +1,6 @@
 # Grapes v23 — Food fejlesztési terv
 
-Állapot: fejlesztés folyamatban. Alapág: `codex/android-app`. Fejlesztési ág: `feature/food-v23`.
+Állapot: fejlesztés folyamatban. B2 (navigáció és panelgesztusok) kódja elkészült; a 053445e commit két kapcsolódó CI-ellenőrzése sikeres. Valódi Android-eszközön végzett gesztusteszt még szükséges a kiadáshoz. Alapág: `codex/android-app`. Fejlesztési ág: `feature/food-v23`.
 A blokkokat külön commitokban, tesztekkel kell megvalósítani. A v22 kiadás és a meglévő felhasználói adatok megőrzendők. Az ág nem olvasztható be a teljes elfogadási ellenőrzés előtt.
 
 ## B1 — Food főoldal és Víz UI
