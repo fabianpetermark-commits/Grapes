@@ -157,12 +157,12 @@ test('complete backup includes the extended finance model and reads version one 
 
 test('foreign receipt preserves EUR amount and explicit HUF conversion through backup and CSV', () => {
   const transaction = normalizeTransaction({
-    id: 'foreign-1', type: 'expense', date: '2026-10-16', amount: 9855.45,
+    id: 'foreign-1', type: 'expense', date: '2026-10-16', amount: 9855.42,
     originalAmount: 24.9, originalCurrency: 'EUR', exchangeRate: 395.8,
   })
   assert.equal(transaction.originalCurrency, 'EUR')
   assert.equal(transaction.originalAmount, 24.9)
-  assert.equal(calculateSummary([transaction]).expense, 9855.45)
+  assert.equal(calculateSummary([transaction]).expense, 9855.42)
   const restored = financeBackupFromJson(financeBackupToJson({ currency: 'HUF', transactions: [transaction] }))
   assert.equal(restored.transactions[0].originalAmount, 24.9)
   const csv = transactionsToCsv([transaction], 'HUF')
