@@ -2,6 +2,13 @@
 
 Ez a fejlesztési ág különálló, tiszta keresőmotort és ellenőrzött USDA-katalógust tartalmaz. A Food UI, a vonalkódos keresés, a stabil v22 és a `main` ág változatlan. Az új motor addig nem köthető be a Food modulba, amíg a katalógus és a felhasználói választási felület külön jóváhagyást nem kap.
 
+
+## Régi offline katalógus kivezetése
+
+A 20 elemes, nem egyedileg ellenőrzött `food-offline-catalog.js` lista és a hozzá tartozó Androidos keresési útvonal eltávolítva a v23 fejlesztési ágon. Az Androidos kereső jelenleg a felhasználó saját, elmentett ételeit és az Open Food Facts online találatait használja. Hálózat nélkül az elmentett saját ételek maradnak kereshetők; az új, ellenőrzött magyar USDA-katalógus még nincs bekötve a felületre.
+
+A korábban mentett, `source.type: 'usda'` jelölésű saját ételek és az ezekre épülő naplóbejegyzések nem törlődnek. A kompatibilitást külön regressziós teszt védi.
+
 ## Adatmodell és ellenőrzési szabály
 
 Minden katalógusrekord külön mezőben tárolja:
