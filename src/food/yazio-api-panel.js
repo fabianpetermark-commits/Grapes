@@ -19,7 +19,7 @@ export function createYazioApiPanel({ openSheet, closeSheet, importBundle, openF
     <p data-yazio-api-status role="status" aria-live="polite"></p>
     <div class="yazio-api-guide" data-yazio-api-guide hidden>
       <div class="yazio-api-guide-heading"><span data-yazio-guide-count></span><button type="button" class="quick-action" data-yazio-guide-close>Bezárás</button></div>
-      <div class="yazio-api-guide-slide" aria-live="polite"><span class="yazio-api-guide-icon" data-yazio-guide-icon></span><img class="yazio-api-guide-image" data-yazio-guide-image alt="" loading="lazy" hidden><h3 data-yazio-guide-title></h3><p data-yazio-guide-description></p></div>
+      <div class="yazio-api-guide-slide" aria-live="polite"><span class="yazio-api-guide-icon" data-yazio-guide-icon></span><img class="yazio-api-guide-image" data-yazio-guide-image alt="" loading="lazy" hidden><img class="yazio-api-guide-image" data-yazio-guide-image-secondary alt="" loading="lazy" hidden><h3 data-yazio-guide-title></h3><p data-yazio-guide-description></p></div>
       <div class="yazio-api-guide-navigation"><button type="button" class="quick-action" data-yazio-guide-prev>Előző</button><div class="yazio-api-guide-dots" data-yazio-guide-dots></div><button type="button" class="primary yazio-api-guide-next" data-yazio-guide-next>Következő</button></div>
     </div>`
   const tutorialStyle = document.createElement('style')
@@ -53,7 +53,7 @@ export function createYazioApiPanel({ openSheet, closeSheet, importBundle, openF
   const guide = sheet.querySelector('[data-yazio-api-guide]')
   const guideSlides = [
     { icon: '✉', title: 'E-mailes YAZIO-fiók', description: 'Ha e-mail-címmel és jelszóval használod a YAZIO-t, egyszerűen add meg ezeket a szinkronizálási űrlapon, válaszd ki az időszakot, majd nyomd meg a Szinkronizálás gombot.' },
-    { icon: '↪', image: '01_settings.jpg', title: 'Google-belépés esetén: kijelentkezés', description: 'A YAZIO alkalmazásban nyisd meg: Profil → Beállítások → Fiók → Kijelentkezés. A naplódat ez nem törli.' },
+    { icon: '↪', image: '01_settings.jpg', imageSecondary: '02_logout.jpg', title: 'Google-belépés esetén: kijelentkezés', description: 'A YAZIO alkalmazásban nyisd meg: Profil → Beállítások → Fiók → Kijelentkezés. A naplódat ez nem törli.' },
     { icon: '@', image: '03_login_choice.jpg', title: 'Folytatás e-mail-címmel', description: 'A bejelentkezési képernyőn válaszd a „Folytatás e-mail-címmel” lehetőséget, majd az „Elfelejtetted a jelszavadat?” hivatkozást.' },
     { icon: '✉', image: '04_forgot_password.jpg', title: 'Jelszó-visszaállítás', description: 'Add meg a Google-belépéshez használt e-mail-címedet. Nyisd meg a YAZIO-tól kapott levelet, válaszd a jelszó visszaállítását, és állíts be új YAZIO-jelszót. A Google-fiókod jelszavát nem kell megváltoztatni.' },
     { icon: '✓', image: '05_reset_email.jpg', title: 'Ellenőrizd az új belépést', description: 'Térj vissza a YAZIO-hoz. A „Folytatás e-mail-címmel” lehetőségnél lépj be a Google-fiókodhoz tartozó e-mail-címmel és az új YAZIO-jelszóval.' },
@@ -67,6 +67,9 @@ export function createYazioApiPanel({ openSheet, closeSheet, importBundle, openF
     const guideImage = sheet.querySelector('[data-yazio-guide-image]')
     guideImage.hidden = !slide.image
     if (slide.image) { guideImage.src = new URL(`./${slide.image}`, import.meta.url).href; guideImage.alt = `YAZIO képernyőkép: ${slide.title}` }
+    const secondaryImage = sheet.querySelector('[data-yazio-guide-image-secondary]')
+    secondaryImage.hidden = !slide.imageSecondary
+    if (slide.imageSecondary) { secondaryImage.src = new URL(`./${slide.imageSecondary}`, import.meta.url).href; secondaryImage.alt = 'YAZIO kijelentkezés képernyő' }
     sheet.querySelector('[data-yazio-guide-title]').textContent = slide.title
     sheet.querySelector('[data-yazio-guide-description]').textContent = slide.description
     sheet.querySelector('[data-yazio-guide-prev]').disabled = guideIndex === 0
