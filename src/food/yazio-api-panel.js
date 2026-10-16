@@ -9,7 +9,7 @@ export function createYazioApiPanel({ openSheet, closeSheet, importBundle, openF
   sheet.setAttribute('aria-label', 'YAZIO-kapcsolat'); sheet.setAttribute('aria-hidden', 'true'); sheet.inert = true
   sheet.innerHTML = `<div class="sheet-handle"></div><h2>YAZIO-kapcsolat</h2>
     <form data-yazio-api-form class="sheet-form">
-      <label>E-mail<input class="search" name="email" type="email" autocomplete="off" required></label>
+      <label>E-mail<input class="search" name="email" type="email" autocomplete="off"></label>
       <label>YAZIO-jelszó<input class="search" name="password" type="password" autocomplete="off"></label>
       <label><input type="checkbox" name="remember"> Belépés biztonságos megjegyzése ezen az Android-eszközön</label>
       <p data-yazio-saved-status></p>
@@ -116,6 +116,7 @@ export function createYazioApiPanel({ openSheet, closeSheet, importBundle, openF
       if (to > dateString(new Date())) throw new Error('Jövőbeli nap nem kérhető le.')
       busy = true; cancelled = false; submit.disabled = true
       status.textContent = 'Belépés a YAZIO-ba…'
+      if (form.elements.password.value && !form.elements.email.value.trim()) throw new Error('Add meg a YAZIO e-mail-címedet.')
       const operation = form.elements.password.value ? (form.elements.remember.checked ? 'loginRemembered' : 'login') : 'loginSaved'
       if (operation === 'loginSaved' && !hasSavedLogin) throw new Error('Add meg a YAZIO-jelszót, vagy kapcsolódj egy korábban mentett fiókhoz.')
       const login = requestAndroidYazio(operation, form.elements.email.value.trim(), form.elements.password.value)
