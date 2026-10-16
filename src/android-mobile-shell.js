@@ -278,6 +278,8 @@ function renderUpdateInbox() {
   if (!update) return
   $('[data-update-title]').textContent = `${update.versionName} elérhető`
   $('[data-update-notes]').textContent = update.notes || 'Új Grapes-verzió tölthető le.'
+  $('[data-update-install]').disabled = false
+  $('[data-update-status]').textContent = ''
 }
 
 function setAvailableAppUpdate(value) {
