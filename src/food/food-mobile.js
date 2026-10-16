@@ -852,7 +852,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const range = $('[data-food-stats-range]').value
     const datedEntries = project.diaryEntries.filter(entry => entry.profileId === profile.id && entry.snapshot?.category !== 'Folyadék' && localDate(new Date(entry.occurredAt)) <= selectedDate)
     const firstDate = datedEntries.map(entry => localDate(new Date(entry.occurredAt))).sort()[0]
-    const count = range === 'all' && firstDate ? Math.min(3650, Math.max(1, Math.round((new Date(`${selectedDate}T12:00:00`) - new Date(`${firstDate}T12:00:00`)) / 86400000) + 1)) : Number(range) || 7
+    const count = range === 'all' && firstDate ? Math.max(1, Math.round((new Date(`${selectedDate}T12:00:00`) - new Date(`${firstDate}T12:00:00`)) / 86400000) + 1) : Number(range) || 7
     const days = []
     for (let offset = count - 1; offset >= 0; offset -= 1) {
       const date = new Date(`${selectedDate}T12:00:00`); date.setDate(date.getDate() - offset)
