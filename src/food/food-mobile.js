@@ -1151,6 +1151,22 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     } catch (error) { $('[data-food-share-status]').textContent = error.message }
   }
 
+  const INBOX_SEEN_KEY = 'grapes-food-inbox-seen-v1'
+  function inboxSeen() {
+    try { const ids = JSON.parse(localStorage.getItem(INBOX_SEEN_KEY) || '[]'); return new Set(Array.isArray(ids) ? ids : []) } catch { return new Set() }
+  }
+  function markInboxSeen(id) {
+    const ids = inboxSeen(); ids.add(id)
+    try { localStorage.setItem(INBOX_SEEN_KEY, JSON.stringify([...ids].slice(-500))) } catch {}
+    updateInboxIndicator()
+  }
+  function updateInboxIndicator() {
+    const unread = inbox.filter(item => !inboxSeen().has(item.id)).length
+    $('[data-food-inbox]').dataset.count = String(unread)
+    $('[data-food-inbox-label]').textContent = inbox.length ? `${inbox.length} függőben · ${unread} olvasatlan` : 'Beérkező receptek és étkezések'
+    $('[data-food-inbox-count]').textContent = inbox.length ? `${inbox.length} függőben lévő megosztás, ebből ${unread} olvasatlan` : 'Nincs függőben lévő megosztás.'
+  }
+
   async function refreshInbox({ open = false } = {}) {
     if (!isGrapesDriveConnected()) {
       if (open) showToast('A beérkező megosztásokhoz csatlakoztasd a Google Drive-ot.')
@@ -1159,8 +1175,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const button = $('[data-food-inbox]')
     try {
       inbox = await listFoodShares()
-      button.dataset.count = String(inbox.length)
-      $('[data-food-inbox-label]').textContent = inbox.length ? `${inbox.length} beérkező megosztás` : 'Beérkező receptek és étkezések'
+      updateInboxIndicator()
       if (open) openInbox()
     } catch (error) { if (open) showToast(error.message) }
   }
@@ -1175,10 +1190,12 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
 
   function renderInboxItems() {
     const container = $('[data-food-inbox-items]'); container.replaceChildren()
+    updateInboxIndicator()
     if (!inbox.length) { container.innerHTML = '<div class="food-empty">Nincs új megosztás.</div>'; return }
     for (const item of inbox) {
       const button = document.createElement('button'); button.type = 'button'; button.className = 'sheet-result'
-      button.innerHTML = `<strong>${item.type === 'meal' ? 'Étkezés' : 'Recept'}</strong><span>${escapeHtml(item.senderName || item.senderEmail)}</span>`
+      const unread = !inboxSeen().has(item.id)
+      button.innerHTML = `<strong>${unread ? '● ' : ''}${item.type === 'meal' ? 'Étkezés' : 'Recept'}</strong><span>${escapeHtml(item.senderName || item.senderEmail)}</span><small>${unread ? 'Olvasatlan · ' : ''}${item.createdAt ? new Date(item.createdAt).toLocaleDateString('hu-HU') : 'Megosztás'}</small>`
       button.addEventListener('click', () => previewInboxItem(item))
       container.append(button)
     }
@@ -1188,6 +1205,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const status = $('[data-food-inbox-status]'); status.textContent = 'Megosztás betöltése…'
     try {
       activeInboxShare = await loadFoodShare(item); activeInboxItem = item
+      markInboxSeen(item.id); renderInboxItems()
       const meal = item.type === 'meal'
       $('[data-food-inbox-summary]').textContent = meal
         ? `${item.senderName || item.senderEmail} ${LABELS[activeInboxShare.payload.mealType] || 'étkezés'} étkezése · ${activeInboxShare.payload.entries.length} tétel`
@@ -1210,8 +1228,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       await persistLocal()
       await setFoodShareState(activeInboxShare.id, 'accepted')
       inbox = inbox.filter(item => item.id !== activeInboxShare.id)
-      $('[data-food-inbox]').dataset.count = String(inbox.length)
-      $('[data-food-inbox-label]').textContent = inbox.length ? `${inbox.length} beérkező megosztás` : 'Beérkező receptek és étkezések'
+      updateInboxIndicator()
       scheduleSave(); activeInboxShare = null; activeInboxItem = null; $('[data-food-inbox-preview]').hidden = true; renderInboxItems(); render()
       status.textContent = 'A megosztás bekerült a saját naplódba.'
     } catch (error) { status.textContent = error.message }
@@ -1223,8 +1240,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     try {
       await setFoodShareState(activeInboxShare.id, 'rejected')
       inbox = inbox.filter(item => item.id !== activeInboxShare.id)
-      $('[data-food-inbox]').dataset.count = String(inbox.length)
-      $('[data-food-inbox-label]').textContent = inbox.length ? `${inbox.length} beérkező megosztás` : 'Beérkező receptek és étkezések'
+      updateInboxIndicator()
       activeInboxShare = null; activeInboxItem = null; $('[data-food-inbox-preview]').hidden = true; renderInboxItems(); status.textContent = 'A megosztást elutasítottad.'
     } catch (error) { status.textContent = error.message }
   }
