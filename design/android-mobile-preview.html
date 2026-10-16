@@ -144,7 +144,10 @@
     .food-entry-card span { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; }
     .food-entry-card__actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 12px; }
     .food-entry-card__actions button { min-height: 38px; color: var(--text); background: var(--raised); border: 1px solid var(--line); border-radius: 11px; font-size: 10px; }
-    .food-recipes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+    .food-recipes { display: grid; grid-template-columns: 1fr; gap: 7px; }
+    .food-recipe--compact { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 43px; padding: 10px 12px; }
+    .food-recipe--compact strong { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 12px; font-weight: 600; }
+    .food-recipe__energy { flex-shrink: 0; color: var(--accent); font-size: 11px; font-weight: 700; }
     .food-recipe { min-width: 0; padding: 0; overflow: hidden; color: inherit; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 15px; }
     .food-recipe__cover { display: grid; place-items: end start; height: 96px; padding: 9px; background: linear-gradient(145deg,#7357ff,#224a86 62%,#0c1824); font-size: 10px; font-weight: 800; }
     .food-recipe small { display: block; padding: 8px; overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
