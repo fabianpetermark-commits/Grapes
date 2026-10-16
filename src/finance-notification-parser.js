@@ -22,8 +22,10 @@ function amountFromText(raw) {
 export function parseFinanceNotification({ title = '', text = '', packageName = '' } = {}) {
   // No automatic classification for notifications with unclear transaction direction.
   const content = [title, text].filter(Boolean).join(' ')
-  const match = content.match(MONEY)
-  if (!match) return null
+  const matches = [...content.matchAll(new RegExp(MONEY.source, MONEY.flags.includes('g') ? MONEY.flags : MONEY.flags + 'g'))]
+  // Multiple monetary values may represent a balance, fee or conversion: do not guess.
+  if (matches.length !== 1) return null
+  const match = matches[0]
   const currencyToken = String(match[1] || match[4]).toUpperCase()
   const currency = CODES[currencyToken] || currencyToken
   const amount = amountFromText(match[2] || match[3])
