@@ -521,3 +521,37 @@ html.is-grapes-android-module #finance-app:has([data-finance-tab="transaction"].
   .finance__tabs { top: 64px; border-radius: 16px; }
   .finance__amount-combo { min-height: 52px; }
 }
+
+/* v23 Android: keep the finance navigation usable without sideways clipping. */
+@media (max-width: 600px) {
+  html.is-grapes-android-module .finance__tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
+    width: 100%;
+    gap: 6px;
+  }
+  html.is-grapes-android-module .finance__tabs button,
+  html.is-grapes-android-module .finance__tabs button:last-child {
+    flex: initial;
+    min-width: 0;
+    width: 100%;
+    padding: 10px 6px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: center;
+  }
+  html.is-grapes-android-module .finance__tabs button:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+  html.is-grapes-android-module .finance__receipt-tools {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  html.is-grapes-android-module .finance__receipt {
+    min-width: 0;
+  }
+  html.is-grapes-android-module .finance__receipt span {
+    display: block;
+    overflow-wrap: anywhere;
+  }
+}
