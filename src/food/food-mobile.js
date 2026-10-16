@@ -60,6 +60,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   let pendingAddFood = null
   let searchTimer = null
   let searchGeneration = 0
+  let expandedSearchQuery = ''
   let pendingHealthImport = null
   let editingRecipeId = ''
   let recipeIngredients = []
@@ -706,7 +707,8 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     let localFoods = project.customFoods.filter(item => (!favoritesOnly || project.favorites.includes(item.id)) && (!normalized || `${item.name} ${item.category}`.toLocaleLowerCase('hu-HU').includes(normalized)))
     localFoods = localFoods.sort((a, b) => (project.favorites.includes(b.id) ? 1 : 0) - (project.favorites.includes(a.id) ? 1 : 0)).slice(0, 15)
     const localKeys = new Set(localFoods.map(foodKey))
-    const externalFoods = favoritesOnly ? [] : remoteFoods.filter(food => !localKeys.has(foodKey(food))).slice(0, 12)
+    const allExternalFoods = favoritesOnly ? [] : remoteFoods.filter(food => !localKeys.has(foodKey(food)))
+    const externalFoods = expandedSearchQuery === normalized ? allExternalFoods : allExternalFoods.slice(0, 8)
     const container = $('[data-food-search-results]'); container.replaceChildren()
     if (!localFoods.length && !externalFoods.length) {
       container.innerHTML = `<div class="food-empty">${favoritesOnly ? 'Még nincs kedvencnek jelölt ételed.' : normalized ? 'Nincs találat. A Saját étel gombbal hozhatsz létre újat.' : 'Még nincs saját ételed. A Saját étel gombbal hozhatsz létre egyet.'}</div>`
@@ -725,6 +727,16 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       row.main.addEventListener('click', () => addFood(materializeExternalFood(food)))
       container.append(row.element)
     }
+    if (externalFoods.length < allExternalFoods.length) {
+      const more = document.createElement('button')
+      more.type = 'button'; more.className = 'sheet-result sheet-result--more'
+      more.textContent = `További találatok (${allExternalFoods.length - externalFoods.length})`
+      more.addEventListener('click', () => {
+        expandedSearchQuery = normalized
+        renderFoodSearch(query, { favoritesOnly, remoteFoods, remoteError })
+      })
+      container.append(more)
+    }
     const status = $('[data-food-search-status]')
     status.textContent = loading ? 'Alapanyagok keresése…' : remoteError
   }
@@ -738,7 +750,21 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const main = document.createElement('button'); main.type = 'button'; main.className = 'sheet-result__main'
     const calories = food.nutrients.energyKcal == null ? 'nincs kalóriaadat' : `${number(food.nutrients.energyKcal, 1)} kcal / 100 ${food.baseUnit}`
     const sourceLabel = food.source?.type === 'usda' ? (food.verified ? 'USDA · ellenőrzött offline' : 'USDA · online') : 'Open Food Facts'
-    main.innerHTML = `<strong>${escapeHtml(food.name)}</strong><span>${calories}${external ? ` · ${sourceLabel}` : ''}</span>`
+    const name = document.createElement('strong'); name.textContent = food.name
+    if (food.preparation === 'raw' || food.preparation === 'cooked') {
+      const state = document.createElement('em')
+      state.className = `food-usda-state food-usda-state--${food.preparation}`
+      state.textContent = food.preparation === 'raw' ? 'Nyers' : 'Főtt'
+      name.append(' ', state)
+    }
+    main.append(name)
+    if (food.usdaDescription) {
+      const original = document.createElement('span')
+      original.className = 'sheet-result__original'; original.lang = 'en'; original.textContent = food.usdaDescription
+      main.append(original)
+    }
+    const meta = document.createElement('span'); meta.textContent = calories + (external ? ` · ${sourceLabel}` : '')
+    main.append(meta)
     const favoriteButton = document.createElement('button'); favoriteButton.type = 'button'; favoriteButton.className = 'sheet-result__favorite'; favoriteButton.hidden = external
     favoriteButton.textContent = favorite ? '★' : '☆'; favoriteButton.setAttribute('aria-label', favorite ? 'Eltávolítás a kedvencekből' : 'Hozzáadás a kedvencekhez')
     element.append(main, favoriteButton)
@@ -756,6 +782,8 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   function startFoodSearch(query) {
     clearTimeout(searchTimer)
     const generation = ++searchGeneration
+    const normalizedQuery = query.trim().toLocaleLowerCase('hu-HU')
+    if (expandedSearchQuery !== normalizedQuery) expandedSearchQuery = ''
     const verifiedFoods = searchVerifiedUsdaFoods(query)
     renderFoodSearch(query, { remoteFoods: verifiedFoods })
     if (query.trim().length < 2) return

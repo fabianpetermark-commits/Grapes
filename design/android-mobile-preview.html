@@ -155,10 +155,15 @@
     .food-recipe small { display: block; padding: 8px; overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
     .inbox-badge { position: relative; }
     .inbox-badge[data-count]:not([data-count="0"])::after { position: absolute; top: 4px; right: 3px; display: grid; place-items: center; min-width: 17px; height: 17px; padding: 0 4px; color: #041014; content: attr(data-count); background: var(--accent); border-radius: 99px; font-size: 9px; font-weight: 900; }
-    .sheet-results { display: grid; gap: 7px; max-height: 220px; margin-top: 10px; overflow-y: auto; }
+    .sheet-results { display: grid; gap: 7px; max-height: min(42dvh, 360px); margin-top: 10px; padding-bottom: max(4px, env(safe-area-inset-bottom)); overflow-y: auto; overscroll-behavior: contain; }
     .sheet-result { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 48px; padding: 8px 10px; color: var(--text); text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
     .sheet-result span { color: var(--muted); font-size: 10px; }
     .sheet-result__main { display: grid; min-width: 0; flex: 1; gap: 3px; padding: 0; color: inherit; text-align: left; background: transparent; border: 0; }
+    .sheet-result__original { overflow-wrap: anywhere; color: #8293a5; font-size: 9px; }
+    .food-usda-state { display: inline-block; padding: 1px 5px; border: 1px solid currentColor; border-radius: 99px; font-size: 8px; font-style: normal; vertical-align: 1px; }
+    .food-usda-state--raw { color: var(--success); }
+    .food-usda-state--cooked { color: #ffbd69; }
+    .sheet-result--more { width: 100%; justify-content: center; color: var(--accent); font-weight: 750; }
     .sheet-result__favorite { flex: 0 0 40px; width: 40px; height: 40px; color: var(--accent); background: var(--raised); border: 0; border-radius: 11px; font-size: 20px; }
     .sheet-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .sheet-form label { display: grid; gap: 5px; color: var(--muted); font-size: 10px; }

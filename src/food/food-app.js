@@ -49,6 +49,7 @@ let catalogRequestId = 0
 let catalogSearchTimer = null
 let catalogCache = new Map()
 let catalogSearchResult = null
+const expandedCatalogContexts = new Set()
 let returnToDiaryAfterSave = false
 
 const $ = selector => root.querySelector(selector)
@@ -235,7 +236,10 @@ function renderOpenFoodFactsResults(message = '', context = catalogSearchContext
     target.append(status)
   }
   if (!openFoodFactsResults.length) return
-  for (const [index, food] of openFoodFactsResults.entries()) {
+  const visibleLimit = 8
+  const visibleResults = expandedCatalogContexts.has(context)
+    ? openFoodFactsResults : openFoodFactsResults.slice(0, visibleLimit)
+  for (const [index, food] of visibleResults.entries()) {
     const row = document.createElement('article')
     row.className = 'food__off-result'
     if (food.imageUrl) {
@@ -245,10 +249,22 @@ function renderOpenFoodFactsResults(message = '', context = catalogSearchContext
     const sourceLabel = food.source.type === 'usda' ? (food.verified ? 'USDA · ellenőrzött offline' : 'USDA · online') : food.source.type === 'fatsecret' ? 'FatSecret' : 'Open Food Facts'
     const info = document.createElement('div')
     const name = document.createElement('strong'); name.textContent = food.name
+    if (food.preparation === 'raw' || food.preparation === 'cooked') {
+      const state = document.createElement('em')
+      state.className = `food__usda-state food__usda-state--${food.preparation}`
+      state.textContent = food.preparation === 'raw' ? 'Nyers' : 'Főtt'
+      name.append(' ', state)
+    }
     const meta = document.createElement('span')
     meta.textContent = food.category + ' · ' + formatNumber(food.nutrients.energyKcal, 1) +
       ' kcal / 100 ' + food.baseUnit + (food.barcode ? ' · ' + food.barcode : '') + ' · ' + sourceLabel
-    info.append(name, meta)
+    info.append(name)
+    if (food.usdaDescription) {
+      const original = document.createElement('small')
+      original.className = 'food__usda-original'; original.lang = 'en'; original.textContent = food.usdaDescription
+      info.append(original)
+    }
+    info.append(meta)
     const exists = project.customFoods.some(item =>
       (food.barcode && item.barcode === food.barcode) ||
       (item.source.type === food.source.type && item.source.id === food.source.id))
@@ -260,6 +276,13 @@ function renderOpenFoodFactsResults(message = '', context = catalogSearchContext
       : (context === 'diary' ? 'Mentés a naplóhoz' : 'Betöltés')
     row.append(info, button); target.append(row)
   }
+  if (!expandedCatalogContexts.has(context) && openFoodFactsResults.length > visibleLimit) {
+    const more = document.createElement('button')
+    more.type = 'button'; more.className = 'btn food__catalog-more'
+    more.textContent = `További találatok (${openFoodFactsResults.length - visibleLimit})`
+    more.addEventListener('click', () => { expandedCatalogContexts.add(context); renderOpenFoodFactsResults(message, context) })
+    target.append(more)
+  }
 }
 
 async function searchOpenFoodFactsByName(queryOverride = '', context = 'foods') {
@@ -269,6 +292,7 @@ async function searchOpenFoodFactsByName(queryOverride = '', context = 'foods') 
   clearTimeout(catalogSearchTimer)
   const requestId = ++catalogRequestId
   catalogSearchContext = context
+  expandedCatalogContexts.delete(context)
   openFoodFactsResults = searchVerifiedUsdaFoods(query)
   const otherContext = context === 'diary' ? 'foods' : 'diary'
   catalogElements(otherContext).results.classList.add('hidden')
@@ -318,6 +342,7 @@ function queueCatalogSearch(context) {
   clearTimeout(catalogSearchTimer)
   const elements = catalogElements(context)
   const query = elements.input.value.trim()
+  expandedCatalogContexts.delete(context)
   ++catalogRequestId
   elements.button.disabled = false
   elements.button.textContent = 'Keresés az adatbázisokban'
