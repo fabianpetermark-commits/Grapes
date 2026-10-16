@@ -775,24 +775,23 @@ function bindControls() {
     })
   }
   // Both gallery attachment and direct camera capture use the same validated OCR pipeline.
-  el('#finance-receipt-camera').addEventListener('change', (event) => {
+  el('#finance-receipt-camera').addEventListener('change', async (event) => {
     const file = event.currentTarget.files?.[0]
-    event.currentTarget.value = ''
     if (!file) return
-    const input = el('#finance-receipt')
-    const transfer = new DataTransfer()
-    transfer.items.add(file)
-    input.files = transfer.files
-    input.dispatchEvent(new Event('change', { bubbles: true }))
+    // Android WebView does not consistently support DataTransfer/file input reassignment.
+    // Process the captured File directly through the same receipt validation/OCR path.
+    await handleReceiptSelection(file)
+    event.currentTarget.value = ''
   })
-  el('#finance-receipt').addEventListener('change', async (event) => {
+  el('#finance-receipt').addEventListener('change', (event) => handleReceiptSelection(event.target.files?.[0]))
+  async function handleReceiptSelection(file) {
     const request = ++receiptRequest
     receiptLoading = true
     pendingReceipt = null
     el('#finance-receipt-ocr-status').textContent = 'A csatolmány betöltése…'
     updateReceiptOcrControls()
     try {
-      const receipt = await prepareReceipt(event.target.files[0])
+      const receipt = await prepareReceipt(file)
       if (request !== receiptRequest) return
       pendingReceipt = receipt
       el('#finance-receipt-name').textContent = pendingReceipt?.name || 'Nincs fájl kiválasztva'
@@ -803,7 +802,7 @@ function bindControls() {
           : 'A PDF most még csak csatolmány; a beolvasása későbbi fejlesztés.'
     } catch (error) {
       if (request !== receiptRequest) return
-      pendingReceipt = null; event.target.value = ''
+      pendingReceipt = null; el('#finance-receipt').value = ''; el('#finance-receipt-camera').value = ''
       el('#finance-receipt-name').textContent = 'Nincs fájl kiválasztva'
       el('#finance-receipt-ocr-status').textContent = 'A csatolmány nem tölthető be.'
       notifyError(error.message)
@@ -813,7 +812,7 @@ function bindControls() {
         updateReceiptOcrControls()
       }
     }
-  })
+  }
   el('#finance-receipt-scan').addEventListener('click', scanPendingReceipt)
   el('#finance-form').addEventListener('submit', (event) => {
     event.preventDefault()
