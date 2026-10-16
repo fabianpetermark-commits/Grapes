@@ -10,62 +10,48 @@ const food = (name, barcode, type = 'openfoodfacts') => ({
 const fulfilled = products => ({ count: products.length, page: 1, products })
 const ok = body => ({ ok: true, status: 200, json: async () => body })
 
-test('külső adatbázisok találatai egy listába kerülnek forrásazonosítóval', async () => {
-  const result = await searchFoodCatalog('alma', {
-    offSearch: async () => fulfilled([food('Alma', '5991234567890')]),
-    fatSecretSearch: async () => fulfilled([food('Banán', '', 'fatsecret')]),
+test('név szerinti keresés kizárólag Open Food Facts szolgáltatót használ', async () => {
+  const result = await searchFoodCatalog('vöröshagyma', {
+    offSearch: async () => fulfilled([food('Vöröshagyma', '5991234567890')]),
   })
-  assert.equal(result.products.length, 2)
-  assert.equal(result.products[1].source.type, 'fatsecret')
+  assert.equal(result.products.length, 1)
+  assert.deepEqual(result.providers.map(item => item.id), ['openfoodfacts'])
   assert.equal(result.unavailable, false)
-  assert.equal(result.providers.length, 2)
+  assert.equal(result.errors.length, 0)
 })
 
-test('azonos vonalkód különböző forrásból nem jelenik meg duplán', () => {
+test('azonos vonalkódú termékeket nem jelenítünk meg duplán', () => {
   const results = mergeFoodCatalogResults([
     fulfilled([food('A termék', '5991234567890')]),
-    fulfilled([food('A termék másik neve', '5991234567890', 'fatsecret')]),
+    fulfilled([food('A termék másik neve', '5991234567890')]),
   ])
   assert.equal(results.length, 1)
 })
 
-test('különböző forrásazonosítójú, vonalkód nélküli termékeket nem vonunk össze', () => {
+test('eltérő forrásazonosítójú termékeket megtartunk', () => {
   const results = mergeFoodCatalogResults([
     fulfilled([food('Csirkemell', '', 'openfoodfacts')]),
-    fulfilled([food('Csirkemell', '', 'fatsecret')]),
+    fulfilled([food('Csirkemell', '', 'usda')]),
   ])
   assert.equal(results.length, 2)
 })
 
-test('FatSecret hibakor az Open Food Facts találat megjelenik, a hiba látható marad', async () => {
-  const result = await searchFoodCatalog('banán', {
-    offSearch: async () => fulfilled([food('Banán', '5995555555555')]),
-    fatSecretSearch: async () => { throw new Error('Nincs konfigurálva') },
-  })
-  assert.equal(result.products.length, 1)
-  assert.equal(result.partial, true)
-  assert.match(result.errors.join(' '), /Nincs konfigurálva/)
-})
-
-test('ha mindkét szolgáltatás hibázik, nem állítjuk, hogy nincs találat', async () => {
+test('Open Food Facts hiba esetén az online keresés elérhetetlen', async () => {
   const result = await searchFoodCatalog('sajt', {
     offSearch: async () => { throw new Error('HTTP 503') },
-    fatSecretSearch: async () => { throw new Error('Hiányzó hozzáférés') },
   })
   assert.equal(result.unavailable, true)
   assert.equal(result.products.length, 0)
-  assert.equal(result.errors.length, 2)
+  assert.equal(result.errors.length, 1)
 })
 
-test('vonalkódnál közvetlen keresést használunk, nem név alapján', async () => {
+test('vonalkódnál kizárólag az Open Food Facts közvetlen keresése fut', async () => {
   const called = []
   const result = await searchFoodCatalog('5991234567890', {
     offSearch: async () => { throw new Error('Nem szabad meghívni') },
-    fatSecretSearch: async () => { throw new Error('Nem szabad meghívni') },
     offBarcode: async barcode => { called.push('off:' + barcode); return food('Keksz', barcode) },
-    fatSecretBarcode: async barcode => { called.push('fs:' + barcode); return food('Keksz', barcode, 'fatsecret') },
   })
-  assert.deepEqual(called, ['off:5991234567890', 'fs:5991234567890'])
+  assert.deepEqual(called, ['off:5991234567890'])
   assert.equal(result.products.length, 1)
 })
 
