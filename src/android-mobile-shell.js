@@ -783,7 +783,35 @@ function renderWater() {
   $('[data-water-total]').textContent = formatWater(total)
   $('[data-water-goal-label]').textContent = `${formatWater(day.goal)} cél`
   $('[data-water-ring]').style.setProperty('--water-progress', `${percent}%`)
-  $('[data-water-today-bar]').style.height = `${percent}%`
+  const waterStore = loadWaterStore()
+  const week = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date()
+    date.setHours(12, 0, 0, 0)
+    date.setDate(date.getDate() - (6 - index))
+    const record = waterStore[dateKey(date)]
+    const entries = Array.isArray(record?.entries) ? record.entries : []
+    const amount = entries.reduce((sum, entry) => sum + Math.max(0, Number(entry.amount) || 0), 0)
+    return { date, amount, goal: Math.max(500, Number(record?.goal) || day.goal), hasEntries: entries.length > 0 }
+  })
+  const loggedDays = week.filter(item => item.hasEntries)
+  const weeklyAverage = loggedDays.length ? loggedDays.reduce((sum, item) => sum + item.amount, 0) / loggedDays.length : 0
+  const completedDays = week.filter(item => item.hasEntries && item.amount >= item.goal).length
+  $('[data-water-week-average]').textContent = `Átlagosan ${(weeklyAverage / 1000).toLocaleString('hu-HU', { maximumFractionDigits: 2 })} liter`
+  $('[data-water-week-completed]').textContent = `${completedDays} nap teljesítve`
+  const weekBars = $('[data-water-week-bars]')
+  weekBars.replaceChildren()
+  const chartMaximum = Math.max(day.goal, ...week.map(item => item.amount), 1)
+  week.forEach((item, index) => {
+    const column = document.createElement('div')
+    column.className = `week-day${index === 6 ? ' is-today' : ''}`
+    const bar = document.createElement('i')
+    bar.style.height = `${Math.min(100, item.amount / chartMaximum * 100)}%`
+    const label = document.createElement('span')
+    label.textContent = index === 6 ? 'Ma' : item.date.toLocaleDateString('hu-HU', { weekday: 'short' }).replace('.', '')
+    column.title = `${item.date.toLocaleDateString('hu-HU')}: ${formatWater(item.amount)}`
+    column.append(bar, label)
+    weekBars.append(column)
+  })
   $('[data-water-summary]').textContent = `${Math.round(total / 250)} pohár · ${(total / 1000).toLocaleString('hu-HU', { maximumFractionDigits: 2 })} l`
   const remaining = Math.max(0, day.goal - total)
   $('[data-water-message]').textContent = remaining ? (remaining <= 500 ? 'Már csak egy kicsi!' : 'Jó úton haladsz') : 'Megvan a napi cél!'
