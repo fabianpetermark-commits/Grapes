@@ -1217,9 +1217,9 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
         const row = document.createElement('div')
         row.className = 'sheet-result'
         const name = document.createElement('strong')
-        name.textContent = meal ? entry.snapshot?.name || 'Ismeretlen étel' : entry.name || entry.foodName || 'Hozzávaló'
+        name.textContent = meal ? entry.snapshot?.name || 'Ismeretlen étel' : activeInboxShare.payload.foods?.find(food => food.id === entry.foodId)?.name || 'Hozzávaló'
         const quantity = document.createElement('span')
-        quantity.textContent = meal ? nutrient(entry.snapshot?.nutrients?.energyKcal, 0, ' kcal / egység') : `${number(entry.amount || entry.quantity || 0, 1)} ${entry.unit || ''}`
+        quantity.textContent = meal ? `${number(entry.amount, 1)} ${entry.unit || ''}` : `${number(entry.amount, 1)} ${entry.unit || ''}`
         row.append(name, quantity)
         details.append(row)
       }
