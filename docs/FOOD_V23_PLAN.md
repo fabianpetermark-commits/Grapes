@@ -79,6 +79,8 @@ A blokkokat külön commitokban, tesztekkel kell megvalósítani. A v22 kiadás 
 ### B8.2 — Többpénznemes blokkbeolvasás és tranzakciók
 - A jelenlegi naplószintű HUF/EUR/USD pénznem mellett tranzakciónkénti eredeti pénznem és eredeti összeg adatmodellje, visszafelé kompatibilis migrációval.
 - OCR végösszeg-jelöltekhez pénznem és bizonyosság társítása (Ft/HUF, EUR/€, USD/$ és releváns helyi pénznemjelölések); többértelmű jelölésnél ne legyen automatikus, csendes HUF-könyvelés.
+- A tranzakció hozzáadásánál/szerkesztésénél és a blokkbeolvasás előnézetében az **összeg beviteli mező jobb szélén, azzal egy vizuális egységben** kompakt pénznem-legördülő (pl. HUF ▾ / EUR ▾ / USD ▾) jelenik meg; mobilon is könnyen érinthető, billentyűzet mellett is használható.
+- A legördülő az adott tranzakció pénznemét módosítja, nem a teljes naplóét; OCR esetén a felismerés előtölti, a felhasználó jóváhagyás előtt javíthatja. Pénznemváltás önmagában nem váltja át az összeget.
 - Blokk előnézetben az összeg és pénznem külön ellenőrizhető/javítható, és a tényleges mentés csak jóváhagyással történhet.
 - Vegyes pénznemű tételek összesítése kizárólag világosan jelzett, megadott vagy ellenőrzött árfolyammal; eredeti összeg/pénznem soha nem íródik felül, árfolyam hiányában nincs megtévesztő összeadás.
 - Mentés, CSV/backup import-export, Drive szinkron, szűrés és kimutatások kompatibilitási tesztjei; korábbi v22 adatok sértetlensége.
