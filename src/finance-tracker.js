@@ -393,7 +393,7 @@ function renderRows(visible) {
     })
     const amount = create('strong', {
       class: `finance__row-amount finance__row-amount--${displayType}`,
-      textContent: `${transaction.type === 'income' ? '+' : '−'}${formatMoney(transaction.amount)}`,
+      textContent: `${transaction.type === 'income' ? '+' : '−'}${formatMoney(transaction.amount)}${transaction.originalCurrency && transaction.originalCurrency !== currency ? ` (eredetileg ${transaction.originalAmount?.toLocaleString('hu-HU')} ${transaction.originalCurrency})` : ''}`,
     })
     const edit = create('button', { class: 'btn btn--icon btn--ghost', type: 'button', textContent: '✎', title: 'Tétel szerkesztése', 'aria-label': 'Tétel szerkesztése' })
     edit.addEventListener('click', () => {
