@@ -52,6 +52,8 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   let recipeIngredients = []
   let recipeEditorSnapshot = ''
   let recipeCatalogActive = false
+  let barcodeStream = null
+  let barcodeScanTimer = null
   let sheetReturnFocus = null
   const updateSubtitle = subtitle => root.dispatchEvent(new CustomEvent('grapes:food-subtitle', { detail: { subtitle } }))
 
@@ -386,6 +388,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   function closeRecipeCatalog() {
+    stopBarcodeCamera()
     recipeCatalogActive = false
     setSheetOpen(addSheet, false)
     setSheetOpen($('[data-food-recipe-edit-sheet]'), true)
@@ -502,6 +505,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   function closeSheets() {
+    stopBarcodeCamera()
     setSheetOpen($('[data-food-yazio-sheet]'), false)
     setSheetOpen(addSheet, false)
     setSheetOpen($('[data-food-custom-sheet]'), false)
@@ -651,9 +655,59 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     } catch (error) { status.textContent = error.message }
   }
 
-  function requestBarcode() {
-    const code = window.prompt('Írd be a termék 7–14 számjegyű vonalkódját:')
-    if (code !== null) addBarcode(code)
+  function stopBarcodeCamera() {
+    clearTimeout(barcodeScanTimer)
+    barcodeScanTimer = null
+    barcodeStream?.getTracks().forEach(track => track.stop())
+    barcodeStream = null
+    const video = $('[data-food-live-video]')
+    if (video) video.srcObject = null
+    const panel = $('[data-food-live-scanner]')
+    if (panel) panel.hidden = true
+  }
+
+  async function requestBarcode() {
+    const status = $('[data-food-search-status]')
+    if (!navigator.mediaDevices?.getUserMedia || !('BarcodeDetector' in window)) {
+      status.textContent = 'Az élő olvasó nem támogatott. Használd a Fotó alapján gombot, vagy írd be a kódot.'
+      const code = window.prompt('Termékvonalkód (7–14 számjegy):')
+      if (code !== null) await addBarcode(code)
+      return
+    }
+    stopBarcodeCamera()
+    try {
+      const formats = ['ean_13', 'ean_8', 'upc_a', 'upc_e']
+      const supported = await BarcodeDetector.getSupportedFormats()
+      const enabled = formats.filter(format => supported.includes(format))
+      if (!enabled.length) throw new Error('Ez a készülék nem támogatja az EAN/UPC vonalkódok élő olvasását.')
+      const detector = new BarcodeDetector({ formats: enabled })
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' } } })
+      barcodeStream = stream
+      const video = $('[data-food-live-video]')
+      video.srcObject = stream
+      $('[data-food-live-scanner]').hidden = false
+      await video.play()
+      status.textContent = 'Irányítsd a kamerát a termék vonalkódjára.'
+      const scan = async () => {
+        if (barcodeStream !== stream) return
+        try {
+          const codes = await detector.detect(video)
+          const code = String(codes.find(item => /^\\d{7,14}$/.test(item.rawValue))?.rawValue || '')
+          if (code) {
+            stopBarcodeCamera()
+            await addBarcode(code)
+            return
+          }
+        } catch {}
+        if (barcodeStream === stream) barcodeScanTimer = setTimeout(scan, 280)
+      }
+      barcodeScanTimer = setTimeout(scan, 280)
+    } catch (error) {
+      stopBarcodeCamera()
+      status.textContent = error?.name === 'NotAllowedError'
+        ? 'A kameraengedély hiányzik. Válaszd a fotós vagy kézi bevitelt.'
+        : (error.message || 'Nem sikerült elindítani a kamerát.')
+    }
   }
 
   async function barcodeImageSource(file) {
@@ -1088,6 +1142,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-summary-menu]').addEventListener('click', openFoodMenu)
     $('[data-food-search]').addEventListener('input', event => startFoodSearch(event.currentTarget.value))
     $('[data-food-barcode-photo]').addEventListener('change', selectBarcodePhoto)
+    $('[data-food-live-stop]').addEventListener('click', stopBarcodeCamera)
     $('[data-food-open-recipes]').addEventListener('click', openRecipes)
     $('[data-food-inbox]').addEventListener('click', () => refreshInbox({ open: true }))
     $('[data-food-inbox-accept]').addEventListener('click', acceptInboxItem)
