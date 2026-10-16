@@ -51,6 +51,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   let editingRecipeId = ''
   let recipeIngredients = []
   let sheetReturnFocus = null
+  const updateSubtitle = subtitle => root.dispatchEvent(new CustomEvent('grapes:food-subtitle', { detail: { subtitle } }))
 
   const $ = selector => root.querySelector(selector)
   const localProjectId = (profileId = profile?.id) => `food-tracker-${profileId}`
@@ -287,6 +288,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-detail-title]').textContent = LABELS[type]
     $('[data-food-detail-copy]').textContent = new Date(`${selectedDate}T12:00:00`).toLocaleDateString('hu-HU', { month: 'long', day: 'numeric', weekday: 'long' })
     fab.hidden = false
+    updateSubtitle(LABELS[type])
     renderMealDetail()
   }
 
@@ -295,6 +297,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-detail]').hidden = true
     $('[data-food-overview]').hidden = false
     fab.hidden = true
+    updateSubtitle('Mai áttekintés')
     closeSheets()
     renderOverview()
   }
@@ -305,14 +308,14 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-detail]').hidden = true
     $('[data-food-recipes-view]').hidden = true
     $('[data-food-recipe-detail]').hidden = true
-    fab.hidden = true; closeSheets(); renderOverview()
+    fab.hidden = true; updateSubtitle('Mai áttekintés'); closeSheets(); renderOverview()
   }
 
   function openRecipes() {
     selectedMeal = ''; selectedRecipeId = ''
     $('[data-food-overview]').hidden = true; $('[data-food-detail]').hidden = true
     $('[data-food-recipe-detail]').hidden = true; $('[data-food-recipes-view]').hidden = false
-    fab.hidden = true; renderRecipeList()
+    fab.hidden = true; updateSubtitle('Receptek'); renderRecipeList()
   }
 
   function renderRecipeList() {
@@ -355,6 +358,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const foodNames = new Map(project.customFoods.map(item => [item.id, item.name]))
     $('[data-food-recipe-content]').innerHTML = `<strong>Hozzávalók</strong>${recipe.ingredients.map(item => `<span>${escapeHtml(foodNames.get(item.foodId) || 'Ismeretlen hozzávaló')} · ${number(item.amount, 2)} ${UNIT_LABELS[item.unit] || item.unit}</span>`).join('')}${recipe.instructions ? `<br><strong>Elkészítés</strong><span>${escapeHtml(recipe.instructions)}</span>` : ''}`
     fab.hidden = true
+    updateSubtitle('Recept részletei')
   }
 
   function openRecipeEditor(id = '') {
