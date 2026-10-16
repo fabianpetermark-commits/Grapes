@@ -40,6 +40,9 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   let loadGeneration = 0
   let loadedProfileId = ''
   let initialized = false
+  let lastFoodSyncAt = 0
+  let foodSyncInProgress = null
+  const FOOD_SYNC_INTERVAL_MS = 5 * 60 * 1000
   let inbox = []
   let activeInboxItem = null
   let activeInboxShare = null
@@ -84,11 +87,24 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     return normalizeFoodProject(migrated, nextProfile.id)
   }
 
+  async function syncFood({ force = false } = {}) {
+    if (!project || !isGrapesDriveConnected()) return
+    if (!force && Date.now() - lastFoodSyncAt < FOOD_SYNC_INTERVAL_MS) return
+    if (foodSyncInProgress) return foodSyncInProgress
+    foodSyncInProgress = (async () => {
+      await flush()
+      if (project?.syncState?.localDirty) return
+      await load({ force: true })
+      lastFoodSyncAt = Date.now()
+    })()
+    try { await foodSyncInProgress } finally { foodSyncInProgress = null }
+  }
+
   async function load({ force = false } = {}) {
     const nextProfile = accountProfile()
     if (!force && project && loadedProfileId === nextProfile.id) {
       render()
-      if (isGrapesDriveConnected()) refreshInbox().catch(() => {})
+      if (isGrapesDriveConnected()) { refreshInbox().catch(() => {}); syncFood().catch(() => {}) }
       return
     }
 
@@ -142,6 +158,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       await persistLocal()
       render()
       if (isGrapesDriveConnected()) {
+        if (remoteLoaded) lastFoodSyncAt = Date.now()
         if (!remoteLoaded && project.syncState?.localDirty) persistDrive()
         refreshInbox().catch(() => {})
       }
@@ -1350,13 +1367,16 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     })
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') { stopBarcodeCamera(); flush().catch(() => {}) }
-      else if (isGrapesDriveConnected()) refreshInbox().catch(() => {})
+      else if (isGrapesDriveConnected()) { refreshInbox().catch(() => {}); syncFood().catch(() => {}) }
     })
+    window.setInterval(() => {
+      if (!root.querySelector('[data-food-overview]')?.closest('[data-page="food"]')?.hidden && document.visibilityState === 'visible') syncFood().catch(() => {})
+    }, FOOD_SYNC_INTERVAL_MS)
   }
 
   bind()
   return { load, render, closeMeal, handleBack, isDetailOpen: () => Boolean(selectedMeal), flush, openHealthImport, openSamsungImport, importYazioCsv, importYazio, undoYazio,
-    refreshInbox, openInbox, inboxSummary: () => ({ pending: inbox.length, unread: inbox.filter(item => !inboxSeen().has(item.id)).length }) }
+    syncFood, refreshInbox, openInbox, inboxSummary: () => ({ pending: inbox.length, unread: inbox.filter(item => !inboxSeen().has(item.id)).length }) }
 }
 
 function escapeHtml(value) {
