@@ -87,17 +87,29 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     return normalizeFoodProject(migrated, nextProfile.id)
   }
 
+  function showSyncStatus(message) {
+    const status = $('[data-food-sync-status]')
+    if (status) status.textContent = message
+  }
+
   async function syncFood({ force = false } = {}) {
-    if (!project || !isGrapesDriveConnected()) return
+    if (!project || !isGrapesDriveConnected()) { showSyncStatus('Csak helyi mentés · Drive nincs csatlakoztatva'); return }
     if (!force && Date.now() - lastFoodSyncAt < FOOD_SYNC_INTERVAL_MS) return
     if (foodSyncInProgress) return foodSyncInProgress
     foodSyncInProgress = (async () => {
+      showSyncStatus('Szinkronizálás folyamatban…')
       await flush()
-      if (project?.syncState?.localDirty) return
+      if (project?.syncState?.localDirty) {
+        showSyncStatus('A helyi változások feltöltésre várnak')
+        return
+      }
       await load({ force: true })
       lastFoodSyncAt = Date.now()
+      showSyncStatus(`Sikeres ellenőrzés: ${new Date(lastFoodSyncAt).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })}`)
     })()
-    try { await foodSyncInProgress } finally { foodSyncInProgress = null }
+    try { await foodSyncInProgress }
+    catch (error) { showSyncStatus(`Szinkronhiba: ${error?.message || 'ismeretlen hiba'}`); throw error }
+    finally { foodSyncInProgress = null }
   }
 
   async function load({ force = false } = {}) {
@@ -1305,6 +1317,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   function bind() {
     if (initialized) return
     initialized = true
+    $('[data-food-sync-refresh]').addEventListener('click', () => syncFood({ force: true }).catch(() => {}))
     $('[data-food-date-prev]').addEventListener('click', () => shiftDate(-1))
     $('[data-food-date-next]').addEventListener('click', () => shiftDate(1))
     $('[data-food-date]').addEventListener('change', event => { selectedDate = event.currentTarget.value || localDate(); renderOverview() })
