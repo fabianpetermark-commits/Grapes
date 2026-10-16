@@ -32,6 +32,10 @@ export function readAndroidHealthExport(fromDate) {
   return nativeRequest('readHealthData', fromDate)
 }
 
+export function readAndroidHealthExportSilent(fromDate) {
+  return nativeRequest('readHealthDataSilent', fromDate)
+}
+
 export async function requestAndroidYazio(operation, ...args) {
   return JSON.parse(await nativeRequest('yazio', operation, ...args))
 }
