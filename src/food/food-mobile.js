@@ -158,7 +158,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       await persistLocal()
       render()
       if (isGrapesDriveConnected()) {
-        if (remoteLoaded) lastFoodSyncAt = Date.now()
+        if (remoteChecked) lastFoodSyncAt = Date.now()
         if (!remoteLoaded && project.syncState?.localDirty) persistDrive()
         refreshInbox().catch(() => {})
       }
