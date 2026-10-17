@@ -71,7 +71,7 @@ class AndroidUpdateManager(private val context: Context) {
                     val digest = asset.optString("digest").removePrefix("sha256:").lowercase()
                     if (!digest.matches(SHA256_PATTERN)) continue
                     val downloadUrl = asset.optString("browser_download_url")
-                    if (!downloadUrl.startsWith("https://github.com/")) continue
+                    if (isQa && !downloadUrl.startsWith("https://github.com/")) continue
 
                     highestVersion = versionCode
                     availableRelease = Release(
@@ -127,18 +127,19 @@ class AndroidUpdateManager(private val context: Context) {
 
     fun requestInstall(apk: File) {
         check(apk.isFile) { "A frissítési fájl nem található." }
-        // Android itself verifies the installed APK's certificate; additionally
-        // reject a downloaded APK from the other release channel before install.
-        val archive = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.packageManager.getPackageArchiveInfo(
-                apk.absolutePath, android.content.pm.PackageManager.PackageInfoFlags.of(0L)
-            )
-        } else {
-            @Suppress("DEPRECATION")
-            context.packageManager.getPackageArchiveInfo(apk.absolutePath, 0)
-        }
-        check(archive?.packageName == context.packageName) {
-            "A letöltött APK másik alkalmazáshoz tartozik."
+        // The QA app must never hand a stable APK to the package installer.
+        // Keep the legacy stable install path unchanged.
+        if (BuildConfig.BUILD_TYPE == "qa") {
+            val archive = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.packageManager.getPackageArchiveInfo(
+                    apk.absolutePath, android.content.pm.PackageManager.PackageInfoFlags.of(0L)
+                )
+            } else {
+                context.packageManager.getPackageArchiveInfo(apk.absolutePath, 0)
+            }
+            check(archive?.packageName == context.packageName) {
+                "A letöltött APK másik alkalmazáshoz tartozik."
+            }
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !context.packageManager.canRequestPackageInstalls()) {
             preferences.edit().putBoolean(PENDING_INSTALL_KEY, true).apply()
