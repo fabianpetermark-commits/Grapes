@@ -46,7 +46,7 @@ try {
   await context.route('https://search.openfoodfacts.org/search**', route => route.fulfill({
     status: 200, contentType: 'application/json', body: JSON.stringify({ count: 1, page: 1, hits: [{
       code: '5999999999999', product_name_hu: 'Név alapján talált mogyorókrém',
-      categories_tags: ['en:spreads', 'en:chocolate-spreads'], product_quantity_unit: 'g',
+      categories_tags: ['en:spreads', 'en:chocolate-spreads'], countries_tags: ['en:hungary'], product_quantity_unit: 'g',
       nutriments: { 'energy-kcal_100g': 555, proteins_100g: 6 }, last_modified_t: 123,
     }] }),
   }))
