@@ -9,7 +9,26 @@ const rawWhole = (food, extra = {}) => ({
   verified: true, verification,
 })
 
+// FDC identities and per-100g reference macros cross-checked against
+// published USDA SR Legacy mirrors (2026-10-18). Unlike an API search hit,
+// these entries are intentionally reviewed and safe to serve offline.
+// Sugar: https://whatyoueat.io/foods/169655-granulated-sugar
+// Table salt: https://whatyoueat.io/foods/173468-table-salt
+// Plain drinking water: https://batchbase.com.au/usda-foods/173647
+const stapleVerification = Object.freeze({
+  source: 'USDA FoodData Central SR Legacy, independently cross-checked by WhatYouEat and Batchbase (links in source)',
+  checkedAt: '2026-10-18',
+})
+const staple = (food) => ({
+  preparation: 'not-applicable', ediblePart: 'whole', processing: 'refined',
+  verified: true, verification: stapleVerification, ...food,
+})
+
 export const HUNGARIAN_USDA_CATALOG = Object.freeze([
+  staple({ id: 'sugar-granulated', fdcId: 169655, nameHu: 'Kristálycukor, fehér', aliasesHu: ['cukor', 'kristálycukor', 'fehér cukor'], usdaQuery: 'Sugars, granulated', usdaDescription: 'Sugars, granulated', dataType: 'SR Legacy', validation: { required: ['sugars', 'granulated'], forbidden: ['brown', 'powdered', 'substitute'] } }),
+  staple({ id: 'salt-table', fdcId: 173468, nameHu: 'Étkezési só', aliasesHu: ['só', 'asztali só', 'étkezési só'], usdaQuery: 'Salt, table', usdaDescription: 'Salt, table', dataType: 'SR Legacy', validation: { required: ['salt', 'table'], forbidden: ['seasoning', 'mixed'] } }),
+  staple({ id: 'water-tap-drinking', fdcId: 173647, nameHu: 'Ivóvíz, csapvíz', aliasesHu: ['víz', 'ivóvíz', 'csapvíz'], processing: 'drinking', usdaQuery: 'Beverages, water, tap, drinking', usdaDescription: 'Beverages, water, tap, drinking', dataType: 'SR Legacy', validation: { required: ['water', 'tap', 'drinking'], forbidden: ['flavored', 'sugared', 'mineral'] } }),
+
   rawWhole({ id: 'onion-yellow-raw', fdcId: 170000, nameHu: 'Vöröshagyma, nyers', aliasesHu: ['vöröshagyma'], usdaQuery: 'Onions, raw', usdaDescription: 'Onions, raw', dataType: 'SR Legacy', validation: { required: ['onions', 'raw'], forbidden: ['cooked', 'powder'] } }),
   rawWhole({ id: 'garlic-raw', fdcId: 1104647, nameHu: 'Fokhagyma, nyers', aliasesHu: ['fokhagyma'], usdaQuery: 'Garlic, raw', usdaDescription: 'Garlic, raw', dataType: 'Foundation', validation: { required: ['garlic', 'raw'], forbidden: ['powder', 'cooked'] } }),
   { id: 'wheat-flour-bl55', fdcId: 169761, nameHu: 'Búzafinomliszt BL55', aliasesHu: ['búzafinomliszt', 'finomliszt', 'bl55', 'bl 55', 'bl-55'], preparation: 'not-applicable', ediblePart: 'grain-endosperm', processing: 'milled-unenriched', usdaQuery: 'Wheat flour, white, all-purpose, unenriched', usdaDescription: 'Wheat flour, white, all-purpose, unenriched', dataType: 'SR Legacy', verified: true, verification, validation: { required: ['wheat', 'flour', 'unenriched'], forbidden: ['enriched', 'self-rising', 'whole'] } },
