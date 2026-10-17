@@ -369,8 +369,18 @@
     [data-food-add-sheet] .food-recipe-editor__header { flex: 0 0 auto; margin-bottom: 14px; }
     [data-food-add-sheet] .food-recipe-editor__header h2 { margin: 0 0 3px; }
     [data-food-add-sheet] .food-recipe-editor__header p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.4; }
-    .food-add-page__body { display: flex; min-height: 0; flex: 1; flex-direction: column; }
-    [data-food-add-sheet] .sheet-results { min-height: 0; max-height: none; flex: 1; padding-bottom: 4px; }
+    .food-add-page__body { display: flex; min-height: 0; flex: 1; flex-direction: column; overflow-y: auto; overscroll-behavior: contain; }
+    /* Same compact viewport for 1 or 100 foods. Grid tracks must not stretch
+       a lone favorite into an oversized row. Only the results area scrolls. */
+    [data-food-add-sheet] .sheet-results {
+      height: min(300px, 38dvh); min-height: 0; max-height: none; flex: 0 0 auto;
+      align-content: start; grid-auto-rows: max-content; padding-bottom: 4px;
+    }
+    .food-search-variants-toggle { width: 100%; min-height: 34px; padding: 5px 12px; color: var(--accent); text-align: left; background: var(--raised); border: 1px solid var(--line); border-radius: 11px; font-size: 10px; font-weight: 700; cursor: pointer; }
+    .food-search-legacy-variant { margin-left: 12px; }
+    .food-search-legacy-variant .sheet-result__main strong { font-size: 12px; }
+    .food-scanner-close { display: flex; width: 100%; min-height: 44px; align-items: center; justify-content: center; gap: 8px; padding: 8px 12px; margin-top: 8px; color: var(--accent); background: var(--raised); border: 1px solid var(--line); border-radius: 12px; font-size: 12px; font-weight: 750; cursor: pointer; }
+    .food-scanner-close > span { font-size: 18px; line-height: 1; }
     [data-food-add-sheet] [data-food-search-status] { min-height: 17px; margin: 6px 2px 0; color: var(--muted); font-size: 11px; }
     [data-food-add-sheet] .quick-grid { flex: 0 0 auto; }
 
@@ -633,7 +643,7 @@
           <input class="search" data-food-search placeholder="Keresés az ételek között…">
           <div class="food-search-filters" role="group" aria-label="Találatok szűrése"><button type="button" class="food-search-filter is-active" data-food-search-filter="all" aria-pressed="true">Összes</button><button type="button" class="food-search-filter" data-food-search-filter="own" aria-pressed="false">Saját</button><button type="button" class="food-search-filter" data-food-search-filter="favorites" aria-pressed="false">Kedvencek</button><button type="button" class="food-search-filter" data-food-search-filter="usda" aria-pressed="false">USDA</button></div>
           <input type="file" accept="image/*" capture="environment" data-food-barcode-photo hidden>
-          <div data-food-live-scanner hidden><video data-food-live-video autoplay muted playsinline style="display:block;width:100%;max-height:260px;object-fit:cover;border-radius:14px"></video><button class="quick-action" type="button" data-food-live-stop>Olvasó bezárása</button></div>
+          <div data-food-live-scanner hidden><video data-food-live-video autoplay muted playsinline style="display:block;width:100%;max-height:260px;object-fit:cover;border-radius:14px"></video><button class="food-scanner-close" type="button" data-food-live-stop><span aria-hidden="true">×</span>Olvasó bezárása</button></div>
           <div class="sheet-results" data-food-search-results></div>
           <p data-food-search-status role="status"></p>
           <div class="quick-grid"><button class="quick-action" data-food-quick="barcode"><i>▦</i><span>Vonalkód</span></button><button class="quick-action" data-food-quick="photo"><i>◉</i><span>Fotó alapján</span></button><button class="quick-action" data-food-quick="favorites"><i>☆</i><span>Kedvencek</span></button><button class="quick-action" data-food-quick="custom"><i>＋</i><span>Saját étel</span></button></div>
@@ -711,22 +721,12 @@
       </section>
       <section class="bottom-sheet" data-food-recipe-edit-sheet role="dialog" aria-modal="true" aria-label="Recept szerkesztése" aria-hidden="true" inert>
         <div class="food-recipe-editor__header"><button type="button" class="food-recipe-editor__back" data-food-recipe-editor-back aria-label="Vissza">‹</button><div><h2 data-food-recipe-editor-title>Új recept</h2><p>A receptből naplózható étel készül.</p></div></div><div class="food-full-page__body">
-        <section class="food-editor-section"><h3>Alapadatok</h3><div class="sheet-form food-recipe-basics">
-          <label>Recept neve<input class="search" maxlength="180" data-food-recipe-name-input></label>
-          <label>Kategória<input class="search" maxlength="120" value="Saját recept" data-food-recipe-category-input></label>
-          <label>Elkészítés<textarea class="search" rows="3" data-food-recipe-instructions-input></textarea></label>
-          <label>Kész tömeg (g)<input class="search" type="number" min="0.01" step="0.01" data-food-recipe-weight-input></label>
-          <label>Hozam<input class="search" type="number" min="0.01" step="0.01" data-food-recipe-yield-input></label>
-          <label>Hozam egysége<select class="search" data-food-recipe-yield-unit><option value="serving">adag</option><option value="piece">darab</option><option value="slice">szelet</option></select></label>
-          <label>Egységtömeg (g)<input class="search" type="number" min="0.01" step="0.01" data-food-recipe-unit-weight></label>
-          <p class="food-recipe-yield-hint" data-food-recipe-yield-hint role="status" aria-live="polite"></p>
-        </div></section>
         <section class="food-editor-section"><h3>Hozzávaló felvétele</h3><div class="sheet-form food-recipe-ingredient-form">
           <div class="food-recipe-search-row">
             <label>Hozzávaló keresése<input class="search" type="search" autocomplete="off" placeholder="Rizs, túró, csirkemell…" data-food-recipe-ingredient-search></label>
             <button class="food-recipe-scan" type="button" data-food-recipe-scan title="Vonalkód beolvasása" aria-label="Hozzávaló vonalkódjának beolvasása"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M8 9v6M11 8v8M14 9v6M17 10v4"/></svg></button>
           </div>
-          <div class="food-recipe-scanner" data-food-recipe-live-scanner hidden><video data-food-recipe-live-video autoplay muted playsinline></video><button class="quick-action" type="button" data-food-recipe-live-stop>Olvasó bezárása</button></div>
+          <div class="food-recipe-scanner" data-food-recipe-live-scanner hidden><video data-food-recipe-live-video autoplay muted playsinline></video><button class="food-scanner-close" type="button" data-food-recipe-live-stop><span aria-hidden="true">×</span>Olvasó bezárása</button></div>
           <label>Étel<select class="search" data-food-recipe-ingredient-food aria-describedby="food-recipe-ingredient-status"><option value="">Előbb keress hozzávalót…</option></select></label>
           <p class="food-recipe-ingredient-status" id="food-recipe-ingredient-status" data-food-recipe-ingredient-status role="status" aria-live="polite">Keress, szkennelj, vagy írj be saját hozzávalót.</p>
           <label>Mennyiség<input class="search" type="number" min="0.01" step="0.01" value="100" data-food-recipe-ingredient-amount></label>
@@ -740,6 +740,16 @@
           </div>
           <p class="food-recipe-ingredient-note">100 g / 100 ml alapra megadott értékek. Üres mező = ismeretlen, nem 0. Kanálnál/csipetnél adj meg saját átváltást.</p>
         </div><button class="quick-action food-recipe-add-ingredient" type="button" data-food-recipe-ingredient-add><span>Hozzávaló hozzáadása</span></button></section>
+        <section class="food-editor-section"><h3>Alapadatok</h3><div class="sheet-form food-recipe-basics">
+          <label>Recept neve<input class="search" maxlength="180" data-food-recipe-name-input></label>
+          <label>Kategória<input class="search" maxlength="120" value="Saját recept" data-food-recipe-category-input></label>
+          <label>Elkészítés<textarea class="search" rows="3" data-food-recipe-instructions-input></textarea></label>
+          <label>Kész tömeg (g)<input class="search" type="number" min="0.01" step="0.01" data-food-recipe-weight-input></label>
+          <label>Hozam<input class="search" type="number" min="0.01" step="0.01" data-food-recipe-yield-input></label>
+          <label>Hozam egysége<select class="search" data-food-recipe-yield-unit><option value="serving">adag</option><option value="piece">darab</option><option value="slice">szelet</option></select></label>
+          <label>Egységtömeg (g)<input class="search" type="number" min="0.01" step="0.01" data-food-recipe-unit-weight></label>
+          <p class="food-recipe-yield-hint" data-food-recipe-yield-hint role="status" aria-live="polite"></p>
+        </div></section>
         <section class="food-editor-section"><h3>Hozzávalólista</h3><div class="sheet-results" data-food-recipe-ingredients></div><button type="button" class="food-recipe-nutrients-repair" data-food-recipe-nutrients-repair hidden>Ismert hozzávalók hiányzó tápértékének pótlása</button><div class="food-recipe-summary" data-food-recipe-summary>Az összesített tápérték a hozzávalók felvétele után jelenik meg.</div></section><p data-food-recipe-editor-status role="status"></p></div>
         <div class="food-full-page__footer"><button class="primary" type="button" data-food-recipe-editor-save>Recept mentése</button></div>
       </section>
