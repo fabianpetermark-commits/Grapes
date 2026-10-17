@@ -58,7 +58,7 @@ test('regular TEST commits use lightweight checks without Gradle, Java or APK up
   ]) {
     const position = qaPreview.indexOf(step)
     assert.ok(position >= 0, 'Missing opt-in step: ' + step)
-    assert.match(qaPreview.slice(position).split('\\n').slice(0, 3).join('\\n'), /if: github\.event_name == 'workflow_dispatch'/,
+    assert.match(qaPreview.slice(position).split(String.fromCharCode(10)).slice(0, 3).join(String.fromCharCode(10)), /if: github\.event_name == 'workflow_dispatch'/,
       'Native step must be manual-only: ' + step)
   }
   // Signed releases are a separate, explicit workflow; never generate them on
