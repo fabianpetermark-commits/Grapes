@@ -43,12 +43,13 @@ test('mobil kereső: ékezet, szinonima és kedvenc rangsorolás', () => {
   assert.equal(searchFoods(items, '', { favorites: ['bread'] })[0].id, 'bread')
 })
 
-test('FatSecret forráscímke nem lehet Saját étel; a többi szolgáltató marad', () => {
-  assert.equal(foodSourceLabel({ source: { type: 'fatsecret' } }), 'FatSecret')
+test('a régi importokat megőrizzük, új aktív FatSecret-forrás nélkül', () => {
+  assert.equal(foodSourceLabel({ source: { type: 'fatsecret' } }), 'Korábbi import')
   assert.equal(foodSourceLabel({ source: { type: 'openfoodfacts' } }), 'Open Food Facts')
   assert.equal(foodSourceLabel({ source: { type: 'yazio' } }), 'YAZIO')
   assert.equal(foodSourceLabel({ source: { type: 'usda' }, verified: true }), 'USDA · ellenőrzött offline')
   assert.equal(foodSourceLabel({ source: { type: 'usda' }, verified: false }), 'USDA · online')
   assert.equal(foodSourceLabel({ kind: 'recipe' }), 'Saját recept')
+  assert.equal(foodSourceLabel({ source: { type: 'shared-recipe' } }), 'Megosztott recept')
   assert.equal(foodSourceLabel({ kind: 'manual' }), 'Saját étel')
 })

@@ -4,10 +4,10 @@ import {
   entriesForLocalDay, foodBackupFromJson, foodBackupToJson, macroEnergyWarning, normalizeDiaryEntry,
   normalizeFoodItem, normalizeFoodProject, normalizeRecipe, normalizeTargets, summarizeEntries,
 } from './food-data.js'
-import { searchFoods } from './food-search.js'
+import { searchFoods, foodSourceLabel } from './food-search.js'
 import { searchFoodCatalog } from './food-catalog-search.js'
 import { searchVerifiedUsdaFoods } from './usda-foods.js'
-import { lookupFatSecretProduct, lookupOpenFoodFactsProduct, searchFatSecretProducts, searchOpenFoodFactsProducts } from './food-api.js'
+import { lookupOpenFoodFactsProduct } from './food-api.js'
 import { healthImportEntries, prepareHealthBridgeImport } from './food-health-import.js'
 import { MAX_YAZIO_JSON_BYTES, applyYazioBatch, markYazioBatchComplete, prepareYazioImport, undoYazioBatch } from './food-yazio-import.js'
 import { nutritionSuggestionPer100, recognizeNutritionLabelImage } from './food-label-ocr.js'
@@ -203,7 +203,7 @@ function renderFoodItems() {
     const row = document.createElement('article'); row.className = 'food__food-row'
     const favorite = document.createElement('button'); favorite.type = 'button'; favorite.className = 'food__favorite'; favorite.dataset.foodFavorite = food.id; favorite.setAttribute('aria-label', `${food.name}: kedvenc állapot váltása`); favorite.setAttribute('aria-pressed', String(project.favorites.includes(food.id))); favorite.textContent = project.favorites.includes(food.id) ? '★' : '☆'
     const info = document.createElement('div'); const name = document.createElement('strong'); name.textContent = food.name; const meta = document.createElement('span')
-    meta.textContent = `${food.category} · ${formatNumber(food.nutrients.energyKcal, 1)} kcal / 100 ${food.baseUnit}${food.source.type === 'openfoodfacts' ? ' · Open Food Facts' : food.source.type === 'fatsecret' ? ' · FatSecret' : food.source.type === 'usda' ? ' · USDA' : food.source.type === 'shared-recipe' ? ' · Megosztott recept' : food.kind === 'recipe' ? ' · Saját recept' : ''}`; info.append(name, meta)
+    meta.textContent = `${food.category} · ${formatNumber(food.nutrients.energyKcal, 1)} kcal / 100 ${food.baseUnit}${food.source.type === 'manual' ? '' : ' · ' + foodSourceLabel(food)}`; info.append(name, meta)
     if (food.source.type === 'shared-recipe') {
       const copy = document.createElement('button'); copy.type = 'button'; copy.className = 'btn btn--sm'; copy.textContent = 'Saját másolat'; copy.dataset.libraryCopyFood = food.id; row.append(favorite, info, copy)
     } else {
@@ -246,7 +246,7 @@ function renderOpenFoodFactsResults(message = '', context = catalogSearchContext
       const image = document.createElement('img')
       image.src = food.imageUrl; image.alt = ''; image.loading = 'lazy'; row.append(image)
     }
-    const sourceLabel = food.source.type === 'usda' ? (food.verified ? 'USDA · ellenőrzött offline' : 'USDA · online') : food.source.type === 'fatsecret' ? 'FatSecret' : 'Open Food Facts'
+    const sourceLabel = foodSourceLabel(food)
     const info = document.createElement('div')
     const name = document.createElement('strong'); name.textContent = food.name
     if (food.preparation === 'raw' || food.preparation === 'cooked') {
@@ -402,7 +402,7 @@ function loadOpenFoodFactsResult(index, context = 'foods') {
   $('#food-item-barcode').value = product.barcode
   $('#food-item-base-unit').value = product.baseUnit
   for (const key of CORE_NUTRIENTS) $('#food-item-' + key).value = product.nutrients[key] ?? ''
-  const sourceLabel = product.source.type === 'usda' ? (product.verified ? 'USDA · ellenőrzött offline' : 'USDA · online') : product.source.type === 'fatsecret' ? 'FatSecret' : 'Open Food Facts'
+  const sourceLabel = foodSourceLabel(product)
   $('#food-item-cancel').classList.remove('hidden')
   $('#food-api-status').textContent = sourceLabel + ' találat. Ellenőrizd az értékeket és mentsd.' +
     (context === 'diary' ? ' Mentés után visszatérünk a naplóhoz.' : '')
@@ -714,20 +714,13 @@ async function lookupBarcode({ forDiary = false } = {}) {
   report('Termék keresése…', 'saving')
   try {
     const barcode = $('#food-item-barcode').value
-    try { pendingProduct = await lookupOpenFoodFactsProduct(barcode) }
-    catch (openFoodFactsError) {
-      try { pendingProduct = await lookupFatSecretProduct(barcode) }
-      catch (fatSecretError) {
-        if (/Nem található termék/.test(openFoodFactsError.message) && /nincs konfigurálva/.test(fatSecretError.message)) throw openFoodFactsError
-        throw new Error(`A termék egyik adatbázisban sem található. ${fatSecretError.message}`)
-      }
-    }
+    pendingProduct = await lookupOpenFoodFactsProduct(barcode)
     if (forDiary) { saveScannedProductForDiary(pendingProduct); return }
     const existing = project.customFoods.find(food => (pendingProduct.barcode && food.barcode === pendingProduct.barcode) || (food.source.type === pendingProduct.source.type && food.source.id === pendingProduct.source.id))
     if (existing) { pendingProduct = null; fillFoodForm(existing); report('Ez a vonalkód már szerepel az Ételek között. A meglévő adatokat nyitottam meg.'); return }
     $('#food-item-name').value = pendingProduct.name; $('#food-item-category').value = pendingProduct.category; $('#food-item-base-unit').value = pendingProduct.baseUnit
     for (const key of CORE_NUTRIENTS) $(`#food-item-${key}`).value = pendingProduct.nutrients[key] ?? ''
-    report(`${pendingProduct.source.type === 'fatsecret' ? 'FatSecret' : 'Open Food Facts'} találat betöltve. Ellenőrizd, majd mentsd.`)
+    report('Open Food Facts találat betöltve. Ellenőrizd, majd mentsd.')
   } catch (error) {
     const message = /Nem található termék/.test(error.message) ? `${error.message} Keress rá név vagy márka alapján az Ételek fülön, vagy rögzítsd kézzel.` : error.message
     report(message, 'error')

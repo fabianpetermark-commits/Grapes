@@ -10,7 +10,6 @@ function selectedOffRegion() {
     return OFF_REGIONS.has(value) ? value : 'hu'
   } catch { return 'hu' }
 }
-const DEFAULT_FOOD_BROKER_URL = import.meta.env?.VITE_FOOD_BROKER_URL || import.meta.env?.VITE_EBOOK_TRANSFER_BROKER_URL || ''
 
 function numberOrNull(value) {
   if (value === null || value === undefined || value === '') return null
@@ -118,67 +117,4 @@ export async function searchOpenFoodFactsProducts(query, {
       throw new Error('Open Food Facts keresés sikertelen: ' + error.message + ' Tartalék kereső: ' + fallbackError.message)
     }
   }
-}
-
-function bridgeNonce(cryptoImpl = globalThis.crypto) {
-  const bytes = new Uint8Array(24)
-  if (cryptoImpl?.getRandomValues) cryptoImpl.getRandomValues(bytes)
-  else for (let index = 0; index < bytes.length; index += 1) bytes[index] = Math.floor(Math.random() * 256)
-  return [...bytes].map(value => value.toString(16).padStart(2, '0')).join('')
-}
-
-function normalizeBrokerProduct(product) {
-  if (!product || typeof product !== 'object' || !product.name || !product.source?.id) return null
-  const barcode = String(product.barcode || '').trim()
-  if (barcode && !/^\d{7,14}$/.test(barcode)) return null
-  return {
-    kind: 'product', name: String(product.name).slice(0, 180), barcode,
-    category: String(product.category || 'Élelmiszer').slice(0, 120), baseUnit: product.baseUnit === 'ml' ? 'ml' : 'g', imageUrl: '',
-    nutrients: {
-      energyKcal: numberOrNull(product.nutrients?.energyKcal), protein: numberOrNull(product.nutrients?.protein),
-      carbohydrate: numberOrNull(product.nutrients?.carbohydrate), fat: numberOrNull(product.nutrients?.fat),
-      fiber: numberOrNull(product.nutrients?.fiber), sugar: numberOrNull(product.nutrients?.sugar),
-      saturatedFat: numberOrNull(product.nutrients?.saturatedFat), salt: numberOrNull(product.nutrients?.salt),
-    },
-    source: { type: 'fatsecret', id: String(product.source.id), revision: String(product.source.revision || ''), attribution: 'FatSecret Platform' },
-  }
-}
-
-async function fatSecretBridgeRequest(kind, value, { brokerUrl = DEFAULT_FOOD_BROKER_URL, timeoutMs = 15000, windowImpl = globalThis.window, documentImpl = globalThis.document, cryptoImpl = globalThis.crypto } = {}) {
-  if (typeof globalThis.__GRAPES_FATSECRET_TEST__ === 'function') return globalThis.__GRAPES_FATSECRET_TEST__(kind, value)
-  if (!brokerUrl) throw new Error('A FatSecret kereső még nincs konfigurálva.')
-  if (!windowImpl?.addEventListener || !documentImpl?.createElement) throw new Error('A FatSecret kereső ebben a környezetben nem érhető el.')
-  const nonce = bridgeNonce(cryptoImpl)
-  const endpoint = new URL(brokerUrl)
-  endpoint.searchParams.set('action', 'food-search'); endpoint.searchParams.set('kind', kind); endpoint.searchParams.set('value', value); endpoint.searchParams.set('nonce', nonce)
-  const frame = documentImpl.createElement('iframe'); frame.hidden = true; frame.title = 'FatSecret termékkeresés'; frame.src = endpoint.toString()
-  return new Promise((resolve, reject) => {
-    const cleanup = () => { windowImpl.removeEventListener('message', receive); frame.remove(); clearTimeout(timer) }
-    const receive = event => {
-      let origin
-      try { origin = new URL(event.origin) } catch { return }
-      if (origin.protocol !== 'https:' || !(/^(?:script\.google\.com|(?:[a-z0-9-]+[.-])?script\.googleusercontent\.com)$/.test(origin.hostname))) return
-      if (event.source !== frame.contentWindow || event.data?.type !== 'grapes-fatsecret-result' || event.data?.nonce !== nonce) return
-      cleanup()
-      if (event.data.status !== 'ok') reject(new Error(event.data.message || 'A FatSecret keresés nem sikerült.'))
-      else resolve((event.data.products || []).map(normalizeBrokerProduct).filter(Boolean))
-    }
-    const timer = setTimeout(() => { cleanup(); reject(new Error('A FatSecret keresés túllépte az időkorlátot.')) }, timeoutMs)
-    windowImpl.addEventListener('message', receive); documentImpl.body.append(frame)
-  })
-}
-
-export async function searchFatSecretProducts(query, options = {}) {
-  const term = String(query || '').trim().replace(/\s+/g, ' ')
-  if (term.length < 2 || term.length > 120) throw new Error('A terméknév legalább 2, legfeljebb 120 karakter legyen.')
-  const products = await fatSecretBridgeRequest('name', term, options)
-  return { count: products.length, page: 1, products }
-}
-
-export async function lookupFatSecretProduct(barcode, options = {}) {
-  const code = String(barcode || '').trim()
-  if (!/^\d{7,14}$/.test(code)) throw new Error('A vonalkód 7–14 számjegyből állhat.')
-  const products = await fatSecretBridgeRequest('barcode', code, options)
-  if (!products.length) throw new Error('A FatSecret adatbázisban sem található termék ezzel a vonalkóddal.')
-  return products[0]
 }
