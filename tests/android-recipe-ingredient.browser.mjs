@@ -135,10 +135,12 @@ try {
 
   // Recipe scanner must stay inline without switching to full catalogue.
   const popup = page.waitForEvent('dialog')
-  await page.locator('[data-food-recipe-scan]').click()
+  const clickScan = page.locator('[data-food-recipe-scan]').click()
   await (await popup).accept('5998888888888')
+  await clickScan
   await dropdown.locator('option', { hasText: /Teszt keksz/ }).first().waitFor({ state: 'attached' })
-  assert.equal(await dropdown.inputValue() === '', false, 'Scanned product must be selected explicitly by the scanner.')
+  await page.waitForFunction(() => Boolean(document.querySelector('[data-food-recipe-ingredient-food]')?.value))
+  assert.notEqual(await dropdown.inputValue(), '', 'Scanned product must be selected explicitly by the scanner.')
   assert.equal(await page.locator('[data-food-add-sheet].is-open').count(), 0,
     'Inline scanner must not open the full catalog.')
   assert.equal(await page.locator('[data-food-recipe-edit-sheet].is-open').count(), 1,
