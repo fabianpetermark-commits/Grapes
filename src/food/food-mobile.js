@@ -1038,12 +1038,32 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     return lookupOpenFoodFactsProduct(normalized)
   }
 
-  async function addBarcode(code) {
-    const status = $('[data-food-search-status]'); status.textContent = 'Termék keresése…'
+  async function addBarcode(code, forRecipe = false) {
+    const status = $(forRecipe ? '[data-food-recipe-ingredient-status]' : '[data-food-search-status]')
+    status.textContent = 'Vonalkód alapján termék keresése…'
     try {
       const found = await lookupBarcode(code)
-      addFood(materializeExternalFood(found))
-    } catch (error) { status.textContent = error.message }
+      if (!forRecipe) { addFood(materializeExternalFood(found)); return }
+      stopBarcodeCamera()
+      // Keep the recipe editor visible: fill the inline dropdown and nutrient
+      // fields, never navigate through the full catalogue or auto-add an item.
+      clearTimeout(recipeIngredientSearchTimer)
+      recipeIngredientSearchGeneration += 1
+      recipeIngredientRemoteFoods = [found]
+      recipeIngredientLoading = false
+      recipeIngredientSearchError = ''
+      recipeNutrientSelection = ''
+      $('[data-food-recipe-ingredient-search]').value = found.name
+      renderRecipeIngredientChoices()
+      const selected = [...recipeIngredientChoices].find(([, food]) =>
+        (found.barcode && food.barcode === found.barcode) || foodKey(food) === foodKey(found))
+      if (!selected) throw new Error('A talált termék nem tölthető be a receptszerkesztőbe.')
+      $('[data-food-recipe-ingredient-food]').value = selected[0]
+      renderRecipeIngredientUnits()
+      status.textContent = 'Beolvasva: ' + found.name + '. Ellenőrizd a tápértéket és add hozzá.'
+    } catch (error) {
+      status.textContent = error?.message || 'Nem sikerült a vonalkódos termékkeresés.'
+    }
   }
 
   function stopBarcodeCamera() {
@@ -1051,18 +1071,22 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     barcodeScanTimer = null
     barcodeStream?.getTracks().forEach(track => track.stop())
     barcodeStream = null
-    const video = $('[data-food-live-video]')
-    if (video) video.srcObject = null
-    const panel = $('[data-food-live-scanner]')
-    if (panel) panel.hidden = true
+    for (const selector of ['[data-food-live-video]', '[data-food-recipe-live-video]']) {
+      const video = $(selector)
+      if (video) video.srcObject = null
+    }
+    for (const selector of ['[data-food-live-scanner]', '[data-food-recipe-live-scanner]']) {
+      const panel = $(selector)
+      if (panel) panel.hidden = true
+    }
   }
 
-  async function requestBarcode() {
-    const status = $('[data-food-search-status]')
+  async function requestBarcode(forRecipe = false) {
+    const status = $(forRecipe ? '[data-food-recipe-ingredient-status]' : '[data-food-search-status]')
     if (!navigator.mediaDevices?.getUserMedia || !('BarcodeDetector' in window)) {
-      status.textContent = 'Az élő olvasó nem támogatott. Használd a Fotó alapján gombot, vagy írd be a kódot.'
+      status.textContent = 'Az élő vonalkódolvasó nem támogatott ezen a készüléken. Add meg a kódot kézzel.'
       const code = window.prompt('Termékvonalkód (7–14 számjegy):')
-      if (code !== null) await addBarcode(code)
+      if (code !== null) await addBarcode(code, forRecipe)
       return
     }
     stopBarcodeCamera()
@@ -1074,9 +1098,10 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       const detector = new BarcodeDetector({ formats: enabled })
       const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' } } })
       barcodeStream = stream
-      const video = $('[data-food-live-video]')
+      const video = $(forRecipe ? '[data-food-recipe-live-video]' : '[data-food-live-video]')
+      const panel = $(forRecipe ? '[data-food-recipe-live-scanner]' : '[data-food-live-scanner]')
       video.srcObject = stream
-      $('[data-food-live-scanner]').hidden = false
+      panel.hidden = false
       await video.play()
       status.textContent = 'Irányítsd a kamerát a termék vonalkódjára.'
       const scan = async () => {
@@ -1086,7 +1111,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
           const code = firstProductBarcode(codes)
           if (code) {
             stopBarcodeCamera()
-            await addBarcode(code)
+            await addBarcode(code, forRecipe)
             return
           }
         } catch {}
@@ -1096,7 +1121,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     } catch (error) {
       stopBarcodeCamera()
       status.textContent = error?.name === 'NotAllowedError'
-        ? 'A kameraengedély hiányzik. Válaszd a fotós vagy kézi bevitelt.'
+        ? 'A kameraengedély hiányzik. Engedélyezd a kamerát, vagy írd be kézzel a vonalkódot.'
         : (error.message || 'Nem sikerült elindítani a kamerát.')
     }
   }
@@ -1748,6 +1773,12 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-health-confirm]').addEventListener('click', applyHealthImport)
     $('[data-food-recipe-ingredient-search]').addEventListener('input', event => startRecipeIngredientSearch(event.currentTarget.value))
     $('[data-food-recipe-ingredient-food]').addEventListener('change', renderRecipeIngredientUnits)
+    $('[data-food-recipe-ingredient-unit]').addEventListener('change', () => {
+      $('[data-food-recipe-conversion-amount]').value = ''
+      renderRecipeIngredientConversion()
+    })
+    $('[data-food-recipe-scan]').addEventListener('click', () => requestBarcode(true))
+    $('[data-food-recipe-live-stop]').addEventListener('click', stopBarcodeCamera)
     $('[data-food-recipe-ingredient-add]').addEventListener('click', addRecipeIngredient)
     for (const selector of ['[data-food-recipe-weight-input]', '[data-food-recipe-yield-input]', '[data-food-recipe-yield-unit]', '[data-food-recipe-unit-weight]']) {
       $(selector).addEventListener('input', renderRecipeSummary)
@@ -1755,7 +1786,6 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     }
     $('[data-food-recipe-editor-save]').addEventListener('click', saveRecipe)
     $('[data-food-recipe-editor-back]').addEventListener('click', dismissRecipeEditor)
-    $('[data-food-recipe-open-catalog]').addEventListener('click', openRecipeCatalog)
     $('[data-food-add-back]').addEventListener('click', closeAddPage)
     fab.addEventListener('click', openAddSheet)
     backdrop.addEventListener('click', () => { if (recipeCatalogActive) closeRecipeCatalog(); else if ($('[data-food-recipe-edit-sheet]').classList.contains('is-open')) dismissRecipeEditor(); else closeSheets() })
@@ -1777,11 +1807,13 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
         if (!ingredient || !food) return
         editingRecipeIngredientId = ingredient.id
         $('[data-food-recipe-ingredient-search]').value = food.name
+        recipeNutrientSelection = ''
         renderRecipeEditorIngredients()
         $('[data-food-recipe-ingredient-food]').value = food.id
         renderRecipeIngredientUnits()
         $('[data-food-recipe-ingredient-amount]').value = ingredient.amount
         $('[data-food-recipe-ingredient-unit]').value = ingredient.unit
+        renderRecipeIngredientConversion()
         $('[data-food-recipe-ingredient-add] span').textContent = 'Hozzávaló frissítése'
         $('[data-food-recipe-ingredient-amount]').focus({ preventScroll: false })
         return
