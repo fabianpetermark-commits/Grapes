@@ -1,0 +1,5 @@
+{
+  "versionCode": 2,
+  "versionName": "0.2.0",
+  "notes": "Grapes TEST Food v23: javított recept-hozzávalókereső (saját, USDA és Open Food Facts találatok az Étel legördülőben), FatSecret eltávolítás, ékezetfüggetlen keresés, vonalkód-javítások és a régi víznaplóadatok megőrzése. Első állandó TEST-aláírású kiadás; a korábbi debug-aláírt TEST csak mentés és szükség szerinti újratelepítés után váltható le."
+}
