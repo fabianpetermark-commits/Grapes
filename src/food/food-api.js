@@ -2,6 +2,14 @@ import { isGrapesAndroidApp, requestAndroidFoodApi } from '../android-bridge.js'
 
 const DEFAULT_OPEN_FOOD_FACTS_URL = 'https://world.openfoodfacts.org'
 const DEFAULT_OPEN_FOOD_FACTS_SEARCH_URL = 'https://search.openfoodfacts.org'
+const OFF_REGION_STORAGE_KEY = 'grapes.food.openFoodFacts.region'
+const OFF_REGIONS = new Set(['hu', 'sk', 'at', 'de', 'cz', 'pl', 'ro', 'gb', 'us', 'all'])
+function selectedOffRegion() {
+  try {
+    const value = globalThis.localStorage?.getItem(OFF_REGION_STORAGE_KEY) || 'hu'
+    return OFF_REGIONS.has(value) ? value : 'hu'
+  } catch { return 'hu' }
+}
 const DEFAULT_FOOD_BROKER_URL = import.meta.env?.VITE_FOOD_BROKER_URL || import.meta.env?.VITE_EBOOK_TRANSFER_BROKER_URL || ''
 
 function numberOrNull(value) {
@@ -59,7 +67,7 @@ export async function searchOpenFoodFactsProducts(query, {
   if (typeof fetchImpl !== 'function') throw new Error('A termékadatbázis ezen a környezeten nem érhető el.')
   const requestedPage = Math.max(1, Number(page) || 1)
   const requestedSize = Math.min(24, Math.max(1, Number(pageSize) || 12))
-  const fields = 'code,product_name_hu,product_name,generic_name_hu,generic_name,categories_tags,product_quantity_unit,image_front_small_url,nutriments,last_modified_t'
+  const fields = 'code,product_name_hu,product_name,generic_name_hu,generic_name,categories_tags,countries_tags,product_quantity_unit,image_front_small_url,nutriments,last_modified_t'
   const params = new URLSearchParams({
     q: term, page: String(requestedPage), page_size: String(requestedSize),
     langs: 'hu,en', boost_phrase: 'true', fields,
@@ -80,8 +88,15 @@ export async function searchOpenFoodFactsProducts(query, {
     const hits = payload.hits || payload.products
     if (!Array.isArray(hits)) throw new Error('Az Open Food Facts keresője ismeretlen válaszformátumot adott.')
     const products = []
+    const region = selectedOffRegion()
     for (const hit of hits) {
-      try { products.push(productFromOpenFoodFacts(hit.document || hit._source || hit)) } catch { /* Incomplete product skipped. */ }
+      const item = hit.document || hit._source || hit
+      if (region !== 'all' && !item.countries_tags?.includes('en:' + ({
+        hu: 'hungary', sk: 'slovakia', at: 'austria', de: 'germany',
+        cz: 'czech-republic', pl: 'poland', ro: 'romania',
+        gb: 'united-kingdom', us: 'united-states',
+      }[region]))) continue
+      try { products.push(productFromOpenFoodFacts(item)) } catch { /* Incomplete product skipped. */ }
     }
     return { count: Number(payload.count) || products.length, page: Number(payload.page) || requestedPage, products }
   }
