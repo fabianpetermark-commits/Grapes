@@ -74,8 +74,8 @@ try {
 
   await page.locator('[data-nav="sync"]').click()
   await page.locator('[data-page="sync"]').waitFor({ state: 'visible' })
-  assert.match(await page.locator('[data-sync-local-count]').textContent(), /\d+ projekt/)
-  assert.equal(await page.locator('[data-sync-drive-count]').textContent(), 'Nincs csatlakoztatva')
+  await page.locator('[data-sync-local-count]').filter({ hasText: /\d+ projekt/ }).waitFor()
+  await page.locator('[data-sync-drive-count]').filter({ hasText: 'Nincs csatlakoztatva' }).waitFor()
   assert.equal(await page.locator('[data-health-sync]').count(), 1)
   assert.equal(await page.locator('[data-samsung-sync-action]').count(), 1)
   assert.equal(await page.locator('[data-yazio-import]').count(), 1)
