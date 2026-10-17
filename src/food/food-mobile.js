@@ -6,7 +6,7 @@ import { searchFoodCatalog } from './food-catalog-search.js'
 import { searchFoods, foodSourceLabel } from './food-search.js'
 import { recipeIngredientMatches } from './recipe-ingredient-search.js'
 import { suggestedRecipeYield } from './recipe-yield-preview.js'
-import { RECIPE_NUTRIENTS, manualRecipeBaseUnit, prepareRecipeIngredientFood, recipeUnitNeedsConversion, recipeUnitOptions, recipeNutrientInputs } from './recipe-ingredient-draft.js'
+import { RECIPE_NUTRIENTS, applyVerifiedRecipeNutrientRepairs, manualRecipeBaseUnit, prepareRecipeIngredientFood, recipeUnitNeedsConversion, recipeUnitOptions, recipeNutrientInputs, suggestVerifiedRecipeNutrientRepairs } from './recipe-ingredient-draft.js'
 import { firstProductBarcode } from './food-barcode.js'
 import { searchVerifiedUsdaFoods } from './usda-foods.js'
 import { createMobileYazio } from './food-mobile-yazio.js'
@@ -710,6 +710,13 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const names = new Map(foods.map(food => [food.id, food.name]))
     const missingByFood = new Map(missingRecipeNutrients(recipeIngredients, foods)
       .map(item => [item.foodId, item.keys]))
+    const possibleRepairs = suggestVerifiedRecipeNutrientRepairs(recipeIngredients, foods)
+    const repairButton = $('[data-food-recipe-nutrients-repair]')
+    repairButton.hidden = !possibleRepairs.length
+    if (possibleRepairs.length) {
+      const count = new Set(possibleRepairs.map(item => item.foodId)).size
+      repairButton.textContent = count + ' ismert hozzávaló tápértékének pótlása'
+    }
     const container = $('[data-food-recipe-ingredients]'); container.replaceChildren()
     if (!recipeIngredients.length) container.innerHTML = '<div class="food-empty">Adj hozzá legalább egy hozzávalót.</div>'
     for (const ingredient of recipeIngredients) {
@@ -721,6 +728,24 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       container.append(row)
     }
     renderRecipeSummary()
+  }
+
+  function repairRecipeIngredientNutrients() {
+    const proposal = suggestVerifiedRecipeNutrientRepairs(recipeIngredients, project.customFoods)
+    if (!proposal.length) return
+    const names = [...new Set(proposal.map(item => item.name))]
+    const confirmed = window.confirm('A hiányzó tápértékeket ellenőrzött, offline USDA-adatokból pótoljuk: '
+      + names.join(', ') + '. Csak ennek a receptnek készülnek új hozzávalómásolatok; '
+      + 'a már mentett ételek, más receptek és korábbi naplóbejegyzések nem változnak. '
+      + 'A pótlást még a Recept mentése gombbal kell véglegesíteni. Folytatod?')
+    if (!confirmed) return
+    const fixed = applyVerifiedRecipeNutrientRepairs(recipeIngredients, project.customFoods)
+    project.customFoods.push(...fixed.addedFoods)
+    recipeIngredients = fixed.ingredients
+    editingRecipeIngredientId = ''
+    $('[data-food-recipe-editor-status]').textContent = names.join(', ')
+      + ': a hiányzó tápértékek pótolva. A változások mentéséhez nyomd meg a Recept mentése gombot.'
+    renderRecipeEditorIngredients()
   }
 
   function renderRecipeSummary() {
@@ -1837,6 +1862,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-recipe-scan]').addEventListener('click', () => requestBarcode(true))
     $('[data-food-recipe-live-stop]').addEventListener('click', stopBarcodeCamera)
     $('[data-food-recipe-ingredient-add]').addEventListener('click', addRecipeIngredient)
+    $('[data-food-recipe-nutrients-repair]').addEventListener('click', repairRecipeIngredientNutrients)
     $('[data-food-recipe-yield-input]').addEventListener('input', event => {
       recipeYieldManuallySet = event.currentTarget.value.trim() !== ''
       syncRecipeYield()
