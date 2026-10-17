@@ -41,6 +41,33 @@ test('TEST previews use the QA variant and have no release publication', () => {
   assert.doesNotMatch(qaPreview, /gh release create|contents: write/)
 })
 
+test('regular TEST commits use lightweight checks without Gradle, Java or APK uploads', () => {
+  assert.match(qaPreview, /name: Grapes TEST fast checks \(manual APK only\)/)
+  assert.match(qaPreview, /concurrency:[\s\S]*cancel-in-progress: true/)
+  assert.match(qaPreview, /- run: npm test/)
+  assert.match(qaPreview, /- run: npm run build:android-web/)
+  assert.match(qaPreview, /node tests\/android-recipe-ingredient\.browser\.mjs/)
+  assert.match(qaPreview, /workflow_dispatch:/)
+  for (const step of [
+    'uses: actions/setup-java@v4',
+    'name: Install Android SDK 36',
+    'uses: gradle/actions/setup-gradle@v4',
+    'name: Build QA variant (debug-signed preview only)',
+    'name: Check isolated package identity',
+    'uses: actions/upload-artifact@v4',
+  ]) {
+    const position = qaPreview.indexOf(step)
+    assert.ok(position >= 0, 'Missing opt-in step: ' + step)
+    assert.match(qaPreview.slice(position).split('\\n').slice(0, 3).join('\\n'), /if: github\.event_name == 'workflow_dispatch'/,
+      'Native step must be manual-only: ' + step)
+  }
+  // Signed releases are a separate, explicit workflow; never generate them on
+  // every pushed Food UI change.
+  assert.match(signedTestRelease, /paths:\s*\n\s*- android-health-connect-poc\/test-release\.json/)
+  assert.match(signedTestRelease, /:app:assembleQa/)
+  assert.match(signedTestRelease, /Signer #1 certificate SHA-256 digest/)
+})
+
 test('Existing production release remains on its original branch and latest channel', () => {
   assert.match(stableRelease, /ref: codex\/android-app/)
   assert.match(stableRelease, /:app:assembleRelease/)
