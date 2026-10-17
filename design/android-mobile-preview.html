@@ -337,6 +337,10 @@
     .food-recipe-scanner button { margin-top: 8px; width: 100%; }
     .food-recipe-nutrient-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; }
     .food-recipe-nutrient-fields label { min-width: 0; }
+    /* .sheet-form label:last-child spans two columns by default. Override it
+       specifically for the slice-weight pair and the carbohydrate/fat pair. */
+    .food-recipe-basics > label:last-child,
+    .food-recipe-nutrient-fields > label:last-child { grid-column: auto; }
     .food-recipe-nutrient-fields input { min-width: 0; width: 100%; }
     .food-recipe-ingredient-note { margin: -3px 0 5px; font-size: 11px; color: var(--muted); line-height: 1.5; }
     .food-recipe-ingredient-form > label[hidden], .food-recipe-scanner[hidden] { display: none; }
