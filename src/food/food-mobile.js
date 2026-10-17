@@ -5,6 +5,7 @@ import { lookupOpenFoodFactsProduct } from './food-api.js'
 import { searchFoodCatalog } from './food-catalog-search.js'
 import { searchFoods, foodSourceLabel } from './food-search.js'
 import { recipeIngredientMatches } from './recipe-ingredient-search.js'
+import { suggestedRecipeYield } from './recipe-yield-preview.js'
 import { RECIPE_NUTRIENTS, manualRecipeBaseUnit, prepareRecipeIngredientFood, recipeUnitNeedsConversion, recipeUnitOptions, recipeNutrientInputs } from './recipe-ingredient-draft.js'
 import { firstProductBarcode } from './food-barcode.js'
 import { searchVerifiedUsdaFoods } from './usda-foods.js'
@@ -69,6 +70,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   let foodSearchRenderState = { remoteFoods: [], loading: false, remoteError: '' }
   let pendingHealthImport = null
   let editingRecipeId = ''
+  let recipeYieldManuallySet = false
   let editingRecipeIngredientId = ''
   let recipeIngredients = []
   let recipeIngredientSearchTimer = null
@@ -571,6 +573,26 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     return true
   }
 
+  function syncRecipeYield() {
+    const input = $('[data-food-recipe-yield-input]')
+    const hint = $('[data-food-recipe-yield-hint]')
+    const automatic = suggestedRecipeYield(
+      $('[data-food-recipe-weight-input]').value,
+      $('[data-food-recipe-unit-weight]').value,
+    )
+    if (!recipeYieldManuallySet) input.value = automatic === null ? '' : String(automatic)
+    if (recipeYieldManuallySet) {
+      hint.textContent = automatic !== null && Math.abs(Number(input.value) - automatic) > 0.001
+        ? 'Kézi hozam: mentéskor az egységtömeget a megadott hozamhoz igazítjuk.'
+        : 'Kézzel megadott hozam. A mező törlésével visszakapcsolható az automatikus számítás.'
+    } else {
+      hint.textContent = automatic === null
+        ? 'A hozam automatikusan kitöltődik, ha a kész tömeg és az egységtömeg is megvan.'
+        : 'Automatikusan számolva a kész tömeg és az egységtömeg alapján. Szabadon átírható.'
+    }
+    renderRecipeSummary()
+  }
+
   function openRecipeEditor(id = '') {
     closeSheets()
     clearTimeout(recipeIngredientSearchTimer)
@@ -582,6 +604,9 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     recipeNutrientSelection = ''
     const recipe = project.recipes.find(item => item.id === id)
     editingRecipeId = recipe?.id || ''
+    // Pre-existing saved yields have unknown provenance; preserve them as
+    // explicit values rather than unexpectedly changing an old recipe.
+    recipeYieldManuallySet = recipe?.yieldCount != null && recipe.yieldCount !== ''
     editingRecipeIngredientId = ''
     recipeIngredients = recipe ? recipe.ingredients.map(item => ({ ...item })) : []
     $('[data-food-recipe-editor-title]').textContent = recipe ? 'Recept szerkesztése' : 'Új recept'
@@ -596,6 +621,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-recipe-ingredient-search]').value = ''
     $('[data-food-recipe-conversion-amount]').value = ''
     $('[data-food-recipe-ingredient-add] span').textContent = 'Hozzávaló hozzáadása'
+    syncRecipeYield()
     renderRecipeEditorIngredients()
     recipeEditorSnapshot = recipeEditorState()
     setSheetOpen($('[data-food-recipe-edit-sheet]'), true)
@@ -1811,10 +1837,15 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-recipe-scan]').addEventListener('click', () => requestBarcode(true))
     $('[data-food-recipe-live-stop]').addEventListener('click', stopBarcodeCamera)
     $('[data-food-recipe-ingredient-add]').addEventListener('click', addRecipeIngredient)
-    for (const selector of ['[data-food-recipe-weight-input]', '[data-food-recipe-yield-input]', '[data-food-recipe-yield-unit]', '[data-food-recipe-unit-weight]']) {
-      $(selector).addEventListener('input', renderRecipeSummary)
-      $(selector).addEventListener('change', renderRecipeSummary)
+    $('[data-food-recipe-yield-input]').addEventListener('input', event => {
+      recipeYieldManuallySet = event.currentTarget.value.trim() !== ''
+      syncRecipeYield()
+    })
+    for (const selector of ['[data-food-recipe-weight-input]', '[data-food-recipe-unit-weight]']) {
+      $(selector).addEventListener('input', syncRecipeYield)
+      $(selector).addEventListener('change', syncRecipeYield)
     }
+    $('[data-food-recipe-yield-unit]').addEventListener('change', renderRecipeSummary)
     $('[data-food-recipe-editor-save]').addEventListener('click', saveRecipe)
     $('[data-food-recipe-editor-back]').addEventListener('click', dismissRecipeEditor)
     $('[data-food-add-back]').addEventListener('click', closeAddPage)
