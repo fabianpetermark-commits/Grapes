@@ -33,11 +33,6 @@ try {
       scopes: 'https://www.googleapis.com/auth/drive.file', account: { id: 'food-user', name: 'Food Teszt', email: 'food@example.com', photo: '' },
     }))
     globalThis.__GRAPES_RECEIPT_OCR_TEST__ = async (_image, onProgress) => { onProgress(1); return 'Tápérték 100 g\nEnergia 200 kcal\nZsír 8,5 g\nSzénhidrát 20 g\nFehérje 10 g\nSó 0,75 g' }
-    globalThis.__GRAPES_FATSECRET_TEST__ = async (kind, value) => [{
-      kind: 'product', name: 'Pikok – Baromfi párizsi', barcode: kind === 'barcode' ? value : '', category: 'Márkás élelmiszer', baseUnit: 'g', imageUrl: '',
-      nutrients: { energyKcal: 210, protein: 12, carbohydrate: 2, fat: 16, fiber: null, sugar: 1, saturatedFat: 5, salt: 1.7 },
-      source: { type: 'fatsecret', id: 'fatsecret-pikok-1', revision: '', attribution: 'FatSecret Platform' },
-    }]
     globalThis.BarcodeDetector = class { async detect() { return [{ rawValue: '5991234567890' }] } }
     globalThis.createImageBitmap = async () => ({ close() {} })
   })
@@ -103,16 +98,6 @@ try {
   assert.equal(await page.locator('#food-item-energyKcal').inputValue(), '555')
   await page.locator('#food-item-form button[type="submit"]').tap()
   await page.locator('.food__food-row', { hasText: 'Név alapján talált mogyorókrém' }).waitFor()
-  await page.locator('#food-search').fill('')
-  await page.locator('#food-item-name').fill('Baromfi párizsi')
-  await page.locator('#food-item-barcode').fill('')
-  await page.locator('#food-lookup').tap()
-  const fatSecretResult = page.locator('.food__off-result', { hasText: 'Pikok – Baromfi párizsi' })
-  await fatSecretResult.waitFor()
-  assert.match(await fatSecretResult.textContent(), /FatSecret/)
-  await fatSecretResult.locator('[data-off-result]').tap()
-  assert.equal(await page.locator('#food-item-energyKcal').inputValue(), '210')
-  await page.locator('#food-item-form button[type="submit"]').tap()
   await page.locator('#food-search').fill('')
   await page.locator('#food-item-name').fill('Teszt csirkemell')
   await page.locator('#food-item-category').fill('Hús')

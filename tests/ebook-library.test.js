@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
-import { createHmac, webcrypto } from 'node:crypto'
+import { webcrypto } from 'node:crypto'
 
 // Exercise the browser module with isolated DOM/Google/HTTP boundaries.
 const source = readFileSync(new URL('../src/ebook-library.js', import.meta.url), 'utf8')
@@ -1466,7 +1466,7 @@ test('automatic broker deployment stays aligned with every live client URL', () 
   assert.match(brokerWorkflowSource, /clasp deploy --deploymentId/)
   assert.match(brokerSource, /BROKER_API_VERSION = 20/)
   assert.match(brokerSource, /action === 'health'/)
-  assert.match(brokerSource, /action === 'food-search'/)
+  assert.doesNotMatch(brokerSource, /action === 'food-search'/)
 })
 
 test('reader manifests use larger UTF-8-safe property chunks and retain explicit maintenance', () => {
@@ -1483,85 +1483,14 @@ test('reader manifests use larger UTF-8-safe property chunks and retain explicit
   assert.doesNotMatch(brokerSource, /action === 'health'[\s\S]{0,200}maintainScriptProperties\(\)/)
 })
 
-test('FatSecret broker prefers OAuth 1.0 signed requests without an IP-bound access token', () => {
-  const cache = new Map()
-  const requests = []
-  const response = (status, body) => ({ getResponseCode: () => status, getContentText: () => JSON.stringify(body) })
-  const properties = { FATSECRET_CONSUMER_KEY: 'consumer-key', FATSECRET_SHARED_SECRET: 'shared-secret', FATSECRET_CLIENT_ID: 'unused', FATSECRET_CLIENT_SECRET: 'unused' }
+test('the old Food broker endpoint is absent without breaking book transfer', () => {
   const c = vm.createContext({
-    console,
     HtmlService: { XFrameOptionsMode: { ALLOWALL: 'ALLOWALL' }, createHtmlOutput: html => ({ html, setXFrameOptionsMode() { return this } }) },
-    PropertiesService: { getScriptProperties: () => ({ getProperty: key => properties[key] }) },
-    CacheService: { getScriptCache: () => ({ get: key => cache.get(key), put: (key, value) => cache.set(key, value) }) },
-    Utilities: {
-      MacAlgorithm: { HMAC_SHA_1: 'sha1' }, getUuid: () => '12345678-1234-1234-1234-123456789abc',
-      base64Encode: value => Buffer.from(value).toString('base64'), base64EncodeWebSafe: value => Buffer.from(value).toString('base64url'),
-      computeHmacSignature: (algorithm, value, key) => [...createHmac('sha1', key).update(value).digest()],
-    },
-    UrlFetchApp: { fetch: (url, options) => {
-      requests.push({ url, options })
-      if (options.payload.method === 'foods.search') return response(200, { foods: { food: [{ food_id: '77', food_name: 'OAuth1 étel', food_description: 'Per 100g - Calories: 111kcal | Fat: 2g | Carbs: 3g | Protein: 4g' }] } })
-      if (options.payload.method === 'food.get.v4') return response(200, { food: { food_id: '77', food_name: 'OAuth1 étel', servings: { serving: { metric_serving_unit: 'g', metric_serving_amount: '100', calories: '111', fat: '2', carbohydrate: '3', protein: '4' } } } })
-      return response(500, {})
-    } },
   })
   vm.runInContext(brokerSource, c)
-  const result = c.doGet({ parameter: { action: 'food-search', kind: 'name', value: 'oauth1', nonce: 'c'.repeat(48) } })
-  assert.match(result.html, /OAuth1 étel/)
-  assert.equal(requests.length, 2)
-  assert.ok(requests.every(request => request.url.endsWith('/rest/server.api') && request.options.method === 'post'))
-  assert.equal(requests[0].options.payload.oauth_consumer_key, 'consumer-key')
-  assert.equal(requests[0].options.payload.oauth_signature_method, 'HMAC-SHA1')
-  assert.match(requests[0].options.payload.oauth_signature, /^[A-Za-z0-9+/]+={0,2}$/)
-  assert.doesNotMatch(result.html, /consumer-key|shared-secret/)
-})
-
-test('FatSecret broker keeps credentials server-side and maps Hungarian-region food results', () => {
-  const cache = new Map()
-  const requests = []
-  const food = { food_id: '42', food_name: 'Baromfi párizsi', brand_name: 'Pikok', food_type: 'Brand', servings: { serving: {
-    metric_serving_unit: 'g', metric_serving_amount: '100', calories: '210', protein: '12', carbohydrate: '2', fat: '16', sodium: '680',
-  } } }
-  const response = (status, body) => ({ getResponseCode: () => status, getContentText: () => JSON.stringify(body) })
-  const c = vm.createContext({
-    console,
-    HtmlService: { XFrameOptionsMode: { ALLOWALL: 'ALLOWALL' }, createHtmlOutput: html => ({ html, setXFrameOptionsMode(mode) { this.frameMode = mode; return this } }) },
-    PropertiesService: { getScriptProperties: () => ({ getProperty: key => ({ FATSECRET_CLIENT_ID: 'client-id', FATSECRET_CLIENT_SECRET: 'client-secret' })[key] }) },
-    CacheService: { getScriptCache: () => ({ get: key => cache.get(key), put: (key, value) => cache.set(key, value) }) },
-    Utilities: { base64Encode: value => Buffer.from(value).toString('base64'), base64EncodeWebSafe: value => Buffer.from(value).toString('base64url') },
-    UrlFetchApp: { fetch: (url, options) => { requests.push({ url, options }); return url.includes('/connect/token') ? response(200, { access_token: 'server-token', expires_in: 3600 }) : response(200, { foods: { food: [food] } }) } },
-  })
-  vm.runInContext(brokerSource, c)
-  const result = c.doGet({ parameter: { action: 'food-search', kind: 'name', value: 'baromfi párizsi', nonce: 'a'.repeat(48) } })
-  assert.equal(result.frameMode, 'ALLOWALL')
-  assert.match(result.html, /Pikok.*Baromfi párizsi/)
-  assert.match(result.html, /"energyKcal":210/)
-  assert.match(result.html, /"salt":1\.7/)
-  assert.doesNotMatch(result.html, /client-secret|server-token/)
-  assert.match(requests[1].url, /region=HU/)
-  assert.equal(requests[1].options.headers.Authorization, 'Bearer server-token')
-})
-
-test('FatSecret broker falls back to the basic food API when premier scope is unavailable', () => {
-  const cache = new Map()
-  const response = (status, body) => ({ getResponseCode: () => status, getContentText: () => JSON.stringify(body) })
-  const c = vm.createContext({
-    console,
-    HtmlService: { XFrameOptionsMode: { ALLOWALL: 'ALLOWALL' }, createHtmlOutput: html => ({ html, setXFrameOptionsMode() { return this } }) },
-    PropertiesService: { getScriptProperties: () => ({ getProperty: key => ({ FATSECRET_CLIENT_ID: 'id', FATSECRET_CLIENT_SECRET: 'secret' })[key] }) },
-    CacheService: { getScriptCache: () => ({ get: key => cache.get(key), put: (key, value) => cache.set(key, value) }) },
-    Utilities: { base64Encode: value => Buffer.from(value).toString('base64'), base64EncodeWebSafe: value => Buffer.from(value).toString('base64url') },
-    UrlFetchApp: { fetch: (url, options) => {
-      if (url.includes('/connect/token')) return options.payload.scope === 'basic' ? response(200, { access_token: 'basic-token', expires_in: 3600 }) : response(403, {})
-      if (url.includes('/server.api') && options.method === 'post' && options.payload.method === 'foods.search') return response(200, { foods_search: { food: [{ food_id: '7', food_name: 'Basic találat', food_description: 'Per 100g - Calories: 123kcal | Fat: 4g | Carbs: 5g | Protein: 6g' }] } })
-      return response(403, {})
-    } },
-  })
-  vm.runInContext(brokerSource, c)
-  const result = c.doGet({ parameter: { action: 'food-search', kind: 'name', value: 'basic', nonce: 'b'.repeat(48) } })
-  assert.match(result.html, /Basic találat/)
-  assert.match(result.html, /"energyKcal":123/)
-  assert.match(result.html, /"protein":6/)
+  const result = c.doGet({ parameter: { action: 'food-search' } })
+  assert.match(result.html, /Missing action/)
+  assert.doesNotMatch(brokerSource, /platform\\.fatsecret\\.com|oauth\\.fatsecret\\.com/)
 })
 
 test('only explicit embedded creation pages allow framing, including readable errors', () => {
