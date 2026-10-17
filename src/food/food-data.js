@@ -6,6 +6,7 @@ export const FOOD_BASE_UNITS = ['g', 'ml']
 export const FOOD_AMOUNT_UNITS = ['g', 'dkg', 'kg', 'ml', 'dl', 'l', 'tsp', 'tbsp', 'pinch', 'piece', 'slice', 'serving', 'package']
 export const CORE_NUTRIENTS = ['energyKcal', 'protein', 'carbohydrate', 'fat', 'fiber', 'sugar', 'saturatedFat', 'salt']
 export const RECIPE_YIELD_UNITS = ['serving', 'piece', 'slice']
+export const RECIPE_SUMMARY_NUTRIENTS = ['energyKcal', 'protein', 'carbohydrate', 'fat']
 
 const DEFAULT_TARGETS = Object.freeze({ energyKcal: 2000, protein: null, carbohydrate: null, fat: null })
 
@@ -152,10 +153,14 @@ export function normalizeRecipe(value = {}) {
   const name = cleanText(value.name)
   if (!name || name.length > 180) throw new Error('A recept neve kötelező és legfeljebb 180 karakter lehet.')
   const preparedWeight = finiteOrNull(value.preparedWeight)
-  const yieldCount = finiteOrNull(value.yieldCount)
+  let yieldCount = finiteOrNull(value.yieldCount)
   let averageUnitWeight = finiteOrNull(value.averageUnitWeight)
-  // When both the cooked weight and serving count are known, the per-serving
-  // weight must be derived from them rather than preserving a stale form value.
+  // Derive yield when the user supplies finished weight and unit/slice weight.
+  // These are already enough to calculate the amount in each serving. Preserve
+  // explicitly entered yield as the authority when all three values exist.
+  if (yieldCount === null && preparedWeight > 0 && averageUnitWeight > 0) {
+    yieldCount = rounded(preparedWeight / averageUnitWeight)
+  }
   if (preparedWeight !== null && yieldCount !== null && preparedWeight > 0 && yieldCount > 0) {
     averageUnitWeight = rounded(preparedWeight / yieldCount)
   }
@@ -181,6 +186,21 @@ export function normalizeRecipe(value = {}) {
     createdAt: isoDateTime(value.createdAt || new Date().toISOString(), 'Létrehozási idő'),
     updatedAt: isoDateTime(value.updatedAt || value.createdAt || new Date().toISOString(), 'Módosítási idő'),
   }
+}
+
+/**
+ * Identify which ingredient's *per-100g/ml* macros are unavailable.
+ * A missing value is not the same as a measured 0. We deliberately keep
+ * recipe macro totals unknown instead of silently undercounting calories.
+ * The list is intended for explicit editor feedback before save.
+ */
+export function missingRecipeNutrients(ingredients = [], foods = []) {
+  const byId = new Map(foods.map(food => [food.id, food]))
+  return ingredients.flatMap(item => {
+    const food = byId.get(item.foodId)
+    const keys = RECIPE_SUMMARY_NUTRIENTS.filter(key => food?.nutrients?.[key] == null)
+    return keys.length ? [{ foodId: item.foodId, name: food?.name || 'Ismeretlen hozzávaló', keys }] : []
+  })
 }
 
 export function calculateRecipeFood(recipeValue, foods = []) {

@@ -1,4 +1,4 @@
-import { calculateRecipeFood, createEmptyFoodProject, createFoodId, currentTargets, entriesForLocalDay, foodBackupFromJson, foodBackupToJson, normalizeDiaryEntry, normalizeFoodItem, normalizeFoodProject, normalizeRecipe, normalizeTargets, summarizeEntries } from './food-data.js'
+import { calculateRecipeFood, createEmptyFoodProject, createFoodId, currentTargets, entriesForLocalDay, foodBackupFromJson, foodBackupToJson, normalizeDiaryEntry, normalizeFoodItem, normalizeFoodProject, normalizeRecipe, normalizeTargets, summarizeEntries, missingRecipeNutrients } from './food-data.js'
 import { acceptMealShare, acceptRecipeShare, rememberSharingContact } from './food-sharing.js'
 import { listFoodShares, loadFoodShare, setFoodShareState } from './food-sharing-client.js'
 import { lookupOpenFoodFactsProduct } from './food-api.js'
@@ -429,10 +429,15 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       energy.className = 'food-recipe__energy'
       try {
         const calculated = calculateRecipeFood(recipe, project.customFoods)
-        const servings = Number(recipe.yieldCount) || 0
+        // Older recipes may have an empty yield but already contain a
+        // finished weight and slice weight. calculateRecipeFood normalizes
+        // that inferred yield; don't read the original blank field.
+        const servings = Number(calculated.recipe.yieldCount) || 0
+        const unit = calculated.recipe.yieldUnit === 'slice' ? 'szelet'
+          : calculated.recipe.yieldUnit === 'piece' ? 'darab' : 'adag'
         energy.textContent = servings > 0 && calculated.totalNutrients.energyKcal != null
-          ? `${number(calculated.totalNutrients.energyKcal / servings)} kcal/adag`
-          : '— kcal/adag'
+          ? `${number(calculated.totalNutrients.energyKcal / servings)} kcal/${unit}`
+          : `— kcal/${unit}`
       } catch {
         energy.textContent = '— kcal/adag'
       }
@@ -677,11 +682,16 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     renderRecipeIngredientChoices()
     const foods = project.customFoods.filter(item => item.kind !== 'recipe')
     const names = new Map(foods.map(food => [food.id, food.name]))
+    const missingByFood = new Map(missingRecipeNutrients(recipeIngredients, foods)
+      .map(item => [item.foodId, item.keys]))
     const container = $('[data-food-recipe-ingredients]'); container.replaceChildren()
     if (!recipeIngredients.length) container.innerHTML = '<div class="food-empty">Adj hozzá legalább egy hozzávalót.</div>'
     for (const ingredient of recipeIngredients) {
       const row = document.createElement('div'); row.className = 'sheet-result food-recipe-ingredient-row'
-      row.innerHTML = `<span><strong>${escapeHtml(names.get(ingredient.foodId) || 'Hiányzó étel')}</strong><br>${number(ingredient.amount, 2)} ${UNIT_LABELS[ingredient.unit] || ingredient.unit}</span><button type="button" aria-label="Hozzávaló szerkesztése" data-food-recipe-ingredient-edit="${ingredient.id}">✎</button><button type="button" aria-label="Hozzávaló eltávolítása" data-food-recipe-ingredient-delete="${ingredient.id}">×</button>`
+      const missing = missingByFood.get(ingredient.foodId) || []
+      const short = { energyKcal: 'kcal', protein: 'fehérje', carbohydrate: 'szénhidrát', fat: 'zsír' }
+      const warning = missing.length ? `<small class="food-recipe-missing">Hiányzó adatok: ${escapeHtml(missing.map(key => short[key]).join(', '))}</small>` : ''
+      row.innerHTML = `<span><strong>${escapeHtml(names.get(ingredient.foodId) || 'Hiányzó étel')}</strong><br>${number(ingredient.amount, 2)} ${UNIT_LABELS[ingredient.unit] || ingredient.unit}${warning}</span><button type="button" aria-label="Hozzávaló szerkesztése" data-food-recipe-ingredient-edit="${ingredient.id}">✎</button><button type="button" aria-label="Hozzávaló eltávolítása" data-food-recipe-ingredient-delete="${ingredient.id}">×</button>`
       container.append(row)
     }
     renderRecipeSummary()
@@ -700,7 +710,17 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
         yieldCount: optionalNumber('[data-food-recipe-yield-input]'), yieldUnit: $('[data-food-recipe-yield-unit]').value,
         averageUnitWeight: optionalNumber('[data-food-recipe-unit-weight]'), revision: 1, createdAt: now, updatedAt: now,
       }, project.customFoods.filter(item => item.kind !== 'recipe'))
-      summary.textContent = `Összesen: ${nutrient(calculated.totalNutrients.energyKcal, 0, ' kcal')} · Fehérje ${nutrient(calculated.totalNutrients.protein, 1, ' g')} · Szénhidrát ${nutrient(calculated.totalNutrients.carbohydrate, 1, ' g')} · Zsír ${nutrient(calculated.totalNutrients.fat, 1, ' g')} · ${number(calculated.preparedWeight, 0)} g kész tömeg`
+      const missing = missingRecipeNutrients(recipeIngredients, project.customFoods)
+      const summaryYield = calculated.recipe.yieldCount
+        ? ` · ${number(calculated.recipe.yieldCount, 2)} ${calculated.recipe.yieldUnit === 'slice' ? 'szelet'
+          : calculated.recipe.yieldUnit === 'piece' ? 'darab' : 'adag'}`
+        : ''
+      const details = missing.length
+        ? '\nHiányzó tápértékek: ' + missing.map(item => item.name + ' (' +
+          item.keys.map(key => ({ energyKcal: 'kalória', protein: 'fehérje', carbohydrate: 'szénhidrát', fat: 'zsír' }[key])).join(', ') + ')').join('; ') +
+          '. Ezek az értékek a naplóban is ismeretlenek lesznek. Szerkeszd a hozzávalót (✎).'
+        : ''
+      summary.textContent = `Összesen: ${nutrient(calculated.totalNutrients.energyKcal, 0, ' kcal')} · Fehérje ${nutrient(calculated.totalNutrients.protein, 1, ' g')} · Szénhidrát ${nutrient(calculated.totalNutrients.carbohydrate, 1, ' g')} · Zsír ${nutrient(calculated.totalNutrients.fat, 1, ' g')} · ${number(calculated.preparedWeight, 0)} g kész tömeg${summaryYield}${details}`
     } catch (error) { summary.textContent = `Összesítés: ${error.message}` }
   }
 
@@ -807,6 +827,18 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
         createdAt: existing?.createdAt || now, updatedAt: now,
       })
       const calculated = calculateRecipeFood(recipe, project.customFoods.filter(item => item.kind !== 'recipe'))
+      const missing = missingRecipeNutrients(recipe.ingredients, project.customFoods)
+      if (missing.length) {
+        const labels = { energyKcal: 'kalória', protein: 'fehérje', carbohydrate: 'szénhidrát', fat: 'zsír' }
+        const details = missing.map(item =>
+          item.name + ': ' + item.keys.map(key => labels[key]).join(', ')).join('; ')
+        if (!window.confirm('A recept néhány hozzávalójából hiányzik tápérték: ' + details +
+          '. A naplóban ezek helyén „—” fog megjelenni. Mented így is a receptet?')) {
+          $('[data-food-recipe-editor-status]').textContent =
+            'A tápértékek pótlásához szerkeszd a hiányos hozzávalókat a listában (✎).'
+          return
+        }
+      }
       project.recipes = existing ? project.recipes.map(item => item.id === recipe.id ? recipe : item) : [...project.recipes, recipe]
       project.customFoods = [...project.customFoods.filter(item => item.id !== recipe.foodId), calculated.food]
       scheduleSave(); closeSheets(); renderOverview(); openRecipe(recipe.id); showToast('A receptet mentettük.')
