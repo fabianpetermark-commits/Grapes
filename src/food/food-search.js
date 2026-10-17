@@ -72,3 +72,13 @@ export function searchFoods(foods, query, { favorites = [], entries = [], catego
     .sort((a, b) => b.score - a.score || a.food.name.localeCompare(b.food.name, 'hu-HU'))
     .map(item => item.food)
 }
+
+/** Show the actual origin of a saved or remote food; never label FatSecret as manual. */
+export function foodSourceLabel(food) {
+  if (food?.source?.type === 'usda') return food.verified ? 'USDA · ellenőrzött offline' : 'USDA · online'
+  if (food?.source?.type === 'openfoodfacts') return 'Open Food Facts'
+  if (food?.source?.type === 'fatsecret') return 'FatSecret'
+  if (food?.source?.type === 'recipe' || food?.kind === 'recipe') return 'Saját recept'
+  if (food?.source?.type === 'yazio') return 'YAZIO'
+  return 'Saját étel'
+}
