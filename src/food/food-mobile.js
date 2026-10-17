@@ -61,8 +61,11 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   let searchTimer = null
   let searchGeneration = 0
   let expandedSearchQuery = ''
+  let foodSearchFilter = 'all'
+  let foodSearchRenderState = { remoteFoods: [], loading: false, remoteError: '' }
   let pendingHealthImport = null
   let editingRecipeId = ''
+  let editingRecipeIngredientId = ''
   let recipeIngredients = []
   let recipeEditorSnapshot = ''
   let recipeCatalogActive = false
@@ -333,20 +336,22 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   function setBar(selector, value, target) { $(selector).style.width = `${target ? Math.min(100, (Number(value) || 0) / target * 100) : 0}%` }
 
   function renderOverview() {
+    const healthToggle = $('[data-food-health-auto]')
     const yazioToggle = $('[data-food-yazio-auto]')
+    if (healthToggle) healthToggle.checked = autoHealthEnabled()
     if (yazioToggle) yazioToggle.checked = autoYazioEnabled()
     const entries = selectedEntries()
     const totals = summarizeEntries(entries)
     const targets = currentTargets(project, selectedDate)
     const today = selectedDate === localDate()
-    const importSummary = Object.entries(project.syncState?.imports || {}).map(([source, state]) => {
-      const label = source === 'health' ? 'Health Connect' : source === 'yazio' ? 'YAZIO' : source
+    for (const source of ['health', 'yazio']) {
+      const state = project.syncState?.imports?.[source]
+      const status = $(`[data-food-${source}-auto-status]`)
+      if (!status) continue
       const date = state?.lastSuccessfulAt && Number.isFinite(Date.parse(state.lastSuccessfulAt)) ? new Date(state.lastSuccessfulAt).toLocaleString('hu-HU') : 'még nem sikerült'
       const count = Number.isFinite(Number(state?.imported)) ? `${Number(state.imported)} új` : 'nincs adat'
-      return `${label}: ${date} (${count})${state?.lastError ? ` · Hiba: ${state.lastError}` : ''}`
-    }).join(' · ')
-    const importStatus = $('[data-food-import-sync-status]')
-    if (importStatus) importStatus.textContent = importSummary || 'Health Connect és YAZIO: még nincs rögzített import'
+      status.textContent = `${date} · ${count}${state?.lastError ? ` · Hiba: ${state.lastError}` : ''}`
+    }
     if (!isGrapesDriveConnected()) showSyncStatus('Csak helyi mentés · Drive nincs csatlakoztatva')
     else if (lastFoodSyncAt && !foodSyncInProgress) showSyncStatus(`Utolsó ellenőrzés: ${new Date(lastFoodSyncAt).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })}`)
     const date = new Date(`${selectedDate}T12:00:00`)
@@ -523,6 +528,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   function openRecipeCatalog() {
     recipeCatalogActive = true
     setAddPageMode(true)
+    setFoodSearchFilter('all')
     setSheetOpen($('[data-food-recipe-edit-sheet]'), false)
     setSheetOpen(addSheet, true)
     $('[data-food-search]').value = ''
@@ -549,6 +555,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     closeSheets()
     const recipe = project.recipes.find(item => item.id === id)
     editingRecipeId = recipe?.id || ''
+    editingRecipeIngredientId = ''
     recipeIngredients = recipe ? recipe.ingredients.map(item => ({ ...item })) : []
     $('[data-food-recipe-editor-title]').textContent = recipe ? 'Recept szerkesztése' : 'Új recept'
     $('[data-food-recipe-name-input]').value = recipe?.name || ''
@@ -560,6 +567,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-recipe-unit-weight]').value = recipe?.averageUnitWeight ?? ''
     $('[data-food-recipe-editor-status]').textContent = ''
     $('[data-food-recipe-ingredient-search]').value = ''
+    $('[data-food-recipe-ingredient-add] span').textContent = 'Hozzávaló hozzáadása'
     renderRecipeEditorIngredients()
     recipeEditorSnapshot = recipeEditorState()
     setSheetOpen($('[data-food-recipe-edit-sheet]'), true)
@@ -578,10 +586,28 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const container = $('[data-food-recipe-ingredients]'); container.replaceChildren()
     if (!recipeIngredients.length) container.innerHTML = '<div class="food-empty">Adj hozzá legalább egy hozzávalót.</div>'
     for (const ingredient of recipeIngredients) {
-      const row = document.createElement('div'); row.className = 'sheet-result'
-      row.innerHTML = `<span>${escapeHtml(names.get(ingredient.foodId) || 'Hiányzó étel')} · ${number(ingredient.amount, 2)} ${UNIT_LABELS[ingredient.unit] || ingredient.unit}</span><button class="sheet-result__favorite" type="button" aria-label="Hozzávaló eltávolítása" data-food-recipe-ingredient-delete="${ingredient.id}">×</button>`
+      const row = document.createElement('div'); row.className = 'sheet-result food-recipe-ingredient-row'
+      row.innerHTML = `<span><strong>${escapeHtml(names.get(ingredient.foodId) || 'Hiányzó étel')}</strong><br>${number(ingredient.amount, 2)} ${UNIT_LABELS[ingredient.unit] || ingredient.unit}</span><button type="button" aria-label="Hozzávaló szerkesztése" data-food-recipe-ingredient-edit="${ingredient.id}">✎</button><button type="button" aria-label="Hozzávaló eltávolítása" data-food-recipe-ingredient-delete="${ingredient.id}">×</button>`
       container.append(row)
     }
+    renderRecipeSummary()
+  }
+
+  function renderRecipeSummary() {
+    const summary = $('[data-food-recipe-summary]')
+    if (!recipeIngredients.length) { summary.textContent = 'Az összesített tápérték a hozzávalók felvétele után jelenik meg.'; return }
+    const optionalNumber = selector => $(selector).value === '' ? null : Number($(selector).value)
+    try {
+      const now = new Date().toISOString()
+      const calculated = calculateRecipeFood({
+        id: editingRecipeId || 'recipe-preview', foodId: 'recipe-preview-food', ownerProfileId: profile.id,
+        name: $('[data-food-recipe-name-input]').value || 'Recept előnézet', category: $('[data-food-recipe-category-input]').value,
+        instructions: '', ingredients: recipeIngredients, preparedWeight: optionalNumber('[data-food-recipe-weight-input]'),
+        yieldCount: optionalNumber('[data-food-recipe-yield-input]'), yieldUnit: $('[data-food-recipe-yield-unit]').value,
+        averageUnitWeight: optionalNumber('[data-food-recipe-unit-weight]'), revision: 1, createdAt: now, updatedAt: now,
+      }, project.customFoods.filter(item => item.kind !== 'recipe'))
+      summary.textContent = `Összesen: ${nutrient(calculated.totalNutrients.energyKcal, 0, ' kcal')} · Fehérje ${nutrient(calculated.totalNutrients.protein, 1, ' g')} · Szénhidrát ${nutrient(calculated.totalNutrients.carbohydrate, 1, ' g')} · Zsír ${nutrient(calculated.totalNutrients.fat, 1, ' g')} · ${number(calculated.preparedWeight, 0)} g kész tömeg`
+    } catch (error) { summary.textContent = `Összesítés: ${error.message}` }
   }
 
   function renderRecipeIngredientUnits() {
@@ -595,7 +621,12 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const amount = Number($('[data-food-recipe-ingredient-amount]').value)
     const unit = $('[data-food-recipe-ingredient-unit]').value
     if (!food || !Number.isFinite(amount) || amount <= 0) { $('[data-food-recipe-editor-status]').textContent = 'Válassz ételt és adj meg érvényes mennyiséget.'; return }
-    recipeIngredients.push({ id: createFoodId('ingredient'), foodId: food.id, amount, unit, servingId: food.servings.find(item => item.unit === unit)?.id || '' })
+    const ingredient = { id: editingRecipeIngredientId || createFoodId('ingredient'), foodId: food.id, amount, unit, servingId: food.servings.find(item => item.unit === unit)?.id || '' }
+    recipeIngredients = editingRecipeIngredientId
+      ? recipeIngredients.map(item => item.id === editingRecipeIngredientId ? ingredient : item)
+      : [...recipeIngredients, ingredient]
+    editingRecipeIngredientId = ''
+    $('[data-food-recipe-ingredient-add] span').textContent = 'Hozzávaló hozzáadása'
     renderRecipeEditorIngredients()
   }
 
@@ -636,7 +667,8 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     for (const entry of entries) {
       const card = document.createElement('article'); card.className = 'food-entry-card'
       const time = new Date(entry.occurredAt).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })
-      card.innerHTML = `<div class="food-entry-card__head"><div><strong>${escapeHtml(entry.snapshot.name)}</strong><span>${number(entry.amount, 2)} ${UNIT_LABELS[entry.unit] || entry.unit} · ${time}${entry.note ? ` · ${escapeHtml(entry.note)}` : ''}</span></div><b>${nutrient(entry.snapshot.nutrients.energyKcal, 1, ' kcal')}</b></div><div class="food-entry-card__actions"><button data-entry-edit="${entry.id}">Szerkesztés</button><button data-entry-repeat="${entry.id}">Ismétlés</button><button data-entry-delete="${entry.id}">Törlés</button></div>`
+      const macros = `F: ${nutrient(entry.snapshot.nutrients.protein, 1, ' g')} · Sz: ${nutrient(entry.snapshot.nutrients.carbohydrate, 1, ' g')} · Zs: ${nutrient(entry.snapshot.nutrients.fat, 1, ' g')}`
+      card.innerHTML = `<div class="food-entry-card__head"><div><strong>${escapeHtml(entry.snapshot.name)}</strong><span>${number(entry.amount, 2)} ${UNIT_LABELS[entry.unit] || entry.unit} · ${time}${entry.note ? ` · ${escapeHtml(entry.note)}` : ''}</span><div class="food-entry-card__macros">${macros}</div></div><b>${nutrient(entry.snapshot.nutrients.energyKcal, 1, ' kcal')}</b></div><div class="food-entry-card__actions"><button type="button" aria-label="${escapeHtml(entry.snapshot.name)} szerkesztése" title="Szerkesztés" data-entry-edit="${entry.id}">✎</button><button type="button" aria-label="${escapeHtml(entry.snapshot.name)} ismétlése" title="Ismétlés" data-entry-repeat="${entry.id}">↻</button><button type="button" aria-label="${escapeHtml(entry.snapshot.name)} törlése" title="Törlés" data-entry-delete="${entry.id}">×</button></div>`
       container.append(card)
     }
   }
@@ -644,6 +676,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   function openAddSheet() {
     if (!selectedMeal && !recipeCatalogActive) return
     setAddPageMode(recipeCatalogActive)
+    setFoodSearchFilter('all')
     setSheetOpen(addSheet, true)
     $('[data-food-search]').value = ''; startFoodSearch('')
     setTimeout(() => $('[data-food-search]').focus({ preventScroll: true }), 100)
@@ -718,23 +751,39 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     } catch (error) { status.textContent = error.message }
   }
 
-  function renderFoodSearch(query, { favoritesOnly = false, remoteFoods = [], loading = false, remoteError = '' } = {}) {
+  function setFoodSearchFilter(filter) {
+    foodSearchFilter = ['all', 'own', 'favorites', 'usda'].includes(filter) ? filter : 'all'
+    root.querySelectorAll('[data-food-search-filter]').forEach(button => {
+      const active = button.dataset.foodSearchFilter === foodSearchFilter
+      button.classList.toggle('is-active', active)
+      button.setAttribute('aria-pressed', String(active))
+    })
+  }
+
+  function renderFoodSearch(query, { remoteFoods = [], loading = false, remoteError = '' } = {}) {
+    foodSearchRenderState = { remoteFoods, loading, remoteError }
     const normalized = query.trim().toLocaleLowerCase('hu-HU')
-    let localFoods = project.customFoods.filter(item => (!favoritesOnly || project.favorites.includes(item.id)) && (!normalized || `${item.name} ${item.category}`.toLocaleLowerCase('hu-HU').includes(normalized)))
+    const acceptsLocal = item => foodSearchFilter === 'favorites' ? project.favorites.includes(item.id)
+      : foodSearchFilter === 'own' ? item.source?.type === 'manual' || item.kind === 'recipe'
+        : foodSearchFilter === 'usda' ? item.source?.type === 'usda' : true
+    let localFoods = project.customFoods.filter(item => acceptsLocal(item) && (!normalized || `${item.name} ${item.category}`.toLocaleLowerCase('hu-HU').includes(normalized)))
     localFoods = localFoods.sort((a, b) => (project.favorites.includes(b.id) ? 1 : 0) - (project.favorites.includes(a.id) ? 1 : 0)).slice(0, 15)
     const localKeys = new Set(localFoods.map(foodKey))
-    const allExternalFoods = favoritesOnly ? [] : remoteFoods.filter(food => !localKeys.has(foodKey(food)))
+    const allExternalFoods = ['own', 'favorites'].includes(foodSearchFilter) ? [] : remoteFoods.filter(food => !localKeys.has(foodKey(food)) && (foodSearchFilter !== 'usda' || food.source?.type === 'usda'))
     const externalFoods = expandedSearchQuery === normalized ? allExternalFoods : allExternalFoods.slice(0, 8)
     const container = $('[data-food-search-results]'); container.replaceChildren()
     if (!localFoods.length && !externalFoods.length) {
-      container.innerHTML = `<div class="food-empty">${favoritesOnly ? 'Még nincs kedvencnek jelölt ételed.' : normalized ? 'Nincs találat. A Saját étel gombbal hozhatsz létre újat.' : 'Még nincs saját ételed. A Saját étel gombbal hozhatsz létre egyet.'}</div>`
+      const empty = foodSearchFilter === 'favorites' ? 'Még nincs kedvencnek jelölt ételed.'
+        : foodSearchFilter === 'own' ? 'Nincs illeszkedő saját ételed.'
+          : normalized ? 'Nincs találat. A Saját étel gombbal hozhatsz létre újat.' : 'Még nincs saját ételed. A Saját étel gombbal hozhatsz létre egyet.'
+      container.innerHTML = `<div class="food-empty">${empty}</div>`
     }
     for (const food of localFoods) {
       const row = foodSearchRow(food, { favorite: project.favorites.includes(food.id) })
       row.main.addEventListener('click', () => addFood(food))
       row.favorite.addEventListener('click', () => {
         project.favorites = project.favorites.includes(food.id) ? project.favorites.filter(id => id !== food.id) : [...project.favorites, food.id]
-        scheduleSave(); renderFoodSearch(query, { favoritesOnly, remoteFoods })
+        scheduleSave(); renderFoodSearch(query, { remoteFoods, loading, remoteError })
       })
       container.append(row.element)
     }
@@ -749,12 +798,12 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       more.textContent = `További találatok (${allExternalFoods.length - externalFoods.length})`
       more.addEventListener('click', () => {
         expandedSearchQuery = normalized
-        renderFoodSearch(query, { favoritesOnly, remoteFoods, remoteError })
+        renderFoodSearch(query, { remoteFoods, remoteError })
       })
       container.append(more)
     }
     const status = $('[data-food-search-status]')
-    status.textContent = loading ? 'Alapanyagok keresése…' : remoteError
+    status.textContent = loading && !['own', 'favorites'].includes(foodSearchFilter) ? 'Alapanyagok keresése…' : ['own', 'favorites'].includes(foodSearchFilter) ? '' : remoteError
   }
 
   function foodKey(food) {
@@ -765,7 +814,10 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const element = document.createElement('div'); element.className = 'sheet-result'
     const main = document.createElement('button'); main.type = 'button'; main.className = 'sheet-result__main'
     const calories = food.nutrients.energyKcal == null ? 'nincs kalóriaadat' : `${number(food.nutrients.energyKcal, 1)} kcal / 100 ${food.baseUnit}`
-    const sourceLabel = food.source?.type === 'usda' ? (food.verified ? 'USDA · ellenőrzött offline' : 'USDA · online') : 'Open Food Facts'
+    const sourceLabel = food.source?.type === 'usda' ? (food.verified ? 'USDA · ellenőrzött offline' : 'USDA · online')
+      : food.source?.type === 'openfoodfacts' ? 'Open Food Facts'
+        : food.source?.type === 'recipe' || food.kind === 'recipe' ? 'Saját recept'
+          : food.source?.type === 'yazio' ? 'YAZIO' : 'Saját étel'
     const name = document.createElement('strong'); name.textContent = food.name
     if (food.preparation === 'raw' || food.preparation === 'cooked') {
       const state = document.createElement('em')
@@ -779,7 +831,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       original.className = 'sheet-result__original'; original.lang = 'en'; original.textContent = food.usdaDescription
       main.append(original)
     }
-    const meta = document.createElement('span'); meta.textContent = calories + (external ? ` · ${sourceLabel}` : '')
+    const meta = document.createElement('span'); meta.textContent = `${calories} · ${sourceLabel}`
     main.append(meta)
     const favoriteButton = document.createElement('button'); favoriteButton.type = 'button'; favoriteButton.className = 'sheet-result__favorite'; favoriteButton.hidden = external
     favoriteButton.textContent = favorite ? '★' : '☆'; favoriteButton.setAttribute('aria-label', favorite ? 'Eltávolítás a kedvencekből' : 'Hozzáadás a kedvencekhez')
@@ -1141,6 +1193,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-target-carbohydrate]').value = targets.carbohydrate ?? ''
     $('[data-food-target-fat]').value = targets.fat ?? ''
     root.querySelectorAll('[data-food-meal-limit]').forEach(input => { input.value = mealLimit(input.dataset.foodMealLimit) ?? '' })
+    $('[data-food-target-effective-note]').textContent = `A módosított célok ${new Date(`${selectedDate}T12:00:00`).toLocaleDateString('hu-HU')} napjától lesznek érvényesek.`
     $('[data-food-target-status]').textContent = ''
     setSheetOpen($('[data-food-targets-sheet]'), true)
   }
@@ -1345,8 +1398,10 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
   function updateInboxIndicator() {
     const unread = inbox.filter(item => !inboxSeen().has(item.id)).length
-    $('[data-food-inbox]').dataset.count = String(unread)
-    $('[data-food-inbox-label]').textContent = inbox.length ? `${inbox.length} függőben · ${unread} olvasatlan` : 'Beérkező receptek és étkezések'
+    const overviewButton = $('[data-food-inbox]')
+    const overviewLabel = $('[data-food-inbox-label]')
+    if (overviewButton) overviewButton.dataset.count = String(unread)
+    if (overviewLabel) overviewLabel.textContent = inbox.length ? `${inbox.length} függőben · ${unread} olvasatlan` : 'Beérkező receptek és étkezések'
     $('[data-food-inbox-count]').textContent = inbox.length ? `${inbox.length} függőben lévő megosztás, ebből ${unread} olvasatlan` : 'Nincs függőben lévő megosztás.'
     window.dispatchEvent(new CustomEvent('grapes:food-inbox-changed', { detail: { pending: inbox.length, unread } }))
   }
@@ -1356,7 +1411,6 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       if (open) showToast('A beérkező megosztásokhoz csatlakoztasd a Google Drive-ot.')
       return
     }
-    const button = $('[data-food-inbox]')
     try {
       inbox = await listFoodShares()
       updateInboxIndicator()
@@ -1471,7 +1525,6 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   function bind() {
     if (initialized) return
     initialized = true
-    $('[data-food-sync-refresh]').addEventListener('click', () => { syncFood({ force: true }).catch(() => {}); autoImportHealth().catch(() => {}); autoImportYazio().catch(() => {}) })
     $('[data-food-health-auto]').checked = autoHealthEnabled()
     $('[data-food-yazio-auto]').checked = autoYazioEnabled()
     $('[data-food-yazio-auto]').addEventListener('change', event => {
@@ -1487,6 +1540,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-date-next]').addEventListener('click', () => shiftDate(1))
     $('[data-food-date]').addEventListener('change', event => { selectedDate = event.currentTarget.value || localDate(); renderOverview() })
     $('[data-food-back]').addEventListener('click', closeMeal)
+    $('[data-food-detail-add]').addEventListener('click', openAddSheet)
     $('[data-food-recipes-back]').addEventListener('click', showOverview)
     $('[data-food-recipe-back]').addEventListener('click', openRecipes)
     $('[data-food-recipe-share]').addEventListener('click', openShareSheet)
@@ -1496,9 +1550,11 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-overview-new-recipe]').addEventListener('click', () => openRecipeEditor())
     $('[data-food-share]').addEventListener('click', openShareSheet)
     $('[data-food-share-send]').addEventListener('click', submitShare)
-    $('[data-food-energy-ring]').addEventListener('click', event => { if (!event.target.closest('[data-food-energy-target]')) openStats() })
-    $('[data-food-energy-target]').addEventListener('click', event => { event.stopPropagation(); openTargets() })
-    $('[data-food-energy-target]').addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); openTargets() } })
+    $('[data-food-energy-ring]').addEventListener('click', openStats)
+    $('[data-food-open-stats]').addEventListener('click', openStats)
+    $('[data-food-open-targets]').addEventListener('click', openTargets)
+    $('[data-food-stats-back]').addEventListener('click', closeSheets)
+    $('[data-food-targets-back]').addEventListener('click', closeSheets)
     $('[data-food-stats-range]').addEventListener('change', renderStats)
     $('[data-food-stats-nutrient]').addEventListener('change', renderStats)
     $('[data-food-stats-from]').addEventListener('change', renderStats)
@@ -1507,7 +1563,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-barcode-photo]').addEventListener('change', selectBarcodePhoto)
     $('[data-food-live-stop]').addEventListener('click', stopBarcodeCamera)
     $('[data-food-open-recipes]').addEventListener('click', openRecipes)
-    $('[data-food-inbox]').addEventListener('click', () => refreshInbox({ open: true }))
+    $('[data-food-inbox]')?.addEventListener('click', () => refreshInbox({ open: true }))
     $('[data-food-inbox-accept]').addEventListener('click', acceptInboxItem)
     $('[data-food-inbox-reject]').addEventListener('click', rejectInboxItem)
     $('[data-food-edit-save]').addEventListener('click', saveEntryEdit)
@@ -1521,6 +1577,10 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-recipe-ingredient-search]').addEventListener('input', renderRecipeEditorIngredients)
     $('[data-food-recipe-ingredient-food]').addEventListener('change', renderRecipeIngredientUnits)
     $('[data-food-recipe-ingredient-add]').addEventListener('click', addRecipeIngredient)
+    for (const selector of ['[data-food-recipe-weight-input]', '[data-food-recipe-yield-input]', '[data-food-recipe-yield-unit]', '[data-food-recipe-unit-weight]']) {
+      $(selector).addEventListener('input', renderRecipeSummary)
+      $(selector).addEventListener('change', renderRecipeSummary)
+    }
     $('[data-food-recipe-editor-save]').addEventListener('click', saveRecipe)
     $('[data-food-recipe-editor-back]').addEventListener('click', dismissRecipeEditor)
     $('[data-food-recipe-open-catalog]').addEventListener('click', openRecipeCatalog)
@@ -1532,16 +1592,44 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       const repeat = event.target.closest('[data-entry-repeat]'); if (repeat) return repeatEntry(repeat.dataset.entryRepeat)
       const edit = event.target.closest('[data-entry-edit]'); if (edit) return openEntryEditor(edit.dataset.entryEdit)
       const ingredientDelete = event.target.closest('[data-food-recipe-ingredient-delete]')
-      if (ingredientDelete) { recipeIngredients = recipeIngredients.filter(item => item.id !== ingredientDelete.dataset.foodRecipeIngredientDelete); renderRecipeEditorIngredients(); return }
+      if (ingredientDelete) {
+        const id = ingredientDelete.dataset.foodRecipeIngredientDelete
+        recipeIngredients = recipeIngredients.filter(item => item.id !== id)
+        if (editingRecipeIngredientId === id) { editingRecipeIngredientId = ''; $('[data-food-recipe-ingredient-add] span').textContent = 'Hozzávaló hozzáadása' }
+        renderRecipeEditorIngredients(); return
+      }
+      const ingredientEdit = event.target.closest('[data-food-recipe-ingredient-edit]')
+      if (ingredientEdit) {
+        const ingredient = recipeIngredients.find(item => item.id === ingredientEdit.dataset.foodRecipeIngredientEdit)
+        const food = ingredient && project.customFoods.find(item => item.id === ingredient.foodId)
+        if (!ingredient || !food) return
+        editingRecipeIngredientId = ingredient.id
+        $('[data-food-recipe-ingredient-search]').value = food.name
+        renderRecipeEditorIngredients()
+        $('[data-food-recipe-ingredient-food]').value = food.id
+        renderRecipeIngredientUnits()
+        $('[data-food-recipe-ingredient-amount]').value = ingredient.amount
+        $('[data-food-recipe-ingredient-unit]').value = ingredient.unit
+        $('[data-food-recipe-ingredient-add] span').textContent = 'Hozzávaló frissítése'
+        $('[data-food-recipe-ingredient-amount]').focus({ preventScroll: false })
+        return
+      }
       const quick = event.target.closest('[data-food-quick]')
       if (quick?.dataset.foodQuick === 'custom') return openCustomFoodSheet()
       if (quick?.dataset.foodQuick === 'favorites') {
         $('[data-food-search]').value = ''
-        renderFoodSearch('', { favoritesOnly: true })
+        setFoodSearchFilter('favorites')
+        renderFoodSearch('', foodSearchRenderState)
         return
       }
       if (quick?.dataset.foodQuick === 'barcode') return requestBarcode()
       if (quick?.dataset.foodQuick === 'photo') return $('[data-food-barcode-photo]').click()
+      const searchFilter = event.target.closest('[data-food-search-filter]')
+      if (searchFilter) {
+        setFoodSearchFilter(searchFilter.dataset.foodSearchFilter)
+        renderFoodSearch($('[data-food-search]').value, foodSearchRenderState)
+        return
+      }
       const menu = event.target.closest('[data-food-menu]'); if (menu) return handleMenuAction(menu.dataset.foodMenu)
     })
     document.addEventListener('visibilitychange', () => {
