@@ -322,8 +322,24 @@
     .food-editor-section h3 { margin: 0 0 12px; font-size: 14px; }
     .food-editor-section > p { margin: -6px 0 12px; color: var(--muted); font-size: 10px; line-height: 1.45; }
     .food-recipe-basics label:nth-child(-n+3) { grid-column: 1 / -1; }
-    .food-recipe-ingredient-form label:first-child, .food-recipe-ingredient-form label:nth-child(2), .food-recipe-ingredient-form button { grid-column: 1 / -1; }
-    .food-recipe-ingredient-form button { width: 100%; white-space: nowrap; }
+    .food-recipe-ingredient-form > .food-recipe-search-row,
+    .food-recipe-ingredient-form > label:has([data-food-recipe-ingredient-food]),
+    .food-recipe-ingredient-form > .food-recipe-ingredient-status,
+    .food-recipe-ingredient-form > .food-recipe-scanner,
+    .food-recipe-ingredient-form > .food-recipe-nutrient-fields,
+    .food-recipe-ingredient-form > .food-recipe-ingredient-note,
+    .food-recipe-ingredient-form > [data-food-recipe-conversion-label] { grid-column: 1 / -1; }
+    .food-recipe-search-row { display: grid; grid-template-columns: minmax(0,1fr) 54px; align-items: end; gap: 9px; min-width: 0; }
+    .food-recipe-search-row label, .food-recipe-search-row input { min-width: 0; width: 100%; }
+    .food-recipe-scan { display: grid; place-items: center; height: 49px; width: 54px; color: var(--accent); background: var(--raised); border: 1px solid var(--line); border-radius: 14px; }
+    .food-recipe-scan svg { width: 26px; height: 26px; }
+    .food-recipe-scanner video { display: block; width: 100%; max-height: 220px; object-fit: cover; border-radius: 12px; }
+    .food-recipe-scanner button { margin-top: 8px; width: 100%; }
+    .food-recipe-nutrient-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; }
+    .food-recipe-nutrient-fields label { min-width: 0; }
+    .food-recipe-nutrient-fields input { min-width: 0; width: 100%; }
+    .food-recipe-ingredient-note { margin: -3px 0 5px; font-size: 11px; color: var(--muted); line-height: 1.5; }
+    .food-recipe-ingredient-form > label[hidden], .food-recipe-scanner[hidden] { display: none; }
     .food-recipe-summary { padding: 11px 12px; margin-top: 10px; color: var(--muted); background: var(--raised); border-radius: 12px; font-size: 10px; line-height: 1.5; }
     .food-recipe-ingredient-status { grid-column: 1 / -1; margin: -3px 0 5px; color: var(--muted); font-size: 12px; line-height: 1.4; }
     .food-recipe-ingredient-row { display: grid; grid-template-columns: minmax(0, 1fr) 44px 44px; }
@@ -697,12 +713,23 @@
           <label>Egységtömeg (g)<input class="search" type="number" min="0.01" step="0.01" data-food-recipe-unit-weight></label>
         </div></section>
         <section class="food-editor-section"><h3>Hozzávaló felvétele</h3><div class="sheet-form food-recipe-ingredient-form">
-          <label>Hozzávaló keresése<input class="search" type="search" autocomplete="off" placeholder="Írd be pl. rizs, túró, csirkemell…" data-food-recipe-ingredient-search></label>
+          <div class="food-recipe-search-row">
+            <label>Hozzávaló keresése<input class="search" type="search" autocomplete="off" placeholder="Rizs, túró, csirkemell…" data-food-recipe-ingredient-search></label>
+            <button class="food-recipe-scan" type="button" data-food-recipe-scan title="Vonalkód beolvasása" aria-label="Hozzávaló vonalkódjának beolvasása"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M8 9v6M11 8v8M14 9v6M17 10v4"/></svg></button>
+          </div>
+          <div class="food-recipe-scanner" data-food-recipe-live-scanner hidden><video data-food-recipe-live-video autoplay muted playsinline></video><button class="quick-action" type="button" data-food-recipe-live-stop>Olvasó bezárása</button></div>
           <label>Étel<select class="search" data-food-recipe-ingredient-food aria-describedby="food-recipe-ingredient-status"><option value="">Előbb keress hozzávalót…</option></select></label>
-          <p class="food-recipe-ingredient-status" id="food-recipe-ingredient-status" data-food-recipe-ingredient-status role="status" aria-live="polite">Írd be a hozzávaló nevét, majd válassz az Étel listából.</p>
-          <button type="button" class="quick-action" data-food-recipe-open-catalog>Teljes ételkatalógus megnyitása</button>
+          <p class="food-recipe-ingredient-status" id="food-recipe-ingredient-status" data-food-recipe-ingredient-status role="status" aria-live="polite">Keress, szkennelj, vagy írj be saját hozzávalót.</p>
           <label>Mennyiség<input class="search" type="number" min="0.01" step="0.01" value="100" data-food-recipe-ingredient-amount></label>
           <label>Egység<select class="search" data-food-recipe-ingredient-unit></select></label>
+          <label data-food-recipe-conversion-label hidden>1 egység átváltása (<span data-food-recipe-conversion-base>g</span>)<input class="search" type="number" min="0.001" step="any" placeholder="Például 1 ek = 12 g" data-food-recipe-conversion-amount></label>
+          <div class="food-recipe-nutrient-fields" role="group" aria-label="Hozzávaló szerkeszthető tápértékei">
+            <label>Kalória (kcal)<input class="search" type="number" min="0" step="any" inputmode="decimal" placeholder="Ismeretlen" data-food-recipe-nutrient-energyKcal></label>
+            <label>Fehérje (g)<input class="search" type="number" min="0" step="any" inputmode="decimal" placeholder="Ismeretlen" data-food-recipe-nutrient-protein></label>
+            <label>Szénhidrát (g)<input class="search" type="number" min="0" step="any" inputmode="decimal" placeholder="Ismeretlen" data-food-recipe-nutrient-carbohydrate></label>
+            <label>Zsír (g)<input class="search" type="number" min="0" step="any" inputmode="decimal" placeholder="Ismeretlen" data-food-recipe-nutrient-fat></label>
+          </div>
+          <p class="food-recipe-ingredient-note">100 g / 100 ml alapra megadott értékek. Üres mező = ismeretlen, nem 0. Kanálnál/csipetnél adj meg saját átváltást.</p>
         </div><button class="quick-action food-recipe-add-ingredient" type="button" data-food-recipe-ingredient-add><span>Hozzávaló hozzáadása</span></button></section>
         <section class="food-editor-section"><h3>Hozzávalólista</h3><div class="sheet-results" data-food-recipe-ingredients></div><div class="food-recipe-summary" data-food-recipe-summary>Az összesített tápérték a hozzávalók felvétele után jelenik meg.</div></section><p data-food-recipe-editor-status role="status"></p></div>
         <div class="food-full-page__footer"><button class="primary" type="button" data-food-recipe-editor-save>Recept mentése</button></div>
