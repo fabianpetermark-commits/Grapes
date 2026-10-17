@@ -41,6 +41,8 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build:android-web
+      - name: Browser regression test (recipe search and Food editor)
+        run: node tests/android-mobile-preview.browser.mjs
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
