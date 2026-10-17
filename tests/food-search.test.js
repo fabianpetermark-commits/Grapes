@@ -1,3 +1,4 @@
+import { normalizeFoodItem } from '../src/food/food-data.js'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
@@ -52,4 +53,17 @@ test('a régi importokat megőrizzük, új aktív FatSecret-forrás nélkül', (
   assert.equal(foodSourceLabel({ kind: 'recipe' }), 'Saját recept')
   assert.equal(foodSourceLabel({ source: { type: 'shared-recipe' } }), 'Megosztott recept')
   assert.equal(foodSourceLabel({ kind: 'manual' }), 'Saját étel')
+})
+
+test('a mentett korábbi integrációs rekord adatai és forrásazonosítója sértetlenek', () => {
+  const saved = normalizeFoodItem({
+    id: 'legacy-product-42', kind: 'product', name: 'Korábban mentett joghurt',
+    barcode: '5991234567890', baseUnit: 'g',
+    nutrients: { energyKcal: 98, protein: 3.6, carbohydrate: 11, fat: 4.2 },
+    source: { type: 'fatsecret', id: 'legacy-provider-42', attribution: 'Historical source' },
+  })
+  assert.equal(saved.source.type, 'fatsecret')
+  assert.equal(saved.source.id, 'legacy-provider-42')
+  assert.equal(saved.nutrients.energyKcal, 98)
+  assert.equal(foodSourceLabel(saved), 'Korábbi import')
 })

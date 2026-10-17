@@ -43,7 +43,7 @@ test('név alapján keres az Open Food Factsban és kiszűri a használhatatlan 
       return response({ count: 2, page: 1, hits: [
         {
           code: '5991111111111', product_name_hu: 'Magyar mogyorókrém',
-          categories_tags: ['en:spreads', 'en:chocolate-spreads'], product_quantity_unit: 'g',
+          categories_tags: ['en:spreads', 'en:chocolate-spreads'], countries_tags: ['en:hungary'], product_quantity_unit: 'g',
           image_front_small_url: 'https://images.example/product.jpg', last_modified_t: 123,
           nutriments: { 'energy-kcal_100g': 500, proteins_100g: 6 },
         },
