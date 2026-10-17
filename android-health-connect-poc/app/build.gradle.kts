@@ -5,16 +5,66 @@ plugins {
 }
 
 val samsungSdk = file("libs/samsung-health-data-api-1.1.0.aar")
+val releaseKeystorePath = providers.environmentVariable("ANDROID_KEYSTORE_PATH").orNull
+val releaseStorePassword = providers.environmentVariable("ANDROID_KEYSTORE_PASSWORD").orNull
+val releaseKeyAlias = providers.environmentVariable("ANDROID_KEY_ALIAS").orNull
+val releaseKeyPassword = providers.environmentVariable("ANDROID_KEY_PASSWORD").orNull
+// TEST channel uses a separate signing identity. Without it, the QA artifact
+// is debug-signed and must never be published as an updatable TEST release.
+val testKeystorePath = providers.environmentVariable("ANDROID_TEST_KEYSTORE_PATH").orNull
+val testStorePassword = providers.environmentVariable("ANDROID_TEST_KEYSTORE_PASSWORD").orNull
+val testKeyAlias = providers.environmentVariable("ANDROID_TEST_KEY_ALIAS").orNull
+val testKeyPassword = providers.environmentVariable("ANDROID_TEST_KEY_PASSWORD").orNull
+val grapesVersionCode = providers.environmentVariable("GRAPES_VERSION_CODE").orNull?.toIntOrNull() ?: 1
+val grapesVersionName = providers.environmentVariable("GRAPES_VERSION_NAME").orNull ?: "0.1.0-poc"
 
 android {
     namespace = "hu.grapes.healthconnect"
-    compileSdk = 35
+    compileSdk = 36
+    signingConfigs {
+        if (!releaseKeystorePath.isNullOrBlank()) {
+            create("release") {
+                storeFile = file(releaseKeystorePath)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+                storeType = "PKCS12"
+            }
+        }
+        if (!testKeystorePath.isNullOrBlank()) {
+            create("qa") {
+                storeFile = file(testKeystorePath)
+                storePassword = testStorePassword
+                keyAlias = testKeyAlias
+                keyPassword = testKeyPassword
+                storeType = "PKCS12"
+            }
+        }
+    }
     defaultConfig {
         applicationId = "hu.grapes.healthconnect"
         minSdk = 29
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0-poc"
+        versionCode = grapesVersionCode
+        versionName = grapesVersionName
+    }
+    buildTypes {
+        getByName("release") {
+            if (!releaseKeystorePath.isNullOrBlank()) signingConfig = signingConfigs.getByName("release")
+        }
+        // The stable release variant above is intentionally unchanged.
+        // QA has a different package ID, sandbox and update feed.
+        create("qa") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".test"
+            versionNameSuffix = "-test"
+            signingConfig = if (!testKeystorePath.isNullOrBlank()) {
+                signingConfigs.getByName("qa")
+            } else {
+                // Local/CI previews only. The publish workflow requires a persistent QA key.
+                signingConfigs.getByName("debug")
+            }
+        }
     }
     buildFeatures { buildConfig = true }
     sourceSets["main"].java.srcDir(
@@ -29,8 +79,12 @@ android {
 
 dependencies {
     implementation("androidx.activity:activity-ktx:1.9.3")
+    implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.health.connect:connect-client:1.1.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
+    implementation("androidx.webkit:webkit:1.12.1")
+    implementation("androidx.work:work-runtime-ktx:2.10.0")
+    implementation("com.google.android.gms:play-services-auth:21.5.0")
     implementation("com.google.code.gson:gson:2.13.2")
     if (samsungSdk.exists()) {
         implementation(files(samsungSdk))
