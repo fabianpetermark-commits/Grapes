@@ -1,5 +1,5 @@
 {
-  "versionCode": 4,
-  "versionName": "0.4.0",
-  "notes": "Grapes TEST v0.4.0 – receptszerkesztő javítások: az egységtömeg és a hozam egysége, illetve a zsír és a szénhidrát mezők egy sorba kerültek; a kész tömeg és az egységtömeg alapján az üres hozam azonnal automatikusan kitöltődik (pl. 750 g / 25 g = 30 szelet), a kézzel megadott hozamot megőrizzük és törlésével visszatérhetünk az automatikus számoláshoz. A receptkártya kcal/szelet vagy kcal/darab formátumban a számolt hozamot használja. A hiányzó hozzávaló-tápértékeket név szerint jelzi és mentés előtt figyelmeztet; az ismeretlen érték nem válik tévesen nullává. A korábbi naplóbejegyzések pillanatképeit nem módosítjuk. Az elkülönített TEST-csatorna és a korábbi állandó TEST-aláírás változatlan. Ez a kiadás nem tartalmaz még új USDA API-kulcsot vagy 429-es kvótakezelési módosítást."
+  "versionCode": 5,
+  "versionName": "0.5.0",
+  "notes": "Grapes TEST v0.5.0 – offline, ellenőrzött USDA-alapadatok a kristálycukorhoz, étkezési sóhoz és csapvízhez. A receptszerkesztőből egy jóváhagyást kérő gombbal pótolhatók a korábban kézzel felvett, hiányos tápértékű, pontosan azonosítható alapanyagok adatai (például a Puha kenyér Só, Cukor és Víz hozzávalói). Csak az adott recepthez készülnek új hozzávalómásolatok, a módosításokat a Recept mentése gombbal kell véglegesíteni. Ismeretlen tápértéket továbbra sem alakítunk automatikusan nullává; a korábbi naplóbejegyzések és más receptek érintetlenek maradnak. A v0.4.0 automatikus hozamszámítása és receptmező-javításai is részei a kiadásnak. Az éles Grapes változatlan, a külön TEST-csomagnév és állandó TEST-aláírás megmarad. Ez a kiadás nem vezet be új USDA API-kulcsot."
 }
