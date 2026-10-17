@@ -24,6 +24,7 @@ try {
   }
   browser = await chromium.launch({ executablePath: chrome, headless: true, args: ['--no-sandbox'] })
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
+  page.on('pageerror', error => console.error('Recipe browser page error:', error.message))
   await page.route('https://api.nal.usda.gov/**', route => route.fulfill({
     status: 200, contentType: 'application/json', body: '{"foods":[]}',
   }))
@@ -42,9 +43,21 @@ try {
   await page.locator('[data-local]').click()
   await page.locator('[data-module="food"]').last().click()
   await page.locator('[data-page="food"]').waitFor({ state: 'visible' })
+  await page.locator('[data-food-meals] .meal').first().waitFor()
   await page.locator('[data-food-open-recipes]').click()
   await page.locator('[data-food-recipes-new]').click()
-  await page.locator('[data-food-recipe-edit-sheet].is-open').waitFor({ state: 'visible' })
+  await page.locator('[data-food-recipe-edit-sheet].is-open').waitFor({ state: 'visible', timeout: 10000 })
+    .catch(async error => {
+      const state = await page.evaluate(() => ({
+        food: document.querySelector('[data-page="food"]')?.hidden,
+        recipes: document.querySelector('[data-food-recipes-view]')?.hidden,
+        title: document.querySelector('[data-food-recipe-editor-title]')?.textContent,
+        sheet: document.querySelector('[data-food-recipe-edit-sheet]')?.className,
+        status: document.querySelector('[data-food-recipe-editor-status]')?.textContent,
+      }))
+      console.error('Recipe editor did not open:', JSON.stringify(state))
+      throw error
+    })
   await page.locator('[data-food-recipe-name-input]').fill('Keresővel készített tesztrecept')
   const input = page.locator('[data-food-recipe-ingredient-search]')
   const dropdown = page.locator('[data-food-recipe-ingredient-food]')
