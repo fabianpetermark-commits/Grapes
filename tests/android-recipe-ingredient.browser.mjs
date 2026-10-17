@@ -203,6 +203,66 @@ try {
   await page.locator('[data-food-recipe-title]').filter({ hasText: 'Keresővel készített tesztrecept' }).waitFor()
   await page.locator('[data-food-recipe-edit]').click()
   await page.locator('[data-food-recipe-ingredients]').getByText('Kézi teszt hozzávaló 20261017').waitFor()
+
+  // Regression for the user-reported Puha kenyér: older manual Só/Cukor/Víz
+  // ingredients were saved without nutrients, causing — macros for the whole
+  // recipe. Recover them explicitly without changing unrelated recipes.
+  await page.locator('[data-food-recipe-editor-back]').click()
+  await page.locator('[data-food-recipe-back]').click()
+  await page.locator('[data-food-recipes-new]').click()
+  await page.locator('[data-food-recipe-edit-sheet].is-open').waitFor()
+  await page.locator('[data-food-recipe-name-input]').fill('Puha kenyér helyreállítás')
+  await page.locator('[data-food-recipe-weight-input]').fill('750')
+  await page.locator('[data-food-recipe-yield-unit]').selectOption('slice')
+  await page.locator('[data-food-recipe-unit-weight]').fill('25')
+  assert.equal(await page.locator('[data-food-recipe-yield-input]').inputValue(), '30')
+
+  for (const [name, amount] of [['Só', '5'], ['Cukor', '5'], ['Víz', '350']]) {
+    await input.fill(name)
+    // Deliberately do NOT select the new offline result, reproducing the
+    // previously saved manual ingredient with unknown macros.
+    assert.equal(await dropdown.inputValue(), '')
+    await page.locator('[data-food-recipe-ingredient-amount]').fill(amount)
+    await page.locator('[data-food-recipe-ingredient-add]').click()
+  }
+  await input.fill('BL55')
+  const flourOption = dropdown.locator('option', { hasText: /Búzafinomliszt BL55/ }).first()
+  await flourOption.waitFor({ state: 'attached' })
+  await dropdown.selectOption(await flourOption.getAttribute('value'))
+  await page.locator('[data-food-recipe-ingredient-amount]').fill('400')
+  await page.locator('[data-food-recipe-ingredient-add]').click()
+  assert.match(await page.locator('[data-food-recipe-summary]').textContent(), /Hiányzó tápértékek/)
+  const repairButton = page.locator('[data-food-recipe-nutrients-repair]')
+  await repairButton.waitFor({ state: 'visible' })
+  assert.match(await repairButton.textContent(), /3 ismert hozzávaló/)
+
+  // Cancel must never change a saved or unsaved ingredient.
+  const cancelDialog = page.waitForEvent('dialog')
+  const firstClick = repairButton.click()
+  await (await cancelDialog).dismiss()
+  await firstClick
+  assert.match(await page.locator('[data-food-recipe-ingredients]').textContent(), /Hiányzó adatok/)
+  // Accept creates recipe-local copies; the user must still save the recipe.
+  const acceptDialog = page.waitForEvent('dialog')
+  const secondClick = repairButton.click()
+  const repairConfirmation = await acceptDialog
+  assert.match(repairConfirmation.message(), /Só, Cukor, Víz/)
+  await repairConfirmation.accept()
+  await secondClick
+  assert.equal(await repairButton.isVisible(), false)
+  assert.doesNotMatch(await page.locator('[data-food-recipe-ingredients]').textContent(), /Hiányzó adatok/)
+  assert.doesNotMatch(await page.locator('[data-food-recipe-summary]').textContent(), /Hiányzó tápértékek/)
+  assert.match(await page.locator('[data-food-recipe-summary]').textContent(), /30 szelet/)
+  assert.doesNotMatch(await page.locator('[data-food-recipe-summary]').textContent(), /Összesen: — kcal/)
+
+  await page.locator('[data-food-recipe-editor-save]').click()
+  await page.locator('[data-food-recipe-title]').filter({ hasText: 'Puha kenyér helyreállítás' }).waitFor()
+  const repairedCard = page.locator('[data-food-recipes] .food-recipe--compact').first()
+  assert.match(await repairedCard.textContent(), /Puha kenyér helyreállítás/)
+  assert.match(await repairedCard.textContent(), /kcal\/szelet/)
+  assert.doesNotMatch(await repairedCard.textContent(), /— kcal\/szelet/)
+  console.log('Recipe staple repair: Só/Cukor/Víz offline, explicit consent, nonzero bread macros, 30 slices OK')
+
   console.log('Recipe ingredient editor: search, editable nutrients, manual fallback, conversions and inline barcode OK')
 } finally {
   await browser?.close()
