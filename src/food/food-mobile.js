@@ -716,7 +716,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
           : calculated.recipe.yieldUnit === 'piece' ? 'darab' : 'adag'}`
         : ''
       const details = missing.length
-        ? '\\nHiányzó tápértékek: ' + missing.map(item => item.name + ' (' +
+        ? '\nHiányzó tápértékek: ' + missing.map(item => item.name + ' (' +
           item.keys.map(key => ({ energyKcal: 'kalória', protein: 'fehérje', carbohydrate: 'szénhidrát', fat: 'zsír' }[key])).join(', ') + ')').join('; ') +
           '. Ezek az értékek a naplóban is ismeretlenek lesznek. Szerkeszd a hozzávalót (✎).'
         : ''
