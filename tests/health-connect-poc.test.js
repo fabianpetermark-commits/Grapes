@@ -100,12 +100,13 @@ test('az Android Google Drive kapcsolat natív AuthorizationClientet használ', 
   assert.match(drive, /authorizeAndroidGoogleDrive/);
 });
 
-test('a Grapes Drive-hiba esetén is használható helyi módban', async () => {
-  const page = await read('../index.html');
-  const main = await read('../src/main.js');
-  assert.match(page, /id="continue-local"/);
-  assert.match(main, /LOCAL_MODE_KEY = 'grapes-local-mode'/);
-  assert.match(main, /isGrapesDriveConnected\(\) \|\| isLocalMode\(\)/);
+test('az Android app Drive-hiba esetén is használható helyi módban', async () => {
+  // The Android entrypoint is the packaged mobile preview, not index.html.
+  const page = await read('../design/android-mobile-preview.html');
+  const shell = await read('../src/android-mobile-shell.js');
+  assert.match(page, /data-local>Folytatás helyi módban<\/button>/);
+  assert.match(shell, /LOCAL_MODE_KEY = 'grapes-local-mode'/);
+  assert.match(shell, /\$\('\[data-local\]'\)\.addEventListener\('click', \(\) => \{ setLocalMode\(true\); showApp\(\) \}\)/);
 });
 
 test('az Android frissítő csak ellenőrzött GitHub Release APK-t ad át a rendszertelepítőnek', async () => {
