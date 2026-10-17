@@ -8,7 +8,9 @@ import { createHmac, webcrypto } from 'node:crypto'
 const source = readFileSync(new URL('../src/ebook-library.js', import.meta.url), 'utf8')
   .replace(/^import .*\r?\n/gm, '').replaceAll('import.meta.env', 'env').replace('export function', 'function')
 const driveSource = readFileSync(new URL('../src/storage/grapes-drive.js', import.meta.url), 'utf8')
-  .replaceAll('export ', '').replaceAll('import.meta.env', 'env')
+  // The Android Drive adapter has an ESM import; these tests execute the web
+  // implementation in an isolated VM without the native bridge.
+  .replace(/^import .*\\r?\\n/gm, '').replaceAll('export ', '').replaceAll('import.meta.env', 'env')
 function app(fetch, { connected = true, session = new Map(), local = new Map(), epubWriter = async () => new Blob(['rewritten epub']), pdfWriter = async () => ({ blob: new Blob(['rewritten pdf'], { type: 'application/pdf' }), hasSignatures: false }), pickerKey = '', booksKey = '' } = {}) {
   const nodes = new Map()
   const element = () => ({ dataset: {}, children: [], listeners: {}, addEventListener(type, fn) { this.listeners[type] = fn }, removeAttribute(key) { delete this[key] }, replaceChildren() { this.children = [] }, append(row) { this.children.push(row) }, querySelectorAll: () => [] })
@@ -20,7 +22,11 @@ function app(fetch, { connected = true, session = new Map(), local = new Map(), 
     env: { VITE_GOOGLE_CLIENT_ID: '123-client', VITE_GOOGLE_PICKER_API_KEY: pickerKey, VITE_GOOGLE_BOOKS_API_KEY: booksKey, VITE_GOOGLE_APP_ID: '123', VITE_EBOOK_TRANSFER_BROKER_URL: 'https://broker.example/exec', VITE_EBOOK_EPUB_WRITE_ENABLED: 'true' }, rewriteEpubMetadata: epubWriter, rewritePdfMetadata: pdfWriter,
     window: { confirm: () => true, sessionStorage: storage(session), localStorage: storage(local), setTimeout: testSetTimeout, clearTimeout, location: { href: 'https://fabianpetermark-commits.github.io/Grapes/', origin: 'https://fabianpetermark-commits.github.io', search: '' } } })
   context.showGrapesConfirm = async (options = {}) => context.window.confirm(options.message)
-  const driveContext = vm.createContext({ window: context.window, document, fetch, env: context.env, Blob, crypto: webcrypto })
+  const driveContext = vm.createContext({ window: context.window, document, fetch, env: context.env, Blob, crypto: webcrypto,
+    isGrapesAndroidApp: () => false,
+    authorizeAndroidGoogleDrive: async () => { throw new Error('Native Drive bridge is unavailable in web tests.') },
+    disconnectAndroidGoogleDrive: async () => {},
+  })
   const api = vm.runInContext(driveSource + '\n({ connectGrapesDrive, disconnectGrapesDrive, getConnectedGrapesAccount, getGrapesDriveAccessToken, grapesDriveHasFullReadAccess, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange })', driveContext)
   Object.assign(context, api)
   vm.runInContext(source + '\nonGrapesDriveChange(renderDriveConnection)', context)
