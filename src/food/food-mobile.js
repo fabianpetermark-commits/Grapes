@@ -718,10 +718,9 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const required = Boolean(unit) && recipeUnitNeedsConversion(food, unit)
     const label = $('[data-food-recipe-conversion-label]')
     label.hidden = !required
-    $('[data-food-recipe-conversion-base]').textContent = baseUnit
-    label.firstChild.textContent = required
-      ? '1 ' + (UNIT_LABELS[unit] || unit) + ' hány ' + baseUnit + '? (ezen hozzávalónál) '
-      : '1 egység átváltása '
+    $('[data-food-recipe-conversion-text]').textContent = required
+      ? '1 ' + (UNIT_LABELS[unit] || unit) + ' hány ' + baseUnit + '? (ennél a hozzávalónál)'
+      : '1 egység átváltása'
     $('[data-food-recipe-conversion-amount]').placeholder =
       baseUnit === 'g' ? 'Például 1 ek = 12 g' : 'Például 1 ek = 15 ml'
   }
