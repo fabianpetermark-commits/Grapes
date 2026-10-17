@@ -66,6 +66,8 @@ try {
       console.error('Recipe editor did not open:', JSON.stringify(state))
       throw error
     })
+  assert.equal(await page.locator('[data-food-recipe-edit-sheet] .food-editor-section h3').first().textContent(),
+    'Hozzávaló felvétele', 'A receptszerkesztőben a hozzávalók szakasza legyen elöl.')
   const alignment = await page.evaluate(() => {
     const rect = selector => document.querySelector(selector).closest('label').getBoundingClientRect()
     const a = rect('[data-food-recipe-yield-unit]')
@@ -263,6 +265,66 @@ try {
   assert.doesNotMatch(await repairedCard.textContent(), /— kcal\/szelet/)
   console.log('Recipe staple repair: Só/Cukor/Víz offline, explicit consent, nonzero bread macros, 30 slices OK')
 
+  // Full-page food search: a single favorite must never stretch to fill an
+  // enormous blank box; the height remains the same for many local records.
+  await page.locator('[data-food-recipe-back]').click()
+  await page.locator('[data-food-recipes-back]').click()
+  await page.locator('[data-food-meals] .meal').first().click()
+  await page.locator('[data-food-detail-add]').click()
+  await page.locator('[data-food-add-sheet].is-open').waitFor({ state: 'visible' })
+  const searchArea = page.locator('[data-food-search-results]')
+  const initialLayout = await searchArea.evaluate(el => ({
+    height: Math.round(el.getBoundingClientRect().height),
+    rowHeight: Math.round(el.querySelector('.sheet-result')?.getBoundingClientRect().height || 0),
+  }))
+  const newBread = searchArea.locator('.sheet-result', { hasText: 'Puha kenyér helyreállítás' }).first()
+  await newBread.locator('.sheet-result__favorite').click()
+  await page.locator('[data-food-search-filter="favorites"]').click()
+  const favoriteLayout = await searchArea.evaluate(el => ({
+    height: Math.round(el.getBoundingClientRect().height),
+    rowHeight: Math.round(el.querySelector('.sheet-result')?.getBoundingClientRect().height || 0),
+  }))
+  assert.equal(initialLayout.height, favoriteLayout.height,
+    'A találatlista magassága ne függjön a rekordok számától.')
+  assert.ok(favoriteLayout.height >= 220 && favoriteLayout.height <= 320, JSON.stringify(favoriteLayout))
+  assert.ok(favoriteLayout.rowHeight < 85,
+    'Az egyetlen kedvenc sora ne nyúljon meg a teljes lista magasságára.')
+
+  // Search for manually added sugar after offline nutrient repair: the best
+  // complete entry should be visible, with every old version recoverable.
+  await page.locator('[data-food-search-filter="all"]').click()
+  await page.locator('[data-food-search]').fill('cukor')
+  const variants = page.locator('[data-food-search-results] .food-search-variants-toggle')
+  await variants.first().waitFor({ state: 'visible' })
+  assert.match(await variants.first().textContent(), /További 1 változat/)
+  const completeSugar = searchArea.locator('.sheet-result', { hasText: 'Cukor' }).first()
+  assert.match(await completeSugar.textContent(), /387 kcal/)
+  await variants.first().click()
+  assert.equal(await searchArea.locator('.food-search-legacy-variant').count(), 1,
+    'A régi hiányos verzió továbbra is elérhető, nem törlődik.')
+  assert.match(await searchArea.locator('.food-search-legacy-variant').textContent(), /nincs kalóriaadat/)
+
+  // Live scanner stays in the same slot below the filters. Only its close
+  // action gets the same styled touch target as the surrounding controls.
+  assert.equal(await page.evaluate(() => {
+    const panel = document.querySelector('[data-food-live-scanner]')
+    const results = document.querySelector('[data-food-search-results]')
+    return Boolean(panel.compareDocumentPosition(results) & Node.DOCUMENT_POSITION_FOLLOWING)
+  }), true)
+  await page.evaluate(() => { document.querySelector('[data-food-live-scanner]').hidden = false })
+  const close = page.locator('[data-food-live-stop]')
+  await close.waitFor({ state: 'visible' })
+  const closeStyle = await close.evaluate(el => ({
+    width: el.getBoundingClientRect().width,
+    radius: getComputedStyle(el).borderRadius,
+    border: getComputedStyle(el).borderStyle,
+  }))
+  assert.ok(closeStyle.width > 250 && closeStyle.border === 'solid' && closeStyle.radius !== '0px',
+    'Az olvasó bezárása teljes szélességű, egységes stílusú érintőgomb legyen.')
+  await close.click()
+  assert.equal(await page.locator('[data-food-live-scanner]').isVisible(), false)
+
+  console.log('Food add UX: fixed-height top-aligned results, safe duplicates, styled scanner close, ingredients first OK')
   console.log('Recipe ingredient editor: search, editable nutrients, manual fallback, conversions and inline barcode OK')
 } finally {
   await browser?.close()
