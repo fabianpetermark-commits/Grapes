@@ -23,7 +23,7 @@ test('the recipe field searches saved foods with Hungarian accents and synonyms'
 })
 
 test('offline USDA matches are available before any network request or saved product', () => {
-  const matches = recipeIngredientMatches([], 'voroshagyma', { offlineFoods: [usda] })
+  const matches = recipeIngredientMatches([], 'voroshagyma', { verifiedUsdaFoods: [usda] })
   assert.equal(matches.length, 1)
   assert.equal(matches[0].food.name, 'Vöröshagyma, nyers')
   assert.equal(matches[0].external, true)
@@ -50,5 +50,5 @@ test('OFF and USDA duplicates are suppressed by barcode or provider identity', (
 })
 
 test('an unrelated search cannot return the entire catalog', () => {
-  assert.deepEqual(recipeIngredientMatches(saved, 'nemlétezőxxx', { offlineFoods: [], remoteFoods: [] }), [])
+  assert.deepEqual(recipeIngredientMatches(saved, 'nemlétezőxxx', { verifiedUsdaFoods: [], remoteFoods: [] }), [])
 })

@@ -9,7 +9,7 @@ const identity = food => food?.barcode ? 'barcode:' + food.barcode
  * can materialize a selected catalog item in the current Food project.
  */
 export function recipeIngredientMatches(localFoods, query, {
-  offlineFoods = [], remoteFoods = [], favorites = [], entries = [],
+  verifiedUsdaFoods = [], remoteFoods = [], favorites = [], entries = [],
 } = {}) {
   const term = String(query ?? '').trim()
   if (!term) return []
@@ -25,7 +25,7 @@ export function recipeIngredientMatches(localFoods, query, {
   for (const food of searchFoods(localFoods.filter(food => food.kind !== 'recipe'), term, {
     favorites, entries,
   }).slice(0, 25)) add(food, false)
-  for (const food of offlineFoods.slice(0, 20)) add(food, true)
+  for (const food of verifiedUsdaFoods.slice(0, 20)) add(food, true)
   for (const food of remoteFoods.slice(0, 30)) add(food, true)
   return matches.slice(0, 60)
 }

@@ -594,9 +594,9 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
 
   function renderRecipeIngredientChoices() {
     const query = $('[data-food-recipe-ingredient-search]').value.trim()
-    const offlineFoods = query ? searchVerifiedUsdaFoods(query) : []
+    const verifiedUsdaMatches = query ? searchVerifiedUsdaFoods(query) : []
     const matches = recipeIngredientMatches(project.customFoods, query, {
-      offlineFoods,
+      verifiedUsdaFoods: verifiedUsdaMatches,
       remoteFoods: recipeIngredientRemoteFoods,
       favorites: project.favorites,
       entries: project.diaryEntries,
