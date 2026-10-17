@@ -4,7 +4,7 @@ export const HEALTH_BRIDGE_VERSION = 1
 export const HEALTH_BRIDGE_PRODUCER = 'hu.grapes.healthconnect'
 export const MAX_HEALTH_IMPORT_RECORDS = 50000
 
-const MEAL_TYPES = new Set(['breakfast', 'lunch', 'dinner', 'snack'])
+const MEAL_TYPES = new Set(['breakfast', 'morningSnack', 'lunch', 'afternoonSnack', 'dinner', 'snack'])
 const EXTERNAL_ID_PATTERN = /^(healthconnect|samsunghealth):[^:]+:.+$/
 
 function finiteNonNegative(value, label) {
@@ -48,7 +48,7 @@ function mapBridgeRecord(record, profileId) {
   const occurredAt = requiredIso(record.startTime, 'Kezdési idő')
   const endTime = requiredIso(record.endTime, 'Befejezési idő')
   if (new Date(endTime) < new Date(occurredAt)) throw new Error('A befejezési idő megelőzi a kezdési időt.')
-  const mealType = MEAL_TYPES.has(record.mealType) ? record.mealType : 'snack'
+  const mealType = MEAL_TYPES.has(record.mealType) ? record.mealType : 'afternoonSnack'
   const source = { type: 'manual', id: externalKey, revision: '', attribution: sourcePackage }
 
   if (record.type === 'hydration') {

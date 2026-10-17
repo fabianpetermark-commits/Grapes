@@ -40,24 +40,58 @@ export async function lookupOpenFoodFactsProduct(barcode, { signal, baseUrl = im
   return productFromOpenFoodFacts(payload.product, code)
 }
 
-export async function searchOpenFoodFactsProducts(query, { page = 1, pageSize = 12, signal, baseUrl = import.meta.env?.VITE_FOOD_SEARCH_API_URL || DEFAULT_OPEN_FOOD_FACTS_SEARCH_URL, fetchImpl = globalThis.fetch } = {}) {
+
+export async function searchOpenFoodFactsProducts(query, {
+  page = 1, pageSize = 12, signal,
+  baseUrl = import.meta.env?.VITE_FOOD_SEARCH_API_URL || DEFAULT_OPEN_FOOD_FACTS_SEARCH_URL,
+  legacyBaseUrl = DEFAULT_OPEN_FOOD_FACTS_URL,
+  fetchImpl = globalThis.fetch,
+} = {}) {
   const term = String(query || '').trim().replace(/\s+/g, ' ')
   if (term.length < 2 || term.length > 120) throw new Error('A terméknév legalább 2, legfeljebb 120 karakter legyen.')
   if (typeof fetchImpl !== 'function') throw new Error('A termékadatbázis ezen a környezeten nem érhető el.')
+  const requestedPage = Math.max(1, Number(page) || 1)
+  const requestedSize = Math.min(24, Math.max(1, Number(pageSize) || 12))
+  const fields = 'code,product_name_hu,product_name,generic_name_hu,generic_name,categories_tags,product_quantity_unit,image_front_small_url,nutriments,last_modified_t'
   const params = new URLSearchParams({
-    q: term, page: String(Math.max(1, Number(page) || 1)), page_size: String(Math.min(24, Math.max(1, Number(pageSize) || 12))),
-    langs: 'hu,en', boost_phrase: 'true',
-    fields: 'code,product_name_hu,product_name,generic_name_hu,generic_name,categories_tags,product_quantity_unit,image_front_small_url,nutriments,last_modified_t',
+    q: term, page: String(requestedPage), page_size: String(requestedSize),
+    langs: 'hu,en', boost_phrase: 'true', fields,
   })
-  const endpoint = `${String(baseUrl || DEFAULT_OPEN_FOOD_FACTS_SEARCH_URL).replace(/\/$/, '')}/search?${params}`
-  const response = await fetchImpl(endpoint, { signal })
-  if (!response.ok) throw new Error(`A név szerinti termékkereső nem érhető el (${response.status}).`)
-  const payload = await response.json()
-  const products = []
-  for (const hit of payload.hits || []) {
-    try { products.push(productFromOpenFoodFacts(hit)) } catch {}
+  const endpoint = String(baseUrl || DEFAULT_OPEN_FOOD_FACTS_SEARCH_URL).replace(/\/$/, '') + '/search?' + params
+  async function fetchResults(url) {
+    const response = await fetchImpl(url, { signal })
+    if (!response.ok) {
+      const error = new Error('A név szerinti termékkereső nem érhető el (' + response.status + ').')
+      error.status = response.status
+      throw error
+    }
+    const payload = await response.json()
+    const hits = payload.hits || payload.products
+    if (!Array.isArray(hits)) throw new Error('Az Open Food Facts keresője ismeretlen válaszformátumot adott.')
+    const products = []
+    for (const hit of hits) {
+      try { products.push(productFromOpenFoodFacts(hit.document || hit._source || hit)) } catch { /* Incomplete product skipped. */ }
+    }
+    return { count: Number(payload.count) || products.length, page: Number(payload.page) || requestedPage, products }
   }
-  return { count: Number(payload.count) || products.length, page: Number(payload.page) || 1, products }
+  try {
+    return await fetchResults(endpoint)
+  } catch (error) {
+    // Use documented legacy keyword search only if the new search backend fails.
+    // Never bypass a rate limit, and never silently switch a custom test/proxy endpoint.
+    const shouldFallback = baseUrl === DEFAULT_OPEN_FOOD_FACTS_SEARCH_URL &&
+      error?.name !== 'AbortError' && error?.status !== 429
+    if (!shouldFallback) throw error
+    const legacy = new URLSearchParams({
+      search_terms: term, search_simple: '1', action: 'process', json: '1',
+      page: String(requestedPage), page_size: String(requestedSize), fields,
+    })
+    try {
+      return await fetchResults(String(legacyBaseUrl).replace(/\/$/, '') + '/cgi/search.pl?' + legacy)
+    } catch (fallbackError) {
+      throw new Error('Open Food Facts keresés sikertelen: ' + error.message + ' Tartalék kereső: ' + fallbackError.message)
+    }
+  }
 }
 
 function bridgeNonce(cryptoImpl = globalThis.crypto) {
@@ -95,6 +129,9 @@ async function fatSecretBridgeRequest(kind, value, { brokerUrl = DEFAULT_FOOD_BR
   return new Promise((resolve, reject) => {
     const cleanup = () => { windowImpl.removeEventListener('message', receive); frame.remove(); clearTimeout(timer) }
     const receive = event => {
+      let origin
+      try { origin = new URL(event.origin) } catch { return }
+      if (origin.protocol !== 'https:' || !(/^(?:script\.google\.com|(?:[a-z0-9-]+[.-])?script\.googleusercontent\.com)$/.test(origin.hostname))) return
       if (event.source !== frame.contentWindow || event.data?.type !== 'grapes-fatsecret-result' || event.data?.nonce !== nonce) return
       cleanup()
       if (event.data.status !== 'ok') reject(new Error(event.data.message || 'A FatSecret keresés nem sikerült.'))
