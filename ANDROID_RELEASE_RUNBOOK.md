@@ -1,0 +1,60 @@
+# Grapes Android kiadási folyamat
+
+Ez a rövid leírás a bevált GitHub-feltöltési és APK-kiadási folyamatot rögzíti.
+
+## Elsődleges ág
+
+- Az Android build és release forrásága: `codex/android-app`.
+- A `release-android.yml` workflow ezt az ágat veszi ki akkor is, ha más ágról indítják el.
+- Release előtt mindig ellenőrizni kell, hogy a kívánt commit már ezen az ágon van.
+
+## Feltöltés
+
+1. Friss távoli állapot lekérése: `git fetch origin --prune`.
+2. Ellenőrzés: a helyi commit a távoli `codex/android-app` közvetlen folytatása legyen.
+3. Feltöltés: `git push origin HEAD:codex/android-app`.
+4. Ellenőrzés: `git ls-remote --heads origin codex/android-app`.
+
+## GitHub CLI hitelesítés
+
+Az alkalmazás futtatókörnyezete hordozható GitHub CLI-t használhat. Ha a Git hitelesítője egy már törölt `%TEMP%\grapes-gh-*\bin\gh.exe` fájlra mutat, a Git látszólag megállhat vagy `No such file or directory` hibát adhat.
+
+Ilyenkor:
+
+1. A hivatalos GitHub CLI ZIP-et kell visszatölteni a GitHub Releases oldaláról.
+2. A korábban beállított TEMP-útvonalra kell kibontani, vagy új hely után futtatni kell a `gh auth setup-git` parancsot.
+3. Bejelentkezés: `gh auth login --hostname github.com --git-protocol https --web`.
+4. Ellenőrzés: `gh auth status --hostname github.com`.
+
+Ha a Windows Git Credential Managerben a GitHub-belépés már él, a törölt hordozható `gh.exe` bejegyzés újratelepítés nélkül, az adott parancsra felülírható:
+
+`git -c credential.https://github.com.helper= -c credential.https://github.com.helper=manager push origin HEAD:codex/android-app`
+
+Az első üres URL-specifikus helper törli az örökölt, hibás helperláncot, a második pedig kifejezetten a Windows Credential Managert választja. A felülírás csak erre az egy Git-parancsra érvényes, nem írja át a felhasználó globális Git-beállításait.
+
+A felhasználó végzi el a GitHub eszközkód böngészős jóváhagyását. Jelszó vagy kétlépcsős kód nem kerül a repositoryba.
+
+## Aláírt APK kiadása
+
+1. A legutóbbi verzió lekérése: `gh release list --repo fabianpetermark-commits/Grapes`.
+2. A `version_code` mindig legyen nagyobb az előzőnél.
+3. A workflow indítása:
+
+   `gh workflow run release-android.yml --repo fabianpetermark-commits/Grapes --ref codex/android-app -f version_code=<szám> -f version_name=<verzió> -f release_notes="<rövid leírás>"`
+
+4. A futás figyelése: `gh run watch <run-id> --repo fabianpetermark-commits/Grapes --exit-status`.
+5. Siker után ellenőrizni kell, hogy az új GitHub Release tartalmazza a névre átírt, aláírt APK-t.
+
+Az aláíróadatokat kizárólag a GitHub Actions Repository Secrets tárolja; ezeket nem kell és nem szabad helyi fájlba írni.
+
+## Google Drive Android OAuth
+
+A natív Android-bejelentkezés nem a `VITE_GOOGLE_CLIENT_ID` webes kliensazonosítót használja. Ugyanabban a Google Cloud projektben külön **Android OAuth client** szükséges az alábbi kötött adatokkal:
+
+- Google Cloud projektszám: `991532871119`
+- package name: `hu.grapes.healthconnect`
+- release SHA-1: `86:98:E6:55:68:2B:5D:3A:A0:E5:6C:E1:A4:4A:29:32:D0:65:4A:61`
+
+A Drive API-nak engedélyezve kell lennie. Ha az OAuth consent screen tesztelési állapotú, a valódi készüléken használt Google-fiókot fel kell venni tesztfelhasználónak. A `UNREGISTERED_ON_API_CONSOLE` / status 10 hiba ezeknek az adatoknak az eltérését jelzi; alkalmazáskódból nem kerülhető meg.
+
+Az alapbejelentkezés `drive.file` jogosultságot kér. Az E-book „Keresés a teljes Drive-ban” művelete külön, felhasználói döntésre hozzáadja a `drive.readonly` jogosultságot, ugyanúgy, mint a webes nézet.
