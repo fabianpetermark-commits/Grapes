@@ -66,6 +66,20 @@ try {
       console.error('Recipe editor did not open:', JSON.stringify(state))
       throw error
     })
+  const alignment = await page.evaluate(() => {
+    const rect = selector => document.querySelector(selector).closest('label').getBoundingClientRect()
+    const a = rect('[data-food-recipe-yield-unit]')
+    const b = rect('[data-food-recipe-unit-weight]')
+    const c = rect('[data-food-recipe-nutrient-carbohydrate]')
+    const d = rect('[data-food-recipe-nutrient-fat]')
+    return { yieldTop: a.top, weightTop: b.top, yieldWidth: a.width, weightWidth: b.width,
+      carbohydrateTop: c.top, fatTop: d.top, carbohydrateWidth: c.width, fatWidth: d.width }
+  })
+  assert.ok(Math.abs(alignment.yieldTop - alignment.weightTop) < 3,
+    'Egységtömeg és hozam egysége mezők egy sorban legyenek: ' + JSON.stringify(alignment))
+  assert.ok(Math.abs(alignment.carbohydrateTop - alignment.fatTop) < 3,
+    'Szénhidrát és zsír mezők egy sorban legyenek: ' + JSON.stringify(alignment))
+  assert.ok(Math.abs(alignment.carbohydrateWidth - alignment.fatWidth) < 5)
   await page.locator('[data-food-recipe-name-input]').fill('Keresővel készített tesztrecept')
   const input = page.locator('[data-food-recipe-ingredient-search]')
   const dropdown = page.locator('[data-food-recipe-ingredient-food]')
@@ -92,12 +106,23 @@ try {
   await page.locator('[data-food-recipe-ingredient-add]').click()
   assert.match(await page.locator('[data-food-recipe-ingredients]').textContent(), /Teszt keksz/)
   assert.match(await page.locator('[data-food-recipe-summary]').textContent(), /Összesen:/)
+  // A user should not need to enter both yield and finished/unit weights.
+  await page.locator('[data-food-recipe-weight-input]').fill('750')
+  await page.locator('[data-food-recipe-yield-unit]').selectOption('slice')
+  await page.locator('[data-food-recipe-unit-weight]').fill('25')
+  assert.equal(await page.locator('[data-food-recipe-yield-input]').inputValue(), '')
+  assert.match(await page.locator('[data-food-recipe-summary]').textContent(), /30 szelet/)
+  assert.doesNotMatch(await page.locator('[data-food-recipe-summary]').textContent(), /Hiányzó tápértékek:/)
   await page.locator('[data-food-recipe-editor-save]').click()
   await page.locator('[data-food-recipe-title]').filter({ hasText: 'Keresővel készített tesztrecept' })
     .waitFor({ state: 'visible' })
 
+  const savedCard = await page.locator('[data-food-recipes] .food-recipe--compact').first().textContent()
+  assert.match(savedCard, /kcal\/szelet/)
+  assert.doesNotMatch(savedCard, /— kcal\/szelet/)
   await page.locator('[data-food-recipe-edit]').click()
   await page.locator('[data-food-recipe-edit-sheet].is-open').waitFor({ state: 'visible' })
+  assert.equal(await page.locator('[data-food-recipe-yield-input]').inputValue(), '30')
   await input.fill('voroshagyma')
   const savedOnion = dropdown.locator('option', { hasText: /Vöröshagyma/ }).first()
   await savedOnion.waitFor({ state: 'attached' })
@@ -132,6 +157,8 @@ try {
   assert.match(await page.locator('[data-food-recipe-ingredients]').textContent(), /Kézi teszt hozzávaló 20261017/)
   assert.match(await page.locator('[data-food-recipe-ingredients]').textContent(), /2 evőkanál/)
   assert.match(await page.locator('[data-food-recipe-summary]').textContent(), /Összesen:/)
+  assert.match(await page.locator('[data-food-recipe-summary]').textContent(), /Hiányzó tápértékek:.*Kézi teszt hozzávaló/s)
+  assert.match(await page.locator('[data-food-recipe-ingredients]').textContent(), /Hiányzó adatok/)
 
   // Recipe scanner must stay inline without switching to full catalogue.
   const popup = page.waitForEvent('dialog')
@@ -153,7 +180,13 @@ try {
   await page.locator('[data-food-recipe-ingredient-add]').click()
   assert.match(await page.locator('[data-food-recipe-ingredients]').textContent(), /Teszt keksz/)
 
-  await page.locator('[data-food-recipe-editor-save]').click()
+  const warningDialog = page.waitForEvent('dialog')
+  const saveWithUnknown = page.locator('[data-food-recipe-editor-save]').click()
+  const dialog = await warningDialog
+  assert.match(dialog.message(), /hiányzik tápérték/i)
+  assert.match(dialog.message(), /Kézi teszt hozzávaló 20261017/)
+  await dialog.accept()
+  await saveWithUnknown
   await page.locator('[data-food-recipe-title]').filter({ hasText: 'Keresővel készített tesztrecept' }).waitFor()
   await page.locator('[data-food-recipe-edit]').click()
   await page.locator('[data-food-recipe-ingredients]').getByText('Kézi teszt hozzávaló 20261017').waitFor()
