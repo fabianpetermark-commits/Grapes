@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import vm from 'node:vm'
+import { firstProductBarcode } from '../src/food/food-barcode.js'
 
 const mobile = readFileSync(new URL('../src/food/food-mobile.js', import.meta.url), 'utf8')
 const shell = readFileSync(new URL('../src/android-mobile-shell.js', import.meta.url), 'utf8')
@@ -12,8 +13,17 @@ test('a Food mobilkereső a már tesztelt magyar keresőalgoritmust használja',
   assert.match(mobile, /const sourceLabel = foodSourceLabel\(food\)/)
 })
 
-test('a fotó alapján olvasott kódokból az érvényes EAN vagy UPC-t választjuk', () => {
-  assert.match(mobile, /\(codes \|\| \[\]\)\.map\(item => String\(item\.rawValue \|\| ''\)\.trim\(\)\)\.find/)
+test('a fotó és az élő olvasó csak az első érvényes kódot választja', () => {
+  assert.match(mobile, /import \{ firstProductBarcode \} from '\.\/food-barcode\.js'/)
+  assert.equal(mobile.match(/firstProductBarcode\(codes\)/g)?.length, 2)
+  assert.equal(firstProductBarcode([
+    { rawValue: 'QR: not a barcode' },
+    { rawValue: 'ABC12345' },
+    { rawValue: ' 05991234567890 ' },
+    { rawValue: '5991234567890' },
+  ]), '05991234567890')
+  assert.equal(firstProductBarcode([{ rawValue: 'not-a-code' }, null]), '')
+  assert.equal(firstProductBarcode(null), '')
   assert.match(mobile, /Nem található érvényes termékvonalkód a fotón/)
   assert.match(mobile, /URL\.revokeObjectURL\(url\); throw error/)
 })
