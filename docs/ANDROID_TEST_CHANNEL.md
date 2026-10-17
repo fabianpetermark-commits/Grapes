@@ -52,6 +52,12 @@ A kiadási workflow csak akkor folytatható, ha a `develop` tartalmazza a QA vá
 
 A TEST release csak `--prerelease` jelzéssel publikálható, külön verziószámozással. A workflow ellenőrzi az APK aláírását és pontos csomagnevét. A secrets létrehozása, új kiadás és Google Cloud módosítása **külön felhasználói jóváhagyást igényel**.
 
+## Elkülönített TEST Google Drive mappák
+
+A TEST-only APK buildben a `VITE_GRAPES_TEST_CHANNEL=1` beállítás a közös Grapes projektek számára a **Grapes TEST**, a mobil és webes E-book számára pedig a **Grapes TEST E-book Library** mappanevet választja. Az éles webes és Android buildek továbbra is a korábbi `Grapes` és `Grapes E-book Library` mappákat használják.
+
+**Fontos korlát:** a Google-fiók szintjén ez nem teljes jogosultsági elkülönítés: a külön TEST alkalmazás által megkapott `drive.readonly` scope hozzáférést adhat más, már meglévő Drive-fájlok olvasásához, és a felhasználó további műveletekkel ugyanahhoz a fiókhoz csatlakozhat. Valós személyes adatok védelméhez lehetőség szerint külön teszt-Google-fiókot és kifejezetten TESThez létrehozott fájlokat használj; a QA app nem végezhet automatizált migrációt a valódi Drive-mappákból. A TEST alkalmazás Google OAuth-jogosultságát a külön `.test` csomaghoz és QA signing SHA-1-hez kell létrehozni.
+
 ## Első telefonos próba: kötelező ellenőrzések
 
 1. A régi Grapes telepítve marad; a Grapes TEST külön ikonnal jelenik meg.

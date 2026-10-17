@@ -42,3 +42,7 @@ A jelen baseline a `codex/android-app` állapotát konzerválja, **nem** az öss
 - Az Android buildben a mobil UI bejárása, helyi mentés és e-book/food funkciók browser + valós készülék ellenőrzése
 - A `develop` célágba merge **csak az ellenőrzések után, külön felhasználói jóváhagyással**.
 - Állandó TEST aláírás és Google Drive Android OAuth kliens még nincs beállítva; a debug preview nem éles tesztfrissítési csatorna.
+
+## Külön TEST Drive-adattér
+
+A TEST-only web build `VITE_GRAPES_TEST_CHANNEL=1` beállítással külön Grapes projektek- és E-book Drive-mappákat használ; a normál webes Grapes projektek és e-book mappái nem változnak. A közös Google Drive scope és a felhasználó által választott régi fájlok ettől még külön kockázatot jelentenek; próba közben külön tesztfiók javasolt.

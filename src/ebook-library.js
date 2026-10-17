@@ -10,7 +10,7 @@ const PICKER_APP_ID = import.meta.env.VITE_GOOGLE_APP_ID || CLIENT_ID.split('-')
 const BOOKS_API_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY || ''
 const TRANSFER_BROKER_URL = import.meta.env.VITE_EBOOK_TRANSFER_BROKER_URL || ''
 const EPUB_WRITE_ENABLED = import.meta.env.VITE_EBOOK_EPUB_WRITE_ENABLED === 'true'
-const FOLDER_NAME = 'Grapes E-book Library'
+const FOLDER_NAME = import.meta.env.VITE_GRAPES_TEST_CHANNEL === '1' ? 'Grapes TEST E-book Library' : 'Grapes E-book Library'
 // The Apps Script broker accepts only the canonical reader and return URLs.
 // A pilot build must not turn its own subdirectory into a separate pairing target.
 const APP_RETURN_URL = 'https://fabianpetermark-commits.github.io/Grapes/'

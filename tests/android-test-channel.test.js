@@ -10,6 +10,9 @@ const notifications = read('android-health-connect-poc/app/src/main/java/hu/grap
 const stableRelease = read('.github/workflows/release-android.yml')
 const qaPreview = read('.github/workflows/build-android-test.yml')
 const qaRelease = read('.github/workflows/release-android-test.yml')
+const driveStorage = read('src/storage/grapes-drive.js')
+const ebookLibrary = read('src/ebook-library.js')
+const mobileEbookLibrary = read('src/ebook-mobile-library.js')
 
 test('TEST APK has its own Android package ID and visual identity', () => {
   assert.match(gradle, /applicationId\s*=\s*"hu\.grapes\.healthconnect"/)
@@ -55,4 +58,15 @@ test('Existing production release remains on its original branch and latest chan
   assert.match(stableRelease, /--latest/)
   assert.match(stableRelease, /android-v\$/)
   assert.doesNotMatch(stableRelease, /android-test-v|assembleQa/)
+})
+
+test('TEST web assets write into separate Drive folders', () => {
+  assert.match(qaPreview, /VITE_GRAPES_TEST_CHANNEL: '1'/)
+  assert.match(qaRelease, /VITE_GRAPES_TEST_CHANNEL: '1'/)
+  for (const source of [driveStorage, ebookLibrary, mobileEbookLibrary]) {
+    assert.match(source, /import\.meta\.env\.VITE_GRAPES_TEST_CHANNEL === '1'/)
+  }
+  assert.match(driveStorage, /'Grapes TEST' : 'Grapes'/)
+  assert.match(ebookLibrary, /'Grapes TEST E-book Library' : 'Grapes E-book Library'/)
+  assert.match(mobileEbookLibrary, /'Grapes TEST E-book Library' : 'Grapes E-book Library'/)
 })

@@ -30,6 +30,7 @@ jobs:
     env:
       VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
       VITE_GOOGLE_APP_ID: 991532871119
+      VITE_GRAPES_TEST_CHANNEL: '1'
       VITE_GOOGLE_PICKER_API_KEY: ${{ secrets.GOOGLE_PICKER_API_KEY }}
       VITE_GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
     steps:
