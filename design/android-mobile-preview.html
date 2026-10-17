@@ -325,6 +325,7 @@
     .food-recipe-ingredient-form label:first-child, .food-recipe-ingredient-form label:nth-child(2), .food-recipe-ingredient-form button { grid-column: 1 / -1; }
     .food-recipe-ingredient-form button { width: 100%; white-space: nowrap; }
     .food-recipe-summary { padding: 11px 12px; margin-top: 10px; color: var(--muted); background: var(--raised); border-radius: 12px; font-size: 10px; line-height: 1.5; }
+    .food-recipe-ingredient-status { grid-column: 1 / -1; margin: -3px 0 5px; color: var(--muted); font-size: 12px; line-height: 1.4; }
     .food-recipe-ingredient-row { display: grid; grid-template-columns: minmax(0, 1fr) 44px 44px; }
     .food-recipe-ingredient-row > span { color: var(--text); }
     .food-recipe-ingredient-row button { width: 40px; height: 40px; color: var(--accent); background: var(--raised); border: 0; border-radius: 11px; }
@@ -696,9 +697,10 @@
           <label>Egységtömeg (g)<input class="search" type="number" min="0.01" step="0.01" data-food-recipe-unit-weight></label>
         </div></section>
         <section class="food-editor-section"><h3>Hozzávaló felvétele</h3><div class="sheet-form food-recipe-ingredient-form">
-          <label>Hozzávaló keresése<input class="search" type="search" autocomplete="off" placeholder="Keresés a saját ételek között…" data-food-recipe-ingredient-search></label>
-           <label>Étel<select class="search" data-food-recipe-ingredient-food></select></label>
-           <button type="button" class="quick-action" data-food-recipe-open-catalog>Étel keresése a közös adatbázisban</button>
+          <label>Hozzávaló keresése<input class="search" type="search" autocomplete="off" placeholder="Írd be pl. rizs, túró, csirkemell…" data-food-recipe-ingredient-search></label>
+          <label>Étel<select class="search" data-food-recipe-ingredient-food aria-describedby="food-recipe-ingredient-status"><option value="">Előbb keress hozzávalót…</option></select></label>
+          <p class="food-recipe-ingredient-status" id="food-recipe-ingredient-status" data-food-recipe-ingredient-status role="status" aria-live="polite">Írd be a hozzávaló nevét, majd válassz az Étel listából.</p>
+          <button type="button" class="quick-action" data-food-recipe-open-catalog>Teljes ételkatalógus megnyitása</button>
           <label>Mennyiség<input class="search" type="number" min="0.01" step="0.01" value="100" data-food-recipe-ingredient-amount></label>
           <label>Egység<select class="search" data-food-recipe-ingredient-unit></select></label>
         </div><button class="quick-action food-recipe-add-ingredient" type="button" data-food-recipe-ingredient-add><span>Hozzávaló hozzáadása</span></button></section>
