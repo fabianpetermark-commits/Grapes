@@ -1,6 +1,6 @@
 import { grapesDriveRequest, isGrapesDriveConnected } from './storage/grapes-drive.js'
 
-const FOLDER_NAME = 'Grapes E-book Library'
+const FOLDER_NAME = import.meta.env.VITE_GRAPES_TEST_CHANNEL === '1' ? 'Grapes TEST E-book Library' : 'Grapes E-book Library'
 const METADATA_NAME = '.grapes-ebook-metadata.json'
 const PROGRESS_NAME = '.grapes-ebook-reading-progress.json'
 const LOCAL_PROGRESS_KEY = 'grapes-ebook-reading-progress-v1'

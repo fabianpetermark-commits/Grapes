@@ -10,6 +10,8 @@ const previewUrl = 'http://127.0.0.1:4181/Grapes/design/android-mobile-preview.h
 
 const executablePath = [
   process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+  '/usr/bin/google-chrome',
+  '/usr/bin/chromium',
   'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
   'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
 ].filter(Boolean).find(existsSync)
@@ -72,8 +74,8 @@ try {
 
   await page.locator('[data-nav="sync"]').click()
   await page.locator('[data-page="sync"]').waitFor({ state: 'visible' })
-  assert.match(await page.locator('[data-sync-local-count]').textContent(), /\d+ projekt/)
-  assert.equal(await page.locator('[data-sync-drive-count]').textContent(), 'Nincs csatlakoztatva')
+  await page.locator('[data-sync-local-count]').filter({ hasText: /\d+ projekt/ }).waitFor()
+  await page.locator('[data-sync-drive-count]').filter({ hasText: 'Nincs csatlakoztatva' }).waitFor()
   assert.equal(await page.locator('[data-health-sync]').count(), 1)
   assert.equal(await page.locator('[data-samsung-sync-action]').count(), 1)
   assert.equal(await page.locator('[data-yazio-import]').count(), 1)
@@ -245,6 +247,27 @@ try {
   await page.locator('[data-food-recipes-new]').click()
   await page.locator('[data-food-recipe-edit-sheet].is-open').waitFor({ state: 'visible' })
   await page.locator('[data-food-recipe-name-input]').fill('Mobil tesztrecept')
+  // The recipe input now searches all available ingredients and filters the
+  // native Food dropdown, even before the external catalog is opened.
+  const ingredientSearch = page.locator('[data-food-recipe-ingredient-search]')
+  const ingredientSelect = page.locator('[data-food-recipe-ingredient-food]')
+  await ingredientSearch.fill('vöröshagyma')
+  await page.waitForFunction(() => [...document.querySelector('[data-food-recipe-ingredient-food]').options]
+    .some(option => option.textContent.includes('Vöröshagyma')))
+  assert.equal(await ingredientSelect.inputValue(), '', 'Typing must not silently select an ingredient.')
+  const onionOption = ingredientSelect.locator('option', { hasText: 'Vöröshagyma' }).first()
+  const onionValue = await onionOption.getAttribute('value')
+  assert.ok(onionValue && onionValue.startsWith('catalog:'), 'Offline USDA must be selectable without pre-saving the ingredient.')
+  await ingredientSelect.selectOption(onionValue)
+  assert.equal(await page.locator('[data-food-recipe-ingredient-unit]').inputValue(), 'g')
+  await page.locator('[data-food-recipe-ingredient-add]').click()
+  assert.match(await page.locator('[data-food-recipe-ingredients]').textContent(), /Vöröshagyma/)
+  assert.equal(await ingredientSearch.inputValue(), '', 'After adding, the field must be ready for the next ingredient.')
+  // A new term must replace the dropdown results rather than retaining onion.
+  await ingredientSearch.fill('rizs')
+  await page.waitForFunction(() => document.querySelector('[data-food-recipe-ingredient-status]')?.textContent.includes('találat'))
+  assert.equal(await ingredientSelect.inputValue(), '')
+  assert.ok((await ingredientSelect.locator('option').allTextContents()).some(text => /Rizs/i.test(text)))
   await page.locator('[data-food-recipe-open-catalog]').click()
   await page.locator('[data-food-add-sheet].is-open').waitFor({ state: 'visible' })
   assert.equal(await page.locator('[data-food-add-title]').textContent(), 'Hozzávaló kiválasztása')
