@@ -3,7 +3,7 @@ export const FOOD_BACKUP_VERSION = 1
 
 export const MEAL_TYPES = ['breakfast', 'morningSnack', 'lunch', 'afternoonSnack', 'dinner']
 export const FOOD_BASE_UNITS = ['g', 'ml']
-export const FOOD_AMOUNT_UNITS = ['g', 'ml', 'piece', 'slice', 'serving', 'package']
+export const FOOD_AMOUNT_UNITS = ['g', 'dkg', 'kg', 'ml', 'dl', 'l', 'tsp', 'tbsp', 'pinch', 'piece', 'slice', 'serving', 'package']
 export const CORE_NUTRIENTS = ['energyKcal', 'protein', 'carbohydrate', 'fat', 'fiber', 'sugar', 'saturatedFat', 'salt']
 export const RECIPE_YIELD_UNITS = ['serving', 'piece', 'slice']
 
@@ -124,7 +124,14 @@ export function resolveAmountInBase(food, amount, unit, servingId = '') {
   const numeric = Number(amount)
   if (!Number.isFinite(numeric) || numeric <= 0) throw new Error('A mennyiségnek nullánál nagyobbnak kell lennie.')
   if (unit === food.baseUnit) return numeric
-  const serving = food.servings.find(item => item.id === servingId || item.unit === unit)
+  // Exact within-dimension metric conversions are safe for all foods.
+  const mass = { g: 1, dkg: 10, kg: 1000 }
+  const volume = { ml: 1, dl: 100, l: 1000 }
+  if (food.baseUnit === 'g' && Object.hasOwn(mass, unit)) return numeric * mass[unit]
+  if (food.baseUnit === 'ml' && Object.hasOwn(volume, unit)) return numeric * volume[unit]
+  // A tablespoon, teaspoon, pinch or a mass/volume crossover depends on the
+  // food. Only a saved, food-specific serving conversion can be used.
+  const serving = (food.servings || []).find(item => item.id === servingId || item.unit === unit)
   if (!serving) throw new Error('Ehhez az egységhez nincs termékspecifikus átváltás.')
   const size = food.baseUnit === 'g' ? serving.grams : serving.milliliters
   if (!Number.isFinite(size) || size <= 0) throw new Error('Az adag átváltása hiányzik.')

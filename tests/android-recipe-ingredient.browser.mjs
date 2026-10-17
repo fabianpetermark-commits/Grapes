@@ -24,7 +24,15 @@ try {
   }
   browser = await chromium.launch({ executablePath: chrome, headless: true, args: ['--no-sandbox'] })
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
+  // Exercise the realistic Android WebView fallback when BarcodeDetector is unavailable.
+  await page.addInitScript(() => { Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: undefined }) })
   page.on('pageerror', error => console.error('Recipe browser page error:', error.message))
+  await page.route('https://world.openfoodfacts.org/api/v2/product/5998888888888.json', route => route.fulfill({
+    status: 200, contentType: 'application/json', body: JSON.stringify({
+      status: 1, product: { code: '5998888888888', product_name_hu: 'Teszt keksz',
+        nutriments: { 'energy-kcal_100g': 410, proteins_100g: 7, carbohydrates_100g: 57, fat_100g: 16 } },
+    }),
+  }))
   await page.route('https://api.nal.usda.gov/**', route => route.fulfill({
     status: 200, contentType: 'application/json', body: '{"foods":[]}',
   }))
@@ -95,7 +103,61 @@ try {
   await savedOnion.waitFor({ state: 'attached' })
   assert.ok((await savedOnion.getAttribute('value'))?.startsWith('food-'),
     'A recepthez hozzáadott USDA-étel legközelebb már mentett hozzávaló legyen.')
-  console.log('Recipe ingredients: Hungarian search -> USDA/OFF dropdown -> explicit selection -> recipe save OK')
+  // Saved ingredients must expose editable nutrients per 100 g without
+  // rewriting the previously saved catalogue record.
+  await dropdown.selectOption(await savedOnion.getAttribute('value'))
+  const kcal = page.locator('[data-food-recipe-nutrient-energyKcal]')
+  assert.ok((await kcal.inputValue()).length > 0, 'Saved USDA nutrients should pre-fill the editable field.')
+  const originalKcal = await kcal.inputValue()
+  await kcal.fill('135')
+  await page.locator('[data-food-recipe-ingredient-unit]').selectOption('dkg')
+  await page.locator('[data-food-recipe-ingredient-amount]').fill('2')
+  await page.locator('[data-food-recipe-ingredient-add]').click()
+  assert.match(await page.locator('[data-food-recipe-ingredients]').textContent(), /2 dkg/)
+  await input.fill('vöröshagyma')
+  await savedOnion.waitFor({ state: 'attached' })
+  await dropdown.selectOption(await savedOnion.getAttribute('value'))
+  assert.equal(await kcal.inputValue(), originalKcal,
+    'Per-recipe nutrient overrides must not overwrite the saved USDA food.')
+
+  // No search result is required when adding a new, manual ingredient.
+  await input.fill('Kézi teszt hozzávaló 20261017')
+  await page.locator('[data-food-recipe-ingredient-unit]').selectOption('tbsp')
+  await page.locator('[data-food-recipe-ingredient-amount]').fill('2')
+  await page.locator('[data-food-recipe-conversion-label]:visible').waitFor()
+  await page.locator('[data-food-recipe-conversion-amount]').fill('12')
+  await kcal.fill('210')
+  await page.locator('[data-food-recipe-nutrient-protein]').fill('')
+  await page.locator('[data-food-recipe-ingredient-add]').click()
+  assert.match(await page.locator('[data-food-recipe-ingredients]').textContent(), /Kézi teszt hozzávaló 20261017/)
+  assert.match(await page.locator('[data-food-recipe-ingredients]').textContent(), /2 evőkanál/)
+  assert.match(await page.locator('[data-food-recipe-summary]').textContent(), /Összesen:/)
+
+  // Recipe scanner must stay inline without switching to full catalogue.
+  const popup = page.waitForEvent('dialog')
+  const clickScan = page.locator('[data-food-recipe-scan]').click()
+  await (await popup).accept('5998888888888')
+  await clickScan
+  await dropdown.locator('option', { hasText: /Teszt keksz/ }).first().waitFor({ state: 'attached' })
+  await page.waitForFunction(() => Boolean(document.querySelector('[data-food-recipe-ingredient-food]')?.value))
+  assert.notEqual(await dropdown.inputValue(), '', 'Scanned product must be selected explicitly by the scanner.')
+  assert.equal(await page.locator('[data-food-add-sheet].is-open').count(), 0,
+    'Inline scanner must not open the full catalog.')
+  assert.equal(await page.locator('[data-food-recipe-edit-sheet].is-open').count(), 1,
+    'Recipe editor must remain open after barcode scan.')
+  assert.equal(await page.locator('[data-food-recipe-open-catalog]').count(), 0,
+    'The former full catalogue button must be removed.')
+  await page.locator('[data-food-recipe-ingredient-unit]').selectOption('kg')
+  assert.equal(await page.locator('[data-food-recipe-conversion-label]').isVisible(), false,
+    'Metric conversions should not ask for invented per-food sizes.')
+  await page.locator('[data-food-recipe-ingredient-add]').click()
+  assert.match(await page.locator('[data-food-recipe-ingredients]').textContent(), /Teszt keksz/)
+
+  await page.locator('[data-food-recipe-editor-save]').click()
+  await page.locator('[data-food-recipe-title]').filter({ hasText: 'Keresővel készített tesztrecept' }).waitFor()
+  await page.locator('[data-food-recipe-edit]').click()
+  await page.locator('[data-food-recipe-ingredients]').getByText('Kézi teszt hozzávaló 20261017').waitFor()
+  console.log('Recipe ingredient editor: search, editable nutrients, manual fallback, conversions and inline barcode OK')
 } finally {
   await browser?.close()
   server.kill()
