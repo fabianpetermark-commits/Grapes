@@ -698,7 +698,8 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
 
   function renderRecipeIngredientUnits() {
     const food = recipeIngredientChoices.get($('[data-food-recipe-ingredient-food]').value)
-    const units = food ? [{ value: food.baseUnit, label: food.baseUnit }, ...food.servings.map(item => ({ value: item.unit, label: item.name }))] : []
+    // Online/offline catalog candidates need not have saved Food's servings array.
+    const units = food ? [{ value: food.baseUnit, label: food.baseUnit }, ...(food.servings || []).map(item => ({ value: item.unit, label: item.name }))] : []
     const select = $('[data-food-recipe-ingredient-unit]')
     const previous = select.value
     select.replaceChildren(...units.map(item => new Option(item.label, item.value)))
