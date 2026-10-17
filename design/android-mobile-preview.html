@@ -322,6 +322,7 @@
     .food-editor-section h3 { margin: 0 0 12px; font-size: 14px; }
     .food-editor-section > p { margin: -6px 0 12px; color: var(--muted); font-size: 10px; line-height: 1.45; }
     .food-recipe-basics label:nth-child(-n+3) { grid-column: 1 / -1; }
+    .food-recipe-yield-hint { grid-column: 1 / -1; margin: -4px 0 1px; color: var(--muted); font-size: 10px; line-height: 1.5; }
     .food-recipe-ingredient-form > .food-recipe-search-row,
     .food-recipe-ingredient-form > label:has([data-food-recipe-ingredient-food]),
     .food-recipe-ingredient-form > .food-recipe-ingredient-status,
@@ -716,6 +717,7 @@
           <label>Hozam<input class="search" type="number" min="0.01" step="0.01" data-food-recipe-yield-input></label>
           <label>Hozam egysége<select class="search" data-food-recipe-yield-unit><option value="serving">adag</option><option value="piece">darab</option><option value="slice">szelet</option></select></label>
           <label>Egységtömeg (g)<input class="search" type="number" min="0.01" step="0.01" data-food-recipe-unit-weight></label>
+          <p class="food-recipe-yield-hint" data-food-recipe-yield-hint role="status" aria-live="polite"></p>
         </div></section>
         <section class="food-editor-section"><h3>Hozzávaló felvétele</h3><div class="sheet-form food-recipe-ingredient-form">
           <div class="food-recipe-search-row">
