@@ -7,7 +7,7 @@ import { authorizeAndroidGoogleDrive, disconnectAndroidGoogleDrive, isGrapesAndr
 export const GRAPES_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file'
 export const GRAPES_DRIVE_READ_SCOPE = 'https://www.googleapis.com/auth/drive.readonly'
 const LEGACY_DRIVE_WRITE_SCOPE = 'https://www.googleapis.com/auth/drive'
-export const GRAPES_ROOT_FOLDER = 'Grapes'
+export const GRAPES_ROOT_FOLDER = import.meta.env.VITE_GRAPES_TEST_CHANNEL === '1' ? 'Grapes TEST' : 'Grapes'
 export const GRAPES_PROJECTS_FOLDER = 'Projects'
 export const GRAPES_PROJECT_MIME = 'application/json'
 export const GRAPES_PROJECT_VERSION = 1
