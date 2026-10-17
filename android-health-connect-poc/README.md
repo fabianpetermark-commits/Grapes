@@ -1,16 +1,24 @@
-# Grapes Health Connect POC
+# Grapes Android app
 
-Minimal Android bridge for validating the Grapes Food ↔ Health Connect and direct Samsung Health paths on a real phone.
+Android application shell for the complete Grapes web interface, with a native Health Connect bridge for the Food module. The first milestone runs locally from packaged web assets, supports Android file selection and works without a Google account in local mode.
 
-## Scope
+## Current scope
 
+- packages the complete Grapes interface inside the APK;
+- packages an Android-only interactive mobile UI preview for Food, Water and E-book without changing the web dashboard;
+- keeps the embedded app on the secure `appassets.androidplatform.net` origin;
+- exposes the native bridge only to the top-level trusted Grapes frame;
+- supports Android file selection for imports, photos and documents;
 - reads `NutritionRecord` and `HydrationRecord` with pagination;
 - writes `NutritionRecord` and requests history access when supported;
-- exports a versioned local JSON document from 2026-01-01;
+- passes a versioned JSON document directly to the Food import preview;
 - excludes this package's own records from imports;
 - writes one idempotent 250 kcal test snack with a stable `clientRecordId`;
 - deletes only that Grapes test record;
-- never uploads data or performs background sync.
+- authorizes Google Drive through Android's native Google authorization flow;
+- checks the latest signed GitHub Release and offers verified in-app APK updates;
+- periodically checks for releases in the background and posts an Android update notification when permission is granted;
+- never performs background health-data sync.
 - optionally reads Samsung Health `WaterIntake` directly through Samsung Health Data SDK 1.1.0.
 
 Keys are `healthconnect:<source package>:<record id>` and `samsunghealth:<source app>:<record id>`. The Grapes Food web module persists them as `externalKey` values, previews every record, and skips already imported or file-internal duplicate keys.
@@ -23,16 +31,31 @@ The adapter requests read-only `WATER_INTAKE` permission and maps each record to
 
 ## Build and device check
 
-Prerequisites: Android Studio with JDK 17, Android SDK 35, and an Android 9+ Google Play device. Open this directory as a standalone Android project, sync Gradle, install the `app` debug variant, then:
+Prerequisites: Node.js 24, Android Studio with JDK 17, Android SDK 36, and an Android 10+ Google Play device. From the repository root, run `npm run build:android-web`, then open this directory as a standalone Android project, sync Gradle and install the `app` debug variant. The `Build Android APK` GitHub Actions workflow performs the same build and uploads `grapes-debug-apk`.
 
 1. Enable Samsung Health/YAZIO sharing in Health Connect.
 2. Grant Nutrition, Hydration and history permissions.
 3. If testing direct water access, enable Samsung Health Data SDK developer read mode and grant Grapes Water intake read permission.
-4. Read data and inspect/copy the JSON.
+4. Open Food and tap `Health-adatok beolvasása`; review the records before importing.
 5. Write the Health Connect test snack twice; one logical record should remain.
 6. Compare Samsung water with any Health Connect hydration records and verify duplicate handling.
 7. Revoke access and confirm reading fails cleanly.
 
-## Validation boundary
+## Signed releases and in-app updates
 
-This machine currently has Java 8, Android SDK 33, no Gradle install and no connected Android device, so this checkout cannot compile or device-test the APK yet. The project targets stable `androidx.health.connect:connect-client:1.1.0`; Android Studio sync is the next executable verification.
+Run the `Release Android APK` GitHub Actions workflow with a monotonically increasing `version_code`, a visible `version_name`, and short release notes. The workflow requires these repository secrets:
+
+- `ANDROID_KEYSTORE_BASE64`: the PKCS#12 release keystore encoded as one-line Base64;
+- `ANDROID_KEYSTORE_PASSWORD`;
+- `ANDROID_KEY_ALIAS`;
+- `ANDROID_KEY_PASSWORD`.
+
+Never commit the keystore or its passwords. Back them up securely: every update must be signed with the same key. The workflow publishes a release tagged `android-v<version_code>`. On startup the installed app checks the latest release at most once every six hours, verifies the APK against GitHub's SHA-256 digest, and opens Android's package installer. Android still requires the user to approve installation, and the first update may require enabling “Install unknown apps” for Grapes.
+
+The app also schedules a six-hour periodic background check. On Android 13 or newer it first explains and requests notification permission. When granted, an available release appears in the system notification tray; tapping it reopens the verified in-app update flow.
+
+The Android OAuth client in Google Cloud must use package `hu.grapes.healthconnect` and the SHA-1 fingerprint of this same release certificate.
+
+## Current boundary
+
+Direct Samsung SDK device testing and Play Billing remain later release steps. The optional Samsung adapter still requires Samsung's proprietary AAR and partner approval for public distribution. If the application is later distributed through Google Play, replace the GitHub APK updater with Play In-App Updates.

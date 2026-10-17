@@ -137,6 +137,10 @@ export async function openEpubContent(blob) {
   const spine = elements(pkg, 'spine')[0]
   if (!manifest || !spine) throw new Error('Hiányzó EPUB manifest vagy spine.')
   const items = new Map(elements(manifest, 'item').map((item) => [item.getAttribute('id'), item]))
+  const mediaTypes = new Map()
+  for (const item of items.values()) {
+    try { mediaTypes.set(archivePath(opfPath, item.getAttribute('href')), item.getAttribute('media-type') || 'application/octet-stream') } catch {}
+  }
   if (elements(pkg, 'meta').some((node) => node.getAttribute('property') === 'rendition:layout' && node.textContent.trim() === 'pre-paginated')
     || elements(spine, 'itemref').some((node) => /layout-pre-paginated/.test(node.getAttribute('properties') || ''))
     || [...items.values()].some((node) => /(?:javascript|ecmascript|smil)/i.test(node.getAttribute('media-type') || '') || /\bscripted\b/.test(node.getAttribute('properties') || '') || node.hasAttribute('media-overlay'))) {
@@ -302,6 +306,38 @@ export async function openEpubContent(blob) {
   const api = {
     chapters,
     title: packageTitle,
+    async getReadingChapter(id) {
+      const item = chapter(id)
+      const copy = parseXml(serializer.serializeToString(item.doc), item.path)
+      const body = elements(copy.documentElement, 'body')[0]
+      if (!body) throw new Error('A fejezet törzse nem olvasható.')
+      const forbidden = new Set(['script', 'iframe', 'object', 'embed', 'form', 'input', 'button', 'textarea', 'select', 'video', 'audio'])
+      for (const node of [...elements(body, '*')]) {
+        if (forbidden.has(node.localName)) { node.parentNode?.removeChild(node); continue }
+        for (const attribute of [...(node.attributes || [])]) {
+          const name = String(attribute.name || '').toLowerCase()
+          const value = String(attribute.value || '')
+          if (name.startsWith('on') || ['srcdoc', 'action', 'formaction'].includes(name)) node.removeAttribute(attribute.name)
+          else if (name === 'style' && /(?:url\s*\(|expression\s*\(|@import)/i.test(value)) node.removeAttribute(attribute.name)
+          else if (name === 'href') {
+            if (!value.startsWith('#')) node.removeAttribute(attribute.name)
+          } else if (name === 'src') {
+            try {
+              const path = archivePath(item.path, value)
+              const entry = zip.file(path)
+              const mime = mediaTypes.get(path) || ''
+              if (!entry || !/^image\/(?:png|jpeg|gif|webp|svg\+xml)$/i.test(mime)) node.removeAttribute(attribute.name)
+              else node.setAttribute(attribute.name, `data:${mime};base64,${await entry.async('base64')}`)
+            } catch { node.removeAttribute(attribute.name) }
+          }
+        }
+      }
+      return {
+        id: item.id,
+        title: item.title,
+        html: [...(body.childNodes || [])].map((node) => serializer.serializeToString(node)).join(''),
+      }
+    },
     getSegments(id) { return chapter(id).segments.map((node, index) => ({ index, text: node.data })) },
     getChapter(id) { const item = chapter(id); return { id, title: item.title, heading: item.headingNode?.data.trim() || '', toc: item.tocNode?.data.trim() || '', headingEditable: Boolean(item.headingNode), tocEditable: Boolean(item.tocNode) } },
     getMatches(query, { caseSensitive = false, wholeWord = false } = {}) {

@@ -2,10 +2,12 @@
 // Project writes stay within files created/opened by Grapes. The optional
 // read-only scope lets the e-book module discover books elsewhere in Drive.
 
+import { authorizeAndroidGoogleDrive, disconnectAndroidGoogleDrive, isGrapesAndroidApp } from '../android-bridge.js'
+
 export const GRAPES_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file'
 export const GRAPES_DRIVE_READ_SCOPE = 'https://www.googleapis.com/auth/drive.readonly'
 const LEGACY_DRIVE_WRITE_SCOPE = 'https://www.googleapis.com/auth/drive'
-export const GRAPES_ROOT_FOLDER = 'Grapes'
+export const GRAPES_ROOT_FOLDER = import.meta.env.VITE_GRAPES_TEST_CHANNEL === '1' ? 'Grapes TEST' : 'Grapes'
 export const GRAPES_PROJECTS_FOLDER = 'Projects'
 export const GRAPES_PROJECT_MIME = 'application/json'
 export const GRAPES_PROJECT_VERSION = 1
@@ -97,7 +99,9 @@ export function grapesDriveHasFullReadAccess() {
 
 export async function disconnectGrapesDrive({ forgetAccount = false } = {}) {
   const token = accessToken
-  if (token && window.google?.accounts?.oauth2?.revoke) {
+  if (isGrapesAndroidApp()) {
+    await disconnectAndroidGoogleDrive(token || '').catch(() => {})
+  } else if (token && window.google?.accounts?.oauth2?.revoke) {
     await new Promise((resolve) => window.google.accounts.oauth2.revoke(token, resolve)).catch(() => {})
   }
   clearSession()
@@ -111,16 +115,38 @@ export async function grapesDriveRequest(url, options = {}) {
 }
 
 export async function connectGrapesDrive({ fullRead = false } = {}) {
-  if (!CLIENT_ID) throw new Error('A Google Drive kliensazonosító nincs konfigurálva.')
+  const androidApp = isGrapesAndroidApp()
+  if (!androidApp && !CLIENT_ID) throw new Error('A Google Drive kliensazonosító nincs konfigurálva.')
   let preferredFullRead = false
   try { preferredFullRead = window.localStorage.getItem(FULL_READ_KEY) === '1' } catch {}
   const requestedFullRead = fullRead || preferredFullRead
   if (isGrapesDriveConnected() && (!requestedFullRead || grapesDriveHasFullReadAccess())) return accessToken
-  await loadGoogleIdentity()
+  if (!androidApp) await loadGoogleIdentity()
   if (connecting) {
     await connecting
     return requestedFullRead && !grapesDriveHasFullReadAccess()
       ? connectGrapesDrive({ fullRead: true }) : accessToken
+  }
+  if (androidApp) {
+    connecting = (async () => {
+      const result = await authorizeAndroidGoogleDrive(requestedFullRead)
+      if (!result?.accessToken) throw new Error('A Google nem adott hozzáférési tokent.')
+      const responseScopes = Array.isArray(result.grantedScopes) ? result.grantedScopes.join(' ') : String(result.grantedScopes || '')
+      if (requestedFullRead && ![GRAPES_DRIVE_SCOPE, GRAPES_DRIVE_READ_SCOPE].every((scope) => responseScopes.split(/\s+/).includes(scope))) {
+        throw new Error('A Google nem adta meg mindkét szükséges Drive-engedélyt.')
+      }
+      accessToken = result.accessToken
+      grantedScopes = responseScopes || GRAPES_DRIVE_SCOPE
+      expiresAt = Date.now() + (Number(result.expiresIn) || 3300) * 1000
+      scheduleExpiry()
+      folderCache.clear()
+      if (requestedFullRead) try { window.localStorage.setItem(FULL_READ_KEY, '1') } catch {}
+      await rememberAccount(accessToken)
+      persistSession()
+      for (const listener of listeners) listener(true)
+      return accessToken
+    })()
+    try { return await connecting } finally { connecting = null }
   }
   let loginHint = ''
   try { loginHint = window.localStorage.getItem(ACCOUNT_KEY) || '' } catch {}
@@ -309,3 +335,4 @@ export function createDebouncedDriveSave(saveFn, delay = 4000) {
     timer = setTimeout(() => saveFn(...args).catch(console.error), delay)
   }
 }
+

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
+  <defs>
+    <linearGradient id="mark-surface" x1="28" y1="14" x2="67" y2="88" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#b5fbff"/>
+      <stop offset=".22" stop-color="#49edfa"/>
+      <stop offset=".62" stop-color="#00b8e1"/>
+      <stop offset="1" stop-color="#00699f"/>
+    </linearGradient>
+    <filter id="mark-glow" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#00a9cf" flood-opacity=".32"/>
+    </filter>
+  </defs>
+  <g filter="url(#mark-glow)" transform="translate(0 -1)">
+    <path d="M48 8v12" stroke="url(#mark-surface)" stroke-width="6" stroke-linecap="round"/>
+    <path d="M48 18c-6-6-16-4-16 4 6 4 12 2 16-4z" fill="#24dce9" stroke="#9bfbff" stroke-width=".6"/>
+    <g fill="url(#mark-surface)" stroke="#9cfcff" stroke-opacity=".55" stroke-width=".7">
+      <circle cx="48" cy="32" r="8"/><circle cx="36" cy="46" r="9"/><circle cx="60" cy="46" r="9"/>
+      <circle cx="24" cy="60" r="9"/><circle cx="48" cy="60" r="9"/><circle cx="72" cy="60" r="9"/>
+      <circle cx="36" cy="74" r="9"/><circle cx="60" cy="74" r="9"/><circle cx="48" cy="86" r="8"/>
+    </g>
+    <g fill="#fff" opacity=".72">
+      <ellipse cx="45.5" cy="29.5" rx="2.2" ry="1.25"/><ellipse cx="33.3" cy="43" rx="2.3" ry="1.3"/><ellipse cx="57.3" cy="43" rx="2.3" ry="1.3"/>
+      <ellipse cx="21.3" cy="57" rx="2.3" ry="1.3"/><ellipse cx="45.3" cy="57" rx="2.3" ry="1.3"/><ellipse cx="69.3" cy="57" rx="2.3" ry="1.3"/>
+    </g>
+  </g>
+</svg>

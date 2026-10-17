@@ -10,6 +10,7 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+android-health-connect-poc/app/src/main/assets
 *.local
 .env
 .env.*

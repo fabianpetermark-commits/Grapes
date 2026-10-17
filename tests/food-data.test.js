@@ -18,6 +18,12 @@ import {
 
 const profile = { id: 'google-user-1', name: 'Teszt Elek', email: 'teszt@example.com' }
 
+test('a FatSecret-forrás megmarad a mobilos étel mentésekor', () => {
+  const food = normalizeFoodItem({ name: 'Online étel', source: { type: 'fatsecret', id: 'fs-123', attribution: 'FatSecret Platform' } })
+  assert.equal(food.source.type, 'fatsecret')
+  assert.equal(food.source.id, 'fs-123')
+})
+
 const chicken = normalizeFoodItem({
   id: 'food-chicken',
   name: 'Csirkemell',
