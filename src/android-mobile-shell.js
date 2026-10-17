@@ -826,8 +826,8 @@ function saveWaterDay(day) {
 }
 
 function saveWaterStore(store) {
-  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 60)
-  for (const savedKey of Object.keys(store)) if (savedKey < dateKey(cutoff)) delete store[savedKey]
+  // Historical Health Connect imports and older Water diary entries are user
+  // data. Do not silently prune them when a newer day is saved.
   localStorage.setItem(WATER_STORE_KEY, JSON.stringify(store))
 }
 

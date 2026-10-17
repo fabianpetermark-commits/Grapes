@@ -37,7 +37,7 @@ try {
   await context.route('https://search.openfoodfacts.org/search**', route => route.fulfill({
     status: 200, contentType: 'application/json', body: JSON.stringify({
       count: 1, page: 1, hits: [{
-        code: '5991234567890', product_name_hu: 'Teszt keksz', categories_tags: ['hu:keksz'],
+        code: '5991234567890', product_name_hu: 'Teszt keksz', categories_tags: ['hu:keksz'], countries_tags: ['en:hungary'],
         product_quantity_unit: 'g', nutriments: { 'energy-kcal_100g': 490, proteins_100g: 6 },
       }],
     }),

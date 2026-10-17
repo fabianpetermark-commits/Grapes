@@ -76,7 +76,7 @@ test('Open Food Facts tartalék keresője aktiválódik a fő végpont hibáján
       requested.push(String(url))
       if (String(url).startsWith('https://search.openfoodfacts.org')) return { ok: false, status: 503 }
       return ok({ count: 1, page: 1, products: [{
-        code: '5991234567890', product_name_hu: 'Barna kenyér',
+        code: '5991234567890', product_name_hu: 'Barna kenyér', countries_tags: ['en:hungary'],
         nutriments: { 'energy-kcal_100g': 248 },
       }] })
     },
@@ -100,7 +100,7 @@ test('ismeretlen főválasz esetén is használható a tartalék JSON terméklis
   const result = await searchOpenFoodFactsProducts('alma', { fetchImpl: async () => {
     calls++
     return ok(calls === 1 ? { count: 3, hits: null } : { count: 1, products: [{
-      code:'5991234567890',product_name:'Alma',nutriments:{'energy-kcal_100g':55},
+      code:'5991234567890',product_name:'Alma',countries_tags:['en:hungary'],nutriments:{'energy-kcal_100g':55},
     }] })
   } })
   assert.equal(result.products.length, 1)
