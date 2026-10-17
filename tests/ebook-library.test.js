@@ -10,7 +10,7 @@ const source = readFileSync(new URL('../src/ebook-library.js', import.meta.url),
 const driveSource = readFileSync(new URL('../src/storage/grapes-drive.js', import.meta.url), 'utf8')
   // The Android Drive adapter has an ESM import; these tests execute the web
   // implementation in an isolated VM without the native bridge.
-  .replace(/^import .*\\r?\\n/gm, '').replaceAll('export ', '').replaceAll('import.meta.env', 'env')
+  .replace(/^import .*\r?\n/gm, '').replaceAll('export ', '').replaceAll('import.meta.env', 'env')
 function app(fetch, { connected = true, session = new Map(), local = new Map(), epubWriter = async () => new Blob(['rewritten epub']), pdfWriter = async () => ({ blob: new Blob(['rewritten pdf'], { type: 'application/pdf' }), hasSignatures: false }), pickerKey = '', booksKey = '' } = {}) {
   const nodes = new Map()
   const element = () => ({ dataset: {}, children: [], listeners: {}, addEventListener(type, fn) { this.listeners[type] = fn }, removeAttribute(key) { delete this[key] }, replaceChildren() { this.children = [] }, append(row) { this.children.push(row) }, querySelectorAll: () => [] })
