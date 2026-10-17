@@ -1,5 +1,5 @@
 {
-  "versionCode": 3,
-  "versionName": "0.3.0",
-  "notes": "Grapes TEST: közvetlen vonalkódolvasó gomb a recept hozzávalókeresőjében a teljes katalógus gomb helyett; saját hozzávaló rögzítése találat nélkül; g/dkg/kg/ml/dl/L/teáskanál/evőkanál/csipet mértékegységek pontos vagy ételspecifikus átváltással; külön szerkeszthető, 100 g/100 ml alapú kcal, fehérje, szénhidrát és zsír értékek. Üres tápérték ismeretlen, módosított katalógusérték csak a recept hozzávalójának külön példányában mentődik. Sikeres telefonméretű böngésző-, Food-, YAZIO- és Android TEST ellenőrzések. A végleges TEST-aláírás változatlan."
+  "versionCode": 4,
+  "versionName": "0.4.0",
+  "notes": "Grapes TEST v0.4.0 – receptszerkesztő javítások: az egységtömeg és a hozam egysége, illetve a zsír és a szénhidrát mezők egy sorba kerültek; a kész tömeg és az egységtömeg alapján az üres hozam azonnal automatikusan kitöltődik (pl. 750 g / 25 g = 30 szelet), a kézzel megadott hozamot megőrizzük és törlésével visszatérhetünk az automatikus számoláshoz. A receptkártya kcal/szelet vagy kcal/darab formátumban a számolt hozamot használja. A hiányzó hozzávaló-tápértékeket név szerint jelzi és mentés előtt figyelmeztet; az ismeretlen érték nem válik tévesen nullává. A korábbi naplóbejegyzések pillanatképeit nem módosítjuk. Az elkülönített TEST-csatorna és a korábbi állandó TEST-aláírás változatlan. Ez a kiadás nem tartalmaz még új USDA API-kulcsot vagy 429-es kvótakezelési módosítást."
 }
