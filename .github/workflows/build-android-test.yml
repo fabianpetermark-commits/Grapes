@@ -14,10 +14,12 @@ on:
       - package-lock.json
       - vite.config.js
       - tests/android-test-channel.test.js
+      - .github/workflows/release-android-test.yml
       - .github/workflows/build-android-test.yml
   pull_request:
     branches:
       - fix/food-existing-features-20261017
+      - integration/grapes-test-food-20261017
   workflow_dispatch:
 
 permissions:
