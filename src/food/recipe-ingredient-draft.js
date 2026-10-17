@@ -1,4 +1,7 @@
-import { createFoodId, normalizeFoodItem, resolveAmountInBase } from './food-data.js'
+import { CORE_NUTRIENTS, createFoodId, normalizeFoodItem, resolveAmountInBase } from './food-data.js'
+import { HUNGARIAN_USDA_CATALOG } from './hungarian-food-catalog.js'
+import { createHungarianFoodIndex, resolveHungarianFood } from './food-search-method.js'
+import { verifiedUsdaFood } from './usda-foods.js'
 
 export const RECIPE_NUTRIENTS = Object.freeze([
   ['energyKcal', 'Energia (kcal)'],
@@ -113,4 +116,75 @@ export function prepareRecipeIngredientFood({
   const resolved = resolveAmountInBase(food, 1, unit, extraServing?.id || '')
   if (!Number.isFinite(resolved) || resolved <= 0) throw new Error('A kiválasztott mértékegység nem váltható át.')
   return { food, servingId: extraServing?.id || food.servings.find(item => item.unit === unit)?.id || '', isPrivateCopy: usePrivateCopy }
+}
+
+
+const verifiedStaplesIndex = createHungarianFoodIndex(HUNGARIAN_USDA_CATALOG)
+
+/**
+ * An explicit, recipe-local repair opportunity for legacy manually added
+ * ingredients with missing nutrition. Only an exact, unique, verified USDA
+ * name/alias match is accepted; partial/ambiguous names must never be used.
+ * Existing non-null user values and branded/online records are immutable.
+ */
+export function suggestVerifiedRecipeNutrientRepairs(ingredients = [], foods = []) {
+  const byId = new Map(foods.map(food => [food.id, food]))
+  return ingredients.flatMap(ingredient => {
+    const food = byId.get(ingredient.foodId)
+    if (!food || food.kind !== 'manual' || food.source?.type !== 'manual'
+      || food.barcode || food.baseUnit !== 'g') return []
+    const result = resolveHungarianFood(food.name, verifiedStaplesIndex)
+    if (result.status !== 'match') return []
+    const verified = verifiedUsdaFood(result.match)
+    if (!verified || verified.baseUnit !== food.baseUnit) return []
+    const fields = RECIPE_NUTRIENTS.map(([key]) => key)
+      .filter(key => food.nutrients?.[key] == null && verified.nutrients[key] != null)
+    if (!fields.length) return []
+    const nutrients = { ...food.nutrients }
+    for (const key of CORE_NUTRIENTS) {
+      if (nutrients[key] == null && verified.nutrients[key] != null) nutrients[key] = verified.nutrients[key]
+    }
+    return [{
+      ingredientId: ingredient.id, foodId: food.id, name: food.name,
+      fdcId: verified.source.id, fields, nutrients,
+    }]
+  })
+}
+
+/**
+ * The returned records are new private copies. Call only after the user
+ * confirms: existing custom foods, other recipes and logged snapshots stay
+ * unchanged. The caller still must explicitly save the recipe.
+ */
+export function applyVerifiedRecipeNutrientRepairs(ingredients = [], foods = [], {
+  createId = () => createFoodId('food'),
+} = {}) {
+  const suggestions = suggestVerifiedRecipeNutrientRepairs(ingredients, foods)
+  const byIngredientId = new Map(suggestions.map(item => [item.ingredientId, item]))
+  const byFoodId = new Map(foods.map(food => [food.id, food]))
+  const copiedFoods = new Map()
+  const addedFoods = []
+  const revisedIngredients = ingredients.map(ingredient => {
+    const suggested = byIngredientId.get(ingredient.id)
+    if (!suggested) return { ...ingredient }
+    let copy = copiedFoods.get(suggested.foodId)
+    if (!copy) {
+      const original = byFoodId.get(suggested.foodId)
+      const now = new Date().toISOString()
+      copy = normalizeFoodItem({
+        ...original, id: createId(), barcode: '', kind: 'manual',
+        nutrients: suggested.nutrients,
+        source: {
+          type: 'manual',
+          attribution: 'Recept saját hozzávalója: a hiányzó tápértékeket ellenőrzött USDA SR Legacy FDC '
+            + suggested.fdcId + ' értékekből pótoltuk',
+        },
+        createdAt: now, updatedAt: now,
+      })
+      copiedFoods.set(suggested.foodId, copy)
+      addedFoods.push(copy)
+    }
+    return { ...ingredient, foodId: copy.id }
+  })
+  return { ingredients: revisedIngredients, addedFoods, repaired: suggestions }
 }

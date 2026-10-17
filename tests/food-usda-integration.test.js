@@ -5,8 +5,8 @@ import { searchVerifiedUsdaFoods, verifiedUsdaFood } from '../src/food/usda-food
 import { searchFoodCatalog } from '../src/food/food-catalog-search.js'
 import { createEmptyFoodProject, foodBackupFromJson, foodBackupToJson, normalizeDiaryEntry, normalizeFoodItem } from '../src/food/food-data.js'
 
-test('mind a tíz ellenőrzött USDA-élelmiszerhez tartozik offline makró', () => {
-  assert.equal(HUNGARIAN_USDA_CATALOG.length, 10)
+test('minden ellenőrzött USDA-élelmiszerhez tartozik offline makró', () => {
+  assert.equal(HUNGARIAN_USDA_CATALOG.length, 13)
   for (const record of HUNGARIAN_USDA_CATALOG) {
     const food = verifiedUsdaFood(record)
     assert.equal(food.name, record.nameHu)
@@ -48,4 +48,31 @@ test('napló, forrás és kedvenc megmarad mentés-visszatöltés után', () => 
   assert.equal(restored.customFoods[0].source.id, '170000')
   assert.equal(restored.diaryEntries[0].snapshot.nutrients.energyKcal, 60)
   assert.deepEqual(restored.favorites, [food.id])
+})
+
+test('só, cukor és víz az USDA-kvóta kimerülésekor is teljes, pontos makróval elérhető', async () => {
+  const expected = [
+    ['só', '173468', { energyKcal: 0, protein: 0, carbohydrate: 0, fat: 0 }],
+    ['cukor', '169655', { energyKcal: 387, protein: 0, carbohydrate: 99.98, fat: 0 }],
+    ['víz', '173647', { energyKcal: 0, protein: 0, carbohydrate: 0, fat: 0 }],
+  ]
+  for (const [term, fdcId, macros] of expected) {
+    const offline = searchVerifiedUsdaFoods(term)
+    assert.equal(offline[0].source.id, fdcId, term)
+    assert.deepEqual(Object.fromEntries(Object.keys(macros).map(key => [key, offline[0].nutrients[key]])), macros)
+    const result = await searchFoodCatalog(term, {
+      offSearch: async () => { throw new Error('Open Food Facts nem elérhető') },
+      usdaSearch: async () => { throw new Error('USDA online HTTP 429') },
+    })
+    assert.equal(result.partial, true)
+    assert.equal(result.unavailable, false)
+    assert.ok(result.products.some(item => item.source.type === 'usda' && item.source.id === fdcId))
+  }
+})
+
+test('a só/cukor/víz csak az eredeti, pontos megnevezésre oldódik fel; barna cukorra nem', () => {
+  assert.equal(searchVerifiedUsdaFoods('étkezési só')[0]?.source.id, '173468')
+  assert.equal(searchVerifiedUsdaFoods('kristálycukor')[0]?.source.id, '169655')
+  assert.equal(searchVerifiedUsdaFoods('csapvíz')[0]?.source.id, '173647')
+  assert.deepEqual(searchVerifiedUsdaFoods('barnacukor'), [])
 })
