@@ -37,3 +37,19 @@ test('azonos összeget csak egyszer ad vissza', () => {
   assert.equal(candidates.filter((item) => item.amount === 7000).length, 1)
   assert.match(candidates[0].label, /ÖSSZESEN/)
 })
+
+test('az eurós blokkhoz EUR pénznemet rendel', () => {
+  const candidates = extractReceiptAmountCandidates('TOTAL 24,90 €')
+  assert.equal(candidates[0].amount, 24.9)
+  assert.equal(candidates[0].currency, 'EUR')
+})
+
+test('a pénznem nélküli összeg ismeretlen marad', () => {
+  const candidates = extractReceiptAmountCandidates('TOTAL 24,90')
+  assert.equal(candidates[0].currency, null)
+})
+
+test('a szlovák és cseh pénznemjelölések elkülönülnek', () => {
+  assert.equal(extractReceiptAmountCandidates('TOTAL 120 Kč')[0].currency, 'CZK')
+  assert.equal(extractReceiptAmountCandidates('TOTAL 20,50 EUR')[0].currency, 'EUR')
+})

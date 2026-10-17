@@ -4,10 +4,14 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.content.Intent
+import android.provider.MediaStore
+import androidx.core.content.FileProvider
+import java.io.File
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
@@ -36,15 +40,26 @@ import java.time.LocalDate
 
 class MainActivity : ComponentActivity() {
     private val healthConnect by lazy { HealthConnectBridge(this) }
-    private val yazioApi = YazioApi()
+    private val yazioApi by lazy { YazioApi(this) }
+    private val foodApi by lazy { FoodApiBridge() }
     private val samsungWaterBridge by lazy { SamsungWaterBridgeFactory.create(this) }
     private val googleAuthorization by lazy { Identity.getAuthorizationClient(this) }
     private val updateManager by lazy { AndroidUpdateManager(this) }
     private lateinit var webView: WebView
     private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
+    private var pendingCapturedPhoto: Uri? = null
+    private var pendingCameraPermission: PermissionRequest? = null
     private var pendingHealthRequest: PendingHealthRequest? = null
     private var pendingDriveRequestId: String? = null
     private var availableUpdate: AndroidUpdateManager.Release? = null
+
+    private val cameraPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        val request = pendingCameraPermission
+        pendingCameraPermission = null
+        if (granted) request?.grant(arrayOf(PermissionRequest.RESOURCE_VIDEO_CAPTURE)) else request?.deny()
+    }
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -55,9 +70,36 @@ class MainActivity : ComponentActivity() {
     private data class PendingHealthRequest(val from: LocalDate, val requestId: String)
 
     private val fileChooser = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        val files = WebChromeClient.FileChooserParams.parseResult(result.resultCode, result.data)
+        val files = if (result.resultCode == RESULT_OK && pendingCapturedPhoto != null) {
+            arrayOf(pendingCapturedPhoto!!)
+        } else {
+            WebChromeClient.FileChooserParams.parseResult(result.resultCode, result.data)
+        }
         fileChooserCallback?.onReceiveValue(files)
         fileChooserCallback = null
+        pendingCapturedPhoto = null
+    }
+
+    private fun launchWebFileChooser(params: WebChromeClient.FileChooserParams) {
+        val cameraOnly = params.isCaptureEnabled &&
+            params.acceptTypes.any { it.startsWith("image/") || it == "image/*" }
+        if (!cameraOnly) {
+            pendingCapturedPhoto = null
+            fileChooser.launch(params.createIntent())
+            return
+        }
+        val directory = File(cacheDir, "camera").apply { mkdirs() }
+        val photo = File.createTempFile("receipt-", ".jpg", directory)
+        val uri = FileProvider.getUriForFile(this, "${applicationContext.packageName}.fileprovider", photo)
+        val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
+            putExtra(MediaStore.EXTRA_OUTPUT, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        }
+        if (cameraIntent.resolveActivity(packageManager) == null) {
+            throw IllegalStateException("Nem található kameralkalmazás a készüléken.")
+        }
+        pendingCapturedPhoto = uri
+        fileChooser.launch(cameraIntent)
     }
 
     private val permissionLauncher = registerForActivityResult(HealthConnectBridge.permissionContract) {
@@ -196,6 +238,21 @@ class MainActivity : ComponentActivity() {
                 }
             }
             webChromeClient = object : WebChromeClient() {
+                override fun onPermissionRequest(request: PermissionRequest) {
+                    runOnUiThread {
+                        if (request.origin.host != APP_HOST || !request.resources.contains(PermissionRequest.RESOURCE_VIDEO_CAPTURE)) {
+                            request.deny()
+                            return@runOnUiThread
+                        }
+                        pendingCameraPermission?.deny()
+                        pendingCameraPermission = request
+                        if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                            pendingCameraPermission = null
+                            request.grant(arrayOf(PermissionRequest.RESOURCE_VIDEO_CAPTURE))
+                        } else cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                    }
+                }
+
                 override fun onShowFileChooser(
                     webView: WebView,
                     callback: ValueCallback<Array<Uri>>,
@@ -204,10 +261,11 @@ class MainActivity : ComponentActivity() {
                     fileChooserCallback?.onReceiveValue(null)
                     fileChooserCallback = callback
                     return runCatching {
-                        fileChooser.launch(params.createIntent())
+                        launchWebFileChooser(params)
                         true
                     }.getOrElse {
                         fileChooserCallback = null
+                        pendingCapturedPhoto = null
                         callback.onReceiveValue(null)
                         false
                     }
@@ -221,10 +279,20 @@ class MainActivity : ComponentActivity() {
         val requestId = message.optString("requestId")
         if (requestId.isBlank()) return
         when (message.optString("method")) {
+            "foodApi" -> lifecycleScope.launch {
+                runCatching { foodApi.execute(message.optJSONArray("args") ?: JSONArray()) }
+                    .onSuccess { sendResult(requestId, it.toString()) }
+                    .onFailure { sendError(requestId, it.message ?: "Az élelmiszer-keresés sikertelen.") }
+            }
             "yazio" -> lifecycleScope.launch {
                 runCatching { yazioApi.execute(message.optJSONArray("args") ?: JSONArray()) }
                     .onSuccess { sendResult(requestId, it) }
                     .onFailure { sendError(requestId, it.message ?: "A YAZIO-kapcsolat nem sikerült.") }
+            }
+            "readHealthDataSilent" -> {
+                val from = runCatching { LocalDate.parse(message.optJSONArray("args")?.optString(0).orEmpty()) }.getOrNull()
+                if (from == null) sendError(requestId, "Érvénytelen kezdődátum.")
+                else readHealthData(from, requestId, allowPermissionRequest = false)
             }
             "readHealthData" -> {
                 val fromDate = message.optJSONArray("args")?.optString(0).orEmpty()

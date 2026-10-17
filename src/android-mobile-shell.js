@@ -56,6 +56,10 @@ let mobileFood = null
 let activePage = 'home'
 let availableAppUpdate = null
 let activeSyncImport = ''
+document.addEventListener('grapes:food-subtitle', event => {
+  if (activePage === 'food') subtitle.textContent = event.detail?.subtitle || 'Mai áttekintés'
+})
+
 const labels = {
   home: ['Grapes', 'Mobil munkaterület'], projects: ['Projektek', 'Helyi és Drive'],
   sync: ['Szinkron', 'Adatok és fiók'], more: ['Továbbiak', 'Beállítások'],
@@ -97,6 +101,74 @@ function closeSheet() {
     node.inert = true
   })
   sheetBackdrop.classList.remove('is-open')
+}
+
+// Shared drag-to-dismiss behavior: only the handle starts a drag, never the scrolling content.
+function installSheetGestures() {
+  const fields = sheet => [...sheet.querySelectorAll('input:not([type="file"]), select, textarea')]
+    .map(field => [field.name || field.id || field.dataset?.field || '', field.type === 'checkbox' ? field.checked : field.value])
+  function dismiss(sheet) {
+    const changed = sheet.dataset.sheetInitialValues !== JSON.stringify(fields(sheet))
+    const hasForm = !!sheet.querySelector('input:not([type="file"]), textarea, select')
+    if (changed && hasForm && !window.confirm('A nem mentett módosítások elvesznek. Bezárod?')) return false
+    if (activePage === 'food' && mobileFood?.handleBack()) return true
+    closeSheet()
+    return true
+  }
+  document.querySelectorAll('.bottom-sheet').forEach(sheet => {
+    const handle = sheet.querySelector('.sheet-handle')
+    if (!handle) return
+    handle.setAttribute('role', 'button')
+    handle.setAttribute('tabindex', '0')
+    handle.setAttribute('aria-label', 'Panel bezárása')
+    handle.style.touchAction = 'none'
+    let drag = null
+    const reset = () => {
+      drag = null
+      sheet.style.removeProperty('transform')
+      sheet.style.removeProperty('transition')
+    }
+    const snapBack = () => {
+      drag = null
+      sheet.style.transition = 'transform 180ms ease-out'
+      sheet.style.transform = 'translateY(0)'
+      sheet.addEventListener('transitionend', () => {
+        if (sheet.classList.contains('is-open')) {
+          sheet.style.removeProperty('transform')
+          sheet.style.removeProperty('transition')
+        }
+      }, { once: true })
+    }
+    handle.addEventListener('pointerdown', event => {
+      if (!sheet.classList.contains('is-open') || event.button !== 0) return
+      drag = { id: event.pointerId, y: event.clientY, delta: 0 }
+      handle.setPointerCapture(event.pointerId)
+      sheet.style.transition = 'none'
+    })
+    handle.addEventListener('pointermove', event => {
+      if (!drag || event.pointerId !== drag.id) return
+      drag.delta = Math.max(0, event.clientY - drag.y)
+      sheet.style.transform = `translateY(${drag.delta}px)`
+    })
+    handle.addEventListener('pointerup', event => {
+      if (!drag || event.pointerId !== drag.id) return
+      const shouldDismiss = drag.delta >= 90
+      if (shouldDismiss && dismiss(sheet)) {
+        reset()
+      } else {
+        snapBack()
+      }
+    })
+    handle.addEventListener('pointercancel', reset)
+    handle.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); dismiss(sheet) }
+    })
+    new MutationObserver(() => {
+      if (sheet.classList.contains('is-open')) {
+        sheet.dataset.sheetInitialValues = JSON.stringify(fields(sheet))
+      } else reset()
+    }).observe(sheet, { attributes: true, attributeFilter: ['class'] })
+  })
 }
 
 function setSyncProviderStatus(message, state = '') {
@@ -196,8 +268,12 @@ function renderUpdateInbox() {
   const card = $('[data-update-notification]')
   const update = availableAppUpdate
   const readVersion = Number(localStorage.getItem(UPDATE_READ_KEY) || 0)
-  badge.hidden = !update || readVersion === update.versionCode
-  empty.hidden = Boolean(update)
+  const food = mobileFood?.inboxSummary() || { pending: 0, unread: 0 }
+  const foodCard = $('[data-food-share-notification]')
+  foodCard.hidden = food.pending === 0
+  $('[data-food-share-notes]').textContent = `${food.pending} függőben lévő megosztás · ${food.unread} olvasatlan`
+  badge.hidden = (!update || readVersion >= update.versionCode) && food.unread === 0
+  empty.hidden = Boolean(update) || food.pending > 0
   card.hidden = !update
   if (!update) return
   $('[data-update-title]').textContent = `${update.versionName} elérhető`
@@ -205,17 +281,28 @@ function renderUpdateInbox() {
 }
 
 function setAvailableAppUpdate(value) {
+  const previousVersion = availableAppUpdate?.versionCode
   availableAppUpdate = normalizeAppUpdate(value)
+  if (previousVersion !== availableAppUpdate?.versionCode) {
+    $('[data-update-install]').disabled = false
+    $('[data-update-status]').textContent = ''
+  }
   renderUpdateInbox()
 }
 
 async function refreshUpdateInbox() {
-  if (!isGrapesAndroidApp()) return renderUpdateInbox()
-  try { setAvailableAppUpdate(await getAndroidAppUpdate()) }
-  catch { renderUpdateInbox() }
+  if (isGrapesAndroidApp()) {
+    try { setAvailableAppUpdate(await getAndroidAppUpdate()) }
+    catch { renderUpdateInbox() }
+  }
+  if (mobileFood) {
+    try { await mobileFood.refreshInbox() } catch { /* A postaláda hálózati hibája nem akadályozhatja a verziófrissítést. */ }
+  }
+  renderUpdateInbox()
 }
 
-function openUpdateInbox() {
+async function openUpdateInbox() {
+  await refreshUpdateInbox()
   if (availableAppUpdate) {
     localStorage.setItem(UPDATE_READ_KEY, String(availableAppUpdate.versionCode))
     renderUpdateInbox()
@@ -237,7 +324,7 @@ function showPage(page) {
   if (page === 'projects') renderProjects()
   if (page === 'sync') renderSync()
   if (page === 'water') renderWater()
-  if (page === 'food') mobileFood?.load()
+  if (page === 'food') mobileFood?.load().then(async () => { await mobileFood?.autoImportHealth(); await mobileFood?.autoImportYazio() }).catch(() => {})
   if (page === 'ebook') renderMobileEbooks()
   if (page === 'reader') renderReaderPicker()
   if (page === 'transfer') renderTransferPicker()
@@ -783,7 +870,35 @@ function renderWater() {
   $('[data-water-total]').textContent = formatWater(total)
   $('[data-water-goal-label]').textContent = `${formatWater(day.goal)} cél`
   $('[data-water-ring]').style.setProperty('--water-progress', `${percent}%`)
-  $('[data-water-today-bar]').style.height = `${percent}%`
+  const waterStore = loadWaterStore()
+  const week = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date()
+    date.setHours(12, 0, 0, 0)
+    date.setDate(date.getDate() - (6 - index))
+    const record = waterStore[dateKey(date)]
+    const entries = Array.isArray(record?.entries) ? record.entries : []
+    const amount = entries.reduce((sum, entry) => sum + Math.max(0, Number(entry.amount) || 0), 0)
+    return { date, amount, goal: Math.max(500, Number(record?.goal) || day.goal), hasEntries: entries.length > 0 }
+  })
+  const loggedDays = week.filter(item => item.hasEntries)
+  const weeklyAverage = loggedDays.length ? loggedDays.reduce((sum, item) => sum + item.amount, 0) / loggedDays.length : 0
+  const completedDays = week.filter(item => item.hasEntries && item.amount >= item.goal).length
+  $('[data-water-week-average]').textContent = `Átlagosan ${(weeklyAverage / 1000).toLocaleString('hu-HU', { maximumFractionDigits: 2 })} liter`
+  $('[data-water-week-completed]').textContent = `${completedDays} nap teljesítve`
+  const weekBars = $('[data-water-week-bars]')
+  weekBars.replaceChildren()
+  const chartMaximum = Math.max(day.goal, ...week.map(item => item.amount), 1)
+  week.forEach((item, index) => {
+    const column = document.createElement('div')
+    column.className = `week-day${index === 6 ? ' is-today' : ''}`
+    const bar = document.createElement('i')
+    bar.style.height = `${Math.min(100, item.amount / chartMaximum * 100)}%`
+    const label = document.createElement('span')
+    label.textContent = index === 6 ? 'Ma' : item.date.toLocaleDateString('hu-HU', { weekday: 'short' }).replace('.', '')
+    column.title = `${item.date.toLocaleDateString('hu-HU')}: ${formatWater(item.amount)}`
+    column.append(bar, label)
+    weekBars.append(column)
+  })
   $('[data-water-summary]').textContent = `${Math.round(total / 250)} pohár · ${(total / 1000).toLocaleString('hu-HU', { maximumFractionDigits: 2 })} l`
   const remaining = Math.max(0, day.goal - total)
   $('[data-water-message]').textContent = remaining ? (remaining <= 500 ? 'Már csak egy kicsi!' : 'Jó úton haladsz') : 'Megvan a napi cél!'
@@ -832,6 +947,13 @@ $('[data-login]').addEventListener('click', connectDrive)
 $('[data-connect-drive]').addEventListener('click', connectDrive)
 $('[data-account-login]').addEventListener('click', openAccountLogin)
 $('[data-notifications]').addEventListener('click', openUpdateInbox)
+$('[data-food-share-open]').addEventListener('click', async () => {
+  closeSheet()
+  showPage('food')
+  await mobileFood?.load()
+  await mobileFood?.refreshInbox({ open: true })
+  renderUpdateInbox()
+})
 $('[data-update-install]').addEventListener('click', async event => {
   if (!availableAppUpdate) return
   const status = $('[data-update-status]')
@@ -957,6 +1079,7 @@ $$('[data-action]').forEach(button => {
 document.addEventListener('keydown', event => { if (event.key === 'Escape') closeSheet() })
 sheetBackdrop.addEventListener('click', closeSheet)
 window.addEventListener('grapes:android-update', event => setAvailableAppUpdate(event.detail))
+window.addEventListener('grapes:food-inbox-changed', renderUpdateInbox)
 onGrapesDriveChange(() => {
   mobileEbooks = []
   if (!isGrapesDriveConnected()) { mobileReader = null; mobileReaderBook = null }
@@ -965,7 +1088,10 @@ onGrapesDriveChange(() => {
   renderAccount(); renderProjects(); renderSync()
 })
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') updateHomeGreeting()
+  if (document.visibilityState === 'visible') {
+    updateHomeGreeting()
+    refreshUpdateInbox().catch(() => {})
+  }
   if (document.visibilityState === 'hidden') {
     persistReaderProgress().catch(() => {})
     mobileFood?.flush().catch(() => {})
@@ -984,6 +1110,7 @@ mobileFood = createMobileFoodController({
   getHydrationExternalKeys: hydrationExternalKeys,
 })
 hydrateMobileIcons()
+installSheetGestures()
 refreshUpdateInbox()
 window.grapesHandleAndroidBack = () => {
   if ($('[data-notifications-sheet].is-open')) { closeSheet(); return true }

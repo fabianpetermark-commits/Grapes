@@ -12,7 +12,8 @@ import java.util.UUID
 import javax.net.ssl.HttpsURLConnection
 
 /** Unofficial YAZIO API. Credentials and session tokens never enter persistent storage. */
-class YazioApi {
+class YazioApi(context: android.content.Context) {
+    private val vault = YazioCredentialVault(context.applicationContext)
     private var token = ""
     private var session = ""
     private val mutex = Mutex()
@@ -20,10 +21,13 @@ class YazioApi {
     suspend fun execute(args: JSONArray): String = mutex.withLock {
         withContext(Dispatchers.IO) {
             when (args.optString(0)) {
-                "login" -> {
+                "status" -> JSONObject().put("remembered", vault.hasCredentials()).toString()
+                "forget" -> { vault.clear(); token = ""; session = ""; "{}" }
+                "login", "loginRemembered", "loginSaved" -> {
                     token = ""; session = ""
-                    val email = args.optString(1).trim()
-                    val password = args.optString(2)
+                    val saved = if (args.optString(0) == "loginSaved") vault.read() else null
+                    val email = (saved?.first ?: args.optString(1)).trim()
+                    val password = saved?.second ?: args.optString(2)
                     require(email.contains("@") && password.isNotEmpty()) { "Add meg a YAZIO e-mail-címedet és jelszavadat." }
                     // Public mobile client identifiers used by funmelon64/Yazio-Exporter.
                     val body = JSONObject().put("client_id", "1_4hiybetvfksgw40o0sog4s884kwc840wwso8go4k8c04goo4c")
@@ -33,6 +37,7 @@ class YazioApi {
                     token = result.optString("access_token")
                     check(token.isNotBlank()) { "A YAZIO nem adott hozzáférést. A belépési mód megváltozhatott." }
                     session = UUID.randomUUID().toString()
+                    if (args.optString(0) == "loginRemembered") vault.save(email, password)
                     JSONObject().put("session", session).toString()
                 }
                 "logout" -> {

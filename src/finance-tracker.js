@@ -10,7 +10,7 @@ import { loadLocalProject, saveLocalProject } from './storage/local-project-stor
 import { isGrapesDriveConnected, loadGrapesProject, saveGrapesProject } from './storage/grapes-drive.js'
 import {
   DEFAULT_CATEGORIES, calculateSavings, calculateSummary, categorySummary, filterTransactions,
-  forecastFinances, formatMoneyInput, getMonthlySeries, getMonthlySavingsSeries, financeBackupFromJson, financeBackupToJson, normalizePerson,
+  forecastFinances, formatMoneyInput, parseMoneyInput, getMonthlySeries, getMonthlySavingsSeries, financeBackupFromJson, financeBackupToJson, normalizePerson,
   normalizeSavingsEntry, normalizeSavingsGoal, normalizeTransaction, transactionsToCsv,
 } from './finance-data.js'
 
@@ -86,9 +86,17 @@ function setTransactionType(type) {
   renderCategories()
 }
 
+function updateExchangeControls() {
+  const foreign = el('#finance-transaction-currency').value !== currency
+  el('#finance-exchange-row').hidden = !foreign
+  el('#finance-exchange-rate').required = foreign
+}
+
 function resetTransactionEditor() {
   editingTransactionId = null
   el('#finance-form').reset()
+  el('#finance-transaction-currency').value = currency
+  updateExchangeControls()
   el('#finance-date').value = today()
   setTransactionType('expense')
   pendingReceipt = null
@@ -144,6 +152,8 @@ function applyProject(data = {}) {
     futureMonths: [1, 3, 6, 12].includes(Number(data.forecastSettings?.futureMonths)) ? Number(data.forecastSettings.futureMonths) : 3,
   }
   el('#finance-currency').value = currency
+  el('#finance-transaction-currency').value = currency
+  updateExchangeControls()
 }
 
 async function persistLocal() {
@@ -383,14 +393,17 @@ function renderRows(visible) {
     })
     const amount = create('strong', {
       class: `finance__row-amount finance__row-amount--${displayType}`,
-      textContent: `${transaction.type === 'income' ? '+' : '−'}${formatMoney(transaction.amount)}`,
+      textContent: `${transaction.type === 'income' ? '+' : '−'}${formatMoney(transaction.amount)}${transaction.originalCurrency && transaction.originalCurrency !== currency ? ` (eredetileg ${transaction.originalAmount?.toLocaleString('hu-HU')} ${transaction.originalCurrency})` : ''}`,
     })
     const edit = create('button', { class: 'btn btn--icon btn--ghost', type: 'button', textContent: '✎', title: 'Tétel szerkesztése', 'aria-label': 'Tétel szerkesztése' })
     edit.addEventListener('click', () => {
       editingTransactionId = transaction.id
       setTransactionType(transaction.type)
       el('#finance-planned').checked = Boolean(transaction.planned)
-      el('#finance-amount').value = formatMoneyInput(transaction.amount)
+      el('#finance-amount').value = formatMoneyInput(transaction.originalAmount ?? transaction.amount)
+      el('#finance-transaction-currency').value = transaction.originalCurrency || currency
+      el('#finance-exchange-rate').value = transaction.exchangeRate == null ? '' : formatMoneyInput(transaction.exchangeRate)
+      updateExchangeControls()
       el('#finance-date').value = transaction.date
       el('#finance-category').value = transaction.category
       el('#finance-person').value = transaction.personId
@@ -528,7 +541,7 @@ function pickReceiptAmount(candidates, currentAmount) {
       return create('label', { class: 'finance__ocr-candidate' }, [
         input,
         create('span', {}, [
-          create('strong', { textContent: formatMoney(candidate.amount) }),
+          create('strong', { textContent: `${candidate.amount.toLocaleString('hu-HU')} ${candidate.currency || 'pénznem ismeretlen'}` }),
           create('small', { textContent: candidate.label || `A blokk ${candidate.line}. sora` }),
         ]),
       ])
@@ -557,7 +570,8 @@ function pickReceiptAmount(candidates, currentAmount) {
     cancel.addEventListener('click', () => finish(null))
     form.addEventListener('submit', (event) => {
       event.preventDefault()
-      finish(Number(form.elements.namedItem('receipt-ocr-amount')?.value) || null)
+      const chosen = Number(form.elements.namedItem('receipt-ocr-amount')?.value)
+      finish(candidates.find(candidate => candidate.amount === chosen) || null)
     })
     modal = openModal({ title: 'A blokk beszélt. Kicsit motyogva.', content: form, onClose: () => finish(null) })
   })
@@ -590,11 +604,13 @@ async function scanPendingReceipt() {
       return
     }
     status.textContent = `${candidates.length} lehetséges összeg találva.`
-    const amount = await pickReceiptAmount(candidates, el('#finance-amount').value)
-    if (amount != null) {
-      el('#finance-amount').value = formatMoneyInput(amount)
+    const selected = await pickReceiptAmount(candidates, el('#finance-amount').value)
+    if (selected != null) {
+      el('#finance-amount').value = formatMoneyInput(selected.amount)
+      el('#finance-transaction-currency').value = selected.currency || ''
+      updateExchangeControls()
       el('#finance-amount').dispatchEvent(new Event('input', { bubbles: true }))
-      status.textContent = `${formatMoney(amount)} beírva — nézz rá, a gépnek nincs blokkja a tévedhetetlenségről.`
+      status.textContent = `${selected.amount.toLocaleString('hu-HU')} ${selected.currency || '(pénznem ellenőrzendő)'} beírva — ellenőrizd az összeget, a pénznemet és szükség esetén az árfolyamot.`
     } else status.textContent = 'Az összeg nem változott.'
   } catch (error) {
     console.error(error)
@@ -636,6 +652,7 @@ async function loadInitialProject() {
 
 function bindControls() {
   bindMoneyInputs()
+  el('#finance-transaction-currency').addEventListener('change', updateExchangeControls)
   el('#finance-date').value = today()
   el('#finance-saving-date').value = today()
   el('#finance-goal-start').value = today()
@@ -757,14 +774,24 @@ function bindControls() {
       renderForecast(); scheduleSave()
     })
   }
-  el('#finance-receipt').addEventListener('change', async (event) => {
+  // Both gallery attachment and direct camera capture use the same validated OCR pipeline.
+  el('#finance-receipt-camera').addEventListener('change', async (event) => {
+    const file = event.currentTarget.files?.[0]
+    if (!file) return
+    // Android WebView does not consistently support DataTransfer/file input reassignment.
+    // Process the captured File directly through the same receipt validation/OCR path.
+    await handleReceiptSelection(file)
+    event.currentTarget.value = ''
+  })
+  el('#finance-receipt').addEventListener('change', (event) => handleReceiptSelection(event.target.files?.[0]))
+  async function handleReceiptSelection(file) {
     const request = ++receiptRequest
     receiptLoading = true
     pendingReceipt = null
     el('#finance-receipt-ocr-status').textContent = 'A csatolmány betöltése…'
     updateReceiptOcrControls()
     try {
-      const receipt = await prepareReceipt(event.target.files[0])
+      const receipt = await prepareReceipt(file)
       if (request !== receiptRequest) return
       pendingReceipt = receipt
       el('#finance-receipt-name').textContent = pendingReceipt?.name || 'Nincs fájl kiválasztva'
@@ -775,7 +802,7 @@ function bindControls() {
           : 'A PDF most még csak csatolmány; a beolvasása későbbi fejlesztés.'
     } catch (error) {
       if (request !== receiptRequest) return
-      pendingReceipt = null; event.target.value = ''
+      pendingReceipt = null; el('#finance-receipt').value = ''; el('#finance-receipt-camera').value = ''
       el('#finance-receipt-name').textContent = 'Nincs fájl kiválasztva'
       el('#finance-receipt-ocr-status').textContent = 'A csatolmány nem tölthető be.'
       notifyError(error.message)
@@ -785,16 +812,23 @@ function bindControls() {
         updateReceiptOcrControls()
       }
     }
-  })
+  }
   el('#finance-receipt-scan').addEventListener('click', scanPendingReceipt)
   el('#finance-form').addEventListener('submit', (event) => {
     event.preventDefault()
     try {
       if (receiptLoading || receiptOcrRunning) throw new Error('Várd meg a bizonylat feldolgozását.')
       const existing = transactions.find((item) => item.id === editingTransactionId)
+      const selectedCurrency = el('#finance-transaction-currency').value
+      if (!selectedCurrency) throw new Error('A blokk pénzneme bizonytalan: válaszd ki a pénznemet a mentés előtt.')
+      const originalAmount = parseMoneyInput(el('#finance-amount').value)
+      const foreign = selectedCurrency !== currency
+      const rate = foreign ? parseMoneyInput(el('#finance-exchange-rate').value) : 1
+      if (!Number.isFinite(rate) || rate <= 0) throw new Error('Adj meg érvényes átváltási árfolyamot a napló pénznemében.')
       const normalized = normalizeTransaction({
         id: existing?.id, createdAt: existing?.createdAt,
-        type: el('#finance-type').value, amount: el('#finance-amount').value,
+        type: el('#finance-type').value, amount: Math.round(originalAmount * rate * 100) / 100,
+        originalAmount, originalCurrency: selectedCurrency, exchangeRate: foreign ? rate : null,
         planned: el('#finance-planned').checked,
         date: el('#finance-date').value, category: el('#finance-category').value,
         personId: el('#finance-person').value, note: el('#finance-note').value, receipt: pendingReceipt,

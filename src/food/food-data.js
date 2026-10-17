@@ -146,7 +146,12 @@ export function normalizeRecipe(value = {}) {
   if (!name || name.length > 180) throw new Error('A recept neve kötelező és legfeljebb 180 karakter lehet.')
   const preparedWeight = finiteOrNull(value.preparedWeight)
   const yieldCount = finiteOrNull(value.yieldCount)
-  const averageUnitWeight = finiteOrNull(value.averageUnitWeight)
+  let averageUnitWeight = finiteOrNull(value.averageUnitWeight)
+  // When both the cooked weight and serving count are known, the per-serving
+  // weight must be derived from them rather than preserving a stale form value.
+  if (preparedWeight !== null && yieldCount !== null && preparedWeight > 0 && yieldCount > 0) {
+    averageUnitWeight = rounded(preparedWeight / yieldCount)
+  }
   for (const [label, number] of [['készétel tömege', preparedWeight], ['hozam', yieldCount], ['átlagos egységtömeg', averageUnitWeight]]) {
     if (number !== null && (!Number.isFinite(number) || number <= 0)) throw new Error(`A(z) ${label} csak nullánál nagyobb lehet.`)
   }

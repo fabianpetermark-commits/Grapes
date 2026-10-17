@@ -32,6 +32,10 @@ export function readAndroidHealthExport(fromDate) {
   return nativeRequest('readHealthData', fromDate)
 }
 
+export function readAndroidHealthExportSilent(fromDate) {
+  return nativeRequest('readHealthDataSilent', fromDate)
+}
+
 export async function requestAndroidYazio(operation, ...args) {
   return JSON.parse(await nativeRequest('yazio', operation, ...args))
 }
@@ -62,3 +66,7 @@ export function installAndroidAppUpdate(versionCode) {
   return nativeRequest('installAvailableUpdate', Number(versionCode))
 }
 
+
+export async function requestAndroidFoodApi(kind, query, page = 1, pageSize = 12) {
+  return JSON.parse(await nativeRequest('foodApi', kind, query, page, pageSize))
+}

@@ -165,3 +165,14 @@ test('a projekt betöltése elutasítja a hiányzó alapanyagra hivatkozó recep
   }]
   assert.throws(() => normalizeFoodProject(project), /Hiányzó recept-hozzávaló.*food-missing/)
 })
+
+
+test('a recept szeletsúlya a kész tömegből és a hozamból számolódik', () => {
+  const result = calculateRecipeFood({
+    id: 'recipe-bread-weight', foodId: 'food-bread-weight', ownerProfileId: profile.id,
+    name: 'Kenyér', ingredients: [{ id: 'ingredient-bread-weight', foodId: chicken.id, amount: 100, unit: 'g' }],
+    preparedWeight: 1450, yieldCount: 25, yieldUnit: 'slice', averageUnitWeight: 25,
+  }, [chicken])
+  assert.equal(result.recipe.averageUnitWeight, 58)
+  assert.equal(result.food.servings[0].grams, 58)
+})

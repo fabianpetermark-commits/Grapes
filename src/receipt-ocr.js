@@ -1,6 +1,15 @@
 const TOTAL_WORDS = /(?:v[eé]gösszeg|fizetend[oő]|mindösszesen|összesen|total|amount\s+due|grand\s+total)/i
 const PAYMENT_WORDS = /(?:bankk[aá]rtya|k[aá]rty[aá]val|fizetve|terhelve)/i
-const CURRENCY_WORDS = /(?:\bft\b|\bhuf\b|€|\beur\b|\busd\b)/i
+const CURRENCY_WORDS = /(?:\bft\b|\bhuf\b|€|\beur\b|\busd\b|\bgbp\b|£|\bczk\b|kč|\bpln\b|zł)/i
+const CURRENCY_PATTERNS = [
+  ['EUR', /(?:€|\bEUR\b)/i], ['HUF', /(?:\bHUF\b|\bFt\b)/i],
+  ['USD', /\bUSD\b/i], ['GBP', /(?:£|\bGBP\b)/i],
+  ['CZK', /(?:\bCZK\b|Kč)/i], ['PLN', /(?:\bPLN\b|zł)/i],
+]
+export function detectReceiptCurrency(line) {
+  const matches = CURRENCY_PATTERNS.filter(([, pattern]) => pattern.test(line)).map(([code]) => code)
+  return matches.length === 1 ? matches[0] : null
+}
 const MISLEADING_WORDS = /(?:áfa|afa|nett[oó]|ad[oó]|kedvezm[eé]ny|visszaj[aá]r[oó]|k[eé]szp[eé]nz|kapott|r[eé]szösszeg|subtotal)/i
 const NUMBER_PATTERN = /(?<!\d)(\d{1,3}(?:[ .]\d{3})+(?:,\d{1,2})?|\d+(?:[,.]\d{1,2})?)(?!\d)/g
 
@@ -41,14 +50,14 @@ export function extractReceiptAmountCandidates(text) {
       score += lines.length > 1 ? (lineIndex / (lines.length - 1)) * 2 : 1
       if (amount >= 100) score += 1
       if (/\b(?:19|20)\d{2}\b/.test(match[1]) && !CURRENCY_WORDS.test(line) && !TOTAL_WORDS.test(line)) score -= 8
-      candidates.push({ amount, label: line.slice(0, 120), line: lineIndex + 1, score })
+      candidates.push({ amount, currency: detectReceiptCurrency(line), label: line.slice(0, 120), line: lineIndex + 1, score })
     }
   })
 
   const bestByAmount = new Map()
   for (const candidate of candidates) {
-    const current = bestByAmount.get(candidate.amount)
-    if (!current || candidate.score > current.score) bestByAmount.set(candidate.amount, candidate)
+    const current = bestByAmount.get(`${candidate.amount}:${candidate.currency || 'unknown'}`)
+    if (!current || candidate.score > current.score) bestByAmount.set(`${candidate.amount}:${candidate.currency || 'unknown'}`, candidate)
   }
   return [...bestByAmount.values()]
     .filter((candidate) => candidate.score > -4)

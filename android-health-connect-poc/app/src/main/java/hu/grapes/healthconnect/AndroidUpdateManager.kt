@@ -29,7 +29,20 @@ class AndroidUpdateManager(private val context: Context) {
     suspend fun findAvailableRelease(force: Boolean = false): Release? = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
         val lastCheck = preferences.getLong(LAST_CHECK_KEY, 0L)
-        if (!force && now - lastCheck < CHECK_INTERVAL_MS) return@withContext null
+        if (!force && now - lastCheck < CHECK_INTERVAL_MS) {
+            val cached = preferences.getString(CACHED_RELEASE_KEY, null)
+            if (cached != null) {
+                runCatching {
+                    val value = JSONObject(cached)
+                    val code = value.getInt("versionCode")
+                    if (code > BuildConfig.VERSION_CODE) return@withContext Release(
+                        code, value.getString("versionName"), value.getString("notes"),
+                        value.getString("downloadUrl"), value.getString("sha256")
+                    )
+                }
+            }
+            return@withContext null
+        }
 
         val connection = openConnection(RELEASE_API_URL, "application/vnd.github+json")
         try {
@@ -57,7 +70,14 @@ class AndroidUpdateManager(private val context: Context) {
                     }
                 }
             }
-            preferences.edit().putLong(LAST_CHECK_KEY, now).apply()
+            val cached = availableRelease?.let { found -> JSONObject().apply {
+                put("versionCode", found.versionCode)
+                put("versionName", found.versionName)
+                put("notes", found.notes)
+                put("downloadUrl", found.downloadUrl)
+                put("sha256", found.sha256)
+            }.toString() }
+            preferences.edit().putLong(LAST_CHECK_KEY, now).putString(CACHED_RELEASE_KEY, cached).apply()
             availableRelease
         } finally {
             connection.disconnect()
@@ -135,6 +155,7 @@ class AndroidUpdateManager(private val context: Context) {
         private const val RELEASE_API_URL = "https://api.github.com/repos/fabianpetermark-commits/Grapes/releases/latest"
         private const val PREFERENCES = "grapes-android-updates"
         private const val LAST_CHECK_KEY = "last-check"
+        private const val CACHED_RELEASE_KEY = "cached-release"
         private const val PENDING_INSTALL_KEY = "pending-install"
         private const val CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000L
         private const val MAX_DOWNLOAD_BYTES = 250L * 1024 * 1024

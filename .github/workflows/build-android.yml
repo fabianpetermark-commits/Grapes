@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - codex/android-app
+      - feature/food-v23
     paths:
       - android-health-connect-poc/**
       - src/**
