@@ -8,6 +8,7 @@ import android.provider.Settings
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
@@ -31,30 +32,56 @@ class AndroidUpdateManager(private val context: Context) {
         val lastCheck = preferences.getLong(LAST_CHECK_KEY, 0L)
         if (!force && now - lastCheck < CHECK_INTERVAL_MS) return@withContext null
 
-        val connection = openConnection(RELEASE_API_URL, "application/vnd.github+json")
+        // The original production updater still consumes /releases/latest. The
+        // parallel-installed QA build ONLY accepts tagged test prereleases.
+        val isQa = BuildConfig.BUILD_TYPE == "qa"
+        val connection = openConnection(
+            if (isQa) TEST_RELEASES_API_URL else RELEASE_API_URL,
+            "application/vnd.github+json"
+        )
         try {
-            check(connection.responseCode in 200..299) { "A frissítési kiszolgáló nem érhető el (${connection.responseCode})." }
-            val release = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
-            val versionCode = ANDROID_TAG.matchEntire(release.optString("tag_name"))
-                ?.groupValues?.getOrNull(1)?.toIntOrNull()
+            check(connection.responseCode in 200..299) {
+                "A frissítési kiszolgáló nem érhető el (${connection.responseCode})."
+            }
+            val response = connection.inputStream.bufferedReader().use { it.readText() }
+            val releases = if (isQa) JSONArray(response) else JSONArray().put(JSONObject(response))
+            var highestVersion = BuildConfig.VERSION_CODE
             var availableRelease: Release? = null
-            if (versionCode != null && versionCode > BuildConfig.VERSION_CODE) {
-                val assets = release.optJSONArray("assets")
-                if (assets != null) {
-                    for (index in 0 until assets.length()) {
-                        val asset = assets.optJSONObject(index) ?: continue
-                        if (!asset.optString("name").endsWith(".apk", ignoreCase = true)) continue
-                        val digest = asset.optString("digest").removePrefix("sha256:").lowercase()
-                        if (!digest.matches(SHA256_PATTERN)) continue
-                        availableRelease = Release(
-                            versionCode = versionCode,
-                            versionName = release.optString("name", "Grapes $versionCode"),
-                            notes = release.optString("body"),
-                            downloadUrl = asset.getString("browser_download_url"),
-                            sha256 = digest
-                        )
-                        break
+
+            for (releaseIndex in 0 until releases.length()) {
+                val release = releases.optJSONObject(releaseIndex) ?: continue
+                if (isQa && (release.optBoolean("draft") || !release.optBoolean("prerelease"))) continue
+
+                val tagPattern = if (isQa) TEST_ANDROID_TAG else ANDROID_TAG
+                val versionCode = tagPattern.matchEntire(release.optString("tag_name"))
+                    ?.groupValues?.getOrNull(1)?.toIntOrNull() ?: continue
+                if (versionCode <= highestVersion) continue
+
+                val assets = release.optJSONArray("assets") ?: continue
+                for (assetIndex in 0 until assets.length()) {
+                    val asset = assets.optJSONObject(assetIndex) ?: continue
+                    val assetName = asset.optString("name")
+                    if (isQa) {
+                        // Do not offer production APKs, even if somebody
+                        // mistakenly attaches one to a TEST prerelease.
+                        if (assetName != "grapes-test-v$versionCode.apk") continue
+                    } else if (!assetName.endsWith(".apk", ignoreCase = true)) {
+                        continue
                     }
+                    val digest = asset.optString("digest").removePrefix("sha256:").lowercase()
+                    if (!digest.matches(SHA256_PATTERN)) continue
+                    val downloadUrl = asset.optString("browser_download_url")
+                    if (isQa && !downloadUrl.startsWith("https://github.com/")) continue
+
+                    highestVersion = versionCode
+                    availableRelease = Release(
+                        versionCode = versionCode,
+                        versionName = release.optString("name", "Grapes $versionCode"),
+                        notes = release.optString("body"),
+                        downloadUrl = downloadUrl,
+                        sha256 = digest
+                    )
+                    break
                 }
             }
             preferences.edit().putLong(LAST_CHECK_KEY, now).apply()
@@ -100,6 +127,20 @@ class AndroidUpdateManager(private val context: Context) {
 
     fun requestInstall(apk: File) {
         check(apk.isFile) { "A frissítési fájl nem található." }
+        // The QA app must never hand a stable APK to the package installer.
+        // Keep the legacy stable install path unchanged.
+        if (BuildConfig.BUILD_TYPE == "qa") {
+            val archive = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.packageManager.getPackageArchiveInfo(
+                    apk.absolutePath, android.content.pm.PackageManager.PackageInfoFlags.of(0L)
+                )
+            } else {
+                context.packageManager.getPackageArchiveInfo(apk.absolutePath, 0)
+            }
+            check(archive?.packageName == context.packageName) {
+                "A letöltött APK másik alkalmazáshoz tartozik."
+            }
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !context.packageManager.canRequestPackageInstalls()) {
             preferences.edit().putBoolean(PENDING_INSTALL_KEY, true).apply()
             context.startActivity(Intent(
@@ -133,12 +174,14 @@ class AndroidUpdateManager(private val context: Context) {
 
     companion object {
         private const val RELEASE_API_URL = "https://api.github.com/repos/fabianpetermark-commits/Grapes/releases/latest"
+        private const val TEST_RELEASES_API_URL = "https://api.github.com/repos/fabianpetermark-commits/Grapes/releases?per_page=100"
         private const val PREFERENCES = "grapes-android-updates"
         private const val LAST_CHECK_KEY = "last-check"
         private const val PENDING_INSTALL_KEY = "pending-install"
         private const val CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000L
         private const val MAX_DOWNLOAD_BYTES = 250L * 1024 * 1024
         private val ANDROID_TAG = Regex("android-v(\\d+)")
+        private val TEST_ANDROID_TAG = Regex("android-test-v(\\d+)")
         private val SHA256_PATTERN = Regex("[0-9a-f]{64}")
     }
 }

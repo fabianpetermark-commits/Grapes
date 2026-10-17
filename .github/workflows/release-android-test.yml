@@ -1,0 +1,106 @@
+name: Release Grapes TEST APK (manual, prerelease)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_code:
+        description: Increasing TEST-only Android versionCode
+        required: true
+        type: number
+      version_name:
+        description: Visible TEST version, for example 0.2.0
+        required: true
+        type: string
+      release_notes:
+        description: What changed in this TEST version?
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: grapes-test-release
+  cancel-in-progress: false
+
+jobs:
+  release-test:
+    runs-on: ubuntu-latest
+    env:
+      VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
+      VITE_GOOGLE_APP_ID: 991532871119
+      VITE_GOOGLE_PICKER_API_KEY: ${{ secrets.GOOGLE_PICKER_API_KEY }}
+      VITE_GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
+      VITE_EBOOK_EPUB_WRITE_ENABLED: 'true'
+      VITE_EBOOK_TRANSFER_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
+      VITE_FOOD_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
+      GRAPES_VERSION_CODE: ${{ inputs.version_code }}
+      GRAPES_VERSION_NAME: ${{ inputs.version_name }}
+      RELEASE_NOTES: ${{ inputs.release_notes }}
+      ANDROID_TEST_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_TEST_KEYSTORE_PASSWORD }}
+      ANDROID_TEST_KEY_ALIAS: ${{ secrets.ANDROID_TEST_KEY_ALIAS }}
+      ANDROID_TEST_KEY_PASSWORD: ${{ secrets.ANDROID_TEST_KEY_PASSWORD }}
+    steps:
+      - name: Checkout reviewed integration branch only
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+      - name: Validate TEST app code and signing secrets
+        env:
+          ANDROID_TEST_KEYSTORE_BASE64: ${{ secrets.ANDROID_TEST_KEYSTORE_BASE64 }}
+        run: |
+          test -f android-health-connect-poc/app/src/qa/res/values/strings.xml
+          grep -Fq 'create("qa")' android-health-connect-poc/app/build.gradle.kts
+          test -n "$ANDROID_TEST_KEYSTORE_BASE64"
+          test -n "$ANDROID_TEST_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_TEST_KEY_ALIAS"
+          test -n "$ANDROID_TEST_KEY_PASSWORD"
+          test "$GRAPES_VERSION_CODE" -gt 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build:android-web
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK 36
+        run: |
+          SDKMANAGER=$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | sort -V | tail -1)
+          "$SDKMANAGER" "platforms;android-36" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.11.1
+      - name: Restore dedicated TEST signing key
+        env:
+          ANDROID_TEST_KEYSTORE_BASE64: ${{ secrets.ANDROID_TEST_KEYSTORE_BASE64 }}
+        run: |
+          printf '%s' "$ANDROID_TEST_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/grapes-test.p12"
+          echo "ANDROID_TEST_KEYSTORE_PATH=$RUNNER_TEMP/grapes-test.p12" >> "$GITHUB_ENV"
+      - name: Build signed TEST APK
+        run: gradle --project-dir android-health-connect-poc :app:assembleQa
+      - name: Verify signing, package name and rename TEST APK
+        run: |
+          SOURCE="android-health-connect-poc/app/build/outputs/apk/qa/app-qa.apk"
+          TARGET="grapes-test-v${GRAPES_VERSION_CODE}.apk"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$SOURCE"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$SOURCE" \
+            | grep -F "package: name='hu.grapes.healthconnect.test'"
+          mv "$SOURCE" "$TARGET"
+          echo "APK_PATH=$TARGET" >> "$GITHUB_ENV"
+          echo "RELEASE_TARGET=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+      - name: Publish TEST prerelease (never stable latest)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "android-test-v${GRAPES_VERSION_CODE}" "$APK_PATH" \
+            --title "Grapes TEST ${GRAPES_VERSION_NAME}" \
+            --notes "$RELEASE_NOTES" \
+            --target "$RELEASE_TARGET" \
+            --prerelease
+          gh api "repos/${GITHUB_REPOSITORY}/releases/tags/android-test-v${GRAPES_VERSION_CODE}" \
+            --jq 'select(.prerelease == true and .draft == false) | .tag_name' \
+            | grep -Fx "android-test-v${GRAPES_VERSION_CODE}"
