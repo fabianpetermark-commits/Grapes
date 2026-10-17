@@ -4,6 +4,7 @@ import { listFoodShares, loadFoodShare, setFoodShareState } from './food-sharing
 import { lookupOpenFoodFactsProduct } from './food-api.js'
 import { searchFoodCatalog } from './food-catalog-search.js'
 import { searchFoods, foodSourceLabel } from './food-search.js'
+import { firstProductBarcode } from './food-barcode.js'
 import { searchVerifiedUsdaFoods } from './usda-foods.js'
 import { createMobileYazio } from './food-mobile-yazio.js'
 import { readYazioApiBundle } from './yazio-api-import.js'
@@ -921,7 +922,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
         if (barcodeStream !== stream) return
         try {
           const codes = await detector.detect(video)
-          const code = String(codes.find(item => /^\d{7,14}$/.test(item.rawValue))?.rawValue || '')
+          const code = firstProductBarcode(codes)
           if (code) {
             stopBarcodeCamera()
             await addBarcode(code)
@@ -959,7 +960,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       image = await barcodeImageSource(file)
       const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] })
       const codes = await detector.detect(image.source)
-      const code = (codes || []).map(item => String(item.rawValue || '').trim()).find(value => /^\d{7,14}$/.test(value))
+      const code = firstProductBarcode(codes)
       if (!code) throw new Error('Nem található érvényes termékvonalkód a fotón.')
       await addBarcode(code)
     } catch (error) { $('[data-food-search-status]').textContent = error.message || 'A vonalkód nem olvasható.' }
