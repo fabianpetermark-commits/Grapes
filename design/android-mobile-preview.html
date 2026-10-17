@@ -346,6 +346,8 @@
     .food-recipe-ingredient-note { margin: -3px 0 5px; font-size: 11px; color: var(--muted); line-height: 1.5; }
     .food-recipe-ingredient-form > label[hidden], .food-recipe-scanner[hidden] { display: none; }
     .food-recipe-summary { padding: 11px 12px; margin-top: 10px; color: var(--muted); background: var(--raised); border-radius: 12px; font-size: 10px; line-height: 1.5; white-space: pre-line; }
+    .food-recipe-nutrients-repair { display: flex; width: 100%; min-height: 48px; margin-top: 10px; align-items: center; justify-content: center; color: var(--accent); border: 1px solid rgb(59 220 242 / 32%); border-radius: 12px; background: var(--accent-soft); text-align: center; font-size: 12px; font-weight: 700; }
+    .food-recipe-nutrients-repair[hidden] { display: none; }
     .food-recipe-missing { display: block; margin-top: 5px; color: #edbe7f; font-size: 10px; line-height: 1.4; }
     .food-recipe-ingredient-status { grid-column: 1 / -1; margin: -3px 0 5px; color: var(--muted); font-size: 12px; line-height: 1.4; }
     .food-recipe-ingredient-row { display: grid; grid-template-columns: minmax(0, 1fr) 44px 44px; }
@@ -738,7 +740,7 @@
           </div>
           <p class="food-recipe-ingredient-note">100 g / 100 ml alapra megadott értékek. Üres mező = ismeretlen, nem 0. Kanálnál/csipetnél adj meg saját átváltást.</p>
         </div><button class="quick-action food-recipe-add-ingredient" type="button" data-food-recipe-ingredient-add><span>Hozzávaló hozzáadása</span></button></section>
-        <section class="food-editor-section"><h3>Hozzávalólista</h3><div class="sheet-results" data-food-recipe-ingredients></div><div class="food-recipe-summary" data-food-recipe-summary>Az összesített tápérték a hozzávalók felvétele után jelenik meg.</div></section><p data-food-recipe-editor-status role="status"></p></div>
+        <section class="food-editor-section"><h3>Hozzávalólista</h3><div class="sheet-results" data-food-recipe-ingredients></div><button type="button" class="food-recipe-nutrients-repair" data-food-recipe-nutrients-repair hidden>Ismert hozzávalók hiányzó tápértékének pótlása</button><div class="food-recipe-summary" data-food-recipe-summary>Az összesített tápérték a hozzávalók felvétele után jelenik meg.</div></section><p data-food-recipe-editor-status role="status"></p></div>
         <div class="food-full-page__footer"><button class="primary" type="button" data-food-recipe-editor-save>Recept mentése</button></div>
       </section>
       <input type="file" accept=".json,application/json" data-food-backup-input hidden>
