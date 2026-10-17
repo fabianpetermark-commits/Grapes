@@ -28,3 +28,10 @@ apps-script/ebook-transfer/IsbndbSecret.gs
 *.njsproj
 *.sln
 *.sw?
+
+# Signing material must NEVER be committed.
+*.p12
+*.keystore
+*.jks
+github_actions_test_secrets.env
+*test-signing-secrets.env
