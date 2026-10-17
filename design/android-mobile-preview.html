@@ -437,9 +437,10 @@
             <div class="sync-stat"><span>Függőben</span><strong data-sync-pending-count>—</strong></div>
           </div>
           <p class="sync-status" data-sync-status role="status" aria-live="polite">Állapot ellenőrzése…</p>
-          <div class="section-head"><h2>Mentés és ellenőrzés</h2></div>
-          <div class="setting"><div class="setting__icon" data-mobile-icon="backup"></div><div><strong>Automatikus helyi mentés</strong><span>Bekapcsolva · internet nélkül is működik</span></div><span>✓</span></div>
-          <div class="setting"><div class="setting__icon" data-mobile-icon="clock"></div><div><strong>Utolsó ellenőrzés</strong><span data-sync-last-check>Még nem ellenőrizve</span></div><span>›</span></div>
+          <div class="section-head"><h2>Élelmiszer-adatbázis</h2></div>
+          <div class="sync-providers">
+            <div class="sync-provider"><span class="sync-provider__icon" aria-hidden="true">🌍</span><div><strong>Open Food Facts</strong><span>Ország/régió választás</span><label for="food-off-region" class="sync-provider__auto">Ország/régió</label><select id="food-off-region" data-food-off-region aria-label="Open Food Facts ország/régió"><option value="hu">Magyarország</option><option value="sk">Szlovákia</option><option value="at">Ausztria</option><option value="de">Németország</option><option value="cz">Csehország</option><option value="pl">Lengyelország</option><option value="ro">Románia</option><option value="gb">Egyesült Királyság</option><option value="us">Egyesült Államok</option><option value="all">Összes ország</option></select></div></div>
+          </div>
           <div class="sync-actions"><button type="button" data-sync-projects>Projektek</button><button type="button" data-sync-refresh>Frissítés</button></div>
           <div class="section-head"><h2>Egészség és napló</h2></div>
           <div class="sync-providers">
@@ -786,5 +787,19 @@
     updateWater()
   </script>
   <script type="module" src="../src/android-mobile-shell.js"></script>
+<script>
+  (() => {
+    const key = 'grapes.food.openFoodFacts.region'
+    const select = document.querySelector('[data-food-off-region]')
+    if (!select) return
+    try {
+      const stored = localStorage.getItem(key)
+      if (stored && [...select.options].some(option => option.value === stored)) select.value = stored
+    } catch { /* Storage may be unavailable in private mode. */ }
+    select.addEventListener('change', () => {
+      try { localStorage.setItem(key, select.value) } catch { /* Keep in-memory selection. */ }
+    })
+  })()
+</script>
 </body>
 </html>
