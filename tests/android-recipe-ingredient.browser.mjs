@@ -25,7 +25,7 @@ try {
   browser = await chromium.launch({ executablePath: chrome, headless: true, args: ['--no-sandbox'] })
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
   // Exercise the realistic Android WebView fallback when BarcodeDetector is unavailable.
-  await page.addInitScript(() => { Object.defineProperty(window, 'BarcodeDetector', { configurable: true, value: undefined }) })
+  await page.addInitScript(() => { Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: undefined }) })
   page.on('pageerror', error => console.error('Recipe browser page error:', error.message))
   await page.route('https://world.openfoodfacts.org/api/v2/product/5998888888888.json', route => route.fulfill({
     status: 200, contentType: 'application/json', body: JSON.stringify({
