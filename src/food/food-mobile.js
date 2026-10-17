@@ -3,6 +3,7 @@ import { acceptMealShare, acceptRecipeShare, rememberSharingContact } from './fo
 import { listFoodShares, loadFoodShare, setFoodShareState } from './food-sharing-client.js'
 import { lookupOpenFoodFactsProduct } from './food-api.js'
 import { searchFoodCatalog } from './food-catalog-search.js'
+import { searchFoods, foodSourceLabel } from './food-search.js'
 import { searchVerifiedUsdaFoods } from './usda-foods.js'
 import { createMobileYazio } from './food-mobile-yazio.js'
 import { readYazioApiBundle } from './yazio-api-import.js'
@@ -766,8 +767,11 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const acceptsLocal = item => foodSearchFilter === 'favorites' ? project.favorites.includes(item.id)
       : foodSearchFilter === 'own' ? item.source?.type === 'manual' || item.kind === 'recipe'
         : foodSearchFilter === 'usda' ? item.source?.type === 'usda' : true
-    let localFoods = project.customFoods.filter(item => acceptsLocal(item) && (!normalized || `${item.name} ${item.category}`.toLocaleLowerCase('hu-HU').includes(normalized)))
-    localFoods = localFoods.sort((a, b) => (project.favorites.includes(b.id) ? 1 : 0) - (project.favorites.includes(a.id) ? 1 : 0)).slice(0, 15)
+    // Reuse the existing accent-insensitive Hungarian search (synonyms and typos).
+    // Limit results only AFTER scoring; otherwise relevant local foods can disappear.
+    const localFoods = searchFoods(project.customFoods.filter(acceptsLocal), query, {
+      favorites: project.favorites, entries: project.diaryEntries,
+    }).slice(0, 15)
     const localKeys = new Set(localFoods.map(foodKey))
     const allExternalFoods = ['own', 'favorites'].includes(foodSearchFilter) ? [] : remoteFoods.filter(food => !localKeys.has(foodKey(food)) && (foodSearchFilter !== 'usda' || food.source?.type === 'usda'))
     const externalFoods = expandedSearchQuery === normalized ? allExternalFoods : allExternalFoods.slice(0, 8)
@@ -814,10 +818,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const element = document.createElement('div'); element.className = 'sheet-result'
     const main = document.createElement('button'); main.type = 'button'; main.className = 'sheet-result__main'
     const calories = food.nutrients.energyKcal == null ? 'nincs kalóriaadat' : `${number(food.nutrients.energyKcal, 1)} kcal / 100 ${food.baseUnit}`
-    const sourceLabel = food.source?.type === 'usda' ? (food.verified ? 'USDA · ellenőrzött offline' : 'USDA · online')
-      : food.source?.type === 'openfoodfacts' ? 'Open Food Facts'
-        : food.source?.type === 'recipe' || food.kind === 'recipe' ? 'Saját recept'
-          : food.source?.type === 'yazio' ? 'YAZIO' : 'Saját étel'
+    const sourceLabel = foodSourceLabel(food)
     const name = document.createElement('strong'); name.textContent = food.name
     if (food.preparation === 'raw' || food.preparation === 'cooked') {
       const state = document.createElement('em')
@@ -940,7 +941,10 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
 
   async function barcodeImageSource(file) {
     if ('createImageBitmap' in window) return { source: await createImageBitmap(file), release(source) { source.close?.() } }
-    const url = URL.createObjectURL(file); const image = new Image(); image.src = url; await image.decode()
+    const url = URL.createObjectURL(file)
+    const image = new Image(); image.src = url
+    try { await image.decode() }
+    catch (error) { URL.revokeObjectURL(url); throw error }
     return { source: image, release() { URL.revokeObjectURL(url) } }
   }
 
@@ -955,7 +959,8 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       image = await barcodeImageSource(file)
       const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] })
       const codes = await detector.detect(image.source)
-      const code = String(codes[0]?.rawValue || '').replace(/\D/g, '')
+      const code = (codes || []).map(item => String(item.rawValue || '').trim()).find(value => /^\d{7,14}$/.test(value))
+      if (!code) throw new Error('Nem található érvényes termékvonalkód a fotón.')
       await addBarcode(code)
     } catch (error) { $('[data-food-search-status]').textContent = error.message || 'A vonalkód nem olvasható.' }
     finally { image?.release(image.source) }
