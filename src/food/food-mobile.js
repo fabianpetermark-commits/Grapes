@@ -383,15 +383,15 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-energy]').textContent = nutrient(totals.energyKcal)
     const energyGoal = Number(targets.energyKcal)
     const loggedEnergy = Number(totals.energyKcal)
-    // Only the arc percent is supplied at runtime, never an inline background,
-    // so both the track and neon bloom remain bright even for empty days.
+    // The ring only shows a progress stroke when the goal and kcal are known.
     const hasEnergyGoal = targets.energyKcal != null && Number.isFinite(energyGoal) && energyGoal > 0
     const hasCompleteEnergy = entries.length > 0 && totals.energyKcal != null
     const energyPercent = hasEnergyGoal && hasCompleteEnergy && Number.isFinite(loggedEnergy)
       ? Math.max(0, Math.min(100, loggedEnergy / energyGoal * 100)) : 0
     const energyRing = $('[data-food-energy-ring]')
-    energyRing.style.setProperty('--energy-progress', `${energyPercent}%`)
-    energyRing.dataset.energyState = hasEnergyGoal && hasCompleteEnergy && energyPercent >= 100 ? 'complete' : hasEnergyGoal ? 'active' : 'unset'
+    energyRing.style.setProperty('--energy-progress', String(energyPercent))
+    energyRing.dataset.energyVisible = hasEnergyGoal && hasCompleteEnergy && energyPercent > 0 ? 'true' : 'false'
+    energyRing.dataset.energyState = !hasEnergyGoal || !hasCompleteEnergy ? 'unset' : energyPercent >= 100 ? 'complete' : 'active'
     $('[data-food-energy-target]').textContent = hasEnergyGoal ? `/ ${number(energyGoal)} kcal` : 'Nincs cél'
     const remaining = Math.max(0, (targets.energyKcal || 0) - (totals.energyKcal || 0))
     // A napi cél üzenete csak ismert, pozitív célérték és teljes kalóriaadat mellett lehet sikeres.
