@@ -62,3 +62,34 @@ export function installAndroidAppUpdate(versionCode) {
   return nativeRequest('installAvailableUpdate', Number(versionCode))
 }
 
+// Android WebView does not download blob: anchors. The native Storage Access
+// Framework picker is the only successful-save signal for local Food exports.
+// Send bounded chunks so large YAZIO histories do not exceed bridge limits.
+export async function saveAndroidJsonBackup(filename, json) {
+  const safeName = String(filename || '')
+  if (!/^grapes-etelnaplo-\d{4}-\d{2}-\d{2}\.json$/.test(safeName)) {
+    throw new Error('Érvénytelen biztonsági mentés fájlnév.')
+  }
+  const content = String(json ?? '')
+  if (!content || !JSON.parse(content)?.grapesFoodBackup) {
+    throw new Error('A Food biztonsági mentés formátuma érvénytelen.')
+  }
+  let token = ''
+  try {
+    token = await nativeRequest('beginFoodBackupExport', safeName)
+    let offset = 0
+    while (offset < content.length) {
+      let end = Math.min(offset + 48000, content.length)
+      // Never split a Unicode surrogate pair across UTF-8 write calls.
+      if (end < content.length && /[\uD800-\uDBFF]/.test(content[end - 1])) end -= 1
+      await nativeRequest('appendFoodBackupExport', token, content.slice(offset, end))
+      offset = end
+    }
+    const bytes = new Blob([content]).size
+    await nativeRequest('finishFoodBackupExport', token, bytes)
+    return safeName
+  } catch (error) {
+    if (token) await nativeRequest('cancelFoodBackupExport', token).catch(() => {})
+    throw error
+  }
+}
