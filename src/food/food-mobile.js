@@ -832,7 +832,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
         instructions: '', ingredients: recipeIngredients, preparedWeight: optionalNumber('[data-food-recipe-weight-input]'),
         yieldCount: optionalNumber('[data-food-recipe-yield-input]'), yieldUnit: $('[data-food-recipe-yield-unit]').value,
         averageUnitWeight: optionalNumber('[data-food-recipe-unit-weight]'), revision: 1, createdAt: now, updatedAt: now,
-      }, project.customFoods.filter(item => item.kind !== 'recipe'))
+      }, recipeEditorFoods().filter(item => item.kind !== 'recipe'))
       const missing = missingRecipeNutrients(recipeIngredients, recipeEditorFoods())
       const summaryYield = calculated.recipe.yieldCount
         ? ` · ${number(calculated.recipe.yieldCount, 2)} ${calculated.recipe.yieldUnit === 'slice' ? 'szelet'
@@ -1080,12 +1080,8 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
 
   function setFoodSearchFilter(filter) {
     expandedManualFoodGroups = new Set()
-    foodSearchFilter = ['all', 'own', 'favorites', 'usda'].includes(filter) ? filter : 'all'
-    root.querySelectorAll('[data-food-search-filter]').forEach(button => {
-      const active = button.dataset.foodSearchFilter === foodSearchFilter
-      button.classList.toggle('is-active', active)
-      button.setAttribute('aria-pressed', String(active))
-    })
+    foodSearchFilter = filter === 'favorites' ? 'favorites' : 'all'
+    $('[data-food-quick="favorites"]').setAttribute('aria-pressed', String(foodSearchFilter === 'favorites'))
   }
 
   function renderFoodSearch(query, { remoteFoods = [], loading = false, remoteError = '' } = {}) {
@@ -2020,18 +2016,12 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       if (quick?.dataset.foodQuick === 'custom') return openCustomFoodSheet()
       if (quick?.dataset.foodQuick === 'favorites') {
         $('[data-food-search]').value = ''
-        setFoodSearchFilter('favorites')
-        renderFoodSearch('', foodSearchRenderState)
+        setFoodSearchFilter(foodSearchFilter === 'favorites' ? 'all' : 'favorites')
+        startFoodSearch('')
         return
       }
       if (quick?.dataset.foodQuick === 'barcode') return requestBarcode()
       if (quick?.dataset.foodQuick === 'photo') return $('[data-food-barcode-photo]').click()
-      const searchFilter = event.target.closest('[data-food-search-filter]')
-      if (searchFilter) {
-        setFoodSearchFilter(searchFilter.dataset.foodSearchFilter)
-        renderFoodSearch($('[data-food-search]').value, foodSearchRenderState)
-        return
-      }
       const menu = event.target.closest('[data-food-menu]'); if (menu) return handleMenuAction(menu.dataset.foodMenu)
     })
     document.addEventListener('visibilitychange', () => {
