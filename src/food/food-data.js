@@ -1,11 +1,14 @@
+import { normalizeRecipeImageUrl } from './recipe-image.js'
+import { normalizeInstructionText } from './recipe-instructions.js'
 export const FOOD_PROJECT_VERSION = 2
 export const FOOD_BACKUP_VERSION = 1
 
 export const MEAL_TYPES = ['breakfast', 'morningSnack', 'lunch', 'afternoonSnack', 'dinner']
 export const FOOD_BASE_UNITS = ['g', 'ml']
-export const FOOD_AMOUNT_UNITS = ['g', 'ml', 'piece', 'slice', 'serving', 'package']
+export const FOOD_AMOUNT_UNITS = ['g', 'dkg', 'kg', 'ml', 'dl', 'l', 'tsp', 'tbsp', 'pinch', 'piece', 'slice', 'serving', 'package']
 export const CORE_NUTRIENTS = ['energyKcal', 'protein', 'carbohydrate', 'fat', 'fiber', 'sugar', 'saturatedFat', 'salt']
 export const RECIPE_YIELD_UNITS = ['serving', 'piece', 'slice']
+export const RECIPE_SUMMARY_NUTRIENTS = ['energyKcal', 'protein', 'carbohydrate', 'fat']
 
 const DEFAULT_TARGETS = Object.freeze({ energyKcal: 2000, protein: null, carbohydrate: null, fat: null })
 
@@ -114,7 +117,7 @@ export function normalizeFoodItem(value = {}) {
       attribution: cleanText(value.source?.attribution),
     },
     verified: value.verified === true,
-    imageUrl: /^https:\/\//.test(String(value.imageUrl || '')) ? String(value.imageUrl) : '',
+    imageUrl: normalizeRecipeImageUrl(value.imageUrl),
     createdAt: isoDateTime(value.createdAt || new Date().toISOString(), 'Létrehozási idő'),
     updatedAt: isoDateTime(value.updatedAt || value.createdAt || new Date().toISOString(), 'Módosítási idő'),
   }
@@ -124,7 +127,14 @@ export function resolveAmountInBase(food, amount, unit, servingId = '') {
   const numeric = Number(amount)
   if (!Number.isFinite(numeric) || numeric <= 0) throw new Error('A mennyiségnek nullánál nagyobbnak kell lennie.')
   if (unit === food.baseUnit) return numeric
-  const serving = food.servings.find(item => item.id === servingId || item.unit === unit)
+  // Exact within-dimension metric conversions are safe for all foods.
+  const mass = { g: 1, dkg: 10, kg: 1000 }
+  const volume = { ml: 1, dl: 100, l: 1000 }
+  if (food.baseUnit === 'g' && Object.hasOwn(mass, unit)) return numeric * mass[unit]
+  if (food.baseUnit === 'ml' && Object.hasOwn(volume, unit)) return numeric * volume[unit]
+  // A tablespoon, teaspoon, pinch or a mass/volume crossover depends on the
+  // food. Only a saved, food-specific serving conversion can be used.
+  const serving = (food.servings || []).find(item => item.id === servingId || item.unit === unit)
   if (!serving) throw new Error('Ehhez az egységhez nincs termékspecifikus átváltás.')
   const size = food.baseUnit === 'g' ? serving.grams : serving.milliliters
   if (!Number.isFinite(size) || size <= 0) throw new Error('Az adag átváltása hiányzik.')
@@ -145,8 +155,17 @@ export function normalizeRecipe(value = {}) {
   const name = cleanText(value.name)
   if (!name || name.length > 180) throw new Error('A recept neve kötelező és legfeljebb 180 karakter lehet.')
   const preparedWeight = finiteOrNull(value.preparedWeight)
-  const yieldCount = finiteOrNull(value.yieldCount)
-  const averageUnitWeight = finiteOrNull(value.averageUnitWeight)
+  let yieldCount = finiteOrNull(value.yieldCount)
+  let averageUnitWeight = finiteOrNull(value.averageUnitWeight)
+  // Derive yield when the user supplies finished weight and unit/slice weight.
+  // These are already enough to calculate the amount in each serving. Preserve
+  // explicitly entered yield as the authority when all three values exist.
+  if (yieldCount === null && preparedWeight > 0 && averageUnitWeight > 0) {
+    yieldCount = rounded(preparedWeight / averageUnitWeight)
+  }
+  if (preparedWeight !== null && yieldCount !== null && preparedWeight > 0 && yieldCount > 0) {
+    averageUnitWeight = rounded(preparedWeight / yieldCount)
+  }
   for (const [label, number] of [['készétel tömege', preparedWeight], ['hozam', yieldCount], ['átlagos egységtömeg', averageUnitWeight]]) {
     if (number !== null && (!Number.isFinite(number) || number <= 0)) throw new Error(`A(z) ${label} csak nullánál nagyobb lehet.`)
   }
@@ -161,14 +180,31 @@ export function normalizeRecipe(value = {}) {
     foodId: requiredId(value.foodId || createFoodId('food'), 'Recept ételazonosító'),
     ownerProfileId: requiredId(value.ownerProfileId, 'Tulajdonos profilazonosító'),
     variantOfRecipeId: cleanText(value.variantOfRecipeId),
-    name, category: cleanText(value.category) || 'Saját recept', instructions: cleanText(value.instructions),
-    imageUrl: /^https:\/\//.test(String(value.imageUrl || '')) ? String(value.imageUrl) : '',
+    name, category: cleanText(value.category) || 'Saját recept',
+    instructions: normalizeInstructionText(value.instructions),
+    instructionsHtml: typeof value.instructionsHtml === 'string' ? value.instructionsHtml.slice(0, 40000) : '',
+    imageUrl: normalizeRecipeImageUrl(value.imageUrl),
     ingredients, preparedWeight, yieldCount, averageUnitWeight,
     yieldUnit: RECIPE_YIELD_UNITS.includes(value.yieldUnit) ? value.yieldUnit : 'serving',
     revision: Math.max(1, Math.trunc(Number(value.revision) || 1)),
     createdAt: isoDateTime(value.createdAt || new Date().toISOString(), 'Létrehozási idő'),
     updatedAt: isoDateTime(value.updatedAt || value.createdAt || new Date().toISOString(), 'Módosítási idő'),
   }
+}
+
+/**
+ * Identify which ingredient's *per-100g/ml* macros are unavailable.
+ * A missing value is not the same as a measured 0. We deliberately keep
+ * recipe macro totals unknown instead of silently undercounting calories.
+ * The list is intended for explicit editor feedback before save.
+ */
+export function missingRecipeNutrients(ingredients = [], foods = []) {
+  const byId = new Map(foods.map(food => [food.id, food]))
+  return ingredients.flatMap(item => {
+    const food = byId.get(item.foodId)
+    const keys = RECIPE_SUMMARY_NUTRIENTS.filter(key => food?.nutrients?.[key] == null)
+    return keys.length ? [{ foodId: item.foodId, name: food?.name || 'Ismeretlen hozzávaló', keys }] : []
+  })
 }
 
 export function calculateRecipeFood(recipeValue, foods = []) {

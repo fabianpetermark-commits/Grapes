@@ -61,7 +61,14 @@ export function createMobileYazio({ root, getProject, commit, openSheet, closeSh
     selected = new Set(preview.records.filter(item => item.status === 'ready').map(item => item.index)); page = 0
     $('[data-yazio-filter]').value = 'all'
     $('[data-yazio-summary]').textContent = `${preview.from} – ${preview.to} · ${preview.days} nap · ${preview.counts.ready} új · ${preview.counts.duplicate} korábbi · ${preview.counts.uncertain} bizonytalan · ${preview.counts.invalid} hibás`
-    $('[data-yazio-warnings]').textContent = [...preview.warnings, ...preview.discrepancies.map(value => typeof value === 'string' ? value : JSON.stringify(value))].join('\n')
+    const readableWarning = value => {
+      if (typeof value !== 'string') return value?.message || JSON.stringify(value)
+      try {
+        const parsed = JSON.parse(value)
+        return parsed && typeof parsed.message === 'string' ? parsed.message : value
+      } catch { return value }
+    }
+    $('[data-yazio-warnings]').textContent = [...preview.warnings, ...preview.discrepancies].map(readableWarning).join('\n')
     $('[data-yazio-progress]').textContent = ''
     render(); openSheet(sheet)
     return { pending: true }
