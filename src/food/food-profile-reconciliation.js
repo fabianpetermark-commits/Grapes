@@ -112,10 +112,15 @@ export function previewFoodSameAccountAdoption(localInput, remoteInput, verified
     if (batch.profileId !== oldId) throw new Error('Idegen profilhoz tartozó importköteg.')
     const result = { ...batch, profileId: newId }
     if (batch.source === 'yazio') {
+      const previousEntriesById = new Map(remote.diaryEntries.map(item => [item.id, item]))
       const entriesById = new Map(migrated.diaryEntries.map(item => [item.id, item]))
-      if (!Array.isArray(batch.recordIds) ||
-          batch.recordIds.some(id => !entriesById.has(id))) {
+      if (!Array.isArray(batch.recordIds) || !batch.entryFingerprints ||
+          batch.recordIds.some(id => !entriesById.has(id) || !previousEntriesById.has(id))) {
         throw new Error('Hiányzó YAZIO-importbejegyzés; a visszavonási előzmény nem módosítható.')
+      }
+      if (batch.recordIds.some(id =>
+        batch.entryFingerprints[id] !== yazioEntryFingerprint(previousEntriesById.get(id)))) {
+        throw new Error('A régi YAZIO-import valamelyik bejegyzése módosult; a visszavonási védelem nem írható át.')
       }
       result.entryFingerprints = Object.fromEntries(
         batch.recordIds.map(id => [id, yazioEntryFingerprint(entriesById.get(id))])
