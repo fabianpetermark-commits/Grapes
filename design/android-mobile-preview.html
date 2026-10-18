@@ -323,6 +323,18 @@
     .food-editor-section > p { margin: -6px 0 12px; color: var(--muted); font-size: 10px; line-height: 1.45; }
     .food-recipe-basics label:nth-child(-n+3) { grid-column: 1 / -1; }
     .food-recipe-yield-hint { grid-column: 1 / -1; margin: -4px 0 1px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+    .food-recipe-instruction-field { grid-column: 1 / -1; min-width: 0; }
+    .food-recipe-instruction-field > label { display: block; margin: 0 0 6px; }
+    .food-recipe-instructions-toolbar { display: flex; gap: 8px; margin-bottom: 7px; }
+    .food-recipe-instructions-toolbar button { min-width: 52px; min-height: 44px; padding: 6px 12px; color: var(--text); background: var(--raised); border: 1px solid var(--line); border-radius: 11px; font-size: 13px; }
+    .food-recipe-rich-editor { min-height: 190px; max-height: 44dvh; padding: 12px 14px; overflow-y: auto; outline: none; white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.55 Inter, ui-sans-serif, system-ui, sans-serif; }
+    .food-recipe-rich-editor:focus { border-color: var(--accent); }
+    .food-recipe-rich-editor:empty:before { content: attr(data-placeholder); color: var(--muted); }
+    .food-recipe-rich-editor p, .food-recipe-instructions-output p { margin: 0 0 10px; }
+    .food-recipe-rich-editor ol, .food-recipe-rich-editor ul, .food-recipe-instructions-output ol, .food-recipe-instructions-output ul { padding-left: 23px; margin: 6px 0 12px; }
+    .food-recipe-rich-editor li, .food-recipe-instructions-output li { margin-bottom: 6px; }
+    .food-recipe-instructions-output { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; line-height: 1.6; margin-top: 8px; }
+    .food-recipe-instruction-tip { display: block; margin: 6px 0 0; font-size: 10px; line-height: 1.4; color: var(--muted); }
     /* Five compact tabs replace the tall stacked recipe form. */
     .food-recipe-tabs { flex: 0 0 auto; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin-bottom: 12px; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 13px; }
     .food-recipe-tab { min-width: 0; min-height: 44px; padding: 5px 2px; overflow-wrap: anywhere; color: var(--muted); background: transparent; border: 0; border-radius: 10px; font-size: 10px; font-weight: 700; cursor: pointer; }
@@ -749,7 +761,14 @@
         <section class="food-editor-section food-recipe-tabpanel" data-food-recipe-panel="basics" role="tabpanel"><h3>Alapadatok</h3><div class="sheet-form food-recipe-basics">
           <label>Recept neve<input class="search" maxlength="180" data-food-recipe-name-input></label>
           <label>Kategória<input class="search" maxlength="120" value="Saját recept" data-food-recipe-category-input></label>
-          <label>Elkészítés<textarea class="search" rows="3" data-food-recipe-instructions-input></textarea></label>
+          <div class="food-recipe-instruction-field"><label id="food-recipe-instructions-label" for="food-recipe-rich-editor">Elkészítés</label>
+            <div class="food-recipe-instructions-toolbar" data-food-recipe-instructions-toolbar role="toolbar" aria-label="Elkészítés formázása">
+              <button type="button" data-food-instructions-command="bold" aria-label="Félkövér" title="Félkövér"><strong>B</strong></button>
+              <button type="button" data-food-instructions-command="insertOrderedList" aria-label="Számozott lista" title="Számozott lista">1. 2.</button>
+            </div>
+            <div id="food-recipe-rich-editor" class="search food-recipe-rich-editor" role="textbox" aria-multiline="true" aria-labelledby="food-recipe-instructions-label" contenteditable="true" spellcheck="true" data-placeholder="Írd vagy illeszd be az elkészítés lépéseit…" data-food-recipe-instructions-input></div>
+            <small class="food-recipe-instruction-tip">A bekezdések és a vágólapról érkező formázások megmaradnak, ha a forrás átadja őket.</small>
+          </div>
           <label>Kész tömeg (g)<input class="search" type="number" min="0.01" step="0.01" data-food-recipe-weight-input></label>
           <label>Hozam<input class="search" type="number" min="0.01" step="0.01" data-food-recipe-yield-input></label>
           <label>Hozam egysége<select class="search" data-food-recipe-yield-unit><option value="serving">adag</option><option value="piece">darab</option><option value="slice">szelet</option></select></label>
