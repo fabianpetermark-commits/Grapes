@@ -952,7 +952,8 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       const recipe = normalizeRecipe({
         id: existing?.id || createFoodId('recipe'), foodId: existing?.foodId || createFoodId('food'), ownerProfileId: profile.id,
         variantOfRecipeId: existing?.variantOfRecipeId || '', name: $('[data-food-recipe-name-input]').value,
-        category: $('[data-food-recipe-category-input]').value, imageUrl: recipeExtras.getImageUrl(), instructions: $('[data-food-recipe-instructions-input]').value,
+        category: $('[data-food-recipe-category-input]').value, imageUrl: recipeExtras.getImageUrl(),
+        ...getInstructionsFromEditor($('[data-food-recipe-instructions-input]')),
         ingredients: recipeIngredients, preparedWeight: optionalNumber('[data-food-recipe-weight-input]'),
         yieldCount: optionalNumber('[data-food-recipe-yield-input]'), yieldUnit: $('[data-food-recipe-yield-unit]').value,
         averageUnitWeight: optionalNumber('[data-food-recipe-unit-weight]'), revision: existing ? existing.revision + 1 : 1,
