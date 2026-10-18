@@ -4,9 +4,10 @@ import {
   entriesForLocalDay, foodBackupFromJson, foodBackupToJson, macroEnergyWarning, normalizeDiaryEntry,
   normalizeFoodItem, normalizeFoodProject, normalizeRecipe, normalizeTargets, summarizeEntries,
 } from './food-data.js'
-import { searchFoods } from './food-search.js'
+import { searchFoods, foodSourceLabel } from './food-search.js'
 import { searchFoodCatalog } from './food-catalog-search.js'
-import { lookupFatSecretProduct, lookupOpenFoodFactsProduct, searchFatSecretProducts, searchOpenFoodFactsProducts } from './food-api.js'
+import { searchVerifiedUsdaFoods } from './usda-foods.js'
+import { lookupOpenFoodFactsProduct } from './food-api.js'
 import { healthImportEntries, prepareHealthBridgeImport } from './food-health-import.js'
 import { MAX_YAZIO_JSON_BYTES, applyYazioBatch, markYazioBatchComplete, prepareYazioImport, undoYazioBatch } from './food-yazio-import.js'
 import { nutritionSuggestionPer100, recognizeNutritionLabelImage } from './food-label-ocr.js'
@@ -48,6 +49,7 @@ let catalogRequestId = 0
 let catalogSearchTimer = null
 let catalogCache = new Map()
 let catalogSearchResult = null
+const expandedCatalogContexts = new Set()
 let returnToDiaryAfterSave = false
 
 const $ = selector => root.querySelector(selector)
@@ -105,7 +107,7 @@ function appMarkup() {
   <section id="food-panel-diary" role="tabpanel" aria-labelledby="food-tab-diary" data-food-panel="diary"><div class="food__datebar"><button id="food-date-prev" class="btn" type="button" aria-label="Előző nap">←</button><label>Nap<input id="food-date" type="date"></label><button id="food-date-next" class="btn" type="button" aria-label="Következő nap">→</button><button id="food-date-today" class="btn" type="button">Ma</button></div><div id="food-summary" class="food__summary"></div>
   <form id="food-entry-form" class="food__form food__form--entry"><input id="food-entry-id" type="hidden"><label>Étkezés<select id="food-entry-meal">${MEAL_TYPES.map(type => `<option value="${type}">${MEAL_LABELS[type]}</option>`).join('')}</select></label><label>Étel<select id="food-entry-food" required></select></label><label>Mennyiség<input id="food-entry-amount" type="number" min="0.01" step="0.01" value="100" required></label><label>Egység<select id="food-entry-unit"></select></label><label>Idő<input id="food-entry-time" type="time" required></label><label>Megjegyzés<input id="food-entry-note" maxlength="240" placeholder="opcionális"></label><button class="btn btn--primary" type="submit">Hozzáadás</button><button id="food-entry-cancel" class="btn hidden" type="button">Mégse</button></form><div id="food-meals" class="food__meals"></div></section>
   <section data-food-panel="foods" class="hidden"><div class="food__search"><label>Keresés<input id="food-search" type="search" placeholder="pl. krumpli vagy csirkemel"></label><label>Kategória<select id="food-category-filter"><option value="">Minden kategória</option></select></label><button id="food-scan" class="btn" type="button">Vonalkód fotózása</button><button id="food-label-ocr" class="btn" type="button">Tápértékcímke OCR</button><input id="food-barcode-input" type="file" accept="image/*" capture="environment" hidden><input id="food-label-input" type="file" accept="image/png,image/jpeg,image/webp" capture="environment" hidden></div>
-  <form id="food-item-form" class="food__form food__form--food"><input id="food-item-id" type="hidden"><label>Név<input id="food-item-name" required maxlength="180"></label><label>Kategória<input id="food-item-category" value="Egyéb"></label><label>Vonalkód<input id="food-item-barcode" inputmode="numeric" pattern="[0-9]{7,14}"></label><button id="food-lookup" class="btn" type="button">Keresés név vagy vonalkód alapján</button><label>Alapegység<select id="food-item-base-unit"><option value="g">100 g</option><option value="ml">100 ml</option></select></label>${CORE_NUTRIENTS.map(key => `<label>${NUTRIENT_LABELS[key]} / 100 <input id="food-item-${key}" type="number" min="0" step="0.01" placeholder="nincs adat"></label>`).join('')}<label>1 adag mérete<input id="food-item-serving" type="number" min="0.01" step="0.01" placeholder="opcionális"></label><button class="btn btn--primary" type="submit">Étel mentése</button><button id="food-item-cancel" class="btn hidden" type="button">Mégse</button><p id="food-api-status" class="food__form-status" role="status"></p></form><div id="food-items" class="food__items"></div></section>
+  <form id="food-item-form" class="food__form food__form--food"><input id="food-item-id" type="hidden"><label>Név<input id="food-item-name" required maxlength="180"></label><label>Kategória<input id="food-item-category" value="Egyéb"></label><label>Vonalkód<input id="food-item-barcode" inputmode="numeric" pattern="[0-9]{7,14}"></label><button id="food-lookup" class="btn" type="button">Keresés név vagy vonalkód alapján</button><label>Alapegység<select id="food-item-base-unit"><option value="g">100 g</option><option value="ml">100 ml</option></select></label>${CORE_NUTRIENTS.map(key => `<label>${NUTRIENT_LABELS[key]} / 100 <input id="food-item-${key}" type="number" min="0" step="any" placeholder="nincs adat"></label>`).join('')}<label>1 adag mérete<input id="food-item-serving" type="number" min="0.01" step="0.01" placeholder="opcionális"></label><button class="btn btn--primary" type="submit">Étel mentése</button><button id="food-item-cancel" class="btn hidden" type="button">Mégse</button><p id="food-api-status" class="food__form-status" role="status"></p></form><div id="food-items" class="food__items"></div></section>
   <section data-food-panel="recipes" class="hidden"><form id="food-recipe-form" class="food__recipe-form"><input id="food-recipe-id" type="hidden"><div class="food__recipe-basics"><label>Recept neve<input id="food-recipe-name" required maxlength="180"></label><label>Kategória<input id="food-recipe-category" value="Saját recept"></label><label>Kép URL<input id="food-recipe-image" type="url" placeholder="https://…"></label><label>Elkészítés<textarea id="food-recipe-instructions" rows="4"></textarea></label></div><div class="food__ingredient-builder"><h2>Hozzávalók</h2><div><label>Étel<select id="food-recipe-ingredient-food"></select></label><label>Mennyiség<input id="food-recipe-ingredient-amount" type="number" min="0.01" step="0.01" value="100"></label><label>Egység<select id="food-recipe-ingredient-unit"></select></label><button id="food-recipe-add-ingredient" class="btn" type="button">Hozzáadás</button></div><div id="food-recipe-ingredients" class="food__ingredient-list"></div></div><div class="food__recipe-yield"><label>Készétel lemért tömege (g)<input id="food-recipe-prepared-weight" type="number" min="0.01" step="0.01" placeholder="vízveszteség után"></label><label>Hozam<input id="food-recipe-yield-count" type="number" min="0.01" step="0.01" placeholder="pl. 12"></label><label>Hozam egysége<select id="food-recipe-yield-unit"><option value="serving">adag</option><option value="piece">darab</option><option value="slice">szelet</option></select></label><label>Átlagos egységtömeg (g)<input id="food-recipe-unit-weight" type="number" min="0.01" step="0.01" placeholder="opcionális"></label></div><div id="food-recipe-preview" class="food__recipe-preview">Adj hozzá legalább egy hozzávalót.</div><div class="food__recipe-actions"><button class="btn btn--primary" type="submit">Recept mentése</button><button id="food-recipe-cancel" class="btn hidden" type="button">Mégse</button></div></form><div id="food-recipes" class="food__recipes"></div></section>
   <section data-food-panel="stats" class="hidden"><div class="food__stats-controls"><label>Időtáv<select id="food-stats-period"><option value="all">Összes adat</option><option value="7">Utolsó 7 nap</option><option value="30">Utolsó 30 nap</option></select></label><label>Tápanyag<select id="food-stats-nutrient">${CORE_NUTRIENTS.map(key => `<option value="${key}">${NUTRIENT_LABELS[key]}</option>`).join('')}</select></label><label>Összehasonlítás<select id="food-stats-compare"><option value="">Nincs</option>${CORE_NUTRIENTS.map(key => `<option value="${key}">${NUTRIENT_LABELS[key]}</option>`).join('')}</select></label><label>Felbontás<select id="food-stats-granularity"><option value="day">Napi</option><option value="week">Heti</option><option value="month">Havi</option></select></label></div><div id="food-stats-summary" class="food__stats-summary"></div><div class="food__stats-grid"><article class="food__chart-card"><h2>Beviteli trend</h2><div id="food-stats-chart" class="food__chart"></div></article><article class="food__macro-card"><h2>Kalóriaeredet</h2><div id="food-macro-chart"></div></article></div><p id="food-stats-note" class="food__stats-note"></p></section>
   <section data-food-panel="libraries" class="hidden"><div class="food__library-intro"><div><p class="food__eyebrow">KÜLÖN DRIVE-DOKUMENTUM</p><h2>Családi receptkönyvtár</h2><p>Csak recepteket és hozzávalókat oszt meg. A naplód, céljaid és statisztikáid privátak maradnak.</p></div><form id="food-library-create" class="food__library-form"><label>Könyvtár neve<input id="food-library-name" value="Családi receptkönyvtár" maxlength="120" required></label><button class="btn btn--primary" type="submit">Könyvtár létrehozása</button></form><form id="food-library-connect" class="food__library-form"><label>Kapott Drive-fájlazonosító<input id="food-library-file-id" required></label><button class="btn" type="submit">Csatlakoztatás</button></form><div class="food__library-share"><label>Meghívott e-mail<input id="food-library-email" type="email" placeholder="csaladtag@example.com"></label><label>Jogosultság<select id="food-library-role"><option value="reader">Olvasó</option><option value="writer">Szerkesztő</option></select></label></div><p id="food-library-status" class="food__form-status" role="status"></p></div><div id="food-libraries" class="food__libraries"></div></section>
@@ -201,7 +203,7 @@ function renderFoodItems() {
     const row = document.createElement('article'); row.className = 'food__food-row'
     const favorite = document.createElement('button'); favorite.type = 'button'; favorite.className = 'food__favorite'; favorite.dataset.foodFavorite = food.id; favorite.setAttribute('aria-label', `${food.name}: kedvenc állapot váltása`); favorite.setAttribute('aria-pressed', String(project.favorites.includes(food.id))); favorite.textContent = project.favorites.includes(food.id) ? '★' : '☆'
     const info = document.createElement('div'); const name = document.createElement('strong'); name.textContent = food.name; const meta = document.createElement('span')
-    meta.textContent = `${food.category} · ${formatNumber(food.nutrients.energyKcal, 1)} kcal / 100 ${food.baseUnit}${food.source.type === 'openfoodfacts' ? ' · Open Food Facts' : food.source.type === 'fatsecret' ? ' · FatSecret' : food.source.type === 'shared-recipe' ? ' · Megosztott recept' : food.kind === 'recipe' ? ' · Saját recept' : ''}`; info.append(name, meta)
+    meta.textContent = `${food.category} · ${formatNumber(food.nutrients.energyKcal, 1)} kcal / 100 ${food.baseUnit}${food.source.type === 'manual' ? '' : ' · ' + foodSourceLabel(food)}`; info.append(name, meta)
     if (food.source.type === 'shared-recipe') {
       const copy = document.createElement('button'); copy.type = 'button'; copy.className = 'btn btn--sm'; copy.textContent = 'Saját másolat'; copy.dataset.libraryCopyFood = food.id; row.append(favorite, info, copy)
     } else {
@@ -234,20 +236,35 @@ function renderOpenFoodFactsResults(message = '', context = catalogSearchContext
     target.append(status)
   }
   if (!openFoodFactsResults.length) return
-  for (const [index, food] of openFoodFactsResults.entries()) {
+  const visibleLimit = 8
+  const visibleResults = expandedCatalogContexts.has(context)
+    ? openFoodFactsResults : openFoodFactsResults.slice(0, visibleLimit)
+  for (const [index, food] of visibleResults.entries()) {
     const row = document.createElement('article')
     row.className = 'food__off-result'
     if (food.imageUrl) {
       const image = document.createElement('img')
       image.src = food.imageUrl; image.alt = ''; image.loading = 'lazy'; row.append(image)
     }
-    const sourceLabel = food.source.type === 'fatsecret' ? 'FatSecret' : 'Open Food Facts'
+    const sourceLabel = foodSourceLabel(food)
     const info = document.createElement('div')
     const name = document.createElement('strong'); name.textContent = food.name
+    if (food.preparation === 'raw' || food.preparation === 'cooked') {
+      const state = document.createElement('em')
+      state.className = `food__usda-state food__usda-state--${food.preparation}`
+      state.textContent = food.preparation === 'raw' ? 'Nyers' : 'Főtt'
+      name.append(' ', state)
+    }
     const meta = document.createElement('span')
     meta.textContent = food.category + ' · ' + formatNumber(food.nutrients.energyKcal, 1) +
       ' kcal / 100 ' + food.baseUnit + (food.barcode ? ' · ' + food.barcode : '') + ' · ' + sourceLabel
-    info.append(name, meta)
+    info.append(name)
+    if (food.usdaDescription) {
+      const original = document.createElement('small')
+      original.className = 'food__usda-original'; original.lang = 'en'; original.textContent = food.usdaDescription
+      info.append(original)
+    }
+    info.append(meta)
     const exists = project.customFoods.some(item =>
       (food.barcode && item.barcode === food.barcode) ||
       (item.source.type === food.source.type && item.source.id === food.source.id))
@@ -259,6 +276,13 @@ function renderOpenFoodFactsResults(message = '', context = catalogSearchContext
       : (context === 'diary' ? 'Mentés a naplóhoz' : 'Betöltés')
     row.append(info, button); target.append(row)
   }
+  if (!expandedCatalogContexts.has(context) && openFoodFactsResults.length > visibleLimit) {
+    const more = document.createElement('button')
+    more.type = 'button'; more.className = 'btn food__catalog-more'
+    more.textContent = `További találatok (${openFoodFactsResults.length - visibleLimit})`
+    more.addEventListener('click', () => { expandedCatalogContexts.add(context); renderOpenFoodFactsResults(message, context) })
+    target.append(more)
+  }
 }
 
 async function searchOpenFoodFactsByName(queryOverride = '', context = 'foods') {
@@ -268,7 +292,8 @@ async function searchOpenFoodFactsByName(queryOverride = '', context = 'foods') 
   clearTimeout(catalogSearchTimer)
   const requestId = ++catalogRequestId
   catalogSearchContext = context
-  openFoodFactsResults = []
+  expandedCatalogContexts.delete(context)
+  openFoodFactsResults = searchVerifiedUsdaFoods(query)
   const otherContext = context === 'diary' ? 'foods' : 'diary'
   catalogElements(otherContext).results.classList.add('hidden')
   if (query.length < 2) {
@@ -277,7 +302,7 @@ async function searchOpenFoodFactsByName(queryOverride = '', context = 'foods') 
   }
   elements.button.disabled = true
   elements.button.textContent = 'Keresés…'
-  renderOpenFoodFactsResults('Keresés az Open Food Facts és FatSecret adatbázisában…', context)
+  renderOpenFoodFactsResults('Ellenőrzött USDA-találatok offline · Open Food Facts keresése…', context)
   try {
     // Avoid repeating queries while navigating tabs, and respect public API rate limits.
     const cacheKey = query.toLocaleLowerCase('hu-HU')
@@ -317,12 +342,14 @@ function queueCatalogSearch(context) {
   clearTimeout(catalogSearchTimer)
   const elements = catalogElements(context)
   const query = elements.input.value.trim()
+  expandedCatalogContexts.delete(context)
   ++catalogRequestId
   elements.button.disabled = false
   elements.button.textContent = 'Keresés az adatbázisokban'
   elements.results.classList.add('hidden')
-  openFoodFactsResults = []
+  openFoodFactsResults = query.length >= 2 && query.length <= 120 ? searchVerifiedUsdaFoods(query) : []
   catalogSearchContext = context
+  if (openFoodFactsResults.length) renderOpenFoodFactsResults('Offline USDA-alapanyagok · online keresés hamarosan…', context)
   if (query.length < 3 || query.length > 120) return
   // Deliberately only query after the user has stopped typing.
   catalogSearchTimer = setTimeout(() => { searchOpenFoodFactsByName(query, context) }, 1100)
@@ -375,7 +402,7 @@ function loadOpenFoodFactsResult(index, context = 'foods') {
   $('#food-item-barcode').value = product.barcode
   $('#food-item-base-unit').value = product.baseUnit
   for (const key of CORE_NUTRIENTS) $('#food-item-' + key).value = product.nutrients[key] ?? ''
-  const sourceLabel = product.source.type === 'fatsecret' ? 'FatSecret' : 'Open Food Facts'
+  const sourceLabel = foodSourceLabel(product)
   $('#food-item-cancel').classList.remove('hidden')
   $('#food-api-status').textContent = sourceLabel + ' találat. Ellenőrizd az értékeket és mentsd.' +
     (context === 'diary' ? ' Mentés után visszatérünk a naplóhoz.' : '')
@@ -687,20 +714,13 @@ async function lookupBarcode({ forDiary = false } = {}) {
   report('Termék keresése…', 'saving')
   try {
     const barcode = $('#food-item-barcode').value
-    try { pendingProduct = await lookupOpenFoodFactsProduct(barcode) }
-    catch (openFoodFactsError) {
-      try { pendingProduct = await lookupFatSecretProduct(barcode) }
-      catch (fatSecretError) {
-        if (/Nem található termék/.test(openFoodFactsError.message) && /nincs konfigurálva/.test(fatSecretError.message)) throw openFoodFactsError
-        throw new Error(`A termék egyik adatbázisban sem található. ${fatSecretError.message}`)
-      }
-    }
+    pendingProduct = await lookupOpenFoodFactsProduct(barcode)
     if (forDiary) { saveScannedProductForDiary(pendingProduct); return }
     const existing = project.customFoods.find(food => (pendingProduct.barcode && food.barcode === pendingProduct.barcode) || (food.source.type === pendingProduct.source.type && food.source.id === pendingProduct.source.id))
     if (existing) { pendingProduct = null; fillFoodForm(existing); report('Ez a vonalkód már szerepel az Ételek között. A meglévő adatokat nyitottam meg.'); return }
     $('#food-item-name').value = pendingProduct.name; $('#food-item-category').value = pendingProduct.category; $('#food-item-base-unit').value = pendingProduct.baseUnit
     for (const key of CORE_NUTRIENTS) $(`#food-item-${key}`).value = pendingProduct.nutrients[key] ?? ''
-    report(`${pendingProduct.source.type === 'fatsecret' ? 'FatSecret' : 'Open Food Facts'} találat betöltve. Ellenőrizd, majd mentsd.`)
+    report('Open Food Facts találat betöltve. Ellenőrizd, majd mentsd.')
   } catch (error) {
     const message = /Nem található termék/.test(error.message) ? `${error.message} Keress rá név vagy márka alapján az Ételek fülön, vagy rögzítsd kézzel.` : error.message
     report(message, 'error')

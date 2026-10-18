@@ -1,7 +1,8 @@
+import { normalizeFoodItem } from '../src/food/food-data.js'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { normalizeSearchText, searchFoods } from '../src/food/food-search.js'
+import { normalizeSearchText, searchFoods, foodSourceLabel } from '../src/food/food-search.js'
 
 const foods = [
   { id: 'potato', name: 'Burgonya főtt', category: 'Köret' },
@@ -30,3 +31,39 @@ test('azonos találatnál kedvencet és használatot rangsorol', () => {
   assert.equal(searchFoods(same, 'joghurt', { favorites: ['b'], entries })[0].id, 'b')
 })
 
+
+test('mobil kereső: ékezet, szinonima és kedvenc rangsorolás', () => {
+  const items = [
+    { id: 'turo', name: 'Zsírszegény túró', category: 'Tejtermék' },
+    { id: 'potato', name: 'Burgonya főtt', category: 'Köret' },
+    { id: 'bread', name: 'Fehér kenyér', category: 'Pékáru' },
+  ]
+  assert.equal(searchFoods(items, 'turo')[0].id, 'turo')
+  assert.equal(searchFoods(items, 'krumpli')[0].id, 'potato')
+  assert.equal(searchFoods(items, 'kenyer')[0].id, 'bread')
+  assert.equal(searchFoods(items, '', { favorites: ['bread'] })[0].id, 'bread')
+})
+
+test('a régi importokat megőrizzük, új aktív FatSecret-forrás nélkül', () => {
+  assert.equal(foodSourceLabel({ source: { type: 'fatsecret' } }), 'Korábbi import')
+  assert.equal(foodSourceLabel({ source: { type: 'openfoodfacts' } }), 'Open Food Facts')
+  assert.equal(foodSourceLabel({ source: { type: 'yazio' } }), 'YAZIO')
+  assert.equal(foodSourceLabel({ source: { type: 'usda' }, verified: true }), 'USDA · ellenőrzött offline')
+  assert.equal(foodSourceLabel({ source: { type: 'usda' }, verified: false }), 'USDA · online')
+  assert.equal(foodSourceLabel({ kind: 'recipe' }), 'Saját recept')
+  assert.equal(foodSourceLabel({ source: { type: 'shared-recipe' } }), 'Megosztott recept')
+  assert.equal(foodSourceLabel({ kind: 'manual' }), 'Saját étel')
+})
+
+test('a mentett korábbi integrációs rekord adatai és forrásazonosítója sértetlenek', () => {
+  const saved = normalizeFoodItem({
+    id: 'legacy-product-42', kind: 'product', name: 'Korábban mentett joghurt',
+    barcode: '5991234567890', baseUnit: 'g',
+    nutrients: { energyKcal: 98, protein: 3.6, carbohydrate: 11, fat: 4.2 },
+    source: { type: 'fatsecret', id: 'legacy-provider-42', attribution: 'Historical source' },
+  })
+  assert.equal(saved.source.type, 'fatsecret')
+  assert.equal(saved.source.id, 'legacy-provider-42')
+  assert.equal(saved.nutrients.energyKcal, 98)
+  assert.equal(foodSourceLabel(saved), 'Korábbi import')
+})

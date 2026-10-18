@@ -113,6 +113,9 @@
     .sync-provider strong, .sync-provider span { display: block; }
     .sync-provider span { margin-top: 4px; color: var(--muted); font-size: 11px; line-height: 1.35; }
     .sync-provider button { min-height: 38px; padding: 0 12px; color: var(--accent); background: transparent; border: 1px solid rgb(59 220 242 / 35%); border-radius: 12px; cursor: pointer; font-size: 10px; font-weight: 850; }
+    .sync-provider__auto { display: flex; gap: 8px; align-items: center; min-height: 32px; margin-top: 8px; color: var(--text); font-size: 10px; }
+    .sync-provider__auto input { width: 18px; height: 18px; accent-color: var(--accent); }
+    .sync-provider__status { min-height: 15px; margin-top: 5px; color: var(--muted); font-size: 9px; line-height: 1.35; }
     .sync-provider-status { min-height: 18px; margin: 7px 4px 0; color: var(--muted); font-size: 11px; }
     .setting { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; gap: 12px; align-items: center; min-height: 66px; padding: 10px 6px; border-bottom: 1px solid var(--line); }
     button.setting { width: 100%; color: inherit; text-align: left; background: transparent; border: 0; border-bottom: 1px solid var(--line); cursor: pointer; }
@@ -140,21 +143,38 @@
     .food-detail-head p { margin-top: 3px; color: var(--muted); font-size: 11px; }
     .food-share { font-size: 18px; }
     .food-entry-card { padding: 14px; margin-bottom: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 17px; }
-    .food-entry-card__head { display: flex; gap: 10px; justify-content: space-between; }
+    .food-entry-card__head { display: flex; gap: 10px; align-items: start; justify-content: space-between; }
     .food-entry-card span { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; }
-    .food-entry-card__actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 12px; }
-    .food-entry-card__actions button { min-height: 38px; color: var(--text); background: var(--raised); border: 1px solid var(--line); border-radius: 11px; font-size: 10px; }
-    .food-recipes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+    .food-entry-card__macros { margin-top: 6px; color: var(--muted); font-size: 9px; }
+    .food-entry-card__actions { display: flex; gap: 6px; justify-content: flex-end; margin-top: 8px; }
+    .food-entry-card__actions button { width: 44px; height: 44px; padding: 0; color: var(--text); background: var(--raised); border: 1px solid var(--line); border-radius: 11px; font-size: 16px; }
+    .food-entry-card__actions button:last-child { color: var(--danger); }
+    .food-detail-add { width: 100%; min-height: 48px; margin-bottom: 12px; color: var(--accent); background: var(--accent-soft); border: 1px solid rgb(59 220 242 / 28%); border-radius: 14px; font-weight: 800; }
+    .food-recipes { display: grid; grid-template-columns: 1fr; gap: 7px; }
+    .food-recipe--compact { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 43px; padding: 10px 12px; }
+    .food-recipe--compact strong { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 12px; font-weight: 600; }
+    .food-recipe__energy { flex-shrink: 0; color: var(--accent); font-size: 11px; font-weight: 700; }
+    .quick-action.food-recipe-add-ingredient { display: flex; width: 100%; min-height: 46px; align-items: center; justify-content: center; margin-top: 10px; color: #091a23; background: #55dff6; border: 0; border-radius: 12px; font-weight: 700; }
+    .food-recipe-add-ingredient span { white-space: nowrap; overflow-wrap: normal; }
     .food-recipe { min-width: 0; padding: 0; overflow: hidden; color: inherit; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 15px; }
     .food-recipe__cover { display: grid; place-items: end start; height: 96px; padding: 9px; background: linear-gradient(145deg,#7357ff,#224a86 62%,#0c1824); font-size: 10px; font-weight: 800; }
     .food-recipe small { display: block; padding: 8px; overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
     .inbox-badge { position: relative; }
     .inbox-badge[data-count]:not([data-count="0"])::after { position: absolute; top: 4px; right: 3px; display: grid; place-items: center; min-width: 17px; height: 17px; padding: 0 4px; color: #041014; content: attr(data-count); background: var(--accent); border-radius: 99px; font-size: 9px; font-weight: 900; }
-    .sheet-results { display: grid; gap: 7px; max-height: 220px; margin-top: 10px; overflow-y: auto; }
+    .sheet-results { display: grid; gap: 7px; max-height: min(42dvh, 360px); margin-top: 10px; padding-bottom: max(4px, env(safe-area-inset-bottom)); overflow-y: auto; overscroll-behavior: contain; }
     .sheet-result { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 48px; padding: 8px 10px; color: var(--text); text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
     .sheet-result span { color: var(--muted); font-size: 10px; }
     .sheet-result__main { display: grid; min-width: 0; flex: 1; gap: 3px; padding: 0; color: inherit; text-align: left; background: transparent; border: 0; }
+    .sheet-result__original { overflow-wrap: anywhere; color: #8293a5; font-size: 9px; }
+    .food-usda-state { display: inline-block; padding: 1px 5px; border: 1px solid currentColor; border-radius: 99px; font-size: 8px; font-style: normal; vertical-align: 1px; }
+    .food-usda-state--raw { color: var(--success); }
+    .food-usda-state--cooked { color: #ffbd69; }
+    .sheet-result--more { width: 100%; justify-content: center; color: var(--accent); font-weight: 750; }
     .sheet-result__favorite { flex: 0 0 40px; width: 40px; height: 40px; color: var(--accent); background: var(--raised); border: 0; border-radius: 11px; font-size: 20px; }
+    .food-search-filters { display: flex; gap: 6px; padding: 9px 0 1px; overflow-x: auto; scrollbar-width: none; }
+    .food-search-filters::-webkit-scrollbar { display: none; }
+    .food-search-filter { min-height: 36px; padding: 0 13px; flex: 0 0 auto; color: var(--muted); background: var(--surface); border: 1px solid var(--line); border-radius: 99px; font-size: 10px; font-weight: 750; }
+    .food-search-filter.is-active { color: #041014; background: var(--accent); border-color: var(--accent); }
     .sheet-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .sheet-form label { display: grid; gap: 5px; color: var(--muted); font-size: 10px; }
     .sheet-form label:last-child { grid-column: 1 / -1; }
@@ -180,6 +200,8 @@
     .macro b { color: var(--text); font-weight: 700; text-align: right; }
     .progress { height: 5px; overflow: hidden; background: #213140; border-radius: 99px; }
     .progress > i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); border-radius: inherit; }
+    .food-overview-actions { display: grid; grid-column: 1 / -1; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .food-overview-actions button { min-height: 44px; color: var(--accent); background: var(--accent-soft); border: 1px solid rgb(59 220 242 / 24%); border-radius: 13px; font-size: 10px; font-weight: 800; }
     .water-card { display: flex; gap: 12px; align-items: center; padding: 13px 14px; margin-top: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 17px; }
     .water-card > .water-card__icon { display: grid; place-items: center; flex: 0 0 42px; width: 42px; height: 42px; margin-top: 0; color: #7bc8ff; background: rgb(77 143 255 / 12%); border-radius: 13px; }
     .water-card div { min-width: 0; flex: 1; }
@@ -284,13 +306,123 @@
     .step span { margin-top: 4px; color: var(--muted); font-size: 11px; line-height: 1.4; }
     .sheet-backdrop { position: absolute; inset: 0; z-index: 39; background: rgb(0 0 0 / 58%); opacity: 0; pointer-events: none; transition: .2s ease; }
     .sheet-backdrop.is-open { opacity: 1; pointer-events: auto; }
-    .bottom-sheet { position: absolute; right: 0; bottom: 0; left: 0; z-index: 40; max-height: 88dvh; padding: 10px 18px 24px; overflow-y: auto; overscroll-behavior: contain; background: #111a24; border: 1px solid var(--line); border-radius: 26px 26px 0 0; box-shadow: 0 -20px 70px rgb(0 0 0 / 45%); transform: translateY(105%); transition: .24s ease; }
+    .bottom-sheet { position: absolute; right: 0; bottom: 0; left: 0; z-index: 40; max-height: min(88dvh, calc(100dvh - 16px)); padding: 10px 18px max(24px, env(safe-area-inset-bottom)); overflow-y: auto; overscroll-behavior: contain; background: #111a24; border: 1px solid var(--line); border-radius: 26px 26px 0 0; box-shadow: 0 -20px 70px rgb(0 0 0 / 45%); transform: translateY(105%); transition: transform .24s ease; }
     .bottom-sheet.is-open { transform: none; }
+    [data-food-recipe-edit-sheet], [data-food-stats-sheet], [data-food-targets-sheet] { top: 0; display: flex; height: 100dvh; max-height: none; flex-direction: column; padding: max(16px, env(safe-area-inset-top)) 18px max(12px, env(safe-area-inset-bottom)); overflow: hidden; border-radius: 0; transform: translateX(105%); }
+    [data-food-recipe-edit-sheet].is-open, [data-food-stats-sheet].is-open, [data-food-targets-sheet].is-open { transform: none; }
+    [data-food-recipe-edit-sheet] .sheet-handle, [data-food-stats-sheet] .sheet-handle, [data-food-targets-sheet] .sheet-handle { display: none; }
+    .food-recipe-editor__header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .food-recipe-editor__back { display: grid; place-items: center; width: 44px; height: 44px; flex: 0 0 44px; color: var(--text); background: var(--raised); border: 1px solid var(--line); border-radius: 12px; font-size: 24px; }
+    .food-recipe-editor__header h2 { margin: 0; }
+    .food-recipe-editor__header p { margin: 3px 0 0; color: var(--muted); font-size: 10px; line-height: 1.35; }
+    .food-full-page__body { min-height: 0; flex: 1; padding-bottom: 14px; overflow-y: auto; overscroll-behavior: contain; }
+    .food-full-page__footer { flex: 0 0 auto; padding-top: 10px; background: #111a24; }
+    .food-full-page__footer .primary { width: 100%; margin: 0; }
+    .food-editor-section { padding: 14px; margin-bottom: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 17px; }
+    .food-editor-section h3 { margin: 0 0 12px; font-size: 14px; }
+    .food-editor-section > p { margin: -6px 0 12px; color: var(--muted); font-size: 10px; line-height: 1.45; }
+    .food-recipe-basics label:nth-child(-n+3) { grid-column: 1 / -1; }
+    .food-recipe-yield-hint { grid-column: 1 / -1; margin: -4px 0 1px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+    .food-recipe-instruction-field { grid-column: 1 / -1; min-width: 0; }
+    .food-recipe-instruction-field > label { display: block; margin: 0 0 6px; }
+    .food-recipe-instructions-toolbar { display: flex; gap: 8px; margin-bottom: 7px; }
+    .food-recipe-instructions-toolbar button { min-width: 52px; min-height: 44px; padding: 6px 12px; color: var(--text); background: var(--raised); border: 1px solid var(--line); border-radius: 11px; font-size: 13px; }
+    .food-recipe-rich-editor { min-height: 190px; max-height: 44dvh; padding: 12px 14px; overflow-y: auto; outline: none; white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.55 Inter, ui-sans-serif, system-ui, sans-serif; }
+    .food-recipe-rich-editor:focus { border-color: var(--accent); }
+    .food-recipe-rich-editor:empty:before { content: attr(data-placeholder); color: var(--muted); }
+    .food-recipe-rich-editor p, .food-recipe-instructions-output p { margin: 0 0 10px; }
+    .food-recipe-rich-editor ol, .food-recipe-rich-editor ul, .food-recipe-instructions-output ol, .food-recipe-instructions-output ul { padding-left: 23px; margin: 6px 0 12px; }
+    .food-recipe-rich-editor li, .food-recipe-instructions-output li { margin-bottom: 6px; }
+    .food-recipe-instructions-output { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; line-height: 1.6; margin-top: 8px; }
+    .food-recipe-instruction-tip { display: block; margin: 6px 0 0; font-size: 10px; line-height: 1.4; color: var(--muted); }
+    /* Five compact tabs replace the tall stacked recipe form. */
+    .food-recipe-tabs { flex: 0 0 auto; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin-bottom: 12px; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 13px; }
+    .food-recipe-tab { min-width: 0; min-height: 44px; padding: 5px 2px; overflow-wrap: anywhere; color: var(--muted); background: transparent; border: 0; border-radius: 10px; font-size: 10px; font-weight: 700; cursor: pointer; }
+    .food-recipe-tab[aria-selected="true"] { color: #041014; background: var(--accent); }
+    .food-recipe-tabpanel[hidden] { display: none !important; }
+    .food-recipe-image-preview { display: block; width: 100%; max-height: 300px; object-fit: contain; margin: 10px 0; border: 1px solid var(--line); border-radius: 12px; }
+    .food-recipe-detail-image { display: block; width: 100%; max-height: 280px; object-fit: contain; margin: 8px 0 14px; border-radius: 14px; background: var(--raised); }
+    .food-recipe-detail-image[hidden] { display: none; }
+    .food-recipe-image-preview[hidden], .food-recipe-image-remove[hidden], .food-recipe-import-preview[hidden] { display: none !important; }
+    .food-recipe-tab-action { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 46px; padding: 8px 10px; margin: 10px 0; color: var(--accent); background: var(--raised); border: 1px solid var(--line); border-radius: 12px; font-size: 12px; font-weight: 750; }
+    .food-recipe-import-text { width: 100%; min-height: 130px; resize: vertical; line-height: 1.5; }
+    .food-recipe-import-preview { padding: 12px; white-space: pre-line; color: var(--muted); background: var(--raised); border: 1px solid var(--line); border-radius: 12px; font-size: 11px; line-height: 1.5; }
+    .food-add-page__quick-grid { flex: 0 0 auto; margin-top: 10px; margin-bottom: 4px; }
+    .food-add-page__quick-grid .quick-action { min-height: 48px; padding: 6px; grid-template-columns: 32px minmax(0, 1fr); gap: 7px; border-radius: 12px; }
+    .food-add-page__quick-grid .quick-action i { width: 32px; height: 32px; }
+    .food-add-page__quick-grid [data-food-quick="favorites"][aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+    .food-recipe-ingredient-form > .food-recipe-search-row,
+    .food-recipe-ingredient-form > label:has([data-food-recipe-ingredient-food]),
+    .food-recipe-ingredient-form > .food-recipe-ingredient-status,
+    .food-recipe-ingredient-form > .food-recipe-scanner,
+    .food-recipe-ingredient-form > .food-recipe-nutrient-fields,
+    .food-recipe-ingredient-form > .food-recipe-ingredient-note,
+    .food-recipe-ingredient-form > [data-food-recipe-conversion-label] { grid-column: 1 / -1; }
+    .food-recipe-search-row { display: grid; grid-template-columns: minmax(0,1fr) 54px; align-items: end; gap: 9px; min-width: 0; }
+    .food-recipe-search-row label, .food-recipe-search-row input { min-width: 0; width: 100%; }
+    .food-recipe-scan { display: grid; place-items: center; height: 49px; width: 54px; color: var(--accent); background: var(--raised); border: 1px solid var(--line); border-radius: 14px; }
+    .food-recipe-scan svg { width: 26px; height: 26px; }
+    .food-recipe-scanner video { display: block; width: 100%; max-height: 220px; object-fit: cover; border-radius: 12px; }
+    .food-recipe-scanner button { margin-top: 8px; width: 100%; }
+    .food-recipe-nutrient-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; }
+    .food-recipe-nutrient-fields label { min-width: 0; }
+    /* .sheet-form label:last-child spans two columns by default. Override it
+       specifically for the slice-weight pair and the carbohydrate/fat pair. */
+    .food-recipe-basics > label:last-child,
+    .food-recipe-nutrient-fields > label:last-child { grid-column: auto; }
+    .food-recipe-nutrient-fields input { min-width: 0; width: 100%; }
+    .food-recipe-ingredient-note { margin: -3px 0 5px; font-size: 11px; color: var(--muted); line-height: 1.5; }
+    .food-recipe-ingredient-form > label[hidden], .food-recipe-scanner[hidden] { display: none; }
+    .food-recipe-summary { padding: 11px 12px; margin-top: 10px; color: var(--muted); background: var(--raised); border-radius: 12px; font-size: 10px; line-height: 1.5; white-space: pre-line; }
+    .food-recipe-nutrients-repair { display: flex; width: 100%; min-height: 48px; margin-top: 10px; align-items: center; justify-content: center; color: var(--accent); border: 1px solid rgb(59 220 242 / 32%); border-radius: 12px; background: var(--accent-soft); text-align: center; font-size: 12px; font-weight: 700; }
+    .food-recipe-nutrients-repair[hidden] { display: none; }
+    .food-recipe-missing { display: block; margin-top: 5px; color: #edbe7f; font-size: 10px; line-height: 1.4; }
+    .food-recipe-ingredient-status { grid-column: 1 / -1; margin: -3px 0 5px; color: var(--muted); font-size: 12px; line-height: 1.4; }
+    .food-recipe-ingredient-row { display: grid; grid-template-columns: minmax(0, 1fr) 44px 44px; }
+    .food-recipe-ingredient-row > span { color: var(--text); }
+    .food-recipe-ingredient-row button { width: 40px; height: 40px; color: var(--accent); background: var(--raised); border: 0; border-radius: 11px; }
+    .food-target-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    .food-target-field { display: grid; gap: 6px; padding: 12px; color: var(--muted); background: var(--surface); border: 1px solid var(--line); border-radius: 15px; font-size: 10px; }
+    .food-target-field .search { min-width: 0; }
+    .food-meal-limit-list { display: grid; gap: 8px; }
+    .food-meal-limit { display: grid; grid-template-columns: minmax(0, 1fr) 112px; gap: 10px; align-items: center; color: var(--text); font-size: 12px; }
+    .food-page-note { padding: 12px; color: var(--muted); background: var(--accent-soft); border: 1px solid rgb(59 220 242 / 18%); border-radius: 13px; font-size: 10px; line-height: 1.45; }
+    .food-stats-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 12px; }
+    .food-stats-controls label, [data-food-stats-custom] label { display: grid; gap: 5px; color: var(--muted); font-size: 10px; }
+    [data-food-stats-custom] { grid-column: 1 / -1; grid-template-columns: 1fr 1fr; gap: 9px; }
+    [data-food-stats-custom]:not([hidden]) { display: grid; }
+    [data-food-stats-sheet] .sheet-results { max-height: none; }
+    [data-food-add-sheet] { top: 0; height: 100dvh; max-height: none; display: flex; flex-direction: column; padding: max(16px, env(safe-area-inset-top)) 18px max(16px, env(safe-area-inset-bottom)); overflow: hidden; border-radius: 0; transform: translateX(105%); }
+    [data-food-add-sheet].is-open { transform: none; }
+    [data-food-add-sheet] .food-recipe-editor__header { flex: 0 0 auto; margin-bottom: 14px; }
+    [data-food-add-sheet] .food-recipe-editor__header h2 { margin: 0 0 3px; }
+    [data-food-add-sheet] .food-recipe-editor__header p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.4; }
+    .food-add-page__body { display: flex; min-height: 0; flex: 1; flex-direction: column; overflow-y: auto; overscroll-behavior: contain; }
+    /* Same compact viewport for 1 or 100 foods. Grid tracks must not stretch
+       a lone favorite into an oversized row. Only the results area scrolls. */
+    [data-food-add-sheet] .sheet-results {
+      height: min(300px, 38dvh); min-height: 0; max-height: none; flex: 0 0 auto;
+      align-content: start; grid-auto-rows: max-content; padding-bottom: 4px;
+    }
+    .food-search-variants-toggle { width: 100%; min-height: 34px; padding: 5px 12px; color: var(--accent); text-align: left; background: var(--raised); border: 1px solid var(--line); border-radius: 11px; font-size: 10px; font-weight: 700; cursor: pointer; }
+    .food-search-legacy-variant { margin-left: 12px; }
+    .food-search-legacy-variant .sheet-result__main strong { font-size: 12px; }
+    .food-scanner-close { display: flex; width: 100%; min-height: 44px; align-items: center; justify-content: center; gap: 8px; padding: 8px 12px; margin-top: 8px; color: var(--accent); background: var(--raised); border: 1px solid var(--line); border-radius: 12px; font-size: 12px; font-weight: 750; cursor: pointer; }
+    .food-scanner-close > span { font-size: 18px; line-height: 1; }
+    [data-food-add-sheet] [data-food-search-status] { min-height: 17px; margin: 6px 2px 0; color: var(--muted); font-size: 11px; }
+    [data-food-add-sheet] .quick-grid { flex: 0 0 auto; }
+
+    @media (prefers-reduced-motion: reduce) {
+      [data-food-add-sheet], [data-food-recipe-edit-sheet], [data-food-stats-sheet], [data-food-targets-sheet] { transition-duration: .01ms; }
+    }
+
     [data-food-yazio-sheet] .sheet-result { display: flex; align-items: center; gap: 12px; }
     [data-food-yazio-sheet] .sheet-result input { flex: 0 0 20px; width: 20px; height: 20px; }
     [data-food-yazio-sheet] .sheet-result span { flex: 1; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
     [data-yazio-warnings] { white-space: pre-line; max-height: 120px; overflow: auto; }
-    .sheet-handle { width: 42px; height: 4px; margin: 0 auto 16px; background: #435364; border-radius: 99px; }
+    .sheet-handle { width: 42px; height: 5px; margin: 0 auto 16px; background: #52677a; border-radius: 99px; cursor: grab; touch-action: none; }
+    .sheet-handle:active { cursor: grabbing; }
+    .sheet-handle:focus-visible { outline: 2px solid var(--accent); outline-offset: 5px; }
     .bottom-sheet h2 { margin: 0 0 5px; font-size: 21px; }
     .bottom-sheet > p { margin: 0 0 16px; color: var(--muted); font-size: 12px; }
     .quick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 12px; }
@@ -368,15 +500,16 @@
             <div class="sync-stat"><span>Függőben</span><strong data-sync-pending-count>—</strong></div>
           </div>
           <p class="sync-status" data-sync-status role="status" aria-live="polite">Állapot ellenőrzése…</p>
-          <div class="section-head"><h2>Mentés és ellenőrzés</h2></div>
-          <div class="setting"><div class="setting__icon" data-mobile-icon="backup"></div><div><strong>Automatikus helyi mentés</strong><span>Bekapcsolva · internet nélkül is működik</span></div><span>✓</span></div>
-          <div class="setting"><div class="setting__icon" data-mobile-icon="clock"></div><div><strong>Utolsó ellenőrzés</strong><span data-sync-last-check>Még nem ellenőrizve</span></div><span>›</span></div>
+          <div class="section-head"><h2>Élelmiszer-adatbázis</h2></div>
+          <div class="sync-providers">
+            <div class="sync-provider"><span class="sync-provider__icon" aria-hidden="true">🌍</span><div><strong>Open Food Facts</strong><span>Ország/régió választás</span><label for="food-off-region" class="sync-provider__auto">Ország/régió</label><select id="food-off-region" data-food-off-region aria-label="Open Food Facts ország/régió"><option value="hu">Magyarország</option><option value="sk">Szlovákia</option><option value="at">Ausztria</option><option value="de">Németország</option><option value="cz">Csehország</option><option value="pl">Lengyelország</option><option value="ro">Románia</option><option value="gb">Egyesült Királyság</option><option value="us">Egyesült Államok</option><option value="all">Összes ország</option></select></div></div>
+          </div>
           <div class="sync-actions"><button type="button" data-sync-projects>Projektek</button><button type="button" data-sync-refresh>Frissítés</button></div>
           <div class="section-head"><h2>Egészség és napló</h2></div>
           <div class="sync-providers">
-            <div class="sync-provider"><span class="sync-provider__icon" data-mobile-icon="health"></span><div><strong>Health Connect</strong><span>Ételek és víz beolvasása a telefon egészségadataiból</span></div><button type="button" data-health-sync>Beolvasás</button></div>
+            <div class="sync-provider"><span class="sync-provider__icon" data-mobile-icon="health"></span><div><strong>Health Connect</strong><span>Ételek és víz beolvasása a telefon egészségadataiból</span><label class="sync-provider__auto"><input type="checkbox" data-food-health-auto> Automatikus import</label><span class="sync-provider__status" data-food-health-auto-status> még nincs rögzített import</span></div><button type="button" data-health-sync>Beolvasás</button></div>
             <div class="sync-provider"><span class="sync-provider__icon" data-mobile-icon="samsung"></span><div><strong>Samsung Health</strong><span>Vízadatok közvetlen beolvasása vagy Health Connecten át</span></div><button type="button" data-samsung-sync-action>Beolvasás</button></div>
-            <div class="sync-provider"><span class="sync-provider__icon" data-mobile-icon="yazio"></span><div><strong>YAZIO</strong><span>Étkezések közvetlen beolvasása a fiókodból</span></div><button type="button" data-yazio-import>Kapcsolódás</button></div>
+            <div class="sync-provider"><span class="sync-provider__icon" data-mobile-icon="yazio"></span><div><strong>YAZIO</strong><span>Étkezések közvetlen beolvasása a fiókodból</span><label class="sync-provider__auto"><input type="checkbox" data-food-yazio-auto> Automatikus import</label><span class="sync-provider__status" data-food-yazio-auto-status> még nincs rögzített import</span></div><button type="button" data-yazio-import>Kapcsolódás</button></div>
           </div>
           <p class="sync-provider-status" data-yazio-status role="status" aria-live="polite"></p>
           <input type="file" accept=".json,application/json,.csv,text/csv" data-yazio-input hidden>
@@ -392,25 +525,25 @@
 
         <div class="content module-preview" data-page="food" hidden>
           <section data-food-overview>
-          <div class="section-head" style="margin-top:0"><p class="eyebrow">Ételnapló</p><button type="button" class="inbox-badge" data-food-inbox data-count="0">Megosztva velem</button></div><h1 data-food-day-title>Ma</h1><p class="lead" data-food-day-copy></p>
+          <div hidden aria-hidden="true"><span data-food-day-title></span><span data-food-day-copy></span></div>
           <div class="food-datebar"><button type="button" data-food-date-prev aria-label="Előző nap">‹</button><input type="date" data-food-date aria-label="Kiválasztott nap"><button type="button" data-food-date-next aria-label="Következő nap">›</button></div>
           <div class="daily-card">
-            <button class="daily-card__menu" type="button" data-food-summary-menu aria-label="Statisztika és célok">⋮</button>
-            <div class="energy-ring" data-food-energy-ring><div class="energy-ring__value"><strong data-food-energy>0</strong><small data-food-energy-target>2 000 kcal</small></div></div>
+            <button class="energy-ring" type="button" data-food-energy-ring aria-label="Ételnapló statisztika megnyitása"><span class="energy-ring__value"><strong data-food-energy>0</strong><span data-food-energy-target>2 000 kcal</span></span></button>
             <div class="daily-copy"><h2 data-food-message>Kezdjük a napot</h2><span data-food-remaining></span><div class="macro-list">
               <div class="macro"><span>Fehérje</span><div class="progress"><i data-food-protein-bar style="width:0%"></i></div><b data-food-protein>0 g</b></div>
               <div class="macro"><span>Szénhidrát</span><div class="progress"><i data-food-carbohydrate-bar style="width:0%"></i></div><b data-food-carbohydrate>0 g</b></div>
               <div class="macro"><span>Zsír</span><div class="progress"><i data-food-fat-bar style="width:0%"></i></div><b data-food-fat>0 g</b></div>
-            </div></div>
+            </div></div><div class="food-overview-actions"><button type="button" data-food-open-stats>Statisztika</button><button type="button" data-food-open-targets>Napi célok</button></div>
           </div>
           <div class="water-card water-card--button" data-water-open role="button" tabindex="0"><span class="water-card__icon" data-mobile-icon="water"></span><div><strong>Víz</strong><span><b data-water-summary>5 / 8 pohár · 1,25 l</b></span></div><button class="mini-add" data-water-add="250" aria-label="250 milliliter víz hozzáadása">+</button></div>
+          <div class="section-head"><h2>Receptek</h2><div style="display:flex;gap:12px"><button type="button" data-food-open-recipes>Megnyitás</button><button type="button" data-food-overview-new-recipe aria-label="Új recept hozzáadása">＋</button></div></div>
+          <div class="food-recipes" data-food-recipes></div>
           <div class="section-head"><h2>Étkezések</h2></div>
           <div data-food-meals></div>
-          <div class="section-head"><h2>Legutóbbi receptek</h2><button type="button" data-food-open-recipes>Mind</button></div>
-          <div class="food-recipes" data-food-recipes></div>
           </section>
           <section data-food-detail hidden>
             <div class="food-detail-head"><button type="button" data-food-back aria-label="Vissza">‹</button><div><h1 data-food-detail-title>Étkezés</h1><p data-food-detail-copy></p></div><button type="button" class="food-share" data-food-share aria-label="Étkezés megosztása">⌯</button></div>
+            <button class="food-detail-add" type="button" data-food-detail-add>＋ Étel hozzáadása</button>
             <div data-food-entries></div>
           </section>
           <section data-food-recipes-view hidden>
@@ -419,6 +552,7 @@
           </section>
           <section data-food-recipe-detail hidden>
             <div class="food-detail-head"><button type="button" data-food-recipe-back aria-label="Vissza">‹</button><div><h1 data-food-recipe-title>Recept</h1><p data-food-recipe-copy></p></div><button type="button" class="food-share" data-food-recipe-share aria-label="Recept megosztása">⌯</button></div>
+            <img class="food-recipe-detail-image" data-food-recipe-detail-image alt="Recept képe" hidden>
             <div class="food-entry-card" data-food-recipe-content></div>
             <button class="primary module-cta" type="button" data-food-recipe-edit>Recept szerkesztése</button>
             <button class="secondary module-cta" type="button" data-food-recipe-delete>Recept törlése</button>
@@ -426,7 +560,7 @@
         </div>
 
         <div class="content module-preview" data-page="water" hidden>
-          <p class="eyebrow">Egészség</p><h1>Víz</h1><p class="lead" data-water-date>Napi folyadékbevitel</p>
+          <span data-water-date hidden aria-hidden="true"></span>
           <section class="water-hero">
             <div class="water-ring" data-water-ring><div class="water-ring__value"><strong data-water-total>0 ml</strong><span data-water-goal-label>2 000 ml cél</span></div></div>
             <h2 data-water-message>Mindjárt megvan!</h2><p data-water-remaining>Még 750 ml hiányzik a napi célhoz.</p>
@@ -436,12 +570,12 @@
               <button class="water-amount" data-water-add="500"><span>＋</span>500 ml</button>
             </div>
           </section>
-          <div class="section-head"><h2>Heti ritmus</h2><button data-action="water-goal">Cél: 2 l</button></div>
-          <section class="week-card"><div class="week-head"><strong>Átlagosan 1,8 liter</strong><span>5 nap teljesítve</span></div><div class="week-bars">
-            <div class="week-day"><i style="height:72%"></i><span>Cs</span></div><div class="week-day"><i style="height:88%"></i><span>P</span></div><div class="week-day"><i style="height:100%"></i><span>Szo</span></div><div class="week-day"><i style="height:81%"></i><span>V</span></div><div class="week-day"><i style="height:94%"></i><span>H</span></div><div class="week-day"><i style="height:100%"></i><span>K</span></div><div class="week-day is-today"><i data-water-today-bar style="height:62.5%"></i><span>Ma</span></div>
-          </div></section>
-          <div class="section-head"><h2>Mai bevitel</h2><button data-action="water-history">Előzmények</button></div>
-          <div data-water-log></div>
+          <div class="section-head"><h2>Heti folyadékbevitel</h2><button data-action="water-goal">Cél: 2 l</button></div>
+          <section class="week-card"><div class="week-head"><strong data-water-week-average>Átlagosan 0 liter</strong><span data-water-week-completed>0 nap teljesítve</span></div><div class="week-bars" data-water-week-bars></div></section>
+          <div class="section-head"><h2>Vízadatok megőrzése</h2></div>
+          <p class="food-page-note">A Víz napló a telefonon tárolódik, nem része az Ételnapló mentésének. Frissítés vagy adatátvitel előtt készíts külön mentést.</p>
+          <div class="quick-grid"><button class="quick-action" type="button" data-water-export><span>↓</span><strong>Víznapló mentése</strong></button><button class="quick-action" type="button" data-water-restore><span>↻</span><strong>Mentés visszaállítása</strong></button></div>
+          <div data-water-log hidden aria-hidden="true"></div>
         </div>
 
         <div class="content module-preview" data-page="ebook" hidden>
@@ -528,19 +662,24 @@
       <section class="bottom-sheet" data-notifications-sheet role="dialog" aria-modal="true" aria-label="Értesítések" aria-hidden="true" inert>
         <div class="sheet-handle"></div><h2>Értesítések</h2><p>Alkalmazásfrissítések és fontos Grapes-hírek.</p>
         <div class="empty-state" data-notifications-empty>Nincs új értesítés.</div>
+        <article class="notification-card" data-food-share-notification hidden><div class="notification-card__head"><span class="notification-card__icon">✉</span><div><strong>Megosztott receptek és étkezések</strong><p data-food-share-notes></p></div></div><button class="primary" type="button" data-food-share-open>Megosztások megnyitása</button></article>
         <article class="notification-card" data-update-notification hidden>
           <div class="notification-card__head"><span class="notification-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 20h14"/></svg></span><div><strong data-update-title>Frissítés érhető el</strong><p data-update-notes></p></div></div>
           <button class="primary" type="button" data-update-install>Frissítés letöltése</button>
           <p data-update-status role="status" aria-live="polite"></p>
         </article>
       </section>
-      <section class="bottom-sheet" data-food-add-sheet role="dialog" aria-modal="true" aria-label="Étel hozzáadása" aria-hidden="true" inert>
-        <div class="sheet-handle"></div><h2>Étel hozzáadása</h2><p>Keresés vagy gyors bevitel — amelyik most kényelmesebb.</p>
-        <input class="search" data-food-search placeholder="Keresés az ételek között…">
-        <input type="file" accept="image/*" capture="environment" data-food-barcode-photo hidden>
-        <div class="sheet-results" data-food-search-results></div>
-        <p data-food-search-status role="status"></p>
-        <div class="quick-grid"><button class="quick-action" data-food-quick="barcode"><i>▦</i><span>Vonalkód</span></button><button class="quick-action" data-food-quick="photo"><i>◉</i><span>Fotó alapján</span></button><button class="quick-action" data-food-quick="favorites"><i>☆</i><span>Kedvencek</span></button><button class="quick-action" data-food-quick="custom"><i>＋</i><span>Saját étel</span></button></div>
+      <section class="bottom-sheet food-add-page" data-food-add-sheet role="dialog" aria-modal="true" aria-label="Étel hozzáadása" aria-hidden="true" inert>
+        <div class="food-recipe-editor__header"><button type="button" class="food-recipe-editor__back" data-food-add-back aria-label="Vissza">‹</button><div><h2 data-food-add-title>Étel hozzáadása</h2><p data-food-add-copy>Keresés vagy gyors bevitel — amelyik most kényelmesebb.</p></div></div>
+        <div class="food-add-page__body">
+          <input class="search" data-food-search placeholder="Keresés az ételek között…">
+          <div class="quick-grid food-add-page__quick-grid" aria-label="Gyorsműveletek"><button type="button" class="quick-action" data-food-quick="barcode"><i>▦</i><span>Vonalkód</span></button><button type="button" class="quick-action" data-food-quick="photo"><i>◉</i><span>Fotó alapján</span></button><button type="button" class="quick-action" data-food-quick="favorites" aria-pressed="false"><i>☆</i><span>Kedvencek</span></button><button type="button" class="quick-action" data-food-quick="custom"><i>＋</i><span>Saját étel</span></button></div>
+          <input type="file" accept="image/*" capture="environment" data-food-barcode-photo hidden>
+          <div data-food-live-scanner hidden><video data-food-live-video autoplay muted playsinline style="display:block;width:100%;max-height:260px;object-fit:cover;border-radius:14px"></video><button class="food-scanner-close" type="button" data-food-live-stop><span aria-hidden="true">×</span>Olvasó bezárása</button></div>
+          <div class="sheet-results" data-food-search-results></div>
+          <p data-food-search-status role="status"></p>
+          <p class="food-recipe-ingredient-note">A „Fotó alapján” gomb fényképen látható vonalkódot olvas, nem készételt ismer fel.</p>
+        </div>
       </section>
       <section class="bottom-sheet" data-food-custom-sheet role="dialog" aria-modal="true" aria-label="Saját étel létrehozása" aria-hidden="true" inert>
         <div class="sheet-handle"></div><h2>Saját étel</h2><p>Az értékeket 100 grammra vagy 100 milliliterre add meg.</p>
@@ -565,9 +704,9 @@
       </section>
       <section class="bottom-sheet" data-food-inbox-sheet role="dialog" aria-modal="true" aria-label="Megosztva velem" aria-hidden="true" inert>
         <div class="sheet-handle"></div><h2>Megosztva velem</h2><p>Étkezések és receptek, amelyeket jóváhagyásra küldtek neked.</p>
-        <div class="sheet-results" data-food-inbox-items></div>
+        <p data-food-inbox-count role="status"></p><div class="sheet-results" data-food-inbox-items></div>
         <div data-food-inbox-preview hidden>
-          <p data-food-inbox-summary></p>
+          <p data-food-inbox-summary></p><div class="sheet-results" data-food-inbox-details></div>
           <label data-food-inbox-date-label>Dátum<input class="search" type="date" data-food-inbox-date></label>
           <label data-food-inbox-replace-label><input type="checkbox" data-food-inbox-replace> A meglévő étkezés cseréje</label>
           <div class="quick-grid"><button class="quick-action" type="button" data-food-inbox-reject><i>×</i><span>Elutasítás</span></button><button class="quick-action" type="button" data-food-inbox-accept><i>✓</i><span>Elfogadás</span></button></div>
@@ -586,19 +725,16 @@
         <div class="sheet-results"><button class="sheet-result" type="button" data-food-menu="stats"><strong>Statisztika</strong><span>Trendek és átlagok</span></button><button class="sheet-result" type="button" data-food-menu="targets"><strong>Napi célok</strong><span>Kalória és makrók</span></button><button class="sheet-result" type="button" data-food-menu="backup-export"><strong>Biztonsági mentés exportja</strong><span>JSON-fájl letöltése</span></button><button class="sheet-result" type="button" data-food-menu="backup-import"><strong>Biztonsági mentés visszaállítása</strong><span>Korábbi JSON-fájl kiválasztása</span></button></div>
       </section>
       <section class="bottom-sheet" data-food-stats-sheet role="dialog" aria-modal="true" aria-label="Ételnapló statisztika" aria-hidden="true" inert>
-        <div class="sheet-handle"></div><h2>7 napos statisztika</h2><p>A kiválasztott nappal záródó időszak.</p>
-        <div class="sheet-results" data-food-stats-content></div>
+        <div class="food-recipe-editor__header"><button type="button" class="food-recipe-editor__back" data-food-stats-back aria-label="Vissza">‹</button><div><h2>Statisztika</h2><p>Ételnapló- és tápanyagcélok áttekintése</p></div></div>
+        <div class="food-full-page__body"><div class="food-stats-controls"><label>Időszak<select class="search" data-food-stats-range><option value="7">7 nap</option><option value="30">30 nap</option><option value="90">90 nap</option><option value="all">Összes</option><option value="custom">Egyéni időszak</option></select></label><label>Tápanyag<select class="search" data-food-stats-nutrient><option value="energyKcal">Kalória (kcal)</option><option value="protein">Fehérje (g)</option><option value="carbohydrate">Szénhidrát (g)</option><option value="fat">Zsír (g)</option></select></label><div data-food-stats-custom hidden><label>Kezdete<input class="search" type="date" data-food-stats-from></label><label>Vége<input class="search" type="date" data-food-stats-to></label></div></div><p class="food-page-note">A kiválasztott nappal záródó időszak valós naplóadatai.</p>
+          <div class="food-stats-visuals" data-food-stats-visuals></div><div class="sheet-results" data-food-stats-content></div>
+        </div>
       </section>
       <section class="bottom-sheet" data-food-targets-sheet role="dialog" aria-modal="true" aria-label="Napi célok" aria-hidden="true" inert>
-        <div class="sheet-handle"></div><h2>Napi célok</h2><p>A célok ettől a naptól lesznek érvényesek.</p>
-        <div class="sheet-form">
-          <label>Kalória (kcal)<input class="search" type="number" min="1" step="1" data-food-target-energy></label>
-          <label>Fehérje (g)<input class="search" type="number" min="0.01" step="0.01" data-food-target-protein></label>
-          <label>Szénhidrát (g)<input class="search" type="number" min="0.01" step="0.01" data-food-target-carbohydrate></label>
-          <label>Zsír (g)<input class="search" type="number" min="0.01" step="0.01" data-food-target-fat></label>
-        </div>
-        <button class="primary module-cta" type="button" data-food-target-save>Célok mentése</button>
-        <p data-food-target-status role="status"></p>
+        <div class="food-recipe-editor__header"><button type="button" class="food-recipe-editor__back" data-food-targets-back aria-label="Vissza">‹</button><div><h2>Napi célok</h2><p>Kalória- és tápanyagcélok beállítása</p></div></div>
+        <div class="food-full-page__body"><section class="food-editor-section"><h3>Napi tápanyagcélok</h3><div class="food-target-grid"><label class="food-target-field">Kalória (kcal)<input class="search" type="number" min="1" step="1" data-food-target-energy></label><label class="food-target-field">Fehérje (g)<input class="search" type="number" min="0.01" step="0.01" data-food-target-protein></label><label class="food-target-field">Szénhidrát (g)<input class="search" type="number" min="0.01" step="0.01" data-food-target-carbohydrate></label><label class="food-target-field">Zsír (g)<input class="search" type="number" min="0.01" step="0.01" data-food-target-fat></label></div></section>
+          <section class="food-editor-section"><h3>Étkezésenkénti kalóriakeret</h3><p>Opcionális; az üres mező nem korlátozza az étkezést.</p><div class="food-meal-limit-list"><label class="food-meal-limit">Reggeli<input class="search" type="number" min="1" step="1" data-food-meal-limit="breakfast" placeholder="—"></label><label class="food-meal-limit">Tízórai<input class="search" type="number" min="1" step="1" data-food-meal-limit="morningSnack" placeholder="—"></label><label class="food-meal-limit">Ebéd<input class="search" type="number" min="1" step="1" data-food-meal-limit="lunch" placeholder="—"></label><label class="food-meal-limit">Uzsonna<input class="search" type="number" min="1" step="1" data-food-meal-limit="afternoonSnack" placeholder="—"></label><label class="food-meal-limit">Vacsora<input class="search" type="number" min="1" step="1" data-food-meal-limit="dinner" placeholder="—"></label></div></section><p class="food-page-note" data-food-target-effective-note>A módosított célok a kiválasztott naptól lesznek érvényesek.</p><p data-food-target-status role="status"></p></div>
+        <div class="food-full-page__footer"><button class="primary" type="button" data-food-target-save>Célok mentése</button></div>
       </section>
       <section class="bottom-sheet" data-food-health-sheet role="dialog" aria-modal="true" aria-label="Health import" aria-hidden="true" inert>
         <div class="sheet-handle"></div><h2>Health import</h2><p data-food-health-summary>Az import előnézete.</p>
@@ -616,28 +752,74 @@
         <p data-sync-import-status role="status" aria-live="polite"></p>
       </section>
       <section class="bottom-sheet" data-food-recipe-edit-sheet role="dialog" aria-modal="true" aria-label="Recept szerkesztése" aria-hidden="true" inert>
-        <div class="sheet-handle"></div><h2 data-food-recipe-editor-title>Új recept</h2><p>A receptből naplózható étel készül.</p>
-        <div class="sheet-form">
+        <div class="food-recipe-editor__header"><button type="button" class="food-recipe-editor__back" data-food-recipe-editor-back aria-label="Vissza">‹</button><div><h2 data-food-recipe-editor-title>Új recept</h2><p>A receptből naplózható étel készül.</p></div></div>
+        <nav class="food-recipe-tabs" data-food-recipe-tabs role="tablist" aria-label="Recept szerkesztése">
+          <button type="button" class="food-recipe-tab" role="tab" aria-selected="true" data-food-recipe-tab="basics">Alapadatok</button>
+          <button type="button" class="food-recipe-tab" role="tab" aria-selected="false" data-food-recipe-tab="ingredient">Felvétel</button>
+          <button type="button" class="food-recipe-tab" role="tab" aria-selected="false" data-food-recipe-tab="list">Összetevők</button>
+          <button type="button" class="food-recipe-tab" role="tab" aria-selected="false" data-food-recipe-tab="image">Kép</button>
+          <button type="button" class="food-recipe-tab" role="tab" aria-selected="false" data-food-recipe-tab="import">Importálás</button>
+        </nav>
+        <div class="food-full-page__body" data-food-recipe-tab-body>
+        <section class="food-editor-section food-recipe-tabpanel" data-food-recipe-panel="basics" role="tabpanel"><h3>Alapadatok</h3><div class="sheet-form food-recipe-basics">
           <label>Recept neve<input class="search" maxlength="180" data-food-recipe-name-input></label>
           <label>Kategória<input class="search" maxlength="120" value="Saját recept" data-food-recipe-category-input></label>
-          <label>Elkészítés<textarea class="search" rows="3" data-food-recipe-instructions-input></textarea></label>
+          <div class="food-recipe-instruction-field"><label id="food-recipe-instructions-label" for="food-recipe-rich-editor">Elkészítés</label>
+            <div class="food-recipe-instructions-toolbar" data-food-recipe-instructions-toolbar role="toolbar" aria-label="Elkészítés formázása">
+              <button type="button" data-food-instructions-command="bold" aria-label="Félkövér" title="Félkövér"><strong>B</strong></button>
+              <button type="button" data-food-instructions-command="insertOrderedList" aria-label="Számozott lista" title="Számozott lista">1. 2.</button>
+            </div>
+            <div id="food-recipe-rich-editor" class="search food-recipe-rich-editor" role="textbox" aria-multiline="true" aria-labelledby="food-recipe-instructions-label" contenteditable="true" spellcheck="true" data-placeholder="Írd vagy illeszd be az elkészítés lépéseit…" data-food-recipe-instructions-input></div>
+            <small class="food-recipe-instruction-tip">A bekezdések és a vágólapról érkező formázások megmaradnak, ha a forrás átadja őket.</small>
+          </div>
           <label>Kész tömeg (g)<input class="search" type="number" min="0.01" step="0.01" data-food-recipe-weight-input></label>
           <label>Hozam<input class="search" type="number" min="0.01" step="0.01" data-food-recipe-yield-input></label>
           <label>Hozam egysége<select class="search" data-food-recipe-yield-unit><option value="serving">adag</option><option value="piece">darab</option><option value="slice">szelet</option></select></label>
           <label>Egységtömeg (g)<input class="search" type="number" min="0.01" step="0.01" data-food-recipe-unit-weight></label>
-        </div>
-        <h3>Hozzávalók</h3>
-        <div class="sheet-form">
-          <label>Étel<select class="search" data-food-recipe-ingredient-food></select></label>
+          <p class="food-recipe-yield-hint" data-food-recipe-yield-hint role="status" aria-live="polite"></p>
+        </div></section>
+        <section class="food-editor-section food-recipe-tabpanel" data-food-recipe-panel="ingredient" role="tabpanel" hidden><h3>Hozzávaló felvétele</h3><div class="sheet-form food-recipe-ingredient-form">
+          <div class="food-recipe-search-row">
+            <label>Hozzávaló keresése<input class="search" type="search" autocomplete="off" placeholder="Rizs, túró, csirkemell…" data-food-recipe-ingredient-search></label>
+            <button class="food-recipe-scan" type="button" data-food-recipe-scan title="Vonalkód beolvasása" aria-label="Hozzávaló vonalkódjának beolvasása"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M8 9v6M11 8v8M14 9v6M17 10v4"/></svg></button>
+          </div>
+          <div class="food-recipe-scanner" data-food-recipe-live-scanner hidden><video data-food-recipe-live-video autoplay muted playsinline></video><button class="food-scanner-close" type="button" data-food-recipe-live-stop><span aria-hidden="true">×</span>Olvasó bezárása</button></div>
+          <label>Étel<select class="search" data-food-recipe-ingredient-food aria-describedby="food-recipe-ingredient-status"><option value="">Előbb keress hozzávalót…</option></select></label>
+          <p class="food-recipe-ingredient-status" id="food-recipe-ingredient-status" data-food-recipe-ingredient-status role="status" aria-live="polite">Keress, szkennelj, vagy írj be saját hozzávalót.</p>
           <label>Mennyiség<input class="search" type="number" min="0.01" step="0.01" value="100" data-food-recipe-ingredient-amount></label>
           <label>Egység<select class="search" data-food-recipe-ingredient-unit></select></label>
-        </div>
-        <button class="quick-action" type="button" data-food-recipe-ingredient-add><span>Hozzávaló hozzáadása</span></button>
-        <div class="sheet-results" data-food-recipe-ingredients></div>
-        <button class="primary module-cta" type="button" data-food-recipe-editor-save>Recept mentése</button>
-        <p data-food-recipe-editor-status role="status"></p>
+          <label data-food-recipe-conversion-label hidden><span data-food-recipe-conversion-text>1 egység átváltása</span><input class="search" type="number" min="0.001" step="any" placeholder="Például 1 ek = 12 g" data-food-recipe-conversion-amount></label>
+          <div class="food-recipe-nutrient-fields" role="group" aria-label="Hozzávaló szerkeszthető tápértékei">
+            <label>Kalória (kcal)<input class="search" type="number" min="0" step="any" inputmode="decimal" placeholder="Ismeretlen" data-food-recipe-nutrient-energyKcal></label>
+            <label>Fehérje (g)<input class="search" type="number" min="0" step="any" inputmode="decimal" placeholder="Ismeretlen" data-food-recipe-nutrient-protein></label>
+            <label>Szénhidrát (g)<input class="search" type="number" min="0" step="any" inputmode="decimal" placeholder="Ismeretlen" data-food-recipe-nutrient-carbohydrate></label>
+            <label>Zsír (g)<input class="search" type="number" min="0" step="any" inputmode="decimal" placeholder="Ismeretlen" data-food-recipe-nutrient-fat></label>
+          </div>
+          <p class="food-recipe-ingredient-note">100 g / 100 ml alapra megadott értékek. Üres mező = ismeretlen, nem 0. Kanálnál/csipetnél adj meg saját átváltást.</p>
+        </div><button class="quick-action food-recipe-add-ingredient" type="button" data-food-recipe-ingredient-add><span>Hozzávaló hozzáadása</span></button></section>
+        <section class="food-editor-section food-recipe-tabpanel" data-food-recipe-panel="list" role="tabpanel" hidden><h3>Összetevők</h3><div class="sheet-results" data-food-recipe-ingredients></div><button type="button" class="food-recipe-nutrients-repair" data-food-recipe-nutrients-repair hidden>Ismert hozzávalók hiányzó tápértékének pótlása</button><div class="food-recipe-summary" data-food-recipe-summary>Az összesített tápérték a hozzávalók felvétele után jelenik meg.</div></section>        <section class="food-editor-section food-recipe-tabpanel" data-food-recipe-panel="image" role="tabpanel" hidden>
+          <h3>Receptkép</h3><p>A kép helyben tömörítve kerül a receptbe. Legfeljebb 10 MB-os JPG, PNG vagy WebP képet válassz.</p>
+          <input type="file" accept="image/jpeg,image/png,image/webp" data-food-recipe-image-file hidden>
+          <button type="button" class="food-recipe-tab-action" data-food-recipe-image-select>Kép kiválasztása</button>
+          <img class="food-recipe-image-preview" data-food-recipe-image-preview alt="Receptkép előnézete" hidden>
+          <button type="button" class="food-recipe-tab-action food-recipe-image-remove" data-food-recipe-image-remove hidden>Kép eltávolítása</button>
+          <p data-food-recipe-image-status role="status"></p>
+        </section>
+        <section class="food-editor-section food-recipe-tabpanel" data-food-recipe-panel="import" role="tabpanel" hidden>
+          <h3>Recept importálása</h3><p>Illessz be egy HTTPS-linket vagy receptszöveget, vagy válassz receptfájlt. Semmi nem mentődik automatikusan.</p>
+          <textarea class="search food-recipe-import-text" data-food-recipe-import-text placeholder="Receptlink vagy receptszöveg…"></textarea>
+          <button class="food-recipe-tab-action" type="button" data-food-recipe-import-read>Szöveg vagy link beolvasása</button>
+          <input type="file" accept=".txt,.md,.html,.htm,.json,.csv,.xlsx,.xls,.xlsm,.docx,.jpg,.jpeg,.png,.webp,.pdf" data-food-recipe-import-file hidden>
+          <button class="food-recipe-tab-action" type="button" data-food-recipe-import-select>Fájl kiválasztása</button>
+          <p data-food-recipe-import-status role="status" aria-live="polite"></p>
+          <div class="food-recipe-import-preview" data-food-recipe-import-preview hidden></div>
+          <button class="primary" type="button" data-food-recipe-import-apply hidden>Beolvasott recept átvétele</button>
+        </section>
+<p data-food-recipe-editor-status role="status"></p></div>
+        <div class="food-full-page__footer"><button class="primary" type="button" data-food-recipe-editor-save>Recept mentése</button></div>
       </section>
       <input type="file" accept=".json,application/json" data-food-backup-input hidden>
+      <input type="file" accept=".json,application/json" data-water-backup-input hidden>
       <input type="file" accept=".json,application/json" data-food-health-input hidden>
       <div class="toast" role="status"></div>
     </div>
@@ -677,11 +859,6 @@
       closeSheet()
     }
 
-    function openSheet() {
-      sheet.classList.add('is-open')
-      sheetBackdrop.classList.add('is-open')
-    }
-
     function closeSheet() {
       sheet.classList.remove('is-open')
       sheetBackdrop.classList.remove('is-open')
@@ -719,11 +896,24 @@
     document.querySelector('[data-water-open]').addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') showPage('water') })
     document.querySelectorAll('[data-water-add]').forEach(button => button.addEventListener('click', event => { event.stopPropagation(); updateWater(Number(button.dataset.waterAdd)) }))
     document.querySelectorAll('[data-action]').forEach(button => button.addEventListener('click', () => showToast()))
-    fab.addEventListener('click', openSheet)
     sheetBackdrop.addEventListener('click', closeSheet)
     document.addEventListener('keydown', event => { if (event.key === 'Escape') closeSheet() })
     updateWater()
   </script>
   <script type="module" src="../src/android-mobile-shell.js"></script>
+<script>
+  (() => {
+    const key = 'grapes.food.openFoodFacts.region'
+    const select = document.querySelector('[data-food-off-region]')
+    if (!select) return
+    try {
+      const stored = localStorage.getItem(key)
+      if (stored && [...select.options].some(option => option.value === stored)) select.value = stored
+    } catch { /* Storage may be unavailable in private mode. */ }
+    select.addEventListener('change', () => {
+      try { localStorage.setItem(key, select.value) } catch { /* Keep in-memory selection. */ }
+    })
+  })()
+</script>
 </body>
 </html>

@@ -1,25 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { lookupFatSecretProduct, lookupOpenFoodFactsProduct, searchFatSecretProducts, searchOpenFoodFactsProducts } from '../src/food/food-api.js'
+import { lookupOpenFoodFactsProduct, searchOpenFoodFactsProducts } from '../src/food/food-api.js'
 
-test('a FatSecret bridge csak a saját iframe és Google origin egyező nonce-ú válaszát fogadja', async () => {
-  let receive, frame
-  const windowImpl = { addEventListener: (_type, listener) => { receive = listener }, removeEventListener() {} }
-  const documentImpl = {
-    createElement: () => (frame = { contentWindow: {}, remove() {} }),
-    body: { append() {
-      const nonce = new URL(frame.src).searchParams.get('nonce')
-      const data = { type: 'grapes-fatsecret-result', nonce, status: 'ok', products: [] }
-      receive({ source: frame.contentWindow, origin: 'https://example.com', data: { ...data, status: 'error', message: 'foreign' } })
-      receive({ source: {}, origin: 'https://script.googleusercontent.com', data: { ...data, status: 'error', message: 'wrong frame' } })
-      receive({ source: frame.contentWindow, origin: 'https://script.googleusercontent.com', data: { ...data, nonce: 'wrong', status: 'error', message: 'wrong nonce' } })
-      receive({ source: frame.contentWindow, origin: 'https://script.googleusercontent.com', data })
-    } },
-  }
-  const result = await searchFatSecretProducts('alma', { brokerUrl: 'https://script.google.com/macros/s/test/exec', windowImpl, documentImpl })
-  assert.deepEqual(result.products, [])
-})
 
 const response = (body, { ok = true, status = 200 } = {}) => ({ ok, status, async json() { return body } })
 
@@ -60,7 +43,7 @@ test('név alapján keres az Open Food Factsban és kiszűri a használhatatlan 
       return response({ count: 2, page: 1, hits: [
         {
           code: '5991111111111', product_name_hu: 'Magyar mogyorókrém',
-          categories_tags: ['en:spreads', 'en:chocolate-spreads'], product_quantity_unit: 'g',
+          categories_tags: ['en:spreads', 'en:chocolate-spreads'], countries_tags: ['en:hungary'], product_quantity_unit: 'g',
           image_front_small_url: 'https://images.example/product.jpg', last_modified_t: 123,
           nutriments: { 'energy-kcal_100g': 500, proteins_100g: 6 },
         },
@@ -86,21 +69,8 @@ test('a név szerinti keresés validációs és hálózati hibáit jelzi', async
   await assert.rejects(() => searchOpenFoodFactsProducts('müzli', { fetchImpl: async () => response({}, { ok: false, status: 429 }) }), /429/)
 })
 
-test('a FatSecret közvetítő név és vonalkód alapján normalizált terméket ad', async () => {
-  const calls = []
-  globalThis.__GRAPES_FATSECRET_TEST__ = async (kind, value) => {
-    calls.push([kind, value])
-    return [{
-      name: 'Pikok – Baromfi párizsi', barcode: kind === 'barcode' ? value : '', category: 'Márkás élelmiszer', baseUnit: 'g',
-      nutrients: { energyKcal: 210, protein: 12, salt: 1.7 }, source: { type: 'fatsecret', id: 'fs-1' },
-    }]
-  }
-  try {
-    const search = await searchFatSecretProducts('baromfi párizsi')
-    const barcode = await lookupFatSecretProduct('5999999999999')
-    assert.equal(search.products[0].source.type, 'fatsecret')
-    assert.equal(search.products[0].name, 'Pikok – Baromfi párizsi')
-    assert.equal(barcode.barcode, '5999999999999')
-    assert.deepEqual(calls, [['name', 'baromfi párizsi'], ['barcode', '5999999999999']])
-  } finally { delete globalThis.__GRAPES_FATSECRET_TEST__ }
+test('az eltávolított integráció nem exportál FatSecret keresőfüggvényeket', async () => {
+  const api = await import('../src/food/food-api.js')
+  assert.equal('searchFatSecretProducts' in api, false)
+  assert.equal('lookupFatSecretProduct' in api, false)
 })

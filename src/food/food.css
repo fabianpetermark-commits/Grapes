@@ -53,12 +53,17 @@
 .food__chart-bars i.is-compare { background: var(--color-success); }
 .food__donut::before { background: var(--color-bg-surface); }
 .food__warning, .food__stats-note { color: var(--color-warning); }
-.food__off-results { display: grid; gap: .55rem; margin: 0 0 1rem; padding: .75rem; border: 1px solid var(--color-border); border-radius: 14px; background: var(--color-bg-surface); }
+.food__off-results { display: grid; gap: .55rem; max-height: min(70dvh, 720px); margin: 0 0 1rem; padding: .75rem; overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--color-border); border-radius: 14px; background: var(--color-bg-surface); }
 .food__off-results.hidden { display: none; }
 .food__off-result { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .75rem; padding: .65rem; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-bg-raised); }
 .food__off-result img { width: 52px; height: 52px; object-fit: contain; border-radius: 7px; background: #fff; }
 .food__off-result > div { display: grid; gap: .2rem; min-width: 0; }
 .food__off-result span { color: var(--color-text-muted); font-size: .78rem; overflow-wrap: anywhere; }
+.food__usda-original { color: var(--color-text-subtle); font-size: .72rem; font-weight: 400; overflow-wrap: anywhere; }
+.food__usda-state { display: inline-block; padding: .12rem .38rem; border: 1px solid currentColor; border-radius: 999px; font-size: .62rem; font-style: normal; vertical-align: .12rem; }
+.food__usda-state--raw { color: var(--color-success); }
+.food__usda-state--cooked { color: var(--color-warning); }
+.food__catalog-more { width: 100%; }
 
 @media (max-width: 620px) {
   .food__header-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; max-width: none; gap: .5rem; }
@@ -193,4 +198,27 @@ html.is-grapes-android-module .food__health-actions .btn { width: 100%; min-widt
 @media (max-width: 620px) {
   .food__diary-catalog-search { align-items: stretch; }
   .food__diary-catalog-search label, .food__diary-catalog-search .btn { flex: 1 1 100%; width: 100%; }
+}
+
+/* v23 Android: recipe controls must remain readable on narrow screens. */
+@media (max-width: 620px) {
+  html.is-grapes-android-module .food__ingredient-builder > div:first-of-type {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+  html.is-grapes-android-module .food__ingredient-builder > div:first-of-type > *,
+  html.is-grapes-android-module .food__recipe-actions > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+  html.is-grapes-android-module .food__ingredient-builder .btn,
+  html.is-grapes-android-module .food__recipe-actions .btn {
+    white-space: normal;
+    overflow-wrap: break-word;
+    min-height: 44px;
+  }
+  html.is-grapes-android-module .food__recipe-actions {
+    flex-wrap: wrap;
+  }
 }

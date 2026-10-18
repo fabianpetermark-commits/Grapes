@@ -9,6 +9,8 @@ import {
   foodBackupFromJson,
   foodBackupToJson,
   macroEnergyWarning,
+  missingRecipeNutrients,
+  normalizeRecipe,
   normalizeDiaryEntry,
   normalizeFoodItem,
   normalizeFoodProject,
@@ -164,4 +166,74 @@ test('a projekt betöltése elutasítja a hiányzó alapanyagra hivatkozó recep
     createdAt: '2026-10-12T10:00:00.000Z',
   }]
   assert.throws(() => normalizeFoodProject(project), /Hiányzó recept-hozzávaló.*food-missing/)
+})
+
+
+test('a recept szeletsúlya a kész tömegből és a hozamból számolódik', () => {
+  const result = calculateRecipeFood({
+    id: 'recipe-bread-weight', foodId: 'food-bread-weight', ownerProfileId: profile.id,
+    name: 'Kenyér', ingredients: [{ id: 'ingredient-bread-weight', foodId: chicken.id, amount: 100, unit: 'g' }],
+    preparedWeight: 1450, yieldCount: 25, yieldUnit: 'slice', averageUnitWeight: 25,
+  }, [chicken])
+  assert.equal(result.recipe.averageUnitWeight, 58)
+  assert.equal(result.food.servings[0].grams, 58)
+})
+
+test('puha kenyér: üres hozam esetén a 750 g kész tömeg és a 25 g-os szelet automatikusan 30 szeletet ad', () => {
+  const raw = {
+    id: 'bread-inferred', foodId: 'bread-food', ownerProfileId: profile.id, name: 'Puha kenyér',
+    ingredients: [{ id: 'bread-flour', foodId: chicken.id, amount: 400, unit: 'g' }],
+    preparedWeight: 750, yieldCount: null, yieldUnit: 'slice', averageUnitWeight: 25,
+    createdAt: '2026-10-17T12:00:00.000Z',
+  }
+  const normalized = normalizeRecipe(raw)
+  assert.equal(normalized.yieldCount, 30)
+  assert.equal(normalized.averageUnitWeight, 25)
+  const calculated = calculateRecipeFood(raw, [chicken])
+  assert.equal(calculated.recipe.yieldCount, 30)
+  assert.equal(calculated.totalNutrients.energyKcal, 480)
+  assert.equal(calculated.food.nutrients.energyKcal, 64)
+  assert.equal(calculated.food.servings[0].unit, 'slice')
+  assert.equal(calculated.food.servings[0].grams, 25)
+  const logged = normalizeDiaryEntry({
+    id: 'bread-logged', profileId: profile.id, amount: 1, unit: 'slice',
+    servingId: calculated.food.servings[0].id, mealType: 'breakfast',
+    occurredAt: '2026-10-17T12:00:00.000Z', createdAt: '2026-10-17T12:00:00.000Z',
+  }, calculated.food)
+  assert.equal(logged.snapshot.nutrients.energyKcal, 16)
+  assert.equal(logged.snapshot.nutrients.protein, 3.07)
+  assert.equal(logged.snapshot.nutrients.carbohydrate, 0)
+  assert.equal(logged.snapshot.nutrients.fat, 0.27)
+})
+
+test('hiányzó recept-tápérték: megnevezi a hozzávalót, de nem hamisít 0 kcal-t', () => {
+  const sugar = normalizeFoodItem({
+    id: 'sugar-test', name: 'Cukor (kézzel felvett)',
+    nutrients: { energyKcal: null, protein: 0, carbohydrate: 100, fat: null },
+    createdAt: '2026-10-17T12:00:00.000Z',
+  })
+  const ingredients = [
+    { id: 'i-flour', foodId: chicken.id, amount: 150, unit: 'g' },
+    { id: 'i-sugar', foodId: sugar.id, amount: 8, unit: 'g' },
+  ]
+  assert.deepEqual(missingRecipeNutrients(ingredients, [chicken, sugar]),
+    [{ foodId: sugar.id, name: sugar.name, keys: ['energyKcal', 'fat'] }])
+  const result = calculateRecipeFood({
+    id: 'bread-missing', foodId: 'bread-missing-food', ownerProfileId: profile.id,
+    name: 'Kenyér kevés adattal', ingredients, preparedWeight: 140,
+  }, [chicken, sugar])
+  assert.equal(result.totalNutrients.energyKcal, null)
+  assert.equal(result.totalNutrients.fat, null)
+  assert.ok(result.totalNutrients.protein > 0)
+  assert.ok(result.totalNutrients.carbohydrate > 0)
+})
+
+test('az önállóan megadott hozam marad az irányadó, a súlyát ebből számolja vissza', () => {
+  const result = normalizeRecipe({
+    id: 'bread-manual-yield', foodId: 'bread-manual-food', ownerProfileId: profile.id,
+    name: 'Vágott kenyér', ingredients: [{ id: 'i', foodId: chicken.id, amount: 150, unit: 'g' }],
+    preparedWeight: 750, yieldCount: 25, averageUnitWeight: 25, yieldUnit: 'slice',
+  })
+  assert.equal(result.yieldCount, 25)
+  assert.equal(result.averageUnitWeight, 30)
 })

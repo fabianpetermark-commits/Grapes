@@ -74,3 +74,26 @@ test('Rejects unrelated file names or non-backup content before opening picker',
     assert.equal(bridge.calls.length,0)
   } finally {bridge.dispose()}
 })
+
+test('separate named originals and Water backup share the verified Android file picker',async()=>{
+  const bridge=mockAndroidBridge()
+  try{
+    const food=JSON.stringify({grapesFoodBackup:true,version:1,data:{profile:{id:'synthetic'}}})
+    const first=await saveAndroidJsonBackup('grapes-etelnaplo-2026-10-18-helyi.json',food)
+    assert.match(first,/-helyi\.json$/)
+    assert.equal(bridge.calls.at(-1).method,'finishFoodBackupExport')
+  }finally{bridge.dispose()}
+  const waterBridge=mockAndroidBridge()
+  try{
+    const water=JSON.stringify({grapesWaterBackup:true,version:1,data:{
+      '2026-10-18':{goal:2000,entries:[{id:'safe',amount:500,at:'2026-10-18T10:00:00Z'}]},
+    }})
+    const output=await saveAndroidJsonBackup('grapes-viznaplo-2026-10-18.json',water)
+    assert.match(output,/viznaplo/)
+    assert.equal(waterBridge.parts.join(''),water)
+    assert.equal(waterBridge.calls.at(-1).method,'finishFoodBackupExport')
+    await assert.rejects(saveAndroidJsonBackup('grapes-viznaplo-2026-10-18.json',
+      JSON.stringify({grapesFoodBackup:true})),/formátuma/)
+    await assert.rejects(saveAndroidJsonBackup('grapes-etelnaplo-2026-10-18-drive.json',water),/formátuma/)
+  }finally{waterBridge.dispose()}
+})

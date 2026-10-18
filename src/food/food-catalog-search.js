@@ -1,6 +1,8 @@
 import {
-  lookupFatSecretProduct, lookupOpenFoodFactsProduct, searchFatSecretProducts, searchOpenFoodFactsProducts,
+  lookupOpenFoodFactsProduct, searchOpenFoodFactsProducts,
 } from './food-api.js'
+import { searchVerifiedUsdaFoods } from './usda-foods.js'
+import { searchOnlineUsdaFoods } from './usda-online.js'
 
 // Network searches never mutate Food projects. Selection and saving happen separately in the UI.
 const normalizeQuery = value => String(value ?? '').trim().replace(/\s+/g, ' ')
@@ -28,23 +30,22 @@ export function mergeFoodCatalogResults(groups = []) {
 
 export async function searchFoodCatalog(query, {
   offSearch = searchOpenFoodFactsProducts,
-  fatSecretSearch = searchFatSecretProducts,
   offBarcode = lookupOpenFoodFactsProduct,
-  fatSecretBarcode = lookupFatSecretProduct,
+  usdaSearch = searchOnlineUsdaFoods,
 } = {}) {
   const term = normalizeQuery(query)
   if (term.length < 2 || term.length > 120)
     throw new Error('Legalább 2, legfeljebb 120 karakterrel keress.')
   const isBarcode = barcodePattern.test(term)
   const sources = [
+    ...(!isBarcode ? [
+      { id: 'usda', label: 'USDA · ellenőrzött offline', search: async () => { const products = searchVerifiedUsdaFoods(term); return { count: products.length, products } } },
+      { id: 'usda-online', label: 'USDA · online', search: () => usdaSearch(term) },
+    ] : []),
     { id: 'openfoodfacts', label: 'Open Food Facts',
       search: () => isBarcode
         ? offBarcode(term).then(product => ({ count: 1, products: [product] }))
-        : offSearch(term) },
-    { id: 'fatsecret', label: 'FatSecret',
-      search: () => isBarcode
-        ? fatSecretBarcode(term).then(product => ({ count: 1, products: [product] }))
-        : fatSecretSearch(term) },
+        : offSearch(term) }
   ]
   const settled = await Promise.allSettled(sources.map(source => source.search()))
   const providers = sources.map((source, index) => {
