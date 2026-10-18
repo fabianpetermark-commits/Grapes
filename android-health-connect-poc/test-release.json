@@ -1,5 +1,5 @@
 {
-  "versionCode": 8,
-  "versionName": "0.8.0",
-  "notes": "Grapes TEST v0.8.0: A receptek Elkészítés mezője megtartja a bemásolt sortöréseket, bekezdéseket és a támogatott formázást (félkövér, számozott lista). Az új szerkesztő biztonságosan kezeli a beillesztett szöveget, a formázás mentés és újranyitás után is látható. A korábbi TEST-funkciók és az adatok megmaradnak. Ha a PDF-olvasó nem másol formázást, az nem állítható vissza automatikusan. A stabil Grapes változatlan."
+  "versionCode": 9,
+  "versionName": "0.9.0",
+  "notes": "Grapes TEST 0.9.0: Az Ételnapló kalóriaköre most erősebb, látványos neon-cyan fényt kapott. A gyűrű 0%-nál is ciánnal világít, 50%-nál valódi félkörös kitöltést és 100%-nál erősebb ragyogást mutat. Az Elfogyasztva felirat és a napi célérték tisztábban olvasható; beállítatlan célnál Nincs cél jelenik meg. A korábbi TEST-adatok, az elkülönített TEST Drive és a többi modul változatlan. Telepítsd frissítésként a Grapes TEST 0.8.0-ra, ne töröld az alkalmazás adatait."
 }
