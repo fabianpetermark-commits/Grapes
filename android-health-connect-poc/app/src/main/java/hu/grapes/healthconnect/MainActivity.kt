@@ -382,7 +382,7 @@ class MainActivity : ComponentActivity() {
             return
         }
         val name = message.optJSONArray("args")?.optString(0).orEmpty()
-        if (!Regex("^grapes-etelnaplo-\\d{4}-\\d{2}-\\d{2}\\.json$").matches(name)) {
+        if (!Regex("^grapes-(?:etelnaplo-\\d{4}-\\d{2}-\\d{2}(?:-(?:helyi|drive))?|viznaplo-\\d{4}-\\d{2}-\\d{2})\\.json$").matches(name)) {
             sendError(requestId, "Érvénytelen biztonsági mentés fájlnév.")
             return
         }
