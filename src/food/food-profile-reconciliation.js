@@ -108,9 +108,33 @@ export function previewFoodSameAccountAdoption(localInput, remoteInput, verified
   migrated.recipes = migrated.recipes.map(recipe => ({
     ...recipe, ownerProfileId: recipe.ownerProfileId === oldId ? newId : recipe.ownerProfileId,
   }))
+  const localYazioBatches = local.importBatches.filter(batch => batch.source === 'yazio')
+  const remoteYazioBatches = remote.importBatches.filter(batch => batch.source === 'yazio')
+  // Multiple historical imports require explicit mapping between their source
+  // archives. Never guess which remote undo batch should own another archive.
+  if (localYazioBatches.length > 1 || remoteYazioBatches.length > 1 ||
+      (localYazioBatches.length && !remoteYazioBatches.length)) {
+    throw new Error('Több eltérő YAZIO-importköteg: kézi archiválás és párosítás szükséges.')
+  }
   migrated.importBatches = migrated.importBatches.map(batch => {
     if (batch.profileId !== oldId) throw new Error('Idegen profilhoz tartozó importköteg.')
     const result = { ...batch, profileId: newId }
+    // Keep *both* unmodified exporter archives if a newer export contains
+    // additional raw days, product updates or a different metadata range.
+    // The active undo batch and all its entry references remain the Drive ones.
+    if (batch.source === 'yazio' && localYazioBatches.length) {
+      const localBatch = localYazioBatches[0]
+      if (!localBatch.sourceArchive || !batch.sourceArchive) {
+        throw new Error('Hiányzó YAZIO-forrásarchívum; automatikus migráció nem engedélyezett.')
+      }
+      if (!same(localBatch.sourceArchive, batch.sourceArchive)) {
+        result.additionalSourceArchives = [
+          ...(Array.isArray(batch.additionalSourceArchives) ? batch.additionalSourceArchives : []),
+          { importedAt: localBatch.importedAt || '', exportFingerprint: localBatch.exportFingerprint || '',
+            sourceArchive: structuredClone(localBatch.sourceArchive) },
+        ]
+      }
+    }
     if (batch.source === 'yazio') {
       const previousEntriesById = new Map(remote.diaryEntries.map(item => [item.id, item]))
       const entriesById = new Map(migrated.diaryEntries.map(item => [item.id, item]))
