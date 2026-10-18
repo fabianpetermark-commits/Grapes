@@ -1910,6 +1910,10 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
 
   async function importBackup(event) {
     const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''
+    if (project?.syncState?.reconciliation?.status === 'pending') {
+      showToast('Előbb hagyd jóvá vagy állítsd vissza az összevezetést, mert a backup importálása felülírná a helyi biztonsági folyamatot.')
+      return
+    }
     if (!file || !window.confirm('A mentés visszaállítása lecseréli a jelenlegi ételnaplót. Folytatod?')) return
     try {
       const restored = foodBackupFromJson(await file.text(), profile.id)
