@@ -125,3 +125,46 @@ test('first upload checks for an already existing remote diary to prevent duplic
   assert.throws(()=>assertFoodDriveCreateSafe([{id:'existing'}]),/Már létezik Food-napló/)
   assert.doesNotThrow(()=>assertFoodDriveCreateSafe(null))
 })
+
+test('production-shaped native Health Connect backup with unset goals and unsynced local state remains intact', () => {
+  // Structure modeled after a user-supplied production backup. All identifiers,
+  // dates and nutritional values here are deliberately synthetic.
+  const identity = { id:'dummy-production-profile', name:'Fixture User', email:'fixture@example.invalid', photo:'' }
+  const sourceId='healthconnect:com.example.health:synthetic-record'
+  const record={
+    id:'entry-synthetic-native-health',profileId:identity.id,mealType:'breakfast',
+    occurredAt:'2026-04-02T08:15:00.000Z',amount:1,unit:'serving',servingId:'',
+    note:'Health-import · com.example.health',
+    snapshot:{
+      foodId:'',name:'Reggeli',category:'Health Connect',
+      source:{type:'manual',id:sourceId,revision:'',attribution:'com.example.health'},
+      baseAmount:1,baseUnit:'serving',
+      nutrients:{energyKcal:410,protein:17.5,carbohydrate:39.1,fat:21.6,
+        fiber:null,sugar:null,saturatedFat:null,salt:null,extras:{}},
+    },
+    externalKey:sourceId,createdAt:'2026-04-02T12:00:00.000Z',
+    updatedAt:'2026-04-02T12:00:00.000Z',
+  }
+  const backup={
+    grapesFoodBackup:true,version:FOOD_BACKUP_VERSION,exportedAt:'2026-04-03T10:00:00.000Z',
+    data:{
+      version:FOOD_PROJECT_VERSION,profile:identity,
+      targets:[{id:'target-synthetic',effectiveFrom:'2026-04-01',
+        values:{energyKcal:null,protein:null,carbohydrate:null,fat:null}}],
+      customFoods:[],recipes:[],diaryEntries:[record],favorites:[],recentFoods:[],
+      recipeLibraries:[],importBatches:[],sharingContacts:[],processedShareIds:[],
+      syncState:{localDirty:true},settings:{},
+    },
+  }
+  const restored=foodBackupFromJson(JSON.stringify(backup),identity.id)
+  assert.equal(restored.targets[0].values.energyKcal,null)
+  assert.equal(restored.diaryEntries.length,1)
+  assert.equal(restored.diaryEntries[0].snapshot.baseUnit,'serving')
+  assert.equal(restored.diaryEntries[0].snapshot.source.id,sourceId)
+  assert.equal(restored.diaryEntries[0].externalKey,sourceId)
+  assert.equal(restored.diaryEntries[0].snapshot.nutrients.fiber,null)
+  assert.equal(restored.syncState.localDirty,true)
+  assert.deepEqual(foodBackupFromJson(foodBackupToJson(restored),identity.id),restored)
+  assert.equal(chooseFoodDriveProject([{id:'some-other-drive-project'}],
+    {localProject:restored}).candidate,null)
+})
