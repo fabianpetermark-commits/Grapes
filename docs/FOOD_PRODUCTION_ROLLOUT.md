@@ -15,7 +15,7 @@
 - ✅ A Food-v2 sémát szimuláló, *fiktív* régi éles projekt betöltése, normalizálása, teljes Food JSON backup/export-import round-trip: célok, alapanyagok, receptek, naplóbejegyzések, FatSecret örökölt forrás, YAZIO-forrásmetaadatok, eredeti számadatok, `null` tápértékek, importkötegek és kedvencek.
 - ✅ A helyi Food-napló és összekapcsolatlan Drive-fájlok **nem választhatók / írhatók felül automatikusan**; több távoli projekt vagy hiányzó korábbi kötés esetén leáll az automatikus kiválasztás. `src/food/food-drive-safety.js` és `tests/food-production-migration.test.js`.
 - ✅ GitHub Actions `Food production staging validation`: `npm test`, Android web build, recept- és mobil Chromium, Android `assembleDebug`; YAZIO és keresés külön CI-je is sikeres.
-- ⚠️ A szimulált adatokat **nem** szabad a felhasználó valódi mentésének tekinteni. A tényleges éles Food backupot még ellenőrizni kell, **nem** kerülhet a nyilvános GitHub repóba / workflow logba.
+- ✅ Valódi éles Food backup exportja és a staging adatfeldolgozóval végzett privát körteszt is megtörtént. A felhasználó valós mentései és azonosítói **nem** kerültek a GitHub repóba / workflow logba. A publikus regressziós tesztek továbbra is kizárólag fiktív adatokat használnak.
 - ⚠️ A víznapló nem része a Food JSON mentésének: a telefonon a `grapes-water-v1` localStorage-kulcsban tárolódik, ezért alkalmazást törölni / adatait törölni tilos az átállás során. A külön vízelőzménymentés vagy teljes értékű visszaállítás még nincs igazolva.
 - ⚠️ Ha **azonos, ismert Drive fájlt** két eszköz párhuzamosan szerkeszt, a jelenlegi Drive PATCH még nem alkalmaz optimista verzióellenőrzést. Ezt a forgatókönyvet release előtt le kell kezelni vagy egy eszközre kell korlátozni, és valós környezetben ellenőrizni.
 
@@ -37,6 +37,15 @@
 - **Korábbi v23 mentésjavítás:** a staging ágba már átvezetve, a natív Android Mentés másként funkció megőrzésével, stabil alkalmazásazonosítóval.
 - **Korlát:** a távoli ellenőrzés és az azt követő Drive-írás nem egyetlen szerveroldali tranzakció; egyidejű, pillanatnyi versenyhelyzetet nem zár ki. A két eszközös ütközési teszt / pontos revízióbiztos mentés továbbra is kiadási kapu.
 - **Víznapló:** a Food JSON nem tartalmazza. Az újraprogramozás a `grapes-water-v1` localStorage-t változatlanul kezeli, de a helyi vízelőzmények külön exportja és valós készülékes összevetése nincs kész.
+
+## Két profillal készült valós mentések összevetése (2026-10-18)
+
+- A korábbi telefonos Food backup 1 Health Connect-étkezést tartalmazott. Az új, ugyanazon a napon exportált telefonos backup már 1044 étkezést tartalmaz: ugyanaz az 1 Health Connect + 1043 YAZIO-import.
+- A korábban letöltött Drive Food projekt 1048 étkezést tartalmaz: a telefonon megtalálható 1044 valamennyi logikai étkezése megegyezik; a Drive 4 további étkezést, 2 mentett ételt és a korábbi napi célértékeket őrzi. Az étkezések összevetése stabil forrásazonosítóval, az eredeti YAZIO rekordazonosítójával és a tápérték-/időpont-/mennyiségadatokkal történt.
+- Különböző profilazonosítók szerepelnek ugyanahhoz a Google-emailhez: a Drive Google permission ID-t, a helyi backup emailt használ. A YAZIO `externalKey`, `origin.profileId`, `importBatches.profileId` és `entryFingerprints` konzisztenciáját egyszerre kell módosítani, nem elég a látható `profile.id` átírása.
+- A második telefonos export **újabb, nem teljesen azonos** YAZIO-forrásarchívumot tartalmaz: a naplózási rekordok megegyeznek, de az archívumban plusz 2 raw day és egy eltérő termék-metaadat található. A `src/food/food-profile-reconciliation.js` dry-run ezért az eredeti Drive-importköteget megtartva archiválja a második forrásarchívumot is a `additionalSourceArchives` mezőbe. Nem vállal semmilyen automatikus Drive-írást.
+- A helyi előzmények egyezésének, az eredeti YAZIO-visszavonási lenyomatoknak, a Google email-egyezésnek, a külön beállított céloknak és az egyedileg létrehozott helyi ételeknek **fail-closed** ellenőrzése van; bizonytalan esetben a migráció megáll. A publikus tesztek fiktív adatokkal futnak.
+- **Még nincs éles automatikus migráció vagy jóváhagyási képernyő.** A különválasztott forrásállapot biztonságos mentése, a felhasználói jóváhagyás, valamint a helyi és Drive-oldali revízióvédett commit és a Víz napló külön készülékes mentési próbája szükséges a teljes Food-kiadás előtt.
 
 ## Release-kapu
 
