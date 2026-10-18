@@ -13,7 +13,8 @@ import { createMobileFoodController } from './food/food-mobile.js'
 import { createYazioApiPanel } from './food/yazio-api-panel.js'
 import { registerFoodSharing, sendMealShare, sendRecipeShare } from './food/food-sharing-client.js'
 import { hydrateMobileIcons, mobileIconSvg } from './android-mobile-icons.js'
-import { getAndroidAppUpdate, installAndroidAppUpdate, isGrapesAndroidApp, openAndroidHealthConnectSettings } from './android-bridge.js'
+import { getAndroidAppUpdate, installAndroidAppUpdate, isGrapesAndroidApp, openAndroidHealthConnectSettings, saveAndroidJsonBackup } from './android-bridge.js'
+import { waterBackupToJson, waterBackupFromJson, readWaterStoreStrict, waterBackupSummary } from './water/water-backup.js'
 import {
   isMobileShareableBook,
   isTrustedPairingMessage,
@@ -933,6 +934,46 @@ function addWater(amount) {
   showToast(`${formatWater(amount)} víz hozzáadva és mentve.`)
 }
 
+async function exportWaterBackup() {
+  try {
+    const json = waterBackupToJson(localStorage)
+    const filename = `grapes-viznaplo-${dateKey()}.json`
+    if (isGrapesAndroidApp()) {
+      await saveAndroidJsonBackup(filename, json)
+      showToast('A teljes Víz napló mentése elkészült.')
+    } else {
+      const blob = new Blob([json], {type:'application/json'})
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url; link.download = filename
+      document.body.append(link); link.click(); link.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+      showToast('A Víz napló letöltését elindítottuk.')
+    }
+  } catch (error) { showToast(error?.message || 'A víznapló mentése nem sikerült.') }
+}
+async function inspectWaterBackup(event) {
+  const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''
+  if (!file) return
+  try {
+    if (file.size > 80 * 1024 * 1024) throw new Error('A víznapló-mentés túl nagy.')
+    const restored = waterBackupFromJson(await file.text())
+    const old = readWaterStoreStrict(localStorage)
+    const stats = waterBackupSummary(restored)
+    const current = waterBackupSummary(old)
+    if (!window.confirm(`Víz napló visszaállítása? A fájlban ${stats.days} nap és ${stats.entries} bejegyzés, a telefonon ${current.days} nap és ${current.entries} bejegyzés van. A jelenlegi vízadatok lecserélődnek. Csak saját biztonsági mentésből folytasd.`)) return
+    // Keep a persistent recovery checkpoint and verify it before any writes.
+    const recovered = JSON.stringify(old)
+    localStorage.setItem('grapes-water-recovery-v1', recovered)
+    if (localStorage.getItem('grapes-water-recovery-v1') !== recovered) throw new Error('A régi víznapló biztonsági másolata nem ellenőrizhető.')
+    localStorage.setItem(WATER_STORE_KEY, JSON.stringify(restored))
+    const actual = readWaterStoreStrict(localStorage)
+    if (JSON.stringify(actual) !== JSON.stringify(restored)) throw new Error('A víznapló visszaállítása nem igazolható.')
+    renderWater()
+    showToast('A víznapló visszaállítva; a korábbi állapot külön megmaradt.')
+  } catch (error) { showToast(error?.message || 'A Víz napló visszaállítása nem sikerült.') }
+}
+
 function changeWaterGoal() {
   const { day } = currentWaterDay()
   const entered = window.prompt('Napi vízcél milliliterben:', String(day.goal))
@@ -1036,6 +1077,10 @@ $('[data-water-open]').addEventListener('click', event => { if (!event.target.cl
 $('[data-water-open]').addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') showPage('water') })
 $$('[data-water-add]').forEach(button => button.addEventListener('click', event => { event.stopPropagation(); addWater(Number(button.dataset.waterAdd)) }))
 $('[data-action="water-goal"]').addEventListener('click', changeWaterGoal)
+$('[data-water-export]')?.addEventListener('click', exportWaterBackup)
+$('[data-water-restore]')?.addEventListener('click', () => $('[data-water-backup-input]')?.click())
+$('[data-water-backup-input]')?.addEventListener('change', inspectWaterBackup)
+
 $('[data-health-sync]').addEventListener('click', () => openSyncImport('health'))
 $$('[data-samsung-sync-action]').forEach(button => button.addEventListener('click', () => openSyncImport('samsung')))
 const yazioApiPanel = createYazioApiPanel({ openSheet, closeSheet,
