@@ -52,7 +52,7 @@ test('accessible stats button reports real calories/goal and supports reduced mo
   assert.match(html, /class="energy-ring__eyebrow">Elfogyasztva/)
   assert.match(html, /data-food-energy-target>Nincs cél<\/span>/)
   assert.match(mobile, /hasEnergyGoal \? \`\/ \$\{number\(energyGoal\)\} kcal\` : 'Nincs cél'/)
-  assert.match(mobile, /data-food-energy-ring'\]\)\.addEventListener\('click', openStats\)/)
+  assert.ok(mobile.includes("$('[data-food-energy-ring]').addEventListener('click', openStats)"))
   assert.match(styles, /font-size:\s*11px/)
   assert.match(styles, /prefers-reduced-motion:\s*reduce/)
   assert.match(styles, /:focus-visible\s*\{/)
