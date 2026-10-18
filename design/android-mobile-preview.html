@@ -187,12 +187,104 @@
     .module-tab.is-active { color: var(--text); background: var(--raised); box-shadow: 0 5px 15px rgb(0 0 0 / 22%); }
     .daily-card { position: relative; display: grid; grid-template-columns: 106px minmax(0, 1fr); gap: 18px; align-items: center; padding: 17px; background: linear-gradient(145deg, rgb(59 220 242 / 11%), var(--surface)); border: 1px solid rgb(59 220 242 / 24%); border-radius: 22px; }
     .daily-card__menu { position: absolute; top: 5px; right: 5px; width: 36px; height: 36px; color: var(--muted); background: transparent; border: 0; border-radius: 11px; }
-    .energy-ring { display: grid; place-items: center; width: 106px; height: 106px; background: conic-gradient(var(--accent) 0 71%, #1d2b38 71% 100%); border-radius: 50%; }
-    .energy-ring::after { grid-area: 1 / 1; width: 78px; height: 78px; content: ""; background: var(--surface); border-radius: 50%; }
-    .energy-ring__value { z-index: 1; grid-area: 1 / 1; text-align: center; }
-    .energy-ring__value strong, .energy-ring__value small { display: block; }
-    .energy-ring__value strong { font-size: 21px; letter-spacing: -.04em; }
-    .energy-ring__value small { margin-top: 2px; color: var(--muted); font-size: 9px; }
+    /* Food daily calories: a vivid cyan neon track, even with 0% progress.
+       JavaScript only supplies --energy-progress; do not use inline backgrounds. */
+    .daily-card { grid-template-columns: 112px minmax(0, 1fr); gap: 14px; }
+    .energy-ring {
+      --energy-progress: 0%;
+      --energy-track: #147e96;
+      --energy-fill: #91ffff;
+      position: relative;
+      display: grid;
+      place-items: center;
+      flex: 0 0 112px;
+      width: 112px;
+      height: 112px;
+      padding: 0;
+      color: var(--text);
+      cursor: pointer;
+      border: 0;
+      border-radius: 50%;
+      background: conic-gradient(from -90deg,
+        var(--energy-fill) 0% var(--energy-progress),
+        var(--energy-track) var(--energy-progress) 100%);
+      box-shadow:
+        0 0 0 1px rgb(107 247 255 / 70%),
+        0 0 16px rgb(39 227 255 / 65%),
+        0 0 34px rgb(23 192 237 / 42%),
+        inset 0 0 15px rgb(130 250 255 / 27%);
+      transition: box-shadow .22s ease;
+    }
+    /* Soft bloom is behind the dark inner disc and never alters progress. */
+    .energy-ring::before {
+      position: absolute;
+      inset: 0;
+      content: "";
+      pointer-events: none;
+      border-radius: 50%;
+      background: conic-gradient(from -90deg,
+        #8effff 0% var(--energy-progress),
+        #29d2eb var(--energy-progress) 100%);
+      filter: blur(9px);
+      opacity: .72;
+    }
+    .energy-ring::after {
+      grid-area: 1 / 1;
+      width: 82px;
+      height: 82px;
+      content: "";
+      pointer-events: none;
+      border: 1px solid rgb(113 242 255 / 42%);
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 23%, #1b3443 0%, #101f2d 50%, #07131e 100%);
+      box-shadow: inset 0 2px 13px rgb(0 0 0 / 53%), 0 0 0 2px rgb(7 21 32 / 52%);
+    }
+    .energy-ring__value {
+      position: relative;
+      z-index: 1;
+      grid-area: 1 / 1;
+      display: grid;
+      gap: 3px;
+      justify-items: center;
+      width: 76px;
+      color: #f2fbff;
+      text-align: center;
+      pointer-events: none;
+    }
+    .energy-ring__value > .energy-ring__eyebrow {
+      color: #a0cbd7;
+      font-size: 7px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+    }
+    .energy-ring__value strong {
+      display: block;
+      max-width: 100%;
+      font-size: 22px;
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -.05em;
+      font-variant-numeric: tabular-nums;
+    }
+    .energy-ring__value > span {
+      display: block;
+      max-width: 100%;
+      color: #99e6ef;
+      font-size: 9px;
+      line-height: 1.2;
+    }
+    .energy-ring[data-energy-state="complete"] {
+      --energy-fill: #a7ffff;
+      box-shadow: 0 0 0 1px rgb(156 255 255 / 85%), 0 0 24px rgb(70 248 255 / 83%),
+        0 0 44px rgb(31 210 252 / 50%), inset 0 0 16px rgb(134 255 255 / 38%);
+    }
+    .energy-ring[data-energy-state="unset"] {
+      --energy-track: #126880;
+    }
+    .energy-ring:focus-visible { outline: 2px solid #b1ffff; outline-offset: 5px; }
+    @media (prefers-reduced-motion: reduce) { .energy-ring { transition: none; } }
     .daily-copy h2 { margin: 0 0 5px; font-size: 17px; }
     .daily-copy > span { color: var(--muted); font-size: 11px; }
     .macro-list { display: grid; gap: 9px; margin-top: 13px; }
@@ -528,7 +620,7 @@
           <div hidden aria-hidden="true"><span data-food-day-title></span><span data-food-day-copy></span></div>
           <div class="food-datebar"><button type="button" data-food-date-prev aria-label="Előző nap">‹</button><input type="date" data-food-date aria-label="Kiválasztott nap"><button type="button" data-food-date-next aria-label="Következő nap">›</button></div>
           <div class="daily-card">
-            <button class="energy-ring" type="button" data-food-energy-ring aria-label="Ételnapló statisztika megnyitása"><span class="energy-ring__value"><strong data-food-energy>0</strong><span data-food-energy-target>2 000 kcal</span></span></button>
+            <button class="energy-ring" type="button" data-food-energy-ring aria-label="Ételnapló statisztika megnyitása"><span class="energy-ring__value"><span class="energy-ring__eyebrow">Elfogyasztva</span><strong data-food-energy>0</strong><span data-food-energy-target>/ 2 000 kcal</span></span></button>
             <div class="daily-copy"><h2 data-food-message>Kezdjük a napot</h2><span data-food-remaining></span><div class="macro-list">
               <div class="macro"><span>Fehérje</span><div class="progress"><i data-food-protein-bar style="width:0%"></i></div><b data-food-protein>0 g</b></div>
               <div class="macro"><span>Szénhidrát</span><div class="progress"><i data-food-carbohydrate-bar style="width:0%"></i></div><b data-food-carbohydrate>0 g</b></div>
