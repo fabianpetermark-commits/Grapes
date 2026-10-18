@@ -30,6 +30,14 @@
 7. **Android**: natív debug assemble (nem aláírt release), kamerajogosultság, YAZIO CredentialVault, natív USDA-híd; a **stabil** release tanúsítvány/azonosító és update mechanizmus változatlan.
 8. **Valódi éles build csak később**: előbb zöld unit + böngészős + Android debug CI, valós eszközön adatbiztonsági teszt, visszaállítási próba, majd külön felhasználói jóváhagyás a `codex/android-app` merge-re és az aláírt éles APK kiadására. Stabil ágon nem szabad TEST APK-t publikálni.
 
+## Aktuális adatmegőrzési eredmény
+
+- **Valós éles Food JSON export (2026-10-18):** kizárólag privát, helyi feldolgozás keretében lefuttatva a jelenlegi staging `foodBackupFromJson` / `foodBackupToJson` / `normalizeFoodProject` függvényeivel. A visszaolvasott projekt teljes JSON-szerkezete változatlan; a rekordazonosító, Health Connect külső kulcs, tápérték, beállítatlan kalóriacél és `syncState.localDirty=true` megmarad. **Sem a valódi fájl, sem a felhasználói azonosítók nem kerültek a GitHubra.** A repó csak szintetikus adatokat tartalmazó regressziós tesztet tárol.
+- **Drive biztonság:** egy meglévő, összekapcsolt távoli projekt írása előtt a helyi kliens beolvassa a távoli példányt, és összeveti az utoljára megismert megbízható állapottal. Ismeretlen kiinduló állapotnál csak a helyivel megegyező távoli adat engedhető tovább; eltérésnél nem történik automatikus felülírás, a helyi nem szinkronizált adat megmarad. Külön tesztek: szinkronizálás előtti helyi módosítás, második eszköz módosítása, profilütközés és duplikátummentes új projekt.
+- **Korábbi v23 mentésjavítás:** a staging ágba már átvezetve, a natív Android Mentés másként funkció megőrzésével, stabil alkalmazásazonosítóval.
+- **Korlát:** a távoli ellenőrzés és az azt követő Drive-írás nem egyetlen szerveroldali tranzakció; egyidejű, pillanatnyi versenyhelyzetet nem zár ki. A két eszközös ütközési teszt / pontos revízióbiztos mentés továbbra is kiadási kapu.
+- **Víznapló:** a Food JSON nem tartalmazza. Az újraprogramozás a `grapes-water-v1` localStorage-t változatlanul kezeli, de a helyi vízelőzmények külön exportja és valós készülékes összevetése nincs kész.
+
 ## Release-kapu
 
 A merge és release **tilos**, amíg a fenti ellenőrzések (különösen a régi adatokból történő roundtrip és a Drive-mentés ütközési próbája) nincsenek teljesítve. A GitHub CI önmagában nem helyettesíti a telefonos ellenőrzést.
