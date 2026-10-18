@@ -1563,11 +1563,27 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       if (files.length !== 1) throw new Error('Pontosan egy Ételnapló Drive-fájl szükséges; több vagy hiányzó fájlt nem választunk ki.')
       const selectedFile = files[0]
       const remote = await loadGrapesProject(selectedFile.id)
-      const localSnapshot = structuredClone(project)
+      if (!account.id || account.id !== remote.data.profile?.id) {
+        throw new Error('A Drive-napló és az igazolt Google-azonosító nem egyezik. Nincs automatikus összevezetés.')
+      }
+      const canonicalExisting=await loadLocalProject(localProjectId(account.id))
+      // A signed-in user may see the canonical Drive diary while an older
+      // email-keyed phone diary remains in IndexedDB. Inspect both, not just
+      // the currently displayed canonical project.
+      if (canonicalExisting?.data &&
+          foodDriveSignature(canonicalExisting.data) !== foodDriveSignature(remote.data)) {
+        throw new Error('A kanonikus helyi Food-napló eltér a Drive-tól. Előbb külön mentsd, automatikus migráció nem biztonságos.')
+      }
+      const emailProject=await loadLocalProject(localProjectId(account.email.toLocaleLowerCase('hu-HU')))
+      const localSnapshot=structuredClone(
+        project.profile.id === remote.data.profile.id ? emailProject?.data : project
+      )
+      if (!localSnapshot) throw new Error('Nincs eltérő profilazonosítójú, megőrzendő telefonos Food-napló.')
       const result = previewFoodSameAccountAdoption(localSnapshot, remote.data, account.email)
       reconciliationPreview = {
         sourceProject: project, revision:changeRevision, local:localSnapshot, remote:remote.data,
         remoteFileId:selectedFile.id, verifiedEmail:account.email,
+        canonicalExisting:canonicalExisting ? structuredClone(canonicalExisting) : null,
         baseline:foodDriveSignature(remote.data), merged:result.project, summary:result.summary,
       }
       const summary=result.summary
@@ -1629,7 +1645,8 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       const recovery={
         id:`food-reconcile-${Date.now()}-${Math.random().toString(36).slice(2)}`,
         accountEmail:request.verifiedEmail, localProject:request.local,
-        localDriveFileId:driveFileId, remoteProject:structuredClone(activeRemote.data),
+        canonicalOriginal:request.canonicalExisting, localDriveFileId:driveFileId,
+        remoteProject:structuredClone(activeRemote.data),
         remoteFileId:request.remoteFileId, waterJson, createdAt:new Date().toISOString(),
       }
       await saveFoodReconciliationRecovery(recovery)
@@ -1644,6 +1661,8 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
         throw new Error('A helyi összevezetés vagy a Víz napló megőrzése nem ellenőrizhető. A korábbi mentés rendelkezésre áll.')
       }
       project=staged
+      profile=staged.profile
+      loadedProfileId=staged.profile.id
       driveFileId=request.remoteFileId
       driveBaseline=request.baseline
       changeRevision+=1
@@ -1713,13 +1732,16 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     try{
       const {recovery}=await validatePendingReconciliation()
       if(!window.confirm('Visszaállítod a korábbi TELEFONOS Food-naplót? A Drive-hoz nem nyúlunk.'))return
-      const remote=await loadGrapesProject(recovery.remoteFileId)
-      if(foodDriveSignature(remote.data)!==foodDriveSignature(recovery.remoteProject))
-        throw new Error('A Drive az előnézet óta módosult; először ellenőrizni kell. Helyben nem állítunk vissza automatikusan.')
-      await saveLocalProject({id:localProjectId(recovery.localProject.profile.id),module:MODULE,name:PROJECT_NAME,
-        data:recovery.localProject,driveFileId:recovery.localDriveFileId})
-      project=normalizeFoodProject(recovery.localProject,recovery.localProject.profile.id)
-      driveFileId=recovery.localDriveFileId; driveBaseline='';driveConflict=''
+      // Never replace the email-keyed old diary: it was never deleted.
+      // Restore the original canonical local snapshot, or the untouched Drive
+      // version if the canonical project had not existed before adoption.
+      const original=recovery.canonicalOriginal?.data || recovery.remoteProject
+      const originalFileId=recovery.canonicalOriginal?.driveFileId || recovery.remoteFileId
+      await saveLocalProject({id:localProjectId(original.profile.id),module:MODULE,name:PROJECT_NAME,
+        data:original,driveFileId:originalFileId})
+      project=normalizeFoodProject(original,original.profile.id)
+      profile=project.profile;loadedProfileId=profile.id
+      driveFileId=originalFileId; driveBaseline='';driveConflict=''
       changeRevision++
       reconciliationPreview=null
       reconciliationStatus('A korábbi helyi Food-napló visszaállt. A Drive továbbra is változatlan.')
