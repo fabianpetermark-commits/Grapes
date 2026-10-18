@@ -10,6 +10,15 @@
 - **Nem átemelve:** QA buildvariáns / QA aláírás / TEST updater, `test-release.json`, TEST workflow-k, pénzügyi/e-book újítások, `apps-script/ebook-transfer/Code.gs` és a TEST Google Drive gyökérmappa.
 - A `src/storage/grapes-drive.js` és a stabil `release-android.yml` változatlan; a rendes Drive-gyökér `Grapes`, az Android package `hu.grapes.healthconnect`.
 
+## Automatizált eredmények (2026-10-18)
+
+- ✅ A Food-v2 sémát szimuláló, *fiktív* régi éles projekt betöltése, normalizálása, teljes Food JSON backup/export-import round-trip: célok, alapanyagok, receptek, naplóbejegyzések, FatSecret örökölt forrás, YAZIO-forrásmetaadatok, eredeti számadatok, `null` tápértékek, importkötegek és kedvencek.
+- ✅ A helyi Food-napló és összekapcsolatlan Drive-fájlok **nem választhatók / írhatók felül automatikusan**; több távoli projekt vagy hiányzó korábbi kötés esetén leáll az automatikus kiválasztás. `src/food/food-drive-safety.js` és `tests/food-production-migration.test.js`.
+- ✅ GitHub Actions `Food production staging validation`: `npm test`, Android web build, recept- és mobil Chromium, Android `assembleDebug`; YAZIO és keresés külön CI-je is sikeres.
+- ⚠️ A szimulált adatokat **nem** szabad a felhasználó valódi mentésének tekinteni. A tényleges éles Food backupot még ellenőrizni kell, **nem** kerülhet a nyilvános GitHub repóba / workflow logba.
+- ⚠️ A víznapló nem része a Food JSON mentésének: a telefonon a `grapes-water-v1` localStorage-kulcsban tárolódik, ezért alkalmazást törölni / adatait törölni tilos az átállás során. A külön vízelőzménymentés vagy teljes értékű visszaállítás még nincs igazolva.
+- ⚠️ Ha **azonos, ismert Drive fájlt** két eszköz párhuzamosan szerkeszt, a jelenlegi Drive PATCH még nem alkalmaz optimista verzióellenőrzést. Ezt a forgatókönyvet release előtt le kell kezelni vagy egy eszközre kell korlátozni, és valós környezetben ellenőrizni.
+
 ## Még ellenőrizendő, mielőtt egyáltalán merge-ről döntünk
 
 1. **Mentés és visszaállítás**: stabil Food biztonsági mentés `grapes-etelnaplo-*.json` exportja **frissítés előtt**; külön ellenőrzés, hogy a letöltött fájl ténylegesen létezik és tartalmaz ételeket, recepteket, naplókat, célokat, importmetaadatokat. Drive-projekt másolata / visszaállíthatóság ellenőrzése a meglévő fájl felülírása nélkül.
