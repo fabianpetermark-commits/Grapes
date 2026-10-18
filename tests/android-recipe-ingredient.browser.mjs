@@ -341,6 +341,59 @@ try {
   await close.click()
   assert.equal(await page.locator('[data-food-live-scanner]').isVisible(), false)
 
+  // Full end-to-end recipe draft import and local image. No remote save
+  // occurs until the user explicitly saves the recipe.
+  await page.locator('[data-food-add-back]').click()
+  await page.locator('[data-food-back]').click()
+  await page.locator('[data-food-open-recipes]').click()
+  await page.locator('[data-food-recipes-new]').click()
+  await page.locator('[data-food-recipe-edit-sheet].is-open').waitFor({state:'visible'})
+  assert.equal(await page.locator('[data-food-recipe-tabs] [role="tab"]').count(),5)
+  assert.equal(await page.locator('[data-food-recipe-panel="basics"]').isVisible(),true)
+  assert.equal(await page.locator('[data-food-recipe-panel="import"]').isVisible(),false)
+  await page.locator('[data-food-recipe-tab="import"]').click()
+  await page.locator('[data-food-recipe-import-text]').fill(
+    'Importált puha kenyér\\nHozzávalók:\\n400 g búzafinomliszt\\n5 g cukor\\n5 g só\\nElkészítés:\\nKeverd és süsd.'
+      .replaceAll('\\n','\n'))
+  await page.locator('[data-food-recipe-import-read]').click()
+  await page.locator('[data-food-recipe-import-preview]').waitFor({state:'visible'})
+  assert.match(await page.locator('[data-food-recipe-import-preview]').textContent(),/3/)
+  await page.locator('[data-food-recipe-tab="basics"]').click()
+  assert.equal(await page.locator('[data-food-recipe-name-input]').inputValue(),'',
+    'Beolvasás után még ne módosuljon a recept a jóváhagyás előtt.')
+  await page.locator('[data-food-recipe-tab="import"]').click()
+  await page.locator('[data-food-recipe-import-apply]').click()
+  assert.equal(await page.locator('[data-food-recipe-tab="list"]').getAttribute('aria-selected'),'true')
+  assert.match(await page.locator('[data-food-recipe-ingredients]').textContent(),/cukor/i)
+  await page.locator('[data-food-recipe-tab="basics"]').click()
+  assert.equal(await page.locator('[data-food-recipe-name-input]').inputValue(),'Importált puha kenyér')
+  await page.locator('[data-food-recipe-tab="image"]').click()
+  const photo=await page.screenshot()
+  await page.locator('[data-food-recipe-image-file]').setInputFiles({
+    name:'recept.png',mimeType:'image/png',buffer:photo,
+  })
+  await page.locator('[data-food-recipe-image-preview]').waitFor({state:'visible',timeout:10000})
+  assert.match(await page.locator('[data-food-recipe-image-preview]').getAttribute('src'),/^data:image\/jpeg;base64,/)
+  // The file button is one source picker, not a second full import form.
+  await page.locator('[data-food-recipe-tab="import"]').click()
+  await page.locator('[data-food-recipe-import-file]').setInputFiles({
+    name:'masik-recept.txt',mimeType:'text/plain',
+    buffer:Buffer.from('Mákos tészta\nHozzávalók:\n100 g mák\nElkészítés:\nKeverd össze.'),
+  })
+  await page.locator('[data-food-recipe-import-preview]').waitFor({state:'visible'})
+  assert.match(await page.locator('[data-food-recipe-import-preview]').textContent(),/Mákos tészta/)
+  await page.locator('[data-food-recipe-tab="basics"]').click()
+  assert.equal(await page.locator('[data-food-recipe-name-input]').inputValue(),'Importált puha kenyér',
+    'Új fájl puszta kiválasztása nem írhatja át a korábbi átvett piszkozatot.')
+  await page.locator('[data-food-recipe-editor-save]').click()
+  await page.locator('[data-food-recipe-title]').filter({hasText:'Importált puha kenyér'}).waitFor()
+  await page.locator('[data-food-recipe-detail-image]').waitFor({state:'visible'})
+  assert.match(await page.locator('[data-food-recipe-detail-image]').getAttribute('src'),/^data:image\/jpeg;base64,/)
+  await page.locator('[data-food-recipe-edit]').click()
+  await page.locator('[data-food-recipe-tab="image"]').click()
+  await page.locator('[data-food-recipe-image-preview]').waitFor({state:'visible'})
+  console.log('Recipe tabs/import: JSON/text file preview, explicit apply, saved local picture and reopen OK')
+
   console.log('Food add UX: fixed-height results, safe duplicates, styled scanner close, five recipe tabs OK')
   console.log('Recipe ingredient editor: search, editable nutrients, manual fallback, conversions and inline barcode OK')
 } finally {
