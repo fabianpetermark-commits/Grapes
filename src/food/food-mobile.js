@@ -345,6 +345,12 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
           if (changedDuringUpload) driveRequested = true
           await persistLocal()
         } catch (error) {
+          if (project !== sourceProject) {
+            // An asynchronous upload from the previous profile must never
+            // mark the newly selected profile dirty.
+            showToast('Az előző Food-profil Drive-mentése megszakadt.')
+            break
+          }
           driveConflict = error?.message || 'A Drive-mentés ellenőrzése nem sikerült.'
           project.syncState = { ...project.syncState, localDirty: true }
           await persistLocal().catch(() => {})
