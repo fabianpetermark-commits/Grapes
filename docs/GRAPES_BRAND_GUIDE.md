@@ -209,7 +209,7 @@ A forrásellenőrzés 14 megállapítást rögzít a [Grapes Brand Audit](./GRAP
 A vizuális szabályok mellett a Grapes fejlesztését az alábbi, **még közös review alatt álló** termék- és UX-elvek vezessék:
 
 - [Grapes – Product Vision & UX Principles](./GRAPES_PRODUCT_VISION_AND_UX_PRINCIPLES.md): „Kevesebb adminisztráció. Okosabb mindennapok.”; célközpontú működés, minimális interakció, bizonyossági szintek, önállóan hasznos alapélmény.
-- [Grapes – Concept UI Reference](./GRAPES_CONCEPT_UI_REFERENCE.md): négy korábbi, közösen megfogalmazott példa és részletes komponensszerződés: Goal Selection, Recipe Recommendation, Storage Split, Shopping Suggestion.
+- [Grapes – Concept UI Reference](./GRAPES_CONCEPT_UI_REFERENCE.md): öt közös referenciaminta és komponensszerződés: Goal Selection, Recipe Recommendation, Storage Split, Shopping Suggestion, valamint a meglévő Food Recipe Detail célmegjelenése.
 - [Grapes – Concept UI Kit (statikus HTML)](./GRAPES_CONCEPT_UI_KIT.html): ugyanazon stílusra épülő, mobilra is alkalmazkodó vizuális referencialap, újraalkotott mintákkal.
 
 **Fontos határ:** a minták nem eredeti chatképek vagy implementált képernyők, hanem a korábbi koncepciók alapján készített dokumentációs referencia. Az eredeti bemutató képek/fotók ettől nem váltak a repository assetjeivé. A HTML statikus mintalap, nem működő Grapes-prototípus.
