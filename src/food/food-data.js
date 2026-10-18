@@ -1,3 +1,4 @@
+import { normalizeRecipeImageUrl } from './recipe-image.js'
 export const FOOD_PROJECT_VERSION = 2
 export const FOOD_BACKUP_VERSION = 1
 
@@ -115,7 +116,7 @@ export function normalizeFoodItem(value = {}) {
       attribution: cleanText(value.source?.attribution),
     },
     verified: value.verified === true,
-    imageUrl: /^https:\/\//.test(String(value.imageUrl || '')) ? String(value.imageUrl) : '',
+    imageUrl: normalizeRecipeImageUrl(value.imageUrl),
     createdAt: isoDateTime(value.createdAt || new Date().toISOString(), 'Létrehozási idő'),
     updatedAt: isoDateTime(value.updatedAt || value.createdAt || new Date().toISOString(), 'Módosítási idő'),
   }
@@ -179,7 +180,7 @@ export function normalizeRecipe(value = {}) {
     ownerProfileId: requiredId(value.ownerProfileId, 'Tulajdonos profilazonosító'),
     variantOfRecipeId: cleanText(value.variantOfRecipeId),
     name, category: cleanText(value.category) || 'Saját recept', instructions: cleanText(value.instructions),
-    imageUrl: /^https:\/\//.test(String(value.imageUrl || '')) ? String(value.imageUrl) : '',
+    imageUrl: normalizeRecipeImageUrl(value.imageUrl),
     ingredients, preparedWeight, yieldCount, averageUnitWeight,
     yieldUnit: RECIPE_YIELD_UNITS.includes(value.yieldUnit) ? value.yieldUnit : 'serving',
     revision: Math.max(1, Math.trunc(Number(value.revision) || 1)),
