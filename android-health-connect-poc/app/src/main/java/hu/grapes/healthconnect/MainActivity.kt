@@ -65,24 +65,6 @@ class MainActivity : ComponentActivity() {
         var sizeBytes: Long = 0L,
     )
 
-    private val backupFilePicker = registerForActivityResult(
-        ActivityResultContracts.CreateDocument("application/json")
-    ) { uri ->
-        val requestId = pendingBackupPickerRequestId ?: return@registerForActivityResult
-        pendingBackupPickerRequestId = null
-        if (uri == null) {
-            sendError(requestId, "A biztonsági mentés mentését megszakítottad.")
-            return@registerForActivityResult
-        }
-        runCatching {
-            check(backupSession == null) { "Már folyamatban van egy másik mentés." }
-            val staging = File.createTempFile("grapes-food-export-", ".json", cacheDir)
-            BackupExportSession(UUID.randomUUID().toString(), uri, staging).also { backupSession = it }
-        }.onSuccess { sendResult(requestId, it.token) }
-            .onFailure { sendError(requestId, it.message ?: "Nem készíthető el a mentés.") }
-    }
-    private var availableUpdate: AndroidUpdateManager.Release? = null
-
     private val cameraPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
