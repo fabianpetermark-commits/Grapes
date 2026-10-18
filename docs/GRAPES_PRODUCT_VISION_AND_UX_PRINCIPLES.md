@@ -106,7 +106,7 @@ Ha az erőfeszítés meghaladja az érzékelhető hasznot, újratervezés szüks
 
 ## 8. Referenciák és státusz
 
-A [Concept UI Reference](./GRAPES_CONCEPT_UI_REFERENCE.md) négy korábbi közös beszélgetésből származó mintát rögzít: **Goal Card, Recipe Recommendation, Storage Split, Shopping Suggestion**; a [statikus HTML-mintalap](./GRAPES_CONCEPT_UI_KIT.html) közvetlenül megnyitható vizuális referencia.
+A [Concept UI Reference](./GRAPES_CONCEPT_UI_REFERENCE.md) öt korábbi közös beszélgetésből származó mintát rögzít: **Goal Card, Recipe Recommendation, Storage Split, Shopping Suggestion, Food Recipe Detail**; a [statikus HTML-mintalap](./GRAPES_CONCEPT_UI_KIT.html) közvetlenül megnyitható vizuális referencia.
 
 A minták **újrarajzolt koncepciók** a chatben kialakított komponensek alapján; nem az eredeti chat UI exportjai, és nem működő Grapes-képernyők. A szövegek, dátumok, mennyiségek illusztratívak.
 
