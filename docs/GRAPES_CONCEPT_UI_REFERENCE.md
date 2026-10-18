@@ -2,11 +2,11 @@
 
 > **v0.2 – TARGET / koncepciós referencia, 2026-10-19.**  
 > Kiegészíti a [Brand Guide](./GRAPES_BRAND_GUIDE.md) megjelenési szabványát és a [Product Vision](./GRAPES_PRODUCT_VISION_AND_UX_PRINCIPLES.md) UX-alapelveit.  
-> **[Megnyitható, statikus HTML-mintalap](./GRAPES_CONCEPT_UI_KIT.html)** – a négy mintát ugyanazon a lapon mutatja. A korábbi ChatGPT-tervezési példák **újraalkotott referenciája**, nem eredeti screenshot, nem alkalmazáskód.
+> **[Megnyitható, statikus HTML-mintalap](./GRAPES_CONCEPT_UI_KIT.html)** – az öt mintát ugyanazon a lapon mutatja. A korábbi ChatGPT-tervezési példák **újraalkotott referenciája**, nem eredeti screenshot, nem alkalmazáskód.
 
 ## A minták célja
 
-A korábbi beszélgetésben a célválasztó, „Mit főzzünk?”, hűtő/fagyasztó mennyiségelosztó és bevásárlási javaslat aratott pozitív fogadtatást. Ezeket most egyetlen vizuális nyelvbe foglaljuk: **sötét, levegős kártyák; rövid magyarázó szöveg; egy elsődleges művelet; állapot és forrás egyértelmű elkülönítése**.
+A korábbi beszélgetésben a célválasztó, „Mit főzzünk?”, hűtő/fagyasztó mennyiségelosztó és bevásárlási javaslat aratott pozitív fogadtatást. A meglévő Food-receptadatlapot is ugyanezzel a vizuális nyelvvel egységesítjük. Ezeket most egyetlen vizuális nyelvbe foglaljuk: **sötét, levegős kártyák; rövid magyarázó szöveg; egy elsődleges művelet; állapot és forrás egyértelmű elkülönítése**.
 
 A vizuális mintalap nem használ valós felhasználói adatot, jelenlévő termékfotót vagy működő műveleti vezérlőt. A végleges alkalmazásban a receptképek lehetnek valódi, forrással kezelt ételfotók, az egyszerű folyamatsémák maradjanak vektorosak.
 
@@ -65,7 +65,27 @@ A vizuális mintalap nem használ valós felhasználói adatot, jelenlévő term
 - Hiányzó blokk és lista esetén a Food-étkezést nem értelmezzük automatikusan otthoni termékfelhasználásként.
 - Egy régi blokk nem szolgálhat bizonyítékul arra, hogy még mindig van készleten tej.
 
-## 5. Közös komponensrendszer
+
+## 5. Recipe Detail – a jelenlegi Food-receptadatlap új megjelenési célja
+
+**Referenciája:** a Recipe Recommendation kártya megerősített vizuális iránya, **alkalmazva a már létrehozott / importált, saját Food-receptek megtekintő nézetére is**.
+
+**Jelenlegi kód ellenőrizve:** éles `codex/android-app` és TEST `integration/grapes-test-food-20261017` ág, `src/food/food-mobile.js` `openRecipe()`. A meglévő részletnézet a recept nevét és kategóriáját, opcionális képet, hozzávalók listáját és elkészítést jelenít meg. A meglévő szerkesztő összetettebb, füles folyamat; ezt a látványfrissítés **nem helyettesíti**.
+
+**Koncepció szerinti olvasó nézet:**
+1. **Nagy receptfotó** 16:9 képarányban, ha a recepthez tartozik; fotó nélkül semleges, egységes grafikus helyőrző – soha ne tegyünk véletlenszerű stockételt a felhasználó receptjéhez.
+2. **Recept neve és rövid metaadatok**: kategória, elkészített adagok / darabok / szeletek (csak ha ismert), esetleges idő (csak ha rögzített vagy megbízható forrásból elérhető). Ne találjunk ki főzési időt.
+3. **Tápérték összefoglaló** külön, jól olvasható sávban csak ismert / kiszámítható értékekből; legyen explicit „Nincs adat” a hiányzó értékekhez. Az alapérték / adag megnevezés legyen egyértelmű; meglévő kalória- és makró-számítási logika újrahasználata.
+4. **Összetevők** kipipálható, olvasható lista **csak olvasói állapotként**, nem készletmozgásként; mértékegységekkel. Ha a Home később kapcsolódik, a készlet-jelölés külön, bizonyosságának megfelelően jelenik meg.
+5. **Elkészítés** a már meglévő sortöréses, formázott instrukciók megtartásával; ha van értelmezhető strukturált lépés, lehessen lépésenként követni, de nem veszhet el a szabad szöveg.
+6. **Műveletek:** egyértelmű `Étkezéshez adom` / `Naplózom` ott, ahol a jelenlegi műveleti logika támogatja; `Szerkesztés` jól látható, de másodlagos gombbal nyissa a **meglévő ötfüles receptszerkesztőt**. A Home-specifikus `Elkészítettem` és `Bevásárlólistához` funkció csak későbbi, külön implementációs lépcső, nem színlelt kész funkció.
+7. **Megosztás, mentés, másolás** csak a meglévő jogosultságokkal és recepteredet-figyeléssel működjön; a saját, szerkeszthető recept és a csak olvasható YAZIO-/megosztott tartalom nem kaphat megtévesztő „Szerkesztés” gombot.
+
+**Alapelv:** a Home receptajánlójának kártyája és a Food receptadatlapja egy közös Grapes-vizuális rendszer két különböző nézete: a Home megmutatja, **miért érdemes ezt választani**, a Food megmutatja, **hogyan kell elkészíteni és naplózni**. Nem építünk második receptadatbázist.
+
+**Megvalósítási védelem:** kizárólag későbbi célzott UI-PR a PROD és TEST elkülönítésével; a jelenlegi receptverziózás, tápérték, kép, importálás, összetevők, elkészítés, öt fül, mentések és Food-napló integritása regressziótesztet kapjon. A jelen dokumentációs PR ezt **nem implementálja**.
+
+## 6. Közös komponensrendszer
 
 | Elem | Standard | Megjegyzés |
 | --- | --- | --- |
@@ -84,7 +104,7 @@ A vizuális mintalap nem használ valós felhasználói adatot, jelenlévő term
 
 **Írásmód:** „Hűtő”, „Fagyasztó”, „Mentés a receptjeim közé”, „Hozzáadás a bevásárlólistához”, „Elkészítettem”, „Elfogyott”, „Van még”; magyar, rövid, közvetlen, nem számonkérő.
 
-## 6. Elfogadási ellenőrzőlista a későbbi UI implementációhoz
+## 7. Elfogadási ellenőrzőlista a későbbi UI implementációhoz
 
 - **320/360/390/412 px:** mobil szélességeken nincs vízszintes túlcsordulás, magyar felirat nem vágódik le.
 - **Kontraszt és szövegméret:** normál szövegre legalább 4,5:1 cél, nagy szövegre és lényeges grafikai elemre 3:1 cél; változó betűméret és TalkBack.
@@ -95,7 +115,7 @@ A vizuális mintalap nem használ valós felhasználói adatot, jelenlévő term
 - **Nem összekeverendő:** TERVEZETT vs MEGERŐSÍTETT ESEMÉNY vs BECSÜLT vs ISMERETLEN.
 - **Cél és monetizáció:** ingyenes alapfolyamat legyen hasznos; a prémium ne kötelező UX-korrekció legyen.
 
-## 7. Nyitott csiszolási pontok (review)
+## 8. Nyitott csiszolási pontok (review)
 
 1. A Goal Card legyen inkább célcsoportokon belüli 1–2 soros választó, vagy egyszerre négy teljes kártya?
 2. Receptkártyán az elsődleges gomb „Recept megnyitása” vagy „Főzzük meg”? A mentés másodlagos ikon vagy szöveges gomb?
@@ -103,8 +123,8 @@ A vizuális mintalap nem használ valós felhasználói adatot, jelenlévő term
 4. A Shopping Suggestion csak bevásárlási pillanatban kérdezzen, vagy fogadjon minimális, ritka háttérértesítést is?
 5. Milyen szöveges bizonyossági jelölések a legérthetőbbek: „Biztos”, „Becslés”, „Ellenőrizendő” vagy hosszabb magyarázat?
 
-Ezek **nem jóváhagyott** döntések, hanem a következő közös UX-review témái.
+6. A Food receptadatlapján melyik legyen az elsődleges művelet: „Étkezéshez adom”, „Elkészítem”, vagy a meglévő elérhető művelet?\n7. Mutassunk-e recept-metaadatot (pl. idő), ha az hiányzik az eredeti receptből? Alapelv: ne találjunk ki értéket.\n\nEzek **nem jóváhagyott** döntések, hanem a következő közös UX-review témái.
 
-## 8. Mi nem változik ettől?
+## 9. Mi nem változik ettől?
 
 A forrásoldali Brand Guide v1.0-rc1 továbbra is külön, nem végleges arculati dokumentáció. Ez a referencia **nem** módosítja a Food / Finance / Home implementációt, a PROD / TEST kiadásokat, Drive adatokat, telepített APK-kat és semmilyen felhasználói naplót.
