@@ -1,9 +1,9 @@
 import { normalizeFoodProject } from './food-data.js'
 import { yazioEntryFingerprint } from './food-yazio-import.js'
 
-// A *dry-run* migration for a local diary already wholly represented in a
-// verified, same-account remote diary. It never talks to Drive or writes data.
-// Remote-only meals, saved foods, settings and YAZIO batch history are retained.
+// A dry-run for two same-account Food profiles. The Drive Google permission ID
+// remains canonical; no persisted entry ID, YAZIO externalKey, import batch
+// fingerprint or nutritional snapshot is rewritten. No I/O occurs here.
 const emailOf = project => String(project?.profile?.email || '').trim().toLocaleLowerCase('hu-HU')
 const same = (left, right) => JSON.stringify(left) === JSON.stringify(right)
 const mealSnapshot = item => ({
@@ -86,28 +86,10 @@ export function previewFoodSameAccountAdoption(localInput, remoteInput, verified
       throw new Error('A helyi YAZIO-importköteg nem egyezik a mentett rekordokkal.')
     }
   }
-  const oldId = remote.profile.id, newId = local.profile.id
+  // Google permission ID is the canonical stable profile identity. Keep every
+  // Drive food/entry ID, YAZIO externalKey and original undo fingerprint.
+  // The email-keyed local diary is preserved separately as a recovery copy.
   const migrated = structuredClone(remote)
-  migrated.profile = { ...migrated.profile, id: newId }
-  migrated.diaryEntries = migrated.diaryEntries.map(entry => {
-    const next = { ...entry, profileId: newId }
-    if (next.origin?.source === 'yazio') {
-      const previousPrefix = 'yazio:' + oldId + ':'
-      if (!next.externalKey.startsWith(previousPrefix) ||
-          next.origin.externalKey !== next.externalKey) {
-        throw new Error('A régi YAZIO-külső azonosító nem alakítható át biztonságosan.')
-      }
-      const newKey = 'yazio:' + newId + ':' + next.externalKey.slice(previousPrefix.length)
-      next.externalKey = newKey
-      next.origin = { ...next.origin, profileId: newId, externalKey: newKey }
-    } else if (next.origin) {
-      next.origin = { ...next.origin, profileId: newId }
-    }
-    return next
-  })
-  migrated.recipes = migrated.recipes.map(recipe => ({
-    ...recipe, ownerProfileId: recipe.ownerProfileId === oldId ? newId : recipe.ownerProfileId,
-  }))
   const localYazioBatches = local.importBatches.filter(batch => batch.source === 'yazio')
   const remoteYazioBatches = remote.importBatches.filter(batch => batch.source === 'yazio')
   // Multiple historical imports require explicit mapping between their source
@@ -117,44 +99,37 @@ export function previewFoodSameAccountAdoption(localInput, remoteInput, verified
     throw new Error('Több eltérő YAZIO-importköteg: kézi archiválás és párosítás szükséges.')
   }
   migrated.importBatches = migrated.importBatches.map(batch => {
-    if (batch.profileId !== oldId) throw new Error('Idegen profilhoz tartozó importköteg.')
-    const result = { ...batch, profileId: newId }
-    // Keep *both* unmodified exporter archives if a newer export contains
-    // additional raw days, product updates or a different metadata range.
-    // The active undo batch and all its entry references remain the Drive ones.
-    if (batch.source === 'yazio' && localYazioBatches.length) {
-      const localBatch = localYazioBatches[0]
-      if (!localBatch.sourceArchive || !batch.sourceArchive) {
-        throw new Error('Hiányzó YAZIO-forrásarchívum; automatikus migráció nem engedélyezett.')
-      }
-      if (!same(localBatch.sourceArchive, batch.sourceArchive)) {
-        result.additionalSourceArchives = [
-          ...(Array.isArray(batch.additionalSourceArchives) ? batch.additionalSourceArchives : []),
-          { importedAt: localBatch.importedAt || '', exportFingerprint: localBatch.exportFingerprint || '',
-            sourceArchive: structuredClone(localBatch.sourceArchive) },
-        ]
-      }
-    }
+    if (batch.profileId !== remote.profile.id) throw new Error('Idegen profilhoz tartozó importköteg.')
+    const result = { ...batch }
     if (batch.source === 'yazio') {
-      const previousEntriesById = new Map(remote.diaryEntries.map(item => [item.id, item]))
-      const entriesById = new Map(migrated.diaryEntries.map(item => [item.id, item]))
+      const entriesById = new Map(remote.diaryEntries.map(item => [item.id, item]))
       if (!Array.isArray(batch.recordIds) || !batch.entryFingerprints ||
-          batch.recordIds.some(id => !entriesById.has(id) || !previousEntriesById.has(id) ||
-            previousEntriesById.get(id).origin?.importBatchId !== batch.id)) {
+          batch.recordIds.some(id => !entriesById.has(id) ||
+            entriesById.get(id).origin?.importBatchId !== batch.id)) {
         throw new Error('Hiányzó YAZIO-importbejegyzés; a visszavonási előzmény nem módosítható.')
       }
       if (batch.recordIds.some(id =>
-        batch.entryFingerprints[id] !== yazioEntryFingerprint(previousEntriesById.get(id)))) {
-        throw new Error('A régi YAZIO-import valamelyik bejegyzése módosult; a visszavonási védelem nem írható át.')
+        batch.entryFingerprints[id] !== yazioEntryFingerprint(entriesById.get(id)))) {
+        throw new Error('A régi YAZIO-import valamelyik bejegyzése módosult; az automatikus migráció leállt.')
       }
-      result.entryFingerprints = Object.fromEntries(
-        batch.recordIds.map(id => [id, yazioEntryFingerprint(entriesById.get(id))])
-      )
+      if (localYazioBatches.length) {
+        const localBatch = localYazioBatches[0]
+        if (!localBatch.sourceArchive || !batch.sourceArchive) {
+          throw new Error('Hiányzó YAZIO-forrásarchívum; automatikus migráció nem engedélyezett.')
+        }
+        if (!same(localBatch.sourceArchive,batch.sourceArchive)) {
+          result.additionalSourceArchives = [
+            ...(Array.isArray(batch.additionalSourceArchives) ? batch.additionalSourceArchives : []),
+            { importedAt: localBatch.importedAt || '', exportFingerprint: localBatch.exportFingerprint || '',
+              sourceArchive: structuredClone(localBatch.sourceArchive) },
+          ]
+        }
+      }
     }
     return result
   })
   migrated.syncState = { ...migrated.syncState, localDirty: true }
-  const project = normalizeFoodProject(migrated, newId)
+  const project = normalizeFoodProject(migrated, remote.profile.id)
   // This projection intentionally preserves the Drive record set and its IDs.
   if (project.diaryEntries.length !== remote.diaryEntries.length ||
       project.customFoods.length !== remote.customFoods.length ||
