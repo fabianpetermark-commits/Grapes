@@ -44,6 +44,20 @@ footer{margin-top:27px;color:var(--muted);font-size:12px;max-width:720px}
 @media(max-width:760px){.shell{padding:22px 14px 44px}.gallery{grid-template-columns:1fr;gap:22px}.screen{min-height:unset}.sample-label{padding-left:2px}}
 @media(max-width:360px){.shell{padding-left:10px;padding-right:10px}.screen{padding:13px}.option{padding:11px}.two-actions{gap:6px}.actionline{align-items:stretch;flex-direction:column;text-align:center}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
+
+/* Fifth reference: detail page for an existing Food recipe */
+.recipe-detail-image{height:128px;border-radius:15px;overflow:hidden;background:linear-gradient(125deg,#142a38,#294452 55%,#182d39);display:grid;place-items:center}
+.recipe-detail-image svg{height:100%;width:100%;max-width:360px}
+.nutrition{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.nutrition>div{padding:10px 5px;background:var(--raised);border:1px solid var(--line);border-radius:11px;text-align:center}
+.nutrition strong{display:block;font-variant-numeric:tabular-nums;font-size:16px;line-height:1.3}
+.nutrition small{font-size:11px;color:var(--muted)}
+.ingredient-list{display:grid;gap:6px}
+.ingredient-line{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;padding:7px 0;border-bottom:1px solid var(--line)}
+.ingredient-line:last-child{border-bottom:none}
+.ingredient-line .tick{color:var(--muted);margin-right:6px}
+.step{font-size:13px;color:var(--muted);display:flex;gap:9px}
+.step b{color:var(--cyan);flex:none}
 </style>
 </head>
 <body>
@@ -51,7 +65,7 @@ footer{margin-top:27px;color:var(--muted);font-size:12px;max-width:720px}
 <header>
 <div class="kicker">GRAPES / DESIGN REFERENCE / 0.2</div>
 <h1>Kevesebb adminisztráció.<br>Okosabb mindennapok.</h1>
-<p>Négy, korábbi közös tervezésből újraalkotott mobilos komponens ugyanabban a Grapes-arculatban. Vizuális, statikus referencia: nem a jelenlegi alkalmazás és nem működő prototípus.</p>
+<p>Öt, korábbi közös tervezésből újraalkotott mobilos komponens ugyanabban a Grapes-arculatban. Vizuális, statikus referencia: nem a jelenlegi alkalmazás és nem működő prototípus.</p>
 <div class="notice">TARGET / koncepció • Illusztratív számok és képi helyőrző • Az állapotjelzések mindig magyarázzák az adatok bizonyosságát.</div>
 </header>
 <div class="gallery">
@@ -102,6 +116,38 @@ footer{margin-top:27px;color:var(--muted);font-size:12px;max-width:720px}
 <div class="two-actions"><span>Elfogyott</span><span>Van még</span></div>
 <div class="actionline"><span class="cta">Listához adom</span><span class="secondary">Nem most</span></div>
 <div class="aux">Nincs automatikus készletmozgás vagy blokk nélkül feltételezett vásárlás.</div>
+</div></section>
+
+<section class="sample" aria-labelledby="food-detail">
+<div class="sample-label"><strong>05 / Food Recipe Detail</strong><span>A meglévő receptek olvasó nézete</span></div>
+<div class="screen">
+<div class="screen-head">
+<div><div class="eyebrow">FOOD / SAJÁT RECEPTEK</div><h2 id="food-detail">Bolognai spagetti</h2><p class="sub">Saját recept · 4 adag</p></div>
+<span class="icon" aria-hidden="true">♨</span>
+</div>
+<div class="recipe-detail-image" role="img" aria-label="Stilizált tésztaétel-helyőrző; a valódi Food-receptben a saját feltöltött kép jelenik meg, ha van">
+<svg viewBox="0 0 420 170" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+<ellipse cx="210" cy="84" rx="131" ry="70" fill="#c8d0ca"/>
+<ellipse cx="210" cy="84" rx="106" ry="49" fill="#384b4b"/>
+<ellipse cx="210" cy="82" rx="92" ry="40" fill="#dfb371"/>
+<g stroke="#f4dba5" stroke-width="7" stroke-linecap="round" fill="none"><path d="M145 73q22 35 48 15t55-14t37 13"/><path d="M150 99q39-39 71-6t67-9"/><path d="M180 64q30 24 63 13"/><path d="M160 109q38-25 76-2"/></g>
+<g fill="#b74e40"><ellipse cx="183" cy="73" rx="17" ry="9"/><ellipse cx="241" cy="96" rx="20" ry="12"/><ellipse cx="208" cy="84" rx="15" ry="11"/></g>
+<g fill="#6c9e61"><ellipse cx="175" cy="105" rx="9" ry="4" transform="rotate(27 175 105)"/><ellipse cx="253" cy="73" rx="9" ry="4" transform="rotate(-20 253 73)"/></g>
+</svg>
+</div>
+<div class="pillrow"><span class="pill">🍽 4 adag</span><span class="pill">Saját recept</span><span class="pill">Tápérték adagonként</span></div>
+<div class="nutrition" aria-label="Példa tápértékek adagonként"><div><strong>—</strong><small>kcal</small></div><div><strong>—</strong><small>Fehérje</small></div><div><strong>—</strong><small>Szénhidrát</small></div><div><strong>—</strong><small>Zsír</small></div></div>
+<p class="meta" style="margin:0">Tápértékek helyett szándékosan nincs kitalált szám: a valódi alkalmazás csak számított vagy igazolt adatokat mutasson.</p>
+<div class="divider"></div>
+<div><strong>Összetevők</strong><div class="ingredient-list" style="margin-top:7px">
+<div class="ingredient-line"><span><span class="tick">◯</span>Darált hús</span><span>400 g</span></div>
+<div class="ingredient-line"><span><span class="tick">◯</span>Paradicsomszósz</span><span>300 g</span></div>
+<div class="ingredient-line"><span><span class="tick">◯</span>Száraztészta</span><span>320 g</span></div>
+</div></div>
+<div class="divider"></div>
+<div><strong>Elkészítés</strong><div style="margin-top:6px;display:grid;gap:6px"><div class="step"><b>01</b><span>Pirítsd meg a húst, majd add hozzá a paradicsomszószt.</span></div><div class="step"><b>02</b><span>Főzd meg a tésztát, és keverd össze a szósszal.</span></div></div></div>
+<div class="actionline"><span class="cta">Étkezéshez adom</span><span class="secondary">✎ Szerkesztés</span></div>
+<div class="aux">A szerkesztés továbbra is a meglévő ötfüles Food-receptszerkesztőbe vezet. Csak statikus koncepció.</div>
 </div></section>
 </div>
 <footer>Dokumentációs vizuális referencialap, nem kész vagy jóváhagyott Grapes UI. Minden összeg, időtartam és elérhetőség szemléltető. A végleges alkalmazás a kanonikus Grapes ikon- és logóasseteket használja; az itt szereplő jelképek helyőrzők.</footer>
