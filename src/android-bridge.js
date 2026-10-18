@@ -76,12 +76,15 @@ export async function requestAndroidFoodApi(kind, query, page = 1, pageSize = 12
 // Send bounded chunks so large YAZIO histories do not exceed bridge limits.
 export async function saveAndroidJsonBackup(filename, json) {
   const safeName = String(filename || '')
-  if (!/^grapes-etelnaplo-\d{4}-\d{2}-\d{2}\.json$/.test(safeName)) {
+  if (!/^grapes-(?:etelnaplo-\d{4}-\d{2}-\d{2}(?:-(?:helyi|drive))?|viznaplo-\d{4}-\d{2}-\d{2})\.json$/.test(safeName)) {
     throw new Error('Érvénytelen biztonsági mentés fájlnév.')
   }
   const content = String(json ?? '')
-  if (!content || !JSON.parse(content)?.grapesFoodBackup) {
-    throw new Error('A Food biztonsági mentés formátuma érvénytelen.')
+  let parsed
+  try { parsed = JSON.parse(content) } catch { throw new Error('Hibás JSON biztonsági mentés.') }
+  const water = safeName.startsWith('grapes-viznaplo-')
+  if (!content || (water ? parsed?.grapesWaterBackup !== true : parsed?.grapesFoodBackup !== true)) {
+    throw new Error('A biztonsági mentés formátuma érvénytelen.')
   }
   let token = ''
   try {
