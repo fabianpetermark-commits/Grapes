@@ -532,6 +532,10 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-overview]').hidden = true; $('[data-food-detail]').hidden = true; $('[data-food-recipes-view]').hidden = true; $('[data-food-recipe-detail]').hidden = false
     $('[data-food-recipe-title]').textContent = recipe.name
     $('[data-food-recipe-copy]').textContent = `${recipe.category} · ${recipe.ingredients.length} hozzávaló`
+    const detailImage = $('[data-food-recipe-detail-image]')
+    detailImage.hidden = !recipe.imageUrl
+    if (recipe.imageUrl) detailImage.src = recipe.imageUrl
+    else detailImage.removeAttribute('src')
     const foodNames = new Map(project.customFoods.map(item => [item.id, item.name]))
     $('[data-food-recipe-content]').innerHTML = `<strong>Hozzávalók</strong>${recipe.ingredients.map(item => `<span>${escapeHtml(foodNames.get(item.foodId) || 'Ismeretlen hozzávaló')} · ${number(item.amount, 2)} ${UNIT_LABELS[item.unit] || item.unit}</span>`).join('')}${recipe.instructions ? `<br><strong>Elkészítés</strong><span>${escapeHtml(recipe.instructions)}</span>` : ''}`
     fab.hidden = true
