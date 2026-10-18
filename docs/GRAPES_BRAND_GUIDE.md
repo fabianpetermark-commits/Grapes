@@ -1,6 +1,6 @@
-# Grapes – Brand Guide / Design System v0.2 (review draft)
+# Grapes – Brand Guide / Design System v1.0-rc1 (auditált tervezet)
 
-> **Állapot: javasolt egységesítési szabvány, felülvizsgálatra vár.** Kiindulás: a repó valódi logója, Android mobilfelülete és meglévő design tokenjei (2026-10-18). A dokumentum önmagában nem módosít sem UI-t, sem adatkezelést. Ahol a régi webes UI és az Android eltér, ott ezt nyíltan jelöli; a változtatásokat külön PR-ben kell átvezetni.
+> **Állapot: forráskóddal auditált v1.0-rc1 szabványtervezet; vizuális/készülékes ellenőrzés és felhasználói végső jóváhagyás még szükséges.** Lásd: [`GRAPES_BRAND_AUDIT.md`](./GRAPES_BRAND_AUDIT.md). Kiindulás: a repó valódi logója, Android mobilfelülete és meglévő design tokenjei (2026-10-18). A dokumentum önmagában nem módosít sem UI-t, sem adatkezelést. Ahol a régi webes UI és az Android eltér, ott ezt nyíltan jelöli; a változtatásokat külön PR-ben kell átvezetni.
 >
 > **Cél:** Grapes-azonos szín, tipó, ikon, navigáció, effektek és komponensműködés minden modulban: Ételnapló, Víz, Pénzügy, E-book, QR, 3D, E-mail, Brossúra stb.; éles Android + TEST ugyanazt a vizuális rendszert használja, de adat- és release-környezeteik továbbra is külön maradnak.
 
@@ -19,7 +19,7 @@
 | Négyzetes, sötét hátterű Grapes-embléma | [`public/grapes-logo.svg`](../public/grapes-logo.svg) |
 | Háttér nélküli szőlőjel / mobil appjel | [`public/grapes-mark.svg`](../public/grapes-mark.svg) |
 | Böngésző favicon | [`public/favicon.svg`](../public/favicon.svg) |
-| Képarány | 1:1; a teljes SVG 96×96-es nézettel és lekerekített sötét négyzet alappal rendelkezik |
+| Képarány | A `grapes-logo.svg` és a `grapes-mark.svg` egyaránt 96×96 nézetű; **csak** az előbbi rendelkezik sötét, lekerekített négyzetes alappal |
 | Mobil fejléc és belépés (tényleges forrás) | `design/android-mobile-preview.html`: fejléc `grapes-mark.svg` 36×36 px, 3 px padding; belépő képernyő `grapes-mark.svg` 76×76 px, 7 px padding; a CSS mindkettőhöz külön külső árnyékot is ad. Ez **jelenlegi állapot**, nem kötelező új komponensminta. |
 | Negatív tér | A logó körül minimum ¼ logószélesség más emblémától/elemtől, amennyiben a layout megengedi |
 | Tiltott változtatások | Önálló átszínezés, összenyújtás, újrarajzolás, túlexponált külső glow, tetszőleges árnyék vagy más verzió másolása külön modulba |
@@ -55,13 +55,13 @@ A progresshez ne legyen egyedi `#91FFFF`, `#A7FFFF`, `#8EFFFF` vagy tetszőleges
 
 **Átmeneti technikai állapot:** a `--grapes-*` nevek jelenleg dokumentációs célnevek, **nem élesben már bevezetett, globális CSS-tokenek**. A mobil forrás jelenleg `--bg`, `--surface`, `--line`, `--accent` stb. neveket használ. A közös mobil tokenszint bevezetése külön implementációs PR feladata.
 
-**Létező külön desktop rendszer, nem szabad letagadni:** a `src/styles/tokens.css` másik készletet ad (például `--color-accent: #4C8DFD`, `--color-bg-app: #0F1318`, `--font-ui: system-ui, ...`). A v0.1 a **mobil Android képernyők** kanonikus mintája; a teljes desktop egységesítés külön review, kontrasztvizsgálat és migráció. Ne cseréljük globálisan az összes desktop tokent egy Food-gyűrű javítása miatt.
+**Létező külön desktop rendszer, nem szabad letagadni:** a `src/styles/tokens.css` másik készletet ad (például `--color-accent: #4C8DFD`, `--color-bg-app: #0F1318`, `--font-ui: system-ui, ...`). A v1.0-rc1 a **mobil Android képernyők** kanonikus célmintája; a teljes desktop egységesítés külön review, kontrasztvizsgálat és migráció. Ne cseréljük globálisan az összes desktop tokent egy Food-gyűrű javítása miatt.
 
 ## 4. Tipográfia
 
 **A jelenlegi mobil CSS:** `font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif`. Nincs garantáltan beágyazott vagy telepített Inter, ezért rendszerenként fallback lehet; ezt figyelembe kell venni vizuális ellenőrzésnél.
 
-**Javasolt egységes mobil típuslétra**, amely az `ANDROID_UI_DESIGN_PLAN.md` szándékával és a meglévő UI-val összhangban van:
+**v1.0-rc1 mobil céltípuslétra**, amely az `ANDROID_UI_DESIGN_PLAN.md` szándékával és a meglévő UI-val összhangban van:
 
 | Szerep | Méret | Súly | Sor-/viselkedési szabály |
 | --- | ---: | ---: | --- |
@@ -148,4 +148,57 @@ Betűskála szűk képernyőn is olvasható, nagyobb rendszerbetűnél se legyen
 - `ANDROID_UI_DESIGN_PLAN.md` – korábbi mobil UI-felvevő követelmények, kontraszt és méretezés.
 - `docs/CODEX_FOOD_RING_BRIEF.md` – azonnali, pontos megvalósítási brief.
 
-**Verzió:** 0.2 review draft / 2026-10-18. A logócsalád, a mobil színkódok és az éles/TEST gyűrű állapota *tények a repo forrásából*; az egységesítés, tipográfiai minőségszintek és glow-limit *javasolt szabályok*, még nincsenek minden modulban bevezetve. Ez a változtatás kizárólag dokumentáció, nem UI-implementáció és nem release.
+**Verzió:** v1.0-rc1 / 2026-10-18. Az arculati tényeket repo-forrásból ellenőriztük, a normatív komponensszabályok **célállapotok**, nem már minden modulon megvalósított viselkedés. Vizuális jóváhagyás még hátravan. Ez csak dokumentáció, nem UI-implementáció vagy release.
+
+
+## 11. Ellenőrizhető komponensszerződés (célállapot, nem kész implementáció)
+
+| Elem | Tervezési szabály | Kötelező ellenőrzés |
+| --- | --- | --- |
+| Appbar és fő navigáció | Sötét surface; a mobil fejlécben a meglévő `grapes-mark.svg` jel; az alsó navigáció négy fő cél és szöveges felirat. | 320px-től helyes tördelés; safe-area, visszalépés, érthető hozzáférhető gombnév. |
+| Elsődleges CTA | `#3BDCF2` kitöltés, **sötét** szöveg, nincs fölösleges külső glow. | 48×48px használható érintési terület; fókusz, disabled, loading és hibaállapot. |
+| Másodlagos/destruktív gomb | Raised háttér + halk border; törlés csak szemantikus pirossal és megfelelő megerősítéssel. | Minimum 44×44px célzott másodlagos hitbox; aktív/fókusz állapot nem csak színnel. |
+| Kereső, input, select, űrlapcímke | Raised háttér, következetes 12–14px sarok; olvasható normál szöveg 15–16px. | Képernyőbillentyűzet, input focus, nagy rendszerfont, hosszú magyar szöveg, hibajelzés. |
+| Statkártya és célérték | Érték 24–32px, `tabular-nums`; cím és magyarázat hierarchikus, nem 7–9px. | Hiányzó cél és ismeretlen adat valós jelzése; nincs levágott szám. |
+| Progress bar / ring | Sötét, **teljesen fénytelen track**; csak az aktív ív/bar kap brand- vagy szemantikus színt; glow csak indokolt aktív ívön. | 0/50/100%, nincs cél, ismeretlen érték; reduced motion; gomb és `aria-label` megtartása. |
+| Bottom sheet és modal | Sötét felület, diszkrét overlay, konzisztens 24px körüli sheet-sarok. | `role=dialog`, `aria-modal`/inert, billentyűzet és safe-area, mentés elérhető, fókusz és bezárás. |
+| Státusz / toast | Siker zöld, figyelmeztetés borostyán, hiba piros, folyamatban cián; minden színnek szöveges jelentése van. | Látható hiba és betöltés, megfelelő `role=status`/élő régió, nincs pusztán szín alapú közlés. |
+| Modulikonok | A meglévő `src/android-mobile-icons.js` 24×24 SVG, 1.8 stroke, round és `currentColor` a mobil minta. | Dekoratív SVG `aria-hidden`; az interaktív gomb kap megfelelő megnevezést. |
+
+Az **érintési terület** (látható ikon + tappolható gombterület) számít: 24px ikon lehet 48px-es gombban. A 44px-es kivétel nem menti fel a fő műveleteket a 48px alól; két szomszédos hitbox nem fedheti egymást.
+
+Az olvashatósági cél általában **4,5:1 normál szövegre**, **3:1 nagy szövegre és lényeges grafikai vezérlőre**, a vonatkozó WCAG feltételek szerint. A számított tokenkontraszt **nem** helyettesíti a valós opacity/overlay/fókusz állapotok tesztelését. A mikrocímkék emelésekor a tördelést is át kell nézni; nagy betűnél és 320px szélességen nem szabad levágni a tartalmat.
+
+## 12. Platformtokenek és funkcionális kivételek
+
+A dokumentált `--grapes-*` változók **jövőbeli szemantikus API-nevek**; jelenleg a mobil CSS-ben `--accent` / `--bg` / `--surface` / `--line`, a webes komponenseknél `--color-accent` / `--color-bg-app` / `--color-bg-surface` az implementáltak. **Ne** hivatkozzunk a nem létező global tokenre egy gyors CSS-javításban. A jövőbeli mapping bevezetése külön PR és regressziós feladat (BR-06 / BR-10).
+
+| Szemantikus szerep | Mobilforrás | Desktop/web példa |
+| --- | --- | --- |
+| Primary interactive accent | `--accent: #3BDCF2` | `--color-accent: #4C8DFD` |
+| App background | `--bg: #090E14` | `--color-bg-app: #0F1318` |
+| Surface | `--surface: #101821` | `--color-bg-surface: #161B22` |
+| Border / empty track | `--line: #243343` | `--color-border: #252D38` |
+
+**Nem hibának minősülő, de ellenőrzendő funkcionális kivételek:**
+- A **QR/vonalkód és nyomtatási/szerkesztővászon** valódi fekete-fehér tartalma **nem** arculati átszínezés tárgya. Csak a környező app-toolbar/dialog/chrome.
+- A **könyvolvasó** egyedi tartalomtipográfiája és felhasználói olvasási beállításai megmaradnak.
+- A **pénzügyi és tápanyagdiagramok** kategóriaszínei (lila, zöld, borostyán, kék stb.) megmaradhatnak, ha jelentést és megfelelő jelmagyarázatot hordoznak. A brand-cián nem minden adatsor kötelező színe.
+- A **Víz progress** külön kék színt használhat; az üres track viszont ne világítson, és az adatkezelés teljesen elkülönült marad.
+- A **webes Food** jelenleg világos/zöldes; nem automatikusan hibás. Light-variánsként megtartása vagy harmonizálása külön vizuális döntés.
+- A **GrapesJS/Fabric/3D szerkesztő** vászna a tartalom része. Harmadik fél CSS-e csak indokoltan, izoláltan írható felül.
+
+A kivétel mindig kapjon dokumentált indokot, modult, színjelentést és későbbi vizuális tesztet.
+
+## 13. Audit-prioritás és bevezetési/tesztelési kapuk
+
+A forrásellenőrzés 14 megállapítást rögzít a [Grapes Brand Audit](./GRAPES_BRAND_AUDIT.md) fájlban:
+- **P1 / BR-01–05:** kalóriakör + rossz elvárású tesztek; túl kicsi mobil feliratok és touch targetek; hiányos vizuális mátrix.
+- **P2 / BR-06–12:** mobil/web tokeneltérés, világos webes Food variáns, mobil glyph navigáció, modulszínek, nagy inline CSS, legacy és 3D tokenkockázat.
+- **P3 / BR-13–14:** betűforrás/fallback és jelenlegi-vs-tervezett-vs-tesztelt dokumentáció.
+
+**Első implementáció csak #42 / BR-01 + BR-05:** külön éles és TEST PR. Élesben `codex/android-app`, TEST-ben `integration/grapes-test-food-20261017`; nincs automatikus merge, APK, frissítés vagy Drive-felülírás. A korábbi erős neon-elvárást tartalmazó prod **mindkét** tesztet és a TEST ring-tesztet szükséges célzottan aktualizálni. Nem módosulhat napló, recept, Víz, YAZIO, Health Connect, backup, Google Drive, aláírás és package ID.
+
+**Vizuális kapuk:** 0/50/100%, napi cél nélkül, ismeretlen kcal; 320/360/390/412px, emelt rendszerbetű, hosszú magyar címke, mentés/képernyőbillentyűzet, fókusz/TalkBack, safe-area és `prefers-reduced-motion`. Lefutott `npm test`, `npm run build:android-web`, releváns Chromium/Playwright regresszió és szükség szerint natív debug. GitHub CI **nem** fizikailag telepített APK-teszt.
+
+**Státusznyelv:** `CURRENT` = forrásban meglevő; `TARGET` = tervezett szerződés; `VERIFIED` = futás közben/screenshoton igazolt; `APPROVED` = felhasználó külön elfogadta. A jelen v1.0-rc1 útmutatóban a közös komponensszerződés **TARGET**, nem `VERIFIED` és nem `APPROVED`. A végleges **v1.0** akkor jelölhető ki, ha a képreferenciák és a nyitott kivételek elfogadását is rögzítettük; ez nem jelenti a teljes Grapes-migráció automatikus befejezését.
