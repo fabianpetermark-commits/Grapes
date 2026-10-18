@@ -108,8 +108,8 @@ try {
   })
   await page.waitForFunction(() => document.querySelector('[data-yazio-status]')?.textContent.includes('1 étkezés importálva'))
   await page.locator('[data-sync-refresh]').click()
-  await page.waitForFunction(() => !document.querySelector('[data-sync-last-check]')?.textContent.includes('Még nem'))
-  assert.doesNotMatch(await page.locator('[data-sync-last-check]').textContent(), /Még nem/)
+  await page.waitForFunction(() => document.querySelector('[data-sync-status]')?.dataset.state === 'ready')
+  assert.match(await page.locator('[data-sync-status]').textContent(), /helyi mentések/i)
   await page.screenshot({ path: 'mobile-sync.png', fullPage: true })
 
   await page.locator('[data-nav="home"]').click()
