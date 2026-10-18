@@ -21,6 +21,7 @@ import { healthImportEntries, prepareHealthBridgeImport } from './food-health-im
 import { prepareYazioCsvImport, yazioImportEntries } from './yazio-import.js'
 import { getGrapesAccount, isGrapesDriveConnected, listGrapesProjects, loadGrapesProject, saveGrapesProject } from '../storage/grapes-drive.js'
 import { loadLocalProject, saveLocalProject } from '../storage/local-project-store.js'
+import { assertFoodDriveCreateSafe, chooseFoodDriveProject } from './food-drive-safety.js'
 import { isGrapesAndroidApp, readAndroidHealthExport, readAndroidHealthExportSilent, readAndroidSamsungHealthExport, requestAndroidYazio } from '../android-bridge.js'
 import { mobileIconSvg } from '../android-mobile-icons.js'
 
@@ -52,6 +53,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   let changeRevision = 0
   let loadGeneration = 0
   let loadedProfileId = ''
+  let driveConflict = ''
   let initialized = false
   let lastFoodSyncAt = 0
   let foodSyncInProgress = null
@@ -141,7 +143,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       }
       await load({ force: true })
       lastFoodSyncAt = Date.now()
-      showSyncStatus(`Sikeres ellenőrzés: ${new Date(lastFoodSyncAt).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })}`)
+      showSyncStatus(driveConflict || `Sikeres ellenőrzés: ${new Date(lastFoodSyncAt).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })}`)
     })()
     try { await foodSyncInProgress }
     catch (error) { showSyncStatus(`Szinkronhiba: ${error?.message || 'ismeretlen hiba'}`); throw error }
@@ -246,11 +248,15 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       let nextDriveFileId = local?.driveFileId || null
       let remoteLoaded = false
       let remoteChecked = false
+      let nextDriveConflict = ''
       if (isGrapesDriveConnected() && !nextProject.syncState?.localDirty) {
         try {
           const files = await listGrapesProjects(MODULE)
           remoteChecked = true
-          const candidate = files.find(file => file.id === nextDriveFileId) || files[0]
+          const selection = chooseFoodDriveProject(files, { linkedFileId: nextDriveFileId, localProject: local?.data })
+          const candidate = selection.candidate
+          nextDriveConflict = selection.conflict
+          if (nextDriveConflict && nextDriveConflict !== driveConflict) showToast(nextDriveConflict)
           if (candidate) {
             const remote = await loadGrapesProject(candidate.id)
             nextProject = normalizeFoodProject(remote.data, nextProfile.id)
@@ -270,6 +276,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       profile = nextProfile
       project = nextProject
       driveFileId = nextDriveFileId
+      driveConflict = nextDriveConflict
       loadedProfileId = nextProfile.id
       changeRevision = 0
       const legacyHydration = project.diaryEntries.filter(entry => entry.snapshot?.category === 'Folyadék')
@@ -312,8 +319,12 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
         const snapshot = structuredClone(project)
         snapshot.syncState = { ...snapshot.syncState, localDirty: false }
         try {
+          // A detached local diary must not create a second remote project while
+          // a different Food project already exists on the same Drive account.
+          if (!driveFileId) assertFoodDriveCreateSafe(await listGrapesProjects(MODULE))
           driveFileId = await saveGrapesProject({ module: MODULE, name: PROJECT_NAME, data: snapshot, fileId: driveFileId })
           const changedDuringUpload = changeRevision !== savedRevision
+          driveConflict = ''
           project.syncState = { ...project.syncState, localDirty: changedDuringUpload }
           if (changedDuringUpload) driveRequested = true
           await persistLocal()
