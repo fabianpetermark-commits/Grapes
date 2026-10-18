@@ -1,4 +1,4 @@
-# Grapes – Brand Guide / Design System v0.1
+# Grapes – Brand Guide / Design System v0.2 (review draft)
 
 > **Állapot: javasolt egységesítési szabvány, felülvizsgálatra vár.** Kiindulás: a repó valódi logója, Android mobilfelülete és meglévő design tokenjei (2026-10-18). A dokumentum önmagában nem módosít sem UI-t, sem adatkezelést. Ahol a régi webes UI és az Android eltér, ott ezt nyíltan jelöli; a változtatásokat külön PR-ben kell átvezetni.
 >
@@ -16,19 +16,21 @@
 
 | Tétel | Forrás / szabály |
 | --- | --- |
-| Teljes logó (kanonikus, szerkeszthető vektor) | [`public/grapes-logo.svg`](../public/grapes-logo.svg) |
+| Négyzetes, sötét hátterű Grapes-embléma | [`public/grapes-logo.svg`](../public/grapes-logo.svg) |
+| Háttér nélküli szőlőjel / mobil appjel | [`public/grapes-mark.svg`](../public/grapes-mark.svg) |
 | Böngésző favicon | [`public/favicon.svg`](../public/favicon.svg) |
 | Képarány | 1:1; a teljes SVG 96×96-es nézettel és lekerekített sötét négyzet alappal rendelkezik |
-| Logó az app fejlécén | Jelenleg 36×36 px, benne 3 px padding; új felületeken lehetőleg legalább 32×32 px |
+| Mobil fejléc és belépés (tényleges forrás) | `design/android-mobile-preview.html`: fejléc `grapes-mark.svg` 36×36 px, 3 px padding; belépő képernyő `grapes-mark.svg` 76×76 px, 7 px padding; a CSS mindkettőhöz külön külső árnyékot is ad. Ez **jelenlegi állapot**, nem kötelező új komponensminta. |
 | Negatív tér | A logó körül minimum ¼ logószélesség más emblémától/elemtől, amennyiben a layout megengedi |
 | Tiltott változtatások | Önálló átszínezés, összenyújtás, újrarajzolás, túlexponált külső glow, tetszőleges árnyék vagy más verzió másolása külön modulba |
-| Kódhasználat | Ugyanarra a fájlra kell hivatkozni, ne legyen modulonként másik SVG |
+| Kódhasználat | A megfelelő **meglévő közös assetet** használd: háttér nélküli mobil jelhez `grapes-mark.svg`, négyzetes emblémához `grapes-logo.svg`, böngésző ikonhoz `favicon.svg`. Ne készíts modulonként másolatot vagy újrarajzolt variánst. |
 
-**A kanonikus logó valós színei** (a `public/grapes-logo.svg` forrásból):
+**A logócsalád valós színei** (a `public/grapes-logo.svg` és `public/grapes-mark.svg` forrásából):
 - Grape/berry gradient: `#B5FBFF` → `#49EDFA` → `#00B8E1` → `#00699F`.
 - Levél: `#24DCE9`, vékony körvonal: `#9BFBFF`; bogyó belső árnyalata: `#005D8E`.
 - Logó háttere: `#1D3040` → `#0B151E` → `#05080C`.
-- A logó saját SVG drop shadow-ja *a logón belül* marad; a UI-elemek nem másolhatják annak erős fényét.
+- A négyzetes emblémának saját SVG-árnyékai vannak, a háttér nélküli `grapes-mark.svg` pedig saját, finom SVG-glow-t tartalmaz. A mobil `.logo` és `.appbar__logo` jelenleg ezen felül CSS drop-shadow-t is alkalmaz. **Javasolt szabály:** a külön CSS-es logóhalo indokolatlan erősítését később külön vizuális review-val mérsékeljük, a logóassetek megváltoztatása nélkül.
+- **Nem egyetlen felcserélhető fájlról van szó:** a `grapes-mark.svg` átlátszó hátterű, a `grapes-logo.svg` sötét, lekerekített négyzetet is tartalmaz. A `favicon.svg` harmadik, kisméretre szabott SVG-forrás.
 
 ## 3. Elsődleges Grapes Android színpaletta
 
@@ -50,6 +52,8 @@
 | `--grapes-danger` | `#FF7083` | Hiba / destruktív művelet |
 
 A progresshez ne legyen egyedi `#91FFFF`, `#A7FFFF`, `#8EFFFF` vagy tetszőleges másik neonszín; ezek nem az Android alap-paletta részei. Aktív progress = `var(--grapes-accent)` / jelenlegi `var(--accent)`; üres track = `var(--grapes-line)` / jelenlegi `var(--line)`.
+
+**Átmeneti technikai állapot:** a `--grapes-*` nevek jelenleg dokumentációs célnevek, **nem élesben már bevezetett, globális CSS-tokenek**. A mobil forrás jelenleg `--bg`, `--surface`, `--line`, `--accent` stb. neveket használ. A közös mobil tokenszint bevezetése külön implementációs PR feladata.
 
 **Létező külön desktop rendszer, nem szabad letagadni:** a `src/styles/tokens.css` másik készletet ad (például `--color-accent: #4C8DFD`, `--color-bg-app: #0F1318`, `--font-ui: system-ui, ...`). A v0.1 a **mobil Android képernyők** kanonikus mintája; a teljes desktop egységesítés külön review, kontrasztvizsgálat és migráció. Ne cseréljük globálisan az összes desktop tokent egy Food-gyűrű javítása miatt.
 
@@ -73,6 +77,8 @@ A progresshez ne legyen egyedi `#91FFFF`, `#A7FFFF`, `#8EFFFF` vagy tetszőleges
 A jelenlegi HTML-ben 7–11 px-es feliratok is vannak; **ezek meglévő megvalósítások, nem a kívánatos szabvány**. A kör belsejében az `Elfogyasztva` feliratot nem szabad 7 px-en hagyni, ha helyette 11–12 px-et el lehet érni. A 112 px-es korongon 0/900 kcal érték, cél és felirat több sor esetén inkább tördeljen, ne veszítsen olvashatóságot.
 
 Betűskála szűk képernyőn is olvasható, nagyobb rendszerbetűnél se legyen levágva; az értékek `font-variant-numeric: tabular-nums`-t használjanak.
+
+**Kontraszt-ellenőrzés (forrásból számított WCAG kontrasztarányok, nem készülékteszt):** `#3BDCF2` a `#090E14` háttéren kb. **11,72:1**, a `#101821` felületen kb. **10,82:1**; a `#94A5B8` másodlagos szöveg a `#101821` felületen kb. **7,09:1**. Fontos ellenpélda: **fehér szöveg cián gombon csak kb. 1,65:1**, ezért világos cián kitöltésnél sötét gombszöveget használjunk, és a végső állapotokat külön ellenőrizzük. A kontrasztarány nem helyettesíti a minimális méret, érintési cél és TalkBack ellenőrzését.
 
 ## 5. Layout, térköz, méretek
 
@@ -108,9 +114,11 @@ Betűskála szűk képernyőn is olvasható, nagyobb rendszerbetűnél se legyen
 4. **0%**: üres, sötét kör, nulla halo, 0 kcal; **50%**: csak a fél progress ív világít, nincs fény a fennmaradó félkörön; **100%**: teljes progress ív világíthat finoman, de továbbra sem „reaktor”.
 5. **Nincs napi cél:** nincs hamis százalék/kitalált `2000 kcal` cél; a kör semleges, középen `Nincs cél`.
 6. Sötét, áttetsző **nem ragyogó** középső korong; kcal a legnagyobb típus. Az `Elfogyasztva` címke marad, de legyen olvasható.
-7. A jelenlegi CSS `.energy-ring::before` teljes 360°-os elmosott hátterét el kell távolítani; helyette érdemes **SVG progress circle két külön stroke-ját** használni (sötét track + aktív, önmagán halvány filterezett progress). Az SVG azonos és pontosan szakaszra korlátozott 0/50/100 állapotot ad.
+7. Az éles **és a TEST** 2026-10-18-i CSS-ben is fennálló `.energy-ring::before` teljes 360°-os elmosott hátterét el kell távolítani; helyette érdemes **SVG progress circle két külön stroke-ját** használni (sötét track + aktív, önmagán halvány filterezett progress). Az SVG azonos és pontosan szakaszra korlátozott 0/50/100 állapotot ad.
 8. Reduced motion: `prefers-reduced-motion` esetén nincs fény/pulzáló animáció. Normál módban is csak enyhe állapotváltás.
 9. Az új progress komponens megőrzi a statisztika gomb funkcióját és az akadálymentes nevet.
+
+**2026-10-18-i forrásellenőrzés:** a `codex/android-app` és `integration/grapes-test-food-20261017` ág jelenlegi `.energy-ring` CSS-e lényegében azonos: `--energy-track: #147e96`, `--energy-fill: #91ffff`, az egész gyűrűn `box-shadow`, és `::before` `blur(9px)`. Mindkét Food JS a `--energy-progress` változót írja és `data-energy-state` állapotot állít; egyik sem ír már inline progress-hátteret. Ez a *javítandó jelenlegi implementáció*, nem a kívánt design. A két külön PR továbbra is kötelező a környezetek elkülönítése miatt.
 
 ## 8. Mit tilos megtenni egy brand-polish miatt?
 
@@ -131,7 +139,8 @@ Betűskála szűk képernyőn is olvasható, nagyobb rendszerbetűnél se legyen
 
 ## 10. Forrásjegyzék és verziózás
 
-- `public/grapes-logo.svg` – hivatalos vektoros logo/színek.
+- `public/grapes-logo.svg` – négyzetes, hátteres vektoros embléma.
+- `public/grapes-mark.svg` – tényleges mobil fejléc- és bejelentkezési szőlőjel.
 - `public/favicon.svg` – böngésző favicon.
 - `design/android-mobile-preview.html` – jelenlegi Android mobil valós stílusdefiníciói.
 - `src/android-mobile-icons.js` – mobil SVG stroke ikonok.
@@ -139,4 +148,4 @@ Betűskála szűk képernyőn is olvasható, nagyobb rendszerbetűnél se legyen
 - `ANDROID_UI_DESIGN_PLAN.md` – korábbi mobil UI-felvevő követelmények, kontraszt és méretezés.
 - `docs/CODEX_FOOD_RING_BRIEF.md` – azonnali, pontos megvalósítási brief.
 
-**Verzió:** 0.1 draft / 2026-10-18. A logó és mobil színkódok *tények a repo forrásából*; az egységesítés, tipográfiai minőségszintek és glow-limit *javasolt új szabályok*, még nincsenek minden modulban bevezetve.
+**Verzió:** 0.2 review draft / 2026-10-18. A logócsalád, a mobil színkódok és az éles/TEST gyűrű állapota *tények a repo forrásából*; az egységesítés, tipográfiai minőségszintek és glow-limit *javasolt szabályok*, még nincsenek minden modulban bevezetve. Ez a változtatás kizárólag dokumentáció, nem UI-implementáció és nem release.
