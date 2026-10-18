@@ -6,6 +6,7 @@ import {
 } from '../src/food/food-data.js'
 import {
   assertFoodDriveCreateSafe, chooseFoodDriveProject, foodProjectHasUserContent,
+  foodDriveSignature, verifyFoodRemoteBeforeUpload,
 } from '../src/food/food-drive-safety.js'
 
 const savedAt = '2025-08-11T07:30:00.000Z'
@@ -167,4 +168,34 @@ test('production-shaped native Health Connect backup with unset goals and unsync
   assert.deepEqual(foodBackupFromJson(foodBackupToJson(restored),identity.id),restored)
   assert.equal(chooseFoodDriveProject([{id:'some-other-drive-project'}],
     {localProject:restored}).candidate,null)
+})
+
+test('same linked Drive diary allows a safe update only against verified remote baseline', () => {
+  const stored=normalizeFoodProject(stableLegacyProject(),profile.id)
+  const local=structuredClone(stored)
+  local.diaryEntries[0].snapshot.nutrients.energyKcal=355
+  local.syncState.localDirty=true
+  const trusted=foodDriveSignature(stored,profile.id)
+  // A user's local edit is expected, but the remote must still equal the known baseline.
+  assert.equal(verifyFoodRemoteBeforeUpload(stored,local,trusted),trusted)
+  const modifiedRemote=structuredClone(stored)
+  modifiedRemote.diaryEntries.push({...modifiedRemote.diaryEntries[0],id:'different-device-new-entry'})
+  assert.throws(()=>verifyFoodRemoteBeforeUpload(modifiedRemote,local,trusted),/eltérő Food-napló/)
+})
+
+test('dirty production-shaped diary cannot silently overwrite divergent Drive content after restart', () => {
+  const remote=normalizeFoodProject(stableLegacyProject(),profile.id)
+  const local=structuredClone(remote)
+  local.syncState.localDirty=true
+  assert.equal(verifyFoodRemoteBeforeUpload(remote,local),foodDriveSignature(remote))
+  local.diaryEntries[0].snapshot.nutrients.energyKcal=400
+  assert.throws(()=>verifyFoodRemoteBeforeUpload(remote,local),/eltérő Food-napló/)
+  assert.equal(local.diaryEntries[0].snapshot.nutrients.energyKcal,400,'The rejected local change remains intact.')
+})
+
+test('linked Drive comparison rejects a different Google profile', () => {
+  const local=normalizeFoodProject(stableLegacyProject(),profile.id)
+  const remote=structuredClone(local)
+  remote.profile.id='other-drive-user'
+  assert.throws(()=>verifyFoodRemoteBeforeUpload(remote,local),/másik Google-fiókhoz/)
 })
