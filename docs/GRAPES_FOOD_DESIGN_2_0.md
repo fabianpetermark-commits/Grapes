@@ -1,9 +1,13 @@
-# Grapes Food – Design 2.0 / teljes vizuális és UX újratervezési terv
+# Grapes Food – Design 2.0 / kétlépcsős arculati és UX-terv
 
 > **Verzió:** 0.1 – TARGET / tervezet, 2026-10-19. **Csak dokumentáció, nincs alkalmazáskód- vagy kiadásmódosítás.**  
 > Kapcsolódó szabvány: [Brand Guide](./GRAPES_BRAND_GUIDE.md), [Product Vision & UX Principles](./GRAPES_PRODUCT_VISION_AND_UX_PRINCIPLES.md), [Concept UI Reference](./GRAPES_CONCEPT_UI_REFERENCE.md), [UI mintalap](./GRAPES_CONCEPT_UI_KIT.html).
 
-## 0. Termékcél
+## 0. Termékcél és jóváhagyott ütemezési határ
+
+**1. ütem – MOST: kizárólag dizájnfrissítés a jelenlegi Food-felépítés megtartásával.** Nem változhat a navigáció, a képernyők/szekciók sorrendje, az ötfüles receptszerkesztő, a funkciók, az adatmodell vagy a műveleti folyamatok. Csak a megjelenést (színek, tipográfia, ikonok, kártyák, képek, finom progress, térközök és kontraszt) frissítjük, a meglévő interakciók megőrzésével.
+
+**2. ütem – KÉSŐBB: UX és felépítés újragondolása, külön jóváhagyással.** A négy tervezett Food célterület (Ma / Ételek / Receptek / Statisztika), a navigáció esetleges átalakítása és a használati folyamatok egyszerűsítése **nem törölt ötletek**, csak nem részei az aktuális implementációs körnek. Előbb egy külön, működő prototípus és UX-review szükséges. A meglévő alkalmazás alsó navigációját a második ütem sem változtathatja meg automatikusan.
 
 A Grapes Food ne csak kalóriát és bejegyzéseket mutasson: egy pillantással legyen értelmezhető a helyzet, egy-két érintéssel elvégezhető a gyakori feladat, és a kijelölt célokat támogassa. A jelenlegi működő Food rendszert **nem írjuk újra**; a vizuális és interakciós réteget tervezzük újra.
 
@@ -18,9 +22,9 @@ A friss tervezés nem jelent Home funkcióbevezetést. A „Mit főzzünk?” te
 - A mobil CSS-ben előfordulnak 10–12 px-es interaktív feliratok, következetlen UI-hierarchia. Nem minden rendszerkomponens ugyanazt a kanonikus szabványt követi.
 - A kalóriagyűrű jelenlegi markupjában SVG track/progress található, de ez önmagában nem valós vizuális QA, és nem jelenti a #42 teljes lezárását. A ringes javítás ne keveredjen ad hoc globális CSS-szel.
 
-## 2. Új modularchitektúra – javaslat (globális navigáció érintése nélkül)
+## 2. Későbbi, 2. ütem: lehetséges Food-navigáció (most NEM implementáljuk)
 
-A Foodon belüli használati célokat négy fő helyre rendeznénk; a Grapes teljes alkalmazásának alsó navigációját **nem** cseréljük le önkényesen.
+A későbbi második ütemben a Foodon belüli használati célokat esetleg négy fő helyre rendeznénk; a Grapes teljes alkalmazásának alsó navigációját **nem** cseréljük le önkényesen. **Ez a táblázat jövőbeli UX-javaslat, nem a mostani vizuális frissítés specifikációja.**
 
 | Food nézet | Fő felhasználói kérdés | Tartalom és elsődleges művelet |
 | --- | --- | --- |
@@ -31,9 +35,9 @@ A Foodon belüli használati célokat négy fő helyre rendeznénk; a Grapes tel
 
 **Navigációs döntés nyitott:** lehet egy kis Food-alnavigáció (4 kompakt fül), vagy egy kontextuális átváltás a meglévő navigációban. Előbb a 360/390 px mintákon validáljuk; nem erőltetünk egy új második fix alsó sávot a globális nav fölé.
 
-## 3. Képernyőtervek
+## 3. Képernyőtervek – vizuális célok most, használati egyszerűsítések később
 
-### A. Ma – először az érték, aztán a napló
+### A. Jelenlegi napi áttekintés – arculat most; átrendezés csak később
 
 - Napválasztó és dátum egységes, jól érinthető fejléccel.
 - A már felülvizsgált neon-visszafogott energiaszámláló marad a fő fókusz; a kcal szám dominál, a kitöltetlen gyűrű sötét; cél vagy energiahiánynál őszinte állapot.
@@ -44,7 +48,7 @@ A Foodon belüli használati célokat négy fő helyre rendeznénk; a Grapes tel
 - Receptekről rövid, kompakt belépő lehet az áttekintésben, de ne növelje feleslegesen a görgetést.
 - Teljesen üres nap, hiányzó cél, naplózott részadatok és importált naplók külön állapottal.
 
-### B. Ételek – gyorsaság
+### B. Jelenlegi ételkereső és naplózás – megjelenés most; folyamatfrissítés csak később
 
 - Kereső előtérben, találatok azonos méretű kártyasorokkal, élelmiszernév és forrás világos hierarchiában.
 - Vonalkód, fényképen látható vonalkód, kedvencek, saját étel: rövid, valós képességet tükröző szövegek.
@@ -52,7 +56,7 @@ A Foodon belüli használati célokat négy fő helyre rendeznénk; a Grapes tel
 - Duplikált eredmények kezelésének módja és az eredet jelzése változatlan logikán alapul.
 - Ne legyen kötelező külön keresési képernyőt nyitni, ha a felhasználó az étkezésből azonnali gyorshozzáadást választ.
 
-### C. Receptek – ugyanaz a dizájn mint a Home koncepció
+### C. Jelenlegi receptek – egységes új dizájn most; folyamatfrissítés csak később
 
 - A receptlista képes, hiányzó kép esetén semleges Grapes-helyőrzős; hosszú címmel sem esik szét.
 - Recept-adatlap: nagy kép, cím, mértékegység/hozam, **ismert adatokból** számított kcal/makró kártya, összetevők, jól formázott elkészítés.
@@ -61,12 +65,14 @@ A Foodon belüli használati célokat négy fő helyre rendeznénk; a Grapes tel
 - Recept-import, kép, összetevő-párosítás, tápértékhiány, hozamszámítás, formázott instrukciók, variánsok és megosztás megőrzendő.
 - Recept-megtekintő és szerkesztő továbbra is külön UI-folyamat. A meglévő saját és családi könyvtár az egyetlen receptforrás; Home nem vezet be második receptadatbázist.
 
-### D. Statisztika – összehasonlítható, értelmezhető eredmények
+### D. Jelenlegi statisztika – arculat most; új elemzési szerkezet csak később
 
 - All-time és időszűrők világos, horizontálisan értelmezhető navigációval.
 - Átlagok, trendek, célhoz képesti haladás és diagramok; nem minden egyszerre egy hosszú listában.
 - Naplózott napok számának és hiányos tápértékeknek a jól látható jelölése.
 - Fő következtetés mindig 1–2 rövid mondat; ne csak grafikon, ne minősítsen személyesen.
+
+**Fontos:** A fenti képernyőtervek kétféle ötletet tartalmaznak. Az **1. ütemben** kizárólag a meglévő UI-komponensek megjelenését egységesítjük, funkció vagy képernyőelrendezés átszervezése nélkül. Bármilyen új fő művelet, új kártyasorrend, új navigáció, kibővített ajánlás vagy új képernyőelem a **2. ütem** külön tervezési és jóváhagyási feladata. A jelenlegi, pontosan öt füles receptszerkesztő szerkezetét mindkét ütemben csak kifejezett új döntéssel módosítjuk.
 
 ## 4. Közös vizuális komponensek
 
@@ -76,11 +82,13 @@ A Brand Guide szerinti mobil paletta: háttér `#090E14`, kártya `#101821`, eme
 
 Egységes sarkok, szóközök, 48 px elsődleges érintési cél, legalább 15–16 px törzsszöveg, 13–14 px lényeges kiegészítő szöveg; számok tabular-nums; ikonok a kanonikus készletből. Mindig szöveges státusz, nem kizárólag színjelzés. A túlzott glow kerülendő.
 
-## 5. Első közös vizuális review
+## 5. Kétlépcsős review és megvalósítás
 
-**Elsőként négy, egymással összefüggő tervet ellenőrizzünk ugyanazon a mobil skálán:** `Ma` áttekintés, `Ételkeresés`, `Receptek` lista, `Receptadatlap`. A második körben jön az ötfüles szerkesztő és a statisztika részletes képernyője. A dokumentált, korábbi Home-receptkártya önálló vizuális referencia, de **nem kell a Home megvalósulására várnunk** a Food-dizájnhoz.
+**Most, 1. ütem:** a JELENLEGI Food-nézetekre készítünk előtte/utána dizájnmintákat, a tényleges navigáció és szekciósorrend megtartásával: napi áttekintés, ételkeresés/naplózás, receptlista/adatlap, ötfüles szerkesztő, statisztika. Az azonos Brand Guide-komponensek (kártyák, ikonok, progress, gombok, képek) vizuális következetességét vizsgáljuk.
 
-**Kizárólag jóváhagyott képernyőtervek után**: izolált TEST UI PR és célzott tesztek, majd készülékes review, utána külön engedéllyel az éles ág frissítése. A Product Vision / Brand Guide PR nem jelent automatikus UI merge-et.
+**Később, 2. ütem:** külön UX-prototípuson megvizsgálhatjuk az új Ma / Ételek / Receptek / Statisztika belső navigációt, a tartalmi hierarchiát és a folyamatok rövidítését. Ez a terv **megmarad**, de nem része a mostani dizájnfrissítésnek.
+
+**Kizárólag az 1. ütemhez jóváhagyott, a jelenlegi felépítést megtartó képernyőtervek után**: izolált TEST UI PR és célzott regressziós tesztek, majd készülékes review, utána külön engedéllyel az éles ág arculati frissítése. A 2. ütem külön döntés, külön PR, külön teszt és release-engedély. A Product Vision / Brand Guide PR nem jelent automatikus UI merge-et.
 
 ## 6. Kötelező regressziós kapuk
 
@@ -92,11 +100,11 @@ Egységes sarkok, szóközök, 48 px elsődleges érintési cél, legalább 15�
 - Health Connect, Samsung, YAZIO, víz, szinkron, Drive, backup/export (és azok hibás / hiányos adatai) funkcionálisan változatlanok.
 - TEST/éles csomag, signing, frissítési csatorna és adatok teljes elkülönítése.
 
-## 7. Nyitott UX-döntések
+## 7. Nyitott, későbbi UX-döntések (2. ütem)
 
 1. A Food négy fő funkciója hogyan navigálható legjobban egyetlen appon belül a már meglévő globális alsó navigáció mellett?
 2. A `Ma` nézeten az étkezések vagy a receptek kapjanak előbbre helyet? Javaslat: étkezések; a receptek külön nézetbe is kerülnek.
 3. A receptadatlap melyik elsődleges művelete mutasson főszerepet a jelenlegi kód által ténylegesen támogatott lépések mellett?
 4. Mit mutassunk kiemelten a statisztikában: haladás a cél felé, tendencia vagy összehasonlító tápanyagok?
 
-**A jelen dokumentáció csak terv. Nem állítja, hogy a Food UI 2.0 már működik vagy tesztelve van.**
+**Az aktuális munkafeladat kizárólag az 1. ütem: dizájn, változatlan Food-felépítéssel.** A 2. ütem UX-ötletei megmaradnak mint későbbi irány, de végrehajtásukhoz új, kifejezett jóváhagyás kell. A dokumentáció csak terv; nem állítja, hogy a Food UI 2.0 már működik vagy tesztelve van.
