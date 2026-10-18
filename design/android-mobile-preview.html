@@ -187,12 +187,60 @@
     .module-tab.is-active { color: var(--text); background: var(--raised); box-shadow: 0 5px 15px rgb(0 0 0 / 22%); }
     .daily-card { position: relative; display: grid; grid-template-columns: 106px minmax(0, 1fr); gap: 18px; align-items: center; padding: 17px; background: linear-gradient(145deg, rgb(59 220 242 / 11%), var(--surface)); border: 1px solid rgb(59 220 242 / 24%); border-radius: 22px; }
     .daily-card__menu { position: absolute; top: 5px; right: 5px; width: 36px; height: 36px; color: var(--muted); background: transparent; border: 0; border-radius: 11px; }
-    .energy-ring { display: grid; place-items: center; width: 106px; height: 106px; background: conic-gradient(var(--accent) 0 71%, #1d2b38 71% 100%); border-radius: 50%; }
-    .energy-ring::after { grid-area: 1 / 1; width: 78px; height: 78px; content: ""; background: var(--surface); border-radius: 50%; }
-    .energy-ring__value { z-index: 1; grid-area: 1 / 1; text-align: center; }
-    .energy-ring__value strong, .energy-ring__value small { display: block; }
-    .energy-ring__value strong { font-size: 21px; letter-spacing: -.04em; }
-    .energy-ring__value small { margin-top: 2px; color: var(--muted); font-size: 9px; }
+    /* The Food calorie dial retains its cyan neon edge even at 0% or before a goal is set.
+       JS only supplies --energy-progress; an inline background would hide this layered styling. */
+    .energy-ring {
+      --energy-progress: 0%;
+      position: relative;
+      display: grid;
+      place-items: center;
+      flex: 0 0 106px;
+      width: 106px;
+      height: 106px;
+      padding: 0;
+      color: var(--text);
+      cursor: pointer;
+      border: 0;
+      border-radius: 50%;
+      background: conic-gradient(from -90deg,
+        #65f6ff 0% var(--energy-progress),
+        #21495b var(--energy-progress) 100%);
+      box-shadow:
+        0 0 0 1px rgb(104 246 255 / 35%),
+        0 0 12px rgb(49 231 255 / 42%),
+        0 0 29px rgb(28 182 235 / 26%),
+        inset 0 0 12px rgb(123 249 255 / 22%);
+      transition: box-shadow .22s ease;
+    }
+    .energy-ring::after {
+      grid-area: 1 / 1;
+      width: 80px;
+      height: 80px;
+      content: "";
+      pointer-events: none;
+      background: radial-gradient(circle at 35% 25%, #192d3a 0%, #101b29 52%, #0b141e 100%);
+      border: 1px solid rgb(102 229 244 / 23%);
+      border-radius: 50%;
+      box-shadow: inset 0 2px 12px rgb(0 0 0 / 43%), 0 0 0 2px rgb(5 15 24 / 35%);
+    }
+    .energy-ring__value {
+      z-index: 1;
+      grid-area: 1 / 1;
+      display: grid;
+      gap: 3px;
+      justify-items: center;
+      width: 75px;
+      color: var(--text);
+      text-align: center;
+      pointer-events: none;
+    }
+    .energy-ring__value strong { display: block; max-width: 100%; font-size: 22px; line-height: 1.05; letter-spacing: -.05em; }
+    .energy-ring__value > span { display: block; max-width: 100%; color: #a5dbe9; font-size: 10px; line-height: 1.15; }
+    .energy-ring[data-energy-state="complete"] {
+      box-shadow: 0 0 0 1px rgb(125 251 255 / 60%), 0 0 19px rgb(69 243 255 / 55%), 0 0 36px rgb(34 198 245 / 32%);
+    }
+    .energy-ring:focus-visible { outline: 2px solid #8bf6ff; outline-offset: 5px; }
+    @media (prefers-reduced-motion: reduce) { .energy-ring { transition: none; } }
     .daily-copy h2 { margin: 0 0 5px; font-size: 17px; }
     .daily-copy > span { color: var(--muted); font-size: 11px; }
     .macro-list { display: grid; gap: 9px; margin-top: 13px; }

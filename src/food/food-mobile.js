@@ -434,13 +434,17 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-energy-target]').textContent = `${number(targets.energyKcal)} kcal`
     const energyGoal = Number(targets.energyKcal)
     const loggedEnergy = Number(totals.energyKcal)
-    const energyPercent = Number.isFinite(energyGoal) && energyGoal > 0 && Number.isFinite(loggedEnergy)
+    // Keep the neon ring CSS intact at 0% and with no daily goal. Only the
+    // numeric arc varies; never assign an inline background over its glow.
+    const hasEnergyGoal = Number.isFinite(energyGoal) && energyGoal > 0
+    const hasCompleteEnergy = entries.length > 0 && totals.energyKcal != null
+    const energyPercent = hasEnergyGoal && hasCompleteEnergy && Number.isFinite(loggedEnergy)
       ? Math.max(0, Math.min(100, loggedEnergy / energyGoal * 100)) : 0
-    $('[data-food-energy-ring]').style.background = `conic-gradient(#55dff6 0% ${energyPercent}%, #1d2b38 ${energyPercent}% 100%)`
+    const energyRing = $('[data-food-energy-ring]')
+    energyRing.style.setProperty('--energy-progress', `${energyPercent}%`)
+    energyRing.dataset.energyState = hasEnergyGoal && hasCompleteEnergy && energyPercent >= 100 ? 'complete' : hasEnergyGoal ? 'active' : 'unset'
     const remaining = Math.max(0, (targets.energyKcal || 0) - (totals.energyKcal || 0))
     // A napi cél üzenete csak ismert, pozitív célérték és teljes kalóriaadat mellett lehet sikeres.
-    const hasEnergyGoal = Number.isFinite(Number(targets.energyKcal)) && Number(targets.energyKcal) > 0
-    const hasCompleteEnergy = entries.length > 0 && totals.energyKcal != null
     const goalReached = hasEnergyGoal && hasCompleteEnergy && totals.energyKcal >= targets.energyKcal
     const isFuture = selectedDate > localDate()
     const isPast = selectedDate < localDate()
