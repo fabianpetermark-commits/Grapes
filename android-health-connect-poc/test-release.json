@@ -1,5 +1,5 @@
 {
-  "versionCode": 5,
-  "versionName": "0.5.0",
-  "notes": "Grapes TEST v0.5.0 – offline, ellenőrzött USDA-alapadatok a kristálycukorhoz, étkezési sóhoz és csapvízhez. A receptszerkesztőből egy jóváhagyást kérő gombbal pótolhatók a korábban kézzel felvett, hiányos tápértékű, pontosan azonosítható alapanyagok adatai (például a Puha kenyér Só, Cukor és Víz hozzávalói). Csak az adott recepthez készülnek új hozzávalómásolatok, a módosításokat a Recept mentése gombbal kell véglegesíteni. Ismeretlen tápértéket továbbra sem alakítunk automatikusan nullává; a korábbi naplóbejegyzések és más receptek érintetlenek maradnak. A v0.4.0 automatikus hozamszámítása és receptmező-javításai is részei a kiadásnak. Az éles Grapes változatlan, a külön TEST-csomagnév és állandó TEST-aláírás megmarad. Ez a kiadás nem vezet be új USDA API-kulcsot."
+  "versionCode": 6,
+  "versionName": "0.6.0",
+  "notes": "Grapes TEST v0.6.0 – az Étel hozzáadása képernyő fix magasságú, belül görgethető találati listát kapott: egy kedvenc esetén sincs óriási, megnyúlt sor. Az ismétlődő kézi ételek (például Só, Cukor) megjelenítését nem adatvesztő módon csoportosítjuk; azonos névhez tartozó régi tápértékváltozatok továbbra is külön kiválaszthatók. Teljesen azonos kézi tápértékek és átváltások esetén a Grapes új rekord létrehozása helyett újrahasználja a meglévőt. A vonalkódolvasó helye változatlan, a bezárógomb egységes Grapes stílusú. Új recept írásakor a Hozzávaló felvétele szakasz az Alapadatok elé került. A korábbi v0.5.0 javítások mind megmaradnak. Éles Grapes, korábbi recept-, víz- és étkezésnapló-adatok nem módosulnak; a külön Grapes TEST csomagnév és állandó TEST aláírás megmarad."
 }
