@@ -22,7 +22,7 @@ import { prepareYazioCsvImport, yazioImportEntries } from './yazio-import.js'
 import { getGrapesAccount, isGrapesDriveConnected, listGrapesProjects, loadGrapesProject, saveGrapesProject } from '../storage/grapes-drive.js'
 import { loadLocalProject, saveLocalProject } from '../storage/local-project-store.js'
 import { assertFoodDriveCreateSafe, chooseFoodDriveProject } from './food-drive-safety.js'
-import { isGrapesAndroidApp, readAndroidHealthExport, readAndroidHealthExportSilent, readAndroidSamsungHealthExport, requestAndroidYazio } from '../android-bridge.js'
+import { isGrapesAndroidApp, readAndroidHealthExport, readAndroidHealthExportSilent, readAndroidSamsungHealthExport, requestAndroidYazio, saveAndroidJsonBackup } from '../android-bridge.js'
 import { mobileIconSvg } from '../android-mobile-icons.js'
 
 const MODULE = 'Ételnapló'
@@ -1623,11 +1623,29 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     } catch (error) { $('[data-food-target-status]').textContent = error.message }
   }
 
-  function exportBackup() {
-    const blob = new Blob([foodBackupToJson(project)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob); const link = document.createElement('a')
-    link.href = url; link.download = `grapes-etelnaplo-${selectedDate}.json`; link.click()
-    setTimeout(() => URL.revokeObjectURL(url), 1000); closeSheets(); showToast('A biztonsági mentés elkészült.')
+  async function exportBackup() {
+    const json = foodBackupToJson(project)
+    const filename = `grapes-etelnaplo-${selectedDate}.json`
+    closeSheets()
+    if (isGrapesAndroidApp()) {
+      try {
+        await saveAndroidJsonBackup(filename, json)
+        showToast('A biztonsági mentés a kiválasztott helyre került.')
+      } catch (error) {
+        showToast(error?.message || 'A biztonsági mentést nem sikerült fájlba menteni.')
+      }
+      return
+    }
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.append(link)
+    link.click()
+    link.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    showToast('A biztonsági mentés letöltését elindítottuk.')
   }
 
   async function importBackup(event) {

@@ -34,6 +34,9 @@ import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.common.api.Scope
 import com.google.android.gms.common.api.ApiException
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import java.util.UUID
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.LocalDate
@@ -51,6 +54,33 @@ class MainActivity : ComponentActivity() {
     private var pendingCameraPermission: PermissionRequest? = null
     private var pendingHealthRequest: PendingHealthRequest? = null
     private var pendingDriveRequestId: String? = null
+    private var pendingBackupPickerRequestId: String? = null
+    private var backupSession: BackupExportSession? = null
+    private var availableUpdate: AndroidUpdateManager.Release? = null
+
+    private data class BackupExportSession(
+        val token: String,
+        val uri: Uri,
+        val temporaryFile: File,
+        var sizeBytes: Long = 0L,
+    )
+
+    private val backupFilePicker = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        val requestId = pendingBackupPickerRequestId ?: return@registerForActivityResult
+        pendingBackupPickerRequestId = null
+        if (uri == null) {
+            sendError(requestId, "A biztonsági mentés mentését megszakítottad.")
+            return@registerForActivityResult
+        }
+        runCatching {
+            check(backupSession == null) { "Már folyamatban van egy másik mentés." }
+            val staging = File.createTempFile("grapes-food-export-", ".json", cacheDir)
+            BackupExportSession(UUID.randomUUID().toString(), uri, staging).also { backupSession = it }
+        }.onSuccess { sendResult(requestId, it.token) }
+            .onFailure { sendError(requestId, it.message ?: "Nem készíthető el a mentés.") }
+    }
     private var availableUpdate: AndroidUpdateManager.Release? = null
 
     private val cameraPermissionLauncher = registerForActivityResult(
@@ -59,6 +89,23 @@ class MainActivity : ComponentActivity() {
         val request = pendingCameraPermission
         pendingCameraPermission = null
         if (granted) request?.grant(arrayOf(PermissionRequest.RESOURCE_VIDEO_CAPTURE)) else request?.deny()
+    }
+
+    private val backupFilePicker = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        val requestId = pendingBackupPickerRequestId ?: return@registerForActivityResult
+        pendingBackupPickerRequestId = null
+        if (uri == null) {
+            sendError(requestId, "A biztonsági mentés mentését megszakítottad.")
+            return@registerForActivityResult
+        }
+        runCatching {
+            check(backupSession == null) { "Már folyamatban van egy másik mentés." }
+            val staging = File.createTempFile("grapes-food-export-", ".json", cacheDir)
+            BackupExportSession(UUID.randomUUID().toString(), uri, staging).also { backupSession = it }
+        }.onSuccess { sendResult(requestId, it.token) }
+            .onFailure { sendError(requestId, it.message ?: "Nem készíthető el a mentés.") }
     }
 
     private val notificationPermissionLauncher = registerForActivityResult(
@@ -279,6 +326,10 @@ class MainActivity : ComponentActivity() {
         val requestId = message.optString("requestId")
         if (requestId.isBlank()) return
         when (message.optString("method")) {
+            "beginFoodBackupExport" -> beginFoodBackupExport(message, requestId)
+            "appendFoodBackupExport" -> appendFoodBackupExport(message, requestId)
+            "finishFoodBackupExport" -> finishFoodBackupExport(message, requestId)
+            "cancelFoodBackupExport" -> cancelFoodBackupExport(message, requestId)
             "foodApi" -> lifecycleScope.launch {
                 runCatching { foodApi.execute(message.optJSONArray("args") ?: JSONArray()) }
                     .onSuccess { sendResult(requestId, it.toString()) }
@@ -341,6 +392,84 @@ class MainActivity : ComponentActivity() {
             }
             else -> sendError(requestId, "Ismeretlen Android-művelet.")
         }
+    }
+
+    private fun beginFoodBackupExport(message: JSONObject, requestId: String) {
+        if (pendingBackupPickerRequestId != null || backupSession != null) {
+            sendError(requestId, "Egy másik biztonsági mentés már folyamatban van.")
+            return
+        }
+        val name = message.optJSONArray("args")?.optString(0).orEmpty()
+        if (!Regex("^grapes-etelnaplo-\\d{4}-\\d{2}-\\d{2}\\.json$").matches(name)) {
+            sendError(requestId, "Érvénytelen biztonsági mentés fájlnév.")
+            return
+        }
+        pendingBackupPickerRequestId = requestId
+        runCatching { backupFilePicker.launch(name) }.onFailure {
+            pendingBackupPickerRequestId = null
+            sendError(requestId, it.message ?: "A fájlmentő nem nyitható meg.")
+        }
+    }
+
+    private fun appendFoodBackupExport(message: JSONObject, requestId: String) {
+        val args = message.optJSONArray("args")
+        val session = backupSession
+        if (session == null || session.token != args?.optString(0)) {
+            sendError(requestId, "A biztonsági mentés művelete nem érvényes.")
+            return
+        }
+        runCatching {
+            val piece = args.optString(1)
+            require(piece.isNotEmpty()) { "Üres mentési adatrész." }
+            val encoded = piece.toByteArray(Charsets.UTF_8)
+            require(session.sizeBytes + encoded.size <= MAX_BACKUP_BYTES) {
+                "A biztonsági mentés túl nagy a biztonságos fájlexporthoz."
+            }
+            session.temporaryFile.appendBytes(encoded)
+            session.sizeBytes += encoded.size
+        }.onSuccess { sendResult(requestId, "{}") }
+            .onFailure {
+                session.temporaryFile.delete()
+                backupSession = null
+                sendError(requestId, it.message ?: "Nem sikerült az adatok átadása.")
+            }
+    }
+
+    private fun finishFoodBackupExport(message: JSONObject, requestId: String) {
+        val args = message.optJSONArray("args")
+        val session = backupSession
+        if (session == null || session.token != args?.optString(0)) {
+            sendError(requestId, "A biztonsági mentés művelete nem érvényes.")
+            return
+        }
+        backupSession = null
+        val expectedBytes = args.optLong(1, -1)
+        lifecycleScope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) {
+                    check(session.sizeBytes > 0 && session.sizeBytes == expectedBytes) {
+                        "A biztonsági mentés mérete eltér, a fájl nem menthető biztonságosan."
+                    }
+                    contentResolver.openOutputStream(session.uri, "wt")?.use { out ->
+                        session.temporaryFile.inputStream().use { input ->
+                            input.copyTo(out)
+                        }
+                    } ?: error("A kiválasztott helyre nem írható a fájl.")
+                }
+            }
+            session.temporaryFile.delete()
+            result.onSuccess { sendResult(requestId, "{}") }
+                .onFailure { sendError(requestId, it.message ?: "A fájlmentés nem sikerült.") }
+        }
+    }
+
+    private fun cancelFoodBackupExport(message: JSONObject, requestId: String) {
+        val session = backupSession
+        if (session != null && session.token == message.optJSONArray("args")?.optString(0)) {
+            session.temporaryFile.delete()
+            backupSession = null
+        }
+        sendResult(requestId, "{}")
     }
 
     private fun AndroidUpdateManager.Release.toJson() = JSONObject().apply {
@@ -488,12 +617,15 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        backupSession?.temporaryFile?.delete()
+        backupSession = null
         fileChooserCallback?.onReceiveValue(null)
         webView.destroy()
         super.onDestroy()
     }
 
     companion object {
+        private const val MAX_BACKUP_BYTES = 80L * 1024L * 1024L
         private const val APP_HOST = "appassets.androidplatform.net"
         private const val APP_ORIGIN = "https://$APP_HOST"
         private const val APP_URL = "https://$APP_HOST/assets/design/android-mobile-preview.html"
