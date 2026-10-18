@@ -29,9 +29,6 @@ function hash(value) {
   }
   return (a >>> 0).toString(16).padStart(8, '0') + (b >>> 0).toString(16).padStart(8, '0')
 }
-// Used by same-account profile migrations to preserve YAZIO batch undo safety.
-export function yazioEntryFingerprint(entry) { return hash(entry) }
-
 const validRow = row => row && typeof row === 'object' && !Array.isArray(row)
 function iso(value, date) {
   const source = text(value) || date + ' 12:00:00'
