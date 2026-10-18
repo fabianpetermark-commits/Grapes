@@ -95,7 +95,7 @@ test('verified same-account adoption keeps Drive extras, goals, old YAZIO batch 
     matchedLocalMeals:2,retainedDriveMeals:3,driveOnlyMeals:1,
     retainedSavedFoods:1,retainedYazioBatches:1,
   })
-  assert.equal(project.profile.id,localId)
+  assert.equal(project.profile.id,remoteId)
   assert.equal(project.profile.name,'Drive display name')
   assert.equal(project.targets[0].values.energyKcal,1800)
   assert.equal(project.customFoods.length,1)
@@ -110,12 +110,15 @@ test('verified same-account adoption keeps Drive extras, goals, old YAZIO batch 
   )
   assert.deepEqual(project.importBatches[0].sourceArchive,remote.importBatches[0].sourceArchive)
   const entry=project.diaryEntries.find(e=>e.origin?.source==='yazio')
-  assert.equal(entry.profileId,localId)
-  assert.equal(entry.origin.profileId,localId)
-  assert.equal(entry.origin.externalKey,`yazio:${localId}:id:synthetic-source-1`)
+  assert.equal(entry.profileId,remoteId)
+  assert.equal(entry.origin.profileId,remoteId)
+  assert.equal(entry.origin.externalKey,`yazio:${remoteId}:id:synthetic-source-1`)
   assert.equal(entry.externalKey,entry.origin.externalKey)
   assert.equal(project.importBatches[0].entryFingerprints[entry.id],yazioEntryFingerprint(entry))
-  assert.deepEqual(foodBackupFromJson(foodBackupToJson(project),localId),project)
+  assert.deepEqual(project.importBatches[0].entryFingerprints,remote.importBatches[0].entryFingerprints)
+  assert.equal(project.diaryEntries[0].id,remote.diaryEntries[0].id)
+
+  assert.deepEqual(foodBackupFromJson(foodBackupToJson(project),remoteId),project)
   const undo=undoYazioBatch(project,'batch-remote')
   assert.equal(undo.removed,1)
   assert.deepEqual(undo.modified,[])
@@ -142,7 +145,7 @@ test('multiple ambiguous YAZIO source archives block an automatic migration',()=
 test('tampered old YAZIO undo fingerprints cannot be silently rewritten',()=>{
   const {local,remote}=projects()
   remote.importBatches[0].entryFingerprints['remote-yazio']='previously-edited'
-  assert.throws(()=>previewFoodSameAccountAdoption(local,remote,email),/visszavonási védelem/)
+  assert.throws(()=>previewFoodSameAccountAdoption(local,remote,email),/automatikus migráció leállt/)
 })
 test('unrelated local saved foods and duplicated YAZIO source IDs stop profile migration',()=>{
   const {local,remote}=projects()
