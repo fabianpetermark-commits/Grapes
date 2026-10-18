@@ -705,7 +705,8 @@ async function renderSync({ refreshed = false } = {}) {
     $('[data-sync-local-size]').textContent = formatStorage(localBytes)
     $('[data-sync-drive-count]').textContent = isGrapesDriveConnected() ? `${driveCount} projekt` : 'Nincs csatlakoztatva'
     $('[data-sync-pending-count]').textContent = dirtyCount ? `${dirtyCount} mentés várakozik` : 'Minden helyi adat mentve'
-    $('[data-sync-last-check]').textContent = formatSyncTime(now)
+    const lastCheck = $('[data-sync-last-check]')
+    if (lastCheck) lastCheck.textContent = formatSyncTime(now)
     status.textContent = isGrapesDriveConnected()
       ? (dirtyCount ? 'Van helyben módosított projekt.' : 'A Drive-kapcsolat elérhető.')
       : 'A helyi mentések internet nélkül is használhatók.'
