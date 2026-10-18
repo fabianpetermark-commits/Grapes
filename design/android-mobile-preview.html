@@ -329,6 +329,8 @@
     .food-recipe-tab[aria-selected="true"] { color: #041014; background: var(--accent); }
     .food-recipe-tabpanel[hidden] { display: none !important; }
     .food-recipe-image-preview { display: block; width: 100%; max-height: 300px; object-fit: contain; margin: 10px 0; border: 1px solid var(--line); border-radius: 12px; }
+    .food-recipe-detail-image { display: block; width: 100%; max-height: 280px; object-fit: contain; margin: 8px 0 14px; border-radius: 14px; background: var(--raised); }
+    .food-recipe-detail-image[hidden] { display: none; }
     .food-recipe-image-preview[hidden], .food-recipe-image-remove[hidden], .food-recipe-import-preview[hidden] { display: none !important; }
     .food-recipe-tab-action { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 46px; padding: 8px 10px; margin: 10px 0; color: var(--accent); background: var(--raised); border: 1px solid var(--line); border-radius: 12px; font-size: 12px; font-weight: 750; }
     .food-recipe-import-text { width: 100%; min-height: 130px; resize: vertical; line-height: 1.5; }
@@ -538,6 +540,7 @@
           </section>
           <section data-food-recipe-detail hidden>
             <div class="food-detail-head"><button type="button" data-food-recipe-back aria-label="Vissza">‹</button><div><h1 data-food-recipe-title>Recept</h1><p data-food-recipe-copy></p></div><button type="button" class="food-share" data-food-recipe-share aria-label="Recept megosztása">⌯</button></div>
+            <img class="food-recipe-detail-image" data-food-recipe-detail-image alt="Recept képe" hidden>
             <div class="food-entry-card" data-food-recipe-content></div>
             <button class="primary module-cta" type="button" data-food-recipe-edit>Recept szerkesztése</button>
             <button class="secondary module-cta" type="button" data-food-recipe-delete>Recept törlése</button>
