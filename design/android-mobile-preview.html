@@ -190,10 +190,9 @@
     /* Food daily calories: a vivid cyan neon track, even with 0% progress.
        JavaScript only supplies --energy-progress; do not use inline backgrounds. */
     .daily-card { grid-template-columns: 112px minmax(0, 1fr); gap: 14px; }
+    /* Grapes Brand Guide: only the actual progress stroke may glow. */
     .energy-ring {
-      --energy-progress: 0%;
-      --energy-track: #147e96;
-      --energy-fill: #91ffff;
+      --energy-progress: 0;
       position: relative;
       display: grid;
       place-items: center;
@@ -205,59 +204,55 @@
       cursor: pointer;
       border: 0;
       border-radius: 50%;
-      background: conic-gradient(from -90deg,
-        var(--energy-fill) 0% var(--energy-progress),
-        var(--energy-track) var(--energy-progress) 100%);
-      box-shadow:
-        0 0 0 1px rgb(107 247 255 / 70%),
-        0 0 16px rgb(39 227 255 / 65%),
-        0 0 34px rgb(23 192 237 / 42%),
-        inset 0 0 15px rgb(130 250 255 / 27%);
-      transition: box-shadow .22s ease;
+      background: transparent;
     }
-    /* Soft bloom is behind the dark inner disc and never alters progress. */
-    .energy-ring::before {
+    .energy-ring__svg {
       position: absolute;
       inset: 0;
-      content: "";
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+      transform: rotate(-90deg);
       pointer-events: none;
-      border-radius: 50%;
-      background: conic-gradient(from -90deg,
-        #8effff 0% var(--energy-progress),
-        #29d2eb var(--energy-progress) 100%);
-      filter: blur(9px);
-      opacity: .72;
     }
-    .energy-ring::after {
-      grid-area: 1 / 1;
-      width: 82px;
-      height: 82px;
-      content: "";
-      pointer-events: none;
-      border: 1px solid rgb(113 242 255 / 42%);
-      border-radius: 50%;
-      background: radial-gradient(circle at 35% 23%, #1b3443 0%, #101f2d 50%, #07131e 100%);
-      box-shadow: inset 0 2px 13px rgb(0 0 0 / 53%), 0 0 0 2px rgb(7 21 32 / 52%);
+    .energy-ring__track, .energy-ring__progress {
+      fill: none;
+      stroke-width: 7;
+    }
+    .energy-ring__track { stroke: var(--line); }
+    .energy-ring__progress {
+      stroke: var(--accent);
+      stroke-linecap: round;
+      stroke-dasharray: var(--energy-progress) 100;
+      filter: drop-shadow(0 0 3px rgb(59 220 242 / 20%));
+    }
+    /* A zero-length rounded stroke may still paint a dot: hide it explicitly. */
+    .energy-ring[data-energy-visible="false"] .energy-ring__progress {
+      opacity: 0;
+      filter: none;
     }
     .energy-ring__value {
       position: relative;
       z-index: 1;
-      grid-area: 1 / 1;
       display: grid;
-      gap: 3px;
+      gap: 2px;
+      align-content: center;
       justify-items: center;
-      width: 76px;
-      color: #f2fbff;
+      width: 84px;
+      height: 84px;
+      padding: 4px;
+      color: var(--text);
       text-align: center;
       pointer-events: none;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 23%, #142631 0%, #101d27 50%, #0b151e 100%);
+      box-shadow: inset 0 2px 10px rgb(0 0 0 / 35%);
     }
     .energy-ring__value > .energy-ring__eyebrow {
-      color: #a0cbd7;
-      font-size: 7px;
-      font-weight: 800;
-      line-height: 1;
-      letter-spacing: .09em;
-      text-transform: uppercase;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.05;
     }
     .energy-ring__value strong {
       display: block;
@@ -271,20 +266,14 @@
     .energy-ring__value > span {
       display: block;
       max-width: 100%;
-      color: #99e6ef;
-      font-size: 9px;
+      color: var(--muted);
+      font-size: 10px;
       line-height: 1.2;
     }
-    .energy-ring[data-energy-state="complete"] {
-      --energy-fill: #a7ffff;
-      box-shadow: 0 0 0 1px rgb(156 255 255 / 85%), 0 0 24px rgb(70 248 255 / 83%),
-        0 0 44px rgb(31 210 252 / 50%), inset 0 0 16px rgb(134 255 255 / 38%);
+    .energy-ring:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+    @media (prefers-reduced-motion: reduce) {
+      .energy-ring, .energy-ring__progress { transition: none; animation: none; }
     }
-    .energy-ring[data-energy-state="unset"] {
-      --energy-track: #126880;
-    }
-    .energy-ring:focus-visible { outline: 2px solid #b1ffff; outline-offset: 5px; }
-    @media (prefers-reduced-motion: reduce) { .energy-ring { transition: none; } }
     .daily-copy h2 { margin: 0 0 5px; font-size: 17px; }
     .daily-copy > span { color: var(--muted); font-size: 11px; }
     .macro-list { display: grid; gap: 9px; margin-top: 13px; }
@@ -620,7 +609,7 @@
           <div hidden aria-hidden="true"><span data-food-day-title></span><span data-food-day-copy></span></div>
           <div class="food-datebar"><button type="button" data-food-date-prev aria-label="Előző nap">‹</button><input type="date" data-food-date aria-label="Kiválasztott nap"><button type="button" data-food-date-next aria-label="Következő nap">›</button></div>
           <div class="daily-card">
-            <button class="energy-ring" type="button" data-food-energy-ring aria-label="Ételnapló statisztika megnyitása"><span class="energy-ring__value"><span class="energy-ring__eyebrow">Elfogyasztva</span><strong data-food-energy>0</strong><span data-food-energy-target>/ 2 000 kcal</span></span></button>
+            <button class="energy-ring" type="button" data-food-energy-ring data-energy-visible="false" aria-label="Ételnapló statisztika megnyitása"><svg class="energy-ring__svg" viewBox="0 0 100 100" aria-hidden="true" focusable="false"><circle class="energy-ring__track" cx="50" cy="50" r="43"/><circle class="energy-ring__progress" cx="50" cy="50" r="43" pathLength="100"/></svg><span class="energy-ring__value"><span class="energy-ring__eyebrow">Elfogyasztva</span><strong data-food-energy>0</strong><span data-food-energy-target>Nincs cél</span></span></button>
             <div class="daily-copy"><h2 data-food-message>Kezdjük a napot</h2><span data-food-remaining></span><div class="macro-list">
               <div class="macro"><span>Fehérje</span><div class="progress"><i data-food-protein-bar style="width:0%"></i></div><b data-food-protein>0 g</b></div>
               <div class="macro"><span>Szénhidrát</span><div class="progress"><i data-food-carbohydrate-bar style="width:0%"></i></div><b data-food-carbohydrate>0 g</b></div>
