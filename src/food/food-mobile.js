@@ -19,8 +19,11 @@ import { readYazioApiBundle } from './yazio-api-import.js'
 import { prepareYazioImport } from './food-yazio-import.js'
 import { healthImportEntries, prepareHealthBridgeImport } from './food-health-import.js'
 import { prepareYazioCsvImport, yazioImportEntries } from './yazio-import.js'
-import { getGrapesAccount, isGrapesDriveConnected, listGrapesProjects, loadGrapesProject, saveGrapesProject } from '../storage/grapes-drive.js'
+import { getConnectedGrapesAccount, getGrapesAccount, isGrapesDriveConnected, listGrapesProjects, loadGrapesProject, saveGrapesProject } from '../storage/grapes-drive.js'
 import { loadLocalProject, saveLocalProject } from '../storage/local-project-store.js'
+import { previewFoodSameAccountAdoption } from './food-profile-reconciliation.js'
+import { saveFoodReconciliationRecovery, loadFoodReconciliationRecovery } from './food-reconciliation-recovery.js'
+import { readWaterStoreStrict } from '../water/water-backup.js'
 import { assertFoodDriveCreateSafe, chooseFoodDriveProject, foodDriveSignature, verifyFoodRemoteBeforeUpload } from './food-drive-safety.js'
 import { isGrapesAndroidApp, readAndroidHealthExport, readAndroidHealthExportSilent, readAndroidSamsungHealthExport, requestAndroidYazio, saveAndroidJsonBackup } from '../android-bridge.js'
 import { mobileIconSvg } from '../android-mobile-icons.js'
@@ -55,6 +58,10 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   let loadGeneration = 0
   let loadedProfileId = ''
   let driveConflict = ''
+  let reconciliationPreview = null
+  let reconciliationBusy = false
+  let reconciliationSavedLocal = false
+  let reconciliationSavedDrive = false
   let initialized = false
   let lastFoodSyncAt = 0
   let foodSyncInProgress = null
@@ -132,6 +139,10 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   async function syncFood({ force = false } = {}) {
+    if (project?.syncState?.reconciliation?.status === 'pending') {
+      showSyncStatus('Az összevezetés helyi jóváhagyása kész; a Drive még változatlan.')
+      return
+    }
     if (!project || !isGrapesDriveConnected()) { showSyncStatus('Csak helyi mentés · Drive nincs csatlakoztatva'); return }
     if (!force && Date.now() - lastFoodSyncAt < FOOD_SYNC_INTERVAL_MS) return
     if (foodSyncInProgress) return foodSyncInProgress
@@ -152,6 +163,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   async function autoImportHealth() {
+    if (reconciliationBusy || project?.syncState?.reconciliation?.status === 'pending') return
     if (!project || !profile || !isGrapesAndroidApp() || !autoHealthEnabled() || healthAutoBusy || document.visibilityState !== 'visible') return
     if (Date.now() - lastHealthAutoAttempt < FOOD_SYNC_INTERVAL_MS) return
     healthAutoBusy = true
@@ -183,6 +195,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   async function autoImportYazio() {
+    if (reconciliationBusy || project?.syncState?.reconciliation?.status === 'pending') return
     if (!project || !profile || !isGrapesAndroidApp() || !autoYazioEnabled() || yazioAutoBusy || document.visibilityState !== 'visible') return
     if (Date.now() - lastYazioAutoAttempt < FOOD_SYNC_INTERVAL_MS) return
     lastYazioAutoAttempt = Date.now()
@@ -314,6 +327,10 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
 
   async function persistDrive() {
     if (!project || !isGrapesDriveConnected()) return
+    if (reconciliationBusy || project.syncState?.reconciliation?.status === 'pending') {
+      showSyncStatus('Összevezetési ellenőrzés: automatikus Drive-feltöltés leállítva.')
+      return
+    }
     driveRequested = true
     if (driveSaving) return driveSaving
     driveSaving = (async () => {
@@ -365,6 +382,9 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
 
   function scheduleSave() {
     changeRevision += 1
+    if (project?.syncState?.reconciliation?.status === 'pending') {
+      project.syncState.reconciliation.changedAfterApproval = true
+    }
     project.syncState = { ...project.syncState, localDirty: true }
     clearTimeout(saveTimer); clearTimeout(driveTimer)
     saveTimer = setTimeout(() => persistLocal().catch(() => showToast('A helyi mentés nem sikerült.')), 180)
@@ -410,6 +430,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       status.textContent = `${date} · ${count}${state?.lastError ? ` · Hiba: ${state.lastError}` : ''}`
     }
     if (!isGrapesDriveConnected()) showSyncStatus('Csak helyi mentés · Drive nincs csatlakoztatva')
+    else if (project?.syncState?.reconciliation?.status === 'pending') showSyncStatus('Egyesítve helyben · a Drive még nincs frissítve')
     else if (driveConflict) showSyncStatus(driveConflict)
     else if (lastFoodSyncAt && !foodSyncInProgress) showSyncStatus(`Utolsó ellenőrzés: ${new Date(lastFoodSyncAt).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })}`)
     const date = new Date(`${selectedDate}T12:00:00`)
@@ -1069,6 +1090,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     setSheetOpen($('[data-food-inbox-sheet]'), false)
     setSheetOpen($('[data-food-edit-sheet]'), false)
     setSheetOpen($('[data-food-menu-sheet]'), false)
+    setSheetOpen($('[data-food-reconcile-sheet]'), false)
     setSheetOpen($('[data-food-stats-sheet]'), false)
     setSheetOpen($('[data-food-targets-sheet]'), false)
     setSheetOpen($('[data-food-health-sheet]'), false)
@@ -1493,6 +1515,219 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     closeSheets(); setSheetOpen($('[data-food-menu-sheet]'), true)
   }
 
+  function reconciliationStatus(message) {
+    const node = $('[data-food-reconcile-status]')
+    if (node) node.textContent = message
+  }
+  function reconciliationButtons(pending = Boolean(project?.syncState?.reconciliation?.status === 'pending')) {
+    const preview = reconciliationPreview
+    $('[data-food-reconcile-local]').disabled = reconciliationBusy || (!preview && !pending)
+    $('[data-food-reconcile-drive]').disabled = reconciliationBusy || (!preview && !pending)
+    $('[data-food-reconcile-preview]').disabled = reconciliationBusy || pending
+    $('[data-food-reconcile-stage]').disabled = reconciliationBusy || !preview || pending ||
+      !reconciliationSavedLocal || !reconciliationSavedDrive
+    $('[data-food-reconcile-stage]').hidden = pending
+    $('[data-food-reconcile-publish]').hidden = !pending
+    $('[data-food-reconcile-publish]').disabled = reconciliationBusy
+    $('[data-food-reconcile-rollback]').hidden = !pending
+    $('[data-food-reconcile-rollback]').disabled = reconciliationBusy
+  }
+  function openReconciliation() {
+    closeSheets()
+    reconciliationPreview = null
+    reconciliationSavedLocal = false
+    reconciliationSavedDrive = false
+    const pending = project?.syncState?.reconciliation?.status === 'pending'
+    $('[data-food-reconcile-summary]').textContent = pending
+      ? 'A két napló a telefonon már össze van vezetve. A Drive még változatlan. Most jóváhagyhatod a Drive módosítását, vagy helyben visszaállíthatod az előző Food-naplót.'
+      : 'Az előnézet ellenőrzi az összes étkezést és a YAZIO-előzményeket. A két eredeti JSON-mentés elkészítése a helyi jóváhagyás feltétele.'
+    reconciliationButtons(pending)
+    reconciliationStatus(pending ? 'Helyi migráció várakozik, automatikus Drive-feltöltés tiltva.' : '')
+    setSheetOpen($('[data-food-reconcile-sheet]'), true)
+  }
+  async function prepareReconciliation() {
+    if (reconciliationBusy || !project) return
+    reconciliationBusy = true
+    reconciliationPreview = null
+    reconciliationSavedLocal = false
+    reconciliationSavedDrive = false
+    reconciliationButtons(false)
+    reconciliationStatus('A naplók összevetése folyamatban…')
+    try {
+      const account = getConnectedGrapesAccount()
+      if (!account?.email || !isGrapesDriveConnected()) throw new Error('Csak ténylegesen csatlakoztatott, igazolt Google-fiókkal lehet összevezetni.')
+      if (project?.syncState?.reconciliation?.status === 'pending') throw new Error('Előző összevezetés várakozik, előbb fejezd be vagy állítsd vissza.')
+      await flush({drive:false})
+      if (driveSaving) await driveSaving
+      const files = await listGrapesProjects(MODULE)
+      if (files.length !== 1) throw new Error('Pontosan egy Ételnapló Drive-fájl szükséges; több vagy hiányzó fájlt nem választunk ki.')
+      const selectedFile = files[0]
+      const remote = await loadGrapesProject(selectedFile.id)
+      const localSnapshot = structuredClone(project)
+      const result = previewFoodSameAccountAdoption(localSnapshot, remote.data, account.email)
+      reconciliationPreview = {
+        sourceProject: project, revision:changeRevision, local:localSnapshot, remote:remote.data,
+        remoteFileId:selectedFile.id, verifiedEmail:account.email,
+        baseline:foodDriveSignature(remote.data), merged:result.project, summary:result.summary,
+      }
+      const summary=result.summary
+      $('[data-food-reconcile-summary]').textContent =
+        `Telefon: ${summary.matchedLocalMeals} ellenőrzött étkezés · Drive: ${summary.retainedDriveMeals} étkezés (${summary.driveOnlyMeals} csak Drive-on), ${summary.retainedSavedFoods} mentett étel, ${summary.retainedYazioBatches} YAZIO-köteg. Külön mentés és jóváhagyás szükséges.`
+      reconciliationStatus('Az előnézet sikeres. Mentsd el mindkét eredeti JSON-fájlt külön.')
+    } catch (error) { reconciliationStatus(error?.message || 'A két napló összevetése sikertelen.') }
+    finally {reconciliationBusy=false; reconciliationButtons(false)}
+  }
+  async function exportFoodJsonFile(filename, data) {
+    const json=foodBackupToJson(data)
+    if (isGrapesAndroidApp()) {
+      await saveAndroidJsonBackup(filename,json)
+    } else {
+      const blob=new Blob([json],{type:'application/json'})
+      const url=URL.createObjectURL(blob)
+      const link=document.createElement('a')
+      link.href=url; link.download=filename
+      document.body.append(link); link.click(); link.remove()
+      setTimeout(()=>URL.revokeObjectURL(url),1000)
+      // Browsers cannot verify that an anchor download reached disk.
+      throw new Error('Böngészőben a letöltés nem igazolható. A jóváhagyás Androidon végezhető.')
+    }
+  }
+  async function exportReconciliationOriginal(kind) {
+    if (reconciliationBusy) return
+    reconciliationBusy=true
+    reconciliationButtons()
+    try {
+      const waiting=project?.syncState?.reconciliation?.status==='pending'
+      const recovery=waiting
+        ? await loadFoodReconciliationRecovery(project.syncState.reconciliation.recoveryId) : null
+      const chosen=waiting ? (kind==='helyi' ? recovery?.localProject : recovery?.remoteProject)
+        : (kind==='helyi' ? reconciliationPreview?.local : reconciliationPreview?.remote)
+      if (!chosen) throw new Error('Nincs ellenőrzött eredeti napló.')
+      await exportFoodJsonFile(`grapes-etelnaplo-${localDate()}-${kind}.json`,chosen)
+      if(kind==='helyi') reconciliationSavedLocal=true
+      else reconciliationSavedDrive=true
+      reconciliationStatus(`${kind==='helyi'?'Telefonos':'Drive'} eredeti fájl mentve. ${reconciliationSavedLocal&&reconciliationSavedDrive?'Mindkét mentés elkészült.':'A másik eredeti mentése még szükséges.'}`)
+    } catch(error){reconciliationStatus(error?.message || 'A JSON-export nem sikerült.')}
+    finally{reconciliationBusy=false; reconciliationButtons()}
+  }
+
+  async function stageReconciliation() {
+    if(reconciliationBusy) return
+    reconciliationBusy=true; reconciliationButtons(false)
+    try {
+      const request=reconciliationPreview
+      if(!request || !reconciliationSavedLocal || !reconciliationSavedDrive) throw new Error('Az előnézet és mindkét eredeti JSON-mentés kötelező.')
+      if(!window.confirm('Biztosan jóváhagyod az összesített napló HELYI átvételét? Az eredeti állapotokat külön mentjük. A Google Drive ekkor MÉG NEM változik.')) return
+      if(project!==request.sourceProject || changeRevision!==request.revision) throw new Error('Az ételnapló megváltozott az előnézet óta. Indíts új ellenőrzést.')
+      const account=getConnectedGrapesAccount()
+      if(!account?.email || account.email.toLocaleLowerCase('hu-HU')!==request.verifiedEmail.toLocaleLowerCase('hu-HU'))
+        throw new Error('A csatlakoztatott Google-fiók megváltozott.')
+      const activeRemote=await loadGrapesProject(request.remoteFileId)
+      if(foodDriveSignature(activeRemote.data)!==request.baseline) throw new Error('A Drive-napló az előnézet óta megváltozott. Új ellenőrzés szükséges.')
+      if(project!==request.sourceProject || changeRevision!==request.revision) throw new Error('A helyi napló megváltozott.')
+      const waterJson=JSON.stringify(readWaterStoreStrict(localStorage))
+      const recovery={
+        id:`food-reconcile-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        accountEmail:request.verifiedEmail, localProject:request.local,
+        localDriveFileId:driveFileId, remoteProject:structuredClone(activeRemote.data),
+        remoteFileId:request.remoteFileId, waterJson, createdAt:new Date().toISOString(),
+      }
+      await saveFoodReconciliationRecovery(recovery)
+      const staged=structuredClone(request.merged)
+      staged.syncState={...staged.syncState,localDirty:true,
+        reconciliation:{status:'pending',recoveryId:recovery.id,changedAfterApproval:false}}
+      await saveLocalProject({id:localProjectId(staged.profile.id),module:MODULE,name:PROJECT_NAME,
+        data:staged,driveFileId:request.remoteFileId})
+      const checked=await loadLocalProject(localProjectId(staged.profile.id))
+      if(!checked || JSON.stringify(checked.data)!==JSON.stringify(staged) ||
+          JSON.stringify(readWaterStoreStrict(localStorage))!==waterJson) {
+        throw new Error('A helyi összevezetés vagy a Víz napló megőrzése nem ellenőrizhető. A korábbi mentés rendelkezésre áll.')
+      }
+      project=staged
+      driveFileId=request.remoteFileId
+      driveBaseline=request.baseline
+      changeRevision+=1
+      driveConflict='A Drive feltöltése külön jóváhagyásra vár.'
+      reconciliationPreview=null
+      reconciliationStatus('A két napló helyben egyesült. A Drive eredeti állapota továbbra is változatlan. Választhatsz: Drive frissítése vagy helyi visszaállítás.')
+      render()
+    } catch(error){reconciliationStatus(error?.message || 'Az összevezetés sikertelen; a Drive változatlan.')}
+    finally{reconciliationBusy=false; reconciliationButtons()}
+  }
+  function cleanReconciledSnapshot(input) {
+    const data=structuredClone(input)
+    delete data.syncState.reconciliation
+    data.syncState.localDirty=true
+    return data
+  }
+  async function validatePendingReconciliation() {
+    const record=project?.syncState?.reconciliation
+    if(record?.status!=='pending' || record.changedAfterApproval) {
+      throw new Error('Nincs jóváhagyott, változatlan helyi összevezetés. Módosítás után készíts új mentést.')
+    }
+    const recovery=await loadFoodReconciliationRecovery(record.recoveryId)
+    if(!recovery) throw new Error('A helyreállítási pont nem található. Drive-módosítás tilos.')
+    const account=getConnectedGrapesAccount()
+    if(!account?.email || account.email.toLocaleLowerCase('hu-HU')!==recovery.accountEmail.toLocaleLowerCase('hu-HU') ||
+      project.profile.email.toLocaleLowerCase('hu-HU')!==recovery.accountEmail.toLocaleLowerCase('hu-HU'))
+      throw new Error('Nem egyezik a jóváhagyott Google-fiók.')
+    const expected=previewFoodSameAccountAdoption(recovery.localProject,recovery.remoteProject,recovery.accountEmail).project
+    if(foodDriveSignature(cleanReconciledSnapshot(project))!==foodDriveSignature(expected))
+      throw new Error('A helyi napló megváltozott a jóváhagyás óta. A felhő nem írható.')
+    if(driveFileId!==recovery.remoteFileId) throw new Error('A cél Drive-fájl megváltozott.')
+    return { recovery,expected }
+  }
+  async function publishReconciliation() {
+    if(reconciliationBusy) return
+    reconciliationBusy=true; reconciliationButtons(true)
+    try {
+      const {recovery}=await validatePendingReconciliation()
+      if(!window.confirm('Biztosan FRISSÍTED a Drive Ételnapló-fájlt az egyesített naplóval? A két eredeti mentés megmarad. Más eszközön ne szerkeszd közben.')) return
+      await flush({drive:false})
+      if(driveSaving) await driveSaving
+      const {recovery:checkpoint}=await validatePendingReconciliation()
+      const latest=await loadGrapesProject(checkpoint.remoteFileId)
+      const before=foodDriveSignature(checkpoint.remoteProject)
+      const planned=cleanReconciledSnapshot(project)
+      planned.syncState.localDirty=false
+      const expectedSignature=foodDriveSignature(planned)
+      const now=foodDriveSignature(latest.data)
+      if(now!==before && now!==expectedSignature) throw new Error('A Drive időközben más adatokra változott. Nem írjuk felül.')
+      if(now===before) {
+        await saveGrapesProject({module:MODULE,name:PROJECT_NAME,fileId:checkpoint.remoteFileId,data:planned})
+      }
+      const confirmed=await loadGrapesProject(checkpoint.remoteFileId)
+      if(foodDriveSignature(confirmed.data)!==expectedSignature) throw new Error('A Drive-ra írt állapot nem ellenőrizhető. A helyi mentés megmarad.')
+      delete project.syncState.reconciliation
+      project.syncState.localDirty=false
+      driveBaseline=expectedSignature; driveConflict=''; changeRevision++
+      await persistLocal()
+      reconciliationStatus('A Google Drive frissült és visszaolvasással ellenőriztük. Az eredeti biztonsági másolatok megmaradtak.')
+      render()
+    } catch(error){reconciliationStatus(error?.message || 'A Drive nem frissült.')}
+    finally{reconciliationBusy=false; reconciliationButtons()}
+  }
+  async function rollbackReconciliation() {
+    if(reconciliationBusy)return
+    reconciliationBusy=true;reconciliationButtons(true)
+    try{
+      const {recovery}=await validatePendingReconciliation()
+      if(!window.confirm('Visszaállítod a korábbi TELEFONOS Food-naplót? A Drive-hoz nem nyúlunk.'))return
+      const remote=await loadGrapesProject(recovery.remoteFileId)
+      if(foodDriveSignature(remote.data)!==foodDriveSignature(recovery.remoteProject))
+        throw new Error('A Drive az előnézet óta módosult; először ellenőrizni kell. Helyben nem állítunk vissza automatikusan.')
+      await saveLocalProject({id:localProjectId(recovery.localProject.profile.id),module:MODULE,name:PROJECT_NAME,
+        data:recovery.localProject,driveFileId:recovery.localDriveFileId})
+      project=normalizeFoodProject(recovery.localProject,recovery.localProject.profile.id)
+      driveFileId=recovery.localDriveFileId; driveBaseline='';driveConflict=''
+      changeRevision++
+      reconciliationPreview=null
+      reconciliationStatus('A korábbi helyi Food-napló visszaállt. A Drive továbbra is változatlan.')
+      render()
+    } catch(error){reconciliationStatus(error?.message || 'A visszaállítás nem sikerült.')}
+    finally{reconciliationBusy=false;reconciliationButtons()}
+  }
+
   function openStats() {
     closeSheets()
     renderStats()
@@ -1816,6 +2051,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     if (action === 'targets') return openTargets()
     if (action === 'backup-export') return exportBackup()
     if (action === 'backup-import') { closeSheets(); return $('[data-food-backup-input]').click() }
+    if (action === 'reconcile') return openReconciliation()
     if (action === 'health') return openHealthImport()
   }
 
@@ -2016,6 +2252,12 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-custom-save]').addEventListener('click', saveCustomFood)
     $('[data-food-target-save]').addEventListener('click', saveTargets)
     $('[data-food-backup-input]').addEventListener('change', importBackup)
+    $('[data-food-reconcile-preview]').addEventListener('click', () => prepareReconciliation())
+    $('[data-food-reconcile-local]').addEventListener('click', () => exportReconciliationOriginal('helyi'))
+    $('[data-food-reconcile-drive]').addEventListener('click', () => exportReconciliationOriginal('drive'))
+    $('[data-food-reconcile-stage]').addEventListener('click', () => stageReconciliation())
+    $('[data-food-reconcile-publish]').addEventListener('click', () => publishReconciliation())
+    $('[data-food-reconcile-rollback]').addEventListener('click', () => rollbackReconciliation())
     $('[data-food-health-input]').addEventListener('change', selectHealthImport)
     $('[data-food-health-confirm]').addEventListener('click', applyHealthImport)
     $('[data-food-recipe-ingredient-search]').addEventListener('input', event => startRecipeIngredientSearch(event.currentTarget.value))
