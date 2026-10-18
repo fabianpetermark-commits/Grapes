@@ -13,7 +13,7 @@ function makeNutrients(calories=234) {
   return { energyKcal:calories, protein:10.5, carbohydrate:40.4, fat:1.8,
     fiber:null,sugar:3,saturatedFat:null,salt:null,extras:{} }
 }
-function newYazio(id,pid) {
+function newYazio(id,pid,importBatchId) {
   const key=`yazio:${pid}:id:synthetic-source-1`
   return normalizeDiaryEntry({
     id, profileId:pid, mealType:'breakfast', occurredAt:moment,
@@ -23,7 +23,7 @@ function newYazio(id,pid) {
       baseAmount:100,baseUnit:'g',nutrients:makeNutrients()},
     externalKey:key,
     origin:{profileId:pid,source:'yazio',sourceRecordId:'synthetic-source-1',
-      externalKey:key,importBatchId:`batch-${pid}`,sourceDate:'2026-07-05',
+      externalKey:key,importBatchId,sourceDate:'2026-07-05',
       sourceTimestamp:'2026-07-05 10:15:00',
       sourcePayload:{log:{entry_id:'synthetic-source-1',energy_kcal:234}},
       importedAt:moment,schemaVersion:1},
@@ -54,8 +54,8 @@ function batch(id,profileId,entry) {
     importedAt:moment,schemaVersion:1}
 }
 function projects(){
-  const ry=newYazio('remote-yazio',remoteId)
-  const ly=newYazio('local-yazio',localId)
+  const ry=newYazio('remote-yazio',remoteId,'batch-remote')
+  const ly=newYazio('local-yazio',localId,'batch-local')
   const saved={
     id:'remote-food',kind:'manual',name:'Saved local food',category:'Food',
     barcode:'',baseUnit:'g',nutrients:makeNutrients(),
