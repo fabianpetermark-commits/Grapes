@@ -1,4 +1,5 @@
 import { normalizeRecipeImageUrl } from './recipe-image.js'
+import { normalizeInstructionText } from './recipe-instructions.js'
 export const FOOD_PROJECT_VERSION = 2
 export const FOOD_BACKUP_VERSION = 1
 
@@ -179,7 +180,9 @@ export function normalizeRecipe(value = {}) {
     foodId: requiredId(value.foodId || createFoodId('food'), 'Recept ételazonosító'),
     ownerProfileId: requiredId(value.ownerProfileId, 'Tulajdonos profilazonosító'),
     variantOfRecipeId: cleanText(value.variantOfRecipeId),
-    name, category: cleanText(value.category) || 'Saját recept', instructions: cleanText(value.instructions),
+    name, category: cleanText(value.category) || 'Saját recept',
+    instructions: normalizeInstructionText(value.instructions),
+    instructionsHtml: typeof value.instructionsHtml === 'string' ? value.instructionsHtml.slice(0, 40000) : '',
     imageUrl: normalizeRecipeImageUrl(value.imageUrl),
     ingredients, preparedWeight, yieldCount, averageUnitWeight,
     yieldUnit: RECIPE_YIELD_UNITS.includes(value.yieldUnit) ? value.yieldUnit : 'serving',

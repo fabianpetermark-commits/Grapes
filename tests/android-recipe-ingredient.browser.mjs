@@ -392,6 +392,37 @@ try {
   await page.locator('[data-food-recipe-edit]').click()
   await page.locator('[data-food-recipe-tab="image"]').click()
   await page.locator('[data-food-recipe-image-preview]').waitFor({state:'visible'})
+  // PDF-style rich clipboard content: paragraphs, numbered steps and bold
+  // labels survive Save, re-opening and the recipe detail view. Unsafe markup
+  // never executes or gets stored as a rendered node.
+  await page.locator('[data-food-recipe-tab="basics"]').click()
+  await page.locator('[data-food-recipe-instructions-input]').focus()
+  await page.evaluate(() => {
+    const editor = document.querySelector('[data-food-recipe-instructions-input]')
+    editor.innerHTML = ''
+    const event = new Event('paste', { bubbles:true, cancelable:true })
+    Object.defineProperty(event,'clipboardData',{value:{
+      getData: type => type === 'text/html'
+        ? '<p>1. <strong>Összeállítás:</strong> Keverd össze.</p><p>2. <span style="font-weight:700">Sütés:</span> 200 °C.</p><img src=x onerror="window.__badPaste = true"><script>window.__badPaste = true</script>'
+        : '1. Összeállítás: Keverd össze.\\n2. Sütés: 200 °C.',
+    }})
+    editor.dispatchEvent(event)
+  })
+  const richEditor = page.locator('[data-food-recipe-instructions-input]')
+  assert.equal(await richEditor.locator('strong').count(), 2)
+  assert.equal(await richEditor.locator('img,script').count(), 0)
+  assert.equal(await page.evaluate(() => Boolean(window.__badPaste)),false)
+  await page.locator('[data-food-recipe-editor-save]').click()
+  await page.locator('.food-recipe-instructions-output').waitFor()
+  const detail = page.locator('.food-recipe-instructions-output')
+  assert.ok((await detail.innerHTML()).includes('<strong>Összeállítás:</strong>'))
+  assert.ok((await detail.textContent()).includes('2. Sütés:'))
+  await page.locator('[data-food-recipe-edit]').click()
+  await page.locator('[data-food-recipe-tab="basics"]').click()
+  assert.equal(await page.locator('[data-food-recipe-instructions-input] strong').count(),2)
+  assert.match(await page.locator('[data-food-recipe-instructions-input]').innerText(),/Összeállítás:/)
+  console.log('Rich recipe instructions: PDF-like paste, sanitization, save/reopen and paragraph layout OK')
+
   console.log('Recipe tabs/import: JSON/text file preview, explicit apply, saved local picture and reopen OK')
 
   console.log('Food add UX: fixed-height results, safe duplicates, styled scanner close, five recipe tabs OK')

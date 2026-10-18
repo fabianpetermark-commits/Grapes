@@ -13,6 +13,7 @@ import { searchVerifiedUsdaFoods, verifiedUsdaFood } from './usda-foods.js'
 import { HUNGARIAN_USDA_CATALOG } from './hungarian-food-catalog.js'
 import { createHungarianFoodIndex, resolveHungarianFood } from './food-search-method.js'
 import { createRecipeEditorExtras } from './recipe-editor-extras.js'
+import { bindInstructionsEditor, getInstructionsFromEditor, instructionsDisplayHtml, setInstructionsEditor } from './recipe-instructions.js'
 import { createMobileYazio } from './food-mobile-yazio.js'
 import { readYazioApiBundle } from './yazio-api-import.js'
 import { prepareYazioImport } from './food-yazio-import.js'
@@ -537,7 +538,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     if (recipe.imageUrl) detailImage.src = recipe.imageUrl
     else detailImage.removeAttribute('src')
     const foodNames = new Map(project.customFoods.map(item => [item.id, item.name]))
-    $('[data-food-recipe-content]').innerHTML = `<strong>Hozzávalók</strong>${recipe.ingredients.map(item => `<span>${escapeHtml(foodNames.get(item.foodId) || 'Ismeretlen hozzávaló')} · ${number(item.amount, 2)} ${UNIT_LABELS[item.unit] || item.unit}</span>`).join('')}${recipe.instructions ? `<br><strong>Elkészítés</strong><span>${escapeHtml(recipe.instructions)}</span>` : ''}`
+    $('[data-food-recipe-content]').innerHTML = `<strong>Hozzávalók</strong>${recipe.ingredients.map(item => `<span>${escapeHtml(foodNames.get(item.foodId) || 'Ismeretlen hozzávaló')} · ${number(item.amount, 2)} ${UNIT_LABELS[item.unit] || item.unit}</span>`).join('')}${recipe.instructions ? `<br><strong>Elkészítés</strong><div class="food-recipe-instructions-output">${instructionsDisplayHtml(recipe, root.ownerDocument || document)}</div>` : ''}`
     fab.hidden = true
     updateSubtitle('Recept részletei')
   }
@@ -546,7 +547,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     return JSON.stringify({
       name: $('[data-food-recipe-name-input]').value,
       category: $('[data-food-recipe-category-input]').value,
-      instructions: $('[data-food-recipe-instructions-input]').value,
+      ...getInstructionsFromEditor($('[data-food-recipe-instructions-input]')),
       weight: $('[data-food-recipe-weight-input]').value,
       yieldCount: $('[data-food-recipe-yield-input]').value,
       yieldUnit: $('[data-food-recipe-yield-unit]').value,
@@ -610,7 +611,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
 
   function applyImportedRecipe(draft) {
     const title = $('[data-food-recipe-name-input]').value.trim()
-    const instructions = $('[data-food-recipe-instructions-input]').value.trim()
+    const instructions = getInstructionsFromEditor($('[data-food-recipe-instructions-input]')).instructions
     if ((title || instructions || recipeIngredients.length) &&
       !window.confirm('A beolvasott recept lecseréli a jelenlegi piszkozatot. Folytatod?')) return false
     const foods = []
@@ -651,7 +652,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     }
     $('[data-food-recipe-name-input]').value=draft.name
     $('[data-food-recipe-category-input]').value=draft.category
-    $('[data-food-recipe-instructions-input]').value=draft.instructions
+    setInstructionsEditor($('[data-food-recipe-instructions-input]'), draft.instructions)
     $('[data-food-recipe-yield-input]').value=draft.yieldCount || ''
     recipeYieldManuallySet=Boolean(draft.yieldCount)
     recipeExtras.setImageUrl(draft.imageUrl)
@@ -687,7 +688,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-recipe-editor-title]').textContent = recipe ? 'Recept szerkesztése' : 'Új recept'
     $('[data-food-recipe-name-input]').value = recipe?.name || ''
     $('[data-food-recipe-category-input]').value = recipe?.category || 'Saját recept'
-    $('[data-food-recipe-instructions-input]').value = recipe?.instructions || ''
+    setInstructionsEditor($('[data-food-recipe-instructions-input]'), recipe?.instructions || '', recipe?.instructionsHtml || '')
     $('[data-food-recipe-weight-input]').value = recipe?.preparedWeight ?? ''
     $('[data-food-recipe-yield-input]').value = recipe?.yieldCount ?? ''
     $('[data-food-recipe-yield-unit]').value = recipe?.yieldUnit || 'serving'
@@ -951,7 +952,8 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       const recipe = normalizeRecipe({
         id: existing?.id || createFoodId('recipe'), foodId: existing?.foodId || createFoodId('food'), ownerProfileId: profile.id,
         variantOfRecipeId: existing?.variantOfRecipeId || '', name: $('[data-food-recipe-name-input]').value,
-        category: $('[data-food-recipe-category-input]').value, imageUrl: recipeExtras.getImageUrl(), instructions: $('[data-food-recipe-instructions-input]').value,
+        category: $('[data-food-recipe-category-input]').value, imageUrl: recipeExtras.getImageUrl(),
+        ...getInstructionsFromEditor($('[data-food-recipe-instructions-input]')),
         ingredients: recipeIngredients, preparedWeight: optionalNumber('[data-food-recipe-weight-input]'),
         yieldCount: optionalNumber('[data-food-recipe-yield-input]'), yieldUnit: $('[data-food-recipe-yield-unit]').value,
         averageUnitWeight: optionalNumber('[data-food-recipe-unit-weight]'), revision: existing ? existing.revision + 1 : 1,
@@ -1981,6 +1983,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       $(selector).addEventListener('change', syncRecipeYield)
     }
     $('[data-food-recipe-yield-unit]').addEventListener('change', renderRecipeSummary)
+    bindInstructionsEditor($('[data-food-recipe-instructions-input]'), $('[data-food-recipe-instructions-toolbar]'))
     recipeExtras.bind()
     $('[data-food-recipe-editor-save]').addEventListener('click', saveRecipe)
     $('[data-food-recipe-editor-back]').addEventListener('click', dismissRecipeEditor)
