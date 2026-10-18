@@ -702,7 +702,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   function renderRecipeIngredientChoices() {
     const query = $('[data-food-recipe-ingredient-search]').value.trim()
     const verifiedUsdaMatches = query ? searchVerifiedUsdaFoods(query) : []
-    const matches = recipeIngredientMatches(project.customFoods, query, {
+    const matches = recipeIngredientMatches(recipeEditorFoods(), query, {
       verifiedUsdaFoods: verifiedUsdaMatches,
       remoteFoods: recipeIngredientRemoteFoods,
       favorites: project.favorites,
@@ -1997,7 +1997,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       const ingredientEdit = event.target.closest('[data-food-recipe-ingredient-edit]')
       if (ingredientEdit) {
         const ingredient = recipeIngredients.find(item => item.id === ingredientEdit.dataset.foodRecipeIngredientEdit)
-        const food = ingredient && project.customFoods.find(item => item.id === ingredient.foodId)
+        const food = ingredient && recipeEditorFoods().find(item => item.id === ingredient.foodId)
         if (!ingredient || !food) return
         editingRecipeIngredientId = ingredient.id
         $('[data-food-recipe-ingredient-search]').value = food.name
