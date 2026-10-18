@@ -66,8 +66,10 @@ try {
       console.error('Recipe editor did not open:', JSON.stringify(state))
       throw error
     })
-  assert.equal(await page.locator('[data-food-recipe-edit-sheet] .food-editor-section h3').first().textContent(),
-    'Hozzávaló felvétele', 'A receptszerkesztőben a hozzávalók szakasza legyen elöl.')
+  assert.equal(await page.locator('[data-food-recipe-tab="basics"]').getAttribute('aria-selected'),
+    'true','Alapadatok alapértelmezetten aktív.')
+  assert.equal(await page.locator('[data-food-recipe-panel="ingredient"]').isVisible(),false)
+  assert.equal(await page.locator('[data-food-recipe-panel="list"]').isVisible(),false)
   const alignment = await page.evaluate(() => {
     const rect = selector => document.querySelector(selector).closest('label').getBoundingClientRect()
     const a = rect('[data-food-recipe-yield-unit]')
@@ -79,10 +81,20 @@ try {
   })
   assert.ok(Math.abs(alignment.yieldTop - alignment.weightTop) < 3,
     'Egységtömeg és hozam egysége mezők egy sorban legyenek: ' + JSON.stringify(alignment))
+  await page.locator('[data-food-recipe-tab="ingredient"]').click()
+  const nutrientAlignment = await page.evaluate(() => {
+    const a = document.querySelector('[data-food-recipe-nutrient-carbohydrate]').closest('label').getBoundingClientRect()
+    const b = document.querySelector('[data-food-recipe-nutrient-fat]').closest('label').getBoundingClientRect()
+    return { topA:a.top,topB:b.top,widthA:a.width,widthB:b.width }
+  })
+  assert.ok(Math.abs(nutrientAlignment.topA-nutrientAlignment.topB)<3)
+  assert.ok(Math.abs(nutrientAlignment.widthA-nutrientAlignment.widthB)<5)
   assert.ok(Math.abs(alignment.carbohydrateTop - alignment.fatTop) < 3,
     'Szénhidrát és zsír mezők egy sorban legyenek: ' + JSON.stringify(alignment))
   assert.ok(Math.abs(alignment.carbohydrateWidth - alignment.fatWidth) < 5)
+  await page.locator('[data-food-recipe-tab="basics"]').click()
   await page.locator('[data-food-recipe-name-input]').fill('Keresővel készített tesztrecept')
+  await page.locator('[data-food-recipe-tab="ingredient"]').click()
   const input = page.locator('[data-food-recipe-ingredient-search]')
   const dropdown = page.locator('[data-food-recipe-ingredient-food]')
   assert.equal(await dropdown.inputValue(), '', 'Keresés nélkül ne válasszunk hozzávalót.')
@@ -109,6 +121,7 @@ try {
   assert.match(await page.locator('[data-food-recipe-ingredients]').textContent(), /Teszt keksz/)
   assert.match(await page.locator('[data-food-recipe-summary]').textContent(), /Összesen:/)
   // A user should not need to enter both yield and finished/unit weights.
+  await page.locator('[data-food-recipe-tab="basics"]').click()
   await page.locator('[data-food-recipe-weight-input]').fill('750')
   await page.locator('[data-food-recipe-yield-unit]').selectOption('slice')
   await page.locator('[data-food-recipe-unit-weight]').fill('25')
@@ -138,6 +151,7 @@ try {
   await page.locator('[data-food-recipe-edit]').click()
   await page.locator('[data-food-recipe-edit-sheet].is-open').waitFor({ state: 'visible' })
   assert.equal(await page.locator('[data-food-recipe-yield-input]').inputValue(), '30')
+  await page.locator('[data-food-recipe-tab="ingredient"]').click()
   await input.fill('voroshagyma')
   const savedOnion = dropdown.locator('option', { hasText: /Vöröshagyma/ }).first()
   await savedOnion.waitFor({ state: 'attached' })
@@ -204,6 +218,7 @@ try {
   await saveWithUnknown
   await page.locator('[data-food-recipe-title]').filter({ hasText: 'Keresővel készített tesztrecept' }).waitFor()
   await page.locator('[data-food-recipe-edit]').click()
+  await page.locator('[data-food-recipe-tab="list"]').click()
   await page.locator('[data-food-recipe-ingredients]').getByText('Kézi teszt hozzávaló 20261017').waitFor()
 
   // Regression for the user-reported Puha kenyér: older manual Só/Cukor/Víz
@@ -218,6 +233,7 @@ try {
   await page.locator('[data-food-recipe-yield-unit]').selectOption('slice')
   await page.locator('[data-food-recipe-unit-weight]').fill('25')
   assert.equal(await page.locator('[data-food-recipe-yield-input]').inputValue(), '30')
+  await page.locator('[data-food-recipe-tab="ingredient"]').click()
 
   for (const [name, amount] of [['Só', '5'], ['Cukor', '5'], ['Víz', '350']]) {
     await input.fill(name)
@@ -234,6 +250,7 @@ try {
   await page.locator('[data-food-recipe-ingredient-amount]').fill('400')
   await page.locator('[data-food-recipe-ingredient-add]').click()
   assert.match(await page.locator('[data-food-recipe-summary]').textContent(), /Hiányzó tápértékek/)
+  await page.locator('[data-food-recipe-tab="list"]').click()
   const repairButton = page.locator('[data-food-recipe-nutrients-repair]')
   await repairButton.waitFor({ state: 'visible' })
   assert.match(await repairButton.textContent(), /3 ismert hozzávaló/)
@@ -279,7 +296,7 @@ try {
   }))
   const newBread = searchArea.locator('.sheet-result', { hasText: 'Puha kenyér helyreállítás' }).first()
   await newBread.locator('.sheet-result__favorite').click()
-  await page.locator('[data-food-search-filter="favorites"]').click()
+  await page.locator('[data-food-quick="favorites"]').click()
   const favoriteLayout = await searchArea.evaluate(el => ({
     height: Math.round(el.getBoundingClientRect().height),
     rowHeight: Math.round(el.querySelector('.sheet-result')?.getBoundingClientRect().height || 0),
@@ -292,7 +309,7 @@ try {
 
   // Search for manually added sugar after offline nutrient repair: the best
   // complete entry should be visible, with every old version recoverable.
-  await page.locator('[data-food-search-filter="all"]').click()
+  await page.locator('[data-food-quick="favorites"]').click()
   await page.locator('[data-food-search]').fill('cukor')
   const variants = page.locator('[data-food-search-results] .food-search-variants-toggle')
   await variants.first().waitFor({ state: 'visible' })
@@ -324,7 +341,60 @@ try {
   await close.click()
   assert.equal(await page.locator('[data-food-live-scanner]').isVisible(), false)
 
-  console.log('Food add UX: fixed-height top-aligned results, safe duplicates, styled scanner close, ingredients first OK')
+  // Full end-to-end recipe draft import and local image. No remote save
+  // occurs until the user explicitly saves the recipe.
+  await page.locator('[data-food-add-back]').click()
+  await page.locator('[data-food-back]').click()
+  await page.locator('[data-food-open-recipes]').click()
+  await page.locator('[data-food-recipes-new]').click()
+  await page.locator('[data-food-recipe-edit-sheet].is-open').waitFor({state:'visible'})
+  assert.equal(await page.locator('[data-food-recipe-tabs] [role="tab"]').count(),5)
+  assert.equal(await page.locator('[data-food-recipe-panel="basics"]').isVisible(),true)
+  assert.equal(await page.locator('[data-food-recipe-panel="import"]').isVisible(),false)
+  await page.locator('[data-food-recipe-tab="import"]').click()
+  await page.locator('[data-food-recipe-import-text]').fill(
+    'Importált puha kenyér\\nHozzávalók:\\n400 g búzafinomliszt\\n5 g cukor\\n5 g só\\nElkészítés:\\nKeverd és süsd.'
+      .replaceAll('\\n','\n'))
+  await page.locator('[data-food-recipe-import-read]').click()
+  await page.locator('[data-food-recipe-import-preview]').waitFor({state:'visible'})
+  assert.match(await page.locator('[data-food-recipe-import-preview]').textContent(),/3/)
+  await page.locator('[data-food-recipe-tab="basics"]').click()
+  assert.equal(await page.locator('[data-food-recipe-name-input]').inputValue(),'',
+    'Beolvasás után még ne módosuljon a recept a jóváhagyás előtt.')
+  await page.locator('[data-food-recipe-tab="import"]').click()
+  await page.locator('[data-food-recipe-import-apply]').click()
+  assert.equal(await page.locator('[data-food-recipe-tab="list"]').getAttribute('aria-selected'),'true')
+  assert.match(await page.locator('[data-food-recipe-ingredients]').textContent(),/cukor/i)
+  await page.locator('[data-food-recipe-tab="basics"]').click()
+  assert.equal(await page.locator('[data-food-recipe-name-input]').inputValue(),'Importált puha kenyér')
+  await page.locator('[data-food-recipe-tab="image"]').click()
+  const photo=await page.screenshot()
+  await page.locator('[data-food-recipe-image-file]').setInputFiles({
+    name:'recept.png',mimeType:'image/png',buffer:photo,
+  })
+  await page.locator('[data-food-recipe-image-preview]').waitFor({state:'visible',timeout:10000})
+  assert.match(await page.locator('[data-food-recipe-image-preview]').getAttribute('src'),/^data:image\/jpeg;base64,/)
+  // The file button is one source picker, not a second full import form.
+  await page.locator('[data-food-recipe-tab="import"]').click()
+  await page.locator('[data-food-recipe-import-file]').setInputFiles({
+    name:'masik-recept.txt',mimeType:'text/plain',
+    buffer:Buffer.from('Mákos tészta\nHozzávalók:\n100 g mák\nElkészítés:\nKeverd össze.'),
+  })
+  await page.locator('[data-food-recipe-import-preview]').waitFor({state:'visible'})
+  assert.match(await page.locator('[data-food-recipe-import-preview]').textContent(),/Mákos tészta/)
+  await page.locator('[data-food-recipe-tab="basics"]').click()
+  assert.equal(await page.locator('[data-food-recipe-name-input]').inputValue(),'Importált puha kenyér',
+    'Új fájl puszta kiválasztása nem írhatja át a korábbi átvett piszkozatot.')
+  await page.locator('[data-food-recipe-editor-save]').click()
+  await page.locator('[data-food-recipe-title]').filter({hasText:'Importált puha kenyér'}).waitFor()
+  await page.locator('[data-food-recipe-detail-image]').waitFor({state:'visible'})
+  assert.match(await page.locator('[data-food-recipe-detail-image]').getAttribute('src'),/^data:image\/jpeg;base64,/)
+  await page.locator('[data-food-recipe-edit]').click()
+  await page.locator('[data-food-recipe-tab="image"]').click()
+  await page.locator('[data-food-recipe-image-preview]').waitFor({state:'visible'})
+  console.log('Recipe tabs/import: JSON/text file preview, explicit apply, saved local picture and reopen OK')
+
+  console.log('Food add UX: fixed-height results, safe duplicates, styled scanner close, five recipe tabs OK')
   console.log('Recipe ingredient editor: search, editable nutrients, manual fallback, conversions and inline barcode OK')
 } finally {
   await browser?.close()

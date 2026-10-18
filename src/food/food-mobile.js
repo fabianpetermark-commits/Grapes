@@ -9,7 +9,10 @@ import { recipeIngredientMatches } from './recipe-ingredient-search.js'
 import { suggestedRecipeYield } from './recipe-yield-preview.js'
 import { RECIPE_NUTRIENTS, applyVerifiedRecipeNutrientRepairs, manualRecipeBaseUnit, prepareRecipeIngredientFood, recipeUnitNeedsConversion, recipeUnitOptions, recipeNutrientInputs, suggestVerifiedRecipeNutrientRepairs } from './recipe-ingredient-draft.js'
 import { firstProductBarcode } from './food-barcode.js'
-import { searchVerifiedUsdaFoods } from './usda-foods.js'
+import { searchVerifiedUsdaFoods, verifiedUsdaFood } from './usda-foods.js'
+import { HUNGARIAN_USDA_CATALOG } from './hungarian-food-catalog.js'
+import { createHungarianFoodIndex, resolveHungarianFood } from './food-search-method.js'
+import { createRecipeEditorExtras } from './recipe-editor-extras.js'
 import { createMobileYazio } from './food-mobile-yazio.js'
 import { readYazioApiBundle } from './yazio-api-import.js'
 import { prepareYazioImport } from './food-yazio-import.js'
@@ -22,6 +25,7 @@ import { mobileIconSvg } from '../android-mobile-icons.js'
 
 const MODULE = 'Ételnapló'
 const PROJECT_NAME = 'Ételnapló'
+const RECIPE_IMPORT_INDEX = createHungarianFoodIndex(HUNGARIAN_USDA_CATALOG)
 const MEALS = [
   ['breakfast', 'Reggeli', 'breakfast'], ['morningSnack', 'Tízórai', 'morningSnack'], ['lunch', 'Ebéd', 'lunch'],
   ['afternoonSnack', 'Uzsonna', 'afternoonSnack'], ['dinner', 'Vacsora', 'dinner'],
@@ -83,6 +87,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   let recipeIngredientChoices = new Map()
   let recipeNutrientSelection = ''
   let recipeEditorSnapshot = ''
+  let recipeDraftFoods = []
   let recipeCatalogActive = false
   let barcodeStream = null
   let barcodeScanTimer = null
@@ -90,6 +95,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   const updateSubtitle = subtitle => root.dispatchEvent(new CustomEvent('grapes:food-subtitle', { detail: { subtitle } }))
 
   const $ = selector => root.querySelector(selector)
+  const recipeExtras = createRecipeEditorExtras({ root, onApplyImport: applyImportedRecipe })
   const localProjectId = (profileId = profile?.id) => `food-tracker-${profileId}`
   const accountProfile = () => {
     const account = getGrapesAccount() || {}
@@ -526,6 +532,10 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-overview]').hidden = true; $('[data-food-detail]').hidden = true; $('[data-food-recipes-view]').hidden = true; $('[data-food-recipe-detail]').hidden = false
     $('[data-food-recipe-title]').textContent = recipe.name
     $('[data-food-recipe-copy]').textContent = `${recipe.category} · ${recipe.ingredients.length} hozzávaló`
+    const detailImage = $('[data-food-recipe-detail-image]')
+    detailImage.hidden = !recipe.imageUrl
+    if (recipe.imageUrl) detailImage.src = recipe.imageUrl
+    else detailImage.removeAttribute('src')
     const foodNames = new Map(project.customFoods.map(item => [item.id, item.name]))
     $('[data-food-recipe-content]').innerHTML = `<strong>Hozzávalók</strong>${recipe.ingredients.map(item => `<span>${escapeHtml(foodNames.get(item.foodId) || 'Ismeretlen hozzávaló')} · ${number(item.amount, 2)} ${UNIT_LABELS[item.unit] || item.unit}</span>`).join('')}${recipe.instructions ? `<br><strong>Elkészítés</strong><span>${escapeHtml(recipe.instructions)}</span>` : ''}`
     fab.hidden = true
@@ -541,6 +551,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       yieldCount: $('[data-food-recipe-yield-input]').value,
       yieldUnit: $('[data-food-recipe-yield-unit]').value,
       unitWeight: $('[data-food-recipe-unit-weight]').value,
+      imageUrl: recipeExtras.getImageUrl(),
       ingredients: recipeIngredients,
     })
   }
@@ -595,6 +606,67 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     renderRecipeSummary()
   }
 
+  function recipeEditorFoods() { return [...project.customFoods, ...recipeDraftFoods] }
+
+  function applyImportedRecipe(draft) {
+    const title = $('[data-food-recipe-name-input]').value.trim()
+    const instructions = $('[data-food-recipe-instructions-input]').value.trim()
+    if ((title || instructions || recipeIngredients.length) &&
+      !window.confirm('A beolvasott recept lecseréli a jelenlegi piszkozatot. Folytatod?')) return false
+    const foods = []
+    const ingredients = []
+    const skipped = []
+    const simpleName = name => String(name || '').trim().toLocaleLowerCase('hu-HU')
+    for (const item of draft.ingredients) {
+      if (!item.amount || !item.unit || !item.name) { skipped.push(item.original); continue }
+      const candidate = [...project.customFoods, ...foods]
+        .filter(food => simpleName(food.name) === simpleName(item.name))
+        .sort((a,b) =>
+          ['energyKcal','protein','carbohydrate','fat'].filter(key => b.nutrients[key] != null).length
+          - ['energyKcal','protein','carbohydrate','fat'].filter(key => a.nutrients[key] != null).length)[0]
+      const reference = resolveHungarianFood(item.name, RECIPE_IMPORT_INDEX)
+      const verified = reference.status === 'match' ? verifiedUsdaFood(reference.match) : null
+      let food = candidate || verified
+      if (!food) {
+        food = normalizeFoodItem({
+          id: createFoodId('food'), name:item.name, kind:'manual', category:'Importált hozzávaló',
+          baseUnit:['ml','dl','l'].includes(item.unit) ? 'ml' : 'g',
+          nutrients:{},source:{type:'manual'},
+        })
+      }
+      if (recipeUnitNeedsConversion(food,item.unit)) {
+        skipped.push(item.original + ' (egyedi egységátváltás szükséges)')
+        continue
+      }
+      if (!project.customFoods.some(saved => saved.id === food.id)
+        && !foods.some(staged => staged.id === food.id)) {
+        // Offline catalogue identities have no persisted app ID yet.
+        food = normalizeFoodItem({...food,id:createFoodId('food')})
+        foods.push(food)
+      }
+      ingredients.push({
+        id:createFoodId('ingredient'),foodId:food.id,amount:item.amount,unit:item.unit,
+        servingId:food.servings.find(serving=>serving.unit===item.unit)?.id || '',
+      })
+    }
+    $('[data-food-recipe-name-input]').value=draft.name
+    $('[data-food-recipe-category-input]').value=draft.category
+    $('[data-food-recipe-instructions-input]').value=draft.instructions
+    $('[data-food-recipe-yield-input]').value=draft.yieldCount || ''
+    recipeYieldManuallySet=Boolean(draft.yieldCount)
+    recipeExtras.setImageUrl(draft.imageUrl)
+    recipeDraftFoods=foods
+    recipeIngredients=ingredients
+    syncRecipeYield()
+    renderRecipeEditorIngredients()
+    const status=$('[data-food-recipe-editor-status]')
+    status.textContent=ingredients.length+' összetevő átvéve. '
+      +(skipped.length ? 'Kézzel felveendő: '+skipped.join('; ')+'. ' : '')
+      +'A tápértékeket és az adagolást ellenőrizd mentés előtt.'
+    recipeExtras.setTab(ingredients.length?'list':'basics')
+    return true
+  }
+
   function openRecipeEditor(id = '') {
     closeSheets()
     clearTimeout(recipeIngredientSearchTimer)
@@ -604,6 +676,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     recipeIngredientSearchError = ''
     recipeIngredientChoices = new Map()
     recipeNutrientSelection = ''
+    recipeDraftFoods = []
     const recipe = project.recipes.find(item => item.id === id)
     editingRecipeId = recipe?.id || ''
     // Pre-existing saved yields have unknown provenance; preserve them as
@@ -620,6 +693,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-recipe-yield-unit]').value = recipe?.yieldUnit || 'serving'
     $('[data-food-recipe-unit-weight]').value = recipe?.averageUnitWeight ?? ''
     $('[data-food-recipe-editor-status]').textContent = ''
+    recipeExtras.open(recipe?.imageUrl || '')
     $('[data-food-recipe-ingredient-search]').value = ''
     $('[data-food-recipe-conversion-amount]').value = ''
     $('[data-food-recipe-ingredient-add] span').textContent = 'Hozzávaló hozzáadása'
@@ -632,7 +706,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   function renderRecipeIngredientChoices() {
     const query = $('[data-food-recipe-ingredient-search]').value.trim()
     const verifiedUsdaMatches = query ? searchVerifiedUsdaFoods(query) : []
-    const matches = recipeIngredientMatches(project.customFoods, query, {
+    const matches = recipeIngredientMatches(recipeEditorFoods(), query, {
       verifiedUsdaFoods: verifiedUsdaMatches,
       remoteFoods: recipeIngredientRemoteFoods,
       favorites: project.favorites,
@@ -708,7 +782,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
 
   function renderRecipeEditorIngredients() {
     renderRecipeIngredientChoices()
-    const foods = project.customFoods.filter(item => item.kind !== 'recipe')
+    const foods = recipeEditorFoods().filter(item => item.kind !== 'recipe')
     const names = new Map(foods.map(food => [food.id, food.name]))
     const missingByFood = new Map(missingRecipeNutrients(recipeIngredients, foods)
       .map(item => [item.foodId, item.keys]))
@@ -762,8 +836,8 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
         instructions: '', ingredients: recipeIngredients, preparedWeight: optionalNumber('[data-food-recipe-weight-input]'),
         yieldCount: optionalNumber('[data-food-recipe-yield-input]'), yieldUnit: $('[data-food-recipe-yield-unit]').value,
         averageUnitWeight: optionalNumber('[data-food-recipe-unit-weight]'), revision: 1, createdAt: now, updatedAt: now,
-      }, project.customFoods.filter(item => item.kind !== 'recipe'))
-      const missing = missingRecipeNutrients(recipeIngredients, project.customFoods)
+      }, recipeEditorFoods().filter(item => item.kind !== 'recipe'))
+      const missing = missingRecipeNutrients(recipeIngredients, recipeEditorFoods())
       const summaryYield = calculated.recipe.yieldCount
         ? ` · ${number(calculated.recipe.yieldCount, 2)} ${calculated.recipe.yieldUnit === 'slice' ? 'szelet'
           : calculated.recipe.yieldUnit === 'piece' ? 'darab' : 'adag'}`
@@ -877,14 +951,14 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       const recipe = normalizeRecipe({
         id: existing?.id || createFoodId('recipe'), foodId: existing?.foodId || createFoodId('food'), ownerProfileId: profile.id,
         variantOfRecipeId: existing?.variantOfRecipeId || '', name: $('[data-food-recipe-name-input]').value,
-        category: $('[data-food-recipe-category-input]').value, imageUrl: existing?.imageUrl || '', instructions: $('[data-food-recipe-instructions-input]').value,
+        category: $('[data-food-recipe-category-input]').value, imageUrl: recipeExtras.getImageUrl(), instructions: $('[data-food-recipe-instructions-input]').value,
         ingredients: recipeIngredients, preparedWeight: optionalNumber('[data-food-recipe-weight-input]'),
         yieldCount: optionalNumber('[data-food-recipe-yield-input]'), yieldUnit: $('[data-food-recipe-yield-unit]').value,
         averageUnitWeight: optionalNumber('[data-food-recipe-unit-weight]'), revision: existing ? existing.revision + 1 : 1,
         createdAt: existing?.createdAt || now, updatedAt: now,
       })
-      const calculated = calculateRecipeFood(recipe, project.customFoods.filter(item => item.kind !== 'recipe'))
-      const missing = missingRecipeNutrients(recipe.ingredients, project.customFoods)
+      const calculated = calculateRecipeFood(recipe, recipeEditorFoods().filter(item => item.kind !== 'recipe'))
+      const missing = missingRecipeNutrients(recipe.ingredients, recipeEditorFoods())
       if (missing.length) {
         const labels = { energyKcal: 'kalória', protein: 'fehérje', carbohydrate: 'szénhidrát', fat: 'zsír' }
         const details = missing.map(item =>
@@ -896,6 +970,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
           return
         }
       }
+      project.customFoods.push(...recipeDraftFoods.filter(food => !project.customFoods.some(item => item.id === food.id)))
       project.recipes = existing ? project.recipes.map(item => item.id === recipe.id ? recipe : item) : [...project.recipes, recipe]
       project.customFoods = [...project.customFoods.filter(item => item.id !== recipe.foodId), calculated.food]
       scheduleSave(); closeSheets(); renderOverview(); openRecipe(recipe.id); showToast('A receptet mentettük.')
@@ -1009,12 +1084,8 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
 
   function setFoodSearchFilter(filter) {
     expandedManualFoodGroups = new Set()
-    foodSearchFilter = ['all', 'own', 'favorites', 'usda'].includes(filter) ? filter : 'all'
-    root.querySelectorAll('[data-food-search-filter]').forEach(button => {
-      const active = button.dataset.foodSearchFilter === foodSearchFilter
-      button.classList.toggle('is-active', active)
-      button.setAttribute('aria-pressed', String(active))
-    })
+    foodSearchFilter = filter === 'favorites' ? 'favorites' : 'all'
+    $('[data-food-quick="favorites"]').setAttribute('aria-pressed', String(foodSearchFilter === 'favorites'))
   }
 
   function renderFoodSearch(query, { remoteFoods = [], loading = false, remoteError = '' } = {}) {
@@ -1910,6 +1981,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       $(selector).addEventListener('change', syncRecipeYield)
     }
     $('[data-food-recipe-yield-unit]').addEventListener('change', renderRecipeSummary)
+    recipeExtras.bind()
     $('[data-food-recipe-editor-save]').addEventListener('click', saveRecipe)
     $('[data-food-recipe-editor-back]').addEventListener('click', dismissRecipeEditor)
     $('[data-food-add-back]').addEventListener('click', closeAddPage)
@@ -1929,7 +2001,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       const ingredientEdit = event.target.closest('[data-food-recipe-ingredient-edit]')
       if (ingredientEdit) {
         const ingredient = recipeIngredients.find(item => item.id === ingredientEdit.dataset.foodRecipeIngredientEdit)
-        const food = ingredient && project.customFoods.find(item => item.id === ingredient.foodId)
+        const food = ingredient && recipeEditorFoods().find(item => item.id === ingredient.foodId)
         if (!ingredient || !food) return
         editingRecipeIngredientId = ingredient.id
         $('[data-food-recipe-ingredient-search]').value = food.name
@@ -1948,18 +2020,12 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       if (quick?.dataset.foodQuick === 'custom') return openCustomFoodSheet()
       if (quick?.dataset.foodQuick === 'favorites') {
         $('[data-food-search]').value = ''
-        setFoodSearchFilter('favorites')
-        renderFoodSearch('', foodSearchRenderState)
+        setFoodSearchFilter(foodSearchFilter === 'favorites' ? 'all' : 'favorites')
+        startFoodSearch('')
         return
       }
       if (quick?.dataset.foodQuick === 'barcode') return requestBarcode()
       if (quick?.dataset.foodQuick === 'photo') return $('[data-food-barcode-photo]').click()
-      const searchFilter = event.target.closest('[data-food-search-filter]')
-      if (searchFilter) {
-        setFoodSearchFilter(searchFilter.dataset.foodSearchFilter)
-        renderFoodSearch($('[data-food-search]').value, foodSearchRenderState)
-        return
-      }
       const menu = event.target.closest('[data-food-menu]'); if (menu) return handleMenuAction(menu.dataset.foodMenu)
     })
     document.addEventListener('visibilitychange', () => {
