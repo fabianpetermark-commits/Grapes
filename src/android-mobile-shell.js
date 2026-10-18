@@ -966,9 +966,17 @@ async function inspectWaterBackup(event) {
     const recovered = JSON.stringify(old)
     localStorage.setItem('grapes-water-recovery-v1', recovered)
     if (localStorage.getItem('grapes-water-recovery-v1') !== recovered) throw new Error('A régi víznapló biztonsági másolata nem ellenőrizhető.')
-    localStorage.setItem(WATER_STORE_KEY, JSON.stringify(restored))
-    const actual = readWaterStoreStrict(localStorage)
-    if (JSON.stringify(actual) !== JSON.stringify(restored)) throw new Error('A víznapló visszaállítása nem igazolható.')
+    try {
+      localStorage.setItem(WATER_STORE_KEY, JSON.stringify(restored))
+      const actual = readWaterStoreStrict(localStorage)
+      if (JSON.stringify(actual) !== JSON.stringify(restored)) {
+        throw new Error('A víznapló visszaállítása nem igazolható.')
+      }
+    } catch (error) {
+      // Restore the original without losing its Health Connect import keys.
+      localStorage.setItem(WATER_STORE_KEY, recovered)
+      throw error
+    }
     renderWater()
     showToast('A víznapló visszaállítva; a korábbi állapot külön megmaradt.')
   } catch (error) { showToast(error?.message || 'A Víz napló visszaállítása nem sikerült.') }
