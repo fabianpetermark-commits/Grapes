@@ -722,7 +722,22 @@
       </section>
       <section class="bottom-sheet" data-food-menu-sheet role="dialog" aria-modal="true" aria-label="Ételnapló menü" aria-hidden="true" inert>
         <div class="sheet-handle"></div><h2>Ételnapló menü</h2><p>Elemzés, célok és adatkezelés.</p>
-        <div class="sheet-results"><button class="sheet-result" type="button" data-food-menu="stats"><strong>Statisztika</strong><span>Trendek és átlagok</span></button><button class="sheet-result" type="button" data-food-menu="targets"><strong>Napi célok</strong><span>Kalória és makrók</span></button><button class="sheet-result" type="button" data-food-menu="backup-export"><strong>Biztonsági mentés exportja</strong><span>JSON-fájl letöltése</span></button><button class="sheet-result" type="button" data-food-menu="backup-import"><strong>Biztonsági mentés visszaállítása</strong><span>Korábbi JSON-fájl kiválasztása</span></button></div>
+        <div class="sheet-results"><button class="sheet-result" type="button" data-food-menu="stats"><strong>Statisztika</strong><span>Trendek és átlagok</span></button><button class="sheet-result" type="button" data-food-menu="targets"><strong>Napi célok</strong><span>Kalória és makrók</span></button><button class="sheet-result" type="button" data-food-menu="backup-export"><strong>Biztonsági mentés exportja</strong><span>JSON-fájl letöltése</span></button><button class="sheet-result" type="button" data-food-menu="backup-import"><strong>Biztonsági mentés visszaállítása</strong><span>Korábbi JSON-fájl kiválasztása</span></button><button class="sheet-result" type="button" data-food-menu="reconcile"><strong>Helyi és Drive-napló összevezetése</strong><span>Előnézet, külön mentések, jóváhagyás és helyi visszaállítás</span></button></div>
+      </section>
+      <section class="bottom-sheet" data-food-reconcile-sheet role="dialog" aria-modal="true" aria-label="Ételnapló összevezetés" aria-hidden="true" inert>
+        <div class="sheet-handle"></div><h2>Ételnaplók biztonságos összevezetése</h2>
+        <p>Az előnézet nem ír át adatot. Csak ugyanazon, a Google által igazolt fiók eltérő profilazonosítójú naplói egyesíthetők.</p>
+        <p class="food-page-note" data-food-reconcile-summary>A Drive- és telefonos adatok ellenőrzése még nem történt meg.</p>
+        <div class="sheet-results">
+          <button class="sheet-result" type="button" data-food-reconcile-preview><strong>1. Előnézet ellenőrzése</strong><span>A hiányzó és közös étkezések összevetése</span></button>
+          <button class="sheet-result" type="button" data-food-reconcile-local disabled><strong>2. Eredeti telefonos mentés</strong><span>Kötelező, külön JSON-fájlba</span></button>
+          <button class="sheet-result" type="button" data-food-reconcile-drive disabled><strong>3. Eredeti Drive-mentés</strong><span>Kötelező, külön JSON-fájlba</span></button>
+          <button class="primary module-cta" type="button" data-food-reconcile-stage disabled>4. Jóváhagyom a helyi összevezetést</button>
+          <button class="primary module-cta" type="button" data-food-reconcile-publish hidden>5. Jóváhagyom a Drive frissítését</button>
+          <button class="secondary module-cta" type="button" data-food-reconcile-rollback hidden>Helyi összevezetés visszavonása</button>
+        </div>
+        <p class="food-page-note">A jóváhagyások külön lépések. A mentések és a Drive-állapot ellenőrzése nélkül nincs automatikus felülírás. Az előző Víz napló ettől független és változatlan marad.</p>
+        <p data-food-reconcile-status role="status" aria-live="polite"></p>
       </section>
       <section class="bottom-sheet" data-food-stats-sheet role="dialog" aria-modal="true" aria-label="Ételnapló statisztika" aria-hidden="true" inert>
         <div class="food-recipe-editor__header"><button type="button" class="food-recipe-editor__back" data-food-stats-back aria-label="Vissza">‹</button><div><h2>Statisztika</h2><p>Ételnapló- és tápanyagcélok áttekintése</p></div></div>
