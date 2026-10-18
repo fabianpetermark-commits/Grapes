@@ -1,5 +1,5 @@
 {
-  "versionCode": 7,
-  "versionName": "0.7.0",
-  "notes": "Grapes TEST v0.7.0 – Megérkezett az ötfüles receptszerkesztő (Alapadatok, Felvétel, Összetevők, Kép, Importálás): a mezők egy közös területen válthatók, nem kell végiggörgetni az egész űrlapot. A recepthez JPEG/PNG/WebP képet lehet választani és menteni. Az Importálás fül egy szövegmezőben linket vagy receptszöveget, alatta fájlválasztással helyi fájlokat fogad; az ismert hozzávalókat és mennyiségeket ellenőrizhető előnézetben mutatja, átvételük külön jóváhagyást és a tényleges receptmentés külön műveletet igényel. A kereső szűrői helyett négy gyorsgomb (Vonalkód, Fotó alapján, Kedvencek, Saját étel) érhető el. A korábbi TEST v0.6.0 és régebbi funkciók, ételek és naplóadatok megmaradnak. Korlát: PDF-import még nincs; egyes HTTPS receptoldalak CORS miatt nem olvashatók, a Fotó alapján gyorsgomb jelenleg a vonalkódolvasót használja. Az ismeretlen mennyiségeket és tápértékeket nem találjuk ki. Külön, állandó aláírású Grapes TEST APK, az éles Grapest nem érinti."
+  "versionCode": 8,
+  "versionName": "0.8.0",
+  "notes": "Grapes TEST v0.8.0: A receptek Elkészítés mezője megtartja a bemásolt sortöréseket, bekezdéseket és a támogatott formázást (félkövér, számozott lista). Az új szerkesztő biztonságosan kezeli a beillesztett szöveget, a formázás mentés és újranyitás után is látható. A korábbi TEST-funkciók és az adatok megmaradnak. Ha a PDF-olvasó nem másol formázást, az nem állítható vissza automatikusan. A stabil Grapes változatlan."
 }
