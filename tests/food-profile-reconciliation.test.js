@@ -80,6 +80,10 @@ function projects(){
     importBatches:[batch('batch-local',localId,ly)],settings:{},
     syncState:{localDirty:true},
   })
+  // Model the real case: the later phone export holds additional raw-day
+  // metadata even though it has the same complete YAZIO meal rows.
+  local.importBatches[0].sourceArchive.meta[0].to='2026-10-18'
+  local.importBatches[0].sourceArchive.raw_days=[{date:'2026-10-18',source:'synthetic'}]
   return {local,remote}
 }
 test('verified same-account adoption keeps Drive extras, goals, old YAZIO batch and deduplicates meals',()=>{
@@ -98,6 +102,13 @@ test('verified same-account adoption keeps Drive extras, goals, old YAZIO batch 
   assert.equal(project.diaryEntries.length,3)
   assert.equal(project.syncState.localDirty,true)
   assert.equal(project.importBatches[0].id,'batch-remote')
+  assert.equal(project.importBatches[0].additionalSourceArchives.length,1)
+  assert.deepEqual(
+    project.importBatches[0].additionalSourceArchives[0].sourceArchive,
+    local.importBatches[0].sourceArchive,
+    'Neither updated products nor new raw days may be lost.',
+  )
+  assert.deepEqual(project.importBatches[0].sourceArchive,remote.importBatches[0].sourceArchive)
   const entry=project.diaryEntries.find(e=>e.origin?.source==='yazio')
   assert.equal(entry.profileId,localId)
   assert.equal(entry.origin.profileId,localId)
@@ -122,6 +133,11 @@ test('different connected Google account or manually conflicting local changes s
   const target=structuredClone(local)
   target.targets[0].values.energyKcal=2250
   assert.throws(()=>previewFoodSameAccountAdoption(target,remote,email),/eltérő napi célértékek/)
+})
+test('multiple ambiguous YAZIO source archives block an automatic migration',()=>{
+  const {local,remote}=projects()
+  local.importBatches.push({...local.importBatches[0],id:'second-local-batch'})
+  assert.throws(()=>previewFoodSameAccountAdoption(local,remote,email),/Több eltérő YAZIO-importköteg/)
 })
 test('tampered old YAZIO undo fingerprints cannot be silently rewritten',()=>{
   const {local,remote}=projects()
