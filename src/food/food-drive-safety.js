@@ -1,3 +1,5 @@
+import { normalizeFoodProject } from './food-data.js'
+
 // Fail closed when a local Food diary is not explicitly linked to a Drive file.
 // Never guess that an arbitrary first file belongs to a particular local diary.
 export function foodProjectHasUserContent(project) {
@@ -39,4 +41,24 @@ export function assertFoodDriveCreateSafe(existingFiles) {
   if (Array.isArray(existingFiles) && existingFiles.some(file => file?.id)) {
     throw new Error('Már létezik Food-napló a Drive-on, de a helyi napló nincs hozzákapcsolva. Az automatikus új fájl készítése leállt az ütközés elkerülésére.')
   }
+}
+
+// Compare semantically normalized snapshots instead of timestamps of the Drive
+// wrapper. A localDirty flag is a transport hint, not a difference in diary data.
+export function foodDriveSignature(project, profileId = project?.profile?.id || '') {
+  const normalized = normalizeFoodProject(project, profileId)
+  const comparable = { ...normalized, syncState: { ...normalized.syncState, localDirty: false } }
+  return JSON.stringify(comparable)
+}
+
+// If the process did not read a trusted remote baseline during this session,
+// only a remote snapshot identical to the local diary is safe to overwrite.
+// Never silently merge or overwrite divergent Food diaries.
+export function verifyFoodRemoteBeforeUpload(remoteProject, localProject, trustedBaseline = '') {
+  const expected = trustedBaseline || foodDriveSignature(localProject)
+  const current = foodDriveSignature(remoteProject, localProject?.profile?.id)
+  if (current !== expected) {
+    throw new Error('A Drive-on eltérő Food-napló található. A helyi adatok biztonságban megmaradtak; automatikus felülírás nem történt. Készíts mentést, majd ellenőrizd a két példányt.')
+  }
+  return current
 }
