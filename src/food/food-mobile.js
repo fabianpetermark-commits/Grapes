@@ -431,12 +431,12 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-day-copy]').textContent = `${date.toLocaleDateString('hu-HU', { month: 'long', day: 'numeric', weekday: 'long' })} · ${new Set(entries.map(item => item.mealType)).size} étkezés`
     $('[data-food-date]').value = selectedDate
     $('[data-food-energy]').textContent = nutrient(totals.energyKcal)
-    $('[data-food-energy-target]').textContent = `${number(targets.energyKcal)} kcal`
     const energyGoal = Number(targets.energyKcal)
     const loggedEnergy = Number(totals.energyKcal)
     // Keep the neon ring CSS intact at 0% and with no daily goal. Only the
     // numeric arc varies; never assign an inline background over its glow.
     const hasEnergyGoal = Number.isFinite(energyGoal) && energyGoal > 0
+    $('[data-food-energy-target]').textContent = hasEnergyGoal ? `/ ${number(energyGoal)} kcal` : 'Nincs cél'
     const hasCompleteEnergy = entries.length > 0 && totals.energyKcal != null
     const energyPercent = hasEnergyGoal && hasCompleteEnergy && Number.isFinite(loggedEnergy)
       ? Math.max(0, Math.min(100, loggedEnergy / energyGoal * 100)) : 0
