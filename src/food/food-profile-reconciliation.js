@@ -115,7 +115,8 @@ export function previewFoodSameAccountAdoption(localInput, remoteInput, verified
       const previousEntriesById = new Map(remote.diaryEntries.map(item => [item.id, item]))
       const entriesById = new Map(migrated.diaryEntries.map(item => [item.id, item]))
       if (!Array.isArray(batch.recordIds) || !batch.entryFingerprints ||
-          batch.recordIds.some(id => !entriesById.has(id) || !previousEntriesById.has(id))) {
+          batch.recordIds.some(id => !entriesById.has(id) || !previousEntriesById.has(id) ||
+            previousEntriesById.get(id).origin?.importBatchId !== batch.id)) {
         throw new Error('Hiányzó YAZIO-importbejegyzés; a visszavonási előzmény nem módosítható.')
       }
       if (batch.recordIds.some(id =>
