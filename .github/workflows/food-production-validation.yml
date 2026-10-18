@@ -1,0 +1,68 @@
+name: Food production staging validation
+
+on:
+  pull_request:
+    branches:
+      - codex/android-app
+    paths:
+      - src/food/**
+      - src/android-mobile-shell.js
+      - src/android-bridge.js
+      - design/android-mobile-preview.html
+      - android-health-connect-poc/**
+      - tests/food-*
+      - tests/recipe-*
+      - tests/android-*.browser.mjs
+      - tests/yazio-api-import.test.js
+      - .github/workflows/food-production-validation.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  food-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build:android-web
+      - name: Android Food recipe editor browser regression
+        run: node tests/android-recipe-ingredient.browser.mjs
+      - name: Android shell browser regression
+        run: node tests/android-mobile-preview.browser.mjs
+      - name: Native release identity must remain unchanged
+        run: |
+          grep -F 'applicationId = "hu.grapes.healthconnect"' android-health-connect-poc/app/build.gradle.kts
+          grep -F "GRAPES_ROOT_FOLDER = 'Grapes'" src/storage/grapes-drive.js
+          grep -F 'ref: codex/android-app' .github/workflows/release-android.yml
+          test ! -e android-health-connect-poc/test-release.json
+
+  native-debug:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build:android-web
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK 36
+        run: |
+          SDKMANAGER=$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | sort -V | tail -1)
+          "$SDKMANAGER" "platforms;android-36" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.11.1
+      - name: Compile debug Android only (never create or publish a release)
+        run: gradle --project-dir android-health-connect-poc :app:assembleDebug
