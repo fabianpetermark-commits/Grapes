@@ -541,6 +541,42 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     detailImage.hidden = !recipe.imageUrl
     if (recipe.imageUrl) detailImage.src = recipe.imageUrl
     else detailImage.removeAttribute('src')
+    // View-only presentation: reuse the already existing recipe nutrient calculation.
+    // This does not save, log, consume stock, or change recipe data.
+    const nutritionGrid = $('[data-food-recipe-nutrition-grid]')
+    const nutritionTitle = $('[data-food-recipe-nutrition-title]')
+    const nutritionYield = $('[data-food-recipe-nutrition-yield]')
+    const nutritionNote = $('[data-food-recipe-nutrition-note]')
+    let calculated = null
+    try { calculated = calculateRecipeFood(recipe, project.customFoods) } catch { /* missing ingredient or invalid old recipe */ }
+    const yieldCount = Number(calculated?.recipe?.yieldCount)
+    const hasKnownYield = Number.isFinite(yieldCount) && yieldCount > 0
+    const yieldUnit = calculated?.recipe?.yieldUnit === 'slice' ? 'szelet'
+      : calculated?.recipe?.yieldUnit === 'piece' ? 'darab' : 'adag'
+    nutritionTitle.textContent = hasKnownYield ? 'Tápérték adagonként' : 'Tápérték összesen'
+    nutritionYield.textContent = hasKnownYield ? `${number(yieldCount, 2)} ${yieldUnit}` : 'Hozam nincs megadva'
+    nutritionGrid.replaceChildren()
+    for (const [key, label, unit, decimals] of [
+      ['energyKcal', 'Kalória', 'kcal', 0],
+      ['protein', 'Fehérje', 'g', 1],
+      ['carbohydrate', 'Szénhidrát', 'g', 1],
+      ['fat', 'Zsír', 'g', 1],
+    ]) {
+      const rawValue = calculated?.totalNutrients?.[key]
+      const value = rawValue != null && Number.isFinite(Number(rawValue))
+        ? Number(rawValue) / (hasKnownYield ? yieldCount : 1) : null
+      const item = document.createElement('div')
+      item.className = 'food-recipe-nutrition-item'
+      const display = document.createElement('strong')
+      display.textContent = value === null ? '—' : `${number(value, decimals)} ${unit}`
+      const caption = document.createElement('span')
+      caption.textContent = label
+      item.append(display, caption)
+      nutritionGrid.append(item)
+    }
+    nutritionNote.textContent = calculated
+      ? 'Az összetevőkből számítva. A hiányzó tápértékeket „—” jelöli.'
+      : 'Ehhez a recepthez még nincs elegendő adat a tápérték kiszámításához.'
     const foodNames = new Map(project.customFoods.map(item => [item.id, item.name]))
     $('[data-food-recipe-content]').innerHTML = `<strong>Hozzávalók</strong>${recipe.ingredients.map(item => `<span>${escapeHtml(foodNames.get(item.foodId) || 'Ismeretlen hozzávaló')} · ${number(item.amount, 2)} ${UNIT_LABELS[item.unit] || item.unit}</span>`).join('')}${recipe.instructions ? `<br><strong>Elkészítés</strong><div class="food-recipe-instructions-output">${instructionsDisplayHtml(recipe, root.ownerDocument || document)}</div>` : ''}`
     fab.hidden = true
