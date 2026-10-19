@@ -32,7 +32,7 @@ export function productFromOpenFoodFacts(product, fallbackBarcode = '') {
   const name = hungarianName || String(product.product_name || product.product_name_en || product.generic_name || '').trim()
   if (!name) throw new Error('A termékhez nem tartozik használható név.')
   const barcode = String(product.code || fallbackBarcode || '').trim()
-  if (!/^\\d{7,14}$/.test(barcode)) throw new Error('A termékhez nem tartozik használható vonalkód.')
+  if (!/^\d{7,14}$/.test(barcode)) throw new Error('A termékhez nem tartozik használható vonalkód.')
   const categoryTag = product.categories_tags?.at?.(-1) || product.categories_tags?.[0] || ''
   // OFF stores missing values as absent keys. They must never become artificial zeros.
   const amount = key => numberOrNull(nutrients[key + '_100g'])
