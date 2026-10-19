@@ -5,7 +5,7 @@
 ## Hatókör
 
 - A `design/android-mobile-preview.html` Food-specifikus CSS-e kapott egységes Grapes-vizuális réteget.
-- A meglévő HTML szekciók, azok sorrendje, a `data-*` eseményvezérlő hookok és a `src/food/food-mobile.js` JavaScript **változatlanok**.
+- A meglévő HTML képernyők sorrendje, a globális navigáció, az ötfüles receptszerkesztő és az eredeti `data-*` eseményvezérlő hookok **megmaradtak**. A receptadatlaphoz egy **csak megjelenítést végző** tápértékpanel került; a `src/food/food-mobile.js` meglévő `calculateRecipeFood()` számítását most már a receptadatlap is felhasználja. Nem változott az adatmodell, naplózási, importálási vagy mentési művelet.
 - Nem lépett be a 2. ütem (Ma / Ételek / Receptek / Statisztika új belső navigáció). Az öt receptfül, a globális alsó navigáció és minden meglévő folyamat maradt.
 - A részletnézet képei a **valós receptfotókat** mutatják; fotó híján nem szúrunk be kitalált ételképet. A Home intelligens ajánlórendszere nem része a módosításnak.
 - A napi gyűrű üres trackje sötét; csak az aktív progress íven marad rendkívül enyhe cyan fény.
@@ -16,11 +16,15 @@
 2. Víz gyors kártya.
 3. Kompakt receptlista és étkezési kártyák.
 4. Étkezési részletek / naplózott étel sorok / megosztás.
-5. Receptlista és meglévő receptadatlap (kép, összetevők, elkészítés, szerkesztés/törlés).
+5. Receptlista és receptadatlap (a **saját feltöltött fotó**, **négy tápértékkártya** a meglévő számításból, összetevők, elkészítés, szerkesztés/törlés). Tápértékhiány esetén „—”; nincs megalapozatlan szám.
 6. Ételkeresés, vonalkód, kedvencek, saját étel és egyéb Food-űrlapok.
 7. Ötfüles receptszerkesztő: Alapadatok / Felvétel / Összetevők / Kép / Importálás.
 8. Statisztikai és napi célok képernyő.
 9. Food megosztás, bejövő elemek és Health import Food-dialógusai.
+
+## Fontos eltérés a teljes koncepciótól
+
+A korábbi célmegjelenésben szereplő **„Étkezéshez adom”** gombot és **pipálható hozzávalókat** a mostani implementációs körben **nem állítjuk működőnek**, mert új interakció lenne. A jelenlegi recept mentés/szerkesztés/törlés műveletek maradtak. A teljes célvizuál későbbi külön jóváhagyást igényel ezekhez a viselkedésekhez.
 
 ## Ellenőrzési terv (még elvégzendő)
 
@@ -36,7 +40,7 @@
 
 - Kezdőlap: a dátum, makrók, víz, receptek és az **öt** étkezés azonos sorrendben marad; nincs eltűnő vagy egymást fedő gomb.
 - Ételkeresés: normál találat, online/offline, saját étel, kedvenc, szöveges forrás és fotón szereplő **vonalkód**, nem ételfelismerés.
-- Receptlétrehozás az öt meglévő füllel; hozzáadás, szerkesztés, kép betöltése/eltávolítása, receptimport, leírásformázás, mentés, visszalépés.
+- Receptlétrehozás az öt meglévő füllel; hozzáadás, szerkesztés, kép betöltése/eltávolítása, receptimport, leírásformázás, mentés, visszalépés. Külön ellenőrzendő a receptadatlap tápértékpanelje: teljes adat, hiányos tápérték, nulla érték, ismert és hiányzó adaghozam, korábbi sérült recept, hosszú magyar felirat.
 - Étkezés szerkesztés/törlés/újrafelvétel, napváltás, megosztás és beérkező elemek.
 - Statisztika összes időszakválasztóval, saját periódus, tápanyagválasztó, visszalépés; napi célok módosítása.
 - Növelt Android betűméret, billentyűzet és safe-area, TalkBack fókusz és csökkentett mozgás.
