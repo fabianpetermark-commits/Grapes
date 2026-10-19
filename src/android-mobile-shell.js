@@ -13,6 +13,7 @@ import { createMobileFoodController } from './food/food-mobile.js'
 import { createYazioApiPanel } from './food/yazio-api-panel.js'
 import { registerFoodSharing, sendMealShare, sendRecipeShare } from './food/food-sharing-client.js'
 import { hydrateMobileIcons, mobileIconSvg } from './android-mobile-icons.js'
+import { createHomeMobile } from './home/home-mobile.js'
 import { getAndroidAppUpdate, installAndroidAppUpdate, isGrapesAndroidApp, openAndroidHealthConnectSettings, saveAndroidJsonBackup } from './android-bridge.js'
 import { waterBackupToJson, waterBackupFromJson, readWaterStoreStrict, waterBackupSummary } from './water/water-backup.js'
 import {
@@ -54,7 +55,10 @@ let mobileReaderSaveTimer = null
 let activeTransferBookId = ''
 let activePairingNonce = ''
 let mobileFood = null
+const household = createHomeMobile($('[data-household-root]'))
 let activePage = 'home'
+let menuReturnPage = ''
+let menuEntry = ''
 let availableAppUpdate = null
 let activeSyncImport = ''
 document.addEventListener('grapes:food-subtitle', event => {
@@ -65,6 +69,11 @@ const labels = {
   home: ['Grapes', 'Mobil munkaterület'], projects: ['Projektek', 'Helyi és Drive'],
   sync: ['Szinkron', 'Adatok és fiók'], more: ['Továbbiak', 'Beállítások'],
   food: ['Ételnapló', 'Mai áttekintés'], water: ['Víz', 'Napi folyadékbevitel'],
+  household: ['Home / Háztartás', 'Ezen az eszközön tárolva'],
+  'hub-home': ['Home', 'Háztartás'],
+  'hub-health': ['Health', 'Ételnapló és receptek'],
+  'hub-utility': ['Utility', 'Eszközök'],
+  'hub-finance': ['Finance', 'Pénzügyek'],
   ebook: ['E-book', 'Könyvtár'], reader: ['A csend térképe', 'Olvasó'],
   transfer: ['E-book átvitel', 'Olvasóeszköz'],
 }
@@ -311,26 +320,41 @@ async function openUpdateInbox() {
   openSheet($('[data-notifications-sheet]'))
 }
 
-function showPage(page) {
+function showPage(page, { parent = '', entry = '' } = {}) {
+  // Remember only the menu origin. Reader/transfer views inherit E-book's origin.
+  if (!['reader', 'transfer'].includes(page) || parent) {
+    menuReturnPage = parent
+    menuEntry = entry
+  }
   if (activePage === 'food' && page !== 'food') mobileFood?.flush().catch(() => {})
   if (mobileReader && !['reader'].includes(page)) persistReaderProgress().catch(() => {})
   if (page !== 'reader') setReaderFullscreen(false)
   activePage = page
   toast.classList.remove('is-visible')
-  $$('[data-page]').forEach(node => { node.hidden = node.dataset.page !== page })
-  $$('[data-nav]').forEach(node => node.classList.toggle('is-active', node.dataset.nav === page))
+  $('[data-page]').forEach(node => { node.hidden = node.dataset.page !== page })
+  $('[data-nav]').forEach(node => node.classList.toggle('is-active', node.dataset.nav === page))
   ;[title.textContent, subtitle.textContent] = labels[page] || labels.home
   fab.hidden = page !== 'food' || !mobileFood?.isDetailOpen()
   closeSheet()
   if (page === 'projects') renderProjects()
   if (page === 'sync') renderSync()
   if (page === 'water') renderWater()
-  if (page === 'food') mobileFood?.load().then(async () => { await mobileFood?.autoImportHealth(); await mobileFood?.autoImportYazio() }).catch(() => {})
+  if (page === 'household') {
+    household.load()
+    if (entry === 'shopping' || entry === 'inventory') household.openTab(entry)
+  }
+  if (page === 'food') mobileFood?.load().then(async () => {
+    // A delayed load must not open a sheet on a different screen.
+    if (activePage !== 'food' || (entry && menuEntry !== entry)) return
+    if (entry) mobileFood?.openNavigationView(entry)
+    await mobileFood?.autoImportHealth()
+    await mobileFood?.autoImportYazio()
+  }).catch(() => {})
   if (page === 'ebook') renderMobileEbooks()
   if (page === 'reader') renderReaderPicker()
   if (page === 'transfer') renderTransferPicker()
   if (['ebook', 'reader', 'transfer'].includes(page)) {
-    $$('[data-ebook-view]').forEach(button => button.classList.toggle('is-active', button.dataset.ebookView === page))
+    $('[data-ebook-view]').forEach(button => button.classList.toggle('is-active', button.dataset.ebookView === page))
   }
 }
 
@@ -1019,10 +1043,46 @@ $('[data-update-install]').addEventListener('click', async event => {
 })
 $('[data-sync-refresh]').addEventListener('click', () => renderSync({ refreshed: true }))
 $('[data-sync-projects]').addEventListener('click', () => showPage('projects'))
-$$('[data-nav]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.nav)))
+$('[data-nav]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.nav)))
+$('[data-menu-group]').forEach(button => button.addEventListener('click', () => {
+  const group = button.dataset.menuGroup
+  if (['home', 'health', 'utility', 'finance'].includes(group)) showPage('hub-' + group)
+}))
+$('[data-menu-back]').forEach(button => button.addEventListener('click', () => showPage('home')))
+$('[data-menu-destination]').forEach(button => button.addEventListener('click', () => {
+  const destination = button.dataset.menuDestination
+  const parent = button.closest('[data-page]')?.dataset.page
+  if (!['hub-home', 'hub-health', 'hub-utility', 'hub-finance'].includes(parent)) return
+  if (parent === 'hub-home' && ['inventory', 'shopping'].includes(destination)) {
+    showPage('household', { parent, entry: destination })
+  } else if (parent === 'hub-health' && ['food', 'recipes', 'stats'].includes(destination)) {
+    showPage('food', { parent, entry: destination === 'food' ? 'overview' : destination })
+  } else if (parent === 'hub-utility' && destination === 'ebook') {
+    showPage('ebook', { parent, entry: destination })
+  } else if ((parent === 'hub-utility' && destination === 'qr') || (parent === 'hub-finance' && destination === 'finance')) {
+    openModule(destination)
+  }
+}))
+// Food still owns its detail/editor navigation. Only the root shortcut Back
+// goes to Health instead of exposing an extra Food overview screen.
+$('[data-food-recipes-back]').addEventListener('click', event => {
+  if (activePage !== 'food' || menuReturnPage !== 'hub-health' || menuEntry !== 'recipes') return
+  event.stopImmediatePropagation()
+  showPage('hub-health')
+}, true)
+$('[data-food-stats-back]').addEventListener('click', event => {
+  if (activePage !== 'food' || menuReturnPage !== 'hub-health' || menuEntry !== 'stats') return
+  event.stopImmediatePropagation()
+  showPage('hub-health')
+}, true)
+$('[data-module]').forEach(button => button.addEventListener('click', () => {
+  const module = button.dataset.module
+  if (module === 'food' || module === 'ebook' || module === 'household') showPage(module)
+  else openModule(module)
+}))
 $$('[data-module]').forEach(button => button.addEventListener('click', () => {
   const module = button.dataset.module
-  if (module === 'food' || module === 'ebook') showPage(module)
+  if (module === 'food' || module === 'ebook' || module === 'household') showPage(module)
   else openModule(module)
 }))
 $$('[data-open-module]').forEach(button => button.addEventListener('click', () => openModule(button.dataset.openModule)))
@@ -1168,10 +1228,19 @@ installSheetGestures()
 refreshUpdateInbox()
 window.grapesHandleAndroidBack = () => {
   if ($('[data-notifications-sheet].is-open')) { closeSheet(); return true }
+  if (activePage === 'household' && household.handleBack()) return true
+  if (activePage === 'food' && menuReturnPage === 'hub-health') {
+    if (menuEntry === 'stats' && $('[data-food-stats-sheet].is-open')) { showPage('hub-health'); return true }
+    if (menuEntry === 'recipes' && !$('[data-food-recipes-view]').hidden && !$('.bottom-sheet.is-open')) { showPage('hub-health'); return true }
+  }
   if (activePage === 'food' && mobileFood?.handleBack()) return true
   if ($('.bottom-sheet.is-open')) { closeSheet(); return true }
   if ($('[data-reader-shell]').classList.contains('is-fullscreen')) { setReaderFullscreen(false); return true }
-  if (activePage !== 'home') { showPage(['reader', 'transfer'].includes(activePage) ? 'ebook' : 'home'); return true }
+  if (activePage !== 'home') {
+    if (['reader', 'transfer'].includes(activePage)) showPage('ebook', { parent: menuReturnPage, entry: 'ebook' })
+    else showPage(menuReturnPage || 'home')
+    return true
+  }
   return false
 }
 renderWater()
