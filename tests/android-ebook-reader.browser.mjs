@@ -66,7 +66,8 @@ try {
   const errors = []
   page.on('pageerror', error => errors.push(error.message))
   await page.goto(`${baseUrl}/Grapes/design/android-mobile-preview.html`, { waitUntil: 'domcontentloaded' })
-  await page.locator('[data-module="ebook"]').first().click()
+  await page.locator('[data-menu-group="utility"]').click()
+  await page.locator('[data-page="hub-utility"] [data-menu-destination="ebook"]').click()
   await page.getByRole('button', { name: 'Olvasás folytatása' }).waitFor()
   await page.getByRole('button', { name: 'Olvasás folytatása' }).click()
   await page.getByText('Valódi EPUB szöveg a telefonos olvasó teszteléséhez.').first().waitFor()
