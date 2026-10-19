@@ -1197,7 +1197,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       main.append(brand)
     }
     const missingCore = ['energyKcal', 'protein', 'carbohydrate', 'fat'].filter(key => food.nutrients?.[key] == null)
-    const languageNotice = food.source?.type === 'openfoodfacts' && !food.hasHungarianName
+    const languageNotice = food.source?.type === 'openfoodfacts' && food.productLanguage && food.productLanguage !== 'hu' && !food.hasHungarianName
       ? ' · Nincs magyar terméknév az adatbázisban' : ''
     const missingNotice = missingCore.length ? ' · Hiányos tápértékadatok' : ''
     const meta = document.createElement('span'); meta.textContent = `${calories} · ${sourceLabel}${languageNotice}${missingNotice}`
