@@ -48,8 +48,8 @@ A feature branch önmagában **nem TEST APK**. Először kódreview és tesztek,
 
 ## Kapcsolódó tervek
 
-- [Brand Guide](../docs/GRAPES_BRAND_GUIDE.md) (a külön dokumentációs PR-ben)
-- [Food Design 2.0 / két ütem](../docs/GRAPES_FOOD_DESIGN_2_0.md) (a külön dokumentációs PR-ben)
-- [Food áttekintés vizuális mintalap](../docs/GRAPES_FOOD_DESIGN_2_0_MA_REVIEW.html) (a külön dokumentációs PR-ben)
+- [Brand Guide](https://github.com/fabianpetermark-commits/Grapes/blob/docs/grapes-product-vision-ui-kit-20261019/docs/GRAPES_BRAND_GUIDE.md) (a külön dokumentációs PR-ben)
+- [Food Design 2.0 / két ütem](https://github.com/fabianpetermark-commits/Grapes/blob/docs/grapes-product-vision-ui-kit-20261019/docs/GRAPES_FOOD_DESIGN_2_0.md) (a külön dokumentációs PR-ben)
+- [Food áttekintés vizuális mintalap](https://github.com/fabianpetermark-commits/Grapes/blob/docs/grapes-product-vision-ui-kit-20261019/docs/GRAPES_FOOD_DESIGN_2_0_MA_REVIEW.html) (a külön dokumentációs PR-ben)
 
 *Figyelem: a relatív dokumentációs hivatkozások addig nem érhetők el ezen a TEST feature ágon, amíg a dokumentációs PR nincs integrálva. A két feladatot ettől függetlenül külön kell review-zni.*
