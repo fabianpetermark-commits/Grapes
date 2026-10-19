@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
 const html = readFileSync(new URL('../design/android-mobile-preview.html', import.meta.url), 'utf8')
+const foodMobile = readFileSync(new URL('../src/food/food-mobile.js', import.meta.url), 'utf8')
 const getIndex = token => {
   const index = html.indexOf(token)
   assert.ok(index >= 0, `Missing expected existing Food element: ${token}`)
@@ -76,4 +77,26 @@ test('Food forms and protected integrations remain present in the underlying TES
   ]) {
     assert.ok(html.includes(selector), `Protected Food behavior hook missing: ${selector}`)
   }
+})
+
+test('Recipe detail shows four calculated values without altering the diary or inventory', () => {
+  const recipeSection = html.slice(getIndex('<section data-food-recipe-detail hidden>'), getIndex('</section>\n        </div>'))
+  for (const hook of [
+    'data-food-recipe-nutrients',
+    'data-food-recipe-nutrition-title',
+    'data-food-recipe-nutrition-yield',
+    'data-food-recipe-nutrition-grid',
+    'data-food-recipe-nutrition-note',
+    'data-food-recipe-content',
+    'data-food-recipe-edit',
+  ]) assert.ok(recipeSection.includes(hook), `Recipe detail view missing ${hook}`)
+  const renderer = foodMobile.slice(foodMobile.indexOf('function openRecipe(id) {'), foodMobile.indexOf('function recipeEditorState()'))
+  assert.match(renderer, /calculateRecipeFood\(recipe, project\.customFoods\)/)
+  assert.match(renderer, /nutritionGrid\.replaceChildren\(\)/)
+  for (const key of ['energyKcal', 'protein', 'carbohydrate', 'fat']) {
+    assert.ok(renderer.includes(`['${key}',`), `Missing nutrient: ${key}`)
+  }
+  assert.match(renderer, /rawValue != null/)
+  assert.match(renderer, /value === null \? '—'/)
+  assert.doesNotMatch(renderer, /project\.diaryEntries\s*(?:=|\.|\[)|project\.inventory\s*(?:=|\.|\[)/)
 })
