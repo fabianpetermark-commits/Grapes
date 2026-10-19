@@ -59,8 +59,8 @@ internal class FoodApiBridge {
         } else {
             // Search-a-licious: langs selects query languages, not countries.
             // Escape Lucene syntax in the user's text before adding a verified country clause.
-            val safeQuery = query.replace(Regex("[+!():{}\\[\\]\\\"~*?^]"), " ")
-            val filteredQuery = if (country == null) safeQuery else safeQuery + " countries_tags:\\"en:" + country + "\\""
+            val safeQuery = query.replace(Regex("[+!():{}?~*^]"), " ").replace('"', ' ')
+            val filteredQuery = if (country == null) safeQuery else safeQuery + " countries_tags:" + '"' + "en:" + country + '"'
             mutableListOf(
                 "q" to filteredQuery, "page" to page.toString(), "page_size" to size.toString(),
                 "langs" to "hu,en", "boost_phrase" to "true", "fields" to fields
