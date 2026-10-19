@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright-core'
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const url = 'http://127.0.0.1:4184/design/android-mobile-preview.html'
+const url = 'http://127.0.0.1:4184/Grapes/design/android-mobile-preview.html'
 const executablePath = [
   process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
   '/usr/bin/chromium',
@@ -20,15 +20,35 @@ if (!executablePath) throw new Error('Nem található Chromium-alapú böngész�
 const server = spawn(process.execPath, [resolve(projectRoot, 'node_modules/vite/bin/vite.js'), '--host', '127.0.0.1', '--port', '4184', '--strictPort'], {
   cwd: projectRoot,
   env: { ...process.env, VITE_GRAPES_TEST_CHANNEL: '1' },
-  stdio: 'ignore',
+  stdio: ['ignore', 'pipe', 'pipe'],
 })
+let serverOutput = ''
+for (const stream of [server.stdout, server.stderr]) {
+  stream.on('data', chunk => {
+    serverOutput = (serverOutput + chunk.toString()).slice(-4000)
+  })
+}
 let browser
 
 try {
+  let lastProbe = 'Nem érkezett válasz.'
+  let serverReady = false
   for (let attempt = 0; attempt < 80; attempt++) {
-    try { if ((await fetch(url)).ok) break } catch {}
-    if (attempt === 79) throw new Error('A Home mobil tesztszervere nem indult el.')
+    if (server.exitCode !== null) break
+    try {
+      const response = await fetch(url)
+      if (response.ok) {
+        serverReady = true
+        break
+      }
+      lastProbe = `HTTP ${response.status} (${response.url})`
+    } catch (error) {
+      lastProbe = error.message
+    }
     await new Promise(resolvePromise => setTimeout(resolvePromise, 100))
+  }
+  if (!serverReady) {
+    throw new Error(`A Home mobil tesztszervere nem érhető el: ${lastProbe}; Vite kilépési kód: ${server.exitCode ?? 'fut'}; Vite kimenet:\n${serverOutput || '(nincs kimenet)'}`)
   }
   browser = await chromium.launch({ executablePath, headless: true })
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, hasTouch: true, isMobile: true })
