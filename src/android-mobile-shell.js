@@ -331,8 +331,8 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   if (page !== 'reader') setReaderFullscreen(false)
   activePage = page
   toast.classList.remove('is-visible')
-  $('[data-page]').forEach(node => { node.hidden = node.dataset.page !== page })
-  $('[data-nav]').forEach(node => node.classList.toggle('is-active', node.dataset.nav === page))
+  $$('[data-page]').forEach(node => { node.hidden = node.dataset.page !== page })
+  $$('[data-nav]').forEach(node => node.classList.toggle('is-active', node.dataset.nav === page))
   ;[title.textContent, subtitle.textContent] = labels[page] || labels.home
   fab.hidden = page !== 'food' || !mobileFood?.isDetailOpen()
   closeSheet()
@@ -354,7 +354,7 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   if (page === 'reader') renderReaderPicker()
   if (page === 'transfer') renderTransferPicker()
   if (['ebook', 'reader', 'transfer'].includes(page)) {
-    $('[data-ebook-view]').forEach(button => button.classList.toggle('is-active', button.dataset.ebookView === page))
+    $$('[data-ebook-view]').forEach(button => button.classList.toggle('is-active', button.dataset.ebookView === page))
   }
 }
 
@@ -1043,13 +1043,13 @@ $('[data-update-install]').addEventListener('click', async event => {
 })
 $('[data-sync-refresh]').addEventListener('click', () => renderSync({ refreshed: true }))
 $('[data-sync-projects]').addEventListener('click', () => showPage('projects'))
-$('[data-nav]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.nav)))
-$('[data-menu-group]').forEach(button => button.addEventListener('click', () => {
+$$('[data-nav]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.nav)))
+$$('[data-menu-group]').forEach(button => button.addEventListener('click', () => {
   const group = button.dataset.menuGroup
   if (['home', 'health', 'utility', 'finance'].includes(group)) showPage('hub-' + group)
 }))
-$('[data-menu-back]').forEach(button => button.addEventListener('click', () => showPage('home')))
-$('[data-menu-destination]').forEach(button => button.addEventListener('click', () => {
+$$('[data-menu-back]').forEach(button => button.addEventListener('click', () => showPage('home')))
+$$('[data-menu-destination]').forEach(button => button.addEventListener('click', () => {
   const destination = button.dataset.menuDestination
   const parent = button.closest('[data-page]')?.dataset.page
   if (!['hub-home', 'hub-health', 'hub-utility', 'hub-finance'].includes(parent)) return
