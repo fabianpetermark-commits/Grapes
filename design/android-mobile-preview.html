@@ -526,6 +526,7 @@
       .phone::before { display: none; }
     }
   </style>
+  <link rel="stylesheet" href="../src/home/home-mobile.css">
 </head>
 <body>
   <main class="stage">
@@ -558,12 +559,15 @@
           <p class="lead">A legfontosabb eszközeid gyorsan, telefonra rendezve.</p>
           <div class="section-head" style="margin-top:8px"><h2>Alkalmazások</h2><button data-action="filter">Szűrés</button></div>
           <div class="module-list">
+            <button class="module" data-module="household"><span class="module__icon" data-module-icon="household"></span><span><strong>Home / Háztartás</strong><small>Élelmiszerkészlet és bevásárlólista · ezen az eszközön</small></span><span class="module__arrow">›</span></button>
             <button class="module" data-module="food"><span class="module__icon" data-module-icon="food"></span><span><strong>Ételnapló</strong><small>Étkezések és napi célok</small></span><span class="module__arrow">›</span></button>
             <button class="module" data-module="finance"><span class="module__icon" data-module-icon="finance"></span><span><strong>Pénzügyi Napló</strong><small>Kiadások és megtakarítások</small></span><span class="module__arrow">›</span></button>
             <button class="module" data-module="qr"><span class="module__icon" data-module-icon="qr"></span><span><strong>QR Stúdió</strong><small>QR-kódok és kampánylinkek</small></span><span class="module__arrow">›</span></button>
             <button class="module" data-module="ebook"><span class="module__icon" data-module-icon="ebook"></span><span><strong>E-book Könyvtár</strong><small>Könyvek és e-olvasó</small></span><span class="module__arrow">›</span></button>
           </div>
         </div>
+
+        <div class="content" data-page="household" hidden><div data-household-root></div></div>
 
         <div class="content" data-page="projects" hidden>
           <p class="eyebrow">Munkáid</p><h1>Projektek</h1><p class="lead">Minden helyi és Drive-projekt egy helyen.</p>
@@ -971,7 +975,7 @@
     document.querySelector('[data-local]').addEventListener('click', () => { login.hidden = true; app.hidden = false; showPage('home') })
     document.querySelector('[data-login]').addEventListener('click', () => showToast('A prototípusban válaszd a helyi módot.'))
     document.querySelectorAll('[data-nav]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.nav)))
-    document.querySelectorAll('[data-module]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.module === 'ebook' ? 'ebook' : 'food')))
+    document.querySelectorAll('[data-module]').forEach(button => button.addEventListener('click', () => { if (button.dataset.module === 'household') return; showPage(button.dataset.module === 'ebook' ? 'ebook' : 'food') }))
     document.querySelectorAll('[data-ebook-view]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.ebookView)))
     document.querySelector('[data-water-open]').addEventListener('click', event => { if (!event.target.closest('[data-water-add]')) showPage('water') })
     document.querySelector('[data-water-open]').addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') showPage('water') })
