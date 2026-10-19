@@ -994,12 +994,12 @@ $('[data-update-install]').addEventListener('click', async event => {
 $('[data-sync-refresh]').addEventListener('click', () => renderSync({ refreshed: true }))
 $('[data-sync-projects]').addEventListener('click', () => showPage('projects'))
 $$('[data-nav]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.nav)))
-$('[data-menu-group]').forEach(button => button.addEventListener('click', () => {
+$$('[data-menu-group]').forEach(button => button.addEventListener('click', () => {
   const group = button.dataset.menuGroup
   if (['home', 'health', 'utility', 'finance'].includes(group)) showPage('hub-' + group)
 }))
-$('[data-menu-back]').forEach(button => button.addEventListener('click', () => showPage('home')))
-$('[data-menu-destination]').forEach(button => button.addEventListener('click', () => {
+$$('[data-menu-back]').forEach(button => button.addEventListener('click', () => showPage('home')))
+$$('[data-menu-destination]').forEach(button => button.addEventListener('click', () => {
   const destination = button.dataset.menuDestination
   const parent = button.closest('[data-page]')?.dataset.page
   if (!['hub-home', 'hub-health', 'hub-utility', 'hub-finance'].includes(parent)) return
@@ -1025,7 +1025,7 @@ $('[data-food-stats-back]').addEventListener('click', event => {
   event.stopImmediatePropagation()
   showPage('hub-health')
 }, true)
-$('[data-module]').forEach(button => button.addEventListener('click', () => {
+$$('[data-module]').forEach(button => button.addEventListener('click', () => {
   const module = button.dataset.module
   if (module === 'food' || module === 'ebook' || module === 'household') showPage(module)
   else openModule(module)
