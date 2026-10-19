@@ -67,7 +67,7 @@ try {
   await page.keyboard.press('Escape')
   await page.screenshot({ path: 'mobile-home-icons.png', fullPage: true })
 
-  await page.locator('.bottom-nav [data-nav="more"]').click()
+  await page.locator('.appbar [data-nav="more"]').click()
   await page.locator('[data-page="more"]').waitFor({ state: 'visible' })
   assert.equal(await page.locator('[data-page="more"] .setting__icon svg').count(), 4, 'Minden beállítássornak egységes SVG ikon kell.')
   await page.screenshot({ path: 'mobile-more-icons.png', fullPage: true })
@@ -303,7 +303,8 @@ try {
   await page.locator('[data-water-log] button').filter({ hasText: '300 ml' }).evaluate(button => button.click())
   assert.equal((await page.locator('[data-water-total]').textContent()).replace(/\s/g, ''), '250ml', 'A Health-víz törölhető legyen.')
 
-  await page.locator('[data-nav="sync"]').click()
+  await page.locator('.appbar [data-nav="more"]').click()
+  await page.locator('[data-page="more"] [data-nav="sync"]').click()
   const retryChooserPromise = page.waitForEvent('filechooser')
   await page.locator('[data-health-sync]').click()
   await page.locator('[data-sync-import-sheet].is-open').waitFor({ state: 'visible' })
