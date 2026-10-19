@@ -10,6 +10,8 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const baseUrl = 'http://127.0.0.1:43130'
 const executablePath = [
   process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+  '/usr/bin/google-chrome',
+  '/usr/bin/chromium',
   'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
   'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
 ].filter(Boolean).find(existsSync)
