@@ -82,7 +82,7 @@ try {
   assert.equal(await page.locator('[data-page="sync"] [data-food-health-auto]').count(), 1, 'A Health automatikus import kapcsolója a Szinkron oldalon legyen.')
   assert.equal(await page.locator('[data-page="sync"] [data-food-yazio-auto]').count(), 1, 'A YAZIO automatikus import kapcsolója a Szinkron oldalon legyen.')
   assert.equal(await page.locator('[data-page="sync"] .sync-hero__icon svg').count(), 1, 'A Drive állapotkártyának SVG ikon kell.')
-  assert.equal(await page.locator('[data-page="sync"] .setting__icon svg').count(), 2, 'A mentési soroknak SVG ikon kell.')
+  assert.equal(await page.locator('[data-page="sync"] .sync-actions button').count(), 2, 'A Projektek és Frissítés művelet maradjon elérhető.')
   assert.equal(await page.locator('[data-page="sync"] .sync-provider__icon svg').count(), 3, 'Minden szinkronszolgáltatónak SVG ikon kell.')
   const testDay = new Date().toISOString().slice(0, 10)
   const healthExport = JSON.stringify({
