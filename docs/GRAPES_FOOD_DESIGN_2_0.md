@@ -82,6 +82,21 @@ A Brand Guide szerinti mobil paletta: háttér `#090E14`, kártya `#101821`, eme
 
 Egységes sarkok, szóközök, 48 px elsődleges érintési cél, legalább 15–16 px törzsszöveg, 13–14 px lényeges kiegészítő szöveg; számok tabular-nums; ikonok a kanonikus készletből. Mindig szöveges státusz, nem kizárólag színjelzés. A túlzott glow kerülendő.
 
+### 5/A. Első konkrét látványterv: a jelenlegi „Mai áttekintés”
+
+[**Food Design 2.0 – Mai áttekintés, két megjelenésű statikus HTML-referencia**](./GRAPES_FOOD_DESIGN_2_0_MA_REVIEW.html).
+
+A terv a TEST forrásban ellenőrzött elemeket és **azonos sorrendet** tartja meg: dátumválasztó; energiaszámoló és makrók + Statisztika/Napi célok; vízkártya; két friss recept + Megnyitás/Új recept; étkezések; változatlan globális navigáció. A „Korábbi stílus” gomb a jelenlegi CSS alapján készített **sematikus közelítés**, nem eredeti képernyőkép.
+
+A véglegesítés előtti döntési pontok:
+- A kalóriakör 112 px körül maradjon; csak az aktív ív kapjon nagyon finom fényt.
+- A makrófeliratok és a kcal-kijelzések olvasható méretben férjenek el a meglévő kétoszlopos kártyában.
+- A víz és a receptlista nem kerülhet új helyre, a meglévő műveletek nem tűnhetnek el.
+- Az étkezéssorok új megjelenést kaphatnak, de sorrendjük, a nevük és a kattintási céljuk megmarad.
+- A számok, étkezések, mennyiségek csak illusztratívak; a tervezési fájl nem kapcsolódik valós Food-adathoz.
+
+**Státusz: TARGET / felhasználói vizuális review-ra vár.** A HTML nem futó prototípus, gombjai az összehasonlító módváltáson kívül nem funkcionálisak.
+
 ## 5. Kétlépcsős review és megvalósítás
 
 **Most, 1. ütem:** a JELENLEGI Food-nézetekre készítünk előtte/utána dizájnmintákat, a tényleges navigáció és szekciósorrend megtartásával: napi áttekintés, ételkeresés/naplózás, receptlista/adatlap, ötfüles szerkesztő, statisztika. Az azonos Brand Guide-komponensek (kártyák, ikonok, progress, gombok, képek) vizuális következetességét vizsgáljuk.
