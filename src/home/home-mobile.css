@@ -1,0 +1,35 @@
+[data-household-root] { color: var(--text); padding-bottom: max(22px, env(safe-area-inset-bottom)); }
+[data-household-root] [hidden] { display: none !important; }
+.household-head { padding: 2px 0 12px; }
+.household-head h1 { margin: 0; font-size: 26px; }
+.household-head > p:last-child, .household-toolbar p { color: var(--muted); font-size: 13px; line-height: 1.5; }
+.household-alert { margin: 10px 0; padding: 12px; color: #bff7df; background: #123128; border: 1px solid #285744; border-radius: 12px; overflow-wrap: anywhere; }
+.household-alert.is-error { color: #ffd7de; background: #3b1a24; border-color: #894050; }
+.household-tabs, .household-filters, .household-card-actions, .household-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.household-tabs { margin: 8px 0 15px; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+.household-tabs button { flex: 1; }
+[data-household-root] button { min-height: 44px; padding: 9px 12px; color: var(--text); background: var(--raised); border: 1px solid var(--line); border-radius: 11px; cursor: pointer; font-weight: 650; }
+[data-household-root] button:focus-visible, [data-household-root] input:focus-visible, [data-household-root] select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+[data-household-root] button.is-active, [data-household-root] button[type="submit"], [data-household-add] { color: #041014; background: var(--accent); border-color: var(--accent); }
+.household-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; margin-bottom: 12px; }
+.household-toolbar p { margin: 0; }
+.household-toolbar input, .household-form input, .household-form select { min-width: 0; width: 100%; min-height: 46px; padding: 10px; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 11px; font: inherit; }
+.household-filters { margin-bottom: 13px; }
+.household-filters button { flex: 1 1 auto; font-size: 12px; }
+.household-card, .household-form, .household-empty { min-width: 0; margin: 10px 0; padding: 15px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow-wrap: anywhere; }
+.household-card strong { font-size: 16px; }
+.household-card p { margin: 7px 0 4px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.household-card small { color: var(--muted); line-height: 1.5; }
+.household-card-actions { margin-top: 12px; }
+.household-card-actions button { flex: 1 1 84px; font-size: 12px; }
+.household-empty { color: var(--muted); line-height: 1.55; }
+.household-form { padding: 16px; border-color: var(--accent); }
+.household-form h2 { margin: 0 0 14px; font-size: 18px; }
+.household-form p { color: var(--muted); font-size: 13px; line-height: 1.5; }
+.household-form label { display: block; margin: 11px 0; color: var(--text); font-size: 13px; font-weight: 650; }
+.household-form label input, .household-form label select { margin-top: 6px; }
+.household-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(90px, .65fr); gap: 10px; }
+.household-actions { margin-top: 16px; }
+.household-actions button { flex: 1 1 120px; }
+.household-undo { width: 100%; margin-top: 12px; }
+@media (max-width: 359px) { .household-toolbar { grid-template-columns: 1fr; } .household-card-actions button { flex-basis: 110px; } }

@@ -13,6 +13,7 @@ import { createMobileFoodController } from './food/food-mobile.js'
 import { createYazioApiPanel } from './food/yazio-api-panel.js'
 import { registerFoodSharing, sendMealShare, sendRecipeShare } from './food/food-sharing-client.js'
 import { hydrateMobileIcons, mobileIconSvg } from './android-mobile-icons.js'
+import { createHomeMobile } from './home/home-mobile.js'
 import { getAndroidAppUpdate, installAndroidAppUpdate, isGrapesAndroidApp, openAndroidHealthConnectSettings, saveAndroidJsonBackup } from './android-bridge.js'
 import { waterBackupToJson, waterBackupFromJson, readWaterStoreStrict, waterBackupSummary } from './water/water-backup.js'
 import {
@@ -54,6 +55,7 @@ let mobileReaderSaveTimer = null
 let activeTransferBookId = ''
 let activePairingNonce = ''
 let mobileFood = null
+const household = createHomeMobile($('[data-household-root]'))
 let activePage = 'home'
 let availableAppUpdate = null
 let activeSyncImport = ''
@@ -65,6 +67,7 @@ const labels = {
   home: ['Grapes', 'Mobil munkaterület'], projects: ['Projektek', 'Helyi és Drive'],
   sync: ['Szinkron', 'Adatok és fiók'], more: ['Továbbiak', 'Beállítások'],
   food: ['Ételnapló', 'Mai áttekintés'], water: ['Víz', 'Napi folyadékbevitel'],
+  household: ['Home / Háztartás', 'Ezen az eszközön tárolva'],
   ebook: ['E-book', 'Könyvtár'], reader: ['A csend térképe', 'Olvasó'],
   transfer: ['E-book átvitel', 'Olvasóeszköz'],
 }
@@ -325,6 +328,7 @@ function showPage(page) {
   if (page === 'projects') renderProjects()
   if (page === 'sync') renderSync()
   if (page === 'water') renderWater()
+  if (page === 'household') household.load()
   if (page === 'food') mobileFood?.load().then(async () => { await mobileFood?.autoImportHealth(); await mobileFood?.autoImportYazio() }).catch(() => {})
   if (page === 'ebook') renderMobileEbooks()
   if (page === 'reader') renderReaderPicker()
@@ -1022,7 +1026,7 @@ $('[data-sync-projects]').addEventListener('click', () => showPage('projects'))
 $$('[data-nav]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.nav)))
 $$('[data-module]').forEach(button => button.addEventListener('click', () => {
   const module = button.dataset.module
-  if (module === 'food' || module === 'ebook') showPage(module)
+  if (module === 'food' || module === 'ebook' || module === 'household') showPage(module)
   else openModule(module)
 }))
 $$('[data-open-module]').forEach(button => button.addEventListener('click', () => openModule(button.dataset.openModule)))
@@ -1168,6 +1172,7 @@ installSheetGestures()
 refreshUpdateInbox()
 window.grapesHandleAndroidBack = () => {
   if ($('[data-notifications-sheet].is-open')) { closeSheet(); return true }
+  if (activePage === 'household' && household.handleBack()) return true
   if (activePage === 'food' && mobileFood?.handleBack()) return true
   if ($('.bottom-sheet.is-open')) { closeSheet(); return true }
   if ($('[data-reader-shell]').classList.contains('is-fullscreen')) { setReaderFullscreen(false); return true }
