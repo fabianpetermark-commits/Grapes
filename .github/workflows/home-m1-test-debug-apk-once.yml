@@ -1,0 +1,90 @@
+name: Home M1 TEST debug APK (one-time isolated preview)
+
+on:
+  push:
+    branches:
+      - ci/home-m1-debug-apk-20261019
+    paths:
+      - .github/workflows/home-m1-test-debug-apk-once.yml
+
+permissions:
+  contents: read
+
+jobs:
+  debug-qa-apk:
+    if: >-
+      github.repository == 'fabianpetermark-commits/Grapes' &&
+      github.ref == 'refs/heads/ci/home-m1-debug-apk-20261019' &&
+      github.event.head_commit.message == 'ci(TEST): produce Home M1 debug APK once'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
+      VITE_GOOGLE_APP_ID: '991532871119'
+      GRAPES_VERSION_CODE: '11'
+      GRAPES_VERSION_NAME: '0.9.2-home-preview'
+      ANDROID_TEST_KEYSTORE_PATH: ''
+      ANDROID_KEYSTORE_PATH: ''
+    steps:
+      - name: Check out isolated preview branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify Home M1 source commit is the direct parent
+        run: |
+          set -euo pipefail
+          ACTUAL_PARENT="$(git rev-parse HEAD^)"
+          test "$ACTUAL_PARENT" = '9405963f77ec8b87df61ae807e42fd01eb21932e'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Run core unit tests
+        run: npm test
+      - name: Build TEST Android web assets
+        run: npm run build:android-web
+      - name: Existing Food regression test
+        run: node tests/android-recipe-ingredient.browser.mjs
+      - name: Home M1 regression test
+        run: node tests/android-home-mobile.browser.mjs
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK 36
+        run: |
+          SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | sort -V | tail -1)"
+          "$SDKMANAGER" "platforms;android-36" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.11.1
+      - name: Build separate QA package with runner DEBUG signature
+        run: gradle --project-dir android-health-connect-poc :app:assembleQa
+      - name: Check TEST application ID, version, APK signature and checksum
+        run: |
+          set -euo pipefail
+          APK='android-health-connect-poc/app/build/outputs/apk/qa/app-qa.apk'
+          test -s "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" \
+            | grep -F "package: name='hu.grapes.healthconnect.test'"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" \
+            | grep -F "versionCode='11'"
+          CERT_INFO="$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$APK")"
+          printf '%s\n' "$CERT_INFO" | grep -Fi 'Signer #1 certificate SHA-256 digest:'
+          if printf '%s\n' "$CERT_INFO" | grep -Fi 'Signer #1 certificate SHA-256 digest: cc9dc997fa4bff3845884afd2f011efe939c02806f91393a1ddb0455b6a2ff33'; then
+            echo 'Unexpected persistent TEST certificate: aborting this debug-only preview'
+            exit 1
+          fi
+          (cd android-health-connect-poc/app/build/outputs/apk/qa && sha256sum app-qa.apk > app-qa.apk.sha256)
+      - name: Upload preview APK as Actions artifact only (no release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: grapes-home-m1-test-debug-apk
+          path: |
+            android-health-connect-poc/app/build/outputs/apk/qa/app-qa.apk
+            android-health-connect-poc/app/build/outputs/apk/qa/app-qa.apk.sha256
+          if-no-files-found: error
+          retention-days: 3
