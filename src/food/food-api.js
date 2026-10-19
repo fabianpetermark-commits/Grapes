@@ -89,7 +89,7 @@ export async function searchOpenFoodFactsProducts(query, {
   const country = OFF_COUNTRIES[region] || ''
   // Search-a-licious documents Lucene tag filters; searching hu,en only
   // influences text matching, it does NOT translate names or filter countries.
-  const searchTerm = term.replace(/[\\\\\"():{}\\[\\]]/g, ' ').replace(/\\s+/g, ' ').trim()
+  const searchTerm = term.replace(/[^\p{L}\p{N}\s-]/gu, ' ').replace(/\s+/g, ' ').trim()
   const fullQuery = country ? searchTerm + ' countries_tags:"en:' + country + '"' : searchTerm
   const params = new URLSearchParams({
     q: fullQuery, page: String(requestedPage), page_size: String(requestedSize),
