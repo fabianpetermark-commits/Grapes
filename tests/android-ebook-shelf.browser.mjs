@@ -38,7 +38,7 @@ try {
     const url = new URL(route.request().url())
     const query = url.searchParams.get('q') || ''
     let body = { files: [] }
-    if (query.includes("name = 'Grapes E-book Library'")) body = { files: [{ id: 'library' }] }
+    if (query.includes("name = 'Grapes TEST E-book Library'")) body = { files: [{ id: 'library' }] }
     else if (query.includes("name = '.grapes-ebook-metadata.json'")) body = { files: [{ id: 'metadata' }] }
     else if (query.includes("'library' in parents")) body = { files: [
       { id: 'book-1', name: 'eredeti-nev.epub', size: '2048', modifiedTime: '2026-10-14T18:00:00Z', mimeType: 'application/epub+zip', isAppAuthorized: true },
