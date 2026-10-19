@@ -74,8 +74,10 @@ jobs:
       - name: Browser regression test (existing Android mobile shell)
         run: node tests/android-mobile-preview.browser.mjs
       - name: Browser regression test (E-book library)
+        if: always()
         run: node tests/android-ebook-shelf.browser.mjs
       - name: Browser regression test (E-book reader)
+        if: always()
         run: node tests/android-ebook-reader.browser.mjs
       # Native Android compilation is expensive and is NOT needed for every
       # Food/recept/HTML change. Only a specifically requested preview builds
