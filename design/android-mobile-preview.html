@@ -1094,16 +1094,26 @@
     }
     /* Compact screens may resize columns, never hide controls or reorder panels. */
     @media (max-width: 375px) {
-      [data-page="food"] .daily-card { gap: 10px; padding: 12px; }
-      [data-page="food"] .macro {
-        grid-template-columns: 53px minmax(12px,1fr) 38px;
-        gap: 4px;
-        font-size: 10px;
+      [data-page="food"] .daily-card {
+        grid-template-columns: 100px minmax(0, 1fr);
+        gap: 10px;
+        padding: 12px;
       }
-      [data-page="food"] .macro b { font-size: 10px; }
+      [data-page="food"] .energy-ring,
+      [data-page="food"] .energy-ring__svg {
+        width: 100px;
+        height: 100px;
+      }
+      [data-page="food"] .energy-ring__value { width: 78px; height: 78px; }
+      [data-page="food"] .macro {
+        grid-template-columns: 66px minmax(12px,1fr) 40px;
+        gap: 4px;
+        font-size: 11px;
+      }
+      [data-page="food"] .macro b { font-size: 11px; }
       [data-page="food"] .daily-copy h2 { font-size: 15px; }
       [data-page="food"] .food-recipe--compact { flex-wrap: wrap; }
-      [data-food-recipe-edit-sheet] .food-recipe-tab { font-size: 10px; }
+      [data-food-recipe-edit-sheet] .food-recipe-tab { font-size: 11px; }
     }
     @media (prefers-reduced-motion: reduce) {
       [data-page="food"] .energy-ring,
