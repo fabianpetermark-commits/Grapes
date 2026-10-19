@@ -1,5 +1,6 @@
 import { createHomeStore } from './home-store.js'
 import { displayQuantity, expiryLabel, splitPreset, splitPreview, UNITS } from './home-data.js'
+import { createHomeM2Mobile } from './home-m2-mobile.js'
 
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char])
 const placeNames = { fridge: 'Hűtő', freezer: 'Fagyasztó', pantry: 'Kamra' }
@@ -29,15 +30,21 @@ export function createHomeMobile(root, storage) {
     <form class="household-form" data-household-form hidden><h2 data-household-form-title>Új tétel</h2><label>Név<input name="name" required maxlength="160" autocomplete="off"></label><div class="household-fields"><label>Mennyiség<input name="quantity" type="number" min="0" step="any" inputmode="decimal" placeholder="Ismeretlen, ha üres"></label><label>Egység<select name="unit">${units}</select></label></div><label data-household-location-label>Tárolás<select name="storageLocation"><option value="fridge">Hűtő</option><option value="freezer">Fagyasztó</option><option value="pantry">Kamra</option></select></label><div data-household-expiry><label>Címkén szereplő dátum<input name="expiryDate" type="date"></label><label>Dátum típusa<select name="expiryKind"><option value="bestBefore">Minőségmegőrzési</option><option value="useBy">Fogyaszthatósági</option></select></label></div><div class="household-actions"><button type="button" data-household-cancel>Mégse</button><button type="submit">Megerősítés és mentés</button></div></form>
     <form class="household-form" data-household-split hidden><h2>Hűtő / Fagyasztó elosztás</h2><p data-household-split-source></p><div class="household-filters"><button type="button" data-household-preset="fridge">Mind hűtő</button><button type="button" data-household-preset="half">Fele-fele</button><button type="button" data-household-preset="freezer">Mind fagyasztó</button></div><div class="household-fields"><label>Hűtőbe kerülő mennyiség<input name="fridgeQuantity" type="number" min="0" step="any" inputmode="decimal" required></label><label>Egység<select name="unit">${units}</select></label></div><p data-household-split-preview role="status"></p><div class="household-actions"><button type="button" data-household-cancel>Mégse</button><button type="submit">Elosztás megerősítése</button></div></form>`
 
+  root.querySelector('[data-household-tabs]').insertAdjacentHTML('beforeend', '<button type="button" data-household-tab="m2" role="tab">M2 · Főzés</button>')
+  const m2 = createHomeM2Mobile(root, {
+    getState: () => store?.getState(),
+    dispatch: (type, payload, eventId, meta = {}) => run(type, payload, eventId, meta),
+    report: (text, isError = false) => alert(text, isError),
+  })
   const $ = selector => root.querySelector(selector)
   const form = $('[data-household-form]')
   const splitForm = $('[data-household-split]')
   const state = () => store.getState()
   const alert = (text, isError = false) => { message = isError ? '' : text; error = isError ? text : ''; const node = $('[data-household-alert]'); node.hidden = !text; node.textContent = text; node.classList.toggle('is-error', isError) }
-  const run = (type, payload, eventId) => {
+  const run = (type, payload, eventId, meta = {}) => {
     if (!store) return
     try {
-      const result = store.dispatch({ type, payload, ...(eventId ? { eventId } : {}) })
+      const result = store.dispatch({ type, payload, ...meta, ...(eventId ? { eventId } : {}) })
       if (!result.duplicate) lastEventId = result.event.eventId
       alert(result.duplicate ? 'A művelet már végrehajtva.' : 'Mentve ezen az eszközön.')
       render()
@@ -50,6 +57,8 @@ export function createHomeMobile(root, storage) {
     const current = state()
     $('[data-household-inventory]').hidden = tab !== 'inventory'
     $('[data-household-shopping]').hidden = tab !== 'shopping'
+    m2.section.hidden = tab !== 'm2'
+    if (tab === 'm2') m2.render()
     root.querySelectorAll('[data-household-tab]').forEach(node => { node.setAttribute('aria-selected', String(node.dataset.householdTab === tab)); node.classList.toggle('is-active', node.dataset.householdTab === tab) })
     root.querySelectorAll('[data-household-filter]').forEach(node => node.classList.toggle('is-active', node.dataset.householdFilter === filter))
     const lots = current.inventory.filter(lot => (filter === 'all' || lot.storageLocation === filter) && lot.name.toLocaleLowerCase('hu-HU').includes(search))
@@ -125,5 +134,5 @@ export function createHomeMobile(root, storage) {
     const result = run('StockSplit', { id: splitId, fridgeQuantity: splitForm.elements.fridgeQuantity.value, unit: splitForm.elements.unit.value }, splitOperationId)
     if (result) closeForms()
   })
-  return { load() { try { store = createHomeStore(storage); $('[data-household-tabs]').hidden = false; alert(message || '', !!error); render() } catch (err) { store = null; closeForms(); $('[data-household-tabs]').hidden = true; $('[data-household-inventory]').hidden = true; $('[data-household-shopping]').hidden = true; $('[data-household-undo]').hidden = true; alert(err.message, true) } }, openTab(name) { if (name !== 'inventory' && name !== 'shopping') return; tab = name; closeForms(); render() }, handleBack() { if (!form.hidden || !splitForm.hidden) { closeForms(); return true } return false } }
+  return { load() { try { store = createHomeStore(storage); $('[data-household-tabs]').hidden = false; alert(message || '', !!error); render() } catch (err) { store = null; closeForms(); $('[data-household-tabs]').hidden = true; $('[data-household-inventory]').hidden = true; $('[data-household-shopping]').hidden = true; $('[data-household-undo]').hidden = true; alert(err.message, true) } }, openTab(name) { if (!['inventory', 'shopping', 'm2'].includes(name)) return; tab = name; closeForms(); render() }, handleBack() { if (m2.handleBack()) return true; if (!form.hidden || !splitForm.hidden) { closeForms(); return true } return false } }
 }
