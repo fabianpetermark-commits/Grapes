@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - integration/grapes-test-food-20261017
+      - feature/mobile-module-hubs-test-20261019
     paths:
       - android-health-connect-poc/**
       - src/**
@@ -20,6 +21,7 @@ on:
     branches:
       - fix/food-existing-features-20261017
       - integration/grapes-test-food-20261017
+      - integration/home-m1-grapes-test-20261019
     paths:
       - android-health-connect-poc/**
       - src/**
@@ -67,6 +69,16 @@ jobs:
         run: node tests/android-recipe-ingredient.browser.mjs
       - name: Browser regression test (Home household M1)
         run: node tests/android-home-mobile.browser.mjs
+      - name: Browser regression test (new category menu and shortcuts)
+        run: node tests/android-module-hubs.browser.mjs
+      - name: Browser regression test (existing Android mobile shell)
+        run: node tests/android-mobile-preview.browser.mjs
+      - name: Browser regression test (E-book library)
+        if: always()
+        run: node tests/android-ebook-shelf.browser.mjs
+      - name: Browser regression test (E-book reader)
+        if: always()
+        run: node tests/android-ebook-reader.browser.mjs
       # Native Android compilation is expensive and is NOT needed for every
       # Food/recept/HTML change. Only a specifically requested preview builds
       # an APK here. The official signed QA release builds once in its own job.

@@ -125,5 +125,5 @@ export function createHomeMobile(root, storage) {
     const result = run('StockSplit', { id: splitId, fridgeQuantity: splitForm.elements.fridgeQuantity.value, unit: splitForm.elements.unit.value }, splitOperationId)
     if (result) closeForms()
   })
-  return { load() { try { store = createHomeStore(storage); $('[data-household-tabs]').hidden = false; alert(message || '', !!error); render() } catch (err) { store = null; closeForms(); $('[data-household-tabs]').hidden = true; $('[data-household-inventory]').hidden = true; $('[data-household-shopping]').hidden = true; $('[data-household-undo]').hidden = true; alert(err.message, true) } }, handleBack() { if (!form.hidden || !splitForm.hidden) { closeForms(); return true } return false } }
+  return { load() { try { store = createHomeStore(storage); $('[data-household-tabs]').hidden = false; alert(message || '', !!error); render() } catch (err) { store = null; closeForms(); $('[data-household-tabs]').hidden = true; $('[data-household-inventory]').hidden = true; $('[data-household-shopping]').hidden = true; $('[data-household-undo]').hidden = true; alert(err.message, true) } }, openTab(name) { if (name !== 'inventory' && name !== 'shopping') return; tab = name; closeForms(); render() }, handleBack() { if (!form.hidden || !splitForm.hidden) { closeForms(); return true } return false } }
 }

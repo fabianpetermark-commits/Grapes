@@ -37,7 +37,7 @@
     .phone { overflow: clip; }
     .phone::before { position: absolute; top: 10px; left: 50%; z-index: 20; width: 104px; height: 26px; content: ""; background: #020407; border-radius: 999px; transform: translateX(-50%); }
     .statusbar { position: absolute; inset: 0 0 auto; z-index: 12; display: flex; align-items: center; justify-content: space-between; height: 44px; padding: 8px 25px 0; color: #cad6e2; font-size: 12px; font-weight: 700; pointer-events: none; }
-    .screen { position: absolute; inset: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; padding-top: 44px; background: radial-gradient(circle at 12% 0, rgb(59 220 242 / 7%), transparent 30%), var(--bg); }
+    .screen { position: absolute; inset: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); padding-top: 44px; background: radial-gradient(circle at 12% 0, rgb(59 220 242 / 7%), transparent 30%), var(--bg); }
     .screen[hidden] { display: none; }
     .login { display: grid; align-content: center; padding: 72px 22px 28px; overflow-y: auto; text-align: center; }
     .login[hidden] { display: none; }
@@ -50,6 +50,8 @@
     .login__fine { margin-top: 18px; color: #74869a; font-size: 11px; line-height: 1.5; }
     .login__status { min-height: 36px; margin: 12px 0 0; color: var(--danger); font-size: 12px; line-height: 1.45; }
     .appbar { display: flex; gap: 12px; align-items: center; min-height: 58px; padding: 8px 16px; border-bottom: 1px solid var(--line); }
+    .appbar__home { display: flex; flex: 1; gap: 10px; align-items: center; min-width: 0; padding: 0; color: var(--text); text-align: left; cursor: pointer; background: transparent; border: 0; border-radius: 12px; }
+    .appbar__home:focus-visible, .icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     .appbar__logo { width: 36px; height: 36px; padding: 3px; filter: drop-shadow(0 5px 10px rgb(0 194 230 / 20%)); }
     .appbar__title { min-width: 0; flex: 1; }
     .appbar__title strong, .appbar__title span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -58,6 +60,8 @@
     .icon-btn { position: relative; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; cursor: pointer; background: transparent; border: 0; border-radius: 14px; font-size: 20px; }
     .icon-btn:hover { background: var(--raised); }
     .icon-btn svg { width: 22px; height: 22px; }
+    .icon-btn--settings { color: var(--accent); border: 1px solid rgb(59 220 242 / 35%); background: var(--accent-soft); box-shadow: 0 0 18px rgb(59 220 242 / 12%); }
+    .icon-btn--settings:hover, .icon-btn--settings[aria-current="page"] { background: rgb(59 220 242 / 20%); box-shadow: 0 0 20px rgb(59 220 242 / 25%); }
     .notification-badge { position: absolute; top: 5px; right: 4px; min-width: 17px; height: 17px; padding: 0 4px; color: #041014; background: var(--accent); border: 2px solid var(--bg); border-radius: 999px; font-size: 9px; font-weight: 900; line-height: 13px; }
     .notification-badge[hidden] { display: none; }
     .content { min-height: 0; padding: 20px 16px 30px; overflow-y: auto; overscroll-behavior: contain; }
@@ -74,11 +78,6 @@
     .module strong, .module small { display: block; }
     .module small { margin-top: 4px; color: var(--muted); font-size: 11px; }
     .module__arrow { color: #6f8397; font-size: 20px; }
-    .bottom-nav { display: grid; grid-template-columns: repeat(4, 1fr); min-height: 76px; padding: 8px 8px 13px; background: rgb(13 20 28 / 96%); border-top: 1px solid var(--line); backdrop-filter: blur(18px); }
-    .nav-item { display: grid; place-items: center; align-content: center; gap: 4px; min-width: 0; padding: 4px; color: #7d90a4; cursor: pointer; background: transparent; border: 0; border-radius: 14px; font-size: 10px; }
-    .nav-item i { display: grid; place-items: center; width: 32px; height: 28px; border-radius: 10px; font-size: 18px; font-style: normal; }
-    .nav-item.is-active { color: var(--accent); }
-    .nav-item.is-active i { background: var(--accent-soft); }
     .search { width: 100%; min-height: 48px; padding: 0 15px; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 15px; outline: none; }
     .project-row { display: grid; grid-template-columns: 46px minmax(0, 1fr) 44px; gap: 12px; align-items: center; min-height: 76px; margin-top: 9px; padding: 10px 6px 10px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }
     .project-row__icon { display: grid; place-items: center; width: 46px; height: 46px; color: var(--accent); background: var(--accent-soft); border-radius: 14px; }
@@ -525,6 +524,37 @@
       .phone { width: 100%; height: 100dvh; border: 0; border-radius: 0; box-shadow: none; }
       .phone::before { display: none; }
     }
+  
+    .settings-links { display: grid; gap: 10px; margin: 0 0 20px; }
+    .settings-link { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 12px; align-items: center; width: 100%; min-height: 68px; padding: 10px 14px; color: var(--text); text-align: left; cursor: pointer; background: var(--surface); border: 1px solid var(--line); border-radius: 17px; }
+    .settings-link__icon { display: grid; place-items: center; width: 44px; height: 44px; color: var(--accent); background: var(--accent-soft); border-radius: 13px; }
+    .settings-link__icon svg { width: 24px; height: 24px; }
+    .settings-link strong, .settings-link small { display: block; }
+    .settings-link small { margin-top: 3px; color: var(--muted); font-size: 11px; }
+    .settings-link:hover { border-color: rgb(59 220 242 / 35%); }
+    /* Grapes main menu: navigation-only hierarchy, no module state or data changes. */
+    .hub-grid, .hub-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .hub-card, .hub-option { display: flex; flex-direction: column; align-items: flex-start; width: 100%; min-width: 0; color: var(--text); text-align: left; cursor: pointer; background: linear-gradient(155deg, var(--raised) 0%, var(--surface) 40%, var(--surface) 100%); border: 1px solid var(--line); border-radius: 21px; }
+    .hub-card { min-height: 190px; justify-content: space-between; padding: 19px 15px 17px; gap: 23px; }
+    .hub-card__icon, .hub-option__icon { display: grid; place-items: center; color: var(--accent); background: rgb(59 220 242 / 9%); border: 1px solid rgb(59 220 242 / 17%); border-radius: 18px; }
+    .hub-card__icon { width: 61px; height: 61px; }
+    .hub-card__icon svg { width: 35px; height: 35px; }
+    .hub-card__copy { display: grid; gap: 7px; min-width: 0; }
+    .hub-card strong { font-size: 19px; line-height: 1.15; letter-spacing: -.025em; }
+    .hub-card small { color: var(--muted); font-size: 11px; line-height: 1.55; overflow-wrap: anywhere; }
+    .hub-option { min-height: 142px; justify-content: space-between; padding: 17px 14px; gap: 14px; }
+    .hub-option__icon { width: 52px; height: 52px; border-radius: 16px; }
+    .hub-option__icon svg { width: 30px; height: 30px; }
+    .hub-option strong { font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
+    .hub-card:focus-visible, .hub-option:focus-visible, .hub-back:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .hub-card:active, .hub-option:active { border-color: var(--accent); }
+    .hub-back { display: inline-flex; align-items: center; min-height: 44px; margin: -8px 0 14px; padding: 0 4px; color: var(--accent); background: none; border: 0; font-size: 13px; font-weight: 750; cursor: pointer; }
+    @media (max-width: 360px) {
+      .hub-grid, .hub-options { gap: 9px; }
+      .hub-card { min-height: 178px; padding: 15px 12px; }
+      .hub-card strong { font-size: 18px; }
+      .hub-card__icon { width: 56px; height: 56px; }
+    }
   </style>
   <link rel="stylesheet" href="../src/home/home-mobile.css">
 </head>
@@ -546,24 +576,61 @@
 
       <section id="app" class="screen" hidden>
         <header class="appbar">
-          <img class="appbar__logo" src="../public/grapes-mark.svg" alt="">
-          <div class="appbar__title"><strong id="app-title">Grapes</strong><span id="app-subtitle">Helyi mód</span></div>
+          <button class="appbar__home" type="button" data-nav="home" aria-label="Főmenü"><img class="appbar__logo" src="../public/grapes-mark.svg" alt=""><span class="appbar__title"><strong id="app-title">Grapes</strong><span id="app-subtitle">Helyi mód</span></span></button>
           <button class="icon-btn" data-action="search" aria-label="Keresés">⌕</button>
           <button class="icon-btn" data-notifications aria-label="Értesítések"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v14H4zM4 13h4l2 3h4l2-3h4"/></svg><span class="notification-badge" data-notifications-badge hidden>1</span></button>
-          <button class="icon-btn" data-nav="more" aria-label="Továbbiak">⋮</button>
+          <button class="icon-btn icon-btn--settings" type="button" data-nav="more" aria-label="Beállítások" title="Beállítások"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 2.5h4l.6 2.4 1.6.9 2.4-.7 2 3.5-1.8 1.7v1.9l1.8 1.7-2 3.5-2.4-.7-1.6.9-.6 2.4h-4l-.6-2.4-1.6-.9-2.4.7-2-3.5 1.8-1.7v-1.9L3.4 8.6l2-3.5 2.4.7 1.6-.9z"/><circle cx="12" cy="12" r="3"/></svg></button>
         </header>
 
         <div class="content" data-page="home">
           <p class="eyebrow" data-home-greeting>Jó napot</p>
-          <h1>Mit készítünk ma?</h1>
-          <p class="lead">A legfontosabb eszközeid gyorsan, telefonra rendezve.</p>
-          <div class="section-head" style="margin-top:8px"><h2>Alkalmazások</h2><button data-action="filter">Szűrés</button></div>
-          <div class="module-list">
-            <button class="module" data-module="household"><span class="module__icon" data-module-icon="household"></span><span><strong>Home / Háztartás</strong><small>Élelmiszerkészlet és bevásárlólista · ezen az eszközön</small></span><span class="module__arrow">›</span></button>
-            <button class="module" data-module="food"><span class="module__icon" data-module-icon="food"></span><span><strong>Ételnapló</strong><small>Étkezések és napi célok</small></span><span class="module__arrow">›</span></button>
-            <button class="module" data-module="finance"><span class="module__icon" data-module-icon="finance"></span><span><strong>Pénzügyi Napló</strong><small>Kiadások és megtakarítások</small></span><span class="module__arrow">›</span></button>
-            <button class="module" data-module="qr"><span class="module__icon" data-module-icon="qr"></span><span><strong>QR Stúdió</strong><small>QR-kódok és kampánylinkek</small></span><span class="module__arrow">›</span></button>
-            <button class="module" data-module="ebook"><span class="module__icon" data-module-icon="ebook"></span><span><strong>E-book Könyvtár</strong><small>Könyvek és e-olvasó</small></span><span class="module__arrow">›</span></button>
+          <h1>Miben segíthetünk?</h1>
+          <p class="lead">Válassz egy területet, és minden eszközöd kéznél lesz.</p>
+          <div class="hub-grid" aria-label="Grapes főmodulok">
+            <button type="button" class="hub-card" data-menu-group="home"><span class="hub-card__icon" data-module-icon="household"></span><span class="hub-card__copy"><strong>Home</strong><small>Bevásárlólista · Készletkezelő</small></span></button>
+            <button type="button" class="hub-card" data-menu-group="health"><span class="hub-card__icon" data-module-icon="health"></span><span class="hub-card__copy"><strong>Health</strong><small>Food · Receptek · Statisztika</small></span></button>
+            <button type="button" class="hub-card" data-menu-group="utility"><span class="hub-card__icon" data-module-icon="utility"></span><span class="hub-card__copy"><strong>Utility</strong><small>E-book · QR modul</small></span></button>
+            <button type="button" class="hub-card" data-menu-group="finance"><span class="hub-card__icon" data-module-icon="finance"></span><span class="hub-card__copy"><strong>Finance</strong><small>Pénzügyi napló</small></span></button>
+          </div>
+        </div>
+
+        <div class="content" data-page="hub-home" hidden>
+          <button type="button" class="hub-back" data-menu-back>‹ Főmenü</button>
+          <p class="eyebrow">Home / Háztartás</p><h1>Otthon</h1>
+          <p class="lead">Bevásárlás és élelmiszerkészlet egy helyen.</p>
+          <div class="hub-options" aria-label="Home almodulok">
+            <button type="button" class="hub-option" data-menu-destination="shopping"><span class="hub-option__icon" data-module-icon="shopping"></span><strong>Bevásárlólista</strong></button>
+            <button type="button" class="hub-option" data-menu-destination="inventory"><span class="hub-option__icon" data-module-icon="household"></span><strong>Készletkezelő</strong></button>
+          </div>
+        </div>
+
+        <div class="content" data-page="hub-health" hidden>
+          <button type="button" class="hub-back" data-menu-back>‹ Főmenü</button>
+          <p class="eyebrow">Health</p><h1>Egészség és táplálkozás</h1>
+          <p class="lead">A meglévő Food funkciók és adatok közvetlen elérése.</p>
+          <div class="hub-options" aria-label="Health almodulok">
+            <button type="button" class="hub-option" data-menu-destination="food"><span class="hub-option__icon" data-module-icon="food"></span><strong>Food</strong></button>
+            <button type="button" class="hub-option" data-menu-destination="recipes"><span class="hub-option__icon" data-module-icon="recipe"></span><strong>Receptek</strong></button>
+            <button type="button" class="hub-option" data-menu-destination="stats"><span class="hub-option__icon" data-module-icon="stats"></span><strong>Statisztika</strong></button>
+          </div>
+        </div>
+
+        <div class="content" data-page="hub-utility" hidden>
+          <button type="button" class="hub-back" data-menu-back>‹ Főmenü</button>
+          <p class="eyebrow">Utility</p><h1>Eszközök</h1>
+          <p class="lead">Könyvtár és QR Stúdió, a meglévő funkciókkal.</p>
+          <div class="hub-options" aria-label="Utility almodulok">
+            <button type="button" class="hub-option" data-menu-destination="ebook"><span class="hub-option__icon" data-module-icon="ebook"></span><strong>E-book</strong></button>
+            <button type="button" class="hub-option" data-menu-destination="qr"><span class="hub-option__icon" data-module-icon="qr"></span><strong>QR modul</strong></button>
+          </div>
+        </div>
+
+        <div class="content" data-page="hub-finance" hidden>
+          <button type="button" class="hub-back" data-menu-back>‹ Főmenü</button>
+          <p class="eyebrow">Finance</p><h1>Pénzügyek</h1>
+          <p class="lead">A megszokott pénzügyi modul változatlanul.</p>
+          <div class="hub-options" aria-label="Finance almodulok">
+            <button type="button" class="hub-option" data-menu-destination="finance"><span class="hub-option__icon" data-module-icon="finance"></span><strong>Pénzügyi napló</strong></button>
           </div>
         </div>
 
@@ -585,6 +652,7 @@
             <div class="sync-stat"><span>Függőben</span><strong data-sync-pending-count>—</strong></div>
           </div>
           <p class="sync-status" data-sync-status role="status" aria-live="polite">Állapot ellenőrzése…</p>
+          <p class="sync-status" aria-live="polite">Utolsó ellenőrzés: <span data-sync-last-check>Még nem ellenőrizve</span></p>
           <div class="section-head"><h2>Élelmiszer-adatbázis</h2></div>
           <div class="sync-providers">
             <div class="sync-provider"><span class="sync-provider__icon" aria-hidden="true">🌍</span><div><strong>Open Food Facts</strong><span>Ország/régió választás</span><label for="food-off-region" class="sync-provider__auto">Ország/régió</label><select id="food-off-region" data-food-off-region aria-label="Open Food Facts ország/régió"><option value="hu">Magyarország</option><option value="sk">Szlovákia</option><option value="at">Ausztria</option><option value="de">Németország</option><option value="cz">Csehország</option><option value="pl">Lengyelország</option><option value="ro">Románia</option><option value="gb">Egyesült Királyság</option><option value="us">Egyesült Államok</option><option value="all">Összes ország</option></select></div></div>
@@ -602,6 +670,7 @@
 
         <div class="content" data-page="more" hidden>
           <p class="eyebrow">Beállítások</p><h1>Továbbiak</h1><p class="lead">Fiók, nyelv és alkalmazásbeállítások.</p>
+          <div class="settings-links" aria-label="További oldalak"><button class="settings-link" type="button" data-nav="projects"><span class="settings-link__icon" data-module-icon="projects"></span><span><strong>Projektek</strong><small>Helyi és Drive munkák</small></span><span aria-hidden="true">›</span></button><button class="settings-link" type="button" data-nav="sync"><span class="settings-link__icon" data-module-icon="sync"></span><span><strong>Szinkron</strong><small>Adatok és fiók</small></span><span aria-hidden="true">›</span></button></div>
           <button class="setting" type="button" data-account-login><span class="setting__icon" data-mobile-icon="google"></span><span><strong data-account-action>Google-fiók csatlakoztatása</strong><span data-account-mode>Helyi mód</span></span><span>›</span></button>
           <div class="setting"><div class="setting__icon" data-mobile-icon="language"></div><div><strong>Nyelv</strong><span>Magyar</span></div><span>›</span></div>
           <div class="setting"><div class="setting__icon" data-mobile-icon="appearance"></div><div><strong>Megjelenés</strong><span>Rendszerbeállítás</span></div><span>›</span></div>
@@ -732,12 +801,6 @@
           <p class="reader-status" data-transfer-status role="status"></p>
         </div>
 
-        <nav class="bottom-nav" aria-label="Alsó navigáció">
-          <button class="nav-item is-active" data-nav="home"><i>⌂</i><span>Kezdőlap</span></button>
-          <button class="nav-item" data-nav="projects"><i>▤</i><span>Projektek</span></button>
-          <button class="nav-item" data-nav="sync"><i>↻</i><span>Szinkron</span></button>
-          <button class="nav-item" data-nav="more"><i>•••</i><span>Továbbiak</span></button>
-        </nav>
         <button class="fab" data-fab hidden aria-label="Étel hozzáadása">+</button>
       </section>
       <div class="sheet-backdrop" data-sheet-close></div>

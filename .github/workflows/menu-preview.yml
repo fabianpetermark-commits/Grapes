@@ -1,0 +1,40 @@
+name: Grapes menu preview (feature branch only)
+
+on:
+  push:
+    branches:
+      - feature/mobile-module-hubs-test-20261019
+    paths:
+      - design/android-mobile-preview.html
+      - src/android-mobile-icons.js
+      - src/android-mobile-shell.js
+      - tests/android-module-hubs.browser.mjs
+      - .github/workflows/menu-preview.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    env:
+      VITE_GRAPES_TEST_CHANNEL: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Capture and verify menu
+        run: node tests/android-module-hubs.browser.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: grapes-menu-preview
+          path: |
+            grapes-menu-main-preview.png
+            grapes-menu-health-preview.png
+            grapes-menu-settings-preview.png
+          if-no-files-found: error
+          retention-days: 7
