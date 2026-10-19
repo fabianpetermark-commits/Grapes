@@ -80,7 +80,10 @@ test('Food forms and protected integrations remain present in the underlying TES
 })
 
 test('Recipe detail shows four calculated values without altering the diary or inventory', () => {
-  const recipeSection = html.slice(getIndex('<section data-food-recipe-detail hidden>'), getIndex('</section>\n        </div>'))
+  const recipeStart = getIndex('<section data-food-recipe-detail hidden>')
+  const recipeEnd = html.indexOf('</section>', recipeStart)
+  assert.ok(recipeEnd > recipeStart)
+  const recipeSection = html.slice(recipeStart, recipeEnd)
   for (const hook of [
     'data-food-recipe-nutrients',
     'data-food-recipe-nutrition-title',
