@@ -54,8 +54,20 @@ try {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, hasTouch: true, isMobile: true })
   await context.addInitScript(() => localStorage.setItem('grapes-local-mode', '1'))
   const page = await context.newPage()
+  const pageErrors = []
+  page.on('pageerror', error => pageErrors.push(error.stack || error.message))
+  page.on('console', message => { if (message.type() === 'error') pageErrors.push(message.text()) })
   await page.goto(url, { waitUntil: 'networkidle' })
-  await page.locator('[data-page="home"]').waitFor({ state: 'visible' })
+  await page.locator('[data-page="home"]').waitFor({ state: 'visible', timeout: 7000 }).catch(async error => {
+    const state = await page.evaluate(() => ({
+      appHidden: document.querySelector('#app')?.hidden,
+      loginHidden: document.querySelector('#login')?.hidden,
+      household: Boolean(document.querySelector('[data-household-root]')),
+      scripts: [...document.scripts].map(x => x.src),
+      localMode: localStorage.getItem('grapes-local-mode'),
+    }))
+    throw new Error('Home bootstrap: ' + JSON.stringify({ state, pageErrors, message: error.message }))
+  })
   assert.equal(await page.locator('[data-nav="home"]').count(), 1)
   assert.equal(await page.locator('[data-menu-group]').count(), 4)
   await page.locator('[data-menu-group="home"]').click()
