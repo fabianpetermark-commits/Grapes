@@ -5,6 +5,8 @@
 > **Termékígéret:** „Kevesebb adminisztráció. Okosabb mindennapok.”  
 > **Alapelv:** „Ne a felhasználó dolgozzon az alkalmazásért. Az alkalmazás dolgozzon a felhasználóért.”
 
+**Részletes, kötelező esemény- és adatkezelési logika:** [GRAPES_HOME_LOGIC_SPECIFICATION.md](./GRAPES_HOME_LOGIC_SPECIFICATION.md). Az M1 H-01–H-12 elfogadási esetek és a későbbi Food/Pénzügy/családi adatkapcsolatok adatbiztonsági invariánsai Codex számára kötelezőek. Az itt szereplő jövőbeli koncepciók ettől még nem implementált funkciók.
+
 ## 1. Mit jelent a Home?
 
 **Home / Háztartás** = a háztartás közös feladatait támogató, önálló Grapes-modul. **NEM** a Grapes jelenlegi `data-page="home"` kezdeti modulválasztó képernyőjének felülírása vagy az alsó „Kezdőlap” navigáció átnevezése. Vizuálisan külön „Home” modul-kártyán lehet belépni, változatlan globális alkalmazásnavigációval.
