@@ -7,6 +7,14 @@
 > **Termékspecifikáció:** [GRAPES_HOME_PRODUCT_SPEC.md](./GRAPES_HOME_PRODUCT_SPEC.md) — ezt olvasd el először.  
 > **Helyi projektutasítás:** `AGENTS.md`, ha létezik / később becsatolva kerül ide; ne feltételezd, hogy a `main`-en lévő AGENTS a jó Android-baseline.
 
+## Kötelező harmadik kiinduló dokumentum — Home Logic Specification
+
+**A kód megírása ELŐTT olvasd el:** [GRAPES_HOME_LOGIC_SPECIFICATION.md](./GRAPES_HOME_LOGIC_SPECIFICATION.md). Ez tartalmazza az események, készletek, vásárlási tervek, tároláselosztás, bizonyossági státuszok és jövőbeli főzés/étkezés pontos szerződését.
+
+**M1 acceptance: H-01–H-12** a Logic Specification 13. fejezetéből. Mindegyikhez írj és futtass valódi unit/integrációs tesztet. Az M2/M3 esetek H-13–H-22 **előre meghatározott szerződések**, nem adnak felhatalmazást a Food/Pénzügy/Drive módosítására. Az adatbiztonsági szabályok elsőbbséget élveznek a kód egyszerűségével szemben.
+
+**Codex-implementációs döntés:** eseményazonosítók, mennyiségek dimenziói, idempotens átmenetek, részleges mentés és visszavonási konfliktusok kezelését már M1-ben úgy alakítsd ki, hogy később ne kelljen a teljes készlet-adatmodellt átírni. Ha egy részlet technikailag többféleképpen megvalósítható, dokumentáld a választást a #50-es draft PR-ben.
+
 ## A feladat
 
 **Kezdd el ténylegesen lefejleszteni az új „Home / Háztartás” modult az M1 vertikális szelet erejéig; ne állj meg dokumentálásnál.** A Home a háztartás élelmiszerkészlete, nem a Grapes globális `data-page="home"` kezdőlapja. A meglévő Home landinget, a Food aktuális képességeit, a Pénzügy modult és a kiadási csatornákat tartsd változatlanul.
