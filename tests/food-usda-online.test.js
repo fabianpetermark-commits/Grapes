@@ -106,12 +106,15 @@ test('ismeretlen kifejezéshez csak a válaszban kapott FDC ID használható', a
   assert.deepEqual(result.products, [])
 })
 
-test('alapmakró hiány vagy tiltott adattípus esetén nem naplózható USDA találat', () => {
+test('részleges USDA tápérték külön hiányjelzéssel megjelenhet, tiltott azonosító nem', () => {
   assert.equal(foodFromUsdaSearchHit({ ...fixture, dataType: 'Branded' }), null)
   assert.equal(foodFromUsdaSearchHit({ ...fixture, fdcId: undefined }), null)
-  assert.equal(foodFromUsdaSearchHit({ ...fixture, foodNutrients: fixture.foodNutrients.filter(n => n.nutrientId !== 1004) }), null)
+  const partial = foodFromUsdaSearchHit({ ...fixture, foodNutrients: fixture.foodNutrients.filter(n => n.nutrientId !== 1004) })
+  assert.equal(partial.nutritionIncomplete, true)
+  assert.equal(partial.nutrients.fat, null)
   const negative = { ...fixture, foodNutrients: fixture.foodNutrients.map(n => n.nutrientId === 1003 ? { ...n, value: -1 } : n) }
-  assert.equal(foodFromUsdaSearchHit(negative), null)
+  assert.equal(foodFromUsdaSearchHit(negative).nutrients.protein, null)
+  assert.equal(foodFromUsdaSearchHit(negative).nutritionIncomplete, true)
 })
 
 test('Android natív USDÁ-kérés keresés és cache, nincs kitalált azonosító', async () => {

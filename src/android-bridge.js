@@ -67,6 +67,6 @@ export function installAndroidAppUpdate(versionCode) {
 }
 
 
-export async function requestAndroidFoodApi(kind, query, page = 1, pageSize = 12) {
-  return JSON.parse(await nativeRequest('foodApi', kind, query, page, pageSize))
+export async function requestAndroidFoodApi(kind, query, page = 1, pageSize = 12, region = 'hu') {
+  return JSON.parse(await nativeRequest('foodApi', kind, query, page, pageSize, region))
 }

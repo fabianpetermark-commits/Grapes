@@ -1190,7 +1190,17 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       original.className = 'sheet-result__original'; original.lang = 'en'; original.textContent = food.usdaDescription
       main.append(original)
     }
-    const meta = document.createElement('span'); meta.textContent = `${calories} · ${sourceLabel}`
+    if (food.brand) {
+      const brand = document.createElement('span')
+      brand.className = 'sheet-result__brand'
+      brand.textContent = 'Márka: ' + food.brand
+      main.append(brand)
+    }
+    const missingCore = ['energyKcal', 'protein', 'carbohydrate', 'fat'].filter(key => food.nutrients?.[key] == null)
+    const languageNotice = food.source?.type === 'openfoodfacts' && food.productLanguage && food.productLanguage !== 'hu' && !food.hasHungarianName
+      ? ' · Nincs magyar terméknév az adatbázisban' : ''
+    const missingNotice = missingCore.length ? ' · Hiányos tápértékadatok' : ''
+    const meta = document.createElement('span'); meta.textContent = `${calories} · ${sourceLabel}${languageNotice}${missingNotice}`
     main.append(meta)
     const favoriteButton = document.createElement('button'); favoriteButton.type = 'button'; favoriteButton.className = 'sheet-result__favorite'; favoriteButton.hidden = external
     favoriteButton.textContent = favorite ? '★' : '☆'; favoriteButton.setAttribute('aria-label', favorite ? 'Eltávolítás a kedvencekből' : 'Hozzáadás a kedvencekhez')
@@ -1954,6 +1964,11 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-stats-from]').addEventListener('change', renderStats)
     $('[data-food-stats-to]').addEventListener('change', renderStats)
     $('[data-food-search]').addEventListener('input', event => startFoodSearch(event.currentTarget.value))
+    // Region changes invalidate the previously displayed remote hits.
+    document.addEventListener('grapes:food-region-changed', () => {
+      const input = $('[data-food-search]')
+      if (input?.value?.trim()) startFoodSearch(input.value)
+    })
     $('[data-food-barcode-photo]').addEventListener('change', selectBarcodePhoto)
     $('[data-food-live-stop]').addEventListener('click', stopBarcodeCamera)
     $('[data-food-open-recipes]').addEventListener('click', openRecipes)
