@@ -106,8 +106,14 @@ try {
   assert.equal(await page.locator('[data-reader-shell]').evaluate(node => node.classList.contains('is-fullscreen')), false)
   await page.screenshot({ path: 'mobile-ebook-reader.png', fullPage: true })
   await page.locator('[data-reader-page]').evaluate(node => { node.scrollTop = Math.max(1, node.scrollHeight * .7); node.dispatchEvent(new Event('scroll')) })
-  await page.waitForTimeout(1500)
-  assert.equal(savedProgress.length > 0, true)
+  // Progress sync follows a debounced save and multiple mocked Drive reads.
+  // Wait for the actual write instead of assuming it finishes within 1500ms.
+  for (let attempt = 0; attempt < 70 && !savedProgress.length; attempt++) {
+    await page.waitForTimeout(100)
+  }
+  const localReading = await page.evaluate(() => localStorage.getItem('grapes-ebook-reading-progress-v1'))
+  assert.ok(localReading?.includes('book-1'), 'Olvasási pozíció mentése legalább helyben kötelező.')
+  assert.ok(savedProgress.length > 0, 'A Drive olvasási pozíció frissítésének megtörténtét is ellenőrizni kell.')
   assert.equal(savedProgress.at(-1).books['book-1'].chapterId, 'one')
   await page.locator('[data-page="reader"] [data-ebook-view="transfer"]').click()
   assert.equal(await page.locator('[data-page="transfer"]').isVisible(), true)
