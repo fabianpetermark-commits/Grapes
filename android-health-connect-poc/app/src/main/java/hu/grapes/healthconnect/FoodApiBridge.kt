@@ -17,9 +17,10 @@ internal class FoodApiBridge {
         require(query.length in 2..120) { "A keresőkifejezés 2–120 karakter lehet." }
         val page = args.optInt(2, 1).coerceIn(1, 5)
         val pageSize = args.optInt(3, 12).coerceIn(1, 24)
+        val region = args.optString(4, "hu").takeIf { it in countries || it == "all" } ?: "hu"
         when (kind) {
-            "offSearch" -> request("https://search.openfoodfacts.org/search?" + offParameters(query, page, pageSize, false))
-            "offLegacySearch" -> request("https://world.openfoodfacts.org/cgi/search.pl?" + offParameters(query, page, pageSize, true))
+            "offSearch" -> request("https://search.openfoodfacts.org/search?" + offParameters(query, page, pageSize, false, region))
+            "offLegacySearch" -> request("https://world.openfoodfacts.org/cgi/search.pl?" + offParameters(query, page, pageSize, true, region))
             "offBarcode" -> {
                 require(Regex("^\\d{7,14}$").matches(query)) { "Érvénytelen vonalkód." }
                 request("https://world.openfoodfacts.org/api/v2/product/" + encode(query) + ".json")
@@ -37,16 +38,34 @@ internal class FoodApiBridge {
         }
     }
 
+    private val countries = mapOf(
+        "hu" to "hungary", "sk" to "slovakia", "at" to "austria",
+        "de" to "germany", "cz" to "czech-republic", "pl" to "poland",
+        "ro" to "romania", "gb" to "united-kingdom", "us" to "united-states"
+    )
     private fun encode(value: String) = URLEncoder.encode(value, Charsets.UTF_8.name())
-    private fun offParameters(query: String, page: Int, size: Int, legacy: Boolean): String {
-        val fields = "code,product_name_hu,product_name,generic_name_hu,generic_name,categories_tags,product_quantity_unit,image_front_small_url,nutriments,last_modified_t"
-        val params = if (legacy) listOf(
-            "search_terms" to query, "search_simple" to "1", "action" to "process", "json" to "1",
-            "page" to page.toString(), "page_size" to size.toString(), "fields" to fields
-        ) else listOf(
-            "q" to query, "page" to page.toString(), "page_size" to size.toString(),
-            "langs" to "hu,en", "boost_phrase" to "true", "fields" to fields
-        )
+    private fun offParameters(query: String, page: Int, size: Int, legacy: Boolean, region: String): String {
+        val fields = "code,product_name_hu,product_name,product_name_en,generic_name_hu,generic_name,categories_tags,countries_tags,brands,brands_tags,lang,product_quantity_unit,image_front_small_url,nutriments,nutrition_data_per,last_modified_t"
+        val country = countries[region]
+        val params = if (legacy) {
+            mutableListOf(
+                "search_terms" to query, "search_simple" to "1", "action" to "process", "json" to "1",
+                "page" to page.toString(), "page_size" to size.toString(), "fields" to fields
+            ).apply {
+                if (country != null) addAll(listOf(
+                    "tagtype_0" to "countries", "tag_contains_0" to "contains", "tag_0" to country
+                ))
+            }
+        } else {
+            // Search-a-licious: langs selects query languages, not countries.
+            // Escape Lucene syntax in the user's text before adding a verified country clause.
+            val safeQuery = query.replace(Regex("[+!():{}\\[\\]\\\"~*?^]"), " ")
+            val filteredQuery = if (country == null) safeQuery else safeQuery + " countries_tags:\\"en:" + country + "\\""
+            mutableListOf(
+                "q" to filteredQuery, "page" to page.toString(), "page_size" to size.toString(),
+                "langs" to "hu,en", "boost_phrase" to "true", "fields" to fields
+            )
+        }
         return params.joinToString("&") { (key, value) -> encode(key) + "=" + encode(value) }
     }
 
