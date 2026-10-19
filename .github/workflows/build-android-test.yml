@@ -65,6 +65,8 @@ jobs:
       - run: npm run build:android-web
       - name: Browser regression test (recipe ingredient search and selection)
         run: node tests/android-recipe-ingredient.browser.mjs
+      - name: Browser regression test (Home household M1)
+        run: node tests/android-home-mobile.browser.mjs
       # Native Android compilation is expensive and is NOT needed for every
       # Food/recept/HTML change. Only a specifically requested preview builds
       # an APK here. The official signed QA release builds once in its own job.

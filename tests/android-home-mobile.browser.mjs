@@ -1,0 +1,105 @@
+import assert from 'node:assert/strict'
+import { spawn } from 'node:child_process'
+import { existsSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { chromium } from 'playwright-core'
+
+const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const url = 'http://127.0.0.1:4184/design/android-mobile-preview.html'
+const executablePath = [
+  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+  '/usr/bin/chromium',
+  '/usr/bin/google-chrome',
+  'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+  'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+].filter(Boolean).find(existsSync)
+
+if (!executablePath) throw new Error('Nem található Chromium-alapú böngésző.')
+
+const server = spawn(process.execPath, [resolve(projectRoot, 'node_modules/vite/bin/vite.js'), '--host', '127.0.0.1', '--port', '4184', '--strictPort'], {
+  cwd: projectRoot,
+  env: { ...process.env, VITE_GRAPES_TEST_CHANNEL: '1' },
+  stdio: 'ignore',
+})
+let browser
+
+try {
+  for (let attempt = 0; attempt < 80; attempt++) {
+    try { if ((await fetch(url)).ok) break } catch {}
+    if (attempt === 79) throw new Error('A Home mobil tesztszervere nem indult el.')
+    await new Promise(resolvePromise => setTimeout(resolvePromise, 100))
+  }
+  browser = await chromium.launch({ executablePath, headless: true })
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, hasTouch: true, isMobile: true })
+  await context.addInitScript(() => localStorage.setItem('grapes-local-mode', '1'))
+  const page = await context.newPage()
+  await page.goto(url, { waitUntil: 'networkidle' })
+  await page.locator('[data-page="home"]').waitFor({ state: 'visible' })
+  assert.equal(await page.locator('[data-nav="home"]').count(), 1)
+  assert.equal(await page.locator('[data-module="food"]').count(), 1)
+  assert.equal(await page.locator('[data-module="finance"]').count(), 1)
+  await page.locator('[data-page="home"] [data-module="household"]').click()
+  await page.locator('[data-page="household"]').waitFor({ state: 'visible' })
+  assert.match(await page.locator('[data-household-root]').textContent(), /Ezen az eszközön tárolva/)
+
+  await page.locator('[data-household-tab="shopping"]').click()
+  await page.locator('[data-household-add="shopping"]').click()
+  await page.locator('[data-household-form] [name="name"]').fill('Csirkemell')
+  await page.locator('[data-household-form] [name="quantity"]').fill('1')
+  await page.locator('[data-household-form] [name="unit"]').selectOption('kg')
+  await page.locator('[data-household-form] button[type="submit"]').click()
+  assert.equal(await page.locator('[data-household-items] .household-card').count(), 1)
+  await page.locator('[data-household-check]').click()
+  assert.match(await page.locator('[data-household-items]').textContent(), /Elintézve/)
+  await page.locator('[data-household-tab="inventory"]').click()
+  assert.equal(await page.locator('[data-household-lots] .household-card').count(), 0, 'A bevásárlólista nem készlet.')
+
+  await page.locator('[data-household-add="inventory"]').click()
+  await page.locator('[data-household-form] [name="name"]').fill('Csirkemell')
+  await page.locator('[data-household-form] [name="quantity"]').fill('1')
+  await page.locator('[data-household-form] [name="unit"]').selectOption('kg')
+  await page.locator('[data-household-form] [name="storageLocation"]').selectOption('fridge')
+  await page.locator('[data-household-form] button[type="submit"]').click()
+  assert.equal(await page.locator('[data-household-lots] .household-card').count(), 1)
+
+  await page.locator('[data-household-split-id]').click()
+  await page.locator('[data-household-split] [name="fridgeQuantity"]').fill('600')
+  assert.equal(await page.locator('[data-household-split] [name="unit"]').inputValue(), 'g')
+  assert.match(await page.locator('[data-household-split-preview]').textContent(), /600 g hűtő · 400 g fagyasztó/)
+  assert.equal(await page.locator('[data-household-lots] .household-card').count(), 1, 'Az előnézet nem írhat készletet.')
+  await page.locator('[data-household-split] button[type="submit"]').click()
+  assert.equal(await page.locator('[data-household-lots] .household-card').count(), 2)
+  assert.match(await page.locator('[data-household-lots]').textContent(), /600 g/)
+  assert.match(await page.locator('[data-household-lots]').textContent(), /400 g/)
+  await page.locator('[data-household-undo]').click()
+  assert.equal(await page.locator('[data-household-lots] .household-card').count(), 1)
+  assert.match(await page.locator('[data-household-lots]').textContent(), /1 kg/)
+
+  await page.locator('[data-household-split-id]').click()
+  await page.locator('[data-household-preset="half"]').click()
+  await page.locator('[data-household-split] button[type="submit"]').click()
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.locator('[data-page="home"] [data-module="household"]').click()
+  assert.equal(await page.locator('[data-household-lots] .household-card').count(), 2, 'A készlet nem maradt meg újraindítás után.')
+  await page.locator('[data-household-tab="shopping"]').click()
+  assert.match(await page.locator('[data-household-items]').textContent(), /Elintézve/)
+  await page.locator('[data-household-tab="inventory"]').click()
+
+  for (const width of [320, 360, 390, 412]) {
+    await page.setViewportSize({ width, height: 844 })
+    const layout = await page.evaluate(() => ({ viewport: innerWidth, content: document.documentElement.scrollWidth }))
+    assert.ok(layout.content <= layout.viewport, `A Home vízszintesen kilóg ${width}px szélességen.`)
+  }
+  await page.locator('[data-household-add="inventory"]').click()
+  assert.equal(await page.evaluate(() => window.grapesHandleAndroidBack()), true)
+  assert.equal(await page.locator('[data-household-form]').isVisible(), false)
+  assert.equal(await page.evaluate(() => window.grapesHandleAndroidBack()), true)
+  await page.locator('[data-page="home"]').waitFor({ state: 'visible' })
+  assert.equal(await page.locator('[data-page="household"]').isVisible(), false)
+  assert.ok((await page.evaluate(() => localStorage.getItem('grapes-home-household-v1')))?.includes('Csirkemell'))
+  console.log('Home TEST browser flow: készlet, 600/400, lista, mentés, undo, visszalépés, 320–412 px rendben.')
+} finally {
+  await browser?.close()
+  server.kill()
+}
