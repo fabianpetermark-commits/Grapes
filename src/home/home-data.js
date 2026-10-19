@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 1
+export const SCHEMA_VERSION = 2
 export const LOCATIONS = ['fridge', 'freezer', 'pantry']
 export const UNITS = Object.freeze({
   g: ['mass', 1], dkg: ['mass', 10], kg: ['mass', 1000],
@@ -27,14 +27,22 @@ export function quantity(value, unit) {
   return { quantityBase: base, dimension: UNITS[unit][0], displayUnit: unit }
 }
 export function createHomeState({ householdId = uuid(), actorId = null } = {}) {
-  return { schemaVersion: SCHEMA_VERSION, householdId, actorId, revision: 0, inventory: [], shopping: [], events: [] }
+  return { schemaVersion: SCHEMA_VERSION, householdId, actorId, revision: 0, inventory: [], shopping: [], prepared: [], events: [] }
 }
 function unique(items, key) { return new Set(items.map(item => item[key])).size === items.length }
 export function validateHomeState(state) {
-  if (!state || state.schemaVersion !== SCHEMA_VERSION || typeof state.householdId !== 'string' || !state.householdId || !Number.isSafeInteger(state.revision) || state.revision < 0 || !Array.isArray(state.inventory) || !Array.isArray(state.shopping) || !Array.isArray(state.events)) fail('A Home mentés sérült vagy a verzió nem támogatott.')
-  if (!unique(state.inventory, 'id') || !unique(state.shopping, 'id') || !unique(state.events, 'eventId')) fail('Ismétlődő Home azonosító.')
+  if (!state || state.schemaVersion !== SCHEMA_VERSION || typeof state.householdId !== 'string' || !state.householdId || !Number.isSafeInteger(state.revision) || state.revision < 0 || !Array.isArray(state.inventory) || !Array.isArray(state.shopping) || !Array.isArray(state.prepared) || !Array.isArray(state.events)) fail('A Home mentés sérült vagy a verzió nem támogatott.')
+  if (!unique(state.inventory, 'id') || !unique(state.shopping, 'id') || !unique(state.prepared, 'id') || !unique(state.events, 'eventId')) fail('Ismétlődő Home azonosító.')
   for (const lot of state.inventory) {
     if (!lot.id || lot.householdId !== state.householdId || !lot.name || !LOCATIONS.includes(lot.storageLocation) || lot.evidenceStatus !== 'confirmed' || !lot.originEventId || !lot.sourceType || !lot.observedAt || !lot.updatedAt || !UNITS[lot.displayUnit] || lot.dimension !== UNITS[lot.displayUnit][0] || !Number.isSafeInteger(lot.quantityBase) || lot.quantityBase < 0 || (lot.expiryDate && !lot.expiryKind) || (lot.expiryKind && !['bestBefore', 'useBy'].includes(lot.expiryKind))) fail('Sérült vagy inkompatibilis készlettétel.')
+  }
+  for (const finished of state.prepared) {
+    if (!finished.id || finished.householdId !== state.householdId || !finished.name ||
+      !finished.cookingEventId || !finished.confirmedAt || !finished.updatedAt ||
+      !LOCATIONS.includes(finished.storageLocation) ||
+      !Number.isSafeInteger(finished.portionsPrepared) || finished.portionsPrepared <= 0 ||
+      !Number.isSafeInteger(finished.portionsRemaining) || finished.portionsRemaining < 0 ||
+      finished.portionsRemaining > finished.portionsPrepared) fail('Sérült készétel-tétel.')
   }
   for (const item of state.shopping) {
     if (!item.id || item.householdId !== state.householdId || !item.name || !['planned', 'checked', 'deferred'].includes(item.status) || !item.updatedAt || (item.quantityBase == null && item.displayUnit != null) || (item.quantityBase != null && (!Number.isSafeInteger(item.quantityBase) || item.quantityBase < 0 || !UNITS[item.displayUnit] || item.dimension !== UNITS[item.displayUnit][0]))) fail('Sérült bevásárlólista-tétel.')
@@ -43,9 +51,9 @@ export function validateHomeState(state) {
     if (!event.eventId || event.householdId !== state.householdId || !event.type || !event.timestamp || event.confirmation !== true || event.resultingRevision !== index + 1 || !Array.isArray(event.changes)) fail('Sérült Home eseménynapló.')
   })
   if (state.revision !== state.events.length) fail('A Home revízió és az eseménynapló eltér.')
-  const replay = { inventory: [], shopping: [] }
+  const replay = { inventory: [], shopping: [], prepared: [] }
   for (const event of state.events) applyChanges(replay, event.changes)
-  if (JSON.stringify(replay.inventory) !== JSON.stringify(state.inventory) || JSON.stringify(replay.shopping) !== JSON.stringify(state.shopping)) fail('A Home pillanatkép és az eseménynapló eltér.')
+  if (JSON.stringify(replay.inventory) !== JSON.stringify(state.inventory) || JSON.stringify(replay.shopping) !== JSON.stringify(state.shopping) || JSON.stringify(replay.prepared) !== JSON.stringify(state.prepared)) fail('A Home pillanatkép és az eseménynapló eltér.')
   return state
 }
 const clone = value => structuredClone(value)
@@ -54,7 +62,7 @@ const change = (collection, before, after) => ({ collection, id: (after || befor
 const equal = (a, b) => JSON.stringify(a) === JSON.stringify(b)
 function applyChanges(state, changes) {
   for (const entry of changes) {
-    if (!['inventory', 'shopping'].includes(entry.collection) || !equal(record(state, entry.collection, entry.id), entry.before)) fail('A tétel azóta megváltozott. Biztonságos kézi javítás szükséges.')
+    if (!['inventory', 'shopping', 'prepared'].includes(entry.collection) || !equal(record(state, entry.collection, entry.id), entry.before)) fail('A tétel azóta megváltozott. Biztonságos kézi javítás szükséges.')
     const index = state[entry.collection].findIndex(item => item.id === entry.id)
     if (index >= 0) state[entry.collection].splice(index, 1)
     if (entry.after) state[entry.collection].push(clone(entry.after))
@@ -93,6 +101,57 @@ export function applyHomeCommand(current, command) {
     const expiryKind = expiryDate ? payload.expiryKind : null
     if (expiryDate && !['bestBefore', 'useBy'].includes(expiryKind)) fail('Válassz dátumtípust.')
     changes = [change('inventory', null, { id, householdId: state.householdId, name: cleanName(payload.name), ...q, storageLocation: payload.storageLocation, evidenceStatus: 'confirmed', sourceType: command.sourceType || 'manual', sourceId: command.sourceId || null, originEventId: eventId, lastConfirmationEventId: eventId, observedAt: stamp, confirmedAt: stamp, createdAt: stamp, updatedAt: stamp, expiryDate, expiryKind })]
+  } else if (type === 'PurchaseConfirmed') {
+    if (payload.confirmed !== true || command.sourceType !== 'financeReceiptLine' ||
+      typeof command.sourceId !== 'string' || !/^[^:]{1,160}:[^:]{1,160}$/.test(command.sourceId))
+      fail('Csak tételes, forrásazonosítós és külön jóváhagyott blokk alapján vételezhetsz be.')
+    const q = quantity(payload.quantity, payload.unit)
+    if (q.quantityBase <= 0 || !LOCATIONS.includes(payload.storageLocation)) fail('Érvényes bekerülő mennyiséget és helyet válassz.')
+    const id = uuid()
+    changes = [change('inventory', null, {
+      id, householdId: state.householdId, name: cleanName(payload.name), ...q,
+      storageLocation: payload.storageLocation, evidenceStatus: 'confirmed',
+      sourceType: 'financeReceiptLine', sourceId: command.sourceId, originEventId: eventId,
+      lastConfirmationEventId: eventId, observedAt: stamp, confirmedAt: stamp,
+      createdAt: stamp, updatedAt: stamp, expiryDate: null, expiryKind: null,
+    })]
+  } else if (type === 'CookingConfirmed') {
+    if (payload.confirmed !== true || !Array.isArray(payload.ingredients) || !payload.ingredients.length)
+      fail('A főzéshez külön jóváhagyás és igazolt hozzávalók szükségesek.')
+    const count = Number(payload.portions)
+    if (!Number.isSafeInteger(count) || count <= 0) fail('A készétel adagjainak száma pozitív egész legyen.')
+    const allocations = new Map()
+    for (const input of payload.ingredients) {
+      const stock = record(state, 'inventory', input.lotId)
+      if (!stock || stock.evidenceStatus !== 'confirmed') fail('A megjelölt alapanyag nincs megerősítve.')
+      const used = quantity(input.quantity, input.unit)
+      if (used.dimension !== stock.dimension || used.quantityBase <= 0)
+        fail('A főzéshez nem kompatibilis vagy nulla mennyiség tartozik.')
+      allocations.set(stock.id, (allocations.get(stock.id) || 0) + used.quantityBase)
+      if (!Number.isSafeInteger(allocations.get(stock.id))) fail('Túl nagy mennyiség.')
+    }
+    for (const [id, used] of allocations) {
+      const stock = record(state, 'inventory', id)
+      if (used > stock.quantityBase) fail('A főzés nem vonhat le a rendelkezésre állónál többet.')
+      changes.push(change('inventory', stock, { ...stock, quantityBase: stock.quantityBase - used,
+        observedAt: stamp, confirmedAt: stamp, updatedAt: stamp, lastConfirmationEventId: eventId }))
+    }
+    const preparedId = uuid()
+    changes.push(change('prepared', null, {
+      id: preparedId, householdId: state.householdId, name: cleanName(payload.recipeName),
+      sourceRecipeId: String(payload.recipeId || ''), cookingEventId: eventId,
+      portionsPrepared: count, portionsRemaining: count,
+      storageLocation: LOCATIONS.includes(payload.storageLocation) ? payload.storageLocation : 'fridge',
+      confirmedAt: stamp, updatedAt: stamp,
+    }))
+  } else if (type === 'PreparedPortionConsumed') {
+    if (payload.confirmed !== true) fail('A készétel fogyasztását külön erősítsd meg.')
+    const finished = record(state, 'prepared', payload.id)
+    if (!finished) fail('A készétel-tétel nem található.')
+    const count = Number(payload.portions)
+    if (!Number.isSafeInteger(count) || count <= 0 || count > finished.portionsRemaining)
+      fail('A készételből nem fogyasztható el több adag a meglévőnél.')
+    changes = [change('prepared', finished, { ...finished, portionsRemaining: finished.portionsRemaining - count, updatedAt: stamp })]
   } else if (type === 'LotEdited') {
     if (!lot) fail('A készlettétel nem található.')
     const q = quantity(payload.quantity, payload.unit)
