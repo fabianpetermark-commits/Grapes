@@ -525,6 +525,30 @@
       .phone { width: 100%; height: 100dvh; border: 0; border-radius: 0; box-shadow: none; }
       .phone::before { display: none; }
     }
+  
+    /* Grapes main menu: navigation-only hierarchy, no module state or data changes. */
+    .hub-grid, .hub-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .hub-card, .hub-option { display: flex; flex-direction: column; align-items: flex-start; width: 100%; min-width: 0; color: var(--text); text-align: left; cursor: pointer; background: linear-gradient(155deg, var(--raised) 0%, var(--surface) 40%, var(--surface) 100%); border: 1px solid var(--line); border-radius: 21px; }
+    .hub-card { min-height: 190px; justify-content: space-between; padding: 19px 15px 17px; gap: 23px; }
+    .hub-card__icon, .hub-option__icon { display: grid; place-items: center; color: var(--accent); background: rgb(59 220 242 / 9%); border: 1px solid rgb(59 220 242 / 17%); border-radius: 18px; }
+    .hub-card__icon { width: 61px; height: 61px; }
+    .hub-card__icon svg { width: 35px; height: 35px; }
+    .hub-card__copy { display: grid; gap: 7px; min-width: 0; }
+    .hub-card strong { font-size: 19px; line-height: 1.15; letter-spacing: -.025em; }
+    .hub-card small { color: var(--muted); font-size: 11px; line-height: 1.55; overflow-wrap: anywhere; }
+    .hub-option { min-height: 142px; justify-content: space-between; padding: 17px 14px; gap: 14px; }
+    .hub-option__icon { width: 52px; height: 52px; border-radius: 16px; }
+    .hub-option__icon svg { width: 30px; height: 30px; }
+    .hub-option strong { font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
+    .hub-card:focus-visible, .hub-option:focus-visible, .hub-back:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .hub-card:active, .hub-option:active { border-color: var(--accent); }
+    .hub-back { display: inline-flex; align-items: center; min-height: 44px; margin: -8px 0 14px; padding: 0 4px; color: var(--accent); background: none; border: 0; font-size: 13px; font-weight: 750; cursor: pointer; }
+    @media (max-width: 360px) {
+      .hub-grid, .hub-options { gap: 9px; }
+      .hub-card { min-height: 178px; padding: 15px 12px; }
+      .hub-card strong { font-size: 18px; }
+      .hub-card__icon { width: 56px; height: 56px; }
+    }
   </style>
   <link rel="stylesheet" href="../src/home/home-mobile.css">
 </head>
@@ -555,15 +579,53 @@
 
         <div class="content" data-page="home">
           <p class="eyebrow" data-home-greeting>Jó napot</p>
-          <h1>Mit készítünk ma?</h1>
-          <p class="lead">A legfontosabb eszközeid gyorsan, telefonra rendezve.</p>
-          <div class="section-head" style="margin-top:8px"><h2>Alkalmazások</h2><button data-action="filter">Szűrés</button></div>
-          <div class="module-list">
-            <button class="module" data-module="household"><span class="module__icon" data-module-icon="household"></span><span><strong>Home / Háztartás</strong><small>Élelmiszerkészlet és bevásárlólista · ezen az eszközön</small></span><span class="module__arrow">›</span></button>
-            <button class="module" data-module="food"><span class="module__icon" data-module-icon="food"></span><span><strong>Ételnapló</strong><small>Étkezések és napi célok</small></span><span class="module__arrow">›</span></button>
-            <button class="module" data-module="finance"><span class="module__icon" data-module-icon="finance"></span><span><strong>Pénzügyi Napló</strong><small>Kiadások és megtakarítások</small></span><span class="module__arrow">›</span></button>
-            <button class="module" data-module="qr"><span class="module__icon" data-module-icon="qr"></span><span><strong>QR Stúdió</strong><small>QR-kódok és kampánylinkek</small></span><span class="module__arrow">›</span></button>
-            <button class="module" data-module="ebook"><span class="module__icon" data-module-icon="ebook"></span><span><strong>E-book Könyvtár</strong><small>Könyvek és e-olvasó</small></span><span class="module__arrow">›</span></button>
+          <h1>Miben segíthetünk?</h1>
+          <p class="lead">Válassz egy területet, és minden eszközöd kéznél lesz.</p>
+          <div class="hub-grid" aria-label="Grapes főmodulok">
+            <button type="button" class="hub-card" data-menu-group="home"><span class="hub-card__icon" data-module-icon="household"></span><span class="hub-card__copy"><strong>Home</strong><small>Bevásárlólista · Készletkezelő</small></span></button>
+            <button type="button" class="hub-card" data-menu-group="health"><span class="hub-card__icon" data-module-icon="health"></span><span class="hub-card__copy"><strong>Health</strong><small>Food · Receptek · Statisztika</small></span></button>
+            <button type="button" class="hub-card" data-menu-group="utility"><span class="hub-card__icon" data-module-icon="utility"></span><span class="hub-card__copy"><strong>Utility</strong><small>E-book · QR modul</small></span></button>
+            <button type="button" class="hub-card" data-menu-group="finance"><span class="hub-card__icon" data-module-icon="finance"></span><span class="hub-card__copy"><strong>Finance</strong><small>Pénzügyi napló</small></span></button>
+          </div>
+        </div>
+
+        <div class="content" data-page="hub-home" hidden>
+          <button type="button" class="hub-back" data-menu-back>‹ Főmenü</button>
+          <p class="eyebrow">Home / Háztartás</p><h1>Otthon</h1>
+          <p class="lead">Bevásárlás és élelmiszerkészlet egy helyen.</p>
+          <div class="hub-options" aria-label="Home almodulok">
+            <button type="button" class="hub-option" data-menu-destination="shopping"><span class="hub-option__icon" data-module-icon="shopping"></span><strong>Bevásárlólista</strong></button>
+            <button type="button" class="hub-option" data-menu-destination="inventory"><span class="hub-option__icon" data-module-icon="household"></span><strong>Készletkezelő</strong></button>
+          </div>
+        </div>
+
+        <div class="content" data-page="hub-health" hidden>
+          <button type="button" class="hub-back" data-menu-back>‹ Főmenü</button>
+          <p class="eyebrow">Health</p><h1>Egészség és táplálkozás</h1>
+          <p class="lead">A meglévő Food funkciók és adatok közvetlen elérése.</p>
+          <div class="hub-options" aria-label="Health almodulok">
+            <button type="button" class="hub-option" data-menu-destination="food"><span class="hub-option__icon" data-module-icon="food"></span><strong>Food</strong></button>
+            <button type="button" class="hub-option" data-menu-destination="recipes"><span class="hub-option__icon" data-module-icon="recipe"></span><strong>Receptek</strong></button>
+            <button type="button" class="hub-option" data-menu-destination="stats"><span class="hub-option__icon" data-module-icon="stats"></span><strong>Statisztika</strong></button>
+          </div>
+        </div>
+
+        <div class="content" data-page="hub-utility" hidden>
+          <button type="button" class="hub-back" data-menu-back>‹ Főmenü</button>
+          <p class="eyebrow">Utility</p><h1>Eszközök</h1>
+          <p class="lead">Könyvtár és QR Stúdió, a meglévő funkciókkal.</p>
+          <div class="hub-options" aria-label="Utility almodulok">
+            <button type="button" class="hub-option" data-menu-destination="ebook"><span class="hub-option__icon" data-module-icon="ebook"></span><strong>E-book</strong></button>
+            <button type="button" class="hub-option" data-menu-destination="qr"><span class="hub-option__icon" data-module-icon="qr"></span><strong>QR modul</strong></button>
+          </div>
+        </div>
+
+        <div class="content" data-page="hub-finance" hidden>
+          <button type="button" class="hub-back" data-menu-back>‹ Főmenü</button>
+          <p class="eyebrow">Finance</p><h1>Pénzügyek</h1>
+          <p class="lead">A megszokott pénzügyi modul változatlanul.</p>
+          <div class="hub-options" aria-label="Finance almodulok">
+            <button type="button" class="hub-option" data-menu-destination="finance"><span class="hub-option__icon" data-module-icon="finance"></span><strong>Pénzügyi napló</strong></button>
           </div>
         </div>
 
