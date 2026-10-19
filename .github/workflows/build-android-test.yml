@@ -79,17 +79,6 @@ jobs:
       - name: Browser regression test (E-book reader)
         if: always()
         run: node tests/android-ebook-reader.browser.mjs
-      - name: Upload menu previews
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: grapes-menu-preview
-          path: |
-            grapes-menu-main-preview.png
-            grapes-menu-health-preview.png
-            grapes-menu-settings-preview.png
-          if-no-files-found: warn
-          retention-days: 7
       # Native Android compilation is expensive and is NOT needed for every
       # Food/recept/HTML change. Only a specifically requested preview builds
       # an APK here. The official signed QA release builds once in its own job.
