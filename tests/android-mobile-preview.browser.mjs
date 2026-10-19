@@ -54,7 +54,7 @@ try {
 
   assert.equal(await page.locator('[data-account-card]').count(), 0, 'A fiókkártya nem maradhat a kezdőlapon.')
   assert.equal(await page.locator('[data-recent-projects]').count(), 0, 'A legutóbbi projektek blokk nem maradhat a kezdőlapon.')
-  assert.equal(await page.locator('[data-page="home"] .module__icon svg').count(), 5, 'Minden kezdőlapi modulnak egységes SVG ikon kell.')
+  assert.equal(await page.locator('[data-page="home"] .hub-card__icon svg').count(), 4, 'Mind a négy főmodulnak egységes SVG ikon kell.')
   assert.match(await page.locator('[data-home-greeting]').textContent(), /^Jó (reggelt|napot|estét)$/)
   await page.evaluate(() => window.dispatchEvent(new CustomEvent('grapes:android-update', { detail: { versionCode: 99, versionName: 'Grapes 99', notes: 'Tesztfrissítés' } })))
   assert.equal(await page.locator('[data-notifications-badge]').isVisible(), true, 'Az új frissítésnek jelvényt kell mutatnia.')
@@ -113,7 +113,8 @@ try {
 
   await page.locator('[data-nav="home"]').click()
 
-  await page.locator('[data-module="food"]').last().click()
+  await page.locator('[data-menu-group="health"]').click()
+  await page.locator('[data-page="hub-health"] [data-menu-destination="food"]').click()
   await page.locator('[data-page="food"]').waitFor({ state: 'visible' })
   await page.locator('[data-food-meals] .meal').first().waitFor()
   assert.equal(await page.locator('[data-food-overview] [data-food-health-auto], [data-food-overview] [data-food-yazio-auto], [data-food-overview] [data-food-sync-refresh], [data-food-overview] [data-food-inbox]').count(), 0, 'Az import-, kézi szinkron- és megosztáskártyák ne maradjanak a Food főoldalon.')
@@ -318,14 +319,16 @@ try {
   await page.waitForFunction(() => !document.querySelector('[data-food-health-sheet]')?.classList.contains('is-open'))
   await page.locator('[data-nav="home"]').click()
   await page.locator('[data-page="home"]').waitFor({ state: 'visible' })
-  await page.locator('[data-module="food"]').last().click()
+  await page.locator('[data-menu-group="health"]').click()
+  await page.locator('[data-page="hub-health"] [data-menu-destination="food"]').click()
   await page.locator('[data-page="food"]').waitFor({ state: 'visible' })
   await page.locator('[data-water-open]').click()
   assert.equal((await page.locator('[data-water-total]').textContent()).replace(/\s/g, ''), '550ml')
   await page.screenshot({ path: 'mobile-water.png', fullPage: true })
 
   await page.locator('[data-nav="home"]').click()
-  await page.locator('[data-module="ebook"]').click()
+  await page.locator('[data-menu-group="utility"]').click()
+  await page.locator('[data-page="hub-utility"] [data-menu-destination="ebook"]').click()
   await page.locator('[data-page="ebook"]').waitFor({ state: 'visible' })
   await page.screenshot({ path: 'mobile-ebook-library.png', fullPage: true })
 
