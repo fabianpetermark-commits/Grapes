@@ -15,7 +15,7 @@ jobs:
     if: >-
       github.repository == 'fabianpetermark-commits/Grapes' &&
       github.ref == 'refs/heads/ci/home-m1-debug-apk-20261019' &&
-      github.event.head_commit.message == 'ci(TEST): produce Home M1 debug APK once'
+      github.event.head_commit.message == 'ci(TEST): repair Home M1 debug APK checkout'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -31,11 +31,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Verify Home M1 source commit is the direct parent
+          fetch-depth: 3
+      - name: Verify reviewed Home M1 source ancestry
         run: |
           set -euo pipefail
-          ACTUAL_PARENT="$(git rev-parse HEAD^)"
-          test "$ACTUAL_PARENT" = '9405963f77ec8b87df61ae807e42fd01eb21932e'
+          test "$(git rev-parse HEAD^)" = '94c917a5bd7881befba8c71700fc266fb217b5c1'
+          test "$(git rev-parse HEAD^^)" = '9405963f77ec8b87df61ae807e42fd01eb21932e'
       - uses: actions/setup-node@v4
         with:
           node-version: 24
