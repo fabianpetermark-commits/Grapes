@@ -1,0 +1,55 @@
+name: Food OFF and USDA native Android checks
+
+on:
+  pull_request:
+    branches:
+      - integration/grapes-test-food-20261017
+    paths:
+      - src/food/**
+      - src/android-bridge.js
+      - android-health-connect-poc/**
+      - tests/food-*.test.js
+      - .github/workflows/food-off-usda-native-checks.yml
+
+permissions:
+  contents: read
+
+jobs:
+  food-native-qa:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    env:
+      VITE_GRAPES_TEST_CHANNEL: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: USDA and OFF contract tests
+        run: |
+          node --test tests/food-api.test.js tests/food-catalog-search.test.js tests/food-off-usda-integration.test.js tests/food-usda-online.test.js
+      - name: Build Android web assets
+        run: npm run build:android-web
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Install Android SDK 36
+        run: |
+          SDKMANAGER=$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | sort -V | tail -1)
+          "$SDKMANAGER" "platforms;android-36" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.11.1
+      - name: Compile isolated TEST Android variant, no release
+        run: gradle --project-dir android-health-connect-poc :app:assembleQa
+      - name: Verify isolated TEST identity
+        run: |
+          APK="android-health-connect-poc/app/build/outputs/apk/qa/app-qa.apk"
+          test -f "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "package: name='hu.grapes.healthconnect.test'"
