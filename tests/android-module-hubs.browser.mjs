@@ -57,6 +57,13 @@ try {
   await page.locator('[data-page="hub-home"] [data-menu-destination="inventory"]').click()
   await page.locator('[data-page="household"]').waitFor({ state: 'visible' })
   assert.equal(await page.locator('[data-household-inventory]').isVisible(), true)
+  await page.locator('[data-household-tab="m2"]').click()
+  assert.equal(await page.locator('[data-household-m2]').isVisible(), true, 'A Home M2 külön belső fül, a meglévő M1 mellett.')
+  assert.equal(await page.locator('[data-m2-recipes] .household-card').count(), 0, 'Food adatot csak külön engedéllyel olvasunk.')
+  await page.locator('[data-m2-food-read]').click()
+  assert.match(await page.locator('[data-m2-source-status]').textContent(), /Csak az aktuális profil/)
+  await page.locator('[data-m2-finance-read]').click()
+  assert.match(await page.locator('[data-m2-receipts]').textContent(), /nem tárol ellenőrzött, tételes/)
   await page.evaluate(() => window.grapesHandleAndroidBack())
   await page.locator('[data-page="hub-home"] [data-menu-back]').click()
   await page.locator('[data-page="home"]').waitFor({ state: 'visible' })
@@ -67,8 +74,22 @@ try {
   assert.equal(await page.locator('[data-page="food"] [data-food-overview]').isVisible(), false)
   await page.locator('[data-food-recipes-back]').click()
   await page.locator('[data-page="hub-health"]').waitFor({ state: 'visible' })
+  await page.evaluate(() => {
+    window.__statsFlash = []
+    const monitor = () => {
+      const food = document.querySelector('[data-page="food"]')
+      const sheet = document.querySelector('[data-food-stats-sheet]')
+      if (sheet?.classList.contains('is-open')) return
+      if (food && !food.hidden) window.__statsFlash.push('Food overview visible before Statistics')
+      requestAnimationFrame(monitor)
+    }
+    requestAnimationFrame(monitor)
+  })
   await page.locator('[data-page="hub-health"] [data-menu-destination="stats"]').click()
   await page.locator('[data-food-stats-sheet].is-open').waitFor({ state: 'visible' })
+  assert.deepEqual(await page.evaluate(() => window.__statsFlash), [], 'A köztes Food-oldal egyetlen frame-re sem villanhat fel.')
+  assert.equal(await page.locator('[data-food-stats-sheet]').evaluate(node => getComputedStyle(node).transform),
+    'matrix(1, 0, 0, 1, 0, 0)', 'A közvetlen statisztikanyitás nem csúsztat át a Food fölött.')
   await page.evaluate(() => window.grapesHandleAndroidBack())
   await page.locator('[data-page="hub-health"]').waitFor({ state: 'visible' })
   await page.locator('[data-page="hub-health"] [data-menu-destination="food"]').click()
