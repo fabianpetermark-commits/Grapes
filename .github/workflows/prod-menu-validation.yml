@@ -1,0 +1,51 @@
+name: Grapes PROD menu safe rollout checks
+
+on:
+  pull_request:
+    branches:
+      - codex/android-app
+    paths:
+      - design/**
+      - src/**
+      - tests/**
+      - .github/workflows/prod-menu-validation.yml
+      - android-health-connect-poc/**
+
+permissions:
+  contents: read
+
+jobs:
+  menu-validation:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
+      VITE_GOOGLE_APP_ID: '991532871119'
+      VITE_GOOGLE_PICKER_API_KEY: ${{ secrets.GOOGLE_PICKER_API_KEY }}
+      VITE_GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Core unit tests
+        run: npm test
+      - name: Android web build
+        run: npm run build:android-web
+      - name: Home inventory and shopping browser
+        run: node tests/android-home-mobile.browser.mjs
+      - name: Approved 2x2 menu, neon gear and Food icon
+        run: node tests/android-module-hubs.browser.mjs
+      - name: Existing Android shell regressions
+        run: node tests/android-mobile-preview.browser.mjs
+      - name: Recipe ingredient editor
+        run: node tests/android-recipe-ingredient.browser.mjs
+      - name: E-book shelf and reader
+        run: |
+          node tests/android-ebook-shelf.browser.mjs
+          node tests/android-ebook-reader.browser.mjs
