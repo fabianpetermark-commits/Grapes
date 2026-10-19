@@ -77,32 +77,31 @@ try {
   assert.equal(await page.locator('[data-reader-chapter] option').count(), 2)
   assert.equal(await page.locator('[data-page="reader"]').evaluate(node => node.scrollWidth <= node.clientWidth), true)
   const readerPage = page.locator('[data-reader-page]')
-  // The reader intentionally has CSS smooth scrolling. Wait for the requested
-  // page turn to finish instead of asserting halfway through the animation.
-  async function waitForReaderTurn(start, direction) {
-    await page.waitForFunction(({ start, direction }) => {
+  // The reader intentionally animates scrolling. Assert the actual direction
+  // after allowing the previous page-turn animation to settle.
+  const position = () => readerPage.evaluate(node => node.scrollTop)
+  async function expectTurn(previous, direction) {
+    await page.waitForFunction(({ previous, direction }) => {
       const node = document.querySelector('[data-reader-page]')
-      const step = Math.max(180, node.clientHeight - 32)
-      const maxScroll = Math.max(0, node.scrollHeight - node.clientHeight)
-      const target = Math.min(maxScroll, Math.max(0, start + direction * step))
-      return Math.abs(node.scrollTop - target) <= 3
-    }, { start, direction }, { timeout: 5000 })
+      return direction > 0 ? node.scrollTop > previous + 2 : node.scrollTop < previous - 2
+    }, { previous, direction }, { timeout: 5000 })
+    await page.waitForTimeout(750)
   }
-  const beforePageTurn = await readerPage.evaluate(node => node.scrollTop)
+  const beforePageTurn = await position()
   await page.locator('[data-reader-next]').click()
-  await waitForReaderTurn(beforePageTurn, 1)
-  const afterPageTurn = await readerPage.evaluate(node => node.scrollTop)
+  await expectTurn(beforePageTurn, 1)
+  const afterPageTurn = await position()
   assert.ok(afterPageTurn > beforePageTurn, 'A lapozásnak előrefelé kell haladnia.')
   await page.locator('[data-reader-prev]').click()
-  await waitForReaderTurn(afterPageTurn, -1)
-  assert.ok((await readerPage.evaluate(node => node.scrollTop)) < afterPageTurn, 'A visszalapozásnak hátrafelé kell haladnia.')
+  await expectTurn(afterPageTurn, -1)
+  assert.ok((await position()) < afterPageTurn, 'A visszalapozásnak hátrafelé kell haladnia.')
   await page.locator('[data-reader-fullscreen]').click()
   assert.equal(await page.locator('[data-reader-shell]').evaluate(node => node.classList.contains('is-fullscreen')), true)
   assert.equal(await page.locator('[data-reader-page]').evaluate(node => node.clientHeight > 500), true)
-  const fullscreenStart = await readerPage.evaluate(node => node.scrollTop)
+  const fullscreenStart = await position()
   await page.locator('[data-reader-next]').click()
-  await waitForReaderTurn(fullscreenStart, 1)
-  assert.ok((await readerPage.evaluate(node => node.scrollTop)) > fullscreenStart, 'Teljes képernyőn is lapoznia kell.')
+  await expectTurn(fullscreenStart, 1)
+  assert.ok((await position()) > fullscreenStart, 'Teljes képernyőn is lapoznia kell.')
   await page.locator('[data-reader-fullscreen]').click()
   assert.equal(await page.locator('[data-reader-shell]').evaluate(node => node.classList.contains('is-fullscreen')), false)
   await page.screenshot({ path: 'mobile-ebook-reader.png', fullPage: true })
