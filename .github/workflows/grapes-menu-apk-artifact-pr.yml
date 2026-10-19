@@ -1,0 +1,103 @@
+name: Grapes new menu TEST debug APK (reviewed PR artifact)
+
+on:
+  pull_request:
+    branches:
+      - feature/mobile-module-hubs-test-20261019
+    paths:
+      - .github/workflows/grapes-menu-apk-artifact-pr.yml
+
+permissions:
+  contents: read
+
+jobs:
+  qa-debug-apk:
+    if: >-
+      github.repository == 'fabianpetermark-commits/Grapes' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'ci/grapes-menu-apk-artifact-20261019' &&
+      github.base_ref == 'feature/mobile-module-hubs-test-20261019'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
+      VITE_GOOGLE_APP_ID: '991532871119'
+      VITE_GOOGLE_PICKER_API_KEY: ${{ secrets.GOOGLE_PICKER_API_KEY }}
+      VITE_GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
+      GRAPES_VERSION_CODE: '12'
+      GRAPES_VERSION_NAME: '0.9.3-menu-preview'
+      ANDROID_TEST_KEYSTORE_PATH: ''
+      ANDROID_KEYSTORE_PATH: ''
+    steps:
+      - name: Check out exact reviewed source from same repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Verify successful menu CI source ancestry
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = 'b3364c2f4e298ac3f566a8ecc9d3cac7dd4149ad'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Run all core unit tests
+        run: npm test
+      - name: Build Android web assets
+        run: npm run build:android-web
+      - name: Recipe ingredient browser regression
+        run: node tests/android-recipe-ingredient.browser.mjs
+      - name: Home household M1 browser regression
+        run: node tests/android-home-mobile.browser.mjs
+      - name: Grapes 2x2 menu navigation browser regression
+        run: node tests/android-module-hubs.browser.mjs
+      - name: Existing Android shell browser regression
+        run: node tests/android-mobile-preview.browser.mjs
+      - name: E-book library browser regression
+        run: node tests/android-ebook-shelf.browser.mjs
+      - name: E-book reader browser regression
+        run: node tests/android-ebook-reader.browser.mjs
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK 36
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | sort -V | tail -1)"
+          "$SDKMANAGER" "platforms;android-36" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.11.1
+      - name: Compile isolated QA APK (runner debug signing)
+        run: gradle --project-dir android-health-connect-poc :app:assembleQa
+      - name: Verify TEST identity, version, signing, and artifact checksum
+        run: |
+          set -euo pipefail
+          APK='android-health-connect-poc/app/build/outputs/apk/qa/app-qa.apk'
+          test -s "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" |
+            grep -F "package: name='hu.grapes.healthconnect.test'"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" |
+            grep -F "versionCode='12'"
+          CERT_INFO="$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$APK")"
+          printf '%s\n' "$CERT_INFO" | grep -Fi 'Signer #1 certificate SHA-256 digest:'
+          if printf '%s\n' "$CERT_INFO" | grep -Fi 'Signer #1 certificate SHA-256 digest: cc9dc997fa4bff3845884afd2f011efe939c02806f91393a1ddb0455b6a2ff33'; then
+            echo 'ERROR: persistent QA signing key detected on debug-only branch'
+            exit 1
+          fi
+          (cd android-health-connect-poc/app/build/outputs/apk/qa && sha256sum app-qa.apk > app-qa.apk.sha256)
+      - name: Upload debug APK as private workflow artifact only (never release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: grapes-menu-m1-test-debug-apk
+          path: |
+            android-health-connect-poc/app/build/outputs/apk/qa/app-qa.apk
+            android-health-connect-poc/app/build/outputs/apk/qa/app-qa.apk.sha256
+          if-no-files-found: error
+          retention-days: 3
