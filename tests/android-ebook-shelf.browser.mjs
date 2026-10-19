@@ -9,6 +9,8 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const baseUrl = 'http://127.0.0.1:43129'
 const executablePath = [
   process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+  '/usr/bin/chromium',
+  '/usr/bin/google-chrome',
   'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
   'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
 ].filter(Boolean).find(existsSync)
@@ -51,7 +53,8 @@ try {
   await page.goto(`${baseUrl}/Grapes/design/android-mobile-preview.html`, { waitUntil: 'domcontentloaded' })
   await page.waitForTimeout(500)
   if (await page.locator('#app').isHidden()) throw new Error(JSON.stringify({ pageErrors, session: await page.evaluate(() => sessionStorage.getItem('grapes-drive-session')) }))
-  await page.locator('[data-module="ebook"]').first().click()
+  await page.locator('[data-menu-group="utility"]').click()
+  await page.locator('[data-page="hub-utility"] [data-menu-destination="ebook"]').click()
   await page.locator('[data-ebook-books] .book-tile').first().waitFor()
   assert.equal(await page.locator('[data-ebook-books] .book-tile').count(), 2)
   assert.equal(await page.locator('[data-ebook-books] .book-tile strong').first().textContent(), 'Valódi könyv')

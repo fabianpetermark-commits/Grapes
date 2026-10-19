@@ -10,6 +10,8 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const baseUrl = 'http://127.0.0.1:43130'
 const executablePath = [
   process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+  '/usr/bin/chromium',
+  '/usr/bin/google-chrome',
   'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
   'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
 ].filter(Boolean).find(existsSync)
@@ -66,31 +68,52 @@ try {
   const errors = []
   page.on('pageerror', error => errors.push(error.message))
   await page.goto(`${baseUrl}/Grapes/design/android-mobile-preview.html`, { waitUntil: 'domcontentloaded' })
-  await page.locator('[data-module="ebook"]').first().click()
+  await page.locator('[data-menu-group="utility"]').click()
+  await page.locator('[data-page="hub-utility"] [data-menu-destination="ebook"]').click()
   await page.getByRole('button', { name: 'Olvasás folytatása' }).waitFor()
   await page.getByRole('button', { name: 'Olvasás folytatása' }).click()
   await page.getByText('Valódi EPUB szöveg a telefonos olvasó teszteléséhez.').first().waitFor()
   assert.equal(await page.locator('[data-page="reader"]').isVisible(), true)
   assert.equal(await page.locator('[data-reader-chapter] option').count(), 2)
   assert.equal(await page.locator('[data-page="reader"]').evaluate(node => node.scrollWidth <= node.clientWidth), true)
-  const beforePageTurn = await page.locator('[data-reader-page]').evaluate(node => node.scrollTop)
+  const readerPage = page.locator('[data-reader-page]')
+  // The reader intentionally animates scrolling. Assert the actual direction
+  // after allowing the previous page-turn animation to settle.
+  const position = () => readerPage.evaluate(node => node.scrollTop)
+  async function expectTurn(previous, direction) {
+    await page.waitForFunction(({ previous, direction }) => {
+      const node = document.querySelector('[data-reader-page]')
+      return direction > 0 ? node.scrollTop > previous + 2 : node.scrollTop < previous - 2
+    }, { previous, direction }, { timeout: 5000 })
+    await page.waitForTimeout(750)
+  }
+  const beforePageTurn = await position()
   await page.locator('[data-reader-next]').click()
-  const afterPageTurn = await page.locator('[data-reader-page]').evaluate(node => node.scrollTop)
-  assert.equal(afterPageTurn > beforePageTurn, true)
+  await expectTurn(beforePageTurn, 1)
+  const afterPageTurn = await position()
+  assert.ok(afterPageTurn > beforePageTurn, 'A lapozásnak előrefelé kell haladnia.')
   await page.locator('[data-reader-prev]').click()
-  assert.equal(await page.locator('[data-reader-page]').evaluate((node, previousPosition) => node.scrollTop < previousPosition, afterPageTurn), true)
+  await expectTurn(afterPageTurn, -1)
+  assert.ok((await position()) < afterPageTurn, 'A visszalapozásnak hátrafelé kell haladnia.')
   await page.locator('[data-reader-fullscreen]').click()
   assert.equal(await page.locator('[data-reader-shell]').evaluate(node => node.classList.contains('is-fullscreen')), true)
   assert.equal(await page.locator('[data-reader-page]').evaluate(node => node.clientHeight > 500), true)
-  const fullscreenStart = await page.locator('[data-reader-page]').evaluate(node => node.scrollTop)
+  const fullscreenStart = await position()
   await page.locator('[data-reader-next]').click()
-  assert.equal(await page.locator('[data-reader-page]').evaluate((node, previousPosition) => node.scrollTop > previousPosition, fullscreenStart), true)
+  await expectTurn(fullscreenStart, 1)
+  assert.ok((await position()) > fullscreenStart, 'Teljes képernyőn is lapoznia kell.')
   await page.locator('[data-reader-fullscreen]').click()
   assert.equal(await page.locator('[data-reader-shell]').evaluate(node => node.classList.contains('is-fullscreen')), false)
   await page.screenshot({ path: 'mobile-ebook-reader.png', fullPage: true })
   await page.locator('[data-reader-page]').evaluate(node => { node.scrollTop = Math.max(1, node.scrollHeight * .7); node.dispatchEvent(new Event('scroll')) })
-  await page.waitForTimeout(1500)
-  assert.equal(savedProgress.length > 0, true)
+  // Progress sync follows a debounced save and multiple mocked Drive reads.
+  // Wait for the actual write instead of assuming it finishes within 1500ms.
+  for (let attempt = 0; attempt < 70 && !savedProgress.length; attempt++) {
+    await page.waitForTimeout(100)
+  }
+  const localReading = await page.evaluate(() => localStorage.getItem('grapes-ebook-reading-progress-v1'))
+  assert.ok(localReading?.includes('book-1'), 'Olvasási pozíció mentése legalább helyben kötelező.')
+  assert.ok(savedProgress.length > 0, 'A Drive olvasási pozíció frissítésének megtörténtét is ellenőrizni kell.')
   assert.equal(savedProgress.at(-1).books['book-1'].chapterId, 'one')
   await page.locator('[data-page="reader"] [data-ebook-view="transfer"]').click()
   assert.equal(await page.locator('[data-page="transfer"]').isVisible(), true)
