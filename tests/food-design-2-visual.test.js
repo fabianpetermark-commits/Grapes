@@ -24,7 +24,10 @@ test('Food Design 2.0 phase 1 keeps the existing navigation, screen order and fi
 
   const tabKeys = [...html.matchAll(/data-food-recipe-tab="(basics|ingredient|list|image|import)"/g)].map(match => match[1])
   assert.deepEqual(tabKeys, ['basics', 'ingredient', 'list', 'image', 'import'])
-  const navigation = [...html.matchAll(/data-nav="(home|projects|sync|more)"/g)].map(match => match[1])
+  const navStart = getIndex('<nav class="bottom-nav"')
+  const navEnd = html.indexOf('</nav>', navStart)
+  assert.ok(navEnd > navStart)
+  const navigation = [...html.slice(navStart, navEnd).matchAll(/data-nav="(home|projects|sync|more)"/g)].map(match => match[1])
   assert.deepEqual(navigation, ['home', 'projects', 'sync', 'more'])
 })
 
