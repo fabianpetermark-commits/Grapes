@@ -33,3 +33,16 @@
 .household-actions button { flex: 1 1 120px; }
 .household-undo { width: 100%; margin-top: 12px; }
 @media (max-width: 359px) { .household-toolbar { grid-template-columns: 1fr; } .household-card-actions button { flex-basis: 110px; } }
+
+/* Home M2: recipe and finance read-only previews stay within the existing UI tokens. */
+.household-m2-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin-bottom: 12px; }
+.household-m2-actions button { min-width: 0; overflow-wrap: anywhere; font-size: 12px; }
+[data-household-m2] h3 { margin: 20px 2px 10px; font-size: 15px; }
+[data-household-m2] .household-head h2 { margin: 2px 0 8px; font-size: 21px; }
+[data-household-m2] .household-head p, .household-m2-note { color: var(--muted); font-size: 12px; line-height: 1.5; }
+.household-m2-ingredient { min-width: 0; margin: 12px 0; padding: 12px; border: 1px solid var(--line); border-radius: 13px; }
+.household-m2-ingredient legend { max-width: 100%; padding: 0 4px; overflow-wrap: anywhere; font-weight: 700; }
+.household-m2-ingredient label { display: block; min-width: 0; }
+.household-m2-ingredient select, .household-m2-ingredient input { width: 100%; min-width: 0; margin-top: 6px; }
+[data-household-m2] input[type="checkbox"] { width: auto; min-height: auto; margin-right: 6px; }
+@media(max-width:359px) { .household-m2-actions { grid-template-columns: 1fr; } }
