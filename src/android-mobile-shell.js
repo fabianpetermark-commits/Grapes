@@ -1075,11 +1075,6 @@ $('[data-food-stats-back]').addEventListener('click', event => {
   event.stopImmediatePropagation()
   showPage('hub-health')
 }, true)
-$('[data-module]').forEach(button => button.addEventListener('click', () => {
-  const module = button.dataset.module
-  if (module === 'food' || module === 'ebook' || module === 'household') showPage(module)
-  else openModule(module)
-}))
 $$('[data-module]').forEach(button => button.addEventListener('click', () => {
   const module = button.dataset.module
   if (module === 'food' || module === 'ebook' || module === 'household') showPage(module)
