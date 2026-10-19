@@ -7,6 +7,9 @@ function parse(raw) {
   if (raw == null) return null
   let value
   try { value = JSON.parse(raw) } catch { throw new Error('A Home helyi mentése sérült JSON. Az eredeti adat megőrizve.') }
+  // The v1 snapshot is upgraded in memory only. The original JSON remains
+  // untouched until an explicit, verified Home write succeeds.
+  if (value?.schemaVersion === 1) value = { ...value, schemaVersion: 2, prepared: [] }
   try { return validateHomeState(value) } catch (error) { throw new Error(`A Home helyi mentése nem olvasható: ${error.message} Az eredeti adat megőrizve.`) }
 }
 
