@@ -39,6 +39,9 @@ try {
     ['home', 'health', 'utility', 'finance'])
   assert.equal(await page.locator('[data-page="home"] .hub-card__icon svg').count(), 4)
   assert.match(await page.locator('[data-menu-group="health"]').textContent(), /Food.*Receptek.*Statisztika/)
+  assert.equal(await page.locator('.bottom-nav, .nav-item').count(), 0, 'Nincs párhuzamos alsó navigáció.')
+  assert.equal(await page.locator('.appbar [data-nav="home"]').count(), 1)
+  assert.equal(await page.locator('.appbar [data-nav="more"] svg').count(), 1, 'A jobb felső beállítások ikon legyen SVG fogaskerék.')
 
   for (const width of [320, 360, 390, 412]) {
     await page.setViewportSize({ width, height: 844 })
@@ -46,6 +49,7 @@ try {
     assert.ok(documentWidth <= viewport, `Kilóg a főmenü ${width}px szélességen.`)
   }
   await page.setViewportSize({ width: 390, height: 844 })
+  await page.screenshot({ path: 'grapes-menu-main-preview.png' })
 
   await page.locator('[data-menu-group="home"]').click()
   assert.equal(await page.locator('[data-page="hub-home"]').isVisible(), true)
@@ -62,6 +66,11 @@ try {
   await page.locator('[data-page="home"]').waitFor({ state: 'visible' })
 
   await page.locator('[data-menu-group="health"]').click()
+  const foodIcon = page.locator('[data-page="hub-health"] [data-menu-destination="food"] .hub-option__icon svg path')
+  assert.match(await foodIcon.getAttribute('d'), /^M5 3v6/)
+  assert.ok(await foodIcon.evaluate(path => path.getBBox().width > 0), 'A Food SVG valóban kirajzolódik.')
+  assert.equal(await page.locator('[data-page="hub-health"] .hub-option__icon').first().evaluate(node => getComputedStyle(node).color), 'rgb(59, 220, 242)')
+  await page.screenshot({ path: 'grapes-menu-health-preview.png' })
   await page.locator('[data-page="hub-health"] [data-menu-destination="recipes"]').click()
   await page.locator('[data-page="food"] [data-food-recipes-view]').waitFor({ state: 'visible' })
   assert.equal(await page.locator('[data-page="food"] [data-food-overview]').isVisible(), false)
@@ -87,10 +96,19 @@ try {
   assert.equal(await page.locator('[data-page="hub-finance"] [data-menu-destination="finance"]').count(), 1)
   await page.locator('[data-page="hub-finance"] [data-menu-back]').click()
 
-  await page.locator('.bottom-nav [data-nav="projects"]').click()
+  await page.locator('.appbar [data-nav="more"]').click()
+  await page.locator('[data-page="more"]').waitFor({ state: 'visible' })
+  await page.screenshot({ path: 'grapes-menu-settings-preview.png' })
+  await page.locator('[data-page="more"] [data-nav="projects"]').click()
   await page.locator('[data-page="projects"]').waitFor({ state: 'visible' })
-  await page.locator('.bottom-nav [data-nav="home"]').click()
+  await page.locator('.appbar [data-nav="more"]').click()
+  await page.locator('[data-page="more"] [data-nav="sync"]').click()
+  await page.locator('[data-page="sync"]').waitFor({ state: 'visible' })
+  await page.locator('.appbar [data-nav="home"]').click()
   assert.equal(await page.locator('[data-page="home"]').isVisible(), true)
+  for (const name of ['home', 'hub-home', 'hub-health', 'hub-utility', 'hub-finance', 'household', 'food', 'ebook', 'projects', 'sync', 'more']) {
+    assert.equal(await page.locator(`[data-page="${name}"] .bottom-nav`).count(), 0, `Alsó navigáció maradt: ${name}`)
+  }
   assert.deepEqual(pageErrors, [])
   console.log('Grapes 2x2 hubs: Home lista/készlet, Health Food/Receptek/Statisztika, Utility E-book, Finance, 320–412 px, back és Projektek: OK')
 } finally {
