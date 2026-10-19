@@ -747,6 +747,72 @@
       white-space: nowrap;
       font-variant-numeric: tabular-nums;
     }
+    /* Recipe detail: the reference hero's four visible nutrition values.
+       Presentational numbers use existing calculated recipe data only. */
+    [data-page="food"] .food-recipe-nutrition-panel {
+      display: grid;
+      gap: 12px;
+      margin: 0 0 14px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 17px;
+      background: var(--surface);
+    }
+    [data-page="food"] .food-recipe-nutrition-panel__head {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+    }
+    [data-page="food"] .food-recipe-nutrition-panel__head strong {
+      color: var(--text);
+      font-size: 17px;
+      font-weight: 750;
+    }
+    [data-page="food"] .food-recipe-nutrition-panel__head span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+    [data-page="food"] .food-recipe-nutrition-panel__grid {
+      display: grid;
+      grid-template-columns: repeat(4,minmax(0,1fr));
+      gap: 7px;
+      min-width: 0;
+    }
+    [data-page="food"] .food-recipe-nutrition-item {
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      gap: 4px;
+      min-width: 0;
+      min-height: 72px;
+      padding: 8px 3px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--raised);
+      text-align: center;
+    }
+    [data-page="food"] .food-recipe-nutrition-item strong {
+      color: var(--text);
+      font-size: 16px;
+      line-height: 1.15;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      overflow-wrap: anywhere;
+    }
+    [data-page="food"] .food-recipe-nutrition-item span {
+      font-size: 11px;
+      line-height: 1.25;
+      color: var(--muted);
+      overflow-wrap: anywhere;
+    }
+    [data-page="food"] .food-recipe-nutrition-panel__note {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
     /* MEAL / RECIPE DETAIL – existing actions and recipe copy retained. */
     [data-page="food"] .food-detail-head {
       gap: 11px;
@@ -1282,6 +1348,14 @@
           <section data-food-recipe-detail hidden>
             <div class="food-detail-head"><button type="button" data-food-recipe-back aria-label="Vissza">‹</button><div><h1 data-food-recipe-title>Recept</h1><p data-food-recipe-copy></p></div><button type="button" class="food-share" data-food-recipe-share aria-label="Recept megosztása">⌯</button></div>
             <img class="food-recipe-detail-image" data-food-recipe-detail-image alt="Recept képe" hidden>
+            <section class="food-recipe-nutrition-panel" data-food-recipe-nutrients aria-label="Recept tápértéke">
+              <div class="food-recipe-nutrition-panel__head">
+                <strong data-food-recipe-nutrition-title>Tápérték</strong>
+                <span data-food-recipe-nutrition-yield>Összetevők alapján számítva</span>
+              </div>
+              <div class="food-recipe-nutrition-panel__grid" data-food-recipe-nutrition-grid></div>
+              <p class="food-recipe-nutrition-panel__note" data-food-recipe-nutrition-note></p>
+            </section>
             <div class="food-entry-card" data-food-recipe-content></div>
             <button class="primary module-cta" type="button" data-food-recipe-edit>Recept szerkesztése</button>
             <button class="secondary module-cta" type="button" data-food-recipe-delete>Recept törlése</button>
