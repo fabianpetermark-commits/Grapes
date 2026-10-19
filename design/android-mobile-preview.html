@@ -1058,6 +1058,57 @@
       background: var(--bg);
       border-top: 1px solid var(--line);
     }
+    /* Statistics visuals retain their chart structure and interactions. */
+    [data-food-stats-sheet] [data-food-stats-visuals] {
+      display: grid;
+      gap: 12px;
+      min-width: 0;
+    }
+    [data-food-stats-sheet] [data-food-stats-visuals] > .food-entry-card,
+    [data-food-stats-sheet] [data-food-stats-content] > .food-entry-card {
+      padding: 17px;
+      margin: 0;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 17px;
+      box-shadow: none;
+    }
+    [data-food-stats-sheet] [data-food-stats-visuals] .food-entry-card > strong,
+    [data-food-stats-sheet] [data-food-stats-content] .food-entry-card > strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 16px;
+      line-height: 1.35;
+    }
+    [data-food-stats-sheet] [data-food-stats-visuals] .food-entry-card :is(p,span,div),
+    [data-food-stats-sheet] [data-food-stats-content] .food-entry-card :is(p,span,div) {
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    [data-food-stats-sheet] [data-food-stats-visuals] [role="group"] > button {
+      background: var(--accent) !important;
+      opacity: .9 !important;
+      box-shadow: none;
+    }
+    [data-food-stats-sheet] [data-food-stats-visuals] [role="group"] > button:focus-visible {
+      opacity: 1 !important;
+      outline: 2px solid var(--text);
+      outline-offset: 2px;
+    }
+    [data-food-stats-sheet] [data-food-stats-content] .sheet-result {
+      min-height: 56px;
+      padding: 12px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 13px;
+    }
+    [data-food-stats-sheet] [data-food-stats-content] .sheet-result strong {
+      font-size: 14px;
+    }
+    [data-food-stats-sheet] [data-food-stats-content] .sheet-result span {
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+    }
     /* Charts, time/nutrient selection and daily targets – same hierarchy. */
     [data-food-stats-sheet] .food-stats-controls { gap: 10px; }
     [data-food-stats-sheet] .food-stats-controls label {
