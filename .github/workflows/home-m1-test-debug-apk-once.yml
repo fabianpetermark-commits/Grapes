@@ -15,13 +15,15 @@ jobs:
     if: >-
       github.repository == 'fabianpetermark-commits/Grapes' &&
       github.ref == 'refs/heads/ci/home-m1-debug-apk-20261019' &&
-      github.event.head_commit.message == 'ci(TEST): repair Home M1 debug APK checkout'
+      github.event.head_commit.message == 'ci(TEST): preserve E-book API config in Home preview'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
       VITE_GRAPES_TEST_CHANNEL: '1'
       VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
       VITE_GOOGLE_APP_ID: '991532871119'
+      VITE_GOOGLE_PICKER_API_KEY: ${{ secrets.GOOGLE_PICKER_API_KEY }}
+      VITE_GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
       GRAPES_VERSION_CODE: '11'
       GRAPES_VERSION_NAME: '0.9.2-home-preview'
       ANDROID_TEST_KEYSTORE_PATH: ''
@@ -31,12 +33,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: false
-          fetch-depth: 3
+          fetch-depth: 4
       - name: Verify reviewed Home M1 source ancestry
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = '94c917a5bd7881befba8c71700fc266fb217b5c1'
-          test "$(git rev-parse HEAD^^)" = '9405963f77ec8b87df61ae807e42fd01eb21932e'
+          test "$(git rev-parse HEAD^)" = 'a466972eebb224d5e371c753e74af674f25caddf'
+          test "$(git rev-parse HEAD^^)" = '94c917a5bd7881befba8c71700fc266fb217b5c1'
+          test "$(git rev-parse HEAD^^^)" = '9405963f77ec8b87df61ae807e42fd01eb21932e'
       - uses: actions/setup-node@v4
         with:
           node-version: 24
