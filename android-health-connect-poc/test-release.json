@@ -1,5 +1,5 @@
 {
-  "versionCode": 10,
-  "versionName": "0.9.1",
-  "notes": "Grapes TEST 0.9.1: Finomítottuk az Ételnapló kalóriakörét a Grapes egységes cián (#3BDCF2) színével. Most csak a ténylegesen kitöltött ív kap nagyon visszafogott fényt; az üres rész sötét marad. 0%-nál, hiányzó napi célnál vagy ismeretlen tápértéknél nincs hamis világítás. Az „Elfogyasztva” felirat olvashatóbb lett, a statisztika gomb változatlan. A korábbi TEST-adatok, a külön TEST Drive és a többi modul megmarad. Telepítsd frissítésként a meglévő Grapes TEST alkalmazásra; ne töröld az appot és az adatait."
+  "versionCode": 13,
+  "versionName": "0.9.4",
+  "notes": "Grapes TEST 0.9.4: Új, kétszer kettes főmenü Home, Health, Utility és Finance kártyákkal. A Home alatt közvetlenül elérhető a Bevásárlólista és a Készletkezelő, a Health alatt külön a Food, a Receptek és a Statisztika, a Utility alatt az E-book és a QR modul, a Finance alatt a pénzügyi napló. A Home M1 helyben tárolt készlet- és bevásárlólista-alapfunkciókat tartalmaz. A meglévő Food, recept-, statisztikai, E-book-, Finance-, YAZIO-, Health Connect- és Drive-adatkezelés nem változik. Ez a tartós TEST-aláírással készülő, alkalmazáson belül felajánlott frissítés; a korábbi, ugyanilyen aláírású Grapes TEST-re telepítsd, az appot és az adatokat ne töröld. Egy korábbi, külön debug-aláírt előnézetre Android-aláírásütközés miatt nem települhet közvetlenül."
 }
