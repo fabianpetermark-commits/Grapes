@@ -319,7 +319,7 @@ async function openUpdateInbox() {
   openSheet($('[data-notifications-sheet]'))
 }
 
-function showPage(page, { parent = '', entry = '' } = {}) {
+function showPage(page, { parent = '', entry = '', skipFoodLoad = false } = {}) {
   // Remember only the menu origin. Reader/transfer views inherit E-book's origin.
   if (!['reader', 'transfer'].includes(page) || parent) {
     menuReturnPage = parent
@@ -342,7 +342,7 @@ function showPage(page, { parent = '', entry = '' } = {}) {
     household.load()
     if (entry === 'shopping' || entry === 'inventory') household.openTab(entry)
   }
-  if (page === 'food') mobileFood?.load().then(async () => {
+  if (page === 'food' && !skipFoodLoad) mobileFood?.load().then(async () => {
     // A delayed load must not open a sheet on a different screen.
     if (activePage !== 'food' || (entry && menuEntry !== entry)) return
     if (entry) mobileFood?.openNavigationView(entry)
@@ -999,13 +999,49 @@ $$('[data-menu-group]').forEach(button => button.addEventListener('click', () =>
   if (['home', 'health', 'utility', 'finance'].includes(group)) showPage('hub-' + group)
 }))
 $$('[data-menu-back]').forEach(button => button.addEventListener('click', () => showPage('home')))
-$$('[data-menu-destination]').forEach(button => button.addEventListener('click', () => {
+// The Statistics entry is a full-screen destination, not a Food overview
+// followed by a sheet. Keep Health visible while its data loads, and switch
+// the page + open the sheet in one paint-free operation.
+let statsNavigationToken = 0
+async function openHealthStats(button) {
+  const token = ++statsNavigationToken
+  button.disabled = true
+  button.setAttribute('aria-busy', 'true')
+  try {
+    await mobileFood.load()
+    if (token !== statsNavigationToken || activePage !== 'hub-health') return
+    const statsSheet = $('[data-food-stats-sheet]')
+    const oldTransition = statsSheet.style.transition
+    statsSheet.style.transition = 'none'
+    try {
+      showPage('food', { parent: 'hub-health', entry: 'stats', skipFoodLoad: true })
+      mobileFood.openNavigationView('stats')
+      if (!statsSheet.classList.contains('is-open')) throw new Error('A Statisztika nem nyílt meg.')
+    } finally {
+      // The first visible paint is already the statistics page.
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        statsSheet.style.transition = oldTransition
+      }))
+    }
+    mobileFood.autoImportHealth().catch(() => {})
+    mobileFood.autoImportYazio().catch(() => {})
+  } catch (err) {
+    if (activePage === 'food') showPage('hub-health')
+    showToast(err?.message || 'A Statisztika most nem tölthető be.')
+  } finally {
+    button.disabled = false
+    button.removeAttribute('aria-busy')
+  }
+}
+$('[data-menu-destination]').forEach(button => button.addEventListener('click', () => {
   const destination = button.dataset.menuDestination
   const parent = button.closest('[data-page]')?.dataset.page
   if (!['hub-home', 'hub-health', 'hub-utility', 'hub-finance'].includes(parent)) return
   if (parent === 'hub-home' && ['inventory', 'shopping'].includes(destination)) {
     showPage('household', { parent, entry: destination })
-  } else if (parent === 'hub-health' && ['food', 'recipes', 'stats'].includes(destination)) {
+  } else if (parent === 'hub-health' && destination === 'stats') {
+    openHealthStats(button)
+  } else if (parent === 'hub-health' && ['food', 'recipes'].includes(destination)) {
     showPage('food', { parent, entry: destination === 'food' ? 'overview' : destination })
   } else if (parent === 'hub-utility' && destination === 'ebook') {
     showPage('ebook', { parent, entry: destination })
