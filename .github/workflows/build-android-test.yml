@@ -1,0 +1,114 @@
+name: Grapes TEST fast checks (manual APK only)
+
+on:
+  push:
+    branches:
+      - integration/grapes-test-food-20261017
+      - feature/mobile-module-hubs-test-20261019
+    paths:
+      - android-health-connect-poc/**
+      - src/**
+      - design/**
+      - public/**
+      - index.html
+      - package.json
+      - package-lock.json
+      - vite.config.js
+      - tests/**
+      - .github/workflows/release-android-test.yml
+      - .github/workflows/build-android-test.yml
+  pull_request:
+    branches:
+      - fix/food-existing-features-20261017
+      - integration/grapes-test-food-20261017
+      - integration/home-m1-grapes-test-20261019
+    paths:
+      - android-health-connect-poc/**
+      - src/**
+      - design/**
+      - public/**
+      - index.html
+      - package.json
+      - package-lock.json
+      - vite.config.js
+      - tests/**
+      - .github/workflows/build-android-test.yml
+      - .github/workflows/release-android-test.yml
+  # Explicitly requested debug preview only. Normal PR/push runs never build
+  # or upload an APK; signed installable updates come from release workflow.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A new commit supersedes older quick-check runs instead of queuing another
+# whole web build. Manual debug builds must never be cancelled by a push.
+concurrency:
+  group: grapes-test-checks-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || 'auto' }}
+  cancel-in-progress: true
+
+jobs:
+  fast-validation:
+    runs-on: ubuntu-latest
+    env:
+      VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
+      VITE_GOOGLE_APP_ID: 991532871119
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GOOGLE_PICKER_API_KEY: ${{ secrets.GOOGLE_PICKER_API_KEY }}
+      VITE_GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build:android-web
+      - name: Browser regression test (recipe ingredient search and selection)
+        run: node tests/android-recipe-ingredient.browser.mjs
+      - name: Browser regression test (Home household M1)
+        run: node tests/android-home-mobile.browser.mjs
+      - name: Browser regression test (new category menu and shortcuts)
+        run: node tests/android-module-hubs.browser.mjs
+      - name: Browser regression test (existing Android mobile shell)
+        run: node tests/android-mobile-preview.browser.mjs
+      - name: Browser regression test (E-book library)
+        if: always()
+        run: node tests/android-ebook-shelf.browser.mjs
+      - name: Browser regression test (E-book reader)
+        if: always()
+        run: node tests/android-ebook-reader.browser.mjs
+      # Native Android compilation is expensive and is NOT needed for every
+      # Food/recept/HTML change. Only a specifically requested preview builds
+      # an APK here. The official signed QA release builds once in its own job.
+      - uses: actions/setup-java@v4
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK 36
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          SDKMANAGER=$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | sort -V | tail -1)
+          "$SDKMANAGER" "platforms;android-36" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          gradle-version: 8.11.1
+      - name: Build QA variant (debug-signed preview only)
+        if: github.event_name == 'workflow_dispatch'
+        run: gradle --project-dir android-health-connect-poc :app:assembleQa
+      - name: Check isolated package identity
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          APK="android-health-connect-poc/app/build/outputs/apk/qa/app-qa.apk"
+          test -f "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" \
+            | grep -F "package: name='hu.grapes.healthconnect.test'"
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          name: grapes-test-preview-apk
+          path: android-health-connect-poc/app/build/outputs/apk/qa/app-qa.apk
+          if-no-files-found: error

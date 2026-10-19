@@ -1,5 +1,9 @@
 const ICON_PATHS = {
-  food: '<path d="M5 3v6a3 3 0 0 0 6 0V3M8 3v18M17 3v18M17 3c2.2 1.2 3.5 3.7 3.5 7H17"/>',
+  household: '<path d="M3 10.5 12 3l9 7.5V21H3zM8 21v-7h8v7M6 10h.01M18 10h.01"/>',
+  shopping: '<path d="M3 5h2l2 11h12l2-8H6M8 20h.01M18 20h.01M9 8h10"/>',
+  stats: '<path d="M4 20V4M4 20h16M8 16v-5M13 16V7M18 16v-9"/>',
+  utility: '<path d="M3.5 7h8v9h-8zM14 4h7v7h-7zM14 14h7v7h-7zM7.5 3v4M16 7h3M7.5 16v4"/>',
+  food: '<path d=""M5 3v6a3 3 0 0 0 6 0V3M8 3v18M17 3v18M17 3c2.2 1.2 3.5 3.7 3.5 7H17"/>',
   finance: '<path d="M4 6.5h13.5A2.5 2.5 0 0 1 20 9v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6.5A2.5 2.5 0 0 1 5.5 4H17M15 12h5M16.5 12h.01"/>',
   qr: '<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM15 14h2v2h-2zM19 14h1v3h-3v3h-3v-2M19 19h1v1h-1z"/>',
   ebook: '<path d="M4 5.5A3.5 3.5 0 0 1 7.5 4H11v16H7.5A3.5 3.5 0 0 0 4 21.5zM20 5.5A3.5 3.5 0 0 0 16.5 4H13v16h3.5a3.5 3.5 0 0 1 3.5 1.5z"/>',

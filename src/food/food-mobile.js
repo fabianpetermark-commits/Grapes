@@ -1,11 +1,19 @@
-import { calculateRecipeFood, createEmptyFoodProject, createFoodId, currentTargets, entriesForLocalDay, foodBackupFromJson, foodBackupToJson, normalizeDiaryEntry, normalizeFoodItem, normalizeFoodProject, normalizeRecipe, normalizeTargets, summarizeEntries } from './food-data.js'
+import { calculateRecipeFood, createEmptyFoodProject, createFoodId, currentTargets, entriesForLocalDay, foodBackupFromJson, foodBackupToJson, normalizeDiaryEntry, normalizeFoodItem, normalizeFoodProject, normalizeRecipe, normalizeTargets, summarizeEntries, missingRecipeNutrients } from './food-data.js'
 import { acceptMealShare, acceptRecipeShare, rememberSharingContact } from './food-sharing.js'
 import { listFoodShares, loadFoodShare, setFoodShareState } from './food-sharing-client.js'
 import { lookupOpenFoodFactsProduct } from './food-api.js'
 import { searchFoodCatalog } from './food-catalog-search.js'
 import { searchFoods, foodSourceLabel } from './food-search.js'
+import { groupFoodSearchResults, reusableManualFood } from './food-duplicate-choices.js'
+import { recipeIngredientMatches } from './recipe-ingredient-search.js'
+import { suggestedRecipeYield } from './recipe-yield-preview.js'
+import { RECIPE_NUTRIENTS, applyVerifiedRecipeNutrientRepairs, manualRecipeBaseUnit, prepareRecipeIngredientFood, recipeUnitNeedsConversion, recipeUnitOptions, recipeNutrientInputs, suggestVerifiedRecipeNutrientRepairs } from './recipe-ingredient-draft.js'
 import { firstProductBarcode } from './food-barcode.js'
-import { searchVerifiedUsdaFoods } from './usda-foods.js'
+import { searchVerifiedUsdaFoods, verifiedUsdaFood } from './usda-foods.js'
+import { HUNGARIAN_USDA_CATALOG } from './hungarian-food-catalog.js'
+import { createHungarianFoodIndex, resolveHungarianFood } from './food-search-method.js'
+import { createRecipeEditorExtras } from './recipe-editor-extras.js'
+import { bindInstructionsEditor, getInstructionsFromEditor, instructionsDisplayHtml, setInstructionsEditor } from './recipe-instructions.js'
 import { createMobileYazio } from './food-mobile-yazio.js'
 import { readYazioApiBundle } from './yazio-api-import.js'
 import { prepareYazioImport } from './food-yazio-import.js'
@@ -18,12 +26,13 @@ import { mobileIconSvg } from '../android-mobile-icons.js'
 
 const MODULE = 'Ételnapló'
 const PROJECT_NAME = 'Ételnapló'
+const RECIPE_IMPORT_INDEX = createHungarianFoodIndex(HUNGARIAN_USDA_CATALOG)
 const MEALS = [
   ['breakfast', 'Reggeli', 'breakfast'], ['morningSnack', 'Tízórai', 'morningSnack'], ['lunch', 'Ebéd', 'lunch'],
   ['afternoonSnack', 'Uzsonna', 'afternoonSnack'], ['dinner', 'Vacsora', 'dinner'],
 ]
 const LABELS = Object.fromEntries(MEALS.map(([id, label]) => [id, label]))
-const UNIT_LABELS = { g: 'g', ml: 'ml', serving: 'adag', piece: 'db', slice: 'szelet', package: 'csomag' }
+const UNIT_LABELS = { g: 'g', dkg: 'dkg', kg: 'kg', ml: 'ml', dl: 'dl', l: 'L', tsp: 'teáskanál', tbsp: 'evőkanál', pinch: 'csipet', serving: 'adag', piece: 'db', slice: 'szelet', package: 'csomag' }
 
 const localDate = (date = new Date()) => new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
 const number = (value, digits = 0) => new Intl.NumberFormat('hu-HU', { maximumFractionDigits: digits }).format(Number(value) || 0)
@@ -63,13 +72,23 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   let searchTimer = null
   let searchGeneration = 0
   let expandedSearchQuery = ''
+  let expandedManualFoodGroups = new Set()
   let foodSearchFilter = 'all'
   let foodSearchRenderState = { remoteFoods: [], loading: false, remoteError: '' }
   let pendingHealthImport = null
   let editingRecipeId = ''
+  let recipeYieldManuallySet = false
   let editingRecipeIngredientId = ''
   let recipeIngredients = []
+  let recipeIngredientSearchTimer = null
+  let recipeIngredientSearchGeneration = 0
+  let recipeIngredientRemoteFoods = []
+  let recipeIngredientLoading = false
+  let recipeIngredientSearchError = ''
+  let recipeIngredientChoices = new Map()
+  let recipeNutrientSelection = ''
   let recipeEditorSnapshot = ''
+  let recipeDraftFoods = []
   let recipeCatalogActive = false
   let barcodeStream = null
   let barcodeScanTimer = null
@@ -77,6 +96,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   const updateSubtitle = subtitle => root.dispatchEvent(new CustomEvent('grapes:food-subtitle', { detail: { subtitle } }))
 
   const $ = selector => root.querySelector(selector)
+  const recipeExtras = createRecipeEditorExtras({ root, onApplyImport: applyImportedRecipe })
   const localProjectId = (profileId = profile?.id) => `food-tracker-${profileId}`
   const accountProfile = () => {
     const account = getGrapesAccount() || {}
@@ -361,16 +381,20 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-day-copy]').textContent = `${date.toLocaleDateString('hu-HU', { month: 'long', day: 'numeric', weekday: 'long' })} · ${new Set(entries.map(item => item.mealType)).size} étkezés`
     $('[data-food-date]').value = selectedDate
     $('[data-food-energy]').textContent = nutrient(totals.energyKcal)
-    $('[data-food-energy-target]').textContent = `${number(targets.energyKcal)} kcal`
     const energyGoal = Number(targets.energyKcal)
     const loggedEnergy = Number(totals.energyKcal)
-    const energyPercent = Number.isFinite(energyGoal) && energyGoal > 0 && Number.isFinite(loggedEnergy)
+    // The ring only shows a progress stroke when the goal and kcal are known.
+    const hasEnergyGoal = targets.energyKcal != null && Number.isFinite(energyGoal) && energyGoal > 0
+    const hasCompleteEnergy = entries.length > 0 && totals.energyKcal != null
+    const energyPercent = hasEnergyGoal && hasCompleteEnergy && Number.isFinite(loggedEnergy)
       ? Math.max(0, Math.min(100, loggedEnergy / energyGoal * 100)) : 0
-    $('[data-food-energy-ring]').style.background = `conic-gradient(#55dff6 0% ${energyPercent}%, #1d2b38 ${energyPercent}% 100%)`
+    const energyRing = $('[data-food-energy-ring]')
+    energyRing.style.setProperty('--energy-progress', String(energyPercent))
+    energyRing.dataset.energyVisible = hasEnergyGoal && hasCompleteEnergy && energyPercent > 0 ? 'true' : 'false'
+    energyRing.dataset.energyState = !hasEnergyGoal || !hasCompleteEnergy ? 'unset' : energyPercent >= 100 ? 'complete' : 'active'
+    $('[data-food-energy-target]').textContent = hasEnergyGoal ? `/ ${number(energyGoal)} kcal` : 'Nincs cél'
     const remaining = Math.max(0, (targets.energyKcal || 0) - (totals.energyKcal || 0))
     // A napi cél üzenete csak ismert, pozitív célérték és teljes kalóriaadat mellett lehet sikeres.
-    const hasEnergyGoal = Number.isFinite(Number(targets.energyKcal)) && Number(targets.energyKcal) > 0
-    const hasCompleteEnergy = entries.length > 0 && totals.energyKcal != null
     const goalReached = hasEnergyGoal && hasCompleteEnergy && totals.energyKcal >= targets.energyKcal
     const isFuture = selectedDate > localDate()
     const isPast = selectedDate < localDate()
@@ -420,10 +444,15 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       energy.className = 'food-recipe__energy'
       try {
         const calculated = calculateRecipeFood(recipe, project.customFoods)
-        const servings = Number(recipe.yieldCount) || 0
+        // Older recipes may have an empty yield but already contain a
+        // finished weight and slice weight. calculateRecipeFood normalizes
+        // that inferred yield; don't read the original blank field.
+        const servings = Number(calculated.recipe.yieldCount) || 0
+        const unit = calculated.recipe.yieldUnit === 'slice' ? 'szelet'
+          : calculated.recipe.yieldUnit === 'piece' ? 'darab' : 'adag'
         energy.textContent = servings > 0 && calculated.totalNutrients.energyKcal != null
-          ? `${number(calculated.totalNutrients.energyKcal / servings)} kcal/adag`
-          : '— kcal/adag'
+          ? `${number(calculated.totalNutrients.energyKcal / servings)} kcal/${unit}`
+          : `— kcal/${unit}`
       } catch {
         energy.textContent = '— kcal/adag'
       }
@@ -508,8 +537,12 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-overview]').hidden = true; $('[data-food-detail]').hidden = true; $('[data-food-recipes-view]').hidden = true; $('[data-food-recipe-detail]').hidden = false
     $('[data-food-recipe-title]').textContent = recipe.name
     $('[data-food-recipe-copy]').textContent = `${recipe.category} · ${recipe.ingredients.length} hozzávaló`
+    const detailImage = $('[data-food-recipe-detail-image]')
+    detailImage.hidden = !recipe.imageUrl
+    if (recipe.imageUrl) detailImage.src = recipe.imageUrl
+    else detailImage.removeAttribute('src')
     const foodNames = new Map(project.customFoods.map(item => [item.id, item.name]))
-    $('[data-food-recipe-content]').innerHTML = `<strong>Hozzávalók</strong>${recipe.ingredients.map(item => `<span>${escapeHtml(foodNames.get(item.foodId) || 'Ismeretlen hozzávaló')} · ${number(item.amount, 2)} ${UNIT_LABELS[item.unit] || item.unit}</span>`).join('')}${recipe.instructions ? `<br><strong>Elkészítés</strong><span>${escapeHtml(recipe.instructions)}</span>` : ''}`
+    $('[data-food-recipe-content]').innerHTML = `<strong>Hozzávalók</strong>${recipe.ingredients.map(item => `<span>${escapeHtml(foodNames.get(item.foodId) || 'Ismeretlen hozzávaló')} · ${number(item.amount, 2)} ${UNIT_LABELS[item.unit] || item.unit}</span>`).join('')}${recipe.instructions ? `<br><strong>Elkészítés</strong><div class="food-recipe-instructions-output">${instructionsDisplayHtml(recipe, root.ownerDocument || document)}</div>` : ''}`
     fab.hidden = true
     updateSubtitle('Recept részletei')
   }
@@ -518,16 +551,19 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     return JSON.stringify({
       name: $('[data-food-recipe-name-input]').value,
       category: $('[data-food-recipe-category-input]').value,
-      instructions: $('[data-food-recipe-instructions-input]').value,
+      ...getInstructionsFromEditor($('[data-food-recipe-instructions-input]')),
       weight: $('[data-food-recipe-weight-input]').value,
       yieldCount: $('[data-food-recipe-yield-input]').value,
       yieldUnit: $('[data-food-recipe-yield-unit]').value,
       unitWeight: $('[data-food-recipe-unit-weight]').value,
+      imageUrl: recipeExtras.getImageUrl(),
       ingredients: recipeIngredients,
     })
   }
 
   function openRecipeCatalog() {
+    clearTimeout(recipeIngredientSearchTimer)
+    recipeIngredientSearchGeneration += 1
     recipeCatalogActive = true
     setAddPageMode(true)
     setFoodSearchFilter('all')
@@ -549,50 +585,248 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const sheet = $('[data-food-recipe-edit-sheet]')
     if (!sheet.classList.contains('is-open')) return true
     if (recipeEditorSnapshot !== recipeEditorState() && !window.confirm('A nem mentett receptmódosítások elvesznek. Bezárod?')) return false
+    clearTimeout(recipeIngredientSearchTimer)
+    recipeIngredientSearchGeneration += 1
     closeSheets()
+    return true
+  }
+
+  function syncRecipeYield() {
+    const input = $('[data-food-recipe-yield-input]')
+    const hint = $('[data-food-recipe-yield-hint]')
+    const automatic = suggestedRecipeYield(
+      $('[data-food-recipe-weight-input]').value,
+      $('[data-food-recipe-unit-weight]').value,
+    )
+    if (!recipeYieldManuallySet) input.value = automatic === null ? '' : String(automatic)
+    if (recipeYieldManuallySet) {
+      hint.textContent = automatic !== null && Math.abs(Number(input.value) - automatic) > 0.001
+        ? 'Kézi hozam: mentéskor az egységtömeget a megadott hozamhoz igazítjuk.'
+        : 'Kézzel megadott hozam. A mező törlésével visszakapcsolható az automatikus számítás.'
+    } else {
+      hint.textContent = automatic === null
+        ? 'A hozam automatikusan kitöltődik, ha a kész tömeg és az egységtömeg is megvan.'
+        : 'Automatikusan számolva a kész tömeg és az egységtömeg alapján. Szabadon átírható.'
+    }
+    renderRecipeSummary()
+  }
+
+  function recipeEditorFoods() { return [...project.customFoods, ...recipeDraftFoods] }
+
+  function applyImportedRecipe(draft) {
+    const title = $('[data-food-recipe-name-input]').value.trim()
+    const instructions = getInstructionsFromEditor($('[data-food-recipe-instructions-input]')).instructions
+    if ((title || instructions || recipeIngredients.length) &&
+      !window.confirm('A beolvasott recept lecseréli a jelenlegi piszkozatot. Folytatod?')) return false
+    const foods = []
+    const ingredients = []
+    const skipped = []
+    const simpleName = name => String(name || '').trim().toLocaleLowerCase('hu-HU')
+    for (const item of draft.ingredients) {
+      if (!item.amount || !item.unit || !item.name) { skipped.push(item.original); continue }
+      const candidate = [...project.customFoods, ...foods]
+        .filter(food => simpleName(food.name) === simpleName(item.name))
+        .sort((a,b) =>
+          ['energyKcal','protein','carbohydrate','fat'].filter(key => b.nutrients[key] != null).length
+          - ['energyKcal','protein','carbohydrate','fat'].filter(key => a.nutrients[key] != null).length)[0]
+      const reference = resolveHungarianFood(item.name, RECIPE_IMPORT_INDEX)
+      const verified = reference.status === 'match' ? verifiedUsdaFood(reference.match) : null
+      let food = candidate || verified
+      if (!food) {
+        food = normalizeFoodItem({
+          id: createFoodId('food'), name:item.name, kind:'manual', category:'Importált hozzávaló',
+          baseUnit:['ml','dl','l'].includes(item.unit) ? 'ml' : 'g',
+          nutrients:{},source:{type:'manual'},
+        })
+      }
+      if (recipeUnitNeedsConversion(food,item.unit)) {
+        skipped.push(item.original + ' (egyedi egységátváltás szükséges)')
+        continue
+      }
+      if (!project.customFoods.some(saved => saved.id === food.id)
+        && !foods.some(staged => staged.id === food.id)) {
+        // Offline catalogue identities have no persisted app ID yet.
+        food = normalizeFoodItem({...food,id:createFoodId('food')})
+        foods.push(food)
+      }
+      ingredients.push({
+        id:createFoodId('ingredient'),foodId:food.id,amount:item.amount,unit:item.unit,
+        servingId:food.servings.find(serving=>serving.unit===item.unit)?.id || '',
+      })
+    }
+    $('[data-food-recipe-name-input]').value=draft.name
+    $('[data-food-recipe-category-input]').value=draft.category
+    setInstructionsEditor($('[data-food-recipe-instructions-input]'), draft.instructions)
+    $('[data-food-recipe-yield-input]').value=draft.yieldCount || ''
+    recipeYieldManuallySet=Boolean(draft.yieldCount)
+    recipeExtras.setImageUrl(draft.imageUrl)
+    recipeDraftFoods=foods
+    recipeIngredients=ingredients
+    syncRecipeYield()
+    renderRecipeEditorIngredients()
+    const status=$('[data-food-recipe-editor-status]')
+    status.textContent=ingredients.length+' összetevő átvéve. '
+      +(skipped.length ? 'Kézzel felveendő: '+skipped.join('; ')+'. ' : '')
+      +'A tápértékeket és az adagolást ellenőrizd mentés előtt.'
+    recipeExtras.setTab(ingredients.length?'list':'basics')
     return true
   }
 
   function openRecipeEditor(id = '') {
     closeSheets()
+    clearTimeout(recipeIngredientSearchTimer)
+    recipeIngredientSearchGeneration += 1
+    recipeIngredientRemoteFoods = []
+    recipeIngredientLoading = false
+    recipeIngredientSearchError = ''
+    recipeIngredientChoices = new Map()
+    recipeNutrientSelection = ''
+    recipeDraftFoods = []
     const recipe = project.recipes.find(item => item.id === id)
     editingRecipeId = recipe?.id || ''
+    // Pre-existing saved yields have unknown provenance; preserve them as
+    // explicit values rather than unexpectedly changing an old recipe.
+    recipeYieldManuallySet = recipe?.yieldCount != null && recipe.yieldCount !== ''
     editingRecipeIngredientId = ''
     recipeIngredients = recipe ? recipe.ingredients.map(item => ({ ...item })) : []
     $('[data-food-recipe-editor-title]').textContent = recipe ? 'Recept szerkesztése' : 'Új recept'
     $('[data-food-recipe-name-input]').value = recipe?.name || ''
     $('[data-food-recipe-category-input]').value = recipe?.category || 'Saját recept'
-    $('[data-food-recipe-instructions-input]').value = recipe?.instructions || ''
+    setInstructionsEditor($('[data-food-recipe-instructions-input]'), recipe?.instructions || '', recipe?.instructionsHtml || '')
     $('[data-food-recipe-weight-input]').value = recipe?.preparedWeight ?? ''
     $('[data-food-recipe-yield-input]').value = recipe?.yieldCount ?? ''
     $('[data-food-recipe-yield-unit]').value = recipe?.yieldUnit || 'serving'
     $('[data-food-recipe-unit-weight]').value = recipe?.averageUnitWeight ?? ''
     $('[data-food-recipe-editor-status]').textContent = ''
+    recipeExtras.open(recipe?.imageUrl || '')
     $('[data-food-recipe-ingredient-search]').value = ''
+    $('[data-food-recipe-conversion-amount]').value = ''
     $('[data-food-recipe-ingredient-add] span').textContent = 'Hozzávaló hozzáadása'
+    syncRecipeYield()
     renderRecipeEditorIngredients()
     recipeEditorSnapshot = recipeEditorState()
     setSheetOpen($('[data-food-recipe-edit-sheet]'), true)
   }
 
-  function renderRecipeEditorIngredients() {
-    const query = $('[data-food-recipe-ingredient-search]').value.trim().toLocaleLowerCase('hu-HU')
-    const foods = project.customFoods.filter(item => item.kind !== 'recipe')
-    const matches = query ? foods.filter(food => food.name.toLocaleLowerCase('hu-HU').includes(query)) : foods
-    const select = $('[data-food-recipe-ingredient-food]'); const selected = select.value
-    select.replaceChildren(...matches.map(food => new Option(food.name, food.id)))
-    if (matches.some(food => food.id === selected)) select.value = selected
-    else if (query) select.selectedIndex = -1 // Never silently use an unrelated ingredient when search has no match.
+  function renderRecipeIngredientChoices() {
+    const query = $('[data-food-recipe-ingredient-search]').value.trim()
+    const verifiedUsdaMatches = query ? searchVerifiedUsdaFoods(query) : []
+    const matches = recipeIngredientMatches(recipeEditorFoods(), query, {
+      verifiedUsdaFoods: verifiedUsdaMatches,
+      remoteFoods: recipeIngredientRemoteFoods,
+      favorites: project.favorites,
+      entries: project.diaryEntries,
+    })
+    const select = $('[data-food-recipe-ingredient-food]')
+    const selected = select.value
+    const previousFood = recipeIngredientChoices.get(selected)
+    recipeIngredientChoices = new Map(matches.map(item => [item.value, item.food]))
+    const placeholder = new Option(
+      !query ? 'Előbb keress hozzávalót…'
+        : recipeIngredientLoading && !matches.length ? 'Keresés folyamatban…'
+          : matches.length ? 'Válassz a találatok közül…' : 'Nincs találat – sajátként menthető',
+      ''
+    )
+    placeholder.disabled = true
+    const options = matches.map(item => new Option(
+      item.food.name + ' · ' + foodSourceLabel(item.food),
+      item.value
+    ))
+    select.replaceChildren(placeholder, ...options)
+    // Never add an unrelated first match without the user's selection.
+    // Catalog row IDs can be reused when queries change; retain a selection
+    // only if its source identity is genuinely the same product.
+    select.value = previousFood && recipeIngredientChoices.has(selected)
+      && foodKey(previousFood) === foodKey(recipeIngredientChoices.get(selected)) ? selected : ''
+    select.disabled = matches.length === 0
     renderRecipeIngredientUnits()
+    const status = $('[data-food-recipe-ingredient-status]')
+    if (!query) status.textContent = 'Keress, olvass be vonalkódot, vagy adj meg saját hozzávalót.'
+    else if (recipeIngredientLoading) status.textContent = matches.length
+      ? matches.length + ' találat · további USDA/OFF keresése…'
+      : 'USDA és Open Food Facts keresése…'
+    else if (recipeIngredientSearchError) status.textContent =
+      (matches.length ? matches.length + ' elérhető találat. ' : '') + recipeIngredientSearchError
+    else if (query.length < 2) status.textContent = matches.length
+      ? matches.length + ' találat · az online kereséshez legalább 2 karakter szükséges.'
+      : 'Az online kereséshez legalább 2 karakter szükséges.'
+    else status.textContent = matches.length
+      ? matches.length + ' találat. Válassz egy ételt a legördülő listából.'
+      : 'Nincs találat. A megadott névvel saját hozzávalóként is hozzáadhatod.'
+  }
+
+  function startRecipeIngredientSearch(query) {
+    clearTimeout(recipeIngredientSearchTimer)
+    const generation = ++recipeIngredientSearchGeneration
+    recipeIngredientRemoteFoods = []
+    recipeIngredientSearchError = ''
+    recipeIngredientLoading = query.trim().length >= 2
+    renderRecipeIngredientChoices()
+    if (!recipeIngredientLoading) return
+    recipeIngredientSearchTimer = setTimeout(async () => {
+      try {
+        const result = await searchFoodCatalog(query)
+        if (generation !== recipeIngredientSearchGeneration
+          || $('[data-food-recipe-ingredient-search]').value !== query) return
+        recipeIngredientRemoteFoods = result.products || []
+        recipeIngredientSearchError = result.unavailable
+          ? 'Az online adatbázis nem érhető el; a mentett és offline USDA-ételek használhatók.'
+          : (result.errors || []).join(' · ')
+      } catch (error) {
+        if (generation !== recipeIngredientSearchGeneration
+          || $('[data-food-recipe-ingredient-search]').value !== query) return
+        recipeIngredientSearchError = error?.message || 'A keresés nem sikerült.'
+      } finally {
+        if (generation === recipeIngredientSearchGeneration) {
+          recipeIngredientLoading = false
+          renderRecipeIngredientChoices()
+        }
+      }
+    }, 900)
+  }
+
+  function renderRecipeEditorIngredients() {
+    renderRecipeIngredientChoices()
+    const foods = recipeEditorFoods().filter(item => item.kind !== 'recipe')
     const names = new Map(foods.map(food => [food.id, food.name]))
+    const missingByFood = new Map(missingRecipeNutrients(recipeIngredients, foods)
+      .map(item => [item.foodId, item.keys]))
+    const possibleRepairs = suggestVerifiedRecipeNutrientRepairs(recipeIngredients, foods)
+    const repairButton = $('[data-food-recipe-nutrients-repair]')
+    repairButton.hidden = !possibleRepairs.length
+    if (possibleRepairs.length) {
+      const count = new Set(possibleRepairs.map(item => item.foodId)).size
+      repairButton.textContent = count + ' ismert hozzávaló tápértékének pótlása'
+    }
     const container = $('[data-food-recipe-ingredients]'); container.replaceChildren()
     if (!recipeIngredients.length) container.innerHTML = '<div class="food-empty">Adj hozzá legalább egy hozzávalót.</div>'
     for (const ingredient of recipeIngredients) {
       const row = document.createElement('div'); row.className = 'sheet-result food-recipe-ingredient-row'
-      row.innerHTML = `<span><strong>${escapeHtml(names.get(ingredient.foodId) || 'Hiányzó étel')}</strong><br>${number(ingredient.amount, 2)} ${UNIT_LABELS[ingredient.unit] || ingredient.unit}</span><button type="button" aria-label="Hozzávaló szerkesztése" data-food-recipe-ingredient-edit="${ingredient.id}">✎</button><button type="button" aria-label="Hozzávaló eltávolítása" data-food-recipe-ingredient-delete="${ingredient.id}">×</button>`
+      const missing = missingByFood.get(ingredient.foodId) || []
+      const short = { energyKcal: 'kcal', protein: 'fehérje', carbohydrate: 'szénhidrát', fat: 'zsír' }
+      const warning = missing.length ? `<small class="food-recipe-missing">Hiányzó adatok: ${escapeHtml(missing.map(key => short[key]).join(', '))}</small>` : ''
+      row.innerHTML = `<span><strong>${escapeHtml(names.get(ingredient.foodId) || 'Hiányzó étel')}</strong><br>${number(ingredient.amount, 2)} ${UNIT_LABELS[ingredient.unit] || ingredient.unit}${warning}</span><button type="button" aria-label="Hozzávaló szerkesztése" data-food-recipe-ingredient-edit="${ingredient.id}">✎</button><button type="button" aria-label="Hozzávaló eltávolítása" data-food-recipe-ingredient-delete="${ingredient.id}">×</button>`
       container.append(row)
     }
     renderRecipeSummary()
+  }
+
+  function repairRecipeIngredientNutrients() {
+    const proposal = suggestVerifiedRecipeNutrientRepairs(recipeIngredients, project.customFoods)
+    if (!proposal.length) return
+    const names = [...new Set(proposal.map(item => item.name))]
+    const confirmed = window.confirm('A hiányzó tápértékeket ellenőrzött, offline USDA-adatokból pótoljuk: '
+      + names.join(', ') + '. Csak ennek a receptnek készülnek új hozzávalómásolatok; '
+      + 'a már mentett ételek, más receptek és korábbi naplóbejegyzések nem változnak. '
+      + 'A pótlást még a Recept mentése gombbal kell véglegesíteni. Folytatod?')
+    if (!confirmed) return
+    const fixed = applyVerifiedRecipeNutrientRepairs(recipeIngredients, project.customFoods)
+    project.customFoods.push(...fixed.addedFoods)
+    recipeIngredients = fixed.ingredients
+    editingRecipeIngredientId = ''
+    $('[data-food-recipe-editor-status]').textContent = names.join(', ')
+      + ': a hiányzó tápértékek pótolva. A változások mentéséhez nyomd meg a Recept mentése gombot.'
+    renderRecipeEditorIngredients()
   }
 
   function renderRecipeSummary() {
@@ -607,29 +841,111 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
         instructions: '', ingredients: recipeIngredients, preparedWeight: optionalNumber('[data-food-recipe-weight-input]'),
         yieldCount: optionalNumber('[data-food-recipe-yield-input]'), yieldUnit: $('[data-food-recipe-yield-unit]').value,
         averageUnitWeight: optionalNumber('[data-food-recipe-unit-weight]'), revision: 1, createdAt: now, updatedAt: now,
-      }, project.customFoods.filter(item => item.kind !== 'recipe'))
-      summary.textContent = `Összesen: ${nutrient(calculated.totalNutrients.energyKcal, 0, ' kcal')} · Fehérje ${nutrient(calculated.totalNutrients.protein, 1, ' g')} · Szénhidrát ${nutrient(calculated.totalNutrients.carbohydrate, 1, ' g')} · Zsír ${nutrient(calculated.totalNutrients.fat, 1, ' g')} · ${number(calculated.preparedWeight, 0)} g kész tömeg`
+      }, recipeEditorFoods().filter(item => item.kind !== 'recipe'))
+      const missing = missingRecipeNutrients(recipeIngredients, recipeEditorFoods())
+      const summaryYield = calculated.recipe.yieldCount
+        ? ` · ${number(calculated.recipe.yieldCount, 2)} ${calculated.recipe.yieldUnit === 'slice' ? 'szelet'
+          : calculated.recipe.yieldUnit === 'piece' ? 'darab' : 'adag'}`
+        : ''
+      const details = missing.length
+        ? '\nHiányzó tápértékek: ' + missing.map(item => item.name + ' (' +
+          item.keys.map(key => ({ energyKcal: 'kalória', protein: 'fehérje', carbohydrate: 'szénhidrát', fat: 'zsír' }[key])).join(', ') + ')').join('; ') +
+          '. Ezek az értékek a naplóban is ismeretlenek lesznek. Szerkeszd a hozzávalót (✎).'
+        : ''
+      summary.textContent = `Összesen: ${nutrient(calculated.totalNutrients.energyKcal, 0, ' kcal')} · Fehérje ${nutrient(calculated.totalNutrients.protein, 1, ' g')} · Szénhidrát ${nutrient(calculated.totalNutrients.carbohydrate, 1, ' g')} · Zsír ${nutrient(calculated.totalNutrients.fat, 1, ' g')} · ${number(calculated.preparedWeight, 0)} g kész tömeg${summaryYield}${details}`
     } catch (error) { summary.textContent = `Összesítés: ${error.message}` }
   }
 
+  function renderRecipeIngredientNutrients(food) {
+    const values = recipeNutrientInputs(food)
+    for (const [key] of RECIPE_NUTRIENTS) {
+      $('[data-food-recipe-nutrient-' + key + ']').value = values[key]
+    }
+  }
+
+  function renderRecipeIngredientConversion() {
+    const food = recipeIngredientChoices.get($('[data-food-recipe-ingredient-food]').value)
+    const unit = $('[data-food-recipe-ingredient-unit]').value
+    const baseUnit = food?.baseUnit || manualRecipeBaseUnit(unit)
+    const required = Boolean(unit) && recipeUnitNeedsConversion(food, unit)
+    const label = $('[data-food-recipe-conversion-label]')
+    label.hidden = !required
+    $('[data-food-recipe-conversion-text]').textContent = required
+      ? '1 ' + (UNIT_LABELS[unit] || unit) + ' hány ' + baseUnit + '? (ennél a hozzávalónál)'
+      : '1 egység átváltása'
+    $('[data-food-recipe-conversion-amount]').placeholder =
+      baseUnit === 'g' ? 'Például 1 ek = 12 g' : 'Például 1 ek = 15 ml'
+  }
+
   function renderRecipeIngredientUnits() {
-    const food = project.customFoods.find(item => item.id === $('[data-food-recipe-ingredient-food]').value)
-    const units = food ? [{ value: food.baseUnit, label: food.baseUnit }, ...food.servings.map(item => ({ value: item.unit, label: item.name }))] : []
-    $('[data-food-recipe-ingredient-unit]').replaceChildren(...units.map(item => new Option(item.label, item.value)))
+    const selectFood = $('[data-food-recipe-ingredient-food]')
+    const food = recipeIngredientChoices.get(selectFood.value)
+    const identity = food ? (selectFood.value + ':' + foodKey(food)) : 'manual:' + $('[data-food-recipe-ingredient-search]').value
+    const sameChoice = identity === recipeNutrientSelection
+    const options = recipeUnitOptions(food)
+    const select = $('[data-food-recipe-ingredient-unit]')
+    const previous = select.value
+    const preferredUnit = food?.baseUnit || 'g'
+    select.replaceChildren(...options.map(([value, label]) => new Option(label, value)))
+    select.value = sameChoice && options.some(([value]) => value === previous) ? previous : preferredUnit
+    if (!sameChoice) {
+      recipeNutrientSelection = identity
+      renderRecipeIngredientNutrients(food)
+      $('[data-food-recipe-conversion-amount]').value = ''
+    }
+    renderRecipeIngredientConversion()
   }
 
   function addRecipeIngredient() {
-    const food = project.customFoods.find(item => item.id === $('[data-food-recipe-ingredient-food]').value)
-    const amount = Number($('[data-food-recipe-ingredient-amount]').value)
+    const selectedValue = $('[data-food-recipe-ingredient-food]').value
+    const chosen = recipeIngredientChoices.get(selectedValue) || null
+    const name = $('[data-food-recipe-ingredient-search]').value.trim()
+    const rawAmount = $('[data-food-recipe-ingredient-amount]').value.trim()
+    const amount = Number(rawAmount)
     const unit = $('[data-food-recipe-ingredient-unit]').value
-    if (!food || !Number.isFinite(amount) || amount <= 0) { $('[data-food-recipe-editor-status]').textContent = 'Válassz ételt és adj meg érvényes mennyiséget.'; return }
-    const ingredient = { id: editingRecipeIngredientId || createFoodId('ingredient'), foodId: food.id, amount, unit, servingId: food.servings.find(item => item.unit === unit)?.id || '' }
-    recipeIngredients = editingRecipeIngredientId
-      ? recipeIngredients.map(item => item.id === editingRecipeIngredientId ? ingredient : item)
-      : [...recipeIngredients, ingredient]
-    editingRecipeIngredientId = ''
-    $('[data-food-recipe-ingredient-add] span').textContent = 'Hozzávaló hozzáadása'
-    renderRecipeEditorIngredients()
+    const status = $('[data-food-recipe-editor-status]')
+    if (!name || !rawAmount || !Number.isFinite(amount) || amount <= 0) {
+      status.textContent = 'Írj be hozzávalónevet és nullánál nagyobb mennyiséget.'
+      return
+    }
+    try {
+      const values = Object.fromEntries(RECIPE_NUTRIENTS.map(([key]) =>
+        [key, $('[data-food-recipe-nutrient-' + key + ']').value.trim()]))
+      const prepared = prepareRecipeIngredientFood({
+        chosen, name: chosen?.name || name, unit, nutrients: values,
+        conversionAmount: $('[data-food-recipe-conversion-amount]').value,
+      })
+      // Reuse existing foods only if their nutrients/conversions were not
+      // changed. Changed values belong to THIS ingredient, not other recipes.
+      const existing = chosen && !prepared.isPrivateCopy
+        ? project.customFoods.find(item => foodKey(item) === foodKey(chosen))
+        : null
+      const food = existing || reusableManualFood(project.customFoods, prepared.food) || prepared.food
+      if (!project.customFoods.some(item => item.id === food.id)) project.customFoods.push(food)
+      // The reused food owns its own serving conversion ID. Do not keep the
+      // transient conversion ID generated by the discarded draft.
+      const servingId = food.id === prepared.food.id ? prepared.servingId
+        : food.servings.find(item => item.unit === unit)?.id || ''
+      const ingredient = {
+        id: editingRecipeIngredientId || createFoodId('ingredient'),
+        foodId: food.id, amount, unit, servingId,
+      }
+      recipeIngredients = editingRecipeIngredientId
+        ? recipeIngredients.map(item => item.id === editingRecipeIngredientId ? ingredient : item)
+        : [...recipeIngredients, ingredient]
+      editingRecipeIngredientId = ''
+      status.textContent = ''
+      $('[data-food-recipe-ingredient-add] span').textContent = 'Hozzávaló hozzáadása'
+      $('[data-food-recipe-ingredient-search]').value = ''
+      $('[data-food-recipe-conversion-amount]').value = ''
+      clearTimeout(recipeIngredientSearchTimer)
+      recipeIngredientSearchGeneration += 1
+      recipeIngredientRemoteFoods = []
+      recipeIngredientSearchError = ''
+      recipeIngredientLoading = false
+      recipeNutrientSelection = ''
+      renderRecipeEditorIngredients()
+    } catch (error) { status.textContent = error?.message || 'A hozzávaló nem adható hozzá.' }
   }
 
   function saveRecipe() {
@@ -640,13 +956,27 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       const recipe = normalizeRecipe({
         id: existing?.id || createFoodId('recipe'), foodId: existing?.foodId || createFoodId('food'), ownerProfileId: profile.id,
         variantOfRecipeId: existing?.variantOfRecipeId || '', name: $('[data-food-recipe-name-input]').value,
-        category: $('[data-food-recipe-category-input]').value, imageUrl: existing?.imageUrl || '', instructions: $('[data-food-recipe-instructions-input]').value,
+        category: $('[data-food-recipe-category-input]').value, imageUrl: recipeExtras.getImageUrl(),
+        ...getInstructionsFromEditor($('[data-food-recipe-instructions-input]')),
         ingredients: recipeIngredients, preparedWeight: optionalNumber('[data-food-recipe-weight-input]'),
         yieldCount: optionalNumber('[data-food-recipe-yield-input]'), yieldUnit: $('[data-food-recipe-yield-unit]').value,
         averageUnitWeight: optionalNumber('[data-food-recipe-unit-weight]'), revision: existing ? existing.revision + 1 : 1,
         createdAt: existing?.createdAt || now, updatedAt: now,
       })
-      const calculated = calculateRecipeFood(recipe, project.customFoods.filter(item => item.kind !== 'recipe'))
+      const calculated = calculateRecipeFood(recipe, recipeEditorFoods().filter(item => item.kind !== 'recipe'))
+      const missing = missingRecipeNutrients(recipe.ingredients, recipeEditorFoods())
+      if (missing.length) {
+        const labels = { energyKcal: 'kalória', protein: 'fehérje', carbohydrate: 'szénhidrát', fat: 'zsír' }
+        const details = missing.map(item =>
+          item.name + ': ' + item.keys.map(key => labels[key]).join(', ')).join('; ')
+        if (!window.confirm('A recept néhány hozzávalójából hiányzik tápérték: ' + details +
+          '. A naplóban ezek helyén „—” fog megjelenni. Mented így is a receptet?')) {
+          $('[data-food-recipe-editor-status]').textContent =
+            'A tápértékek pótlásához szerkeszd a hiányos hozzávalókat a listában (✎).'
+          return
+        }
+      }
+      project.customFoods.push(...recipeDraftFoods.filter(food => !project.customFoods.some(item => item.id === food.id)))
       project.recipes = existing ? project.recipes.map(item => item.id === recipe.id ? recipe : item) : [...project.recipes, recipe]
       project.customFoods = [...project.customFoods.filter(item => item.id !== recipe.foodId), calculated.food]
       scheduleSave(); closeSheets(); renderOverview(); openRecipe(recipe.id); showToast('A receptet mentettük.')
@@ -747,19 +1077,21 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
         createdAt: now,
         updatedAt: now,
       })
-      project.customFoods.push(food)
-      scheduleSave()
-      addFood(food)
+      // Exact repeats are not new foods. Keep differing nutrients or units
+      // separate; those can be intentional and remain selectable.
+      const previous = reusableManualFood(project.customFoods, food)
+      if (!previous) {
+        project.customFoods.push(food)
+        scheduleSave()
+      }
+      addFood(previous || food)
     } catch (error) { status.textContent = error.message }
   }
 
   function setFoodSearchFilter(filter) {
-    foodSearchFilter = ['all', 'own', 'favorites', 'usda'].includes(filter) ? filter : 'all'
-    root.querySelectorAll('[data-food-search-filter]').forEach(button => {
-      const active = button.dataset.foodSearchFilter === foodSearchFilter
-      button.classList.toggle('is-active', active)
-      button.setAttribute('aria-pressed', String(active))
-    })
+    expandedManualFoodGroups = new Set()
+    foodSearchFilter = filter === 'favorites' ? 'favorites' : 'all'
+    $('[data-food-quick="favorites"]').setAttribute('aria-pressed', String(foodSearchFilter === 'favorites'))
   }
 
   function renderFoodSearch(query, { remoteFoods = [], loading = false, remoteError = '' } = {}) {
@@ -770,9 +1102,14 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
         : foodSearchFilter === 'usda' ? item.source?.type === 'usda' : true
     // Reuse the existing accent-insensitive Hungarian search (synonyms and typos).
     // Limit results only AFTER scoring; otherwise relevant local foods can disappear.
-    const localFoods = searchFoods(project.customFoods.filter(acceptsLocal), query, {
+    const rankedFoods = searchFoods(project.customFoods.filter(acceptsLocal), query, {
       favorites: project.favorites, entries: project.diaryEntries,
-    }).slice(0, 15)
+    })
+    // A manually entered ingredient previously received a fresh ID on each
+    // add or recipe-specific repair. Display a representative, not a wall of
+    // copies; the disclosure keeps every legacy variant available.
+    const localGroups = groupFoodSearchResults(rankedFoods).slice(0, 15)
+    const localFoods = localGroups.flatMap(group => [group.food, ...group.variants])
     const localKeys = new Set(localFoods.map(foodKey))
     const allExternalFoods = ['own', 'favorites'].includes(foodSearchFilter) ? [] : remoteFoods.filter(food => !localKeys.has(foodKey(food)) && (foodSearchFilter !== 'usda' || food.source?.type === 'usda'))
     const externalFoods = expandedSearchQuery === normalized ? allExternalFoods : allExternalFoods.slice(0, 8)
@@ -783,14 +1120,34 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
           : normalized ? 'Nincs találat. A Saját étel gombbal hozhatsz létre újat.' : 'Még nincs saját ételed. A Saját étel gombbal hozhatsz létre egyet.'
       container.innerHTML = `<div class="food-empty">${empty}</div>`
     }
-    for (const food of localFoods) {
+    const renderLocalRow = (food, legacy = false) => {
       const row = foodSearchRow(food, { favorite: project.favorites.includes(food.id) })
+      if (legacy) row.element.classList.add('food-search-legacy-variant')
       row.main.addEventListener('click', () => addFood(food))
       row.favorite.addEventListener('click', () => {
         project.favorites = project.favorites.includes(food.id) ? project.favorites.filter(id => id !== food.id) : [...project.favorites, food.id]
         scheduleSave(); renderFoodSearch(query, { remoteFoods, loading, remoteError })
       })
       container.append(row.element)
+    }
+    for (const group of localGroups) {
+      renderLocalRow(group.food)
+      if (!group.variants.length) continue
+      const expanded = expandedManualFoodGroups.has(group.key)
+      const toggle = document.createElement('button')
+      toggle.type = 'button'
+      toggle.className = 'food-search-variants-toggle'
+      toggle.setAttribute('aria-expanded', String(expanded))
+      toggle.textContent = expanded
+        ? 'Korábbi változatok elrejtése'
+        : 'További ' + group.variants.length + ' változat · eltérő vagy hiányzó tápértékek'
+      toggle.addEventListener('click', () => {
+        if (expanded) expandedManualFoodGroups.delete(group.key)
+        else expandedManualFoodGroups.add(group.key)
+        renderFoodSearch(query, { remoteFoods, loading, remoteError })
+      })
+      container.append(toggle)
+      if (expanded) for (const food of group.variants) renderLocalRow(food, true)
     }
     for (const food of externalFoods) {
       const row = foodSearchRow(food, { external: true })
@@ -850,6 +1207,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   function startFoodSearch(query) {
+    expandedManualFoodGroups = new Set()
     clearTimeout(searchTimer)
     const generation = ++searchGeneration
     const normalizedQuery = query.trim().toLocaleLowerCase('hu-HU')
@@ -877,12 +1235,32 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     return lookupOpenFoodFactsProduct(normalized)
   }
 
-  async function addBarcode(code) {
-    const status = $('[data-food-search-status]'); status.textContent = 'Termék keresése…'
+  async function addBarcode(code, forRecipe = false) {
+    const status = $(forRecipe ? '[data-food-recipe-ingredient-status]' : '[data-food-search-status]')
+    status.textContent = 'Vonalkód alapján termék keresése…'
     try {
       const found = await lookupBarcode(code)
-      addFood(materializeExternalFood(found))
-    } catch (error) { status.textContent = error.message }
+      if (!forRecipe) { addFood(materializeExternalFood(found)); return }
+      stopBarcodeCamera()
+      // Keep the recipe editor visible: fill the inline dropdown and nutrient
+      // fields, never navigate through the full catalogue or auto-add an item.
+      clearTimeout(recipeIngredientSearchTimer)
+      recipeIngredientSearchGeneration += 1
+      recipeIngredientRemoteFoods = [found]
+      recipeIngredientLoading = false
+      recipeIngredientSearchError = ''
+      recipeNutrientSelection = ''
+      $('[data-food-recipe-ingredient-search]').value = found.name
+      renderRecipeIngredientChoices()
+      const selected = [...recipeIngredientChoices].find(([, food]) =>
+        (found.barcode && food.barcode === found.barcode) || foodKey(food) === foodKey(found))
+      if (!selected) throw new Error('A talált termék nem tölthető be a receptszerkesztőbe.')
+      $('[data-food-recipe-ingredient-food]').value = selected[0]
+      renderRecipeIngredientUnits()
+      status.textContent = 'Beolvasva: ' + found.name + '. Ellenőrizd a tápértéket és add hozzá.'
+    } catch (error) {
+      status.textContent = error?.message || 'Nem sikerült a vonalkódos termékkeresés.'
+    }
   }
 
   function stopBarcodeCamera() {
@@ -890,18 +1268,22 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     barcodeScanTimer = null
     barcodeStream?.getTracks().forEach(track => track.stop())
     barcodeStream = null
-    const video = $('[data-food-live-video]')
-    if (video) video.srcObject = null
-    const panel = $('[data-food-live-scanner]')
-    if (panel) panel.hidden = true
+    for (const selector of ['[data-food-live-video]', '[data-food-recipe-live-video]']) {
+      const video = $(selector)
+      if (video) video.srcObject = null
+    }
+    for (const selector of ['[data-food-live-scanner]', '[data-food-recipe-live-scanner]']) {
+      const panel = $(selector)
+      if (panel) panel.hidden = true
+    }
   }
 
-  async function requestBarcode() {
-    const status = $('[data-food-search-status]')
+  async function requestBarcode(forRecipe = false) {
+    const status = $(forRecipe ? '[data-food-recipe-ingredient-status]' : '[data-food-search-status]')
     if (!navigator.mediaDevices?.getUserMedia || !('BarcodeDetector' in window)) {
-      status.textContent = 'Az élő olvasó nem támogatott. Használd a Fotó alapján gombot, vagy írd be a kódot.'
+      status.textContent = 'Az élő vonalkódolvasó nem támogatott ezen a készüléken. Add meg a kódot kézzel.'
       const code = window.prompt('Termékvonalkód (7–14 számjegy):')
-      if (code !== null) await addBarcode(code)
+      if (code !== null) await addBarcode(code, forRecipe)
       return
     }
     stopBarcodeCamera()
@@ -913,9 +1295,10 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       const detector = new BarcodeDetector({ formats: enabled })
       const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' } } })
       barcodeStream = stream
-      const video = $('[data-food-live-video]')
+      const video = $(forRecipe ? '[data-food-recipe-live-video]' : '[data-food-live-video]')
+      const panel = $(forRecipe ? '[data-food-recipe-live-scanner]' : '[data-food-live-scanner]')
       video.srcObject = stream
-      $('[data-food-live-scanner]').hidden = false
+      panel.hidden = false
       await video.play()
       status.textContent = 'Irányítsd a kamerát a termék vonalkódjára.'
       const scan = async () => {
@@ -925,7 +1308,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
           const code = firstProductBarcode(codes)
           if (code) {
             stopBarcodeCamera()
-            await addBarcode(code)
+            await addBarcode(code, forRecipe)
             return
           }
         } catch {}
@@ -935,7 +1318,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     } catch (error) {
       stopBarcodeCamera()
       status.textContent = error?.name === 'NotAllowedError'
-        ? 'A kameraengedély hiányzik. Válaszd a fotós vagy kézi bevitelt.'
+        ? 'A kameraengedély hiányzik. Engedélyezd a kamerát, vagy írd be kézzel a vonalkódot.'
         : (error.message || 'Nem sikerült elindítani a kamerát.')
     }
   }
@@ -974,6 +1357,11 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       const existing = project.customFoods.find(item => foodKey(item) === foodKey(food))
       const ingredientFood = existing || food
       if (!existing) project.customFoods.push(ingredientFood)
+      clearTimeout(recipeIngredientSearchTimer)
+      recipeIngredientSearchGeneration += 1
+      recipeIngredientRemoteFoods = []
+      recipeIngredientLoading = false
+      recipeIngredientSearchError = ''
       $('[data-food-recipe-ingredient-search]').value = ingredientFood.name
       renderRecipeEditorIngredients()
       $('[data-food-recipe-ingredient-food]').value = ingredientFood.id
@@ -1580,16 +1968,29 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-backup-input]').addEventListener('change', importBackup)
     $('[data-food-health-input]').addEventListener('change', selectHealthImport)
     $('[data-food-health-confirm]').addEventListener('click', applyHealthImport)
-    $('[data-food-recipe-ingredient-search]').addEventListener('input', renderRecipeEditorIngredients)
+    $('[data-food-recipe-ingredient-search]').addEventListener('input', event => startRecipeIngredientSearch(event.currentTarget.value))
     $('[data-food-recipe-ingredient-food]').addEventListener('change', renderRecipeIngredientUnits)
+    $('[data-food-recipe-ingredient-unit]').addEventListener('change', () => {
+      $('[data-food-recipe-conversion-amount]').value = ''
+      renderRecipeIngredientConversion()
+    })
+    $('[data-food-recipe-scan]').addEventListener('click', () => requestBarcode(true))
+    $('[data-food-recipe-live-stop]').addEventListener('click', stopBarcodeCamera)
     $('[data-food-recipe-ingredient-add]').addEventListener('click', addRecipeIngredient)
-    for (const selector of ['[data-food-recipe-weight-input]', '[data-food-recipe-yield-input]', '[data-food-recipe-yield-unit]', '[data-food-recipe-unit-weight]']) {
-      $(selector).addEventListener('input', renderRecipeSummary)
-      $(selector).addEventListener('change', renderRecipeSummary)
+    $('[data-food-recipe-nutrients-repair]').addEventListener('click', repairRecipeIngredientNutrients)
+    $('[data-food-recipe-yield-input]').addEventListener('input', event => {
+      recipeYieldManuallySet = event.currentTarget.value.trim() !== ''
+      syncRecipeYield()
+    })
+    for (const selector of ['[data-food-recipe-weight-input]', '[data-food-recipe-unit-weight]']) {
+      $(selector).addEventListener('input', syncRecipeYield)
+      $(selector).addEventListener('change', syncRecipeYield)
     }
+    $('[data-food-recipe-yield-unit]').addEventListener('change', renderRecipeSummary)
+    bindInstructionsEditor($('[data-food-recipe-instructions-input]'), $('[data-food-recipe-instructions-toolbar]'))
+    recipeExtras.bind()
     $('[data-food-recipe-editor-save]').addEventListener('click', saveRecipe)
     $('[data-food-recipe-editor-back]').addEventListener('click', dismissRecipeEditor)
-    $('[data-food-recipe-open-catalog]').addEventListener('click', openRecipeCatalog)
     $('[data-food-add-back]').addEventListener('click', closeAddPage)
     fab.addEventListener('click', openAddSheet)
     backdrop.addEventListener('click', () => { if (recipeCatalogActive) closeRecipeCatalog(); else if ($('[data-food-recipe-edit-sheet]').classList.contains('is-open')) dismissRecipeEditor(); else closeSheets() })
@@ -1607,15 +2008,17 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       const ingredientEdit = event.target.closest('[data-food-recipe-ingredient-edit]')
       if (ingredientEdit) {
         const ingredient = recipeIngredients.find(item => item.id === ingredientEdit.dataset.foodRecipeIngredientEdit)
-        const food = ingredient && project.customFoods.find(item => item.id === ingredient.foodId)
+        const food = ingredient && recipeEditorFoods().find(item => item.id === ingredient.foodId)
         if (!ingredient || !food) return
         editingRecipeIngredientId = ingredient.id
         $('[data-food-recipe-ingredient-search]').value = food.name
+        recipeNutrientSelection = ''
         renderRecipeEditorIngredients()
         $('[data-food-recipe-ingredient-food]').value = food.id
         renderRecipeIngredientUnits()
         $('[data-food-recipe-ingredient-amount]').value = ingredient.amount
         $('[data-food-recipe-ingredient-unit]').value = ingredient.unit
+        renderRecipeIngredientConversion()
         $('[data-food-recipe-ingredient-add] span').textContent = 'Hozzávaló frissítése'
         $('[data-food-recipe-ingredient-amount]').focus({ preventScroll: false })
         return
@@ -1624,18 +2027,12 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       if (quick?.dataset.foodQuick === 'custom') return openCustomFoodSheet()
       if (quick?.dataset.foodQuick === 'favorites') {
         $('[data-food-search]').value = ''
-        setFoodSearchFilter('favorites')
-        renderFoodSearch('', foodSearchRenderState)
+        setFoodSearchFilter(foodSearchFilter === 'favorites' ? 'all' : 'favorites')
+        startFoodSearch('')
         return
       }
       if (quick?.dataset.foodQuick === 'barcode') return requestBarcode()
       if (quick?.dataset.foodQuick === 'photo') return $('[data-food-barcode-photo]').click()
-      const searchFilter = event.target.closest('[data-food-search-filter]')
-      if (searchFilter) {
-        setFoodSearchFilter(searchFilter.dataset.foodSearchFilter)
-        renderFoodSearch($('[data-food-search]').value, foodSearchRenderState)
-        return
-      }
       const menu = event.target.closest('[data-food-menu]'); if (menu) return handleMenuAction(menu.dataset.foodMenu)
     })
     document.addEventListener('visibilitychange', () => {
@@ -1649,7 +2046,13 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   bind()
-  return { load, render, closeMeal, handleBack, isDetailOpen: () => Boolean(selectedMeal), flush, openHealthImport, openSamsungImport, importYazioCsv, importYazio, undoYazio,
+  function openNavigationView(view) {
+    if (view === 'recipes') return openRecipes()
+    showOverview()
+    if (view === 'stats') openStats()
+  }
+
+  return { load, render, openNavigationView, closeMeal, handleBack, isDetailOpen: () => Boolean(selectedMeal), flush, openHealthImport, openSamsungImport, importYazioCsv, importYazio, undoYazio,
     syncFood, autoImportHealth, autoImportYazio, refreshInbox, openInbox, inboxSummary: () => ({ pending: inbox.length, unread: inbox.filter(item => !inboxSeen().has(item.id)).length }) }
 }
 
