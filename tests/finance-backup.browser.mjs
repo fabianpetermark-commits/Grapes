@@ -124,7 +124,8 @@ try {
   await page.locator('#finance-restore-last').click()
   const restoreConfirm = page.getByRole('button', { name: 'Igen, állítsd vissza' })
   if (await restoreConfirm.isVisible()) await restoreConfirm.click()
-  await page.waitForFunction(() => document.querySelector('#finance-save-status')?.textContent === 'Helyben visszaállítva')
+  try { await page.waitForFunction(() => document.querySelector('#finance-save-status')?.textContent === 'Helyben visszaállítva') }
+  catch (error) { throw new Error(JSON.stringify({ error: error.message, saveStatus: await page.locator('#finance-save-status').textContent(), rows: await page.locator('#finance-rows tr').count(), dialog: await page.locator('.grapes-dialog').textContent().catch(() => ''), driveStatus: await page.locator('#finance-drive-status').textContent() })) }
   await page.locator('#finance-rows tr').first().waitFor()
   assert.equal(await page.locator('#finance-currency').inputValue(), 'EUR')
   assert.equal(await page.locator('.finance__receipt-link').textContent(), 'szamla.pdf')
