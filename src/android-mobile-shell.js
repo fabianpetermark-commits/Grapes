@@ -73,6 +73,9 @@ const labels = {
   'hub-health': ['Health', 'Ételnapló és receptek'],
   'hub-utility': ['Utility', 'Eszközök'],
   'hub-finance': ['Finance', 'Pénzügyek'],
+  'hub-outdoor': ['Outdoor', 'Növények és kert'],
+  'outdoor-plants': ['Növényeim', 'Outdoor'],
+  'outdoor-catalog': ['Növénykatalógus', 'Outdoor'],
   ebook: ['E-book', 'Könyvtár'], reader: ['A csend térképe', 'Olvasó'],
   transfer: ['E-book átvitel', 'Olvasóeszköz'],
 }
@@ -996,17 +999,20 @@ $('[data-sync-projects]').addEventListener('click', () => showPage('projects'))
 $$('[data-nav]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.nav)))
 $$('[data-menu-group]').forEach(button => button.addEventListener('click', () => {
   const group = button.dataset.menuGroup
-  if (['home', 'health', 'utility', 'finance'].includes(group)) showPage('hub-' + group)
+  if (['home', 'health', 'utility', 'finance', 'outdoor'].includes(group)) showPage('hub-' + group)
 }))
 $$('[data-menu-back]').forEach(button => button.addEventListener('click', () => showPage('home')))
+$$('[data-outdoor-back]').forEach(button => button.addEventListener('click', () => showPage('hub-outdoor')))
 $$('[data-menu-destination]').forEach(button => button.addEventListener('click', () => {
   const destination = button.dataset.menuDestination
   const parent = button.closest('[data-page]')?.dataset.page
-  if (!['hub-home', 'hub-health', 'hub-utility', 'hub-finance'].includes(parent)) return
+  if (!['hub-home', 'hub-health', 'hub-utility', 'hub-finance', 'hub-outdoor'].includes(parent)) return
   if (parent === 'hub-home' && ['inventory', 'shopping'].includes(destination)) {
     showPage('household', { parent, entry: destination })
   } else if (parent === 'hub-health' && ['food', 'recipes', 'stats'].includes(destination)) {
     showPage('food', { parent, entry: destination === 'food' ? 'overview' : destination })
+  } else if (parent === 'hub-outdoor' && ['plants', 'catalog'].includes(destination)) {
+    showPage('outdoor-' + destination, { parent })
   } else if (parent === 'hub-utility' && destination === 'ebook') {
     showPage('ebook', { parent, entry: destination })
   } else if ((parent === 'hub-utility' && destination === 'qr') || (parent === 'hub-finance' && destination === 'finance')) {

@@ -57,7 +57,7 @@ try {
   await page.goto(url, { waitUntil: 'networkidle' })
   await page.locator('[data-page="home"]').waitFor({ state: 'visible' })
   assert.equal(await page.locator('[data-nav="home"]').count(), 1)
-  assert.equal(await page.locator('[data-menu-group]').count(), 4)
+  assert.equal(await page.locator('[data-menu-group]').count(), 5, 'Az Outdoor az ötödik főmodul.')
   await page.locator('[data-menu-group="home"]').click()
   await page.locator('[data-page="hub-home"] [data-menu-destination="inventory"]').click()
   await page.locator('[data-page="household"]').waitFor({ state: 'visible' })

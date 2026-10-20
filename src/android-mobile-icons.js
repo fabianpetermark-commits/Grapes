@@ -1,4 +1,12 @@
 const ICON_PATHS = {
+  outdoor: '<path d="M12 21v-9M12 12c-4-5-9-3.5-9-9 6 0 9 2 9 9zM12 15c4-5 9-3 9-9-6 0-9 2-9 9z"/>',
+  plant: '<path d="M12 21v-9M12 12c-4-5-9-4-9-9 6 0 9 2 9 9zM12 15c4-5 9-3 9-9-6 0-9 2-9 9zM6 21h12"/>',
+  catalog: '<path d="M12 6c-3-2-6-2-9-1v14c3-1 6-1 9 1 3-2 6-2 9-1V5c-3-1-6-1-9 1zM12 6v14M8 10c1 0 2 .2 3 .8M15 10c1-.6 2-.8 3-.8"/>',
+  weather: '<path d="M6 18h13a4 4 0 0 0 .2-8A7 7 0 0 0 6 10a4 4 0 0 0 0 8zM7 6l1-2M14 5V3"/>',
+  frost: '<path d="M12 2v20M4 6l16 12M20 6 4 18M9 5l3 3 3-3M9 19l3-3 3 3"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M5 19l1.5-1.5"/>',
+  rain: '<path d="M6 16h13a4 4 0 0 0 .1-8A7 7 0 0 0 6 8a4 4 0 0 0 0 8zM8 19v2M13 19v2M18 19v2"/>',
+  calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18M8 15l2 2 5-5"/>',
   household: '<path d="M3 10.5 12 3l9 7.5V21H3zM8 21v-7h8v7M6 10h.01M18 10h.01"/>',
   shopping: '<path d="M3 5h2l2 11h12l2-8H6M8 20h.01M18 20h.01M9 8h10"/>',
   stats: '<path d="M4 20V4M4 20h16M8 16v-5M13 16V7M18 16v-9"/>',

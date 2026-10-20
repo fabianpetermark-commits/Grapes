@@ -1,0 +1,45 @@
+/* Outdoor UI scaffold: isolate layout and preserve Food/Health styles. */
+.hub-grid .hub-card--outdoor {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 61px minmax(0, 1fr);
+  align-items: center;
+  min-height: 112px;
+  gap: 16px;
+  padding: 16px;
+  background: linear-gradient(115deg, rgb(59 220 242 / 11%), var(--surface) 67%);
+}
+.hub-card--outdoor .hub-card__icon { flex: none; }
+.hub-card--outdoor .hub-card__copy { gap: 6px; }
+.outdoor-page .hub-back { margin-bottom: 12px; }
+.outdoor-weather {
+  margin: 14px 0 21px;
+  padding: 4px 0 16px;
+  border-bottom: 1px solid var(--line);
+}
+.outdoor-weather__title { display: flex; align-items: center; gap: 11px; }
+.outdoor-weather__icon { display: grid; place-items: center; width: 38px; height: 38px; color: var(--accent); }
+.outdoor-weather__icon svg { width: 29px; height: 29px; }
+.outdoor-weather__title strong, .outdoor-weather__title span { display: block; }
+.outdoor-weather__title strong { font-size: 14px; }
+.outdoor-weather__title div span { margin-top: 4px; color: var(--muted); font-size: 11px; line-height: 1.4; }
+.outdoor-weather__signals { display: flex; flex-wrap: wrap; gap: 12px; margin: 15px 0 0; }
+.outdoor-weather__signals > span { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: 11px; }
+.outdoor-weather__signals svg { width: 17px; height: 17px; color: var(--accent); }
+.outdoor-options .hub-option { min-height: 150px; }
+.outdoor-options .hub-option small { font-size: 11px; color: var(--muted); line-height: 1.45; }
+.outdoor-tasks { margin-top: 24px; padding: 17px 15px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }
+.outdoor-tasks__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.outdoor-tasks__head h2 { margin: 0; font-size: 17px; }
+.outdoor-tasks__head svg { width: 22px; height: 22px; color: var(--accent); }
+.outdoor-tasks__empty { margin: 12px 0 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+.outdoor-empty { display: grid; justify-items: center; gap: 10px; padding: 24px 18px; border: 1px dashed var(--line); border-radius: 18px; background: var(--surface); text-align: center; }
+.outdoor-empty > span { color: var(--accent); }
+.outdoor-empty svg { width: 38px; height: 38px; }
+.outdoor-empty strong { font-size: 15px; }
+.outdoor-empty p { max-width: 28rem; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+@media (max-width: 360px) {
+  .hub-grid .hub-card--outdoor { grid-template-columns: 56px minmax(0, 1fr); gap: 12px; }
+  .outdoor-options { gap: 9px; }
+  .outdoor-options .hub-option { padding: 14px 11px; }
+}

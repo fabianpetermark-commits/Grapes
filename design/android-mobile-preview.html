@@ -551,6 +551,7 @@
     }
   </style>
   <link rel="stylesheet" href="../src/home/home-mobile.css">
+  <link rel="stylesheet" href="../src/outdoor/outdoor-mobile.css">
 </head>
 <body>
   <main class="stage">
@@ -586,6 +587,7 @@
             <button type="button" class="hub-card" data-menu-group="health"><span class="hub-card__icon" data-module-icon="health"></span><span class="hub-card__copy"><strong>Health</strong><small>Food · Receptek · Statisztika</small></span></button>
             <button type="button" class="hub-card" data-menu-group="utility"><span class="hub-card__icon" data-module-icon="utility"></span><span class="hub-card__copy"><strong>Utility</strong><small>E-book · QR modul</small></span></button>
             <button type="button" class="hub-card" data-menu-group="finance"><span class="hub-card__icon" data-module-icon="finance"></span><span class="hub-card__copy"><strong>Finance</strong><small>Pénzügyi napló</small></span></button>
+            <button type="button" class="hub-card hub-card--outdoor" data-menu-group="outdoor"><span class="hub-card__icon" data-module-icon="outdoor"></span><span class="hub-card__copy"><strong>Outdoor</strong><small>Növényeim · Növénykatalógus · Kerti teendők</small></span></button>
           </div>
         </div>
 
@@ -627,6 +629,48 @@
           <div class="hub-options" aria-label="Finance almodulok">
             <button type="button" class="hub-option" data-menu-destination="finance"><span class="hub-option__icon" data-module-icon="finance"></span><strong>Pénzügyi napló</strong></button>
           </div>
+        </div>
+
+        <div class="content outdoor-page" data-page="hub-outdoor" hidden>
+          <button type="button" class="hub-back" data-menu-back>‹ Főmenü</button>
+          <p class="eyebrow">Outdoor</p><h1>A kerted</h1>
+          <p class="lead">Növényeid és a hozzájuk tartozó aktuális teendők.</p>
+
+          <div class="outdoor-weather" aria-label="Tervezett helyi időjárási összefoglaló">
+            <div class="outdoor-weather__title">
+              <span class="outdoor-weather__icon" data-mobile-icon="weather"></span>
+              <div><strong>Helyi időjárás</strong><span>Az előrejelzés még nincs bekötve.</span></div>
+            </div>
+            <div class="outdoor-weather__signals" aria-label="Később figyelt időjárási jelenségek">
+              <span><span data-mobile-icon="frost"></span> Fagy</span>
+              <span><span data-mobile-icon="sun"></span> Hőség</span>
+              <span><span data-mobile-icon="rain"></span> Eső</span>
+            </div>
+          </div>
+
+          <div class="hub-options outdoor-options" aria-label="Outdoor almodulok">
+            <button type="button" class="hub-option" data-menu-destination="plants"><span class="hub-option__icon" data-module-icon="plant"></span><strong>Növényeim</strong><small>Saját növények és gondozási napló</small></button>
+            <button type="button" class="hub-option" data-menu-destination="catalog"><span class="hub-option__icon" data-module-icon="catalog"></span><strong>Növénykatalógus</strong><small>Magyar és angol növénykeresés</small></button>
+          </div>
+
+          <section class="outdoor-tasks" aria-label="Aktuális teendők">
+            <div class="outdoor-tasks__head"><h2>Aktuális teendők</h2><span data-mobile-icon="calendar"></span></div>
+            <p class="outdoor-tasks__empty" role="status">Még nincs megjeleníthető teendő. A növényadatok, az évszakok és a helyi időjárás bekötése után itt jelennek majd meg a növényre szabott javaslatok.</p>
+          </section>
+        </div>
+
+        <div class="content outdoor-page" data-page="outdoor-plants" hidden>
+          <button type="button" class="hub-back" data-outdoor-back>‹ Outdoor</button>
+          <p class="eyebrow">Outdoor / Növényeim</p><h1>Növényeim</h1>
+          <p class="lead">Itt lesznek a saját növényeid és gondozási előzményeik.</p>
+          <div class="outdoor-empty"><span data-mobile-icon="plant"></span><strong>Még nincs növényed</strong><p>A növények felvétele, képei és locsolási naplója a következő fejlesztési szakaszban érkeznek.</p></div>
+        </div>
+
+        <div class="content outdoor-page" data-page="outdoor-catalog" hidden>
+          <button type="button" class="hub-back" data-outdoor-back>‹ Outdoor</button>
+          <p class="eyebrow">Outdoor / Növénykatalógus</p><h1>Növénykatalógus</h1>
+          <p class="lead">Növénykeresés magyarul, angolul és tudományos név alapján.</p>
+          <div class="outdoor-empty"><span data-mobile-icon="catalog"></span><strong>Katalógus előkészítés alatt</strong><p>A nyílt növényadatbázis és a keresés még nincs bekötve. Nem mutatunk kitalált találatokat.</p></div>
         </div>
 
         <div class="content" data-page="household" hidden><div data-household-root></div></div>
