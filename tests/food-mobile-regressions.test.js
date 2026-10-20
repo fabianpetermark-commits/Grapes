@@ -49,3 +49,32 @@ test('a víznapló mentése a 60 napnál régebbi Health előzményeket sem tör
   assert.equal(saved['2026-10-17'].entries[0].amount, 500)
   assert.equal(Object.keys(store).length, 2, 'Az eredeti tárolót sem módosíthatja a mentés')
 })
+
+test('profilváltás közben befejeződő Drive-mentés nem tisztítja az új profil naplóját', async () => {
+  const match = mobile.match(/  async function persistDrive\(\) \{[\s\S]*?\n  \}/)
+  assert.ok(match, 'Hiányzik a tényleges Drive-mentő függvény')
+  const oldProject = { profile: { id: 'old' }, syncState: { localDirty: true }, diaryEntries: [{ id: 'old-entry' }] }
+  const newProject = { profile: { id: 'new' }, syncState: { localDirty: true }, diaryEntries: [{ id: 'new-entry' }] }
+  const localWrites = []
+  let finishUpload
+  const sandbox = {
+    project: oldProject, driveFileId: 'old-file', driveRequested: false, driveSaving: null,
+    changeRevision: 1, MODULE: 'Ételnapló', PROJECT_NAME: 'Ételnapló',
+    structuredClone, isGrapesDriveConnected: () => true, showToast: () => {},
+    saveGrapesProject: () => new Promise(resolve => { finishUpload = resolve }),
+    persistLocal: async (data = sandbox.project, fileId = sandbox.driveFileId) => {
+      localWrites.push({ profileId: data.profile.id, fileId })
+    },
+  }
+  const pending = vm.runInNewContext(match[0] + '\npersistDrive()', sandbox)
+  assert.equal(typeof finishUpload, 'function')
+  sandbox.project = newProject
+  sandbox.driveFileId = 'new-file'
+  sandbox.changeRevision = 0
+  finishUpload('old-file-uploaded')
+  await pending
+  assert.equal(sandbox.driveFileId, 'new-file')
+  assert.equal(newProject.syncState.localDirty, true)
+  assert.equal(oldProject.syncState.localDirty, true)
+  assert.deepEqual(localWrites, [{ profileId: 'old', fileId: 'old-file-uploaded' }])
+})

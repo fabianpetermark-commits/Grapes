@@ -309,19 +309,41 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     driveSaving = (async () => {
       while (driveRequested && isGrapesDriveConnected()) {
         driveRequested = false
+        const targetProject = project
+        const targetFileId = driveFileId
         const savedRevision = changeRevision
-        const snapshot = structuredClone(project)
+        const snapshot = structuredClone(targetProject)
         snapshot.syncState = { ...snapshot.syncState, localDirty: false }
         try {
-          driveFileId = await saveGrapesProject({ module: MODULE, name: PROJECT_NAME, data: snapshot, fileId: driveFileId })
+          const savedFileId = await saveGrapesProject({ module: MODULE, name: PROJECT_NAME, data: snapshot, fileId: targetFileId })
+          if (project !== targetProject) {
+            // An account switch must not assign this upload's file ID or clean
+            // status to the next profile. Keep the old project dirty for retry.
+            targetProject.syncState = { ...targetProject.syncState, localDirty: true }
+            if (project?.profile?.id === targetProject.profile.id) {
+              project.syncState = { ...project.syncState, localDirty: true }
+              driveRequested = true
+              await persistLocal()
+            } else {
+              await persistLocal(targetProject, savedFileId)
+            }
+            continue
+          }
+          driveFileId = savedFileId
           const changedDuringUpload = changeRevision !== savedRevision
           project.syncState = { ...project.syncState, localDirty: changedDuringUpload }
           if (changedDuringUpload) driveRequested = true
           await persistLocal()
         } catch (error) {
-          project.syncState = { ...project.syncState, localDirty: true }
-          await persistLocal().catch(() => {})
+          targetProject.syncState = { ...targetProject.syncState, localDirty: true }
+          if (project?.profile?.id === targetProject.profile.id) {
+            project.syncState = { ...project.syncState, localDirty: true }
+            await persistLocal().catch(() => {})
+          } else {
+            await persistLocal(targetProject, targetFileId).catch(() => {})
+          }
           showToast(`A Drive-mentés nem sikerült; a változás helyben megmaradt. ${error.message || ''}`.trim())
+          if (project !== targetProject && driveRequested) continue
           break
         }
       }
