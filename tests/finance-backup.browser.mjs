@@ -121,9 +121,13 @@ try {
 
   await page.reload()
   await page.waitForFunction(() => document.querySelector('#finance-save-status')?.textContent === 'Kész')
+  const hadTransactions = await page.locator('#finance-rows tr').count() > 0
   await page.locator('#finance-restore-last').click()
-  const restoreConfirm = page.getByRole('button', { name: 'Igen, állítsd vissza' })
-  if (await restoreConfirm.isVisible()) await restoreConfirm.click()
+  if (hadTransactions) {
+    const restoreConfirm = page.getByRole('button', { name: 'Igen, állítsd vissza' })
+    await restoreConfirm.waitFor({ state: 'visible' })
+    await restoreConfirm.click()
+  }
   try { await page.waitForFunction(() => document.querySelector('#finance-save-status')?.textContent === 'Helyben visszaállítva') }
   catch (error) { throw new Error(JSON.stringify({ error: error.message, saveStatus: await page.locator('#finance-save-status').textContent(), rows: await page.locator('#finance-rows tr').count(), dialog: await page.locator('.grapes-dialog').textContent().catch(() => ''), driveStatus: await page.locator('#finance-drive-status').textContent() })) }
   await page.locator('#finance-rows tr').first().waitFor()
