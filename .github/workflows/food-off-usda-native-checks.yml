@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - integration/grapes-test-food-20261017
+      - fix/health-68-durable-local-save-20261020
     paths:
       - src/food/**
       - src/android-bridge.js
@@ -53,3 +54,4 @@ jobs:
           APK="android-health-connect-poc/app/build/outputs/apk/qa/app-qa.apk"
           test -f "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "package: name='hu.grapes.healthconnect.test'"
+
