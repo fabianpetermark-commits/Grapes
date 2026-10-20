@@ -70,6 +70,20 @@ test('a név szerinti keresés validációs és hálózati hibáit jelzi', async
   await assert.rejects(() => searchOpenFoodFactsProducts('müzli', { fetchImpl: async () => response({}, { ok: false, status: 429 }) }), /429/)
 })
 
+test('OFF hozzáférési és sebességkorlát hibánál nem vált tartalék keresőre', async () => {
+  for (const status of [403, 429]) {
+    const requests = []
+    await assert.rejects(() => searchOpenFoodFactsProducts('müzli', {
+      fetchImpl: async url => {
+        requests.push(String(url))
+        return response({}, { ok: false, status })
+      },
+    }), new RegExp(String(status)))
+    assert.equal(requests.length, 1)
+    assert.match(requests[0], /search\.openfoodfacts\.org\/search\?/)
+  }
+})
+
 test('az eltávolított integráció nem exportál FatSecret keresőfüggvényeket', async () => {
   const api = await import('../src/food/food-api.js')
   assert.equal('searchFatSecretProducts' in api, false)
