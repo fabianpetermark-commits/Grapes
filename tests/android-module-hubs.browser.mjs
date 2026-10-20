@@ -88,6 +88,30 @@ try {
   await page.locator('[data-page="hub-health"]').waitFor({ state: 'visible' })
   await page.locator('[data-page="hub-health"] [data-menu-destination="food"]').click()
   await page.locator('[data-page="food"] [data-food-overview]').waitFor({ state: 'visible' })
+  // Synthetic goal edit, immediate Android Back, then a WebView reload.
+  await page.evaluate(() => document.querySelector('[data-food-menu="targets"]').click())
+  await page.locator('[data-food-targets-sheet].is-open').waitFor({ state: 'visible' })
+  await page.locator('[data-food-target-energy]').fill('2187')
+  await page.locator('[data-food-target-save]').click()
+  await page.evaluate(() => window.grapesHandleAndroidBack())
+  await page.locator('[data-food-local-save-status]').filter({ hasText: 'Helyben mentve' }).waitFor()
+  const savedGoal = await page.evaluate(() => new Promise((resolve, reject) => {
+    const open = indexedDB.open('grapes-projects', 1)
+    open.onerror = () => reject(open.error)
+    open.onsuccess = () => {
+      const db = open.result
+      const tx = db.transaction('projects', 'readonly')
+      const request = tx.objectStore('projects').get('food-tracker-local-food-profile')
+      request.onsuccess = () => { db.close(); resolve(request.result?.data?.targets?.at(-1)?.energyKcal) }
+      request.onerror = () => reject(request.error)
+    }
+  }))
+  assert.equal(savedGoal, 2187)
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.locator('[data-menu-group="health"]').click()
+  await page.locator('[data-page="hub-health"] [data-menu-destination="food"]').click()
+  await page.locator('[data-food-local-save-status]').filter({ hasText: 'Helyben mentve' }).waitFor()
+  assert.match(await page.locator('[data-food-energy-target]').textContent(), /2.?187/)
   await page.evaluate(() => window.grapesHandleAndroidBack())
   await page.locator('[data-page="hub-health"]').waitFor({ state: 'visible' })
   await page.locator('[data-page="hub-health"] [data-menu-back]').click()
@@ -112,3 +136,4 @@ try {
   await browser?.close()
   server.kill()
 }
+
