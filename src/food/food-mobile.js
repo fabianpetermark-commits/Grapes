@@ -358,7 +358,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       const localState = localSaveStates.get(nextProfile.id)
       if (localState) localSaveStatus(nextProfile.id, localState.state, localState.error)
       if (isGrapesDriveConnected()) {
-        if (remoteChecked) lastFoodSyncAt = Date.now()
+        if (remoteChecked && !project.syncState?.conflict) lastFoodSyncAt = Date.now()
         if (!remoteLoaded && project.syncState?.localDirty && !project.syncState?.conflict) persistDrive()
         refreshInbox().catch(() => {})
       }
@@ -483,7 +483,8 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       const count = Number.isFinite(Number(state?.imported)) ? `${Number(state.imported)} új` : 'nincs adat'
       status.textContent = `${date} · ${count}${state?.lastError ? ` · Hiba: ${state.lastError}` : ''}`
     }
-    if (!isGrapesDriveConnected()) showSyncStatus('Csak helyi mentés · Drive nincs csatlakoztatva')
+    if (project.syncState?.conflict) showConflict()
+    else if (!isGrapesDriveConnected()) showSyncStatus('Csak helyi mentés · Drive nincs csatlakoztatva')
     else if (lastFoodSyncAt && !foodSyncInProgress) showSyncStatus(`Utolsó ellenőrzés: ${new Date(lastFoodSyncAt).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })}`)
     const date = new Date(`${selectedDate}T12:00:00`)
     $('[data-food-day-title]').textContent = today ? 'Ma' : date.toLocaleDateString('hu-HU', { month: 'long', day: 'numeric' })
