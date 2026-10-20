@@ -1,9 +1,6 @@
 name: Supabase Phase 0 isolated verification
 
 on:
-  push:
-    branches:
-      - ci/supabase-phase0-independent-verification-20261020
   pull_request:
     branches:
       - review/supabase-phase0-sql-verification-20261020
@@ -92,6 +89,17 @@ jobs:
             # Explicit optional live-service diagnostic; it has no CI assertion.
             if [ "$file" = tests/food-live-api.browser.mjs ]; then continue; fi
             echo "Running $file"
+            # Match the existing Android TEST browser workflow's synthetic
+            # channel without changing the web E-book test environment.
+            if [[ "$file" == tests/android-* ]]; then
+              if VITE_GRAPES_TEST_CHANNEL=1 node "$file"; then
+                passed=$((passed + 1))
+              else
+                failed=$((failed + 1))
+                echo "FAIL: $file"
+              fi
+              continue
+            fi
             if node "$file"; then
               passed=$((passed + 1))
             else
