@@ -1,0 +1,63 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { bindGrapesTestLogin } from '../src/auth/grapes-login-controller.js'
+
+const fakeEl = () => ({ disabled: false, hidden: false, textContent: '', type: 'password', value: '', attrs: {}, handlers: {},
+  setAttribute(k,v) { this.attrs[k] = v }, addEventListener(n,f) { this.handlers[n]=f },
+  closest() { return this },
+  async emit(n) { return this.handlers[n]({ preventDefault() {} }) },
+})
+function fixture(flow) {
+  const selectors = ['#grapes-login-form','#grapes-username','#grapes-password','#google-sign-in','#register','#forgot-password','#toggle-password','.submit-button','#grapes-feedback','#grapes-sign-out']
+  const elements = Object.fromEntries(selectors.map(s=>[s,fakeEl()]))
+  return { elements, ...bindGrapesTestLogin({querySelector:s=>elements[s]},flow) }
+}
+test('without TEST config, no credential submission or Google redirect',async()=>{
+  const f=fixture()
+  assert.equal(f.configured,false)
+  assert.equal(f.elements['.submit-button'].disabled,true)
+  await f.elements['#grapes-login-form'].emit('submit')
+  assert.match(f.elements['#grapes-feedback'].textContent,/nincs konfigurálva/)
+})
+test('email login delegates only on explicit form submit and empties password',async()=>{
+  const calls=[]
+  const f=fixture({signInWithPassword:async(...args)=>calls.push(args)})
+  f.elements['#grapes-username'].value=' a@example.invalid '
+  f.elements['#grapes-password'].value='secret'
+  await f.elements['#grapes-login-form'].emit('submit')
+  assert.deepEqual(calls,[['a@example.invalid','secret']])
+  assert.equal(f.elements['#grapes-password'].value,'')
+  assert.equal(f.elements['#grapes-sign-out'].hidden,false)
+})
+test('username aliases are safely rejected during TEST',async()=>{
+  let called=false
+  const f=fixture({signInWithPassword:async()=>{called=true}})
+  f.elements['#grapes-username'].value='nickname'
+  await f.elements['#grapes-login-form'].emit('submit')
+  assert.equal(called,false)
+})
+test('Google redirect is supplied by the official adapter, not Drive',async()=>{
+  let used=0
+  const f=fixture({signInWithGoogle:async()=>{used++}})
+  await f.elements['#google-sign-in'].emit('click')
+  assert.equal(used,1)
+})
+test('signup needs a second deliberate submit',async()=>{
+  let used=0
+  const f=fixture({signUp:async()=>{used++;return {status:'confirmation_required'}}})
+  await f.elements['#register'].emit('click')
+  assert.equal(f.getMode(),'registration')
+  assert.equal(used,0)
+  f.elements['#grapes-username'].value='a@example.invalid'
+  await f.elements['#grapes-login-form'].emit('submit')
+  assert.equal(used,1)
+})
+test('password reset uses no password and gives non-enumerating feedback',async()=>{
+  let email
+  const f=fixture({requestPasswordReset:async e=>{email=e}})
+  await f.elements['#forgot-password'].emit('click')
+  f.elements['#grapes-username'].value='a@example.invalid'
+  await f.elements['#grapes-login-form'].emit('submit')
+  assert.equal(email,'a@example.invalid')
+  assert.match(f.elements['#grapes-feedback'].textContent,/Ha ehhez/)
+})
