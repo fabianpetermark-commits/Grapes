@@ -4,6 +4,7 @@ import { listFoodShares, loadFoodShare, setFoodShareState } from './food-sharing
 import { lookupOpenFoodFactsProduct } from './food-api.js'
 import { searchFoodCatalog } from './food-catalog-search.js'
 import { searchFoods, foodSourceLabel } from './food-search.js'
+import { buildDailyNutritionSeries } from './food-stats.js'
 import { groupFoodSearchResults, reusableManualFood } from './food-duplicate-choices.js'
 import { recipeIngredientMatches } from './recipe-ingredient-search.js'
 import { suggestedRecipeYield } from './recipe-yield-preview.js'
@@ -1479,8 +1480,9 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
 
   function renderStats() {
     const range = $('[data-food-stats-range]').value
-    const datedEntries = project.diaryEntries.filter(entry => entry.profileId === profile.id && entry.snapshot?.category !== 'Folyadék' && localDate(new Date(entry.occurredAt)) <= selectedDate)
-    const firstDate = datedEntries.map(entry => localDate(new Date(entry.occurredAt))).sort()[0]
+    const series = buildDailyNutritionSeries(project.diaryEntries, profile.id).filter(day => day.date <= selectedDate)
+    const dailyTotals = new Map(series.map(day => [day.date, day.nutrients]))
+    const firstDate = series[0]?.date
     const custom = range === 'custom'
     $('[data-food-stats-custom]').hidden = !custom
     const from = $('[data-food-stats-from]').value || selectedDate
@@ -1491,10 +1493,10 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const days = []
     for (let offset = count - 1; offset >= 0; offset -= 1) {
       const date = new Date(`${end}T12:00:00`); date.setDate(date.getDate() - offset)
-      const key = localDate(date); const totals = summarizeEntries(entriesForLocalDay(project.diaryEntries, key, profile.id))
-      days.push({ key, totals })
+      const key = localDate(date)
+      days.push({ key, totals: dailyTotals.get(key) || summarizeEntries([]) })
     }
-    const logged = days.filter(day => entriesForLocalDay(project.diaryEntries, day.key, profile.id).some(entry => entry.snapshot?.category !== 'Folyadék'))
+    const logged = days.filter(day => dailyTotals.has(day.key))
     const knownEnergy = logged.map(day => day.totals.energyKcal).filter(value => value !== null)
     const average = knownEnergy.length ? knownEnergy.reduce((sum, value) => sum + value, 0) / knownEnergy.length : null
     const macro = key => logged.length && logged.every(day => day.totals[key] != null)
@@ -1570,16 +1572,16 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     }
     card('Naplózott átlag és beállított célok', targetRows)
     const mealTotals = new Map(MEALS.map(([key, label]) => [key, { label, kcal: 0, entries: 0, complete: true }]))
-    for (const day of days) {
-      for (const entry of entriesForLocalDay(project.diaryEntries, day.key, profile.id)) {
-        if (entry.snapshot?.category === 'Folyadék') continue
-        const row = mealTotals.get(entry.mealType)
-        if (!row) continue
-        row.entries += 1
-        const value = summarizeEntries([entry]).energyKcal
-        if (value != null) row.kcal += value
-        else row.complete = false
-      }
+    for (const entry of project.diaryEntries) {
+      if (entry.profileId !== profile.id || entry.snapshot?.category === 'Folyadék') continue
+      const dayKey = entry.origin?.sourceDate || localDate(new Date(entry.occurredAt))
+      if (dayKey < start || dayKey > end) continue
+      const row = mealTotals.get(entry.mealType)
+      if (!row) continue
+      row.entries += 1
+      const value = entry.snapshot?.nutrients?.energyKcal
+      if (value !== null && value !== undefined && Number.isFinite(Number(value))) row.kcal += Number(value)
+      else row.complete = false
     }
     const mealList = document.createElement('div')
     mealList.style.cssText = 'display:flex;flex-direction:column;gap:7px;padding-top:10px'
