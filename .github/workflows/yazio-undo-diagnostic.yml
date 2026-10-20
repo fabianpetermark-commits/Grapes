@@ -19,5 +19,18 @@ jobs:
       - name: Find browser
         run: |
           echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
-      - name: Preserve failing synthetic browser assertion
-        run: VITE_GRAPES_TEST_CHANNEL=1 node tests/android-food-yazio.browser.mjs
+      - name: Repeat synthetic browser assertion in independent processes
+        shell: bash
+        run: |
+          failed=0
+          for attempt in 1 2 3; do
+            echo "YAZIO attempt $attempt"
+            if VITE_GRAPES_TEST_CHANNEL=1 node tests/android-food-yazio.browser.mjs; then
+              echo "PASS attempt $attempt"
+            else
+              echo "FAIL attempt $attempt"
+              failed=$((failed + 1))
+            fi
+          done
+          echo "YAZIO repeat failures: $failed"
+          test "$failed" -eq 0
