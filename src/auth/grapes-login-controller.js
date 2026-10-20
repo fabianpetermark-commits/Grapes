@@ -29,19 +29,22 @@ export function bindGrapesTestLogin(root, flow = null) {
   const setBusy = (value) => {
     busy = value
     submit.disabled = value || !configured
-    google.disabled = value || !configured
-    forgot.disabled = value || !configured
-    register.disabled = value || !configured
+    google.disabled = value || !configured || mode === 'update'
+    forgot.disabled = value || !configured || mode === 'update'
+    register.disabled = value || !configured || mode === 'update'
     signOut.disabled = value || !configured
   }
   const setMode = next => {
     mode = next
     username.setAttribute('autocomplete', next === 'login' ? 'username' : 'email')
+    password.setAttribute('autocomplete', next === 'login' ? 'current-password' : 'new-password')
+    username.closest('.field').hidden = next === 'update'
     password.closest('.field').hidden = next === 'recovery'
-    submit.textContent = next === 'login' ? 'Bejelentkezés' : next === 'registration' ? 'Regisztráció' : 'Visszaállító e-mail kérése'
+    submit.textContent = next === 'login' ? 'Bejelentkezés' : next === 'registration' ? 'Regisztráció' : next === 'update' ? 'Új jelszó mentése' : 'Visszaállító e-mail kérése'
     register.textContent = next === 'login' ? 'Regisztráció' : 'Bejelentkezés'
     forgot.textContent = next === 'recovery' ? 'Bejelentkezés' : 'Elfelejtett jelszó?'
     feedback.hidden = true
+    setBusy(busy)
   }
   setBusy(false)
   signOut.hidden = true
@@ -54,8 +57,8 @@ export function bindGrapesTestLogin(root, flow = null) {
     toggle.setAttribute('aria-pressed', String(visible))
     toggle.setAttribute('aria-label', visible ? 'Jelszó elrejtése' : 'Jelszó megjelenítése')
   })
-  register.addEventListener('click', () => { if (!busy && configured) setMode(mode === 'registration' ? 'login' : 'registration') })
-  forgot.addEventListener('click', () => { if (!busy && configured) setMode(mode === 'recovery' ? 'login' : 'recovery') })
+  register.addEventListener('click', () => { if (!busy && configured && mode !== 'update') setMode(mode === 'registration' ? 'login' : 'registration') })
+  forgot.addEventListener('click', () => { if (!busy && configured && mode !== 'update') setMode(mode === 'recovery' ? 'login' : 'recovery') })
   google.addEventListener('click', async () => {
     if (busy || !configured) return
     setBusy(true)
@@ -70,7 +73,7 @@ export function bindGrapesTestLogin(root, flow = null) {
     event.preventDefault()
     if (busy || !configured) return
     const identifier = username.value.trim()
-    if (!identifier.includes('@')) {
+    if (mode !== 'update' && !identifier.includes('@')) {
       show('A tesztfázisban e-mail-címmel tudsz belépni. A felhasználónév még előkészítés alatt áll.')
       return
     }
@@ -84,6 +87,10 @@ export function bindGrapesTestLogin(root, flow = null) {
         const r = await flow.signUp(identifier, password.value)
         show(r.status === 'confirmation_required' ? 'Nézd meg az e-mail-fiókodat a regisztráció megerősítéséhez.' : 'Sikeres Grapes TEST-regisztráció.')
         if (r.status === 'authenticated') signOut.hidden = false
+      } else if (mode === 'update') {
+        await flow.updatePassword(password.value)
+        setMode('login')
+        show('Sikeresen megváltoztattad a Grapes TEST-fiókod jelszavát.')
       } else {
         await flow.requestPasswordReset(identifier)
         show('Ha ehhez az e-mail-címhez tartozik fiók, érkezni fog jelszó-visszaállító levél.')
@@ -109,6 +116,10 @@ export function bindGrapesTestLogin(root, flow = null) {
     configured,
     getMode: () => mode,
     setNotice: show,
+    setRecoveryMode() {
+      setMode('update')
+      show('Adj meg egy új, legalább 8 karakteres jelszót a Grapes TEST-fiókodhoz.')
+    },
     setSession(user) {
       signOut.hidden = !user?.id
       if (user?.id) show('Grapes TEST-fiók hitelesítve. A Health és az E-book adatai változatlanok.')
