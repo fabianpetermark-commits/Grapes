@@ -284,6 +284,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     }
     try {
       const local = await loadLocalProject(localProjectId(nextProfile.id))
+      localSaves.observe(nextProfile.id, local)
       const recovery = localSaves.pending(nextProfile.id, local)
       let nextProject = recovery?.data ? normalizeFoodProject(recovery.data, nextProfile.id) :
         local?.data ? normalizeFoodProject(local.data, nextProfile.id) : createEmptyFoodProject(nextProfile)
