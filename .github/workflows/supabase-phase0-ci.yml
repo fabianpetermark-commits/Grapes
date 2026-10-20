@@ -1,0 +1,111 @@
+name: Supabase Phase 0 isolated verification
+
+on:
+  pull_request:
+    branches:
+      - review/supabase-phase0-sql-verification-20261020
+    paths:
+      - .github/workflows/supabase-phase0-ci.yml
+      - poc/supabase-sync/**
+
+permissions:
+  contents: read
+
+jobs:
+  local-supabase-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.81.3
+      - name: Confirm CLI commands and runner identity
+        run: |
+          supabase --version
+          supabase init --help >/dev/null
+          supabase start --help >/dev/null
+          supabase migration new --help >/dev/null
+          supabase status --help >/dev/null
+          echo "Tested commit: $GITHUB_SHA"
+      - name: Prepare isolated local Supabase stack
+        env:
+          GRAPES_SUPABASE_LOCAL_DIR: ${{ runner.temp }}/grapes-supabase-${{ github.run_id }}
+        run: |
+          mkdir -p "$GRAPES_SUPABASE_LOCAL_DIR"
+          cd "$GRAPES_SUPABASE_LOCAL_DIR"
+          supabase init
+          node "$GITHUB_WORKSPACE/poc/supabase-sync/ci/prepare-config.mjs"
+          supabase migration new grapes_ci_api_bootstrap
+          migration=$(find supabase/migrations -name '*_grapes_ci_api_bootstrap.sql' -print -quit)
+          test -n "$migration"
+          printf 'create schema if not exists api;\n' > "$migration"
+          supabase start
+          if ! command -v psql >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y postgresql-client
+          fi
+      - name: Verify SQL, local Auth, RLS boundaries and independent CAS sessions
+        env:
+          GRAPES_SUPABASE_LOCAL_DIR: ${{ runner.temp }}/grapes-supabase-${{ github.run_id }}
+        run: node poc/supabase-sync/ci/verify-local.mjs
+
+  complete-regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Clean dependency install
+        run: npm ci
+      - name: Complete unit suite including E-book Drive boundary
+        run: npm test
+      - name: Build web application
+        run: npm run build
+      - name: Find browser for local synthetic regression suite
+        run: |
+          if command -v google-chrome >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            npx playwright-core install --with-deps chromium
+            browser=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path '*chrome-linux*' | head -1)
+            test -n "$browser"
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$browser" >> "$GITHUB_ENV"
+          fi
+      - name: Complete local browser regression suite
+        run: |
+          set -e
+          passed=0
+          failed=0
+          for file in tests/*.browser.mjs; do
+            # Explicit optional live-service diagnostic; it has no CI assertion.
+            if [ "$file" = tests/food-live-api.browser.mjs ]; then continue; fi
+            echo "Running $file"
+            # Match the existing Android TEST browser workflow's synthetic
+            # channel without changing the web E-book test environment.
+            if [[ "$file" == tests/android-* ]]; then
+              if VITE_GRAPES_TEST_CHANNEL=1 node "$file"; then
+                passed=$((passed + 1))
+              else
+                failed=$((failed + 1))
+                echo "FAIL: $file"
+              fi
+              continue
+            fi
+            if node "$file"; then
+              passed=$((passed + 1))
+            else
+              failed=$((failed + 1))
+              echo "FAIL: $file"
+            fi
+          done
+          echo "Browser regression files: $passed PASS, $failed FAIL"
+          test "$failed" -eq 0
