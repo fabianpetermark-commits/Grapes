@@ -940,6 +940,8 @@ function renderWater() {
   const log = $('[data-water-log]')
   log.replaceChildren()
   if (waterLoadError) {
+    $('[data-water-total]').textContent = '—'
+    $('[data-water-summary]').textContent = 'A víznapló adatai jelenleg nem olvashatók.'
     log.textContent = waterLoadError.message
     return
   }
