@@ -58,11 +58,11 @@ test('profilváltás közben befejeződő Drive-mentés nem tisztítja az új pr
   const localWrites = []
   let finishUpload
   const sandbox = {
-    project: oldProject, driveFileId: 'old-file', driveRequested: false, driveSaving: null,
+    project: oldProject, driveFileId: 'old-file', driveVersion: '1', driveWriteId: 'old-write', driveRequested: false, driveSaving: null,
     changeRevision: 1, MODULE: 'Ételnapló', PROJECT_NAME: 'Ételnapló',
     structuredClone, isGrapesDriveConnected: () => true, showToast: () => {},
     localSaves: { flush: async () => {} },
-    saveGrapesProject: () => new Promise(resolve => { finishUpload = resolve }),
+    driveGuard: { upload: () => new Promise(resolve => { finishUpload = resolve }) },
     persistLocal: async (data = sandbox.project, fileId = sandbox.driveFileId) => {
       localWrites.push({ profileId: data.profile.id, fileId })
     },
@@ -73,7 +73,7 @@ test('profilváltás közben befejeződő Drive-mentés nem tisztítja az új pr
   sandbox.project = newProject
   sandbox.driveFileId = 'new-file'
   sandbox.changeRevision = 0
-  finishUpload('old-file-uploaded')
+  finishUpload({ conflict: false, fileId: 'old-file-uploaded', version: '2', writeId: 'uploaded' })
   await pending
   assert.equal(sandbox.driveFileId, 'new-file')
   assert.equal(newProject.syncState.localDirty, true)

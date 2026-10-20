@@ -258,7 +258,7 @@ export async function ensureGrapesModuleFolder(moduleName) {
   return findOrCreateFolder(moduleName, projects)
 }
 
-export async function saveGrapesProject({ module, name, data, fileId = null }) {
+export async function saveGrapesProject({ module, name, data, fileId = null, writeId = null, privateRecovery = false }) {
   if (!module || !name) throw new Error('A projekt modulja és neve kötelező.')
   const payload = JSON.stringify({
     grapesProject: true,
@@ -266,6 +266,7 @@ export async function saveGrapesProject({ module, name, data, fileId = null }) {
     module,
     name,
     updatedAt: new Date().toISOString(),
+    ...(writeId ? { writeId } : {}),
     data,
   })
   if (fileId) {
@@ -276,11 +277,13 @@ export async function saveGrapesProject({ module, name, data, fileId = null }) {
     })
     return fileId
   }
-  const parentId = await ensureGrapesModuleFolder(module)
+  // Conflict snapshots are created in the account's My Drive root, where
+  // they do not inherit a possibly shared Grapes project folder's ACL.
+  const parentId = privateRecovery ? null : await ensureGrapesModuleFolder(module)
   const boundary = `grapes-project-${crypto.randomUUID()}`
   const body = new Blob([
     `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n`,
-    JSON.stringify({ name: `${name}.grapes.json`, parents: [parentId], mimeType: GRAPES_PROJECT_MIME }),
+    JSON.stringify({ name: `${name}.grapes.json`, ...(parentId ? { parents: [parentId] } : {}), mimeType: GRAPES_PROJECT_MIME }),
     `\r\n--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n`,
     payload,
     `\r\n--${boundary}--\r\n`,
@@ -293,11 +296,26 @@ export async function saveGrapesProject({ module, name, data, fileId = null }) {
   return created.id
 }
 
-export async function listGrapesProjects(module) {
+export async function listGrapesProjects(module, { name = '' } = {}) {
   const parentId = await ensureGrapesModuleFolder(module)
-  const q = encodeURIComponent(`'${parentId}' in parents and trashed = false`)
-  const data = await (await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,modifiedTime,size)&orderBy=modifiedTime%20desc&pageSize=100`)).json()
-  return data.files || []
+  const exactName = name ? ` and name = '${`${name}.grapes.json`.replaceAll("'", "\\'")}'` : ''
+  const q = `'${parentId}' in parents and trashed = false${exactName}`
+  const files = []
+  let pageToken = ''
+  do {
+    const params = new URLSearchParams({ q, fields: 'nextPageToken,files(id,name,mimeType,modifiedTime,size,version,headRevisionId,trashed)', orderBy: 'modifiedTime desc', pageSize: name ? '1000' : '100' })
+    if (pageToken) params.set('pageToken', pageToken)
+    const data = await (await driveRequest(`https://www.googleapis.com/drive/v3/files?${params}`)).json()
+    files.push(...(data.files || []))
+    pageToken = data.nextPageToken || ''
+  } while (name && pageToken && files.length < 10000)
+  return files
+}
+
+export async function getGrapesProjectMetadata(fileId) {
+  if (!fileId) throw new Error('Drive-fájlazonosító szükséges.')
+  const fields = encodeURIComponent('id,name,mimeType,version,headRevisionId,modifiedTime,trashed')
+  return (await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?fields=${fields}`)).json()
 }
 
 export async function loadGrapesProject(fileId) {
@@ -335,4 +353,5 @@ export function createDebouncedDriveSave(saveFn, delay = 4000) {
     timer = setTimeout(() => saveFn(...args).catch(console.error), delay)
   }
 }
+
 

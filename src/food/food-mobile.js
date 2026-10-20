@@ -20,9 +20,10 @@ import { readYazioApiBundle } from './yazio-api-import.js'
 import { prepareYazioImport } from './food-yazio-import.js'
 import { healthImportEntries, prepareHealthBridgeImport } from './food-health-import.js'
 import { prepareYazioCsvImport, yazioImportEntries } from './yazio-import.js'
-import { getGrapesAccount, isGrapesDriveConnected, listGrapesProjects, loadGrapesProject, saveGrapesProject } from '../storage/grapes-drive.js'
+import { getGrapesAccount, getGrapesProjectMetadata, isGrapesDriveConnected, listGrapesProjects, loadGrapesProject, saveGrapesProject } from '../storage/grapes-drive.js'
 import { loadLocalProject, saveLocalProject } from '../storage/local-project-store.js'
 import { createFoodSaveQueue } from './food-save-queue.js'
+import { assertFoodRemote, createFoodDriveGuard, primaryFoodFiles } from './food-drive-guard.js'
 import { isGrapesAndroidApp, readAndroidHealthExport, readAndroidHealthExportSilent, readAndroidSamsungHealthExport, requestAndroidYazio } from '../android-bridge.js'
 import { mobileIconSvg } from '../android-mobile-icons.js'
 
@@ -44,6 +45,8 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   let project = null
   let profile = null
   let driveFileId = null
+  let driveVersion = null
+  let driveWriteId = null
   let selectedDate = localDate()
   let selectedMeal = ''
   let selectedRecipeId = ''
@@ -111,6 +114,10 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       `Helyi mentés sikertelen: ${error?.message || 'ismeretlen hiba'}. A változás ebben a munkamenetben még elérhető.`
   }
   const localSaves = createFoodSaveQueue({ save: saveLocalProject, onStatus: localSaveStatus })
+  const driveGuard = createFoodDriveGuard({
+    list: () => listGrapesProjects(MODULE, { name: PROJECT_NAME }),
+    metadata: getGrapesProjectMetadata, load: loadGrapesProject, save: saveGrapesProject,
+  })
   const accountProfile = () => {
     const account = getGrapesAccount() || {}
     return { id: String(account.id || account.email || 'local-food-profile').trim().toLocaleLowerCase('hu-HU'), name: account.name || account.email?.split('@')[0] || 'Grapes-felhasználó', email: account.email || '', photo: account.photo || '' }
@@ -141,18 +148,30 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     if (status) status.textContent = message
   }
 
+  function showConflict() {
+    const conflict = project?.syncState?.conflict
+    const panel = $('[data-food-conflict-panel]')
+    if (panel) panel.hidden = !conflict
+    const recoveryButton = $('[data-food-recovery-export]')
+    if (recoveryButton) recoveryButton.hidden = !project?.syncState?.lastConflictRecoveryId
+    if (conflict) showSyncStatus(`Drive-ütközés: ${conflict.reason} A helyi napló megmaradt; válassz helyreállítást.`)
+  }
+
   async function syncFood({ force = false } = {}) {
     if (!project || !isGrapesDriveConnected()) { showSyncStatus('Csak helyi mentés · Drive nincs csatlakoztatva'); return }
+    if (project.syncState?.conflict) { showConflict(); return }
     if (!force && Date.now() - lastFoodSyncAt < FOOD_SYNC_INTERVAL_MS) return
     if (foodSyncInProgress) return foodSyncInProgress
     foodSyncInProgress = (async () => {
       showSyncStatus('Szinkronizálás folyamatban…')
       await flush()
+      if (project?.syncState?.conflict) { showConflict(); return }
       if (project?.syncState?.localDirty) {
         showSyncStatus('A helyi változások feltöltésre várnak')
         return
       }
       await load({ force: true })
+      if (project?.syncState?.conflict) { showConflict(); return }
       lastFoodSyncAt = Date.now()
       showSyncStatus(`Sikeres ellenőrzés: ${new Date(lastFoodSyncAt).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })}`)
     })()
@@ -269,6 +288,8 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       let nextProject = recovery?.data ? normalizeFoodProject(recovery.data, nextProfile.id) :
         local?.data ? normalizeFoodProject(local.data, nextProfile.id) : createEmptyFoodProject(nextProfile)
       let nextDriveFileId = recovery ? recovery.fileId : local?.driveFileId || null
+      let nextDriveVersion = recovery ? recovery.driveVersion : local?.driveVersion || null
+      let nextDriveWriteId = recovery ? recovery.driveWriteId : local?.driveWriteId || null
       if (recovery) {
         nextProject.syncState = { ...nextProject.syncState, localDirty: true }
         showToast('A megszakadt Food-mentés helyreállító másolatát betöltöttük; ellenőrizd a naplót.')
@@ -277,18 +298,36 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       let remoteChecked = false
       if (isGrapesDriveConnected() && !nextProject.syncState?.localDirty) {
         try {
-          const files = await listGrapesProjects(MODULE)
+          const files = primaryFoodFiles(await listGrapesProjects(MODULE, { name: PROJECT_NAME }))
           remoteChecked = true
-          const candidate = files.find(file => file.id === nextDriveFileId) || files[0]
+          const candidate = nextDriveFileId ? files.find(file => file.id === nextDriveFileId) : files.length === 1 ? files[0] : null
+          if ((nextDriveFileId && !candidate) || (!nextDriveFileId && files.length > 1)) {
+            throw new Error('Drive-ütközés: több vagy másik Food-projekt található. Nincs automatikus kiválasztás.')
+          }
           if (candidate) {
-            const remote = await loadGrapesProject(candidate.id)
-            nextProject = normalizeFoodProject(remote.data, nextProfile.id)
-            nextProject.syncState = { ...nextProject.syncState, localDirty: false }
-            nextDriveFileId = candidate.id
-            remoteLoaded = true
+            const beforeMeta = await getGrapesProjectMetadata(candidate.id)
+            const remote = assertFoodRemote(await loadGrapesProject(candidate.id), nextProfile.id)
+            const afterMeta = await getGrapesProjectMetadata(candidate.id)
+            if (!beforeMeta.version || !afterMeta.version) throw new Error('Drive-ütközés: a fájlverzió nem olvasható.')
+            if (String(beforeMeta.version) !== String(afterMeta.version)) throw new Error('Drive-ütközés: a letöltés közben változott a felhőnapló.')
+            const normalizedRemote = normalizeFoodProject(remote.data, nextProfile.id)
+            const remoteVersion = String(afterMeta.version)
+            const remoteChanged = local?.data && (nextDriveVersion ? remoteVersion !== String(nextDriveVersion) || remote.writeId !== nextDriveWriteId :
+              JSON.stringify({ ...nextProject, syncState: {} }) !== JSON.stringify({ ...normalizedRemote, syncState: {} }))
+            if (remoteChanged) {
+              nextProject.syncState = { ...nextProject.syncState, localDirty: true, conflict: { reason: 'A felhőpéldány eltér a helyi naplótól.', remoteFileId: candidate.id } }
+            } else {
+              nextProject = normalizedRemote
+              nextProject.syncState = { ...nextProject.syncState, localDirty: false }
+              nextDriveFileId = candidate.id
+              nextDriveVersion = remoteVersion
+              nextDriveWriteId = remote.writeId || null
+              remoteLoaded = true
+            }
           }
         } catch (error) {
-          showToast(`A Drive-napló nem tölthető be. A helyi példány maradt meg. ${error.message || ''}`.trim())
+          if (/Drive-ütközés/.test(error.message) || error.code === 'FOOD_DRIVE_CONFLICT') nextProject.syncState = { ...nextProject.syncState, localDirty: true, conflict: { reason: error.message, remoteFileId: nextDriveFileId } }
+          else showToast(`A Drive-napló nem tölthető be. A helyi példány maradt meg. ${error.message || ''}`.trim())
         }
       }
       if (!local && !remoteLoaded && remoteChecked && previousProject?.profile?.id === 'local-food-profile' && nextProfile.id !== 'local-food-profile') {
@@ -299,6 +338,8 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       profile = nextProfile
       project = nextProject
       driveFileId = nextDriveFileId
+      driveVersion = nextDriveVersion
+      driveWriteId = nextDriveWriteId
       loadedProfileId = nextProfile.id
       changeRevision = 0
       const legacyHydration = project.diaryEntries.filter(entry => entry.snapshot?.category === 'Folyadék')
@@ -314,12 +355,13 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       }
       await persistLocal()
       render()
+      showConflict()
       if (foodPage) foodPage.style.visibility = ''
       const localState = localSaveStates.get(nextProfile.id)
       if (localState) localSaveStatus(nextProfile.id, localState.state, localState.error)
       if (isGrapesDriveConnected()) {
-        if (remoteChecked) lastFoodSyncAt = Date.now()
-        if (!remoteLoaded && project.syncState?.localDirty) persistDrive()
+        if (remoteChecked && !project.syncState?.conflict) lastFoodSyncAt = Date.now()
+        if (!remoteLoaded && project.syncState?.localDirty && !project.syncState?.conflict) persistDrive()
         refreshInbox().catch(() => {})
       }
     } catch (error) {
@@ -328,13 +370,13 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     }
   }
 
-  async function persistLocal(projectValue = project, fileId = driveFileId) {
+  async function persistLocal(projectValue = project, fileId = driveFileId, version = driveVersion, writeId = driveWriteId) {
     if (!projectValue) return
-    await localSaves.enqueue({ data: projectValue, fileId, module: MODULE, name: PROJECT_NAME })
+    await localSaves.enqueue({ data: projectValue, fileId, driveVersion: version, driveWriteId: writeId, module: MODULE, name: PROJECT_NAME })
   }
 
   async function persistDrive() {
-    if (!project || !isGrapesDriveConnected()) return
+    if (!project || !isGrapesDriveConnected() || project.syncState?.conflict) { showConflict(); return }
     driveRequested = true
     if (driveSaving) return driveSaving
     driveSaving = (async () => {
@@ -342,12 +384,23 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
         driveRequested = false
         const targetProject = project
         const targetFileId = driveFileId
+        const targetVersion = driveVersion
+        const targetWriteId = driveWriteId
         const savedRevision = changeRevision
         const snapshot = structuredClone(targetProject)
         snapshot.syncState = { ...snapshot.syncState, localDirty: false }
         try {
           await localSaves.flush(targetProject.profile.id)
-          const savedFileId = await saveGrapesProject({ module: MODULE, name: PROJECT_NAME, data: snapshot, fileId: targetFileId })
+          const result = await driveGuard.upload({ profileId: targetProject.profile.id, data: snapshot,
+            fileId: targetFileId, version: targetVersion, writeId: targetWriteId })
+          if (result.conflict) {
+            targetProject.syncState = { ...targetProject.syncState, localDirty: true, conflict: {
+              reason: result.reason, remoteFileId: result.fileId, recoveryId: result.recoveryId, recoveryError: result.recoveryError,
+            } }
+            if (project === targetProject) { await persistLocal(); showConflict() }
+            else await persistLocal(targetProject, targetFileId, targetVersion, targetWriteId)
+            break
+          }
           if (project !== targetProject) {
             // An account switch must not assign this upload's file ID or clean
             // status to the next profile. Keep the old project dirty for retry.
@@ -357,11 +410,13 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
               driveRequested = true
               await persistLocal()
             } else {
-              await persistLocal(targetProject, savedFileId)
+              await persistLocal(targetProject, result.fileId, result.version, result.writeId)
             }
             continue
           }
-          driveFileId = savedFileId
+          driveFileId = result.fileId
+          driveVersion = result.version
+          driveWriteId = result.writeId
           const changedDuringUpload = changeRevision !== savedRevision
           project.syncState = { ...project.syncState, localDirty: changedDuringUpload }
           if (changedDuringUpload) driveRequested = true
@@ -373,7 +428,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
             project.syncState = { ...project.syncState, localDirty: true }
             try { await persistLocal() } catch { localSaved = false }
           } else {
-            try { await persistLocal(targetProject, targetFileId) } catch { localSaved = false }
+            try { await persistLocal(targetProject, targetFileId, targetVersion, targetWriteId) } catch { localSaved = false }
           }
           showToast(`${localSaved ? 'A Drive-mentés nem sikerült; a változás helyben megmaradt.' : 'A Drive- és a helyi mentés is sikertelen; ellenőrizd a Food mentési állapotát.'} ${error.message || ''}`.trim())
           if (project !== targetProject && driveRequested) continue
@@ -430,7 +485,8 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       const count = Number.isFinite(Number(state?.imported)) ? `${Number(state.imported)} új` : 'nincs adat'
       status.textContent = `${date} · ${count}${state?.lastError ? ` · Hiba: ${state.lastError}` : ''}`
     }
-    if (!isGrapesDriveConnected()) showSyncStatus('Csak helyi mentés · Drive nincs csatlakoztatva')
+    if (project.syncState?.conflict) showConflict()
+    else if (!isGrapesDriveConnected()) showSyncStatus('Csak helyi mentés · Drive nincs csatlakoztatva')
     else if (lastFoodSyncAt && !foodSyncInProgress) showSyncStatus(`Utolsó ellenőrzés: ${new Date(lastFoodSyncAt).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })}`)
     const date = new Date(`${selectedDate}T12:00:00`)
     $('[data-food-day-title]').textContent = today ? 'Ma' : date.toLocaleDateString('hu-HU', { month: 'long', day: 'numeric' })
@@ -1686,11 +1742,54 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     } catch (error) { $('[data-food-target-status]').textContent = error.message }
   }
 
-  function exportBackup() {
-    const blob = new Blob([foodBackupToJson(project)], { type: 'application/json' })
+  function downloadFoodBackup(data, suffix = '') {
+    const blob = new Blob([foodBackupToJson(data)], { type: 'application/json' })
     const url = URL.createObjectURL(blob); const link = document.createElement('a')
-    link.href = url; link.download = `grapes-etelnaplo-${selectedDate}.json`; link.click()
-    setTimeout(() => URL.revokeObjectURL(url), 1000); closeSheets(); showToast('A biztonsági mentés elkészült.')
+    link.href = url; link.download = `grapes-etelnaplo-${selectedDate}${suffix}.json`; link.click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+
+  function exportBackup() {
+    downloadFoodBackup(project)
+    closeSheets(); showToast('A biztonsági mentés elkészült.')
+  }
+
+  async function exportConflictRemote() {
+    const fileId = project?.syncState?.conflict?.remoteFileId
+    if (!fileId) throw new Error('Több felhőfájl közül nem választunk automatikusan; nyisd meg a Drive Food mappáját.')
+    const remote = assertFoodRemote(await loadGrapesProject(fileId), profile.id)
+    downloadFoodBackup(normalizeFoodProject(remote.data, profile.id), '-felho')
+  }
+
+  async function exportConflictRecovery() {
+    const id = project?.syncState?.lastConflictRecoveryId
+    if (!id) throw new Error('Nincs helyi helyreállító példány.')
+    const record = await loadLocalProject(id)
+    if (record?.data?.profile?.id !== profile.id) throw new Error('A helyreállító példány nem ehhez a profilhoz tartozik.')
+    downloadFoodBackup(normalizeFoodProject(record.data, profile.id), '-helyreallito')
+  }
+
+  async function useConflictRemote() {
+    const fileId = project?.syncState?.conflict?.remoteFileId
+    if (!fileId) throw new Error('Nincs egyértelmű felhőfájl. A konfliktust kézzel kell feloldani.')
+    if (!window.confirm('A felhőnapló lesz az aktív. A jelenlegi helyi napló külön helyi helyreállító példányként megmarad. Folytatod?')) return
+    const oldProject = project, profileId = profile.id
+    await localSaves.flush(profileId)
+    const beforeMeta = await getGrapesProjectMetadata(fileId)
+    const remote = assertFoodRemote(await loadGrapesProject(fileId), profileId)
+    const meta = await getGrapesProjectMetadata(fileId)
+    if (!beforeMeta.version || !meta.version) throw new Error('A felhőfájl verziója nem olvasható.')
+    if (String(beforeMeta.version) !== String(meta.version)) throw new Error('A felhőnapló a letöltés közben változott; próbáld újra.')
+    const normalized = normalizeFoodProject(remote.data, profileId)
+    if (project !== oldProject || profile?.id !== profileId) throw new Error('Profilváltás közben a konfliktus nem oldható fel.')
+    const recoveryId = `food-conflict-${profileId}-${crypto.randomUUID()}`
+    await saveLocalProject({ id: recoveryId, module: MODULE,
+      name: 'Food helyi helyreállító másolat', data: structuredClone(oldProject), driveFileId: null })
+    project = normalized
+    project.syncState = { ...project.syncState, localDirty: false, conflict: null, lastConflictRecoveryId: recoveryId }
+    driveFileId = fileId; driveVersion = String(meta.version); driveWriteId = remote.writeId || null
+    await persistLocal(); render(); showConflict()
+    showToast('A felhőpéldány aktív; a korábbi helyi napló helyreállító másolata megmaradt.')
   }
 
   async function importBackup(event) {
@@ -1969,7 +2068,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const date = new Date(`${selectedDate}T12:00:00`); date.setDate(date.getDate() + days); selectedDate = localDate(date); renderOverview()
   }
 
-  function render() { renderOverview(); if (selectedMeal) renderMealDetail() }
+  function render() { renderOverview(); if (selectedMeal) renderMealDetail(); showConflict() }
 
   async function openLegacyAfterSave(module, view, itemId = '', action = '') {
     await flush()
@@ -2041,6 +2140,10 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-custom-save]').addEventListener('click', saveCustomFood)
     $('[data-food-target-save]').addEventListener('click', saveTargets)
     $('[data-food-backup-input]').addEventListener('change', importBackup)
+    $('[data-food-conflict-export-local]')?.addEventListener('click', () => exportBackup())
+    $('[data-food-conflict-export-remote]')?.addEventListener('click', () => exportConflictRemote().catch(error => showToast(error.message)))
+    $('[data-food-recovery-export]')?.addEventListener('click', () => exportConflictRecovery().catch(error => showToast(error.message)))
+    $('[data-food-conflict-use-remote]')?.addEventListener('click', () => useConflictRemote().catch(error => showToast(error.message)))
     $('[data-food-health-input]').addEventListener('change', selectHealthImport)
     $('[data-food-health-confirm]').addEventListener('click', applyHealthImport)
     $('[data-food-recipe-ingredient-search]').addEventListener('input', event => startRecipeIngredientSearch(event.currentTarget.value))

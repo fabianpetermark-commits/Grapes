@@ -73,6 +73,8 @@ jobs:
         run: node tests/android-home-mobile.browser.mjs
       - name: Browser regression test (new category menu and shortcuts)
         run: node tests/android-module-hubs.browser.mjs
+      - name: Browser regression test (Food Drive conflict and recovery)
+        run: node tests/android-food-drive-conflict.browser.mjs
       - name: Browser regression test (existing Android mobile shell)
         run: node tests/android-mobile-preview.browser.mjs
       - name: Browser regression test (E-book library)
@@ -114,3 +116,4 @@ jobs:
           name: grapes-test-preview-apk
           path: android-health-connect-poc/app/build/outputs/apk/qa/app-qa.apk
           if-no-files-found: error
+

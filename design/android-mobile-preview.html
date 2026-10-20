@@ -675,6 +675,14 @@
           <section data-food-overview>
           <p class="sync-status" data-food-local-save-status data-state="pending" role="status" aria-live="polite">Helyi mentés ellenőrzése…</p>
           <p class="sync-status" data-food-sync-status role="status" aria-live="polite">Drive nincs ellenőrizve</p>
+          <div class="sync-status" data-food-conflict-panel hidden>
+            <strong>Drive-ütközés: a helyi és a felhőnapló külön megmaradt.</strong>
+            <p>Exportáld mindkettőt, mielőtt választasz. A felhőpéldány elfogadása előtt a helyi napló külön helyi helyreállító másolatba kerül.</p>
+            <button type="button" data-food-conflict-export-local>Helyi JSON export</button>
+            <button type="button" data-food-conflict-export-remote>Felhő JSON export</button>
+            <button type="button" data-food-conflict-use-remote>Felhőpéldány elfogadása</button>
+          </div>
+          <button type="button" data-food-recovery-export hidden>Korábbi helyi napló exportja</button>
           <div hidden aria-hidden="true"><span data-food-day-title></span><span data-food-day-copy></span></div>
           <div class="food-datebar"><button type="button" data-food-date-prev aria-label="Előző nap">‹</button><input type="date" data-food-date aria-label="Kiválasztott nap"><button type="button" data-food-date-next aria-label="Következő nap">›</button></div>
           <div class="daily-card">
