@@ -14,6 +14,7 @@ import { createYazioApiPanel } from './food/yazio-api-panel.js'
 import { registerFoodSharing, sendMealShare, sendRecipeShare } from './food/food-sharing-client.js'
 import { hydrateMobileIcons, mobileIconSvg } from './android-mobile-icons.js'
 import { createHomeMobile } from './home/home-mobile.js'
+import { initOutdoorPlantPreview } from './outdoor/outdoor-preview.js'
 import { getAndroidAppUpdate, installAndroidAppUpdate, isGrapesAndroidApp, openAndroidHealthConnectSettings } from './android-bridge.js'
 import {
   isMobileShareableBook,
@@ -76,6 +77,7 @@ const labels = {
   'hub-outdoor': ['Outdoor', 'Növények és kert'],
   'outdoor-plants': ['Növényeim', 'Outdoor'],
   'outdoor-catalog': ['Növénykatalógus', 'Outdoor'],
+  'outdoor-detail': ['Növényadatlap', 'Outdoor / Növényeim'],
   ebook: ['E-book', 'Könyvtár'], reader: ['A csend térképe', 'Olvasó'],
   transfer: ['E-book átvitel', 'Olvasóeszköz'],
 }
@@ -1171,9 +1173,12 @@ mobileFood = createMobileFoodController({
   getHydrationExternalKeys: hydrationExternalKeys,
 })
 hydrateMobileIcons()
+initOutdoorPlantPreview({ showPage })
 installSheetGestures()
 refreshUpdateInbox()
 window.grapesHandleAndroidBack = () => {
+  if (activePage === 'outdoor-detail') { showPage('outdoor-plants', { parent: 'hub-outdoor' }); return true }
+  if (['outdoor-plants', 'outdoor-catalog'].includes(activePage)) { showPage('hub-outdoor'); return true }
   if ($('[data-notifications-sheet].is-open')) { closeSheet(); return true }
   if (activePage === 'household' && household.handleBack()) return true
   if (activePage === 'food' && menuReturnPage === 'hub-health') {
