@@ -1,0 +1,93 @@
+name: Browser regression correction verification
+
+on:
+  pull_request:
+    branches:
+      - ci/supabase-phase0-independent-verification-20261020
+      - test/browser-regression-assumptions-20261020
+      - fix/yazio-file-import-20261020
+    paths:
+      - .github/workflows/browser-regression-corrections.yml
+      - tests/**
+      - src/**
+      - design/**
+      - index.html
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-and-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Record tested commit and clean install
+        run: |
+          git rev-parse HEAD
+          npm ci
+      - name: Unit tests including E-book Drive boundary
+        run: npm test
+      - name: Web build
+        run: npm run build
+      - name: Find browser
+        run: |
+          if command -v google-chrome >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            npx playwright-core install --with-deps chromium
+            browser=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path '*chrome-linux*' | head -1)
+            test -n "$browser"
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$browser" >> "$GITHUB_ENV"
+          fi
+      - name: Five previously failing browser files
+        id: five
+        continue-on-error: true
+        shell: bash
+        run: |
+          failures=0
+          for file in android-food-yazio android-mobile-entry ebook-content finance-backup responsive-layout; do
+            echo "Running $file"
+            if [[ "$file" == android-* ]]; then
+              VITE_GRAPES_TEST_CHANNEL=1 node "tests/$file.browser.mjs" || failures=$((failures + 1))
+            else
+              node "tests/$file.browser.mjs" || failures=$((failures + 1))
+            fi
+          done
+          echo "Five-file failures: $failures"
+          test "$failures" -eq 0
+      - name: Complete local browser suite
+        id: all
+        continue-on-error: true
+        shell: bash
+        run: |
+          passed=0
+          failed=0
+          for file in tests/*.browser.mjs; do
+            if [ "$file" = tests/food-live-api.browser.mjs ]; then continue; fi
+            echo "Running $file"
+            if [[ "$file" == tests/android-* ]]; then
+              VITE_GRAPES_TEST_CHANNEL=1 node "$file"
+            else
+              node "$file"
+            fi
+            if [ "$?" -eq 0 ]; then passed=$((passed + 1)); else failed=$((failed + 1)); fi
+          done
+          echo "Browser regression files: $passed PASS, $failed FAIL"
+          test "$failed" -eq 0
+      - name: Keep browser failures gating
+        if: always()
+        env:
+          FIVE: ${{ steps.five.outcome }}
+          ALL: ${{ steps.all.outcome }}
+        run: |
+          echo "Five: $FIVE; complete: $ALL"
+          test "$FIVE" = success
+          test "$ALL" = success
