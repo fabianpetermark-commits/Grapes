@@ -32,4 +32,4 @@ Existing Food schema, YAZIO/Health IDs, recipes, Water store and JSON backup for
 
 ## Remaining release work
 
-Run true two-device same-account and separate-account Android 16 / Galaxy S22 Ultra UAT; verify Drive permissions and recovery files through the live API; test a legacy client racing a new client; review storage quotas and recovery-copy retention. The application must not claim guaranteed multi-device sync. Keep Health **NO-GO** and do not merge, build/publish an APK, or release until independent verification and user authorization.
+Run true two-device same-account and separate-account Android 16 / Galaxy S22 Ultra UAT; verify Drive permissions and recovery files through the live API; test a legacy client racing a new client; review storage quotas and recovery-copy retention. The application must not claim guaranteed multi-device sync. Keep Health **NO-GO** and do not merge, publish an APK, or release until independent verification and user authorization. The isolated QA compile/package is an automated test, not publication.
