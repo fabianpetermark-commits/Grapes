@@ -106,6 +106,37 @@ const privateSchema = await request('/rest/v1/documents?select=*', anonKey, a.to
 assert.ok([400, 404, 406].includes(privateSchema.status), `private schema was exposed: ${JSON.stringify(privateSchema)}`)
 console.log('PASS: real local JWTs enforce A/B isolation, anonymous denial, retries and recovery reads')
 
+// The private schema is normally unreadable directly. Temporarily grant SELECT
+// inside a rolled-back admin transaction to test the RLS predicates themselves.
+psql(['-q', '-c', `
+  begin;
+  grant select on grapes_private.profiles, grapes_private.documents,
+    grapes_private.revisions, grapes_private.attempts to authenticated;
+  set local role authenticated;
+  select set_config('request.jwt.claim.sub','${a.id}',true);
+  do $$ begin
+    if (select count(*) from grapes_private.documents where profile_id='ci-a') <> 1 or
+       (select count(*) from grapes_private.documents where profile_id='ci-b') <> 0 or
+       (select count(*) from grapes_private.profiles where profile_id='ci-b') <> 0 or
+       (select count(*) from grapes_private.attempts where profile_id='ci-b') <> 0 or
+       (select count(*) from grapes_private.revisions where profile_id='ci-b') <> 0 then
+      raise exception 'RLS leaked user B rows to user A';
+    end if;
+  end $$;
+  select set_config('request.jwt.claim.sub','${b.id}',true);
+  do $$ begin
+    if (select count(*) from grapes_private.documents where profile_id='ci-b') <> 1 or
+       (select count(*) from grapes_private.documents where profile_id='ci-a') <> 0 or
+       (select count(*) from grapes_private.profiles where profile_id='ci-a') <> 0 or
+       (select count(*) from grapes_private.attempts where profile_id='ci-a') <> 0 or
+       (select count(*) from grapes_private.revisions where profile_id='ci-a') <> 0 then
+      raise exception 'RLS leaked user A rows to user B';
+    end if;
+  end $$;
+  rollback;
+`])
+console.log('PASS: private-table RLS predicates isolate both synthetic users under temporary rolled-back SELECT grants')
+
 const grants = sql(`select
   has_function_privilege('authenticated', 'api.compare_and_swap(text,text,text,uuid,bigint,integer,jsonb)', 'EXECUTE'),
   has_function_privilege('anon', 'api.compare_and_swap(text,text,text,uuid,bigint,integer,jsonb)', 'EXECUTE'),
