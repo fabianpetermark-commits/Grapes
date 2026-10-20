@@ -8,6 +8,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve('index.html'),
+        loginPreview: resolve('login-preview.html'),
         androidMobilePreview: resolve('design/android-mobile-preview.html'),
       },
     },
