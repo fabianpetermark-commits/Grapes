@@ -1,0 +1,69 @@
+name: Browser baseline diagnostics
+
+on:
+  pull_request:
+    branches:
+      - ci/supabase-phase0-independent-verification-20261020
+    paths:
+      - .github/workflows/browser-baseline-diagnostics.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  five-browser-baselines:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: health-73
+            commit: f05245c359cdaac42a4eb13405239c3f7af3c947
+          - label: supabase-77
+            commit: dd84ed0c3f1f102e23839be31c7e3231913d0f94
+          - label: ci-78
+            commit: 3d20ddddbd38b43f96e4105fcf18321fd5761817
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.commit }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Verify exact source and install
+        run: |
+          test "$(git rev-parse HEAD)" = "${{ matrix.commit }}"
+          npm ci
+      - name: Select browser
+        run: |
+          if command -v google-chrome >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            npx playwright-core install --with-deps chromium
+            browser=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path '*chrome-linux*' | head -1)
+            test -n "$browser"
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$browser" >> "$GITHUB_ENV"
+          fi
+      - name: Run original five browser tests without altered assertions
+        shell: bash
+        run: |
+          set +e
+          failures=0
+          for file in android-food-yazio android-mobile-entry ebook-content finance-backup responsive-layout; do
+            echo "===== ${{ matrix.label }}: $file ====="
+            if [[ "$file" == android-* ]]; then
+              VITE_GRAPES_TEST_CHANNEL=1 node "tests/$file.browser.mjs"
+            else
+              node "tests/$file.browser.mjs"
+            fi
+            result=$?
+            echo "RESULT ${{ matrix.label }} $file $result" | tee -a "$GITHUB_STEP_SUMMARY"
+            if [ "$result" -ne 0 ]; then failures=$((failures + 1)); fi
+          done
+          echo "FAILURES ${{ matrix.label }} $failures" | tee -a "$GITHUB_STEP_SUMMARY"
+          test "$failures" -eq 0
