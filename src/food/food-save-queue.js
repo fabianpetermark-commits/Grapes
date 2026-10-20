@@ -52,14 +52,18 @@ export function createFoodSaveQueue({ save, storage = globalThis.localStorage, o
     const revision = Math.max(baseline.revision, preceding?.revision || 0) + 1
     const record = { id: `food-tracker-${profileId}`, module, name, data: snapshot, driveFileId: fileId, driveVersion, driveWriteId, saveToken: token, saveRevision: revision }
     const item = { version: 2, profileId, token, revision, ancestorTokens, recordedAt: now(), fileId, driveVersion, driveWriteId, data: snapshot }
-    const existing = storage?.getItem(keyFor(profileId))
+    latest.set(profileId, token)
+    let existing
+    try { existing = storage?.getItem(keyFor(profileId)) }
+    catch (error) { onStatus(profileId, 'failed', error); throw error }
     if (existing) {
       let old
-      try { old = JSON.parse(existing) } catch { throw conflict() }
-      if (old?.profileId !== profileId || !old.token || (old.token !== preceding?.token && old.token !== baseline.token)) throw conflict()
+      try { old = JSON.parse(existing) } catch { const error = conflict(); onStatus(profileId, 'failed', error); throw error }
+      if (old?.profileId !== profileId || !old.token || (old.token !== preceding?.token && old.token !== baseline.token)) {
+        const error = conflict(); onStatus(profileId, 'failed', error); throw error
+      }
     }
     queued.set(profileId, { token, revision, ancestorTokens })
-    latest.set(profileId, token)
     onStatus(profileId, 'pending')
     try { storage?.setItem(keyFor(profileId), JSON.stringify(item)) }
     catch (error) { onStatus(profileId, 'journal-failed', error) }
