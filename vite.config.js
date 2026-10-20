@@ -9,6 +9,7 @@ export default defineConfig({
       input: {
         main: resolve('index.html'),
         loginPreview: resolve('login-preview.html'),
+        loginAuthTest: resolve('login-auth-test.html'),
         androidMobilePreview: resolve('design/android-mobile-preview.html'),
       },
     },
