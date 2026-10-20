@@ -2,6 +2,7 @@
 // between an edit and the end of its IndexedDB transaction when storage allows.
 const PREFIX = 'grapes-food-pending-v1:'
 const keyFor = profileId => PREFIX + encodeURIComponent(profileId)
+const writeKeyFor = (profileId, token) => `${keyFor(profileId)}:write:${encodeURIComponent(token)}`
 
 export function createFoodSaveQueue({ save, storage = globalThis.localStorage, onStatus = () => {}, now = Date.now, randomId = () => crypto.randomUUID() }) {
   const tails = new Map()
@@ -19,16 +20,33 @@ export function createFoodSaveQueue({ save, storage = globalThis.localStorage, o
     committed.set(profileId, { token: stored?.saveToken || null, revision: Number.isSafeInteger(stored?.saveRevision) ? stored.saveRevision : 0 })
   }
 
-  function pending(profileId, stored = null) {
-    const raw = storage?.getItem(keyFor(profileId))
-    if (!raw) return null
-    let item
-    try { item = JSON.parse(raw) } catch { throw new Error('A Food függő mentése sérült; az eredeti adatot nem töröltük.') }
-    if (![1, 2].includes(item?.version) || item.profileId !== profileId || item.data?.profile?.id !== profileId || !item.token) {
-      throw new Error('A Food függő mentése nem ehhez a profilhoz tartozik; az eredeti adatot nem töröltük.')
+  function journalEntries(profileId) {
+    const primary = keyFor(profileId)
+    const keys = [primary]
+    if (typeof storage?.key === 'function') {
+      for (let i = 0; i < storage.length; i++) {
+        const key = storage.key(i)
+        if (key?.startsWith(primary + ':write:')) keys.push(key)
+      }
     }
+    return keys.map(key => ({ key, raw: storage?.getItem(key) })).filter(entry => entry.raw)
+  }
+
+  function pending(profileId, stored = null) {
+    const entries = journalEntries(profileId)
+    if (!entries.length) return null
+    const journals = new Map()
+    for (const entry of entries) {
+      let item
+      try { item = JSON.parse(entry.raw) } catch { throw conflict() }
+      if (![1, 2].includes(item?.version) || item.profileId !== profileId || item.data?.profile?.id !== profileId || !item.token) throw conflict()
+      journals.set(item.token, item)
+    }
+    const items = [...journals.values()]
+    const item = items.find(candidate => items.every(other => other.token === candidate.token || candidate.ancestorTokens?.includes(other.token)))
+    if (!item) throw conflict()
     if (stored?.saveToken === item.token) {
-      try { storage.removeItem(keyFor(profileId)) } catch {}
+      for (const entry of entries) try { storage.removeItem(entry.key) } catch {}
       return null
     }
     // A timestamp cannot order writes in the same millisecond or across tabs.
@@ -56,22 +74,31 @@ export function createFoodSaveQueue({ save, storage = globalThis.localStorage, o
     let existing
     try { existing = storage?.getItem(keyFor(profileId)) }
     catch (error) { onStatus(profileId, 'failed', error); throw error }
+    let replacePrimary = true
     if (existing) {
       let old
       try { old = JSON.parse(existing) } catch { const error = conflict(); onStatus(profileId, 'failed', error); throw error }
       if (old?.profileId !== profileId || !old.token || (old.token !== preceding?.token && old.token !== baseline.token)) {
-        const error = conflict(); onStatus(profileId, 'failed', error); throw error
+        if (old?.version !== 2 || !Number.isSafeInteger(old.revision) || old.revision <= baseline.revision) {
+          const error = conflict(); onStatus(profileId, 'failed', error); throw error
+        }
+        replacePrimary = false
       }
     }
     queued.set(profileId, { token, revision, ancestorTokens })
     onStatus(profileId, 'pending')
-    try { storage?.setItem(keyFor(profileId), JSON.stringify(item)) }
+    try {
+      storage?.setItem(writeKeyFor(profileId, token), JSON.stringify(item))
+      if (replacePrimary) storage?.setItem(keyFor(profileId), JSON.stringify(item))
+    }
     catch (error) { onStatus(profileId, 'journal-failed', error) }
     const task = (tails.get(profileId) || Promise.resolve()).catch(() => {}).then(async () => {
       await save({ ...record, expectedSaveToken: committed.get(profileId)?.token || null })
       committed.set(profileId, { token, revision })
       try {
-        if (pending(profileId)?.token === token) storage?.removeItem(keyFor(profileId))
+        storage?.removeItem(writeKeyFor(profileId, token))
+        const primary = storage?.getItem(keyFor(profileId))
+        if (primary && JSON.parse(primary)?.token === token) storage?.removeItem(keyFor(profileId))
       } catch { /* Keep damaged journal bytes for manual recovery. */ }
       if (latest.get(profileId) === token) onStatus(profileId, 'saved')
       if (latest.get(profileId) === token) queued.delete(profileId)
@@ -86,5 +113,6 @@ export function createFoodSaveQueue({ save, storage = globalThis.localStorage, o
 
   function flush(profileId) { return tails.get(profileId) || Promise.resolve() }
   function raw(profileId) { return storage?.getItem(keyFor(profileId)) || null }
-  return { enqueue, flush, pending, observe, raw, keyFor }
+  function allRaw(profileId) { return journalEntries(profileId).map(entry => entry.raw) }
+  return { enqueue, flush, pending, observe, raw, allRaw, keyFor }
 }
