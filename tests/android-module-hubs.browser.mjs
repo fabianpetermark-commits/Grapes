@@ -102,7 +102,7 @@ try {
       const db = open.result
       const tx = db.transaction('projects', 'readonly')
       const request = tx.objectStore('projects').get('food-tracker-local-food-profile')
-      request.onsuccess = () => { db.close(); resolve(request.result?.data?.targets?.at(-1)?.energyKcal) }
+      request.onsuccess = () => { db.close(); resolve(request.result?.data?.targets?.at(-1)?.values?.energyKcal) }
       request.onerror = () => reject(request.error)
     }
   }))
