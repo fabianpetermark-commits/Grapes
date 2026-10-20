@@ -10,7 +10,7 @@ import { listLocalProjects } from './storage/local-project-store.js'
 import { listMobileEbooks, saveMobileReadingProgress, uploadMobileEbook } from './ebook-mobile-library.js'
 import { isMobileReadableEpub, normalizedReadingProgress, openMobileEpub } from './ebook-mobile-reader.js'
 import { createMobileFoodController } from './food/food-mobile.js'
-import { claimLegacyWaterStore, legacyWaterStatus, readWaterStore, waterProfileId, writeWaterStore } from './water-store.js'
+import { MAX_WATER_BACKUP_BYTES, claimLegacyWaterStore, legacyWaterStatus, readWaterStore, restoreWaterBackup, waterBackupFromJson, waterBackupToJson, waterKey, waterProfileId, writeWaterStore } from './water-store.js'
 import { createYazioApiPanel } from './food/yazio-api-panel.js'
 import { registerFoodSharing, sendMealShare, sendRecipeShare } from './food/food-sharing-client.js'
 import { hydrateMobileIcons, mobileIconSvg } from './android-mobile-icons.js'
@@ -864,6 +864,52 @@ function saveWaterStore(store) {
   writeWaterStore(localStorage, profileId, store)
 }
 
+function renderWaterBackupControls(log) {
+  const profileId = activeWaterProfileId()
+  const exportButton = document.createElement('button')
+  exportButton.type = 'button'
+  exportButton.className = 'btn'
+  exportButton.textContent = waterLoadError ? 'Sérült vízadat mentése' : 'Helyi víznapló biztonsági mentése'
+  exportButton.addEventListener('click', () => {
+    try {
+      if (!waterLoadError && legacyWaterStatus(localStorage, profileId).available && !Object.keys(readWaterStore(localStorage, profileId)).length)
+        throw new Error('Előbb rendeld a korábbi víznaplót ehhez a profilhoz.')
+      const raw = waterLoadError ? localStorage.getItem(waterKey(profileId)) : waterBackupToJson(localStorage, profileId)
+      if (raw === null) throw new Error('Nincs menthető vízadat.')
+      const url = URL.createObjectURL(new Blob([raw], { type: 'application/json' }))
+      const link = document.createElement('a')
+      link.href = url
+      link.download = waterLoadError ? 'grapes-water-damaged.json' : 'grapes-water-backup.json'
+      link.click()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } catch (error) { showToast(error.message) }
+  })
+  const importButton = document.createElement('button')
+  importButton.type = 'button'
+  importButton.className = 'btn'
+  importButton.textContent = 'Víznapló visszaállítása'
+  const fileInput = document.createElement('input')
+  fileInput.type = 'file'
+  fileInput.accept = 'application/json,.json'
+  fileInput.hidden = true
+  importButton.addEventListener('click', () => fileInput.click())
+  fileInput.addEventListener('change', async () => {
+    const file = fileInput.files?.[0]
+    fileInput.value = ''
+    if (!file) return
+    try {
+      if (file.size > MAX_WATER_BACKUP_BYTES) throw new Error('A víznapló mentése legfeljebb 10 MB lehet.')
+      const source = await file.text()
+      const days = waterBackupFromJson(source, profileId)
+      if (!window.confirm(`${Object.keys(days).length} nap vízadatát állítod vissza ennél a profilnál. A jelenlegi adatok külön helyreállítási másolatba kerülnek. Folytatod?`)) return
+      restoreWaterBackup(localStorage, profileId, source)
+      renderWater()
+      showToast('A víznapló visszaállítva.')
+    } catch (error) { showToast(error.message) }
+  })
+  log.append(exportButton, importButton, fileInput)
+}
+
 function importHydrationEntries(entries = []) {
   const store = loadWaterStore()
   const existingKeys = new Set(Object.values(store).flatMap(day => day?.entries || []).map(entry => entry.externalKey).filter(Boolean))
@@ -939,6 +985,7 @@ function renderWater() {
   $('[data-action="water-goal"]').textContent = `Cél: ${(day.goal / 1000).toLocaleString('hu-HU')} l`
   const log = $('[data-water-log]')
   log.replaceChildren()
+  renderWaterBackupControls(log)
   if (waterLoadError) {
     $('[data-water-total]').textContent = '—'
     $('[data-water-summary]').textContent = 'A víznapló adatai jelenleg nem olvashatók.'

@@ -1,6 +1,7 @@
 export const LEGACY_WATER_KEY = 'grapes-water-v1'
 export const WATER_KEY_PREFIX = 'grapes-water-v2:'
 const LEGACY_OWNER_KEY = 'grapes-water-v1-claimed-by'
+export const MAX_WATER_BACKUP_BYTES = 10 * 1024 * 1024
 
 export function waterProfileId(account) {
   return String(account?.id || account?.email || 'local-food-profile').trim().toLocaleLowerCase('hu-HU')
@@ -53,4 +54,33 @@ export function claimLegacyWaterStore(storage, profileId) {
   storage.setItem(LEGACY_OWNER_KEY, profileId)
   writeWaterStore(storage, profileId, legacy)
   return Object.keys(legacy).length
+}
+
+export function waterBackupToJson(storage, profileId) {
+  return JSON.stringify({
+    grapesWaterBackup: true, version: 1, profileId,
+    exportedAt: new Date().toISOString(), days: readWaterStore(storage, profileId),
+  }, null, 2)
+}
+
+export function waterBackupFromJson(source, profileId) {
+  if (typeof source !== 'string' || new TextEncoder().encode(source).length > MAX_WATER_BACKUP_BYTES)
+    throw new Error('A víznapló biztonsági mentése legfeljebb 10 MB lehet.')
+  let backup
+  try { backup = JSON.parse(source) } catch { throw new Error('A víznapló biztonsági mentése nem érvényes JSON.') }
+  if (backup?.grapesWaterBackup !== true || backup.version !== 1 || backup.profileId !== profileId)
+    throw new Error('Ez a víznapló mentés másik profilhoz tartozik vagy nem támogatott.')
+  return parseStore(JSON.stringify(backup.days))
+}
+
+export function restoreWaterBackup(storage, profileId, source) {
+  const days = waterBackupFromJson(source, profileId)
+  const key = waterKey(profileId)
+  const previous = storage.getItem(key)
+  if (previous !== null) {
+    const recoveryKey = key + ':before-restore:' + globalThis.crypto.randomUUID()
+    storage.setItem(recoveryKey, previous)
+  }
+  storage.setItem(key, JSON.stringify(days))
+  return Object.keys(days).length
 }
