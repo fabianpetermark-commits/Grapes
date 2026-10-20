@@ -102,7 +102,7 @@ try {
     'Azonos fajból lehet két külön példány.')
   await page.locator('[data-outdoor-plant="chili-a"]').click()
   await page.locator('[data-page="outdoor-detail"]').waitFor({ state: 'visible' })
-  assert.match(await page.locator('[data-outdoor-fact="name"]').textContent(), /1\\. példány/)
+  assert.match(await page.locator('[data-outdoor-fact="name"]').textContent(), /1\. példány/)
   assert.match(await page.locator('[data-outdoor-fact="place"]').textContent(), /Terasz/)
   assert.equal(await page.locator('[data-outdoor-panel="overview"]').isVisible(), true)
   await page.locator('[data-outdoor-tab="overview"]').focus()
@@ -123,7 +123,7 @@ try {
   await page.evaluate(() => window.grapesHandleAndroidBack())
   await page.locator('[data-page="outdoor-plants"]').waitFor({ state: 'visible' })
   await page.locator('[data-outdoor-plant="chili-b"]').click()
-  assert.match(await page.locator('[data-outdoor-fact="name"]').textContent(), /2\\. példány/)
+  assert.match(await page.locator('[data-outdoor-fact="name"]').textContent(), /2\. példány/)
   assert.match(await page.locator('[data-outdoor-fact="place"]').textContent(), /Ablakpárkány/)
   assert.equal(await page.locator('[data-outdoor-tab="overview"]').getAttribute('aria-selected'), 'true',
     'Új növény megnyitásakor az Áttekintés fület nyitjuk meg.')
