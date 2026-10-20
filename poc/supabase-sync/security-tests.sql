@@ -78,4 +78,16 @@ do $$ begin
     raise exception 'head, history or conflict snapshot mismatch';
   end if;
 end $$;
+do $$ begin
+  begin
+    delete from grapes_private.attempts where profile_id = 'synthetic-a';
+    raise exception 'conflict recovery was mutable';
+  exception when object_not_in_prerequisite_state then null;
+  end;
+  begin
+    update grapes_private.revisions set payload = '{}'::jsonb where profile_id = 'synthetic-a';
+    raise exception 'revision history was mutable';
+  exception when object_not_in_prerequisite_state then null;
+  end;
+end $$;
 rollback;
