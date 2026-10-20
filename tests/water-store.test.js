@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { claimLegacyWaterStore, legacyWaterStatus, readWaterStore, waterKey, waterProfileId, writeWaterStore } from '../src/water-store.js'
+import { claimLegacyWaterStore, legacyWaterStatus, readWaterStore, restoreWaterBackup, waterBackupFromJson, waterBackupToJson, waterKey, waterProfileId, writeWaterStore } from '../src/water-store.js'
 
 function storage(initial = {}) {
   const values = new Map(Object.entries(initial))
@@ -8,6 +8,7 @@ function storage(initial = {}) {
     getItem: key => values.has(key) ? values.get(key) : null,
     setItem: (key, value) => values.set(key, String(value)),
     raw: key => values.get(key),
+    keys: () => values.keys(),
   }
 }
 
@@ -45,4 +46,16 @@ test('corruption and a failed write never replace existing water bytes', () => {
   failed.setItem = () => { throw new Error('QuotaExceededError') }
   assert.throws(() => claimLegacyWaterStore(failed, profile), /QuotaExceededError/)
   assert.ok(failed.raw('grapes-water-v1'))
+})
+
+test('Water backup roundtrip, profile gate and recovery copy', () => {
+  const local = storage()
+  writeWaterStore(local, 'anna', { '2026-10-19': { goal: 2100, entries: [{ id: 'one', amount: 350 }] } })
+  const exported = waterBackupToJson(local, 'anna')
+  assert.throws(() => waterBackupFromJson(exported, 'bela'), /másik profilhoz/)
+  const key = waterKey('anna')
+  local.setItem(key, '{damaged')
+  assert.equal(restoreWaterBackup(local, 'anna', exported), 1)
+  assert.equal(readWaterStore(local, 'anna')['2026-10-19'].entries[0].amount, 350)
+  assert.ok([...local.keys()].some(name => name.startsWith(key + ':before-restore:')))
 })
