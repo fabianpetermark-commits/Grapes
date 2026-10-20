@@ -28,11 +28,11 @@ try {
     await saveLocalProject({ id: `food-tracker-${profileId}`, module: 'Ételnapló', name: 'Ételnapló', data: baseline, saveToken: 'baseline', saveRevision: 1 })
   }, { profileId, baseline: snapshot('baseline') })
   const begin = async page => page.evaluate(async profileId => {
-    const [{ createFoodSaveQueue }, { loadLocalProject, saveLocalProject }] = await Promise.all([
+    const [{ createFoodSaveQueue }, localStore] = await Promise.all([
       import('/Grapes/src/food/food-save-queue.js'), import('/Grapes/src/storage/local-project-store.js'),
     ])
-    const stored = await loadLocalProject(`food-tracker-${profileId}`)
-    window.foodQueue = createFoodSaveQueue({ save: saveLocalProject, storage: localStorage })
+    const stored = await localStore.loadLocalProject(`food-tracker-${profileId}`)
+    window.foodQueue = createFoodSaveQueue({ save: localStore.saveLocalFoodProject || localStore.saveLocalProject, storage: localStorage })
     window.foodQueue.observe(profileId, stored)
     return stored.saveToken
   }, profileId)
