@@ -152,6 +152,8 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const conflict = project?.syncState?.conflict
     const panel = $('[data-food-conflict-panel]')
     if (panel) panel.hidden = !conflict
+    const recoveryButton = $('[data-food-recovery-export]')
+    if (recoveryButton) recoveryButton.hidden = !project?.syncState?.lastConflictRecoveryId
     if (conflict) showSyncStatus(`Drive-ütközés: ${conflict.reason} A helyi napló megmaradt; válassz helyreállítást.`)
   }
 
@@ -1759,6 +1761,14 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     downloadFoodBackup(normalizeFoodProject(remote.data, profile.id), '-felho')
   }
 
+  async function exportConflictRecovery() {
+    const id = project?.syncState?.lastConflictRecoveryId
+    if (!id) throw new Error('Nincs helyi helyreállító példány.')
+    const record = await loadLocalProject(id)
+    if (record?.data?.profile?.id !== profile.id) throw new Error('A helyreállító példány nem ehhez a profilhoz tartozik.')
+    downloadFoodBackup(normalizeFoodProject(record.data, profile.id), '-helyreallito')
+  }
+
   async function useConflictRemote() {
     const fileId = project?.syncState?.conflict?.remoteFileId
     if (!fileId) throw new Error('Nincs egyértelmű felhőfájl. A konfliktust kézzel kell feloldani.')
@@ -1772,10 +1782,11 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     if (String(beforeMeta.version) !== String(meta.version)) throw new Error('A felhőnapló a letöltés közben változott; próbáld újra.')
     const normalized = normalizeFoodProject(remote.data, profileId)
     if (project !== oldProject || profile?.id !== profileId) throw new Error('Profilváltás közben a konfliktus nem oldható fel.')
-    await saveLocalProject({ id: `food-conflict-${profileId}-${crypto.randomUUID()}`, module: MODULE,
+    const recoveryId = `food-conflict-${profileId}-${crypto.randomUUID()}`
+    await saveLocalProject({ id: recoveryId, module: MODULE,
       name: 'Food helyi helyreállító másolat', data: structuredClone(oldProject), driveFileId: null })
     project = normalized
-    project.syncState = { ...project.syncState, localDirty: false, conflict: null }
+    project.syncState = { ...project.syncState, localDirty: false, conflict: null, lastConflictRecoveryId: recoveryId }
     driveFileId = fileId; driveVersion = String(meta.version); driveWriteId = remote.writeId || null
     await persistLocal(); render(); showConflict()
     showToast('A felhőpéldány aktív; a korábbi helyi napló helyreállító másolata megmaradt.')
@@ -2131,6 +2142,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-backup-input]').addEventListener('change', importBackup)
     $('[data-food-conflict-export-local]')?.addEventListener('click', () => exportBackup())
     $('[data-food-conflict-export-remote]')?.addEventListener('click', () => exportConflictRemote().catch(error => showToast(error.message)))
+    $('[data-food-recovery-export]')?.addEventListener('click', () => exportConflictRecovery().catch(error => showToast(error.message)))
     $('[data-food-conflict-use-remote]')?.addEventListener('click', () => useConflictRemote().catch(error => showToast(error.message)))
     $('[data-food-health-input]').addEventListener('change', selectHealthImport)
     $('[data-food-health-confirm]').addEventListener('click', applyHealthImport)
