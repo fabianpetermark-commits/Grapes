@@ -81,7 +81,9 @@ try {
   await page.evaluate(() => {
     globalThis.__GRAPES_FATSECRET_TEST__ = async () => [{ kind: 'product', name: 'FatSecret teszt', category: 'Élelmiszer', baseUnit: 'g', nutrients: { energyKcal: 200 }, source: { type: 'fatsecret', id: 'mobile-fs' } }]
   })
-  await page.locator('[data-nav="home"]').click(); await page.locator('[data-module="food"]').last().click()
+  await page.locator('[data-nav="home"]').click()
+  await page.locator('[data-menu-group="health"]').click()
+  await page.locator('[data-menu-destination="food"]').click()
   await page.locator('[data-food-meals] .meal').first().click(); await page.locator('[data-fab]').click()
   await page.locator('[data-food-search]').fill('keksz')
   await page.locator('[data-food-search-results]').getByRole('button').filter({ hasText: 'FatSecret teszt' }).click()
