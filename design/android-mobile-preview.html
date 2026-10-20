@@ -662,8 +662,85 @@
         <div class="content outdoor-page" data-page="outdoor-plants" hidden>
           <button type="button" class="hub-back" data-outdoor-back>‹ Outdoor</button>
           <p class="eyebrow">Outdoor / Növényeim</p><h1>Növényeim</h1>
-          <p class="lead">Itt lesznek a saját növényeid és gondozási előzményeik.</p>
-          <div class="outdoor-empty"><span data-mobile-icon="plant"></span><strong>Még nincs növényed</strong><p>A növények felvétele, képei és locsolási naplója a következő fejlesztési szakaszban érkeznek.</p></div>
+          <p class="lead">Minden növényed külön példányként, saját hellyel és gondozási előzményekkel.</p>
+          <div class="outdoor-preview-label" role="note"><strong>Bemutató mód</strong><span>Az alábbi növények mintakártyák. Nem a te adataid, és semmit nem mentünk.</span></div>
+          <div class="outdoor-plant-list-head"><h2>Növénykártyák</h2><span>3 mintapéldány</span></div>
+          <div class="outdoor-plant-list" data-outdoor-plants-list aria-label="Mintanövények">
+            <button type="button" class="outdoor-plant-card" data-outdoor-plant="chili-a">
+              <span class="outdoor-plant-card__visual" data-mobile-icon="plant" aria-hidden="true"></span>
+              <span class="outdoor-plant-card__body">
+                <span class="outdoor-plant-card__species">Csilipaprika · Minta</span>
+                <strong>Csili · 1. példány</strong>
+                <small>Terasz (minta) · Cserép</small>
+                <span class="outdoor-plant-card__bottom"><span class="outdoor-plant-card__status">Nincs naplóadat</span><span aria-hidden="true">›</span></span>
+              </span>
+            </button>
+            <button type="button" class="outdoor-plant-card" data-outdoor-plant="chili-b">
+              <span class="outdoor-plant-card__visual outdoor-plant-card__visual--two" data-mobile-icon="plant" aria-hidden="true"></span>
+              <span class="outdoor-plant-card__body">
+                <span class="outdoor-plant-card__species">Csilipaprika · Minta</span>
+                <strong>Csili · 2. példány</strong>
+                <small>Ablakpárkány (minta) · Cserép</small>
+                <span class="outdoor-plant-card__bottom"><span class="outdoor-plant-card__status">Nincs naplóadat</span><span aria-hidden="true">›</span></span>
+              </span>
+            </button>
+            <button type="button" class="outdoor-plant-card" data-outdoor-plant="basil-a">
+              <span class="outdoor-plant-card__visual outdoor-plant-card__visual--three" data-mobile-icon="plant" aria-hidden="true"></span>
+              <span class="outdoor-plant-card__body">
+                <span class="outdoor-plant-card__species">Bazsalikom · Minta</span>
+                <strong>Bazsalikom · 1. példány</strong>
+                <small>Konyhaablak (minta) · Cserép</small>
+                <span class="outdoor-plant-card__bottom"><span class="outdoor-plant-card__status">Nincs naplóadat</span><span aria-hidden="true">›</span></span>
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div class="content outdoor-page" data-page="outdoor-detail" hidden>
+          <button type="button" class="hub-back" data-outdoor-detail-back>‹ Növényeim</button>
+          <p class="eyebrow">Outdoor / Növényadatlap</p>
+          <div class="outdoor-detail-hero">
+            <span class="outdoor-detail-hero__visual" data-mobile-icon="plant" aria-hidden="true"></span>
+            <div>
+              <span class="outdoor-detail-hero__tag">Bemutató · Nem mentett adat</span>
+              <h1 data-outdoor-fact="name">Növény</h1>
+              <p data-outdoor-fact="species">—</p>
+            </div>
+          </div>
+          <div class="outdoor-detail-tabs" role="tablist" aria-label="Növényadatlap fülek">
+            <button type="button" role="tab" id="outdoor-tab-overview" aria-controls="outdoor-panel-overview" aria-selected="true" class="is-active" data-outdoor-tab="overview">Áttekintés</button>
+            <button type="button" role="tab" id="outdoor-tab-care" aria-controls="outdoor-panel-care" aria-selected="false" tabindex="-1" data-outdoor-tab="care">Gondozás</button>
+            <button type="button" role="tab" id="outdoor-tab-journal" aria-controls="outdoor-panel-journal" aria-selected="false" tabindex="-1" data-outdoor-tab="journal">Napló</button>
+            <button type="button" role="tab" id="outdoor-tab-photos" aria-controls="outdoor-panel-photos" aria-selected="false" tabindex="-1" data-outdoor-tab="photos">Képek</button>
+          </div>
+          <section class="outdoor-tab-panel" role="tabpanel" id="outdoor-panel-overview" aria-labelledby="outdoor-tab-overview" data-outdoor-panel="overview">
+            <h2>Alapadatok</h2>
+            <div class="outdoor-info-grid">
+              <div><span>Tudományos név</span><strong data-outdoor-fact="latin">—</strong></div>
+              <div><span>Elhelyezés</span><strong data-outdoor-fact="place">—</strong></div>
+              <div><span>Ültetés módja</span><strong data-outdoor-fact="container">—</strong></div>
+              <div><span>Fejlődési szakasz</span><strong>Nincs megadva</strong></div>
+            </div>
+            <p class="outdoor-detail-hint">Ugyanahhoz a fajhoz több, külön gondozott példány is tartozhat.</p>
+          </section>
+          <section class="outdoor-tab-panel" role="tabpanel" id="outdoor-panel-care" aria-labelledby="outdoor-tab-care" data-outdoor-panel="care" hidden>
+            <h2>Gondozási adatok</h2>
+            <div class="outdoor-info-grid">
+              <div><span>Öntözés</span><strong>Még nincs naplózva</strong></div>
+              <div><span>Fényigény</span><strong>Még nincs ellenőrzött adat</strong></div>
+              <div><span>Talaj és tápoldat</span><strong>Még nincs beállítva</strong></div>
+              <div><span>Teleltetés</span><strong>Még nincs beállítva</strong></div>
+            </div>
+            <p class="outdoor-detail-hint">A későbbi ajánlások a faj és a konkrét növény körülményei alapján jelennek meg.</p>
+          </section>
+          <section class="outdoor-tab-panel" role="tabpanel" id="outdoor-panel-journal" aria-labelledby="outdoor-tab-journal" data-outdoor-panel="journal" hidden>
+            <h2>Gondozási napló</h2>
+            <div class="outdoor-tab-empty"><span data-mobile-icon="calendar" aria-hidden="true"></span><strong>Nincsenek bejegyzések</strong><p>Később itt követheted az öntözést, tápoldatozást, átültetést, érés állapotát és megfigyeléseidet.</p></div>
+          </section>
+          <section class="outdoor-tab-panel" role="tabpanel" id="outdoor-panel-photos" aria-labelledby="outdoor-tab-photos" data-outdoor-panel="photos" hidden>
+            <h2>Növényfotók</h2>
+            <div class="outdoor-tab-empty"><span data-mobile-icon="plant" aria-hidden="true"></span><strong>Még nincs kép</strong><p>A saját növényfotók feltöltése és a képes fejlődéstörténet a következő szakaszban készülhet el.</p></div>
+          </section>
         </div>
 
         <div class="content outdoor-page" data-page="outdoor-catalog" hidden>
