@@ -105,5 +105,13 @@ export function bindGrapesTestLogin(root, flow = null) {
     } catch { show('A TEST-kijelentkezés nem sikerült.') }
     finally { setBusy(false) }
   })
-  return { configured, getMode: () => mode }
+  return {
+    configured,
+    getMode: () => mode,
+    setNotice: show,
+    setSession(user) {
+      signOut.hidden = !user?.id
+      if (user?.id) show('Grapes TEST-fiók hitelesítve. A Health és az E-book adatai változatlanok.')
+    },
+  }
 }
