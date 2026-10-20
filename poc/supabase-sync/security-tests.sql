@@ -1,0 +1,81 @@
+-- PROPOSED TEST ONLY. Run with psql against an isolated authorized TEST DB.
+-- Supply two synthetic Auth user UUIDs as -v user_a=... -v user_b=...
+-- Both UUIDs must already exist in auth.users. This transaction rolls back.
+\set ON_ERROR_STOP on
+begin;
+insert into grapes_private.profiles(user_id, profile_id)
+values (:'user_a'::uuid, 'synthetic-a'), (:'user_b'::uuid, 'synthetic-b');
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'user_a', true);
+do $$
+declare result jsonb;
+begin
+  result := api.compare_and_swap('synthetic-a', 'food', 'entry-1',
+    '00000000-0000-4000-8000-000000000001', 0, 1, '{"value":"A"}'::jsonb);
+  if result->>'status' <> 'committed' or (result->>'revision')::bigint <> 1 then
+    raise exception 'initial commit failed: %', result;
+  end if;
+  result := api.compare_and_swap('synthetic-a', 'food', 'entry-1',
+    '00000000-0000-4000-8000-000000000001', 0, 1, '{"value":"A"}'::jsonb);
+  if result->>'status' <> 'committed' or (result->>'revision')::bigint <> 1 then
+    raise exception 'idempotent retry failed: %', result;
+  end if;
+  result := api.compare_and_swap('synthetic-a', 'food', 'entry-1',
+    '00000000-0000-4000-8000-000000000002', 0, 1, '{"value":"stale"}'::jsonb);
+  if result->>'status' <> 'conflict' or result->>'snapshotId' is null then
+    raise exception 'stale write did not retain conflict: %', result;
+  end if;
+  begin
+    perform api.compare_and_swap('synthetic-b', 'food', 'entry-1',
+      '00000000-0000-4000-8000-000000000003', 0, 1, '{}'::jsonb);
+    raise exception 'cross-user profile write was allowed';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    perform api.compare_and_swap('synthetic-a', 'food', 'entry-1',
+      '00000000-0000-4000-8000-000000000001', 0, 1, '{"value":"changed"}'::jsonb);
+    raise exception 'operation ID reuse was allowed';
+  exception when unique_violation then null;
+  end;
+end;
+$$;
+
+-- Direct table access is denied even when a caller knows its name.
+do $$ begin
+  begin
+    perform count(*) from grapes_private.documents;
+    raise exception 'direct private table read was allowed';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+
+select set_config('request.jwt.claim.sub', :'user_b', true);
+do $$ begin
+  begin
+    perform api.compare_and_swap('synthetic-a', 'food', 'entry-1',
+      '00000000-0000-4000-8000-000000000004', 1, 1, '{}'::jsonb);
+    raise exception 'user B changed user A data';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+
+select set_config('request.jwt.claim.sub', '', true);
+do $$ begin
+  begin
+    perform api.compare_and_swap('synthetic-a', 'food', 'entry-1',
+      '00000000-0000-4000-8000-000000000005', 1, 1, '{}'::jsonb);
+    raise exception 'missing Auth user was allowed';
+  exception when invalid_authorization_specification then null;
+  end;
+end $$;
+
+reset role;
+do $$ begin
+  if (select count(*) from grapes_private.documents where profile_id = 'synthetic-a') <> 1 or
+     (select count(*) from grapes_private.revisions where profile_id = 'synthetic-a') <> 1 or
+     (select count(*) from grapes_private.attempts where profile_id = 'synthetic-a') <> 2 then
+    raise exception 'head, history or conflict snapshot mismatch';
+  end if;
+end $$;
+rollback;
