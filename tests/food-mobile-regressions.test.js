@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import vm from 'node:vm'
 import { firstProductBarcode } from '../src/food/food-barcode.js'
+import { readWaterStore, writeWaterStore, legacyWaterStatus, waterKey } from '../src/water-store.js'
 
 const mobile = readFileSync(new URL('../src/food/food-mobile.js', import.meta.url), 'utf8')
 const shell = readFileSync(new URL('../src/android-mobile-shell.js', import.meta.url), 'utf8')
@@ -35,13 +36,15 @@ test('a víznapló mentése a 60 napnál régebbi Health előzményeket sem tör
     '2025-02-18': { goal: 2000, entries: [{ id: 'historical', amount: 250, externalKey: 'healthconnect:old' }] },
     '2026-10-17': { goal: 2000, entries: [{ id: 'new', amount: 500 }] },
   }
-  let saved = null
-  const sandbox = {
-    store,
-    WATER_STORE_KEY: 'water-test',
-    localStorage: { setItem(key, value) { assert.equal(key, 'water-test'); saved = JSON.parse(value) } },
+  const values = new Map()
+  const localStorage = {
+    getItem: key => values.has(key) ? values.get(key) : null,
+    setItem: (key, value) => values.set(key, String(value)),
   }
+  const sandbox = { store, localStorage, readWaterStore, writeWaterStore, legacyWaterStatus,
+    activeWaterProfileId: () => 'water-test-profile' }
   vm.runInNewContext(match[0] + '\nsaveWaterStore(store)', sandbox)
+  const saved = JSON.parse(values.get(waterKey('water-test-profile')))
   assert.equal(saved['2025-02-18'].entries[0].externalKey, 'healthconnect:old')
   assert.equal(saved['2026-10-17'].entries[0].amount, 500)
   assert.equal(Object.keys(store).length, 2, 'Az eredeti tárolót sem módosíthatja a mentés')
