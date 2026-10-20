@@ -32,7 +32,23 @@ test('célérték-teljesülést és 4/4/9 makróenergia-megoszlást számol', ()
   const series = buildDailyNutritionSeries(entries, profile.id)
   assert.deepEqual(targetAchievement(series, project, 'energyKcal'), { eligibleDays: 3, hitDays: 3, percent: 100 })
   const macro = macroEnergyDistribution(series)
-  assert.equal(macro.kcal.protein, 800)
+  assert.equal(macro.kcal.protein, null)
   assert.equal(macro.kcal.fat, 2025)
+  assert.equal(macro.totalKcal, null)
+  assert.equal(macro.percent.protein, null)
   assert.equal(macro.complete.protein, false)
+})
+
+test('teljes makrók esetén 4/4/9 százalék számolható, üres sorozatnál ismeretlen', () => {
+  const complete = macroEnergyDistribution(buildDailyNutritionSeries(entries.slice(0, 2), profile.id))
+  assert.equal(complete.totalKcal, 800 + 1800 + 1305)
+  assert.ok(complete.percent.protein > 0)
+  assert.equal(macroEnergyDistribution([]).totalKcal, null)
+})
+
+test('a történeti folyadékrekord nem számít naplózott étkezési napnak', () => {
+  const water = { profileId: profile.id, occurredAt: '2026-10-09T12:00:00.000Z',
+    snapshot: { category: 'Folyadék', nutrients: {} } }
+  const series = buildDailyNutritionSeries([...entries, water], profile.id)
+  assert.equal(series.length, 3)
 })

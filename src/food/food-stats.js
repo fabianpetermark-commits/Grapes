@@ -12,7 +12,7 @@ function weekKey(dateKey) {
 export function buildDailyNutritionSeries(entries, profileId) {
   const groups = new Map()
   for (const entry of entries) {
-    if (entry.profileId !== profileId) continue
+    if (entry.profileId !== profileId || entry.snapshot?.category === 'Folyadék') continue
     const date = entry.origin?.sourceDate || localDateKey(entry.occurredAt)
     if (!groups.has(date)) groups.set(date, [])
     groups.get(date).push(entry)
@@ -66,13 +66,22 @@ export function targetAchievement(series, project, nutrient) {
 
 export function macroEnergyDistribution(series) {
   const grams = { protein: 0, carbohydrate: 0, fat: 0 }
-  const complete = { protein: true, carbohydrate: true, fat: true }
+  const complete = { protein: series.length > 0, carbohydrate: series.length > 0, fat: series.length > 0 }
   for (const day of series) for (const key of Object.keys(grams)) {
     const value = day.nutrients[key]
-    if (value === null) complete[key] = false
-    else grams[key] += value
+    if (value === null || value === undefined || !Number.isFinite(Number(value))) complete[key] = false
+    else grams[key] += Number(value)
   }
-  const kcal = { protein: rounded(grams.protein * 4), carbohydrate: rounded(grams.carbohydrate * 4), fat: rounded(grams.fat * 9) }
-  const totalKcal = kcal.protein + kcal.carbohydrate + kcal.fat
-  return { grams: Object.fromEntries(Object.entries(grams).map(([key, value]) => [key, rounded(value)])), kcal, percent: Object.fromEntries(Object.entries(kcal).map(([key, value]) => [key, totalKcal ? rounded(value / totalKcal * 100, 1) : null])), totalKcal: rounded(totalKcal), complete }
+  for (const key of Object.keys(grams)) if (!complete[key]) grams[key] = null
+  const kcal = {
+    protein: grams.protein === null ? null : rounded(grams.protein * 4),
+    carbohydrate: grams.carbohydrate === null ? null : rounded(grams.carbohydrate * 4),
+    fat: grams.fat === null ? null : rounded(grams.fat * 9),
+  }
+  const totalKcal = Object.values(kcal).some(value => value === null) ? null : rounded(kcal.protein + kcal.carbohydrate + kcal.fat)
+  return {
+    grams, kcal,
+    percent: Object.fromEntries(Object.entries(kcal).map(([key, value]) => [key, totalKcal ? rounded(value / totalKcal * 100, 1) : null])),
+    totalKcal, complete,
+  }
 }
