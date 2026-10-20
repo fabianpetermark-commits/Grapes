@@ -175,6 +175,7 @@
   .studio__hint { max-width: calc(100% - 24px); }
 }
 @media (max-width: 520px) {
+  #studio-app > .toolbar { flex-wrap: wrap; }
   .studio__overlay { gap: 6px; }
   .studio__control-group { flex-wrap: wrap; }
   .studio__control-group .btn { flex: 0 0 auto; }
