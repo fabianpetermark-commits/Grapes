@@ -24,6 +24,7 @@ on:
       - integration/home-m1-grapes-test-20261019
       - fix/health-audit-off-access-20261020
       - fix/health-68-durable-local-save-20261020
+      - fix/health-71-stale-journal-20261020
     paths:
       - android-health-connect-poc/**
       - src/**
@@ -75,6 +76,8 @@ jobs:
         run: node tests/android-module-hubs.browser.mjs
       - name: Browser regression test (Food Drive conflict and recovery)
         run: node tests/android-food-drive-conflict.browser.mjs
+      - name: Browser regression test (Food shared IndexedDB concurrency)
+        run: node tests/food-local-concurrency.browser.mjs
       - name: Browser regression test (existing Android mobile shell)
         run: node tests/android-mobile-preview.browser.mjs
       - name: Browser regression test (E-book library)
