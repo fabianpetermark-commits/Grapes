@@ -67,3 +67,11 @@ test('invalid recovery HTTP URL outside loopback is rejected', () => {
     signInWithPassword() {}, signInWithOAuth() {}, signUp() {}, resetPasswordForEmail() {}, getUser() {}, signOut() {},
   } }, { callbackUrl: 'http://malicious.invalid/login' }), { code: 'INVALID_REDIRECT' })
 })
+
+test('new password requires 8 characters and uses Supabase updateUser only', async () => {
+  const flow = fixture({ updateUser: async args => { calls.push(['update', args]); return { data: {user:{id:'synthetic-a'}}, error:null } } })
+  await assert.rejects(flow.updatePassword('short'), {code:'WEAK_PASSWORD'})
+  assert.equal(calls.length,0)
+  assert.deepEqual(await flow.updatePassword('new-test-password'),{status:'password_updated'})
+  assert.deepEqual(calls,[['update',{password:'new-test-password'}]])
+})

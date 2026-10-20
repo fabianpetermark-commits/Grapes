@@ -1,0 +1,50 @@
+name: Grapes TEST Auth Review Gates
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/grapes-test-auth-review.yml'
+      - '.env.example'
+      - 'src/auth/**'
+      - 'src/login-auth-test.js'
+      - 'src/styles/screens/login-auth-test.css'
+      - 'login-auth-test.html'
+      - 'tests/grapes-*.test.js'
+      - 'tests/grapes-test-auth.browser.mjs'
+      - 'docs/GRAPES_TEST_AUTH_PKCE_READINESS.md'
+      - 'package.json'
+      - 'package-lock.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  auth-ui-and-regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Clean deterministic dependency install
+        run: npm ci
+      - name: Auth adapter / UI / PKCE targeted tests
+        run: |
+          node --test tests/grapes-auth-flow.test.js
+          node --test tests/grapes-login-controller.test.js
+          node --test tests/grapes-test-runtime.test.js
+      - name: All existing unit regressions including E-book Drive
+        run: npm test
+      - name: Both web builds
+        run: |
+          npm run build
+          npm run build:android-web
+      - name: TEST-only auth page must fail closed in every responsive layout
+        run: node tests/grapes-test-auth.browser.mjs
+      - name: Approved login preview browser regression
+        run: node tests/login-preview.browser.mjs
+      - name: Responsive layout regression
+        run: node tests/responsive-layout.browser.mjs
