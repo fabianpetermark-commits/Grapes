@@ -82,12 +82,14 @@ try {
     }
   })
   await page.locator('[data-yazio-undo]').click()
-  await page.waitForFunction(async () => {
+  const undoneHandle = await page.waitForFunction(async () => {
     const { loadLocalProject } = await import('/Grapes/src/storage/local-project-store.js')
-    return (await loadLocalProject('food-tracker-local-food-profile'))?.data?.importBatches?.[0]?.status === 'undone'
+    const record = await loadLocalProject('food-tracker-local-food-profile')
+    return record?.data?.importBatches?.[0]?.status === 'undone' ? { token: record.saveToken, entries: record.data.diaryEntries.length } : false
   })
+  const observedUndo = await undoneHandle.jsonValue()
   project = await readProject()
-  console.log('YAZIO post-undo diagnostic', JSON.stringify({ status: project.importBatches[0]?.status, entries: project.diaryEntries.length, matchingIds: project.diaryEntries.filter(entry => project.importBatches[0]?.recordIds?.includes(entry.id)).length, writes: await page.evaluate(() => window.foodWriteLog) }))
+  console.log('YAZIO post-undo diagnostic', JSON.stringify({ observedUndo, status: project.importBatches[0]?.status, entries: project.diaryEntries.length, matchingIds: project.diaryEntries.filter(entry => project.importBatches[0]?.recordIds?.includes(entry.id)).length, writes: await page.evaluate(() => window.foodWriteLog) }))
   assert.equal(project.diaryEntries.length, 0)
   await page.route('https://search.openfoodfacts.org/search**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ count: 1, hits: [{ code: '5991234567890', product_name_hu: 'OFF teszt', countries_tags: ['en:hungary'], nutriments: { 'energy-kcal_100g': 100 } }] }) }))
   await page.locator('[data-nav="home"]').click()
