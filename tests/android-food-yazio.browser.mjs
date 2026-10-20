@@ -82,12 +82,16 @@ try {
     }
   })
   await page.locator('[data-yazio-undo]').click()
-  const undoneHandle = await page.waitForFunction(async () => {
-    const { loadLocalProject } = await import('/Grapes/src/storage/local-project-store.js')
-    const record = await loadLocalProject('food-tracker-local-food-profile')
-    return record?.data?.importBatches?.[0]?.status === 'undone' ? { token: record.saveToken, entries: record.data.diaryEntries.length } : false
+  await page.waitForFunction(() => {
+    if (!window.yazioUndoProbe) {
+      window.yazioUndoProbe = import('/Grapes/src/storage/local-project-store.js')
+        .then(({ loadLocalProject }) => loadLocalProject('food-tracker-local-food-profile'))
+        .then(record => { window.yazioUndoState = { status: record?.data?.importBatches?.[0]?.status, entries: record?.data?.diaryEntries?.length, token: record?.saveToken } })
+        .finally(() => { window.yazioUndoProbe = null })
+    }
+    return window.yazioUndoState?.status === 'undone' && window.yazioUndoState?.entries === 0
   })
-  const observedUndo = await undoneHandle.jsonValue()
+  const observedUndo = await page.evaluate(() => window.yazioUndoState)
   project = await readProject()
   console.log('YAZIO post-undo diagnostic', JSON.stringify({ observedUndo, status: project.importBatches[0]?.status, entries: project.diaryEntries.length, matchingIds: project.diaryEntries.filter(entry => project.importBatches[0]?.recordIds?.includes(entry.id)).length, writes: await page.evaluate(() => window.foodWriteLog) }))
   assert.equal(project.diaryEntries.length, 0)
