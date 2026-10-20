@@ -5,11 +5,15 @@ on:
     branches:
       - integration/grapes-test-food-20261017
       - fix/health-68-durable-local-save-20261020
+      - fix/health-71-stale-journal-20261020
     paths:
       - src/food/**
       - src/android-bridge.js
       - android-health-connect-poc/**
       - tests/food-*.test.js
+      - tests/food-local-concurrency.browser.mjs
+      - src/storage/local-project-store.js
+      - design/android-mobile-preview.html
       - .github/workflows/food-off-usda-native-checks.yml
 
 permissions:

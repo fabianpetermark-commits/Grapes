@@ -29,6 +29,40 @@ export async function saveLocalProject(project) {
   })
 }
 
+// Food's primary record is updated only if the observed writer token still
+// matches. The read, comparison and both writes share one IndexedDB transaction,
+// so separate tabs cannot both replace the same baseline unnoticed.
+export async function saveLocalFoodProject(project) {
+  const db = await openDb()
+  return new Promise((resolve, reject) => {
+    let tx, conflict = null
+    try {
+      tx = db.transaction(STORE, 'readwrite')
+      const store = tx.objectStore(STORE)
+      const request = store.get(project.id)
+      request.onsuccess = () => {
+        const current = request.result
+        const actualToken = current?.saveToken || null
+        if (actualToken !== (project.expectedSaveToken || null)) {
+          const recoveryId = `food-conflict-${project.data.profile.id}-${encodeURIComponent(project.saveToken)}`
+          conflict = new Error('Egy másik lap újabb Food-adatot mentett. A saját változat külön helyi helyreállító példányban megmaradt.')
+          conflict.code = 'FOOD_LOCAL_SAVE_CONFLICT'
+          conflict.recoveryId = recoveryId
+          store.put({ ...project, id: recoveryId, originalId: project.id, conflictWithToken: actualToken,
+            updatedAt: new Date().toISOString() })
+        } else {
+          const { expectedSaveToken, ...record } = project
+          store.put({ ...record, updatedAt: new Date().toISOString() })
+        }
+      }
+      request.onerror = () => { /* The transaction abort owns the failure. */ }
+    } catch (error) { db.close(); reject(error); return }
+    tx.oncomplete = () => { db.close(); conflict ? reject(conflict) : resolve(project.id) }
+    tx.onabort = () => { const error = tx.error || new Error('A helyi tranzakció megszakadt.'); db.close(); reject(error) }
+    tx.onerror = () => { /* The abort event owns the rejection. */ }
+  })
+}
+
 export async function loadLocalProject(id) {
   const db = await openDb()
   return new Promise((resolve, reject) => {

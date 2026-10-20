@@ -21,7 +21,7 @@ import { prepareYazioImport } from './food-yazio-import.js'
 import { healthImportEntries, prepareHealthBridgeImport } from './food-health-import.js'
 import { prepareYazioCsvImport, yazioImportEntries } from './yazio-import.js'
 import { getGrapesAccount, getGrapesProjectMetadata, isGrapesDriveConnected, listGrapesProjects, loadGrapesProject, saveGrapesProject } from '../storage/grapes-drive.js'
-import { loadLocalProject, saveLocalProject } from '../storage/local-project-store.js'
+import { loadLocalProject, saveLocalProject, saveLocalFoodProject } from '../storage/local-project-store.js'
 import { createFoodSaveQueue } from './food-save-queue.js'
 import { assertFoodRemote, createFoodDriveGuard, primaryFoodFiles } from './food-drive-guard.js'
 import { isGrapesAndroidApp, readAndroidHealthExport, readAndroidHealthExportSilent, readAndroidSamsungHealthExport, requestAndroidYazio } from '../android-bridge.js'
@@ -103,17 +103,30 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   const recipeExtras = createRecipeEditorExtras({ root, onApplyImport: applyImportedRecipe })
   const localProjectId = (profileId = profile?.id) => `food-tracker-${profileId}`
   const localSaveStates = new Map()
+  const localConflicts = new Map()
+  const journalConflicts = new Set()
   function localSaveStatus(profileId, state, error) {
     localSaveStates.set(profileId, { state, error })
+    if (state === 'failed' && error?.code === 'FOOD_LOCAL_SAVE_CONFLICT') localConflicts.set(profileId, error.recoveryId)
+    if (state === 'failed' && error?.code === 'FOOD_LOCAL_RECOVERY_CONFLICT') journalConflicts.add(profileId)
     if (profile?.id !== profileId) return
     const node = $('[data-food-local-save-status]')
     if (!node) return
     node.dataset.state = state
+    if (state === 'failed' && error?.code === 'FOOD_LOCAL_SAVE_CONFLICT') {
+      const recoveryButton = $('[data-food-local-conflict-export]')
+      if (recoveryButton) recoveryButton.hidden = false
+      showSyncStatus('Helyi Food-ütközés: a két változat külön megmaradt. Exportáld a helyreállító példányt.')
+    }
+    if (state === 'failed' && error?.code === 'FOOD_LOCAL_RECOVERY_CONFLICT') {
+      const journalButton = $('[data-food-journal-export]')
+      if (journalButton) journalButton.hidden = false
+    }
     node.textContent = state === 'saved' ? 'Helyben mentve' : state === 'pending' ? 'Helyi mentés folyamatban…' :
       state === 'journal-failed' ? 'Helyi mentés folyamatban; helyreállító másolat nem készült' :
       `Helyi mentés sikertelen: ${error?.message || 'ismeretlen hiba'}. A változás ebben a munkamenetben még elérhető.`
   }
-  const localSaves = createFoodSaveQueue({ save: saveLocalProject, onStatus: localSaveStatus })
+  const localSaves = createFoodSaveQueue({ save: saveLocalFoodProject, onStatus: localSaveStatus })
   const driveGuard = createFoodDriveGuard({
     list: () => listGrapesProjects(MODULE, { name: PROJECT_NAME }),
     metadata: getGrapesProjectMetadata, load: loadGrapesProject, save: saveGrapesProject,
@@ -282,8 +295,9 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
         return
       }
     }
+    let local = null
     try {
-      const local = await loadLocalProject(localProjectId(nextProfile.id))
+      local = await loadLocalProject(localProjectId(nextProfile.id))
       localSaves.observe(nextProfile.id, local)
       const recovery = localSaves.pending(nextProfile.id, local)
       let nextProject = recovery?.data ? normalizeFoodProject(recovery.data, nextProfile.id) :
@@ -367,12 +381,34 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       }
     } catch (error) {
       if (generation === loadGeneration) showToast(`Az ételnapló betöltése nem sikerült. ${error.message || ''}`.trim())
-      if (changingProfile) { project = null; profile = null; loadedProfileId = '' }
+      if (error.code === 'FOOD_LOCAL_RECOVERY_CONFLICT' && generation === loadGeneration) {
+        journalConflicts.add(nextProfile.id)
+        profile = nextProfile
+        project = local?.data ? normalizeFoodProject(local.data, nextProfile.id) : createEmptyFoodProject(nextProfile)
+        driveFileId = local?.driveFileId || null
+        driveVersion = local?.driveVersion || null
+        driveWriteId = local?.driveWriteId || null
+        loadedProfileId = nextProfile.id
+        try {
+          for (const raw of localSaves.allRaw(nextProfile.id)) {
+            const item = JSON.parse(raw)
+            const id = `food-conflict-${nextProfile.id}-${encodeURIComponent(item.token)}`
+            if ((await loadLocalProject(id))?.data?.profile?.id === nextProfile.id) localConflicts.set(nextProfile.id, id)
+          }
+        } catch { /* The raw journal remains exportable even if it is damaged. */ }
+        render()
+        $('[data-food-journal-export]').hidden = false
+        if (localConflicts.has(nextProfile.id)) $('[data-food-local-conflict-export]').hidden = false
+        localSaveStatus(nextProfile.id, 'failed', error)
+        if (foodPage) foodPage.style.visibility = ''
+      } else if (changingProfile) { project = null; profile = null; loadedProfileId = '' }
     }
   }
 
   async function persistLocal(projectValue = project, fileId = driveFileId, version = driveVersion, writeId = driveWriteId) {
     if (!projectValue) return
+    if (journalConflicts.has(projectValue.profile.id)) throw new Error('A régi Food-helyreállító napló eltér a tartós rekordtól; előbb exportáld mindkettőt.')
+    if (localConflicts.has(projectValue.profile.id)) throw new Error('Helyi Food-ütközés: exportáld a külön megőrzött változatot a további mentés előtt.')
     await localSaves.enqueue({ data: projectValue, fileId, driveVersion: version, driveWriteId: writeId, module: MODULE, name: PROJECT_NAME })
   }
 
@@ -1770,6 +1806,24 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     downloadFoodBackup(normalizeFoodProject(record.data, profile.id), '-helyreallito')
   }
 
+  async function exportLocalConflictRecovery() {
+    const id = localConflicts.get(profile?.id)
+    if (!id) throw new Error('Nincs külön megőrzött helyi változat.')
+    const record = await loadLocalProject(id)
+    if (record?.data?.profile?.id !== profile.id) throw new Error('A helyi változat másik profilhoz tartozik.')
+    downloadFoodBackup(normalizeFoodProject(record.data, profile.id), '-helyi-utkozes')
+  }
+
+  function exportLocalJournal() {
+    const raw = localSaves.allRaw(profile?.id)
+    if (!raw.length) throw new Error('Nincs exportálható Food-helyreállító napló.')
+    const content = JSON.stringify({ grapesFoodRecoveryJournals: true, version: 1, profileId: profile.id, entries: raw }, null, 2)
+    const url = URL.createObjectURL(new Blob([content], { type: 'application/json' }))
+    const link = document.createElement('a')
+    link.href = url; link.download = `grapes-food-journal-${selectedDate}.json`; link.click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+
   async function useConflictRemote() {
     const fileId = project?.syncState?.conflict?.remoteFileId
     if (!fileId) throw new Error('Nincs egyértelmű felhőfájl. A konfliktust kézzel kell feloldani.')
@@ -2144,6 +2198,8 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-conflict-export-local]')?.addEventListener('click', () => exportBackup())
     $('[data-food-conflict-export-remote]')?.addEventListener('click', () => exportConflictRemote().catch(error => showToast(error.message)))
     $('[data-food-recovery-export]')?.addEventListener('click', () => exportConflictRecovery().catch(error => showToast(error.message)))
+    $('[data-food-local-conflict-export]')?.addEventListener('click', () => exportLocalConflictRecovery().catch(error => showToast(error.message)))
+    $('[data-food-journal-export]')?.addEventListener('click', () => { try { exportLocalJournal() } catch (error) { showToast(error.message) } })
     $('[data-food-conflict-use-remote]')?.addEventListener('click', () => useConflictRemote().catch(error => showToast(error.message)))
     $('[data-food-health-input]').addEventListener('change', selectHealthImport)
     $('[data-food-health-confirm]').addEventListener('click', applyHealthImport)
