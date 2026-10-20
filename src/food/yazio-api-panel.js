@@ -17,7 +17,8 @@ export function createYazioApiPanel({ openSheet, closeSheet, importBundle, openF
       <label>Ettől<input class="search" name="from" type="date" required></label>
       <label>Eddig<input class="search" name="to" type="date" required></label>
       <div class="yazio-api-actions"><button class="primary module-cta yazio-api-action" type="submit">Szinkronizálás</button>
-      <button class="primary module-cta yazio-api-action yazio-api-guide-button" type="button" data-yazio-api-guide-open>Útmutató</button></div>
+      <button class="primary module-cta yazio-api-action yazio-api-guide-button" type="button" data-yazio-api-guide-open>Útmutató</button>
+      <button class="quick-action yazio-api-action" type="button" data-yazio-api-files>YAZIO-exportfájl importálása</button></div>
     </form>
     <p data-yazio-api-status role="status" aria-live="polite"></p>
     <div class="yazio-api-guide" data-yazio-api-guide hidden>
@@ -80,6 +81,7 @@ export function createYazioApiPanel({ openSheet, closeSheet, importBundle, openF
     sheet.querySelector('[data-yazio-guide-dots]').textContent = guideSlides.map((_, index) => index === guideIndex ? '●' : '○').join(' ')
   }
   sheet.querySelector('[data-yazio-api-guide-open]').addEventListener('click', () => { guideIndex = 0; guide.hidden = false; renderGuide(); guide.scrollIntoView({ behavior: 'smooth', block: 'nearest' }) })
+  sheet.querySelector('[data-yazio-api-files]').addEventListener('click', () => { closeSheet(); openFileImport() })
   sheet.querySelector('[data-yazio-guide-close]').addEventListener('click', () => { guide.hidden = true })
   sheet.querySelector('[data-yazio-guide-prev]').addEventListener('click', () => { if (guideIndex > 0) { guideIndex--; renderGuide() } })
   sheet.querySelector('[data-yazio-guide-next]').addEventListener('click', () => { if (guideIndex < guideSlides.length - 1) { guideIndex++; renderGuide() } else guide.hidden = true })
