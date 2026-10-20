@@ -1,6 +1,6 @@
 # Health #69 — Food Drive conflict policy
 
-Status: draft; Health release **NO-GO**. Tests use only synthetic Food records.
+Status: [draft PR #71](https://github.com/fabianpetermark-commits/Grapes/pull/71), stacked on [#70](https://github.com/fabianpetermark-commits/Grapes/pull/70); Health release **NO-GO**. Tests use only synthetic Food records.
 
 ## Threat model and reproduction
 
@@ -20,7 +20,7 @@ Therefore metadata read-before-write is **best effort**, with a TOCTOU window. W
 | --- | --- | --- | --- | --- |
 | A offline, B online, A reconnects | Version mismatch: no PATCH; A local and private Drive recovery remain; B head remains | `food-drive-guard.test.js` two independent clients | NOT TESTED | Legacy client may still PATCH |
 | Simultaneous writers, delayed response | Both create full copies before PATCH; head writer ID is checked | Same test: reverse order and delayed reply | NOT TESTED | No atomic server CAS; a later PATCH may win after an earlier verification |
-| 403/429/503, offline | Failed recovery copy or request aborts PATCH; local stays dirty | Same test, three statuses | NOT TESTED | Local journal/IndexedDB quota from #68 applies |
+| 403/429/503, offline, lost response after commit | Failed recovery copy aborts PATCH; uncertain result stays dirty and retry becomes conflict | Same test, three statuses and post-commit 503 | NOT TESTED | Local journal/IndexedDB quota from #68 applies |
 | Edit/delete/new meal/recipe/targets/import IDs | Full snapshot copy, no uncertain automatic merge | Unit fixtures plus existing Food/YAZIO/Health regressions | NOT TESTED | User must compare divergent data |
 | New file race / restart | Multiple primary files are reported as conflict, never pick first | Same test: concurrent creation | NOT TESTED | Duplicate files remain until manual cleanup |
 | Account A versus B / recipe shares | Exact Food filename, module and profile validation; recovery stored outside possibly shared module folder | Unit isolation plus existing sharing tests | NOT TESTED | Drive ACLs and shared-file permissions need live verification |
