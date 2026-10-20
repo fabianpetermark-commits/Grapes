@@ -24,7 +24,7 @@ Therefore metadata read-before-write is **best effort**, with a TOCTOU window. W
 | Edit/delete/new meal/recipe/targets/import IDs | Full snapshot copy, no uncertain automatic merge | Unit fixtures plus existing Food/YAZIO/Health regressions | NOT TESTED | User must compare divergent data |
 | New file race / restart | Multiple primary files are reported as conflict, never pick first | Same test: concurrent creation | NOT TESTED | Duplicate files remain until manual cleanup |
 | Account A versus B / recipe shares | Exact Food filename, module and profile validation; recovery stored outside possibly shared module folder | Unit isolation plus existing sharing tests | NOT TESTED | Drive ACLs and shared-file permissions need live verification |
-| UI recovery | Export local and remote JSON; accepting remote first saves old local as a distinct IndexedDB record | `android-food-drive-conflict.browser.mjs` | NOT TESTED | More than one remote primary requires manual file selection outside app |
+| UI recovery | Export local and remote JSON; accepting remote first saves old local as a distinct IndexedDB record that remains exportable as Food JSON | `android-food-drive-conflict.browser.mjs` | NOT TESTED | More than one remote primary requires manual file selection outside app |
 
 ## Compatibility and rollout
 
