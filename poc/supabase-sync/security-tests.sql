@@ -26,6 +26,10 @@ begin
   if result->>'status' <> 'conflict' or result->>'snapshotId' is null then
     raise exception 'stale write did not retain conflict: %', result;
   end if;
+  result := api.read_attempt('00000000-0000-4000-8000-000000000002');
+  if result->>'status' <> 'conflict' or result->'candidate' <> '{"value":"stale"}'::jsonb then
+    raise exception 'owner cannot recover rejected candidate: %', result;
+  end if;
   begin
     perform api.compare_and_swap('synthetic-b', 'food', 'entry-1',
       '00000000-0000-4000-8000-000000000003', 0, 1, '{}'::jsonb);
@@ -52,6 +56,9 @@ end $$;
 
 select set_config('request.jwt.claim.sub', :'user_b', true);
 do $$ begin
+  if api.read_attempt('00000000-0000-4000-8000-000000000002') is not null then
+    raise exception 'user B read user A recovery snapshot';
+  end if;
   begin
     perform api.compare_and_swap('synthetic-a', 'food', 'entry-1',
       '00000000-0000-4000-8000-000000000004', 1, 1, '{}'::jsonb);
@@ -71,10 +78,33 @@ do $$ begin
 end $$;
 
 reset role;
+set local role anon;
+do $$ begin
+  begin
+    perform api.compare_and_swap('synthetic-a', 'food', 'entry-1',
+      '00000000-0000-4000-8000-000000000006', 1, 1, '{}'::jsonb);
+    raise exception 'anonymous role executed CAS';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+
+savepoint rollback_probe;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'user_a', true);
+do $$ begin
+  if (api.compare_and_swap('synthetic-a', 'food', 'entry-1',
+      '00000000-0000-4000-8000-000000000007', 1, 1, '{"value":"rolled back"}'::jsonb)->>'status') <> 'committed' then
+    raise exception 'rollback probe did not commit inside savepoint';
+  end if;
+end $$;
+rollback to savepoint rollback_probe;
+reset role;
 do $$ begin
   if (select count(*) from grapes_private.documents where profile_id = 'synthetic-a') <> 1 or
      (select count(*) from grapes_private.revisions where profile_id = 'synthetic-a') <> 1 or
-     (select count(*) from grapes_private.attempts where profile_id = 'synthetic-a') <> 2 then
+     (select count(*) from grapes_private.attempts where profile_id = 'synthetic-a') <> 2 or
+     (select count(*) from grapes_private.attempts where operation_id = '00000000-0000-4000-8000-000000000007') <> 0 then
     raise exception 'head, history or conflict snapshot mismatch';
   end if;
 end $$;
