@@ -1,0 +1,23 @@
+name: YAZIO undo write-order diagnostic
+on:
+  pull_request:
+    branches: [test/browser-followup-corrections-20261020]
+    paths: [.github/workflows/yazio-undo-diagnostic.yml, tests/android-food-yazio.browser.mjs]
+permissions:
+  contents: read
+jobs:
+  synthetic-yazio-undo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Find browser
+        run: |
+          echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+      - name: Preserve failing synthetic browser assertion
+        run: VITE_GRAPES_TEST_CHANNEL=1 node tests/android-food-yazio.browser.mjs
