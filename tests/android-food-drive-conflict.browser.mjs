@@ -66,6 +66,10 @@ try {
   assert.match((await download).suggestedFilename(), /felho\.json$/)
   await page.locator('[data-food-conflict-use-remote]').click()
   await page.locator('[data-food-conflict-panel]').waitFor({ state: 'hidden' })
+  await page.locator('[data-food-recovery-export]').waitFor({ state: 'visible' })
+  const recoveryDownload = page.waitForEvent('download')
+  await page.locator('[data-food-recovery-export]').click()
+  assert.match((await recoveryDownload).suggestedFilename(), /helyreallito\.json$/)
   const records = await page.evaluate(async () => {
     const db = await new Promise(resolveDb => { const request = indexedDB.open('grapes-projects', 1); request.onsuccess = () => resolveDb(request.result) })
     return new Promise(resolveRows => { const tx = db.transaction('projects', 'readonly'); const request = tx.objectStore('projects').getAll(); request.onsuccess = () => { db.close(); resolveRows(request.result) } })
