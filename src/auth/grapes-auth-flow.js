@@ -85,6 +85,16 @@ export function createGrapesAuthFlow(client, { callbackUrl, recoveryUrl } = {}) 
       }))
       return { status: data.session ? 'authenticated' : 'confirmation_required', userId: data.user?.id ?? null }
     },
+    async updatePassword(newPassword) {
+      if (typeof auth.updateUser !== 'function') {
+        throw new GrapesAuthError('RECOVERY_NOT_CONFIGURED', 'A jelszó-visszaállítás még nincs engedélyezve.')
+      }
+      if (typeof newPassword !== 'string' || newPassword.length < 8) {
+        throw new GrapesAuthError('WEAK_PASSWORD', 'Az új jelszó legalább 8 karakteres legyen.')
+      }
+      check(await auth.updateUser({ password: newPassword }))
+      return { status: 'password_updated' }
+    },
     async requestPasswordReset(emailInput) {
       const email = asEmail(emailInput)
       if (!passwordReturn) throw new GrapesAuthError('RECOVERY_NOT_CONFIGURED', 'A jelszó-visszaállítási cím még nincs beállítva.')
