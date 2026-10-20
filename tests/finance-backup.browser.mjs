@@ -126,11 +126,11 @@ try {
   assert.equal(await page.locator('#finance-currency').inputValue(), 'EUR')
   assert.equal(await page.locator('.finance__receipt-link').textContent(), 'szamla.pdf')
   assert.equal(await page.locator('#finance-delete-all').isEnabled(), true, 'A visszaállított napló törlési mentése elérhető.')
-  const secondDownload = page.waitForEvent('download')
+  const secondDownload = page.waitForEvent('download').then(download => ({ download }), error => ({ error: error.message }))
   await page.locator('#finance-delete-all').click()
   await page.getByRole('button', { name: 'Igen, készíts mentést' }).click()
-  try { await secondDownload }
-  catch (error) { throw new Error(JSON.stringify({ error: error.message, saveStatus: await page.locator('#finance-save-status').textContent(), dialog: await page.locator('.grapes-dialog').textContent().catch(() => ''), deleteDisabled: await page.locator('#finance-delete-all').isDisabled() })) }
+  const secondOutcome = await secondDownload
+  if (secondOutcome.error) throw new Error(JSON.stringify({ error: secondOutcome.error, saveStatus: await page.locator('#finance-save-status').textContent(), dialog: await page.locator('.grapes-dialog').textContent().catch(() => ''), deleteDisabled: await page.locator('#finance-delete-all').isDisabled() }))
   await page.getByRole('button', { name: /Igen, töröld mind/ }).click()
   await page.locator('#finance-rows tr').waitFor({ state: 'detached' })
   await page.locator('#finance-backup-input').setInputFiles(await download.path())
