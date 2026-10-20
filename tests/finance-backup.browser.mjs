@@ -53,6 +53,7 @@ try {
   await page.locator('[data-finance-tab="transaction"]').click()
   await page.locator('#finance-form').waitFor({ state: 'visible' })
   await page.selectOption('#finance-currency', 'EUR')
+  await page.selectOption('#finance-transaction-currency', 'EUR')
   await page.fill('#finance-amount', '7000')
   assert.equal(await page.locator('#finance-amount').inputValue(), '7.000')
   await page.fill('#finance-category', 'Teszt')
