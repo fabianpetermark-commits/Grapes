@@ -89,7 +89,7 @@ try {
   project = await readProject()
   console.log('YAZIO post-undo diagnostic', JSON.stringify({ status: project.importBatches[0]?.status, entries: project.diaryEntries.length, matchingIds: project.diaryEntries.filter(entry => project.importBatches[0]?.recordIds?.includes(entry.id)).length, writes: await page.evaluate(() => window.foodWriteLog) }))
   assert.equal(project.diaryEntries.length, 0)
-  await page.route('https://search.openfoodfacts.org/search**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ count: 1, hits: [{ code: '5991234567890', product_name_hu: 'OFF teszt', nutriments: { 'energy-kcal_100g': 100 } }] }) }))
+  await page.route('https://search.openfoodfacts.org/search**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ count: 1, hits: [{ code: '5991234567890', product_name_hu: 'OFF teszt', countries_tags: ['en:hungary'], nutriments: { 'energy-kcal_100g': 100 } }] }) }))
   await page.locator('[data-nav="home"]').click()
   await page.locator('[data-menu-group="health"]').click()
   await page.locator('[data-menu-destination="food"]').click()
