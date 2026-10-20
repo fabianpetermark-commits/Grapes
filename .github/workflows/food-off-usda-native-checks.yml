@@ -5,6 +5,7 @@ on:
     branches:
       - integration/grapes-test-food-20261017
       - fix/health-68-durable-local-save-20261020
+      - fix/health-71-stale-journal-20261020
     paths:
       - src/food/**
       - src/android-bridge.js
