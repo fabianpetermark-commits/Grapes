@@ -25,13 +25,13 @@ export function createFoodSaveQueue({ save, storage = globalThis.localStorage, o
     return item
   }
 
-  function enqueue({ data, fileId = null, module = 'Ételnapló', name = 'Ételnapló' }) {
+  function enqueue({ data, fileId = null, driveVersion = null, driveWriteId = null, module = 'Ételnapló', name = 'Ételnapló' }) {
     const snapshot = structuredClone(data)
     const profileId = snapshot?.profile?.id
     if (!profileId) throw new Error('A Food mentéséhez profilazonosító szükséges.')
     const token = randomId()
-    const record = { id: `food-tracker-${profileId}`, module, name, data: snapshot, driveFileId: fileId, saveToken: token }
-    const item = { version: 1, profileId, token, recordedAt: now(), fileId, data: snapshot }
+    const record = { id: `food-tracker-${profileId}`, module, name, data: snapshot, driveFileId: fileId, driveVersion, driveWriteId, saveToken: token }
+    const item = { version: 1, profileId, token, recordedAt: now(), fileId, driveVersion, driveWriteId, data: snapshot }
     latest.set(profileId, token)
     onStatus(profileId, 'pending')
     try { storage?.setItem(keyFor(profileId), JSON.stringify(item)) }
