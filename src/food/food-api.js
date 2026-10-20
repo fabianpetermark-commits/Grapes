@@ -126,7 +126,7 @@ export async function searchOpenFoodFactsProducts(query, {
     // Use documented legacy keyword search only if the new search backend fails.
     // Never bypass a rate limit, and never silently switch a custom test/proxy endpoint.
     const shouldFallback = baseUrl === DEFAULT_OPEN_FOOD_FACTS_SEARCH_URL &&
-      error?.name !== 'AbortError' && error?.status !== 429 && !/HTTP 429/.test(error?.message || '')
+      error?.name !== 'AbortError' && ![403, 429].includes(error?.status) && !/HTTP (403|429)\b/.test(error?.message || '')
     if (!shouldFallback) throw error
     const legacy = new URLSearchParams({
       search_terms: term, search_simple: '1', action: 'process', json: '1',
