@@ -81,12 +81,18 @@ jobs:
       - name: Complete local browser regression suite
         run: |
           set -e
-          count=0
+          passed=0
+          failed=0
           for file in tests/*.browser.mjs; do
             # Explicit optional live-service diagnostic; it has no CI assertion.
             if [ "$file" = tests/food-live-api.browser.mjs ]; then continue; fi
             echo "Running $file"
-            node "$file"
-            count=$((count + 1))
+            if node "$file"; then
+              passed=$((passed + 1))
+            else
+              failed=$((failed + 1))
+              echo "FAIL: $file"
+            fi
           done
-          echo "PASS: $count local browser regression files"
+          echo "Browser regression files: $passed PASS, $failed FAIL"
+          test "$failed" -eq 0
