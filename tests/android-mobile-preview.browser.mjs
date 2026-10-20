@@ -54,7 +54,7 @@ try {
 
   assert.equal(await page.locator('[data-account-card]').count(), 0, 'A fiókkártya nem maradhat a kezdőlapon.')
   assert.equal(await page.locator('[data-recent-projects]').count(), 0, 'A legutóbbi projektek blokk nem maradhat a kezdőlapon.')
-  assert.equal(await page.locator('[data-page="home"] .hub-card__icon svg').count(), 4, 'Mind a négy főmodulnak egységes SVG ikon kell.')
+  assert.equal(await page.locator('[data-page="home"] .hub-card__icon svg').count(), 5, 'Mind az öt főmodulnak egységes SVG ikon kell.')
   assert.match(await page.locator('[data-home-greeting]').textContent(), /^Jó (reggelt|napot|estét)$/)
   await page.evaluate(() => window.dispatchEvent(new CustomEvent('grapes:android-update', { detail: { versionCode: 99, versionName: 'Grapes 99', notes: 'Tesztfrissítés' } })))
   assert.equal(await page.locator('[data-notifications-badge]').isVisible(), true, 'Az új frissítésnek jelvényt kell mutatnia.')
