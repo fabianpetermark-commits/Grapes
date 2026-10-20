@@ -36,7 +36,7 @@ try {
   await page.goto(url, { waitUntil: 'networkidle' })
   await page.locator('[data-page="home"]').waitFor({ state: 'visible' })
   assert.deepEqual(await page.locator('[data-menu-group]').evaluateAll(nodes => nodes.map(x => x.dataset.menuGroup)),
-    ['home', 'health', 'utility', 'outdoor', 'finance'])
+    ['home', 'health', 'utility', 'finance', 'outdoor'])
   assert.equal(await page.locator('[data-page="home"] .hub-card__icon svg').count(), 5)
   assert.match(await page.locator('[data-menu-group="health"]').textContent(), /Food.*Receptek.*Statisztika/)
 
