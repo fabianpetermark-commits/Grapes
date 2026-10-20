@@ -390,9 +390,11 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
         driveWriteId = local?.driveWriteId || null
         loadedProfileId = nextProfile.id
         try {
-          const item = JSON.parse(localSaves.raw(nextProfile.id))
-          const id = `food-conflict-${nextProfile.id}-${encodeURIComponent(item.token)}`
-          if ((await loadLocalProject(id))?.data?.profile?.id === nextProfile.id) localConflicts.set(nextProfile.id, id)
+          for (const raw of localSaves.allRaw(nextProfile.id)) {
+            const item = JSON.parse(raw)
+            const id = `food-conflict-${nextProfile.id}-${encodeURIComponent(item.token)}`
+            if ((await loadLocalProject(id))?.data?.profile?.id === nextProfile.id) localConflicts.set(nextProfile.id, id)
+          }
         } catch { /* The raw journal remains exportable even if it is damaged. */ }
         render()
         $('[data-food-journal-export]').hidden = false
@@ -1813,9 +1815,10 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   function exportLocalJournal() {
-    const raw = localSaves.raw(profile?.id)
-    if (!raw) throw new Error('Nincs exportálható Food-helyreállító napló.')
-    const url = URL.createObjectURL(new Blob([raw], { type: 'application/json' }))
+    const raw = localSaves.allRaw(profile?.id)
+    if (!raw.length) throw new Error('Nincs exportálható Food-helyreállító napló.')
+    const content = JSON.stringify({ grapesFoodRecoveryJournals: true, version: 1, profileId: profile.id, entries: raw }, null, 2)
+    const url = URL.createObjectURL(new Blob([content], { type: 'application/json' }))
     const link = document.createElement('a')
     link.href = url; link.download = `grapes-food-journal-${selectedDate}.json`; link.click()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
