@@ -10,6 +10,7 @@ import { listLocalProjects } from './storage/local-project-store.js'
 import { listMobileEbooks, saveMobileReadingProgress, uploadMobileEbook } from './ebook-mobile-library.js'
 import { isMobileReadableEpub, normalizedReadingProgress, openMobileEpub } from './ebook-mobile-reader.js'
 import { createMobileFoodController } from './food/food-mobile.js'
+import { claimLegacyWaterStore, legacyWaterStatus, readWaterStore, waterProfileId, writeWaterStore } from './water-store.js'
 import { createYazioApiPanel } from './food/yazio-api-panel.js'
 import { registerFoodSharing, sendMealShare, sendRecipeShare } from './food/food-sharing-client.js'
 import { hydrateMobileIcons, mobileIconSvg } from './android-mobile-icons.js'
@@ -34,7 +35,6 @@ const toast = $('.toast')
 const sheet = $('[data-food-add-sheet]')
 const sheetBackdrop = $('.sheet-backdrop')
 const LOCAL_MODE_KEY = 'grapes-local-mode'
-const WATER_STORE_KEY = 'grapes-water-v1'
 const SYNC_CHECK_KEY = 'grapes-sync-last-check-v1'
 const UPDATE_READ_KEY = 'grapes-update-read-v1'
 const moduleFolders = [
@@ -829,11 +829,17 @@ function dateKey(date = new Date()) {
   return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-')
 }
 
+let waterLoadError = null
+const activeWaterProfileId = () => waterProfileId(getGrapesAccount())
 function loadWaterStore() {
   try {
-    const value = JSON.parse(localStorage.getItem(WATER_STORE_KEY) || '{}')
-    return value && typeof value === 'object' ? value : {}
-  } catch { return {} }
+    const store = readWaterStore(localStorage, activeWaterProfileId())
+    waterLoadError = null
+    return store
+  } catch (error) {
+    waterLoadError = error
+    return {}
+  }
 }
 
 function currentWaterDay() {
@@ -850,9 +856,12 @@ function saveWaterDay(day) {
 }
 
 function saveWaterStore(store) {
-  // Historical Health Connect imports and older Water diary entries are user
-  // data. Do not silently prune them when a newer day is saved.
-  localStorage.setItem(WATER_STORE_KEY, JSON.stringify(store))
+  const profileId = activeWaterProfileId()
+  // A damaged profile store must never be replaced by the empty render fallback.
+  const current = readWaterStore(localStorage, profileId)
+  const legacy = legacyWaterStatus(localStorage, profileId)
+  if (legacy.available && !Object.keys(current).length) throw new Error('Előbb rendeld a korábbi víznaplót ehhez a profilhoz.')
+  writeWaterStore(localStorage, profileId, store)
 }
 
 function importHydrationEntries(entries = []) {
@@ -930,8 +939,38 @@ function renderWater() {
   $('[data-action="water-goal"]').textContent = `Cél: ${(day.goal / 1000).toLocaleString('hu-HU')} l`
   const log = $('[data-water-log]')
   log.replaceChildren()
+  if (waterLoadError) {
+    $('[data-water-total]').textContent = '—'
+    $('[data-water-summary]').textContent = 'A víznapló adatai jelenleg nem olvashatók.'
+    log.textContent = waterLoadError.message
+    return
+  }
+  const legacy = legacyWaterStatus(localStorage, activeWaterProfileId())
+  if (legacy.damaged) {
+    const notice = document.createElement('p')
+    notice.textContent = 'A korábbi víznapló sérült. Az eredeti adat megmaradt; helyreállítás előtt készíts biztonsági másolatot.'
+    log.append(notice)
+  }
+  if (legacy.available && !Object.keys(waterStore).length) {
+    const claim = document.createElement('button')
+    claim.type = 'button'
+    claim.className = 'btn'
+    claim.textContent = 'Korábbi víznapló hozzárendelése ehhez a profilhoz'
+    claim.addEventListener('click', () => {
+      if (!window.confirm('A korábbi, profil nélküli víznaplót ehhez a profilhoz rendeled? Az eredeti adatok megmaradnak.')) return
+      try {
+        claimLegacyWaterStore(localStorage, activeWaterProfileId())
+        renderWater()
+        showToast('A korábbi víznapló ehhez a profilhoz került.')
+      } catch (error) { showToast(error.message) }
+    })
+    log.append(claim)
+  }
   if (!day.entries.length) {
-    log.innerHTML = '<div class="empty-state">Ma még nincs bejegyzés. Adj hozzá egy pohár vizet!</div>'
+    const empty = document.createElement('div')
+    empty.className = 'empty-state'
+    empty.textContent = 'Ma még nincs bejegyzés. Adj hozzá egy pohár vizet!'
+    log.append(empty)
     return
   }
   for (const entry of [...day.entries].reverse()) {
@@ -942,7 +981,8 @@ function renderWater() {
     row.addEventListener('click', () => {
       const next = currentWaterDay().day
       next.entries = next.entries.filter(item => item.id !== entry.id)
-      saveWaterDay(next); renderWater(); showToast('A vízbejegyzés törölve.')
+      try { saveWaterDay(next); renderWater(); showToast('A vízbejegyzés törölve.') }
+      catch (error) { showToast(error.message) }
     })
     log.append(row)
   }
@@ -951,9 +991,8 @@ function renderWater() {
 function addWater(amount) {
   const { day } = currentWaterDay()
   day.entries.push({ id: crypto.randomUUID(), amount, at: new Date().toISOString() })
-  saveWaterDay(day)
-  renderWater()
-  showToast(`${formatWater(amount)} víz hozzáadva és mentve.`)
+  try { saveWaterDay(day); renderWater(); showToast(`${formatWater(amount)} víz hozzáadva és mentve.`) }
+  catch (error) { showToast(error.message) }
 }
 
 function changeWaterGoal() {
@@ -963,7 +1002,8 @@ function changeWaterGoal() {
   const goal = Number(entered.replace(/\s/g, ''))
   if (!Number.isFinite(goal) || goal < 500 || goal > 10000) return showToast('A cél 500 és 10 000 ml között lehet.')
   day.goal = Math.round(goal / 50) * 50
-  saveWaterDay(day); renderWater(); showToast('A napi vízcél mentve.')
+  try { saveWaterDay(day); renderWater(); showToast('A napi vízcél mentve.') }
+  catch (error) { showToast(error.message) }
 }
 
 $('[data-local]').addEventListener('click', () => { setLocalMode(true); showApp() })
@@ -1172,11 +1212,12 @@ onGrapesDriveChange(() => {
   if (!isGrapesDriveConnected()) { mobileReader = null; mobileReaderBook = null }
   else registerFoodSharing().catch(() => {})
   mobileFood?.load({ force: true }).catch(() => {})
-  renderAccount(); renderProjects(); renderSync()
+  renderAccount(); renderProjects(); renderSync(); renderWater()
 })
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
     updateHomeGreeting()
+    if (activePage === 'water') renderWater()
     refreshUpdateInbox().catch(() => {})
   }
   if (document.visibilityState === 'hidden') {
