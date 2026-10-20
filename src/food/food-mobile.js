@@ -1983,7 +1983,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     return yazio.prepare(source)
   }
 
-  async function undoYazio() { if (yazio.isBusy()) return; await load(); await flush(); return yazio.undo() }
+  async function undoYazio() { if (yazio.isBusy()) return; await load(); await flush(); await load({ force: true }); return yazio.undo() }
 
   function handleMenuAction(action) {
     if (action === 'stats') return openStats()
