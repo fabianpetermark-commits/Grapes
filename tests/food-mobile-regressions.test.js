@@ -61,12 +61,14 @@ test('profilváltás közben befejeződő Drive-mentés nem tisztítja az új pr
     project: oldProject, driveFileId: 'old-file', driveRequested: false, driveSaving: null,
     changeRevision: 1, MODULE: 'Ételnapló', PROJECT_NAME: 'Ételnapló',
     structuredClone, isGrapesDriveConnected: () => true, showToast: () => {},
+    localSaves: { flush: async () => {} },
     saveGrapesProject: () => new Promise(resolve => { finishUpload = resolve }),
     persistLocal: async (data = sandbox.project, fileId = sandbox.driveFileId) => {
       localWrites.push({ profileId: data.profile.id, fileId })
     },
   }
   const pending = vm.runInNewContext(match[0] + '\npersistDrive()', sandbox)
+  await new Promise(resolve => setImmediate(resolve))
   assert.equal(typeof finishUpload, 'function')
   sandbox.project = newProject
   sandbox.driveFileId = 'new-file'
@@ -78,3 +80,20 @@ test('profilváltás közben befejeződő Drive-mentés nem tisztítja az új pr
   assert.equal(oldProject.syncState.localDirty, true)
   assert.deepEqual(localWrites, [{ profileId: 'old', fileId: 'old-file-uploaded' }])
 })
+
+test('Food szerkesztés után a helyi mentés azonnal indul, a Drive külön késleltethető', async () => {
+  const match = mobile.match(/  function scheduleSave\(\) \{[\s\S]*?\n  \}/)
+  assert.ok(match)
+  const calls = []
+  const sandbox = {
+    project: { profile: { id: 'synthetic' }, syncState: { localDirty: false } },
+    changeRevision: 0, driveTimer: null,
+    clearTimeout: () => {}, setTimeout: callback => { calls.push('drive-timer'); return callback },
+    persistLocal: async () => { calls.push('local-write') },
+    persistDrive: async () => {}, showToast: () => {},
+  }
+  vm.runInNewContext(match[0] + '\nscheduleSave()', sandbox)
+  assert.deepEqual(calls, ['local-write', 'drive-timer'])
+  assert.equal(sandbox.project.syncState.localDirty, true)
+})
+

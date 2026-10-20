@@ -22,6 +22,8 @@ on:
       - fix/food-existing-features-20261017
       - integration/grapes-test-food-20261017
       - integration/home-m1-grapes-test-20261019
+      - fix/health-audit-off-access-20261020
+      - fix/health-68-durable-local-save-20261020
     paths:
       - android-health-connect-poc/**
       - src/**

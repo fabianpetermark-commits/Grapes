@@ -17,10 +17,15 @@ function openDb() {
 export async function saveLocalProject(project) {
   const db = await openDb()
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readwrite')
-    tx.objectStore(STORE).put({ ...project, updatedAt: new Date().toISOString() })
+    let tx
+    try {
+      tx = db.transaction(STORE, 'readwrite')
+      tx.objectStore(STORE).put({ ...project, updatedAt: new Date().toISOString() })
+    } catch (error) { db.close(); reject(error); return }
+    // A successful put request is not durable until the transaction completes.
     tx.oncomplete = () => { db.close(); resolve(project.id) }
-    tx.onerror = () => { const error = tx.error; db.close(); reject(error) }
+    tx.onabort = () => { const error = tx.error || new Error('A helyi tranzakció megszakadt.'); db.close(); reject(error) }
+    tx.onerror = () => { /* The transaction's abort event owns the rejection. */ }
   })
 }
 
@@ -49,3 +54,4 @@ export async function listLocalProjects(limit = 5) {
     request.onerror = () => { const error = request.error; db.close(); reject(error) }
   })
 }
+

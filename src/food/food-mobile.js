@@ -22,6 +22,7 @@ import { healthImportEntries, prepareHealthBridgeImport } from './food-health-im
 import { prepareYazioCsvImport, yazioImportEntries } from './yazio-import.js'
 import { getGrapesAccount, isGrapesDriveConnected, listGrapesProjects, loadGrapesProject, saveGrapesProject } from '../storage/grapes-drive.js'
 import { loadLocalProject, saveLocalProject } from '../storage/local-project-store.js'
+import { createFoodSaveQueue } from './food-save-queue.js'
 import { isGrapesAndroidApp, readAndroidHealthExport, readAndroidHealthExportSilent, readAndroidSamsungHealthExport, requestAndroidYazio } from '../android-bridge.js'
 import { mobileIconSvg } from '../android-mobile-icons.js'
 
@@ -46,7 +47,6 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   let selectedDate = localDate()
   let selectedMeal = ''
   let selectedRecipeId = ''
-  let saveTimer = null
   let driveTimer = null
   let driveSaving = null
   let driveRequested = false
@@ -99,6 +99,18 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   const $ = selector => root.querySelector(selector)
   const recipeExtras = createRecipeEditorExtras({ root, onApplyImport: applyImportedRecipe })
   const localProjectId = (profileId = profile?.id) => `food-tracker-${profileId}`
+  const localSaveStates = new Map()
+  function localSaveStatus(profileId, state, error) {
+    localSaveStates.set(profileId, { state, error })
+    if (profile?.id !== profileId) return
+    const node = $('[data-food-local-save-status]')
+    if (!node) return
+    node.dataset.state = state
+    node.textContent = state === 'saved' ? 'Helyben mentve' : state === 'pending' ? 'Helyi mentés folyamatban…' :
+      state === 'journal-failed' ? 'Helyi mentés folyamatban; helyreállító másolat nem készült' :
+      `Helyi mentés sikertelen: ${error?.message || 'ismeretlen hiba'}. A változás ebben a munkamenetben még elérhető.`
+  }
+  const localSaves = createFoodSaveQueue({ save: saveLocalProject, onStatus: localSaveStatus })
   const accountProfile = () => {
     const account = getGrapesAccount() || {}
     return { id: String(account.id || account.email || 'local-food-profile').trim().toLocaleLowerCase('hu-HU'), name: account.name || account.email?.split('@')[0] || 'Grapes-felhasználó', email: account.email || '', photo: account.photo || '' }
@@ -231,6 +243,9 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
 
   async function load({ force = false } = {}) {
     const nextProfile = accountProfile()
+    const changingProfile = Boolean(loadedProfileId && loadedProfileId !== nextProfile.id)
+    const foodPage = root.querySelector('[data-page="food"]')
+    if (changingProfile && foodPage) foodPage.style.visibility = 'hidden'
     if (!force && project && loadedProfileId === nextProfile.id) {
       render()
       if (isGrapesDriveConnected()) { refreshInbox().catch(() => {}); syncFood().catch(() => {}) }
@@ -240,11 +255,24 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const generation = ++loadGeneration
     const startingRevision = changeRevision
     const previousProject = project ? structuredClone(project) : null
-    if (project) await persistLocal().catch(() => {})
+    if (project) {
+      try { await persistLocal() }
+      catch (error) {
+        showToast(`A profilváltás előtt a helyi mentés nem sikerült: ${error?.message || ''}`)
+        if (changingProfile) { project = null; profile = null; loadedProfileId = '' }
+        return
+      }
+    }
     try {
-      const local = await loadLocalProject(localProjectId(nextProfile.id)).catch(() => null)
-      let nextProject = local?.data ? normalizeFoodProject(local.data, nextProfile.id) : createEmptyFoodProject(nextProfile)
-      let nextDriveFileId = local?.driveFileId || null
+      const local = await loadLocalProject(localProjectId(nextProfile.id))
+      const recovery = localSaves.pending(nextProfile.id, local)
+      let nextProject = recovery?.data ? normalizeFoodProject(recovery.data, nextProfile.id) :
+        local?.data ? normalizeFoodProject(local.data, nextProfile.id) : createEmptyFoodProject(nextProfile)
+      let nextDriveFileId = recovery ? recovery.fileId : local?.driveFileId || null
+      if (recovery) {
+        nextProject.syncState = { ...nextProject.syncState, localDirty: true }
+        showToast('A megszakadt Food-mentés helyreállító másolatát betöltöttük; ellenőrizd a naplót.')
+      }
       let remoteLoaded = false
       let remoteChecked = false
       if (isGrapesDriveConnected() && !nextProject.syncState?.localDirty) {
@@ -286,6 +314,9 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       }
       await persistLocal()
       render()
+      if (foodPage) foodPage.style.visibility = ''
+      const localState = localSaveStates.get(nextProfile.id)
+      if (localState) localSaveStatus(nextProfile.id, localState.state, localState.error)
       if (isGrapesDriveConnected()) {
         if (remoteChecked) lastFoodSyncAt = Date.now()
         if (!remoteLoaded && project.syncState?.localDirty) persistDrive()
@@ -293,13 +324,13 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       }
     } catch (error) {
       if (generation === loadGeneration) showToast(`Az ételnapló betöltése nem sikerült. ${error.message || ''}`.trim())
+      if (changingProfile) { project = null; profile = null; loadedProfileId = '' }
     }
   }
 
   async function persistLocal(projectValue = project, fileId = driveFileId) {
     if (!projectValue) return
-    const data = structuredClone(projectValue)
-    await saveLocalProject({ id: localProjectId(data.profile.id), module: MODULE, name: PROJECT_NAME, data, driveFileId: fileId })
+    await localSaves.enqueue({ data: projectValue, fileId, module: MODULE, name: PROJECT_NAME })
   }
 
   async function persistDrive() {
@@ -315,6 +346,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
         const snapshot = structuredClone(targetProject)
         snapshot.syncState = { ...snapshot.syncState, localDirty: false }
         try {
+          await localSaves.flush(targetProject.profile.id)
           const savedFileId = await saveGrapesProject({ module: MODULE, name: PROJECT_NAME, data: snapshot, fileId: targetFileId })
           if (project !== targetProject) {
             // An account switch must not assign this upload's file ID or clean
@@ -336,13 +368,14 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
           await persistLocal()
         } catch (error) {
           targetProject.syncState = { ...targetProject.syncState, localDirty: true }
+          let localSaved = true
           if (project?.profile?.id === targetProject.profile.id) {
             project.syncState = { ...project.syncState, localDirty: true }
-            await persistLocal().catch(() => {})
+            try { await persistLocal() } catch { localSaved = false }
           } else {
-            await persistLocal(targetProject, targetFileId).catch(() => {})
+            try { await persistLocal(targetProject, targetFileId) } catch { localSaved = false }
           }
-          showToast(`A Drive-mentés nem sikerült; a változás helyben megmaradt. ${error.message || ''}`.trim())
+          showToast(`${localSaved ? 'A Drive-mentés nem sikerült; a változás helyben megmaradt.' : 'A Drive- és a helyi mentés is sikertelen; ellenőrizd a Food mentési állapotát.'} ${error.message || ''}`.trim())
           if (project !== targetProject && driveRequested) continue
           break
         }
@@ -354,13 +387,13 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   function scheduleSave() {
     changeRevision += 1
     project.syncState = { ...project.syncState, localDirty: true }
-    clearTimeout(saveTimer); clearTimeout(driveTimer)
-    saveTimer = setTimeout(() => persistLocal().catch(() => showToast('A helyi mentés nem sikerült.')), 180)
-    driveTimer = setTimeout(persistDrive, 1600)
+    clearTimeout(driveTimer)
+    persistLocal().catch(error => showToast(`A helyi mentés nem sikerült: ${error?.message || 'ismeretlen hiba'}`))
+    driveTimer = setTimeout(() => persistDrive().catch(() => {}), 1600)
   }
 
   async function flush({ drive = true } = {}) {
-    clearTimeout(saveTimer); clearTimeout(driveTimer)
+    clearTimeout(driveTimer)
     await persistLocal()
     if (drive && project?.syncState?.localDirty) await persistDrive()
   }
@@ -1002,7 +1035,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       project.customFoods.push(...recipeDraftFoods.filter(food => !project.customFoods.some(item => item.id === food.id)))
       project.recipes = existing ? project.recipes.map(item => item.id === recipe.id ? recipe : item) : [...project.recipes, recipe]
       project.customFoods = [...project.customFoods.filter(item => item.id !== recipe.foodId), calculated.food]
-      scheduleSave(); closeSheets(); renderOverview(); openRecipe(recipe.id); showToast('A receptet mentettük.')
+      scheduleSave(); closeSheets(); renderOverview(); openRecipe(recipe.id); showToast('A recept helyi mentése folyamatban.')
     } catch (error) { $('[data-food-recipe-editor-status]').textContent = error.message }
   }
 
@@ -1012,7 +1045,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     project.recipes = project.recipes.filter(item => item.id !== recipe.id).map(item => item.variantOfRecipeId === recipe.id ? { ...item, variantOfRecipeId: recipe.variantOfRecipeId || '' } : item)
     project.customFoods = project.customFoods.filter(item => item.id !== recipe.foodId)
     project.favorites = project.favorites.filter(id => id !== recipe.foodId)
-    scheduleSave(); openRecipes(); showToast('A receptet töröltük.')
+    scheduleSave(); openRecipes(); showToast('A recept törlésének helyi mentése folyamatban.')
   }
 
   function renderMealDetail() {
@@ -1421,7 +1454,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   function deleteEntry(id) {
     if (!window.confirm('Törlöd ezt a naplóbejegyzést?')) return
     project.diaryEntries = project.diaryEntries.filter(item => item.id !== id)
-    scheduleSave(); renderMealDetail(); showToast('A bejegyzés törölve.')
+    scheduleSave(); renderMealDetail(); showToast('A bejegyzés törlésének helyi mentése folyamatban.')
   }
 
   function openEntryEditor(id) {
@@ -1456,7 +1489,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
         if (!project.customFoods.some(item => item.id === food.id)) project.customFoods.push(food)
         project.diaryEntries.push(entry)
         project.recentFoods = [food.id, ...project.recentFoods.filter(id => id !== food.id)].slice(0, 50)
-        scheduleSave(); closeSheets(); renderMealDetail(); showToast(`${food.name} hozzáadva.`)
+        scheduleSave(); closeSheets(); renderMealDetail(); showToast(`${food.name} helyi mentése folyamatban.`)
       } catch (error) { $('[data-food-edit-status]').textContent = error.message }
       return
     }
@@ -1467,7 +1500,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       const draft = { ...entry, amount: $('[data-food-edit-amount]').value, unit: $('[data-food-edit-unit]').value, note: $('[data-food-edit-note]').value, occurredAt: new Date(`${selectedDate}T${time}:00`).toISOString(), updatedAt: new Date().toISOString() }
       const updated = food ? normalizeDiaryEntry(draft, food) : normalizeDiaryEntry({ ...draft, snapshot: scaledSnapshot(entry.snapshot, Number(draft.amount) / entry.amount) })
       project.diaryEntries = project.diaryEntries.map(item => item.id === entry.id ? updated : item)
-      scheduleSave(); closeSheets(); renderMealDetail(); showToast('A bejegyzés módosítva.')
+      scheduleSave(); closeSheets(); renderMealDetail(); showToast('A módosítás helyi mentése folyamatban.')
     } catch (error) { $('[data-food-edit-status]').textContent = error.message }
   }
 
@@ -1475,7 +1508,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const entry = project.diaryEntries.find(item => item.id === id); if (!entry) return
     const now = new Date()
     project.diaryEntries.push(normalizeDiaryEntry({ ...entry, externalKey: '', origin: undefined, id: createFoodId('entry'), occurredAt: new Date(`${selectedDate}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`).toISOString(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }))
-    scheduleSave(); renderMealDetail(); showToast('Az étel megismételve.')
+    scheduleSave(); renderMealDetail(); showToast('Az ismételt étel helyi mentése folyamatban.')
   }
 
   function openShareSheet() {
@@ -1649,7 +1682,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       })
       project.targets = existing ? project.targets.map(item => item.id === existing.id ? target : item) : [...project.targets, target]
       project.settings = { ...project.settings, mealCalorieLimits }
-      scheduleSave(); closeSheets(); renderOverview(); showToast('A napi célokat mentettük.')
+      scheduleSave(); closeSheets(); renderOverview(); showToast('A napi célok helyi mentése folyamatban.')
     } catch (error) { $('[data-food-target-status]').textContent = error.message }
   }
 
@@ -2078,9 +2111,10 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       const menu = event.target.closest('[data-food-menu]'); if (menu) return handleMenuAction(menu.dataset.foodMenu)
     })
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') { stopBarcodeCamera(); flush().catch(() => {}) }
+      if (document.visibilityState === 'hidden') { stopBarcodeCamera(); flush({ drive: false }).catch(error => showToast(`A háttérbe helyezéskor a Food-mentés sikertelen: ${error.message}`)) }
       else { if (isGrapesDriveConnected()) { refreshInbox().catch(() => {}); syncFood().catch(() => {}) }; autoImportHealth().catch(() => {}); autoImportYazio().catch(() => {}) }
     })
+    window.addEventListener('pagehide', () => { flush({ drive: false }).catch(() => {}) })
     window.setInterval(() => {
       const foodPage = root.querySelector('[data-page="food"]')
       if (foodPage && !foodPage.hidden && document.visibilityState === 'visible') { syncFood().catch(() => {}); autoImportHealth().catch(() => {}); autoImportYazio().catch(() => {}) }
@@ -2112,3 +2146,4 @@ function scaledSnapshot(snapshot, factor) {
   for (const [key, value] of Object.entries(nutrients.extras)) nutrients.extras[key] = { ...value, amount: Number((Number(value.amount) * factor).toFixed(2)) }
   return { ...snapshot, baseAmount: Number((Number(snapshot.baseAmount) * factor).toFixed(2)), nutrients }
 }
+
