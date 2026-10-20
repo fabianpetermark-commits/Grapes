@@ -36,8 +36,8 @@ try {
   await page.goto(url, { waitUntil: 'networkidle' })
   await page.locator('[data-page="home"]').waitFor({ state: 'visible' })
   assert.deepEqual(await page.locator('[data-menu-group]').evaluateAll(nodes => nodes.map(x => x.dataset.menuGroup)),
-    ['home', 'health', 'utility', 'finance'])
-  assert.equal(await page.locator('[data-page="home"] .hub-card__icon svg').count(), 4)
+    ['home', 'health', 'utility', 'outdoor', 'finance'])
+  assert.equal(await page.locator('[data-page="home"] .hub-card__icon svg').count(), 5)
   assert.match(await page.locator('[data-menu-group="health"]').textContent(), /Food.*Receptek.*Statisztika/)
 
   for (const width of [320, 360, 390, 412]) {
@@ -87,12 +87,29 @@ try {
   assert.equal(await page.locator('[data-page="hub-finance"] [data-menu-destination="finance"]').count(), 1)
   await page.locator('[data-page="hub-finance"] [data-menu-back]').click()
 
+  await page.locator('[data-menu-group="outdoor"]').click()
+  await page.locator('[data-page="hub-outdoor"]').waitFor({ state: 'visible' })
+  assert.equal(await page.locator('[data-page="hub-outdoor"] .outdoor-weather').count(), 1, 'Időjárás a főoldali fejlécben, nem külön menükártyán.')
+  assert.match(await page.locator('[data-page="hub-outdoor"] .outdoor-weather').textContent(), /nincs bekötve/)
+  assert.match(await page.locator('[data-page="hub-outdoor"] .outdoor-tasks').textContent(), /Még nincs megjeleníthető teendő/)
+  assert.equal(await page.locator('[data-page="hub-outdoor"] [data-menu-destination]').count(), 2)
+  await page.locator('[data-page="hub-outdoor"] [data-menu-destination="plants"]').click()
+  await page.locator('[data-page="outdoor-plants"]').waitFor({ state: 'visible' })
+  await page.evaluate(() => window.grapesHandleAndroidBack())
+  await page.locator('[data-page="hub-outdoor"]').waitFor({ state: 'visible' })
+  await page.locator('[data-page="hub-outdoor"] [data-menu-destination="catalog"]').click()
+  await page.locator('[data-page="outdoor-catalog"]').waitFor({ state: 'visible' })
+  await page.locator('[data-page="outdoor-catalog"] [data-outdoor-back]').click()
+  await page.locator('[data-page="hub-outdoor"]').waitFor({ state: 'visible' })
+  await page.evaluate(() => window.grapesHandleAndroidBack())
+  await page.locator('[data-page="home"]').waitFor({ state: 'visible' })
+
   await page.locator('.bottom-nav [data-nav="projects"]').click()
   await page.locator('[data-page="projects"]').waitFor({ state: 'visible' })
   await page.locator('.bottom-nav [data-nav="home"]').click()
   assert.equal(await page.locator('[data-page="home"]').isVisible(), true)
   assert.deepEqual(pageErrors, [])
-  console.log('Grapes 2x2 hubs: Home lista/készlet, Health Food/Receptek/Statisztika, Utility E-book, Finance, 320–412 px, back és Projektek: OK')
+  console.log('Grapes 2x2 + Outdoor hubs: Home lista/készlet, Health Food/Receptek/Statisztika, Utility E-book, Finance, 320–412 px, back és Projektek: OK')
 } finally {
   await browser?.close()
   server.kill()
