@@ -61,3 +61,16 @@ test('password reset uses no password and gives non-enumerating feedback',async(
   assert.equal(email,'a@example.invalid')
   assert.match(f.elements['#grapes-feedback'].textContent,/Ha ehhez/)
 })
+
+test('password recovery callback switches into password-only update mode', async () => {
+  let changed
+  const f = fixture({updatePassword: async password => {changed=password}})
+  f.setRecoveryMode()
+  assert.equal(f.getMode(),'update')
+  assert.equal(f.elements['#grapes-username'].hidden,true)
+  assert.equal(f.elements['.submit-button'].textContent,'Új jelszó mentése')
+  f.elements['#grapes-password'].value='new-test-password'
+  await f.elements['#grapes-login-form'].emit('submit')
+  assert.equal(changed,'new-test-password')
+  assert.equal(f.getMode(),'login')
+})
