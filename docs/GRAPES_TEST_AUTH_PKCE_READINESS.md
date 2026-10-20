@@ -4,7 +4,8 @@ Baseline: #85 → #86 approved black/cyan UI → #87 Auth adapter → #88 separa
 
 ## What is actually implemented
 
-- An independent official Supabase-JS-compatible client initializer in `src/auth/grapes-test-runtime.js`, controlled by injected `createClient` and **not active** in any production or TEST app startup yet.
+- Official **@supabase/supabase-js 2.118.0** is pinned in `package.json` and `package-lock.json`, installed through a scoped one-shot GitHub Actions branch workflow (since the assistant container has no npm-registry network). The one-shot write-permission workflow was then removed.
+- An independent client initializer in `src/auth/grapes-test-runtime.js` is active **only** on the dedicated TEST route when its Vite opt-in flag and exact project public configuration are present.
 - A constant, allowlisted project URL: `https://aighqtqjlzirlokxwupt.supabase.co` (Grapes TEST, eu-central-1). The runtime rejects any other project URL and any secret/service-role/legacy-anon key.
 - PKCE OAuth, automatic refresh, URL callback detection, TEST-specific **sessionStorage** and unique auth storage key. TEST tokens are never placed in the existing E-book Drive credential store.
 - Only the explicit `/Grapes/login-auth-test.html` route on the approved GitHub Pages or local loopback hosts may initialize TEST Auth.
@@ -14,17 +15,24 @@ Baseline: #85 → #86 approved black/cyan UI → #87 Auth adapter → #88 separa
 
 ## Critical dependency / activation gate
 
-The connected execution container cannot resolve the npm registry. Do not fabricate or manually edit `package-lock.json`. The official Supabase JavaScript client is NOT YET installed, and the TEST page intentionally remains disabled. To complete activation, on a development environment with npm network access:
+The official client and lockfile are installed/pinned; however, the TEST page **still starts disabled by default**. To verify dependencies on a development environment with network access:
 
 ```sh
-npm install --save-exact @supabase/supabase-js@2.118.0
 npm ci
 npm test
 npm run build
 npm run build:android-web
 ```
 
-Review both package.json and the generated package-lock.json; commit both in the **next isolated draft PR**. Confirm package version and security advisories before installation. Add a static `import { createClient } from '@supabase/supabase-js'` inside the TEST route's entrypoint, then gate the start on `VITE_GRAPES_TEST_AUTH_ENABLED === 'true'` and the correct project URL and publishable key. When enabled, call `activateGrapesAuthTest({ createClient })` *instead of* `initializeGrapesAuthTest()` — not both (avoid double-registered form listeners). Do not import SDK from a third-party CDN.
+The dedicated TEST entrypoint now imports the pinned SDK and uses the explicit `VITE_GRAPES_TEST_AUTH_ENABLED === 'true'` gate. Its unconfigured/default mode does not read or submit credentials. No SDK is loaded from a third-party CDN. To enable a local TEST-only build, add these values to an **untracked local `.env.local`** (never put a secret/service-role key here):
+
+```dotenv
+VITE_GRAPES_TEST_AUTH_ENABLED=true
+VITE_GRAPES_TEST_SUPABASE_URL=https://aighqtqjlzirlokxwupt.supabase.co
+VITE_GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY=<copy the Grapes TEST sb_publishable_... key from its Supabase dashboard>
+```
+
+These are **client-visible** settings, suitable only for a dedicated, explicitly opted-in TEST build. The project URL is enforced in runtime even if a wrong environment variable is supplied.
 
 ## Supabase Auth configuration (requires interactive dashboard actions)
 
@@ -33,7 +41,7 @@ Review both package.json and the generated package-lock.json; commit both in the
 3. Google Cloud OAuth web application: create a **dedicated Grapes TEST Google OAuth client**. Its Authorized redirect URI points to **Supabase Auth**: `https://aighqtqjlzirlokxwupt.supabase.co/auth/v1/callback`; its JavaScript origin is the approved host. Enable only `openid`, email and profile; **never** Drive scopes.
 4. Paste Google client ID and client secret **only** into Supabase dashboard's Google Auth provider configuration. Never put client secret into the repo, `.env`, `VITE_` variables, chats, or CI logs.
 5. Pin the TEST publishable key and project URL via a *non-secret* TEST-specific deployment config; do not reuse any other Supabase project. Confirm GitHub Pages deployment is opt-in and not replacing the published Grapes app.
-6. Password recovery requires a recovery-specific UI and server-verified password change on `PASSWORD_RECOVERY` using `supabase.auth.updateUser`. **This PR supports requesting the e-mail only**, not changing the password after callback. Do not claim the full flow works yet.
+6. The TEST page now supports receiving a `PASSWORD_RECOVERY` event, showing an explicit new-password mode, and calling the official Supabase `updateUser({ password })`. **This still needs an end-to-end real-email recovery test** before declaring it working.
 
 ## Verification gates before Android TEST APK
 
