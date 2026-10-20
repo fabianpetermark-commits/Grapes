@@ -10,6 +10,7 @@ on:
       - 'src/styles/screens/login-auth-test.css'
       - 'login-auth-test.html'
       - 'tests/grapes-*.test.js'
+      - 'tests/grapes-test-auth.browser.mjs'
       - 'docs/GRAPES_TEST_AUTH_PKCE_READINESS.md'
       - 'package.json'
       - 'package-lock.json'
@@ -41,6 +42,8 @@ jobs:
         run: |
           npm run build
           npm run build:android-web
+      - name: TEST-only auth page must fail closed in every responsive layout
+        run: node tests/grapes-test-auth.browser.mjs
       - name: Approved login preview browser regression
         run: node tests/login-preview.browser.mjs
       - name: Responsive layout regression
