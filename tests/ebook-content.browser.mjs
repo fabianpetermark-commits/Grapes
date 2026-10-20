@@ -75,7 +75,7 @@ try {
     } else {
       await page.locator('#ebook-editor-save').click()
       await page.locator('.grapes-dialog .btn--danger').click()
-      try { await page.locator('#ebook-metadata-operation-status').getByText(/mentve a Drive-ba/).waitFor({ timeout: 30000 }) }
+      try { await page.waitForFunction(() => /mentve a Drive-ba/.test(document.querySelector('#ebook-metadata-operation-status')?.textContent || '')) }
       catch { throw new Error(JSON.stringify({ status: await page.locator('#ebook-metadata-operation-status').textContent(), requests, uploaded: Boolean(uploaded) })) }
       assert.ok(uploaded)
       const updated = await JSZip.loadAsync(uploaded)

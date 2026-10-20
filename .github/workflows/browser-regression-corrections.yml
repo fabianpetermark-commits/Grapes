@@ -6,6 +6,8 @@ on:
       - ci/supabase-phase0-independent-verification-20261020
       - test/browser-regression-assumptions-20261020
       - fix/yazio-file-import-20261020
+      - fix/studio-mobile-toolbar-20261020
+      - test/browser-followup-corrections-20261020
     paths:
       - .github/workflows/browser-regression-corrections.yml
       - tests/**
@@ -74,11 +76,10 @@ jobs:
             if [ "$file" = tests/food-live-api.browser.mjs ]; then continue; fi
             echo "Running $file"
             if [[ "$file" == tests/android-* ]]; then
-              VITE_GRAPES_TEST_CHANNEL=1 node "$file"
+              if VITE_GRAPES_TEST_CHANNEL=1 node "$file"; then passed=$((passed + 1)); else failed=$((failed + 1)); fi
             else
-              node "$file"
+              if node "$file"; then passed=$((passed + 1)); else failed=$((failed + 1)); fi
             fi
-            if [ "$?" -eq 0 ]; then passed=$((passed + 1)); else failed=$((failed + 1)); fi
           done
           echo "Browser regression files: $passed PASS, $failed FAIL"
           test "$failed" -eq 0
