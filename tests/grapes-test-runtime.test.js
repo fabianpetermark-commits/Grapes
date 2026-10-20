@@ -35,6 +35,7 @@ function sdkFixture() {
     resetPasswordForEmail: async () => ({data:{},error:null}),
     getUser: async () => ({data:{user:{id:'user1',email:'fake@example.invalid'}},error:null}),
     signOut: async () => ({data:{},error:null}),
+    updateUser: async () => ({data:{user:{id:'user1'}},error:null}),
     onAuthStateChange(fn) {callback=fn;return {data:{subscription:{unsubscribe(){unsubscribed=true}}}}}
   }
   return {
@@ -89,6 +90,8 @@ test('official client factory is dependency-injected and session is validated',a
   assert.equal(elements['#grapes-sign-out'].hidden,true)
   sdk.emit('SIGNED_IN',{user:{id:'user1'}})
   assert.equal(elements['#grapes-sign-out'].hidden,false)
+  sdk.emit('PASSWORD_RECOVERY',{user:{id:'user1'}})
+  assert.equal(run.ui.getMode(),'update')
   run.dispose()
   assert.equal(sdk.unsubscribed,true)
 })
