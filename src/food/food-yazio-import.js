@@ -157,6 +157,9 @@ export function prepareYazioImport(source, { profileId, existingEntries = [] } =
   const exportFingerprint = hash({ meta: data.meta, nutrition_log: data.nutrition_log })
   const existing = existingEntries.filter(item => item.profileId === profileId)
   const byExternal = new Map(existing.map(item => [item.externalKey, item]).filter(([key]) => key))
+  const legacyRowPrefix = 'yazio:' + profileId + ':row:'
+  const byLegacyRow = new Map(existing.filter(item => item.externalKey?.startsWith(legacyRowPrefix) && /:[0-9a-f]{16}$/.test(item.externalKey))
+    .map(item => [item.externalKey.slice(0, item.externalKey.lastIndexOf(':')), item]))
   const records = data.nutrition_log.map((record, index) => {
     try {
       const stableId = text(record.entry_id)
@@ -164,10 +167,12 @@ export function prepareYazioImport(source, { profileId, existingEntries = [] } =
       const signature = hash(record)
       const ordinal = occurrence.get(signature) || 0
       occurrence.set(signature, ordinal + 1)
-      const externalKey = 'yazio:' + profileId + ':' + (stableId ? 'id:' + stableId : 'row:' + signature + ':' + ordinal + ':' + exportFingerprint)
+      // ID-less row identity must survive a wider or newer overlapping export.
+      // Earlier imports appended an export fingerprint; recognize those keys too.
+      const externalKey = 'yazio:' + profileId + ':' + (stableId ? 'id:' + stableId : 'row:' + signature + ':' + ordinal)
       const sourcePayload = { log: record, linked: linkedSources(record, data) }
       const entry = entryForRow(record, profileId, externalKey, stableId, sourcePayload)
-      const old = byExternal.get(externalKey)
+      const old = byExternal.get(externalKey) || (!stableId ? byLegacyRow.get(externalKey) : null)
       let status = seenKeys.has(externalKey) || old ? 'duplicate' : 'ready'
       if (old && (!old.origin?.sourcePayload?.log || canonical(old.origin.sourcePayload.log) !== canonical(record))) status = 'uncertain'
       if (seenKeys.has(externalKey) && seenKeys.get(externalKey) !== canonical(record)) status = 'uncertain'
