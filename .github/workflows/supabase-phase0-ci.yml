@@ -31,6 +31,7 @@ jobs:
           supabase --version
           supabase init --help >/dev/null
           supabase start --help >/dev/null
+          supabase migration new --help >/dev/null
           supabase status --help >/dev/null
           echo "Tested commit: $GITHUB_SHA"
       - name: Prepare isolated local Supabase stack
@@ -41,6 +42,10 @@ jobs:
           cd "$GRAPES_SUPABASE_LOCAL_DIR"
           supabase init
           node "$GITHUB_WORKSPACE/poc/supabase-sync/ci/prepare-config.mjs"
+          supabase migration new grapes_ci_api_bootstrap
+          migration=$(find supabase/migrations -name '*_grapes_ci_api_bootstrap.sql' -print -quit)
+          test -n "$migration"
+          printf 'create schema if not exists api;\n' > "$migration"
           supabase start
           if ! command -v psql >/dev/null; then
             sudo apt-get update
