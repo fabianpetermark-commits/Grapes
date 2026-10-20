@@ -96,6 +96,23 @@ test('403/429/503 és megszakadt backup nem okozhat főfájl-PATCH-et', async ()
   }
 })
 
+test('sikeres PATCH utáni elveszett válasz retry-ja ütközést jelez, a mentés másolata megmarad', async () => {
+  const remote = server(); remote.seed('shared', project('same', [{ id: 'base' }]))
+  const originalSave = remote.save
+  remote.save = async args => {
+    const id = await originalSave(args)
+    if (args.fileId) throw Error('HTTP 503 after commit')
+    return id
+  }
+  const a = client(remote, 'A')
+  const data = project('same', [{ id: 'base' }, { id: 'new' }])
+  await assert.rejects(a.upload({ profileId: 'same', data, fileId: 'shared', version: '1', writeId: 'baseline' }), /503/)
+  assert.equal(remote.calls.filter(x => x.privateRecovery).length, 1)
+  const retry = await a.upload({ profileId: 'same', data, fileId: 'shared', version: '1', writeId: 'baseline' })
+  assert.equal(retry.conflict, true)
+  assert.deepEqual((await remote.load(retry.recoveryId)).data.diaryEntries.map(x => x.id), ['base', 'new'])
+})
+
 test('külön Google-profil, más modul és idegen fájl nem kerülhet Food-ba', async () => {
   const remote = server(); remote.seed('foreign', project('account-a'))
   const a = client(remote, 'A')
