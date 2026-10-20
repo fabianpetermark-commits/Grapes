@@ -64,7 +64,7 @@ export function createFoodSaveQueue({ save, storage = globalThis.localStorage, o
     try { storage?.setItem(keyFor(profileId), JSON.stringify(item)) }
     catch (error) { onStatus(profileId, 'journal-failed', error) }
     const task = (tails.get(profileId) || Promise.resolve()).catch(() => {}).then(async () => {
-      await save(record)
+      await save({ ...record, expectedSaveToken: committed.get(profileId)?.token || null })
       committed.set(profileId, { token, revision })
       try {
         if (pending(profileId)?.token === token) storage?.removeItem(keyFor(profileId))
@@ -81,5 +81,6 @@ export function createFoodSaveQueue({ save, storage = globalThis.localStorage, o
   }
 
   function flush(profileId) { return tails.get(profileId) || Promise.resolve() }
-  return { enqueue, flush, pending, observe, keyFor }
+  function raw(profileId) { return storage?.getItem(keyFor(profileId)) || null }
+  return { enqueue, flush, pending, observe, raw, keyFor }
 }
