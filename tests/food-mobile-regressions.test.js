@@ -68,6 +68,7 @@ test('profilváltás közben befejeződő Drive-mentés nem tisztítja az új pr
     },
   }
   const pending = vm.runInNewContext(match[0] + '\npersistDrive()', sandbox)
+  await new Promise(resolve => setImmediate(resolve))
   assert.equal(typeof finishUpload, 'function')
   sandbox.project = newProject
   sandbox.driveFileId = 'new-file'
