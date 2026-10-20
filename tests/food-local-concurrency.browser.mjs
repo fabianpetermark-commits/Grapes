@@ -22,7 +22,8 @@ try {
   const a = await context.newPage(), b = await context.newPage()
   await Promise.all([a.goto(url), b.goto(url)])
   const profileId = 'synthetic-concurrent'
-  const snapshot = entry => ({ profile: { id: profileId }, diaryEntries: [{ id: entry }], syncState: { localDirty: true } })
+  const snapshot = entry => ({ profile: { id: profileId }, diaryEntries: [{ id: entry, externalKey: `healthconnect:${entry}` }],
+    recipes: [{ id: `recipe-${entry}` }], importBatches: [{ id: `yazio-${entry}` }], syncState: { localDirty: true } })
   await a.evaluate(async ({ profileId, baseline }) => {
     const { saveLocalProject } = await import('/Grapes/src/storage/local-project-store.js')
     await saveLocalProject({ id: `food-tracker-${profileId}`, module: 'Ételnapló', name: 'Ételnapló', data: baseline, saveToken: 'baseline', saveRevision: 1 })
@@ -39,7 +40,8 @@ try {
   assert.deepEqual(await Promise.all([begin(a), begin(b)]), ['baseline', 'baseline'])
   const write = (page, entry, targetProfile = profileId) => page.evaluate(async ({ entry, profileId }) => {
     try {
-      await window.foodQueue.enqueue({ data: { profile: { id: profileId }, diaryEntries: [{ id: entry }], syncState: { localDirty: true } } })
+      await window.foodQueue.enqueue({ data: { profile: { id: profileId }, diaryEntries: [{ id: entry, externalKey: `healthconnect:${entry}` }],
+        recipes: [{ id: `recipe-${entry}` }], importBatches: [{ id: `yazio-${entry}` }], syncState: { localDirty: true } } })
       return 'saved'
     } catch (error) { return error.code || error.message }
   }, { entry, profileId: targetProfile })
@@ -56,6 +58,9 @@ try {
   assert.equal(records.current.data.diaryEntries[0].id, 'A', 'A frissebb commitja nem írható felül')
   assert.equal(records.recovery.length, 1, 'B elvesztett pillanatképe külön IDB-rekordban megmarad')
   assert.equal(records.recovery[0].data.diaryEntries[0].id, 'B')
+  assert.equal(records.recovery[0].data.diaryEntries[0].externalKey, 'healthconnect:B')
+  assert.equal(records.recovery[0].data.recipes[0].id, 'recipe-B')
+  assert.equal(records.recovery[0].data.importBatches[0].id, 'yazio-B')
 
   // A reload must retain the committed winner, the failed journal and the
   // separate recovery record; neither stale session can silently replace A.
