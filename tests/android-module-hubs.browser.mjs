@@ -95,6 +95,42 @@ try {
   assert.equal(await page.locator('[data-page="hub-outdoor"] [data-menu-destination]').count(), 2)
   await page.locator('[data-page="hub-outdoor"] [data-menu-destination="plants"]').click()
   await page.locator('[data-page="outdoor-plants"]').waitFor({ state: 'visible' })
+  assert.match(await page.locator('[data-page="outdoor-plants"] .outdoor-preview-label').textContent(), /Bemutató mód/)
+  assert.equal(await page.locator('[data-outdoor-plant]').count(), 3)
+  assert.equal(await page.locator('[data-outdoor-plant="chili-a"] .outdoor-plant-card__species').textContent(),
+    await page.locator('[data-outdoor-plant="chili-b"] .outdoor-plant-card__species').textContent(),
+    'Azonos fajból lehet két külön példány.')
+  await page.locator('[data-outdoor-plant="chili-a"]').click()
+  await page.locator('[data-page="outdoor-detail"]').waitFor({ state: 'visible' })
+  assert.match(await page.locator('[data-outdoor-fact="name"]').textContent(), /1\\. példány/)
+  assert.match(await page.locator('[data-outdoor-fact="place"]').textContent(), /Terasz/)
+  assert.equal(await page.locator('[data-outdoor-panel="overview"]').isVisible(), true)
+  await page.locator('[data-outdoor-tab="overview"]').focus()
+  await page.keyboard.press('ArrowRight')
+  assert.equal(await page.locator('[data-outdoor-panel="care"]').isVisible(), true, 'Billentyűzettel váltható a gondozás fül.')
+  assert.match(await page.locator('[data-outdoor-panel="care"]').textContent(), /Még nincs/)
+  await page.locator('[data-outdoor-tab="journal"]').click()
+  assert.equal(await page.locator('[data-outdoor-panel="journal"]').isVisible(), true)
+  await page.locator('[data-outdoor-tab="photos"]').click()
+  assert.equal(await page.locator('[data-outdoor-panel="photos"]').isVisible(), true)
+
+  for (const width of [320, 360, 390, 412]) {
+    await page.setViewportSize({ width, height: 844 })
+    const layout = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }))
+    assert.ok(layout.document <= layout.viewport, `Az Outdoor adatlap kilóg ${width}px szélességen.`)
+  }
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.evaluate(() => window.grapesHandleAndroidBack())
+  await page.locator('[data-page="outdoor-plants"]').waitFor({ state: 'visible' })
+  await page.locator('[data-outdoor-plant="chili-b"]').click()
+  assert.match(await page.locator('[data-outdoor-fact="name"]').textContent(), /2\\. példány/)
+  assert.match(await page.locator('[data-outdoor-fact="place"]').textContent(), /Ablakpárkány/)
+  assert.equal(await page.locator('[data-outdoor-tab="overview"]').getAttribute('aria-selected'), 'true',
+    'Új növény megnyitásakor az Áttekintés fület nyitjuk meg.')
+  await page.locator('[data-outdoor-detail-back]').click()
+  await page.locator('[data-page="outdoor-plants"]').waitFor({ state: 'visible' })
+  assert.equal(await page.evaluate(() => Object.keys(localStorage).some(key => key.startsWith('grapes-outdoor'))), false,
+    'A bemutató felület nem írhat felhasználói növényadatot.')
   await page.evaluate(() => window.grapesHandleAndroidBack())
   await page.locator('[data-page="hub-outdoor"]').waitFor({ state: 'visible' })
   await page.locator('[data-page="hub-outdoor"] [data-menu-destination="catalog"]').click()
