@@ -94,7 +94,7 @@ try {
   await page.locator('[data-food-target-energy]').fill('2187')
   await page.locator('[data-food-target-save]').click()
   await page.evaluate(() => window.grapesHandleAndroidBack())
-  await page.locator('[data-food-local-save-status]').filter({ hasText: 'Helyben mentve' }).waitFor()
+  await page.locator('[data-food-local-save-status][data-state="saved"]').waitFor({ state: 'attached' })
   const savedGoal = await page.evaluate(() => new Promise((resolve, reject) => {
     const open = indexedDB.open('grapes-projects', 1)
     open.onerror = () => reject(open.error)
