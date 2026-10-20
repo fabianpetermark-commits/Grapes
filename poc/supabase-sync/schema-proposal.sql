@@ -62,6 +62,16 @@ create table grapes_private.attempts (
 );
 create index attempts_record_idx on grapes_private.attempts (user_id, profile_id, kind, record_id, recorded_at desc);
 
+create function grapes_private.reject_history_mutation() returns trigger
+language plpgsql set search_path = pg_catalog
+as $$ begin
+  raise exception 'recovery history is append-only' using errcode = '55000';
+end $$;
+create trigger revisions_append_only before update or delete on grapes_private.revisions
+  for each row execute function grapes_private.reject_history_mutation();
+create trigger attempts_append_only before update or delete on grapes_private.attempts
+  for each row execute function grapes_private.reject_history_mutation();
+
 alter table grapes_private.profiles enable row level security;
 alter table grapes_private.documents enable row level security;
 alter table grapes_private.revisions enable row level security;
