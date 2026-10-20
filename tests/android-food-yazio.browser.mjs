@@ -71,7 +71,7 @@ try {
   await page.locator('[data-yazio-api-files]').click()
   await page.locator('[data-sync-import-sheet].is-open').waitFor()
   project = await readProject()
-  console.log('YAZIO undo diagnostic', JSON.stringify({ recordIds: project.importBatches[0].recordIds.length, entryIds: project.diaryEntries.length, originBatchIds: [...new Set(project.diaryEntries.map(entry => entry.origin?.importBatchId))], batchId: project.importBatches[0].id }))
+  console.log('YAZIO undo diagnostic', JSON.stringify({ batches: project.importBatches.length, recordIds: project.importBatches[0].recordIds.length, entryIds: project.diaryEntries.length, matchingIds: project.diaryEntries.filter(entry => project.importBatches[0].recordIds.includes(entry.id)).length, originBatchIds: [...new Set(project.diaryEntries.map(entry => entry.origin?.importBatchId))], batchId: project.importBatches[0].id }))
   await page.locator('[data-yazio-undo]').click()
   await page.waitForFunction(async () => {
     const { loadLocalProject } = await import('/Grapes/src/storage/local-project-store.js')
