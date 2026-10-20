@@ -122,7 +122,7 @@ export function bindGrapesTestLogin(root, flow = null) {
     },
     setSession(user) {
       signOut.hidden = !user?.id
-      if (user?.id) show('Grapes TEST-fiók hitelesítve. A Health és az E-book adatai változatlanok.')
+      if (user?.id && mode !== 'update') show('Grapes TEST-fiók hitelesítve. A Health és az E-book adatai változatlanok.')
     },
   }
 }
