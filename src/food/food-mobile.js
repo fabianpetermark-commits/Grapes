@@ -108,6 +108,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   function localSaveStatus(profileId, state, error) {
     localSaveStates.set(profileId, { state, error })
     if (state === 'failed' && error?.code === 'FOOD_LOCAL_SAVE_CONFLICT') localConflicts.set(profileId, error.recoveryId)
+    if (state === 'failed' && error?.code === 'FOOD_LOCAL_RECOVERY_CONFLICT') journalConflicts.add(profileId)
     if (profile?.id !== profileId) return
     const node = $('[data-food-local-save-status]')
     if (!node) return
@@ -116,6 +117,10 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       const recoveryButton = $('[data-food-local-conflict-export]')
       if (recoveryButton) recoveryButton.hidden = false
       showSyncStatus('Helyi Food-ütközés: a két változat külön megmaradt. Exportáld a helyreállító példányt.')
+    }
+    if (state === 'failed' && error?.code === 'FOOD_LOCAL_RECOVERY_CONFLICT') {
+      const journalButton = $('[data-food-journal-export]')
+      if (journalButton) journalButton.hidden = false
     }
     node.textContent = state === 'saved' ? 'Helyben mentve' : state === 'pending' ? 'Helyi mentés folyamatban…' :
       state === 'journal-failed' ? 'Helyi mentés folyamatban; helyreállító másolat nem készült' :
