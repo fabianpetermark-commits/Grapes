@@ -11,6 +11,9 @@ on:
       - src/android-bridge.js
       - android-health-connect-poc/**
       - tests/food-*.test.js
+      - tests/food-local-concurrency.browser.mjs
+      - src/storage/local-project-store.js
+      - design/android-mobile-preview.html
       - .github/workflows/food-off-usda-native-checks.yml
 
 permissions:
