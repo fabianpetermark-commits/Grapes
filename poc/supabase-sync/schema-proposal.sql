@@ -86,14 +86,14 @@ create policy revision_owner_read on grapes_private.revisions for select to auth
 create policy attempt_owner_read on grapes_private.attempts for select to authenticated
   using (user_id = (select auth.uid()));
 
--- SECURITY DEFINER is required because direct table mutation is deliberately
--- unavailable. The owner is derived from the validated JWT, never a client arg.
--- Fixed search_path, explicit grants and profile check are mandatory.
-create or replace function api.compare_and_swap(
+-- Direct table mutation is deliberately unavailable. The privileged function
+-- stays private; its exposed wrapper is SECURITY INVOKER. The owner is derived
+-- from the validated JWT, never a client argument.
+create or replace function grapes_private.compare_and_swap_internal(
   p_profile_id text, p_kind text, p_record_id text, p_operation_id uuid,
   p_expected_revision bigint, p_schema_version integer, p_candidate jsonb
 ) returns jsonb
-language plpgsql security definer set search_path = pg_catalog, auth, grapes_private
+language plpgsql security definer set search_path = ''
 as $$
 declare
   v_user uuid := auth.uid();
@@ -157,9 +157,47 @@ begin
     'snapshotId', case when v_outcome = 'conflict' then p_operation_id end);
 end;
 $$;
+-- A signed-in Data API request enters through an invoker wrapper. The
+-- privileged implementation stays in the unexposed private schema. Explicit
+-- USAGE allows calling that function but does not grant table access.
+revoke all on function grapes_private.compare_and_swap_internal(text,text,text,uuid,bigint,integer,jsonb) from public, anon;
+grant usage on schema grapes_private to authenticated;
+grant execute on function grapes_private.compare_and_swap_internal(text,text,text,uuid,bigint,integer,jsonb) to authenticated;
+
+create or replace function api.compare_and_swap(
+  p_profile_id text, p_kind text, p_record_id text, p_operation_id uuid,
+  p_expected_revision bigint, p_schema_version integer, p_candidate jsonb
+) returns jsonb language sql security invoker set search_path = ''
+as $$ select grapes_private.compare_and_swap_internal($1,$2,$3,$4,$5,$6,$7) $$;
 revoke all on function api.compare_and_swap(text,text,text,uuid,bigint,integer,jsonb) from public, anon;
 grant execute on function api.compare_and_swap(text,text,text,uuid,bigint,integer,jsonb) to authenticated;
 
--- Read APIs must also derive v_user from auth.uid(), check profile ownership,
--- and expose only that owner's head/history/attempts. They are intentionally
+-- A rejected candidate must be exportable for recovery. The lookup uses the
+-- authenticated owner and operation ID, and never accepts a user ID argument.
+create or replace function grapes_private.read_attempt_internal(p_operation_id uuid)
+returns jsonb language plpgsql security definer set search_path = ''
+as $$
+declare v_user uuid := auth.uid(); v_attempt grapes_private.attempts%rowtype;
+begin
+  if v_user is null or coalesce(auth.jwt()->>'is_anonymous', 'false') = 'true' then
+    raise exception 'authentication required' using errcode = '28000';
+  end if;
+  select * into v_attempt from grapes_private.attempts
+    where user_id = v_user and operation_id = p_operation_id;
+  if not found then return null; end if;
+  return jsonb_build_object('profileId', v_attempt.profile_id, 'kind', v_attempt.kind,
+    'recordId', v_attempt.record_id, 'status', v_attempt.outcome,
+    'expectedRevision', v_attempt.expected_revision, 'revision', v_attempt.resulting_revision,
+    'schemaVersion', v_attempt.schema_version, 'candidate', v_attempt.candidate);
+end;
+$$;
+revoke all on function grapes_private.read_attempt_internal(uuid) from public, anon;
+grant execute on function grapes_private.read_attempt_internal(uuid) to authenticated;
+create or replace function api.read_attempt(p_operation_id uuid)
+returns jsonb language sql security invoker set search_path = ''
+as $$ select grapes_private.read_attempt_internal($1) $$;
+revoke all on function api.read_attempt(uuid) from public, anon;
+grant execute on function api.read_attempt(uuid) to authenticated;
+
+-- Head/history listing, paging, retention and administrative export APIs are
 -- deferred until the dedicated TEST gate and independent security review.
