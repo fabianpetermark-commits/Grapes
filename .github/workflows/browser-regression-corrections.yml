@@ -8,6 +8,8 @@ on:
       - fix/yazio-file-import-20261020
       - fix/studio-mobile-toolbar-20261020
       - test/browser-followup-corrections-20261020
+      - fix/yazio-undo-persisted-state-20261020
+      - test/browser-finance-food-current-flow-20261020
     paths:
       - .github/workflows/browser-regression-corrections.yml
       - tests/**

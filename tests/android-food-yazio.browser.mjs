@@ -71,33 +71,33 @@ try {
   await page.locator('[data-yazio-api-files]').click()
   await page.locator('[data-sync-import-sheet].is-open').waitFor()
   project = await readProject()
-  console.log('YAZIO undo diagnostic', JSON.stringify({ batches: project.importBatches.length, recordIds: project.importBatches[0].recordIds.length, entryIds: project.diaryEntries.length, matchingIds: project.diaryEntries.filter(entry => project.importBatches[0].recordIds.includes(entry.id)).length, originBatchIds: [...new Set(project.diaryEntries.map(entry => entry.origin?.importBatchId))], batchId: project.importBatches[0].id }))
-  console.log('YAZIO pure undo diagnostic', await page.evaluate(async () => { const { loadLocalProject } = await import('/Grapes/src/storage/local-project-store.js'); const { undoYazioBatch } = await import('/Grapes/src/food/food-yazio-import.js'); const current = (await loadLocalProject('food-tracker-local-food-profile')).data; const batch = current.importBatches[0]; const result = undoYazioBatch(current, batch.id); return { removed: result.removed, modified: result.modified.length, remaining: result.project.diaryEntries.length } }))
   await page.locator('[data-yazio-undo]').click()
-  await page.waitForFunction(async () => {
-    const { loadLocalProject } = await import('/Grapes/src/storage/local-project-store.js')
-    return (await loadLocalProject('food-tracker-local-food-profile'))?.data?.importBatches?.[0]?.status === 'undone'
+  await page.waitForFunction(() => {
+    if (!window.yazioUndoProbe) {
+      window.yazioUndoProbe = import('/Grapes/src/storage/local-project-store.js')
+        .then(({ loadLocalProject }) => loadLocalProject('food-tracker-local-food-profile'))
+        .then(record => { window.yazioUndoState = { status: record?.data?.importBatches?.[0]?.status, entries: record?.data?.diaryEntries?.length, token: record?.saveToken } })
+        .finally(() => { window.yazioUndoProbe = null })
+    }
+    return window.yazioUndoState?.status === 'undone' && window.yazioUndoState?.entries === 0
   })
   project = await readProject()
-  console.log('YAZIO post-undo diagnostic', JSON.stringify({ status: project.importBatches[0]?.status, entries: project.diaryEntries.length, matchingIds: project.diaryEntries.filter(entry => project.importBatches[0]?.recordIds?.includes(entry.id)).length }))
   assert.equal(project.diaryEntries.length, 0)
-  await page.route('https://search.openfoodfacts.org/search**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ count: 1, hits: [{ code: '5991234567890', product_name_hu: 'OFF teszt', nutriments: { 'energy-kcal_100g': 100 } }] }) }))
-  await page.evaluate(() => {
-    globalThis.__GRAPES_FATSECRET_TEST__ = async () => [{ kind: 'product', name: 'FatSecret teszt', category: 'Élelmiszer', baseUnit: 'g', nutrients: { energyKcal: 200 }, source: { type: 'fatsecret', id: 'mobile-fs' } }]
-  })
+  assert.equal(project.importBatches[0].status, 'undone')
+  await page.route('https://search.openfoodfacts.org/search**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ count: 1, hits: [{ code: '5991234567890', product_name_hu: 'OFF teszt', countries_tags: ['en:hungary'], nutriments: { 'energy-kcal_100g': 100 } }] }) }))
   await page.locator('[data-nav="home"]').click()
   await page.locator('[data-menu-group="health"]').click()
   await page.locator('[data-menu-destination="food"]').click()
   await page.locator('[data-food-meals] .meal').first().click(); await page.locator('[data-fab]').click()
   await page.locator('[data-food-search]').fill('keksz')
-  await page.locator('[data-food-search-results]').getByRole('button').filter({ hasText: 'FatSecret teszt' }).click()
+  await page.locator('[data-food-search-results]').getByRole('button').filter({ hasText: 'OFF teszt' }).click()
   assert.equal((await readProject()).customFoods.length, 0, 'Online termék megnyitásakor még nem menthet a katalógusba.')
   await page.locator('[data-food-edit-save]').click()
   await page.waitForTimeout(500)
   project = await readProject()
   assert.equal(project.customFoods.length, 1)
-  assert.equal(project.customFoods[0].source.type, 'fatsecret')
-  assert.equal(project.diaryEntries[0].snapshot.source.id, 'mobile-fs')
+  assert.equal(project.customFoods[0].source.type, 'openfoodfacts')
+  assert.equal(project.diaryEntries[0].snapshot.source.id, '5991234567890')
   assert.deepEqual(errors, [])
   console.log('Android YAZIO: előnézet, lapozás, megszakítás, backup, 150+1-es köteg, újratöltés, duplikáció és visszavonás sikeres.')
 } finally { await browser?.close(); server.kill() }
