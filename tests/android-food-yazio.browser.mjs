@@ -73,13 +73,21 @@ try {
   project = await readProject()
   console.log('YAZIO undo diagnostic', JSON.stringify({ batches: project.importBatches.length, recordIds: project.importBatches[0].recordIds.length, entryIds: project.diaryEntries.length, matchingIds: project.diaryEntries.filter(entry => project.importBatches[0].recordIds.includes(entry.id)).length, originBatchIds: [...new Set(project.diaryEntries.map(entry => entry.origin?.importBatchId))], batchId: project.importBatches[0].id }))
   console.log('YAZIO pure undo diagnostic', await page.evaluate(async () => { const { loadLocalProject } = await import('/Grapes/src/storage/local-project-store.js'); const { undoYazioBatch } = await import('/Grapes/src/food/food-yazio-import.js'); const current = (await loadLocalProject('food-tracker-local-food-profile')).data; const batch = current.importBatches[0]; const result = undoYazioBatch(current, batch.id); return { removed: result.removed, modified: result.modified.length, remaining: result.project.diaryEntries.length } }))
+  await page.evaluate(() => {
+    window.foodWriteLog = []
+    const put = IDBObjectStore.prototype.put
+    IDBObjectStore.prototype.put = function(value, ...args) {
+      if (value?.id === 'food-tracker-local-food-profile') window.foodWriteLog.push({ status: value.data?.importBatches?.[0]?.status, entries: value.data?.diaryEntries?.length, token: value.saveToken, stack: new Error().stack?.split('\n').slice(1, 5) })
+      return put.call(this, value, ...args)
+    }
+  })
   await page.locator('[data-yazio-undo]').click()
   await page.waitForFunction(async () => {
     const { loadLocalProject } = await import('/Grapes/src/storage/local-project-store.js')
     return (await loadLocalProject('food-tracker-local-food-profile'))?.data?.importBatches?.[0]?.status === 'undone'
   })
   project = await readProject()
-  console.log('YAZIO post-undo diagnostic', JSON.stringify({ status: project.importBatches[0]?.status, entries: project.diaryEntries.length, matchingIds: project.diaryEntries.filter(entry => project.importBatches[0]?.recordIds?.includes(entry.id)).length }))
+  console.log('YAZIO post-undo diagnostic', JSON.stringify({ status: project.importBatches[0]?.status, entries: project.diaryEntries.length, matchingIds: project.diaryEntries.filter(entry => project.importBatches[0]?.recordIds?.includes(entry.id)).length, writes: await page.evaluate(() => window.foodWriteLog) }))
   assert.equal(project.diaryEntries.length, 0)
   await page.route('https://search.openfoodfacts.org/search**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ count: 1, hits: [{ code: '5991234567890', product_name_hu: 'OFF teszt', nutriments: { 'energy-kcal_100g': 100 } }] }) }))
   await page.locator('[data-nav="home"]').click()
