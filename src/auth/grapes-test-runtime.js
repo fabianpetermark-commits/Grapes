@@ -77,6 +77,7 @@ export async function startGrapesTestAuth({ createClient, root, url, publishable
   const ui = bindGrapesTestLogin(root, flow)
   const { data: listener } = client.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_IN' && session?.user?.id) ui.setSession({ id: session.user.id })
+    if (event === 'PASSWORD_RECOVERY') ui.setRecoveryMode()
     if (event === 'SIGNED_OUT') ui.setSession(null)
   })
   try {
