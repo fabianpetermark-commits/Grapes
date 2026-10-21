@@ -138,7 +138,7 @@ export function bindGrapesTestLogin(root, flow = null) {
     setSession(user) {
       const previous = authenticated
       authenticated = Boolean(user?.id)
-      if (!authenticated && previous) {
+      if (!authenticated && (previous || mode === 'update')) {
         username.value = ''
         password.value = ''
         setMode('login')
