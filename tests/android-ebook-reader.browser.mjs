@@ -8,6 +8,7 @@ import { chromium } from 'playwright-core'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const baseUrl = 'http://127.0.0.1:43130'
+const expectedFolder = process.env.VITE_GRAPES_TEST_CHANNEL === '1' ? 'Grapes TEST E-book Library' : 'Grapes E-book Library'
 const executablePath = [
   process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
   '/usr/bin/chromium',
@@ -55,7 +56,7 @@ try {
     }
     if (url.pathname.endsWith('/files/book-1') && url.searchParams.get('alt') === 'media') return route.fulfill({ status: 200, contentType: 'application/epub+zip', body: epub })
     let body = { files: [] }
-    if (query.includes("name = 'Grapes E-book Library'")) body = { files: [{ id: 'library' }] }
+    if (query.includes(`name = '${expectedFolder}'`)) body = { files: [{ id: 'library' }] }
     else if (query.includes("name = '.grapes-ebook-metadata.json'")) body = { files: [{ id: 'metadata' }] }
     else if (query.includes("name = '.grapes-ebook-reading-progress.json'")) body = { files: [{ id: 'progress' }] }
     else if (query.includes("'library' in parents")) body = { files: [{ id: 'book-1', name: 'Valodi.epub', size: '5000', modifiedTime: '2026-10-14T18:00:00Z', mimeType: 'application/epub+zip', isAppAuthorized: true }] }
