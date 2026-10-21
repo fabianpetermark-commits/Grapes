@@ -221,7 +221,7 @@ const previous = await request('/rest/v1/rpc/read_revision', anonKey, a.token,
   { p_profile_id: 'ci-a', p_kind: 'food', p_record_id: rollbackRecord,
     p_revision: 2 }, 'api')
 assert.deepEqual(previous.data.payload, { value: 'new' })
-assert.equal(sql(`select count(*) from grapes_private.revisions where user_id='\${a.id}' and record_id='rollback-demo'`), '3')
+assert.equal(sql(`select count(*) from grapes_private.revisions where user_id='${a.id}' and record_id='rollback-demo'`), '3')
 console.log('PASS: owner rollback creates revision 3 while preserving revision 2')
 
 // Two live psql processes hold separate database connections. A keeps its
