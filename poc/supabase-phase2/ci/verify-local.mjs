@@ -69,6 +69,18 @@ console.log('PASS: proposed schema applied to ephemeral local Supabase PostgreSQ
 psql(['-v', `user_a=${a.id}`, '-v', `user_b=${b.id}`,
   '-f', resolve(projectRoot, 'poc/supabase-phase2/security-tests.sql')])
 console.log('PASS: all proposed SQL security assertions')
+const historySignature = sql("select oid::regprocedure from pg_proc where pronamespace = 'api'::regnamespace and proname = 'list_revisions'")
+assert.ok(historySignature.includes('api.list_revisions'), historySignature)
+sql("notify pgrst, 'reload schema'")
+for (let attempt = 0; attempt < 40; attempt++) {
+  const probe = await request('/rest/v1/rpc/list_revisions', anonKey, a.token,
+    { p_profile_id: 'not-created', p_kind: 'food', p_record_id: 'probe',
+      p_before_revision: null, p_limit: 50 }, 'api')
+  if (probe.data?.code !== 'PGRST202') break
+  if (attempt === 39) throw new Error('PostgREST schema cache did not expose Phase 2 history RPC')
+  await new Promise(resolveWait => setTimeout(resolveWait, 100))
+}
+console.log('PASS: PostgREST schema cache recognizes Phase 2 history RPC')
 
 sql(`insert into grapes_private.profiles(user_id, profile_id) values ('${a.id}', 'ci-a'), ('${b.id}', 'ci-b')`)
 const rpc = (token, args, key = anonKey) => request('/rest/v1/rpc/compare_and_swap', key, token, args, 'api')
