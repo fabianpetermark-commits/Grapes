@@ -28,6 +28,12 @@ function nativeRequest(method, ...args) {
   })
 }
 
+// The native TEST scanner displays its own camera UI with torch. Returns an
+// EAN/UPC string, or "" when the user cancels. The OFF lookup stays in Food.
+export function scanAndroidFoodBarcode() {
+  return nativeRequest('scanFoodBarcode')
+}
+
 export function readAndroidHealthExport(fromDate) {
   return nativeRequest('readHealthData', fromDate)
 }
