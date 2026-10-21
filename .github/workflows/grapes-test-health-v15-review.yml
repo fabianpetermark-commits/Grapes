@@ -1,0 +1,105 @@
+name: Grapes TEST Health v15 OFF USDA Stats Review (NO RELEASE)
+
+on:
+  pull_request:
+    branches:
+      - integration/grapes-test-v14-health-baseline-20261021
+    paths:
+      - 'src/**'
+      - 'design/**'
+      - 'android-health-connect-poc/**'
+      - 'tests/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/grapes-test-health-v15-review.yml'
+      - 'docs/GRAPES_HEALTH_V15_SCOPE.md'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-health-v15-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  health-v15-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    env:
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
+      VITE_GOOGLE_APP_ID: 991532871119
+      VITE_GOOGLE_PICKER_API_KEY: ${{ secrets.GOOGLE_PICKER_API_KEY }}
+      VITE_GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
+      VITE_EBOOK_EPUB_WRITE_ENABLED: 'true'
+      VITE_EBOOK_TRANSFER_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
+      VITE_FOOD_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Exact published TEST v14 baseline
+        run: git merge-base --is-ancestor 49f6aa53157fd9461b8657698055ebe64290b280 HEAD
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: OFF/USDA region, language, incomplete nutrition regressions
+        run: node --test tests/food-api.test.js tests/food-off-usda-integration.test.js tests/food-usda-online.test.js tests/food-search-method.test.js tests/food-catalog-search.test.js
+      - name: Complete project unit tests incl Drive and E-book
+        run: npm test
+      - name: Both web builds
+        run: |
+          npm run build
+          npm run build:android-web
+      - name: Android category menu and Health Statistics no-flash
+        run: node tests/android-module-hubs.browser.mjs
+      - name: Existing Food/recipe/Household browser regressions
+        run: |
+          node tests/android-recipe-ingredient.browser.mjs
+          node tests/android-home-mobile.browser.mjs
+      - name: Existing isolated E-book browser regressions
+        run: |
+          node tests/android-ebook-shelf.browser.mjs
+          node tests/android-ebook-reader.browser.mjs
+      - name: Responsive mobile regression
+        run: node tests/responsive-layout.browser.mjs
+
+  health-v15-native-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
+      VITE_GOOGLE_APP_ID: 991532871119
+      VITE_EBOOK_EPUB_WRITE_ENABLED: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run build:android-web
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK 36
+        run: |
+          SDKMANAGER=$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | sort -V | tail -1)
+          "$SDKMANAGER" "platforms;android-36" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.11.1
+      - name: Compile only, without signing/release
+        run: gradle --project-dir android-health-connect-poc :app:assembleQa
+      - name: Verify TEST application identity
+        run: |
+          APK=android-health-connect-poc/app/build/outputs/apk/qa/app-qa.apk
+          test -s "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "package: name='hu.grapes.healthconnect.test'"
