@@ -38,6 +38,7 @@ jobs:
           supabase init --help >/dev/null
           supabase start --help >/dev/null
           supabase migration new --help >/dev/null
+          supabase db advisors --help >/dev/null
           supabase status --help >/dev/null
           echo "Tested commit: $GITHUB_SHA"
       - name: Prepare isolated local Supabase stack
@@ -61,6 +62,12 @@ jobs:
         env:
           GRAPES_SUPABASE_LOCAL_DIR: ${{ runner.temp }}/grapes-supabase-${{ github.run_id }}
         run: node poc/supabase-phase2/ci/verify-local.mjs
+      - name: Inspect local database security advisors
+        env:
+          GRAPES_SUPABASE_LOCAL_DIR: ${{ runner.temp }}/grapes-supabase-${{ github.run_id }}
+        run: |
+          cd "$GRAPES_SUPABASE_LOCAL_DIR"
+          supabase db advisors --local
 
   complete-regressions:
     runs-on: ubuntu-latest
