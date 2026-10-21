@@ -9,6 +9,11 @@ val releaseKeystorePath = providers.environmentVariable("ANDROID_KEYSTORE_PATH")
 val releaseStorePassword = providers.environmentVariable("ANDROID_KEYSTORE_PASSWORD").orNull
 val releaseKeyAlias = providers.environmentVariable("ANDROID_KEY_ALIAS").orNull
 val releaseKeyPassword = providers.environmentVariable("ANDROID_KEY_PASSWORD").orNull
+// A separate TEST signing identity can be injected for persistent QA releases.
+val testKeystorePath = providers.environmentVariable("ANDROID_TEST_KEYSTORE_PATH").orNull
+val testStorePassword = providers.environmentVariable("ANDROID_TEST_KEYSTORE_PASSWORD").orNull
+val testKeyAlias = providers.environmentVariable("ANDROID_TEST_KEY_ALIAS").orNull
+val testKeyPassword = providers.environmentVariable("ANDROID_TEST_KEY_PASSWORD").orNull
 val grapesVersionCode = providers.environmentVariable("GRAPES_VERSION_CODE").orNull?.toIntOrNull() ?: 1
 val grapesVersionName = providers.environmentVariable("GRAPES_VERSION_NAME").orNull ?: "0.1.0-poc"
 
@@ -25,6 +30,15 @@ android {
                 storeType = "PKCS12"
             }
         }
+        if (!testKeystorePath.isNullOrBlank()) {
+            create("qa") {
+                storeFile = file(testKeystorePath)
+                storePassword = testStorePassword
+                keyAlias = testKeyAlias
+                keyPassword = testKeyPassword
+                storeType = "PKCS12"
+            }
+        }
     }
     defaultConfig {
         applicationId = "hu.grapes.healthconnect"
@@ -34,8 +48,26 @@ android {
         versionName = grapesVersionName
     }
     buildTypes {
+        getByName("debug") {
+            // Install development builds alongside the stable Grapes app.
+            // The separate application ID also isolates Android app data.
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+        }
         getByName("release") {
             if (!releaseKeystorePath.isNullOrBlank()) signingConfig = signingConfigs.getByName("release")
+        }
+        // The debug .dev variant and stable release variant remain unchanged.
+        create("qa") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".test"
+            versionNameSuffix = "-test"
+            signingConfig = if (!testKeystorePath.isNullOrBlank()) {
+                signingConfigs.getByName("qa")
+            } else {
+                // Preview signing only; keys may differ between GitHub runners.
+                signingConfigs.getByName("debug")
+            }
         }
     }
     buildFeatures { buildConfig = true }
