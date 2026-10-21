@@ -5,7 +5,7 @@ const testProjectUrl = 'https://aighqtqjlzirlokxwupt.supabase.co'
 const healthGateEnabled = () => import.meta.env.VITE_GRAPES_TEST_HEALTH_SYNC_ENABLED === 'true'
 const storeName = 'operations'
 const kinds = new Set(['food', 'water', 'health', 'yazio', 'food_diary', 'food_custom',
-  'food_recipe', 'food_recipe_ingredient', 'water_entry', 'yazio_import', 'nutrient_goal'])
+  'food_recipe', 'food_recipe_ingredient', 'water_entry', 'yazio_import', 'nutrient_goal', 'health_record'])
 
 function requestDone(request) {
   return new Promise((resolve, reject) => {
