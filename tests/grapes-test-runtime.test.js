@@ -8,6 +8,7 @@ import {
 const publishableKey = 'sb_publishable_EXAMPLEONLYNOTAREALKEYA1'
 const location = 'https://fabianpetermark-commits.github.io/Grapes/login-auth-test.html'
 const storage = { getItem() { return null }, setItem() {}, removeItem() {} }
+const flush = () => new Promise(done => setImmediate(done))
 const config = (changes={})=>({
   url: GRAPES_TEST_PROJECT_URL, publishableKey, location,
   sessionStorage: storage, ...changes,
@@ -39,6 +40,7 @@ function sdkFixture() {
     onAuthStateChange(fn) {callback=fn;return {data:{subscription:{unsubscribe(){unsubscribed=true}}}}}
   }
   return {
+    auth,
     createClient(...values) {args=values;return {auth}},
     get args() {return args},
     emit(event, session) {callback(event,session)},
@@ -89,9 +91,68 @@ test('official client factory is dependency-injected and session is validated',a
   sdk.emit('SIGNED_OUT',null)
   assert.equal(elements['#grapes-sign-out'].hidden,true)
   sdk.emit('SIGNED_IN',{user:{id:'user1'}})
+  await flush()
   assert.equal(elements['#grapes-sign-out'].hidden,false)
   sdk.emit('PASSWORD_RECOVERY',{user:{id:'user1'}})
+  await flush()
   assert.equal(run.ui.getMode(),'update')
   run.dispose()
+  assert.equal(sdk.unsubscribed,true)
+})
+
+
+test('late startup getUser response never overrides a newer sign-out event', async () => {
+  const sdk = sdkFixture()
+  let completeFirst
+  sdk.auth.getUser = () => new Promise(resolve => { completeFirst = resolve })
+  const {root,elements} = rootFixture()
+  const started = startGrapesTestAuth({...config(),root,createClient:sdk.createClient})
+  assert.equal(typeof completeFirst, 'function')
+  sdk.emit('SIGNED_OUT', null)
+  completeFirst({data:{user:{id:'stale-account'}},error:null})
+  const running = await started
+  assert.equal(elements['#grapes-sign-out'].hidden, true)
+  assert.equal(elements['#grapes-login-form'].hidden, false)
+  running.dispose()
+})
+
+test('a late signed-in verification cannot reactivate a signed-out session', async () => {
+  const sdk = sdkFixture()
+  const {root,elements} = rootFixture()
+  const running = await startGrapesTestAuth({...config(),root,createClient:sdk.createClient})
+  let completeLate
+  sdk.auth.getUser = () => new Promise(resolve => { completeLate = resolve })
+  sdk.emit('SIGNED_IN', {user:{id:'account-a'}})
+  await flush()
+  assert.equal(typeof completeLate, 'function')
+  sdk.emit('SIGNED_OUT', null)
+  completeLate({data:{user:{id:'account-a'}},error:null})
+  await flush()
+  assert.equal(elements['#grapes-sign-out'].hidden, true)
+  assert.equal(elements['#grapes-login-form'].hidden, false)
+  running.dispose()
+})
+
+test('initial no-session page is a normal signed-out state', async () => {
+  const sdk = sdkFixture()
+  sdk.auth.getUser = async () => ({
+    data: {user:null},
+    error: {name:'AuthSessionMissingError', message:'Auth session missing'},
+  })
+  const {root,elements} = rootFixture()
+  const running = await startGrapesTestAuth({...config(),root,createClient:sdk.createClient})
+  assert.equal(elements['#grapes-sign-out'].hidden,true)
+  assert.equal(elements['#grapes-login-form'].hidden,false)
+  assert.notMatch(elements['#grapes-feedback'].textContent, /nem ellenőrizhető/)
+  running.dispose()
+})
+
+test('a disposed TEST runtime ignores subsequent auth events', async () => {
+  const sdk = sdkFixture()
+  const {root,elements} = rootFixture()
+  const running = await startGrapesTestAuth({...config(),root,createClient:sdk.createClient})
+  running.dispose()
+  sdk.emit('SIGNED_OUT',null)
+  assert.equal(elements['#grapes-sign-out'].hidden,false)
   assert.equal(sdk.unsubscribed,true)
 })
