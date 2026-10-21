@@ -8,7 +8,7 @@ const fakeEl = () => ({ disabled: false, hidden: false, textContent: '', type: '
   async emit(n) { return this.handlers[n]({ preventDefault() {} }) },
 })
 function fixture(flow) {
-  const selectors = ['#grapes-login-form','#grapes-username','#grapes-password','#google-sign-in','#register','#forgot-password','#toggle-password','.submit-button','#grapes-feedback','#grapes-sign-out']
+  const selectors = ['#grapes-login-form','#grapes-username','#grapes-password','#google-sign-in','#register','#forgot-password','#toggle-password','.submit-button','#grapes-feedback','#grapes-sign-out','.separator','.footer-links']
   const elements = Object.fromEntries(selectors.map(s=>[s,fakeEl()]))
   return { elements, ...bindGrapesTestLogin({querySelector:s=>elements[s]},flow) }
 }
