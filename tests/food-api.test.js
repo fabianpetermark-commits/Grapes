@@ -80,7 +80,7 @@ test('OFF 403/429 hozzáférési korlátoknál nincs automatikus legacy fallback
       },
     }), new RegExp(String(status)))
     assert.equal(requests.length, 1)
-    assert.match(requests[0], /search\\.openfoodfacts\\.org\\/search\\?/)
+    assert.ok(requests[0].startsWith('https://search.openfoodfacts.org/search?'))
   }
 })
 
