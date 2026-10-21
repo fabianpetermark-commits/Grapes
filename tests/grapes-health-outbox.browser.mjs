@@ -8,7 +8,8 @@ const executablePath = [process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
 if (!executablePath) throw new Error('Chromium/Chrome executable is required')
 const url = 'http://127.0.0.1:4198/Grapes/login-preview.html'
 const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js',
-  '--host', '127.0.0.1', '--port', '4198', '--strictPort'], { stdio: 'ignore' })
+  '--host', '127.0.0.1', '--port', '4198', '--strictPort'],
+  { stdio: 'ignore', env: { ...process.env, VITE_GRAPES_TEST_HEALTH_SYNC_ENABLED: 'true' } })
 let browser
 try {
   for (let i = 0; i < 80; i++) {
@@ -29,7 +30,7 @@ try {
       expectedRevision: 0, schemaVersion: 1, payload: { id: 'entry-a', value: 7 },
       localSaveToken: 'local-commit-a'
     })
-    const client = { auth: { getUser: async () => ({ data: { user: { id: ownerId } } }) },
+    const client = { supabaseUrl: 'https://aighqtqjlzirlokxwupt.supabase.co', auth: { getUser: async () => ({ data: { user: { id: ownerId } } }) },
       schema: () => ({ rpc: async () => ({ error: new Error('offline') }) }) }
     const outcome = await retryHealthOperations({ client, ownerId, profileId: 'grapes:synthetic-a' })
     return { operationId, outcome, rows: await listHealthOperations(ownerId, 'grapes:synthetic-a') }
@@ -42,7 +43,7 @@ try {
     const { retryHealthOperations, listHealthOperations } =
       await import('/Grapes/src/sync/grapes-health-outbox.js')
     let current = ownerId
-    const client = { auth: { getUser: async () => ({ data: { user: { id: current } } }) },
+    const client = { supabaseUrl: 'https://aighqtqjlzirlokxwupt.supabase.co', auth: { getUser: async () => ({ data: { user: { id: current } } }) },
       schema: () => ({ rpc: async () => {
         current = otherId
         return { data: { status: 'committed', revision: 1 } }
@@ -56,7 +57,7 @@ try {
     const { retryHealthOperations, listHealthOperations } =
       await import('/Grapes/src/sync/grapes-health-outbox.js')
     const calls = []
-    const client = { auth: { getUser: async () => ({ data: { user: { id: ownerId } } }) },
+    const client = { supabaseUrl: 'https://aighqtqjlzirlokxwupt.supabase.co', auth: { getUser: async () => ({ data: { user: { id: ownerId } } }) },
       schema: () => ({ rpc: async (name, args) => {
         calls.push({ name, args })
         return { data: { status: 'committed', revision: 1 } }
@@ -76,7 +77,7 @@ try {
       expectedRevision: 0, schemaVersion: 1, payload: { sourceId: 'water-a' },
       localSaveToken: 'local-commit-b'
     })
-    const client = { auth: { getUser: async () => ({ data: { user: { id: ownerId } } }) },
+    const client = { supabaseUrl: 'https://aighqtqjlzirlokxwupt.supabase.co', auth: { getUser: async () => ({ data: { user: { id: ownerId } } }) },
       schema: () => ({ rpc: async () => ({ data: { status: 'conflict', revision: 1,
         snapshotId: operationId } }) }) }
     const result = await retryHealthOperations({ client, ownerId, profileId: 'grapes:synthetic-a' })
