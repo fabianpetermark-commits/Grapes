@@ -1,0 +1,105 @@
+name: Publish approved Grapes TEST v14 ONLY
+
+on:
+  push:
+    branches:
+      - release/grapes-test-v14-approved-20261021
+    paths:
+      - '.github/workflows/grapes-test-v14-publish-once.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: grapes-test-v14-one-time-publication
+  cancel-in-progress: false
+
+jobs:
+  publish-approved-signed-test:
+    if: github.repository == 'fabianpetermark-commits/Grapes' && github.ref == 'refs/heads/release/grapes-test-v14-approved-20261021'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify exactly the CI-approved signed APK source
+        run: |
+          set -euo pipefail
+          SOURCE=49f6aa53157fd9461b8657698055ebe64290b280
+          git merge-base --is-ancestor "$SOURCE" HEAD
+          git diff --name-only "$SOURCE" HEAD | sort > /tmp/actual-files
+          printf '%s\n' .github/workflows/grapes-test-v14-publish-once.yml > /tmp/allowed-files
+          diff -u /tmp/allowed-files /tmp/actual-files
+      - name: Ensure approved TEST v14 has not been published already
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view android-test-v14 >/dev/null 2>&1; then
+            echo "::error::Grapes TEST v14 already published; never overwrite an installed user update."
+            exit 1
+          fi
+          LATEST=$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100" --jq '[.[] | select(.tag_name | test("^android-test-v[0-9]+$")) | (.tag_name | ltrimstr("android-test-v") | tonumber)] | max // 0')
+          test "$LATEST" -eq 13
+      - name: Download immutable verified v14 signed candidate from green CI run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/grapes-test-v14"
+          gh run download 39559705507 --repo "$GITHUB_REPOSITORY" --name grapes-test-v14-signed-candidate --dir "$RUNNER_TEMP/grapes-test-v14"
+          cd "$RUNNER_TEMP/grapes-test-v14"
+          test -s grapes-test-v14-signed-candidate.apk
+          test -s grapes-test-v14-signed-candidate.apk.sha256
+          sha256sum -c grapes-test-v14-signed-candidate.apk.sha256
+      - name: Setup Android signing verification tools
+        run: |
+          set -euo pipefail
+          SDKMANAGER=$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | sort -V | tail -1)
+          "$SDKMANAGER" "build-tools;35.0.0"
+      - name: Verify QA package, monotonically increasing version and original TEST certificate
+        run: |
+          set -euo pipefail
+          APK="$RUNNER_TEMP/grapes-test-v14/grapes-test-v14-signed-candidate.apk"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "package: name='hu.grapes.healthconnect.test'"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionCode='14'"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionName='0.9.5-test'"
+          CERT_INFO=$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$APK")
+          EXPECTED_SHA256=cc9dc997fa4bff3845884afd2f011efe939c02806f91393a1ddb0455b6a2ff33
+          printf '%s\n' "$CERT_INFO" | grep -Fi "Signer #1 certificate SHA-256 digest: ${EXPECTED_SHA256}"
+          cp "$APK" "$RUNNER_TEMP/grapes-test-v14/grapes-test-v14.apk"
+          cd "$RUNNER_TEMP/grapes-test-v14"
+          sha256sum grapes-test-v14.apk > grapes-test-v14.apk.sha256
+      - name: Write reviewable user-facing TEST release notes
+        run: |
+          cat > "$RUNNER_TEMP/grapes-test-v14/release-notes.md" <<'EOF'
+          Grapes TEST v14 (0.9.5-test) — új, stabil tesztalap az éles Grapes v28 teljes funkciókészletéből.
+
+          - Ugyanaz a Home / Health / Utility / Finance 2×2 főmenü és meglévő Food/Receptek, E-book, Finance funkciók, mint a v28 kiadásban.
+          - Külön Grapes TEST telepítés, TEST-frissítési csatorna, TEST Drive-projektmappa és TEST E-book könyvtármappa.
+          - A tesztelés során megtalált Studio 360 px főmenü-illeszkedési hiba javítva.
+          - A teljes automatizált webes és natív Android QA-ellenőrzés sikeres.
+          - Külön kiadásra várnak: Health mélyaudit (#57–#73), Google/Supabase Auth (#86–#90) és Outdoor. Ezek NINCSENEK ebben a verzióban.
+
+          Figyelem: telepítés előtt készíts és ellenőrizz mentést a meglévő TEST Food, Víz, E-book és Finance adataidról. Csak a korábban tartós TEST-aláírással telepített alkalmazás frissíthető helyben. Régi debug-aláírt tesztelőnézetnél az Android elutasíthatja a telepítést; NE töröld a meglévő alkalmazást mentés nélkül. A kiadás nem hajt végre automatikus adatmigrációt.
+          EOF
+      - name: Publish to TEST prerelease feed only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/grapes-test-v14"
+          gh release create android-test-v14 grapes-test-v14.apk grapes-test-v14.apk.sha256 \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Grapes TEST 0.9.5 (v14)" \
+            --notes-file release-notes.md \
+            --target 49f6aa53157fd9461b8657698055ebe64290b280 \
+            --prerelease
+          gh api "repos/${GITHUB_REPOSITORY}/releases/tags/android-test-v14" \
+            --jq 'select(.tag_name == "android-test-v14" and .prerelease == true and .draft == false) | .tag_name' \
+            | grep -Fx android-test-v14
+          gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq .tag_name | grep -Fx android-v28
+          echo "Published verified signed Grapes TEST v14; production latest still v28."
