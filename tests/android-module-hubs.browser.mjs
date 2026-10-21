@@ -34,7 +34,17 @@ try {
   const pageErrors = []
   page.on('pageerror', error => pageErrors.push(error.message))
   await page.goto(url, { waitUntil: 'networkidle' })
-  await page.locator('[data-page="home"]').waitFor({ state: 'visible' })
+  try {
+    await page.locator('[data-page="home"]').waitFor({ state: 'visible', timeout: 6000 })
+  } catch (error) {
+    const state = await page.evaluate(() => ({
+      pages: [...document.querySelectorAll('[data-page]')].filter(n => !n.hidden).map(n => n.dataset.page),
+      bodyText: document.body.innerText.slice(0, 700),
+      scriptLoaded: Boolean(window.grapesHandleAndroidBack),
+      readyState: document.readyState,
+    }))
+    throw new Error('Grapes mobile shell did not initialize: ' + JSON.stringify({ state, pageErrors, serverOutput: serverOutput.slice(-1000) }), { cause: error })
+  }
   assert.deepEqual(await page.locator('[data-menu-group]').evaluateAll(nodes => nodes.map(x => x.dataset.menuGroup)),
     ['home', 'health', 'utility', 'finance'])
   assert.equal(await page.locator('[data-page="home"] .hub-card__icon svg').count(), 4)
