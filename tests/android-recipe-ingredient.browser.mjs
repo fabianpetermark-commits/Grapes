@@ -288,7 +288,7 @@ try {
   await page.locator('[data-food-recipe-back]').click()
   await page.locator('[data-food-recipes-back]').click()
   await page.locator('[data-food-meals] .meal').first().click()
-  await page.locator('[data-food-detail-add]').click()
+  await page.locator('[data-fab]').click()
   await page.locator('[data-food-add-sheet].is-open').waitFor({ state: 'visible' })
   const searchArea = page.locator('[data-food-search-results]')
   const initialLayout = await searchArea.evaluate(el => ({
