@@ -246,6 +246,9 @@ function queryIntent(value) {
 }
 
 function localizedFoodName(description, fallbackLabel = '') {
+  // Mixed dishes and processed retail food must not inherit the nutrition
+  // identity of a single ingredient (e.g. "Onion soup" is not raw onion).
+  if (/\b(soup|pie|casserole|sandwich|stew|flavored|flavoured|dressing|sauce|chips|pizza|burger|bread|muffin|pudding|candy)\b/i.test(description)) return description
   let base = foodNames.find(([pattern]) => pattern.test(description))?.[1] || ''
   if (base === 'Rizs') {
     if (/\bbrown\b/i.test(description)) base = 'Barna rizs'
@@ -280,7 +283,7 @@ function scoreUsdaHit(hit, value, translatedQuery, index) {
     .filter(term => term.length > 2 && !['raw', 'cooked', 'white', 'brown', 'long', 'grain', 'with', 'without'].includes(term))
   score += meaningfulTerms.filter(term => normalized.includes(term)).length * 18
   if (intent.preparation === 'roasted') score += traits.has('roasted') || traits.has('fried') ? 145 : traits.has('cooked') ? 75 : traits.has('raw') || dried ? -110 : -25
-  else if (intent.preparation === 'cooked') score += cooked ? 120 : traits.has('raw') || dried ? -100 : -25
+  else if (intent.preparation === 'cooked') score += traits.has('cooked') ? 135 : traits.has('roasted') || traits.has('fried') ? 70 : traits.has('raw') || dried ? -110 : -25
   else if (intent.preparation === 'raw') score += traits.has('raw') ? 120 : cooked ? -100 : 0
   else if (intent.preparation === 'dried') score += dried ? 100 : cooked ? -65 : 0
   else score += traits.has('raw') ? 50 : dried ? 30 : cooked ? -45 : 0
