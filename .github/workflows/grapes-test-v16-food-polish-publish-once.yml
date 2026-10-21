@@ -1,0 +1,151 @@
+name: Publish verified Grapes TEST v16 Food Polish ONLY
+
+on:
+  push:
+    branches:
+      - release/grapes-test-v16-food-polish-20261021
+    paths:
+      - '.github/workflows/grapes-test-v16-food-polish-publish-once.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: grapes-test-v16-food-polish-publish-once
+  cancel-in-progress: false
+
+jobs:
+  publish-signed-food-test:
+    if: github.repository == 'fabianpetermark-commits/Grapes' && github.ref == 'refs/heads/release/grapes-test-v16-food-polish-20261021'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GRAPES_VERSION_CODE: '16'
+      GRAPES_VERSION_NAME: '0.9.7'
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
+      VITE_GOOGLE_APP_ID: 991532871119
+      VITE_GOOGLE_PICKER_API_KEY: ${{ secrets.GOOGLE_PICKER_API_KEY }}
+      VITE_GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
+      VITE_EBOOK_EPUB_WRITE_ENABLED: 'true'
+      VITE_EBOOK_TRANSFER_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
+      VITE_FOOD_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Ensure release contains only the exact reviewed Food source and one-time workflow
+        run: |
+          set -euo pipefail
+          SOURCE=ec8e7fa08f86967afc75f495e5fc82b62a5c4a97
+          git merge-base --is-ancestor "$SOURCE" HEAD
+          git diff --name-only "$SOURCE" HEAD | sort > "$RUNNER_TEMP/actual"
+          printf '%s\n' .github/workflows/grapes-test-v16-food-polish-publish-once.yml > "$RUNNER_TEMP/allowed"
+          diff -u "$RUNNER_TEMP/allowed" "$RUNNER_TEMP/actual"
+      - name: Verify all three required CI runs passed for precisely this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for RUN in 39611315491 39611315649 39611315479; do
+            ACTUAL=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/$RUN" --jq .head_sha)
+            STATE=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/$RUN" --jq '.status + ":" + .conclusion')
+            test "$ACTUAL" = "ec8e7fa08f86967afc75f495e5fc82b62a5c4a97"
+            test "$STATE" = "completed:success"
+          done
+          test "$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq .tag_name)" = "android-v28"
+          if gh release view android-test-v16 >/dev/null 2>&1; then
+            echo "::error::TEST v16 exists; do not replace an issued APK."
+            exit 1
+          fi
+          LATEST=$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100" --jq '[.[] | select(.tag_name | test("^android-test-v[0-9]+$")) | (.tag_name | ltrimstr("android-test-v") | tonumber)] | max // 0')
+          test "$LATEST" = "15"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Deterministic install, full regressions and USDA dictionary tests
+        run: |
+          npm ci
+          npm test
+          node --test tests/food-usda-online.test.js tests/food-api.test.js tests/food-off-usda-integration.test.js
+      - name: Build TEST-specific Android web assets
+        run: npm run build:android-web
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android SDK 36 and signing tools
+        run: |
+          SDKMANAGER=$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | sort -V | tail -1)
+          "$SDKMANAGER" "platforms;android-36" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.11.1
+      - name: Sign QA build with historic TEST keystore only
+        env:
+          ANDROID_TEST_KEYSTORE_BASE64: ${{ secrets.ANDROID_TEST_KEYSTORE_BASE64 }}
+          ANDROID_TEST_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_TEST_KEYSTORE_PASSWORD }}
+          ANDROID_TEST_KEY_ALIAS: ${{ secrets.ANDROID_TEST_KEY_ALIAS }}
+          ANDROID_TEST_KEY_PASSWORD: ${{ secrets.ANDROID_TEST_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$ANDROID_TEST_KEYSTORE_BASE64"
+          test -n "$ANDROID_TEST_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_TEST_KEY_ALIAS"
+          test -n "$ANDROID_TEST_KEY_PASSWORD"
+          export ANDROID_TEST_KEYSTORE_PATH="$RUNNER_TEMP/grapes-test-v16.p12"
+          trap 'rm -f "$ANDROID_TEST_KEYSTORE_PATH"' EXIT
+          printf '%s' "$ANDROID_TEST_KEYSTORE_BASE64" | base64 --decode > "$ANDROID_TEST_KEYSTORE_PATH"
+          chmod 600 "$ANDROID_TEST_KEYSTORE_PATH"
+          gradle --project-dir android-health-connect-poc :app:assembleQa
+          APK=android-health-connect-poc/app/build/outputs/apk/qa/app-qa.apk
+          test -s "$APK"
+          mkdir -p "$RUNNER_TEMP/grapes-test-v16"
+          cp "$APK" "$RUNNER_TEMP/grapes-test-v16/grapes-test-v16.apk"
+      - name: Verify APK package, increasing versionCode, historical TEST signature and SHA
+        run: |
+          set -euo pipefail
+          APK="$RUNNER_TEMP/grapes-test-v16/grapes-test-v16.apk"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "package: name='hu.grapes.healthconnect.test'"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionCode='16'"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "versionName='0.9.7-test'"
+          CERT=$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$APK")
+          printf '%s\n' "$CERT" | grep -Fi 'Signer #1 certificate SHA-256 digest: cc9dc997fa4bff3845884afd2f011efe939c02806f91393a1ddb0455b6a2ff33'
+          cd "$RUNNER_TEMP/grapes-test-v16"
+          sha256sum grapes-test-v16.apk > grapes-test-v16.apk.sha256
+          sha256sum --check grapes-test-v16.apk.sha256
+      - name: Describe exactly what users can test
+        run: |
+          cat > "$RUNNER_TEMP/grapes-test-v16/notes.md" <<'EOF'
+          Grapes TEST v16 (0.9.7-test) — Food keresés és USDA magyar szótár, a kiadott TEST v15-re építve.
+
+          - Reggeli/ebéd/vacsora nézetben a duplikált nagy Étel hozzáadása gomb helyett a könnyebben használható, 68 px-es lebegő + gomb marad.
+          - Keresés közben már nem jelenik meg tévesen a végleges Nincs találat üzenet; szándékos várakozás 1550 ms helyett 380 ms.
+          - OFF és USDA keresések eredménye továbbra is a hálózattól függ.
+          - Bővített magyar USDA szótár: hagyma, újhagyma, lilahagyma, fehérrépa/paszternák, zöldségek, gabonák, húsok, tejtermékek, gyümölcsök.
+          - Sült/főtt/nyers/párolt/grillezett szavak alapján pontosabb USDA kifejezés és találati sorrend.
+          - Az ellenőrzött vöröshagyma offline katalógusból már sima "hagyma" keresésnél megjelenik.
+          - Ismert alapanyagok magyar neve mellett az eredeti USDA angol leírás és az adatbázisban mért tápértékek megmaradnak. Az ismeretlen ételek nem kapnak kitalált fordítást.
+          - A felhasználó döntése alapján a korábbi TEST adatok helyreállítását későbbre halasztottuk; ez a frissítés nem migrál, nem töröl, és nem állítja át a tárolást Supabase-re.
+          - A teljes Health profilkezelési / Water / Drive ütközésvédelem továbbra is külön, NO-GO állapotú fejlesztés, NINCS ebben a kiadásban.
+
+          Az APK csak a hivatalosan TEST-aláírt hu.grapes.healthconnect.test csomagra települ adatmegőrző frissítésként. Ha Android elutasítja a telepítést, ne töröld vagy reseteld az alkalmazást.
+          EOF
+      - name: Publish immutable signed TEST prerelease; never production
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/grapes-test-v16"
+          gh release create android-test-v16 grapes-test-v16.apk grapes-test-v16.apk.sha256 \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Grapes TEST 0.9.7 (v16) – Food + USDA" \
+            --notes-file notes.md \
+            --target ec8e7fa08f86967afc75f495e5fc82b62a5c4a97 \
+            --prerelease
+          gh api "repos/${GITHUB_REPOSITORY}/releases/tags/android-test-v16" --jq 'select(.tag_name == "android-test-v16" and .prerelease and (.assets | length) == 2) | .tag_name' | grep -Fx android-test-v16
+          test "$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq .tag_name)" = "android-v28"
+          echo 'Grapes TEST v16 Food/USDA is published, PROD untouched.'
