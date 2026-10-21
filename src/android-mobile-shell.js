@@ -1078,7 +1078,7 @@ async function openHealthStats(button) {
     button.removeAttribute('aria-busy')
   }
 }
-$('[data-menu-destination]').forEach(button => button.addEventListener('click', () => {
+$$('[data-menu-destination]').forEach(button => button.addEventListener('click', () => {
   const destination = button.dataset.menuDestination
   const parent = button.closest('[data-page]')?.dataset.page
   if (!['hub-home', 'hub-health', 'hub-utility', 'hub-finance'].includes(parent)) return
