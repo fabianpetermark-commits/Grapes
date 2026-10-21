@@ -167,3 +167,40 @@ test('natív Android Food Bridge csak meghatározott API végpontokat kezel', ()
   assert.match(kotlin, /3_000_000/)
   assert.doesNotMatch(kotlin, /request\(args\.optString/)
 })
+
+
+test('a hagyma és változatai valódi USDA alapanyagkereséssé fordulnak', () => {
+  assert.deepEqual(translateUsdaQuery('hagyma'), { query: 'Onions, raw', label: 'Vöröshagyma' })
+  assert.deepEqual(translateUsdaQuery('VÖRÖSHAGYMA'), { query: 'Onions, raw', label: 'Vöröshagyma' })
+  assert.deepEqual(translateUsdaQuery('lilahagyma'), { query: 'Onions, red, raw', label: 'Lilahagyma' })
+  assert.deepEqual(translateUsdaQuery('zöldhagyma'), { query: 'Onions, spring or scallions, raw', label: 'Zöldhagyma' })
+  assert.deepEqual(translateUsdaQuery('újhagyma'), { query: 'Onions, spring or scallions, raw', label: 'Újhagyma' })
+  assert.deepEqual(translateUsdaQuery('póréhagyma'), { query: 'Leeks, raw', label: 'Póréhagyma' })
+  assert.deepEqual(translateUsdaQuery('főtt hagyma'), { query: 'Onions, cooked', label: 'Vöröshagyma' })
+  assert.deepEqual(translateUsdaQuery('sült hagyma'), { query: 'Onions, roasted', label: 'Vöröshagyma' })
+  assert.deepEqual(translateUsdaQuery('pirított vöröshagyma'), { query: 'Onions, roasted', label: 'Vöröshagyma' })
+})
+
+test('a valódi hagyma elsőbbséget élvez a hagymaízű feldolgozott USDA találattal szemben', async () => {
+  const hits = [
+    usdaHit(8801, 'Onions flavored snack food, raw', 475),
+    usdaHit(8802, 'Onions, raw', 40),
+    usdaHit(8803, 'Onions, cooked, boiled', 43),
+  ]
+  const result = await rankedSearch('hagyma', hits, 8_800_000)
+  assert.equal(result.products[0].source.id, '8802')
+  assert.equal(result.products[0].name, 'Vöröshagyma – nyers')
+  assert.equal(result.products[0].usdaDescription, 'Onions, raw')
+  const cooked = await rankedSearch('főtt hagyma', hits, 8_800_001)
+  assert.equal(cooked.products[0].source.id, '8803')
+})
+
+test('a magyar USDA leírás megőrzi az eredeti állapotot és azonosítót', () => {
+  const red = foodFromUsdaSearchHit(usdaHit(9001, 'Onions, red, raw', 38))
+  assert.equal(red.name, 'Lilahagyma – nyers')
+  assert.equal(red.usdaDescription, 'Onions, red, raw')
+  assert.equal(red.source.id, '9001')
+  const roasted = foodFromUsdaSearchHit(usdaHit(9002, 'Garlic, roasted', 140))
+  assert.equal(roasted.name, 'Fokhagyma – sült')
+  assert.equal(roasted.usdaDescription, 'Garlic, roasted')
+})
