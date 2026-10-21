@@ -1,0 +1,96 @@
+name: Grapes TEST v15 Food UX + USDA Hungarian dictionary (NO RELEASE)
+
+on:
+  pull_request:
+    branches:
+      - integration/grapes-test-v15-food-usability-base-20261021
+    paths:
+      - 'src/**'
+      - 'design/**'
+      - 'tests/**'
+      - 'android-health-connect-poc/**'
+      - '.github/workflows/grapes-test-v15-food-usability-review.yml'
+      - 'docs/GRAPES_TEST_V15_FOOD_BUGFIX.md'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-test-food-fix-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  verify-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
+      VITE_GOOGLE_APP_ID: 991532871119
+      VITE_GOOGLE_PICKER_API_KEY: ${{ secrets.GOOGLE_PICKER_API_KEY }}
+      VITE_GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
+      VITE_EBOOK_EPUB_WRITE_ENABLED: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Must descend exactly from signed TEST v15 source
+        run: git merge-base --is-ancestor e968dc16dfb14fc4e1c7d9efba24b63795412746 HEAD
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: USDA aliases, preparation, nutrients and catalog regression
+        run: node --test tests/food-usda-online.test.js tests/food-catalog-search.test.js tests/food-search-method.test.js tests/food-api.test.js
+      - name: Entire unit suite
+        run: npm test
+      - name: Both web builds
+        run: |
+          npm run build
+          npm run build:android-web
+      - name: Android Food search pending state and FAB reproduction
+        run: node tests/android-food-search-usability.browser.mjs
+      - name: Android menu/stats, recipe, Home and E-book regressions
+        run: |
+          node tests/android-module-hubs.browser.mjs
+          node tests/android-recipe-ingredient.browser.mjs
+          node tests/android-home-mobile.browser.mjs
+          node tests/android-ebook-shelf.browser.mjs
+          node tests/android-ebook-reader.browser.mjs
+      - name: Responsive mobile layouts
+        run: node tests/responsive-layout.browser.mjs
+
+  verify-native-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
+      VITE_GOOGLE_APP_ID: 991532871119
+      VITE_EBOOK_EPUB_WRITE_ENABLED: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run build:android-web
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: SDK 36
+        run: |
+          SDKMANAGER=$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | sort -V | tail -1)
+          "$SDKMANAGER" "platforms;android-36" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.11.1
+      - name: Native QA compile (not signed or published)
+        run: gradle --project-dir android-health-connect-poc :app:assembleQa
+      - name: Confirm TEST package
+        run: |
+          test -s android-health-connect-poc/app/build/outputs/apk/qa/app-qa.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging android-health-connect-poc/app/build/outputs/apk/qa/app-qa.apk | grep -F "package: name='hu.grapes.healthconnect.test'"
