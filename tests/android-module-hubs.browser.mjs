@@ -34,7 +34,17 @@ try {
   const pageErrors = []
   page.on('pageerror', error => pageErrors.push(error.message))
   await page.goto(url, { waitUntil: 'networkidle' })
-  await page.locator('[data-page="home"]').waitFor({ state: 'visible' })
+  try {
+    await page.locator('[data-page="home"]').waitFor({ state: 'visible', timeout: 6000 })
+  } catch (error) {
+    const state = await page.evaluate(() => ({
+      pages: [...document.querySelectorAll('[data-page]')].filter(n => !n.hidden).map(n => n.dataset.page),
+      bodyText: document.body.innerText.slice(0, 700),
+      scriptLoaded: Boolean(window.grapesHandleAndroidBack),
+      readyState: document.readyState,
+    }))
+    throw new Error('Grapes mobile shell did not initialize: ' + JSON.stringify({ state, pageErrors, serverOutput: serverOutput.slice(-1000) }), { cause: error })
+  }
   assert.deepEqual(await page.locator('[data-menu-group]').evaluateAll(nodes => nodes.map(x => x.dataset.menuGroup)),
     ['home', 'health', 'utility', 'finance'])
   assert.equal(await page.locator('[data-page="home"] .hub-card__icon svg').count(), 4)
@@ -76,8 +86,23 @@ try {
   assert.equal(await page.locator('[data-page="food"] [data-food-overview]').isVisible(), false)
   await page.locator('[data-food-recipes-back]').click()
   await page.locator('[data-page="hub-health"]').waitFor({ state: 'visible' })
+  await page.evaluate(() => {
+    window.__foodFlashFrames = 0
+    window.__watchStats = true
+    const observe = () => {
+      const food = document.querySelector('[data-page="food"]')
+      const sheet = document.querySelector('[data-food-stats-sheet]')
+      if (window.__watchStats && food && !food.hidden && !sheet?.classList.contains('is-open')) window.__foodFlashFrames++
+      if (window.__watchStats) requestAnimationFrame(observe)
+    }
+    requestAnimationFrame(observe)
+  })
   await page.locator('[data-page="hub-health"] [data-menu-destination="stats"]').click()
   await page.locator('[data-food-stats-sheet].is-open').waitFor({ state: 'visible' })
+  assert.equal(await page.evaluate(() => {
+    window.__watchStats = false
+    return window.__foodFlashFrames
+  }), 0, 'Health Statisztika: nem villanhat fel a Food overview.')
   await page.evaluate(() => window.grapesHandleAndroidBack())
   await page.locator('[data-page="hub-health"]').waitFor({ state: 'visible' })
   await page.locator('[data-page="hub-health"] [data-menu-destination="food"]').click()
