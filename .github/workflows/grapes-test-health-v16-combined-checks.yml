@@ -1,0 +1,109 @@
+name: Grapes Health v16 combined staging checks (NO RELEASE)
+
+on:
+  pull_request:
+    branches:
+      - integration/grapes-test-v15-combined-base-20261021
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'design/**'
+      - 'android-health-connect-poc/**'
+      - 'package*.json'
+      - 'docs/GRAPES_HEALTH_V16_COMBINED_REVIEW.md'
+      - '.github/workflows/grapes-test-health-v16-combined-checks.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-health-v16-review-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  combined-web-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
+      VITE_GOOGLE_APP_ID: 991532871119
+      VITE_GOOGLE_PICKER_API_KEY: ${{ secrets.GOOGLE_PICKER_API_KEY }}
+      VITE_GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
+      VITE_EBOOK_EPUB_WRITE_ENABLED: 'true'
+      VITE_EBOOK_TRANSFER_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
+      VITE_FOOD_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Published TEST v15 must be the ancestor
+        run: git merge-base --is-ancestor e968dc16dfb14fc4e1c7d9efba24b63795412746 HEAD
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Targeted Water, YAZIO, Food nutrient, Drive and interrupted-save tests
+        run: |
+          node --test tests/water-store.test.js tests/food-yazio-import.test.js tests/food-stats.test.js tests/food-data.test.js tests/food-save-queue.test.js tests/food-drive-guard.test.js tests/food-api.test.js
+      - name: Full project unit regressions including E-book and Finance
+        run: npm test
+      - name: Web and Android web builds
+        run: |
+          npm run build
+          npm run build:android-web
+      - name: Core Home/Health main menu and Statistics
+        run: node tests/android-module-hubs.browser.mjs
+      - name: Home and Food browser tests
+        run: |
+          node tests/android-home-mobile.browser.mjs
+          node tests/android-recipe-ingredient.browser.mjs
+      - name: E-book preservation browser checks
+        run: |
+          node tests/android-ebook-shelf.browser.mjs
+          node tests/android-ebook-reader.browser.mjs
+      - name: Mobile responsive layouts
+        run: node tests/responsive-layout.browser.mjs
+      - name: This branch must never ship any APK
+        run: |
+          test ! -e .github/workflows/grapes-test-v16-auto-publish.yml
+          echo 'Health v16 remains review-only while data integrity integration gates remain open.'
+
+  combined-native-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
+      VITE_GOOGLE_APP_ID: 991532871119
+      VITE_EBOOK_EPUB_WRITE_ENABLED: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run build:android-web
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android SDK 36
+        run: |
+          SDKMANAGER=$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | sort -V | tail -1)
+          "$SDKMANAGER" "platforms;android-36" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.11.1
+      - name: Compile Android QA package, NO TEST signature or publication
+        run: gradle --project-dir android-health-connect-poc :app:assembleQa
+      - name: Assert TEST package
+        run: |
+          APK=android-health-connect-poc/app/build/outputs/apk/qa/app-qa.apk
+          test -s "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "package: name='hu.grapes.healthconnect.test'"
