@@ -1,0 +1,66 @@
+name: Grapes TEST USDA Hungarian dictionary review (NO RELEASE)
+
+on:
+  pull_request:
+    branches:
+      - fix/grapes-test-v15-food-feedback-20261021
+    paths:
+      - 'src/food/usda-online.js'
+      - 'src/food/hungarian-food-catalog.js'
+      - 'tests/food-usda-online.test.js'
+      - '.github/workflows/grapes-test-usda-dictionary-review.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-test-usda-v16-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dictionary-and-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    env:
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
+      VITE_GOOGLE_APP_ID: 991532871119
+      VITE_GOOGLE_PICKER_API_KEY: ${{ secrets.GOOGLE_PICKER_API_KEY }}
+      VITE_GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
+      VITE_EBOOK_EPUB_WRITE_ENABLED: 'true'
+      VITE_EBOOK_TRANSFER_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
+      VITE_FOOD_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Never revert the published TEST v15 source
+        run: git merge-base --is-ancestor e968dc16dfb14fc4e1c7d9efba24b63795412746 HEAD
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: New Hungarian USDA dictionary and search rankings
+        run: node --test tests/food-usda-online.test.js tests/food-search-method.test.js tests/food-off-usda-integration.test.js
+      - name: Full unit regression
+        run: npm test
+      - name: Build web + Android web
+        run: |
+          npm run build
+          npm run build:android-web
+      - name: Meal search and main menu browser tests
+        run: |
+          node tests/android-module-hubs.browser.mjs
+          node tests/android-recipe-ingredient.browser.mjs
+      - name: Keep Home and E-book stable
+        run: |
+          node tests/android-home-mobile.browser.mjs
+          node tests/android-ebook-shelf.browser.mjs
+          node tests/android-ebook-reader.browser.mjs
+          node tests/responsive-layout.browser.mjs
+      - name: Verify this review never publishes an APK
+        run: |
+          test ! -e .github/workflows/grapes-test-v16-auto-publish.yml
+          echo 'No APK signing or TEST/PROD publication in this PR.'
