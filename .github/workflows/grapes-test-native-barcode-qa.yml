@@ -24,6 +24,7 @@ jobs:
     timeout-minutes: 35
     env:
       VITE_GRAPES_TEST_CHANNEL: '1'
+      PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH: /usr/bin/google-chrome
     steps:
       - uses: actions/checkout@v4
         with:
