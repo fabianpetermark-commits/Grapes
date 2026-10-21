@@ -54,10 +54,11 @@ test('név alapján keres az Open Food Factsban és kiszűri a használhatatlan 
   const url = new URL(requestedUrl)
   assert.equal(url.origin, 'https://search.example')
   assert.equal(url.pathname, '/search')
-  assert.equal(url.searchParams.get('q'), 'mogyorókrém')
+  assert.equal(url.searchParams.get('q'), 'mogyorókrém countries_tags:"en:hungary"')
   assert.equal(url.searchParams.get('langs'), 'hu,en')
   assert.match(url.searchParams.get('fields'), /code,product_name_hu,product_name/)
-  assert.equal(result.count, 2)
+  assert.equal(result.count, 1)
+  assert.equal(result.sourceCount, 2)
   assert.equal(result.products.length, 1)
   assert.equal(result.products[0].name, 'Magyar mogyorókrém')
   assert.equal(result.products[0].category, 'chocolate spreads')
@@ -73,4 +74,63 @@ test('az eltávolított integráció nem exportál FatSecret keresőfüggvények
   const api = await import('../src/food/food-api.js')
   assert.equal('searchFatSecretProducts' in api, false)
   assert.equal('lookupFatSecretProduct' in api, false)
+})
+
+test('OFF ország beállítás server-side szűrés és helyi ellenőrzés, márka, eredeti név és tápérték', async () => {
+  const previous = globalThis.localStorage
+  const store = new Map([['grapes.food.openFoodFacts.region', 'hu']])
+  globalThis.localStorage = { getItem: key => store.get(key) || null, setItem: (key, value) => store.set(key, value) }
+  try {
+    const hits = [
+      { code: '5991111111111', product_name: 'Túró', product_name_hu: 'Magyar túró', brands: 'Márka A', countries_tags: ['en:hungary'],
+        nutriments: { 'energy-kj_100g': 418.4, proteins_100g: 12, fat_100g: 3, carbohydrates_100g: 1.2, sodium_100g: 0.1 } },
+      { code: '5992222222222', product_name: 'Foreign yoghurt', brands: 'Brand B', lang: 'en', countries_tags: ['en:hungary'],
+        nutriments: { 'energy-kcal_100g': 120 } },
+      { code: '5993333333333', product_name: 'Export cheese', countries_tags: ['en:germany'],
+        nutriments: { 'energy-kcal_100g': 280 } },
+      { code: '5994444444444', product_name: 'Unverified region', nutriments: {} },
+    ]
+    const requests = []
+    const fetchImpl = async url => { requests.push(String(url)); return response({ hits, count: hits.length }) }
+    const hu = await searchOpenFoodFactsProducts('túró', { baseUrl: 'https://search.example', fetchImpl })
+    assert.equal(new URL(requests[0]).searchParams.get('q'), 'túró countries_tags:"en:hungary"')
+    assert.match(new URL(requests[0]).searchParams.get('fields'), /countries_tags,brands/)
+    assert.equal(hu.products.length, 2)
+    assert.equal(hu.count, 2)
+    assert.equal(hu.products[0].brand, 'Márka A')
+    assert.equal(hu.products[0].nutrients.energyKcal, 100)
+    assert.equal(hu.products[0].nutrients.salt, 0.25)
+    assert.equal(hu.products[1].productLanguage, 'en')
+    assert.equal(hu.products[1].hasHungarianName, false)
+    assert.equal(hu.products[1].nutrients.protein, null)
+    store.set('grapes.food.openFoodFacts.region', 'de')
+    const de = await searchOpenFoodFactsProducts('túró', { baseUrl: 'https://search.example', fetchImpl })
+    assert.equal(new URL(requests[1]).searchParams.get('q'), 'túró countries_tags:"en:germany"')
+    assert.deepEqual(de.products.map(x => x.barcode), ['5993333333333'])
+    store.set('grapes.food.openFoodFacts.region', 'all')
+    const all = await searchOpenFoodFactsProducts('túró', { baseUrl: 'https://search.example', fetchImpl })
+    assert.equal(new URL(requests[2]).searchParams.get('q'), 'túró')
+    assert.equal(all.products.length, 4)
+  } finally {
+    if (previous === undefined) delete globalThis.localStorage
+    else globalThis.localStorage = previous
+  }
+})
+test('OFF legacy országfüggő tartalék szűrő nem hagyja figyelmen kívül a beállítást', async () => {
+  const previous = globalThis.localStorage
+  globalThis.localStorage = { getItem: () => 'hu' }
+  try {
+    let legacy = ''
+    const result = await searchOpenFoodFactsProducts('kenyér', { fetchImpl: async url => {
+      if (String(url).includes('search.openfoodfacts.org')) return response({}, { ok: false, status: 503 })
+      legacy = String(url)
+      return response({ products: [{ code:'5990000000001', product_name_hu:'Kenyér', countries_tags:['en:hungary'], nutriments:{} }] })
+    } })
+    assert.equal(new URL(legacy).searchParams.get('tagtype_0'), 'countries')
+    assert.equal(new URL(legacy).searchParams.get('tag_0'), 'hungary')
+    assert.equal(result.products.length, 1)
+  } finally {
+    if (previous === undefined) delete globalThis.localStorage
+    else globalThis.localStorage = previous
+  }
 })
