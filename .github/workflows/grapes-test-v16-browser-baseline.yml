@@ -1,0 +1,70 @@
+name: TEST v16 unchanged browser baseline (NO RELEASE)
+on:
+  pull_request:
+    branches: [feature/grapes-test-food-usda-dictionary-20261021]
+    paths: [.github/workflows/grapes-test-v16-browser-baseline.yml]
+permissions:
+  contents: read
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Exact baseline and clean install
+        run: |
+          git rev-parse HEAD
+          npm ci
+      - run: npm test
+      - run: npm run build
+      - name: Find browser
+        run: |
+          echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+      - name: Run every unchanged local browser test
+        shell: bash
+        run: |
+          passed=0
+          failed=0
+          for file in tests/*.browser.mjs; do
+            if [ "$file" = tests/food-live-api.browser.mjs ]; then continue; fi
+            echo "Running $file"
+            if [[ "$file" == tests/android-* ]]; then
+              if VITE_GRAPES_TEST_CHANNEL=1 node "$file"; then passed=$((passed+1)); else failed=$((failed+1)); echo "FAIL: $file"; fi
+            else
+              if node "$file"; then passed=$((passed+1)); else failed=$((failed+1)); echo "FAIL: $file"; fi
+            fi
+          done
+          echo "Unchanged TEST v16 browser files: $passed PASS, $failed FAIL"
+          test "$failed" -eq 0
+
+  finance-import-repeat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Repeat unchanged Finance import browser file
+        env:
+          PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH: /usr/bin/google-chrome
+        shell: bash
+        run: |
+          failed=0
+          for attempt in 1 2 3 4 5; do
+            echo "Finance import baseline attempt $attempt"
+            if node tests/finance-import.browser.mjs; then
+              echo "PASS $attempt"
+            else
+              echo "FAIL $attempt"
+              failed=$((failed + 1))
+            fi
+          done
+          echo "Finance import baseline failures: $failed"
+          test "$failed" -eq 0
