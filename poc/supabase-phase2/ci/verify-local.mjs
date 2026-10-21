@@ -200,6 +200,30 @@ assert.equal(readGrants, 't|f|t|f|f', readGrants)
 
 console.log('PASS: exposed invoker, private definer and explicit function/schema grants')
 
+const rollbackRecord = 'rollback-demo'
+const firstVersion = await rpc(a.token, write('ci-a', rollbackRecord, randomUUID(), 0, 'old'))
+assert.equal(firstVersion.data.status, 'committed')
+const secondVersion = await rpc(a.token, write('ci-a', rollbackRecord, randomUUID(), 1, 'new'))
+assert.equal(secondVersion.data.status, 'committed')
+const oldVersion = await request('/rest/v1/rpc/read_revision', anonKey, a.token,
+  { p_profile_id: 'ci-a', p_kind: 'food', p_record_id: rollbackRecord,
+    p_revision: 1 }, 'api')
+assert.equal(oldVersion.status, 200, JSON.stringify(oldVersion))
+assert.deepEqual(oldVersion.data.payload, { value: 'old' })
+const restored = await rpc(a.token, {
+  p_profile_id: 'ci-a', p_kind: 'food', p_record_id: rollbackRecord,
+  p_operation_id: randomUUID(), p_expected_revision: 2,
+  p_schema_version: oldVersion.data.schemaVersion, p_candidate: oldVersion.data.payload,
+})
+assert.equal(restored.data.status, 'committed')
+assert.equal(restored.data.revision, 3)
+const previous = await request('/rest/v1/rpc/read_revision', anonKey, a.token,
+  { p_profile_id: 'ci-a', p_kind: 'food', p_record_id: rollbackRecord,
+    p_revision: 2 }, 'api')
+assert.deepEqual(previous.data.payload, { value: 'new' })
+assert.equal(sql(`select count(*) from grapes_private.revisions where user_id='\${a.id}' and record_id='rollback-demo'`), '3')
+console.log('PASS: owner rollback creates revision 3 while preserving revision 2')
+
 // Two live psql processes hold separate database connections. A keeps its
 // transaction open after writing; B must wait on the advisory transaction lock.
 function session() {
