@@ -1,0 +1,94 @@
+name: Grapes TEST v14 signed candidate ONLY (NO RELEASE)
+
+on:
+  push:
+    branches:
+      - feature/grapes-test-v28-signed-candidate-20261021
+    paths:
+      - '.github/workflows/grapes-test-v28-signed-candidate.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-test-v14-signed-candidate
+  cancel-in-progress: false
+
+jobs:
+  sign-verify-and-archive:
+    if: github.repository == 'fabianpetermark-commits/Grapes' && github.ref == 'refs/heads/feature/grapes-test-v28-signed-candidate-20261021'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GRAPES_VERSION_CODE: '14'
+      GRAPES_VERSION_NAME: '0.9.5'
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
+      VITE_GOOGLE_APP_ID: 991532871119
+      VITE_GOOGLE_PICKER_API_KEY: ${{ secrets.GOOGLE_PICKER_API_KEY }}
+      VITE_GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
+      VITE_EBOOK_EPUB_WRITE_ENABLED: 'true'
+      VITE_EBOOK_TRANSFER_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
+      VITE_FOOD_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Ensure tested source is a descendant of the v28 release
+        run: |
+          git fetch --no-tags --depth=100 origin 39306e48455a54cf4037faf43688f42725882440
+          git merge-base --is-ancestor 39306e48455a54cf4037faf43688f42725882440 HEAD
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: node --test tests/grapes-test-v28-candidate.test.js
+      - run: npm test
+      - run: npm run build:android-web
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android SDK 36
+        run: |
+          SDKMANAGER=$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | sort -V | tail -1)
+          "$SDKMANAGER" "platforms;android-36" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.11.1
+      - name: Signed QA APK via EXISTING TEST-only keystore
+        env:
+          ANDROID_TEST_KEYSTORE_BASE64: ${{ secrets.ANDROID_TEST_KEYSTORE_BASE64 }}
+          ANDROID_TEST_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_TEST_KEYSTORE_PASSWORD }}
+          ANDROID_TEST_KEY_ALIAS: ${{ secrets.ANDROID_TEST_KEY_ALIAS }}
+          ANDROID_TEST_KEY_PASSWORD: ${{ secrets.ANDROID_TEST_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$ANDROID_TEST_KEYSTORE_BASE64"
+          test -n "$ANDROID_TEST_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_TEST_KEY_ALIAS"
+          test -n "$ANDROID_TEST_KEY_PASSWORD"
+          export ANDROID_TEST_KEYSTORE_PATH="$RUNNER_TEMP/grapes-test-v14.p12"
+          trap 'rm -f "$ANDROID_TEST_KEYSTORE_PATH"' EXIT
+          printf '%s' "$ANDROID_TEST_KEYSTORE_BASE64" | base64 --decode > "$ANDROID_TEST_KEYSTORE_PATH"
+          chmod 600 "$ANDROID_TEST_KEYSTORE_PATH"
+          gradle --project-dir android-health-connect-poc :app:assembleQa
+          SRC=android-health-connect-poc/app/build/outputs/apk/qa/app-qa.apk
+          test -s "$SRC"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$SRC" | grep -F "package: name='hu.grapes.healthconnect.test'"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$SRC" | grep -F "versionCode='14'"
+          CERT=$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$SRC")
+          EXPECTED=cc9dc997fa4bff3845884afd2f011efe939c02806f91393a1ddb0455b6a2ff33
+          printf '%s\n' "$CERT" | grep -Fi "Signer #1 certificate SHA-256 digest: ${EXPECTED}"
+          mv "$SRC" grapes-test-v14-signed-candidate.apk
+          sha256sum grapes-test-v14-signed-candidate.apk > grapes-test-v14-signed-candidate.apk.sha256
+      - name: Archive signed candidate WITHOUT GitHub release or in-app update
+        uses: actions/upload-artifact@v4
+        with:
+          name: grapes-test-v14-signed-candidate
+          path: |
+            grapes-test-v14-signed-candidate.apk
+            grapes-test-v14-signed-candidate.apk.sha256
+          if-no-files-found: error
+          retention-days: 7
