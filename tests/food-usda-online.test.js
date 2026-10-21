@@ -1,8 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { foodFromUsdaSearchHit, translateUsdaQuery, searchOnlineUsdaFoods } from '../src/food/usda-online.js'
+import { foodFromUsdaSearchHit, translateUsdaQuery, searchOnlineUsdaFoods, localizeUsdaDescription, rankUsdaSearchHits } from '../src/food/usda-online.js'
 import { searchFoodCatalog } from '../src/food/food-catalog-search.js'
+import { searchVerifiedUsdaFoods } from '../src/food/usda-foods.js'
 import { normalizeFoodItem, normalizeDiaryEntry, createEmptyFoodProject, foodBackupFromJson, foodBackupToJson } from '../src/food/food-data.js'
 
 const fixture = {
@@ -168,4 +169,72 @@ test('natív Android Food Bridge csak meghatározott API végpontokat kezel', ()
   assert.match(kotlin, /withContext\(Dispatchers\.IO\)/)
   assert.match(kotlin, /3_000_000/)
   assert.doesNotMatch(kotlin, /request\(args\.optString/)
+})
+
+
+test('USDA magyar szótár: hétköznapi alapanyagok, biztonságos rokonértelmű szavak és ragozás', () => {
+  const expected = [
+    ['hagyma', 'Onions, raw'], ['hagymát', 'Onions, raw'],
+    ['lilahagyma', 'Onions, red, raw'],
+    ['zöldhagyma', 'Onions, green, raw'], ['póréhagyma', 'Leeks, raw'],
+    ['fehérrépa', 'Parsley root, raw'], ['paszternák', 'Parsnips, raw'],
+    ['zab', 'Oats'], ['bulgur', 'Bulgur, dry'], ['quinoa', 'Quinoa, uncooked'],
+    ['görög joghurt', 'Yogurt, Greek, plain'], ['tejföl', 'Sour cream'],
+    ['csirkecomb', 'Chicken thigh'], ['pulykamell', 'Turkey breast'],
+    ['cékla', 'Beets, raw'], ['padlizsán', 'Eggplant, raw'],
+    ['jégsaláta', 'Lettuce, iceberg, raw'], ['petrezselyem', 'Parsley, fresh'],
+    ['kesudió', 'Cashew nuts'], ['földimogyoró', 'Peanuts'],
+    ['mogyoró', 'Hazelnuts'], ['görögdinnye', 'Watermelon, raw'],
+    ['sárgadinnye', 'Cantaloupe, raw'], ['szárzeller', 'Celery, raw'],
+    ['zellergumó', 'Celeriac, raw'],
+  ]
+  for (const [term, query] of expected) {
+    assert.equal(translateUsdaQuery(term).query, query, 'Hibás USDA keresőszó: ' + term)
+  }
+  assert.deepEqual(translateUsdaQuery('sült hagyma'), {query: 'Onions, roasted', label:'Hagyma'})
+  assert.deepEqual(translateUsdaQuery('párolt cukkini'), {query:'Zucchini, cooked', label:'Cukkini'})
+  assert.deepEqual(translateUsdaQuery('grillezett csirkemell'), {query:'Chicken breast, grilled', label:'Csirkemell'})
+  assert.deepEqual(translateUsdaQuery('főtt vöröshagyma'), {query:'Onions, cooked', label:'Vöröshagyma'})
+  assert.equal(translateUsdaQuery('csokis-hagyma ízesítésű késztermék').query, 'csokis-hagyma ízesítésű késztermék')
+  assert.equal(translateUsdaQuery('dinnye').label, '', 'A fajta nélküli dinnye nem azonosítható automatikusan görögdinnyeként')
+})
+
+test('USDA magyar megjelenítés csak ismert alapanyagot magyarít; az eredeti leírás változatlan', () => {
+  const cases = [
+    ['Onions, red, raw', 'Lilahagyma – nyers'],
+    ['Onions, green, raw', 'Újhagyma – nyers'],
+    ['Sweet potatoes, raw', 'Édesburgonya – nyers'],
+    ['Squash, summer, zucchini, includes skin, raw', 'Cukkini – nyers, héjjal'],
+    ['Rice, brown, raw', 'Barna rizs – nyers'],
+    ['Garlic, raw', 'Fokhagyma – nyers'],
+    ['Peppers, sweet, red, raw', 'Paprika – nyers'],
+    ['Eggplant, raw', 'Padlizsán – nyers'],
+    ['Onions, roasted', 'Vöröshagyma – sült'],
+    ['Onions, cooked', 'Vöröshagyma – főtt'],
+  ]
+  for (const [description, expected] of cases) {
+    const result = localizeUsdaDescription(description)
+    assert.equal(result.name, expected, description)
+    assert.equal(result.original, description, 'A szerver eredeti leírása mindig megmarad')
+  }
+  assert.equal(localizeUsdaDescription('Onion soup, canned, prepared').name, 'Onion soup, canned, prepared')
+  assert.equal(localizeUsdaDescription('Apple pie, commercial').name, 'Apple pie, commercial')
+  assert.equal(localizeUsdaDescription('Unknown edible flower, raw').name, 'Unknown edible flower, raw')
+})
+
+test('a sima hagyma az ellenőrzött offline USDA katalógusban azonnal kereshető', () => {
+  const result = searchVerifiedUsdaFoods('hagyma')
+  assert.ok(result.some(food => food.name.includes('Vöröshagyma')))
+  assert.ok(result.every(food => food.verified === true && Number.isInteger(Number(food.source.id))))
+})
+
+test('a sült és főtt USDA alapanyagok relevanciája magasabb a nyersnél', () => {
+  const hits = [
+    usdaHit(901, 'Onions, raw', 40),
+    usdaHit(902, 'Onions, roasted', 70),
+    usdaHit(903, 'Onions, cooked, boiled', 44),
+  ]
+  assert.equal(rankUsdaSearchHits(hits, 'sült hagyma', 'Onions, roasted')[0].fdcId, 902)
+  assert.equal(rankUsdaSearchHits(hits, 'főtt hagyma', 'Onions, cooked')[0].fdcId, 903)
+  assert.equal(rankUsdaSearchHits(hits, 'hagyma', 'Onions, raw')[0].fdcId, 901)
 })
