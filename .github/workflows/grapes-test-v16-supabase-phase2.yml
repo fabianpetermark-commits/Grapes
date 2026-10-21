@@ -122,3 +122,35 @@ jobs:
           done
           echo "Browser regression files: $passed PASS, $failed FAIL"
           test "$failed" -eq 0
+
+  android-test-compile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GRAPES_TEST_AUTH_ENABLED: 'false'
+      VITE_GRAPES_TEST_HEALTH_SYNC_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run build:android-web
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK 36
+        run: |
+          sdkmanager=$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | sort -V | tail -1)
+          test -n "$sdkmanager"
+          "$sdkmanager" "platforms;android-36" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.11.1
+      - name: Compile unsigned-for-release TEST QA APK without upload
+        run: |
+          gradle --project-dir android-health-connect-poc :app:assembleQa
+          test -s android-health-connect-poc/app/build/outputs/apk/qa/app-qa.apk
