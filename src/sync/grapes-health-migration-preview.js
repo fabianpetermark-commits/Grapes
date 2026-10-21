@@ -19,6 +19,7 @@ export function previewHealthMigration({ sources, targetHeads = [] }) {
   for (const source of sources) {
     if (!source || !['indexeddb', 'localStorage', 'google-drive'].includes(source.provider) ||
         typeof source.sourceId !== 'string' || !source.sourceId ||
+        typeof source.version !== 'string' || !source.version ||
         typeof source.profileId !== 'string' || !source.profileId ||
         !Array.isArray(source.records)) {
       invalid.push({ sourceId: source?.sourceId ?? null, reason: 'invalid source' })
@@ -39,7 +40,7 @@ export function previewHealthMigration({ sources, targetHeads = [] }) {
       const prior = seen.get(identity)
       if (prior) {
         if (prior.candidate === candidate && prior.sourceId === source.sourceId &&
-            prior.sourceVersion === source.version) {
+            prior.sourceVersion === source.version && prior.provider === source.provider) {
           duplicates.push({ identity, sourceId: source.sourceId, reason: 'same source/version/record' })
         } else {
           conflicts.push({ identity, sourceId: source.sourceId,
@@ -47,7 +48,7 @@ export function previewHealthMigration({ sources, targetHeads = [] }) {
         }
         continue
       }
-      seen.set(identity, { candidate, sourceId: source.sourceId, sourceVersion: source.version })
+      seen.set(identity, { candidate, sourceId: source.sourceId, sourceVersion: source.version, provider: source.provider })
       const remote = heads.get(identity)
       if (remote) {
         conflicts.push({ identity, sourceId: source.sourceId, reason: 'target head already exists',
@@ -55,6 +56,7 @@ export function previewHealthMigration({ sources, targetHeads = [] }) {
         continue
       }
       plan.push({ identity, sourceId: source.sourceId, sourceVersion: source.version,
+        provider: source.provider,
         profileId: record.profileId, kind: record.kind, recordId: record.recordId,
         schemaVersion: record.schemaVersion, payload: structuredClone(record.payload) })
     }
