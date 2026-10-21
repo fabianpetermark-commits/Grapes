@@ -213,6 +213,7 @@ class NativeBarcodeScannerActivity : ComponentActivity() {
         }, ContextCompat.getMainExecutor(this))
     }
 
+    @OptIn(androidx.camera.core.ExperimentalGetImage::class)
     private fun startCamera() {
         val future = ProcessCameraProvider.getInstance(this)
         future.addListener({
@@ -221,7 +222,7 @@ class NativeBarcodeScannerActivity : ComponentActivity() {
                 val activeProvider = future.get()
                 provider = activeProvider
                 val preview = Preview.Builder().build().apply {
-                    surfaceProvider = previewView.surfaceProvider
+                    setSurfaceProvider(previewView.surfaceProvider)
                 }
                 val analysis = ImageAnalysis.Builder()
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
