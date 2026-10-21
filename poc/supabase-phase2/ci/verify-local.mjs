@@ -82,6 +82,19 @@ for (let attempt = 0; attempt < 40; attempt++) {
 }
 console.log('PASS: PostgREST schema cache recognizes Phase 2 history RPC')
 
+const createdProfile = await request('/rest/v1/rpc/create_profile', anonKey, a.token, {}, 'api')
+assert.equal(createdProfile.status, 200, JSON.stringify(createdProfile))
+assert.match(createdProfile.data, /^grapes:[0-9a-f-]{36}$/i)
+const ownProfiles = await request('/rest/v1/rpc/list_profiles', anonKey, a.token, {}, 'api')
+assert.equal(ownProfiles.status, 200, JSON.stringify(ownProfiles))
+assert.ok(ownProfiles.data.some(profile => profile.profileId === createdProfile.data))
+const otherProfiles = await request('/rest/v1/rpc/list_profiles', anonKey, b.token, {}, 'api')
+assert.equal(otherProfiles.status, 200, JSON.stringify(otherProfiles))
+assert.ok(!otherProfiles.data.some(profile => profile.profileId === createdProfile.data))
+const anonCreate = await request('/rest/v1/rpc/create_profile', anonKey, null, {}, 'api')
+assert.ok([401, 403].includes(anonCreate.status), JSON.stringify(anonCreate))
+console.log('PASS: real local Auth creates only owner-scoped Grapes profiles')
+
 sql(`insert into grapes_private.profiles(user_id, profile_id) values ('${a.id}', 'ci-a'), ('${b.id}', 'ci-b')`)
 const rpc = (token, args, key = anonKey) => request('/rest/v1/rpc/compare_and_swap', key, token, args, 'api')
 const write = (profile, record, op, expected, value) => ({
