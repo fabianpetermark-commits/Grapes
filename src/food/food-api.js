@@ -4,6 +4,15 @@ const DEFAULT_OPEN_FOOD_FACTS_URL = 'https://world.openfoodfacts.org'
 const DEFAULT_OPEN_FOOD_FACTS_SEARCH_URL = 'https://search.openfoodfacts.org'
 const OFF_REGION_STORAGE_KEY = 'grapes.food.openFoodFacts.region'
 const OFF_REGIONS = new Set(['hu', 'sk', 'at', 'de', 'cz', 'pl', 'ro', 'gb', 'us', 'all'])
+const OFF_COUNTRIES = Object.freeze({
+  hu: 'hungary', sk: 'slovakia', at: 'austria', de: 'germany',
+  cz: 'czech-republic', pl: 'poland', ro: 'romania',
+  gb: 'united-kingdom', us: 'united-states',
+})
+// Share this constant between the web and the native Android request.
+const OFF_FIELDS = 'code,product_name_hu,product_name,product_name_en,generic_name_hu,generic_name,categories_tags,countries_tags,brands,brands_tags,lang,product_quantity_unit,image_front_small_url,nutriments,nutrition_data_per,last_modified_t'
+export function offRegion() { return selectedOffRegion() }
+
 function selectedOffRegion() {
   try {
     const value = globalThis.localStorage?.getItem(OFF_REGION_STORAGE_KEY) || 'hu'
@@ -17,21 +26,31 @@ function numberOrNull(value) {
   return Number.isFinite(number) && number >= 0 ? number : null
 }
 
-function productFromOpenFoodFacts(product, fallbackBarcode = '') {
+export function productFromOpenFoodFacts(product, fallbackBarcode = '') {
   const nutrients = product.nutriments || {}
-  const name = product.product_name_hu || product.product_name || product.generic_name_hu || product.generic_name
+  const hungarianName = String(product.product_name_hu || product.generic_name_hu || '').trim()
+  const name = hungarianName || String(product.product_name || product.product_name_en || product.generic_name || '').trim()
   if (!name) throw new Error('A termékhez nem tartozik használható név.')
   const barcode = String(product.code || fallbackBarcode || '').trim()
   if (!/^\d{7,14}$/.test(barcode)) throw new Error('A termékhez nem tartozik használható vonalkód.')
   const categoryTag = product.categories_tags?.at?.(-1) || product.categories_tags?.[0] || ''
+  // OFF stores missing values as absent keys. They must never become artificial zeros.
+  const amount = key => numberOrNull(nutrients[key + '_100g'])
+  const kcal = amount('energy-kcal')
+  const joules = amount('energy-kj') ?? amount('energy')
+  const sodium = amount('sodium')
+  const brand = String(product.brands || (Array.isArray(product.brands_tags) ? product.brands_tags.join(', ') : '')).trim().slice(0, 160)
   return {
-    kind: 'product', name, barcode, category: categoryTag.replace(/^..:/, '').replaceAll('-', ' ') || 'Csomagolt élelmiszer',
+    kind: 'product', name, brand, barcode,
+    productLanguage: hungarianName ? 'hu' : String(product.lang || 'ismeretlen'),
+    hasHungarianName: Boolean(hungarianName),
+    category: categoryTag.replace(/^..:/, '').replaceAll('-', ' ') || 'Csomagolt élelmiszer',
     baseUnit: product.product_quantity_unit === 'ml' ? 'ml' : 'g', imageUrl: product.image_front_small_url || '',
     nutrients: {
-      energyKcal: numberOrNull(nutrients['energy-kcal_100g']), protein: numberOrNull(nutrients.proteins_100g),
-      carbohydrate: numberOrNull(nutrients.carbohydrates_100g), fat: numberOrNull(nutrients.fat_100g),
-      fiber: numberOrNull(nutrients.fiber_100g), sugar: numberOrNull(nutrients.sugars_100g),
-      saturatedFat: numberOrNull(nutrients['saturated-fat_100g']), salt: numberOrNull(nutrients.salt_100g),
+      energyKcal: kcal ?? (joules === null ? null : Math.round(joules / 4.184 * 100) / 100),
+      protein: amount('proteins'), carbohydrate: amount('carbohydrates'), fat: amount('fat'),
+      fiber: amount('fiber'), sugar: amount('sugars'), saturatedFat: amount('saturated-fat'),
+      salt: amount('salt') ?? (sodium === null ? null : Math.round(sodium * 2.5 * 1000) / 1000),
     },
     source: { type: 'openfoodfacts', id: barcode, revision: product.last_modified_t || '', attribution: 'Open Food Facts contributors' },
   }
@@ -66,17 +85,22 @@ export async function searchOpenFoodFactsProducts(query, {
   if (typeof fetchImpl !== 'function') throw new Error('A termékadatbázis ezen a környezeten nem érhető el.')
   const requestedPage = Math.max(1, Number(page) || 1)
   const requestedSize = Math.min(24, Math.max(1, Number(pageSize) || 12))
-  const fields = 'code,product_name_hu,product_name,generic_name_hu,generic_name,categories_tags,countries_tags,product_quantity_unit,image_front_small_url,nutriments,last_modified_t'
+  const region = selectedOffRegion()
+  const country = OFF_COUNTRIES[region] || ''
+  // Search-a-licious documents Lucene tag filters; searching hu,en only
+  // influences text matching, it does NOT translate names or filter countries.
+  const searchTerm = term.replace(/[^\p{L}\p{N}\s-]/gu, ' ').replace(/\s+/g, ' ').trim()
+  const fullQuery = country ? searchTerm + ' countries_tags:"en:' + country + '"' : searchTerm
   const params = new URLSearchParams({
-    q: term, page: String(requestedPage), page_size: String(requestedSize),
-    langs: 'hu,en', boost_phrase: 'true', fields,
+    q: fullQuery, page: String(requestedPage), page_size: String(requestedSize),
+    langs: 'hu,en', boost_phrase: 'true', fields: OFF_FIELDS,
   })
   const endpoint = String(baseUrl || DEFAULT_OPEN_FOOD_FACTS_SEARCH_URL).replace(/\/$/, '') + '/search?' + params
   async function fetchResults(url) {
     const useAndroid = isGrapesAndroidApp() && fetchImpl === globalThis.fetch &&
       (url.startsWith(DEFAULT_OPEN_FOOD_FACTS_SEARCH_URL + '/search?') || url.startsWith(DEFAULT_OPEN_FOOD_FACTS_URL + '/cgi/search.pl?'))
     const response = useAndroid
-      ? { ok: true, status: 200, json: () => requestAndroidFoodApi(url.includes('/cgi/search.pl?') ? 'offLegacySearch' : 'offSearch', term, requestedPage, requestedSize) }
+      ? { ok: true, status: 200, json: () => requestAndroidFoodApi(url.includes('/cgi/search.pl?') ? 'offLegacySearch' : 'offSearch', term, requestedPage, requestedSize, region) }
       : await fetchImpl(url, { signal })
     if (!response.ok) {
       const error = new Error('A név szerinti termékkereső nem érhető el (' + response.status + ').')
@@ -87,17 +111,14 @@ export async function searchOpenFoodFactsProducts(query, {
     const hits = payload.hits || payload.products
     if (!Array.isArray(hits)) throw new Error('Az Open Food Facts keresője ismeretlen válaszformátumot adott.')
     const products = []
-    const region = selectedOffRegion()
     for (const hit of hits) {
       const item = hit.document || hit._source || hit
-      if (region !== 'all' && !item.countries_tags?.includes('en:' + ({
-        hu: 'hungary', sk: 'slovakia', at: 'austria', de: 'germany',
-        cz: 'czech-republic', pl: 'poland', ro: 'romania',
-        gb: 'united-kingdom', us: 'united-states',
-      }[region]))) continue
+      // Server filtering is complemented by strict local validation.
+      // A hit with no country information is not proof that it is sold here.
+      if (country && !item.countries_tags?.includes('en:' + country)) continue
       try { products.push(productFromOpenFoodFacts(item)) } catch { /* Incomplete product skipped. */ }
     }
-    return { count: Number(payload.count) || products.length, page: Number(payload.page) || requestedPage, products }
+    return { count: products.length, page: Number(payload.page) || requestedPage, products, sourceCount: Number(payload.count) || products.length, region }
   }
   try {
     return await fetchResults(endpoint)
@@ -109,7 +130,8 @@ export async function searchOpenFoodFactsProducts(query, {
     if (!shouldFallback) throw error
     const legacy = new URLSearchParams({
       search_terms: term, search_simple: '1', action: 'process', json: '1',
-      page: String(requestedPage), page_size: String(requestedSize), fields,
+      page: String(requestedPage), page_size: String(requestedSize), fields: OFF_FIELDS,
+      ...(country ? { tagtype_0: 'countries', tag_contains_0: 'contains', tag_0: country } : {}),
     })
     try {
       return await fetchResults(String(legacyBaseUrl).replace(/\/$/, '') + '/cgi/search.pl?' + legacy)
