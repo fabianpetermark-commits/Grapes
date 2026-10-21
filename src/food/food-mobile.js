@@ -1274,7 +1274,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const normalizedQuery = query.trim().toLocaleLowerCase('hu-HU')
     if (expandedSearchQuery !== normalizedQuery) expandedSearchQuery = ''
     const verifiedFoods = searchVerifiedUsdaFoods(query)
-    renderFoodSearch(query, { remoteFoods: verifiedFoods })
+    renderFoodSearch(query, { remoteFoods: verifiedFoods, loading: query.trim().length >= 2 })
     if (query.trim().length < 2) return
     searchTimer = setTimeout(async () => {
       renderFoodSearch(query, { remoteFoods: verifiedFoods, loading: true })
