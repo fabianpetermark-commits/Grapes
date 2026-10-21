@@ -37,6 +37,8 @@ jobs:
       VITE_FOOD_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - name: Verify candidate is based on the exact published Android v28 commit
         run: git merge-base --is-ancestor 39306e48455a54cf4037faf43688f42725882440 HEAD
       - uses: actions/setup-node@v4
