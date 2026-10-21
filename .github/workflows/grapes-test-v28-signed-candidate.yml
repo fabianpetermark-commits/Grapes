@@ -34,9 +34,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          fetch-depth: 0
       - name: Ensure tested source is a descendant of the v28 release
         run: |
-          git fetch --no-tags --depth=100 origin 39306e48455a54cf4037faf43688f42725882440
           git merge-base --is-ancestor 39306e48455a54cf4037faf43688f42725882440 HEAD
       - uses: actions/setup-node@v4
         with:
