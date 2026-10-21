@@ -53,13 +53,20 @@ test('csendben módosított tápértékek sem törölhetők visszavonáskor', ()
   assert.equal(reverted.removed, 0)
   assert.equal(reverted.modified.length, 1)
 })
-test('azonos rekord különböző exportban forrás-ID nélkül bizonytalan marad', () => {
+test('azonos ID nélküli rekord átfedő exportban duplikátum marad', () => {
   const base = row({ entry_id: null })
-  const firstPlan = plan([base])
-  const first = apply(firstPlan).project
-  const later = plan([base, row({entry_id:'another',logged_at:'2024-01-02 13:00:00'})], first.diaryEntries)
-  assert.equal(later.records[0].status, 'uncertain')
-  assert.notEqual(later.records[0].entry.externalKey, first.diaryEntries[0].externalKey)
+  const first = apply(plan([base])).project
+  const later = plan([base, row({ entry_id: 'another', logged_at: '2024-01-02 13:00:00' })], first.diaryEntries)
+  assert.equal(later.records[0].status, 'duplicate')
+  assert.equal(later.records[0].entry.externalKey, first.diaryEntries[0].externalKey)
+  assert.equal(apply(later, first).added, 1)
+})
+test('a korábban mentett exportlenyomatos ID nélküli kulcsot is felismeri', () => {
+  const base = row({ entry_id: null })
+  const first = apply(plan([base])).project
+  first.diaryEntries[0].externalKey += ':0123456789abcdef'
+  const later = plan([base, row({ entry_id: 'another', logged_at: '2024-01-02 13:00:00' })], first.diaryEntries)
+  assert.equal(later.records[0].status, 'duplicate')
 })
 
 test('mikrotápanyagok saját statisztikaként összesíthetők', () => {
