@@ -96,14 +96,16 @@ const ownHead = await request('/rest/v1/rpc/read_document', anonKey, a.token,
 assert.equal(ownHead.status, 200, JSON.stringify(ownHead))
 assert.deepEqual(ownHead.data.payload, { value: 'A' })
 const ownHistory = await request('/rest/v1/rpc/list_revisions', anonKey, a.token,
-  { p_profile_id: 'ci-a', p_kind: 'food', p_record_id: 'real-auth' }, 'api')
+  { p_profile_id: 'ci-a', p_kind: 'food', p_record_id: 'real-auth',
+    p_before_revision: null, p_limit: 50 }, 'api')
 assert.equal(ownHistory.status, 200, JSON.stringify(ownHistory))
 assert.equal(ownHistory.data.items.length, 1)
 const foreignHead = await request('/rest/v1/rpc/read_document', anonKey, b.token,
   { p_profile_id: 'ci-a', p_kind: 'food', p_record_id: 'real-auth' }, 'api')
 assert.ok([401, 403].includes(foreignHead.status), JSON.stringify(foreignHead))
 const foreignHistory = await request('/rest/v1/rpc/list_revisions', anonKey, b.token,
-  { p_profile_id: 'ci-a', p_kind: 'food', p_record_id: 'real-auth' }, 'api')
+  { p_profile_id: 'ci-a', p_kind: 'food', p_record_id: 'real-auth',
+    p_before_revision: null, p_limit: 50 }, 'api')
 assert.ok([401, 403].includes(foreignHistory.status), JSON.stringify(foreignHistory))
 const anonHead = await request('/rest/v1/rpc/read_document', anonKey, null,
   { p_profile_id: 'ci-a', p_kind: 'food', p_record_id: 'real-auth' }, 'api')
