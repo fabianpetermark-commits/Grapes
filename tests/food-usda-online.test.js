@@ -21,6 +21,8 @@ const fakeOff = async () => ({ count: 0, products: [] })
 test('magyar alapanyagok USDA keresőkifejezésre fordulnak, FDC azonosító nélkül', () => {
   assert.deepEqual(translateUsdaQuery('Alma'), { query: 'Apples, raw', label: 'Alma' })
   assert.deepEqual(translateUsdaQuery('BANÁN'), { query: 'Bananas, raw', label: 'Banán' })
+  assert.deepEqual(translateUsdaQuery('hagyma'), { query: 'Onions, raw', label: 'Hagyma' })
+  assert.deepEqual(translateUsdaQuery('főtt hagyma'), { query: 'Onions, cooked', label: 'Hagyma' })
   assert.deepEqual(translateUsdaQuery('főtt rizs'), { query: 'Rice, white, long-grain, cooked', label: 'Főtt rizs' })
   assert.deepEqual(translateUsdaQuery('barna rizs'), { query: 'Rice, brown, raw', label: 'Barna rizs' })
   assert.deepEqual(translateUsdaQuery('főtt barna rizs'), { query: 'Rice, brown, cooked', label: 'Főtt barna rizs' })
