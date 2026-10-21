@@ -288,7 +288,9 @@ try {
   await page.locator('[data-food-recipe-back]').click()
   await page.locator('[data-food-recipes-back]').click()
   await page.locator('[data-food-meals] .meal').first().click()
-  await page.locator('[data-food-detail-add]').click()
+  // There is one Add action in meal detail: the larger floating + button.
+  assert.equal(await page.locator('[data-food-detail-add]').count(), 0)
+  await page.locator('[data-fab]').click()
   await page.locator('[data-food-add-sheet].is-open').waitFor({ state: 'visible' })
   const searchArea = page.locator('[data-food-search-results]')
   const initialLayout = await searchArea.evaluate(el => ({
