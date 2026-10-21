@@ -37,6 +37,93 @@ const translations = Object.freeze({
   dio: ['Walnuts', 'Dió'], mogyoro: ['Peanuts', 'Mogyoró'],
   cukor: ['Sugars, granulated', 'Cukor'], mez: ['Honey', 'Méz'],
   napraforgoolaj: ['Oil, sunflower', 'Napraforgóolaj'], olivaolaj: ['Oil, olive', 'Olívaolaj'],
+  // Carefully curated Hungarian search aliases: these alter the USDA query,
+  // never its FDC identifier, nutrition facts, or raw English description.
+  hagymat: ['Onions, raw', 'Hagyma'], lilahagyma: ['Onions, red, raw', 'Lilahagyma'],
+  feherhagyma: ['Onions, white, raw', 'Fehérhagyma'],
+  zoldhagyma: ['Onions, green, raw', 'Zöldhagyma'],
+  ujhagyma: ['Onions, green, raw', 'Újhagyma'],
+  porehagyma: ['Leeks, raw', 'Póréhagyma'],
+  repa: ['Carrots, raw', 'Sárgarépa'],
+  feherrepa: ['Parsnips, raw', 'Fehérrépa'],
+  petrezselyemgyoker: ['Parsley root, raw', 'Petrezselyemgyökér'],
+  zeller: ['Celery, raw', 'Zeller'],
+  zellergumo: ['Celeriac, raw', 'Zellergumó'],
+  padlizsan: ['Eggplant, raw', 'Padlizsán'],
+  karalabe: ['Kohlrabi, raw', 'Karalábé'],
+  kaposzta: ['Cabbage, raw', 'Káposzta'],
+  voroskaposzta: ['Cabbage, red, raw', 'Vöröskáposzta'],
+  kelkaposzta: ['Savoy cabbage, raw', 'Kelkáposzta'],
+  kelbimbo: ['Brussels sprouts, raw', 'Kelbimbó'],
+  cekla: ['Beets, raw', 'Cékla'],
+  retek: ['Radishes, raw', 'Retek'],
+  zoldbab: ['Beans, snap, green, raw', 'Zöldbab'],
+  zoldbab: ['Beans, snap, green, raw', 'Zöldbab'],
+  uborkasalata: ['Cucumber, raw', 'Uborka'],
+  jegsalata: ['Lettuce, iceberg, raw', 'Jégsaláta'],
+  rukola: ['Arugula, raw', 'Rukkola'],
+  rukkola: ['Arugula, raw', 'Rukkola'],
+  soska: ['Sorrel, raw', 'Sóska'],
+  petrezselyem: ['Parsley, fresh', 'Petrezselyem'],
+  kapor: ['Dill weed, fresh', 'Kapor'],
+  bazsalikom: ['Basil, fresh', 'Bazsalikom'],
+  koriander: ['Coriander leaves, raw', 'Koriander'],
+  kakukkfu: ['Thyme, fresh', 'Kakukkfű'],
+  rozmaring: ['Rosemary, fresh', 'Rozmaring'],
+  gyomber: ['Ginger root, raw', 'Gyömbér'],
+  // Common unbranded staples are distinct from flavored OFF products.
+  zab: ['Oats', 'Zab'],
+  bulgur: ['Bulgur, dry', 'Bulgur'],
+  kuszkusz: ['Couscous, dry', 'Kuszkusz'],
+  quinoa: ['Quinoa, uncooked', 'Quinoa'],
+  hajdina: ['Buckwheat groats, raw', 'Hajdina'],
+  arpagyongy: ['Barley, pearled, raw', 'Árpagyöngy'],
+  arpa: ['Barley, raw', 'Árpa'],
+  rozs: ['Rye grain', 'Rozs'],
+  'teljes kiorlesu liszt': ['Wheat flour, whole-grain', 'Teljes kiőrlésű liszt'],
+  'buza finomliszt': ['Wheat flour, white, all-purpose', 'Búzafinomliszt'],
+  'finomliszt': ['Wheat flour, white, all-purpose', 'Finomliszt'],
+  'zab liszt': ['Oat flour', 'Zabliszt'],
+  zabliszt: ['Oat flour', 'Zabliszt'],
+  'gorog joghurt': ['Yogurt, Greek, plain', 'Görög joghurt'],
+  kefir: ['Kefir, plain', 'Kefir'],
+  tejfol: ['Sour cream', 'Tejföl'],
+  tejszin: ['Cream, fluid', 'Tejszín'],
+  tehenturo: ['Cottage cheese', 'Tehéntúró'],
+  mozzarella: ['Mozzarella cheese', 'Mozzarella'],
+  feta: ['Feta cheese', 'Feta'],
+  'edesburgonya': ['Sweet potatoes, raw', 'Édesburgonya'],
+  // Specific seafood and meats are not guessed from a generic "meat" hit.
+  pulyka: ['Turkey', 'Pulyka'],
+  pulykamell: ['Turkey breast', 'Pulykamell'],
+  csirkecomb: ['Chicken thigh', 'Csirkecomb'],
+  kacsamell: ['Duck breast', 'Kacsamell'],
+  tokehal: ['Cod', 'Tőkehal'],
+  pisztrang: ['Trout', 'Pisztráng'],
+  szardinia: ['Sardines', 'Szardínia'],
+  garnela: ['Shrimp', 'Garnéla'],
+  tojasfeherje: ['Egg, white, raw', 'Tojásfehérje'],
+  tojassargaja: ['Egg, yolk, raw', 'Tojássárgája'],
+  // Fruit aliases intentionally do not imply USDA data for commercial products.
+  meggy: ['Cherries, sour, raw', 'Meggy'],
+  cseresznye: ['Cherries, sweet, raw', 'Cseresznye'],
+  ribizli: ['Currants, raw', 'Ribizli'],
+  szeder: ['Blackberries, raw', 'Szeder'],
+  kiwi: ['Kiwifruit, raw', 'Kivi'],
+  kivi: ['Kiwifruit, raw', 'Kivi'],
+  grapefruit: ['Grapefruit, raw', 'Grapefruit'],
+  mango: ['Mangos, raw', 'Mangó'],
+  datolya: ['Dates', 'Datolya'],
+  fuge: ['Figs, raw', 'Füge'],
+  birsalma: ['Quinces, raw', 'Birsalma'],
+  diofele: ['Nuts', 'Diófélék'],
+  torokmogyoro: ['Hazelnuts', 'Törökmogyoró'],
+  kesudio: ['Cashew nuts', 'Kesudió'],
+  pisztacia: ['Pistachio nuts', 'Pisztácia'],
+  tokmag: ['Pumpkin seeds', 'Tökmag'],
+  chia: ['Chia seeds', 'Chiamag'],
+  lenmag: ['Flaxseed', 'Lenmag'],
+  szezammag: ['Sesame seeds', 'Szezámmag'],
 })
 
 export function translateUsdaQuery(value) {
@@ -44,15 +131,20 @@ export function translateUsdaQuery(value) {
   const mapped = translations[normalized]
   if (mapped) return { query: mapped[0], label: mapped[1] }
   const tokens = normalized.split(' ')
-  const modifiers = new Set(['fott', 'fozott', 'nyers', 'szaraz', 'szaritott', 'elgozolt'])
-  const baseKey = tokens.filter(token => !modifiers.has(token)).join(' ')
+  // Preparation is a search modifier, never part of an ingredient identity.
+  // Preserve the identity and original USDA description when displaying hits.
+  const preparations = Object.freeze({
+    fott: 'cooked', fozott: 'cooked', parolt: 'cooked',
+    sult: 'roasted', sutott: 'roasted', grillezett: 'grilled',
+    pirított: 'roasted', piritott: 'roasted',
+    nyers: 'raw', szaraz: 'dried', szaritott: 'dried',
+    elgozolt: 'parboiled',
+  })
+  const baseKey = tokens.filter(token => !Object.hasOwn(preparations, token)).join(' ')
   const base = baseKey !== normalized ? translations[baseKey] : null
   if (base) {
-    const state = tokens.some(token => ['fott', 'fozott'].includes(token)) ? 'cooked'
-      : tokens.includes('nyers') ? 'raw'
-        : tokens.some(token => ['szaraz', 'szaritott'].includes(token)) ? 'dried'
-          : tokens.includes('elgozolt') ? 'parboiled' : ''
-    const genericState = /^(raw|cooked|dry|dried|parboiled)$/i
+    const state = tokens.map(token => preparations[token]).find(Boolean) || ''
+    const genericState = /^(raw|cooked|boiled|steamed|roasted|grilled|fried|dry|dried|parboiled)$/i
     const query = [...base[0].split(',').map(part => part.trim()).filter(part => !genericState.test(part)), state]
       .filter(Boolean).join(', ')
     return { query, label: base[1] }
