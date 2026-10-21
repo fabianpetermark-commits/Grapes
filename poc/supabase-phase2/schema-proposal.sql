@@ -275,7 +275,7 @@ revoke all on function grapes_private.read_document_internal(text,text,text) fro
 grant execute on function grapes_private.read_document_internal(text,text,text) to authenticated;
 create or replace function api.read_document(p_profile_id text, p_kind text, p_record_id text)
 returns jsonb language sql security invoker set search_path = ''
-as $$ select grapes_private.read_document_internal($$1,$$2,$$3) $$;
+as $$ select grapes_private.read_document_internal($1,$2,$3) $$;
 revoke all on function api.read_document(text,text,text) from public, anon;
 grant execute on function api.read_document(text,text,text) to authenticated;
 
@@ -309,7 +309,7 @@ grant execute on function grapes_private.list_documents_internal(text,text,text,
 create or replace function api.list_documents(
   p_profile_id text, p_kind text, p_after_record_id text default null, p_limit integer default 50
 ) returns jsonb language sql security invoker set search_path = ''
-as $$ select grapes_private.list_documents_internal($$1,$$2,$$3,$$4) $$;
+as $$ select grapes_private.list_documents_internal($1,$2,$3,$4) $$;
 revoke all on function api.list_documents(text,text,text,integer) from public, anon;
 grant execute on function api.list_documents(text,text,text,integer) to authenticated;
 
@@ -339,7 +339,7 @@ grant execute on function grapes_private.read_revision_internal(text,text,text,b
 create or replace function api.read_revision(
   p_profile_id text, p_kind text, p_record_id text, p_revision bigint
 ) returns jsonb language sql security invoker set search_path = ''
-as $$ select grapes_private.read_revision_internal($$1,$$2,$$3,$$4) $$;
+as $$ select grapes_private.read_revision_internal($1,$2,$3,$4) $$;
 revoke all on function api.read_revision(text,text,text,bigint) from public, anon;
 grant execute on function api.read_revision(text,text,text,bigint) to authenticated;
 
@@ -376,7 +376,7 @@ create or replace function api.list_revisions(
   p_profile_id text, p_kind text, p_record_id text,
   p_before_revision bigint default null, p_limit integer default 50
 ) returns jsonb language sql security invoker set search_path = ''
-as $$ select grapes_private.list_revisions_internal($$1,$$2,$$3,$$4,$$5) $$;
+as $$ select grapes_private.list_revisions_internal($1,$2,$3,$4,$5) $$;
 revoke all on function api.list_revisions(text,text,text,bigint,integer) from public, anon;
 grant execute on function api.list_revisions(text,text,text,bigint,integer) to authenticated;
 
