@@ -75,3 +75,24 @@ test('new password requires 8 characters and uses Supabase updateUser only', asy
   assert.deepEqual(await flow.updatePassword('new-test-password'),{status:'password_updated'})
   assert.deepEqual(calls,[['update',{password:'new-test-password'}]])
 })
+
+
+test('first visit without a session does not masquerade as a login failure', async () => {
+  const flow = fixture({
+    getUser: async () => ({
+      data: {user:null},
+      error: {name:'AuthSessionMissingError',message:'Auth session missing'},
+    }),
+  })
+  assert.equal(await flow.currentUser(),null)
+})
+
+test('a real server/user verification error is not silently accepted as signed-out', async () => {
+  const flow = fixture({
+    getUser: async () => ({
+      data: {user:null},
+      error: {name:'AuthApiError', message:'provider internal error'},
+    }),
+  })
+  await assert.rejects(flow.currentUser(), err => err.code==='AUTH_FAILED' && !err.message.includes('provider internal error'))
+})

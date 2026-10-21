@@ -8,7 +8,7 @@ const fakeEl = () => ({ disabled: false, hidden: false, textContent: '', type: '
   async emit(n) { return this.handlers[n]({ preventDefault() {} }) },
 })
 function fixture(flow) {
-  const selectors = ['#grapes-login-form','#grapes-username','#grapes-password','#google-sign-in','#register','#forgot-password','#toggle-password','.submit-button','#grapes-feedback','#grapes-sign-out']
+  const selectors = ['#grapes-login-form','#grapes-username','#grapes-password','#google-sign-in','#register','#forgot-password','#toggle-password','.submit-button','#grapes-feedback','#grapes-sign-out','.separator','.footer-links']
   const elements = Object.fromEntries(selectors.map(s=>[s,fakeEl()]))
   return { elements, ...bindGrapesTestLogin({querySelector:s=>elements[s]},flow) }
 }
@@ -73,4 +73,46 @@ test('password recovery callback switches into password-only update mode', async
   await f.elements['#grapes-login-form'].emit('submit')
   assert.equal(changed,'new-test-password')
   assert.equal(f.getMode(),'login')
+})
+
+
+test('verified account shows sign-out and hides credential inputs/Google sign-in', () => {
+  const f = fixture({ signOut: async () => {} })
+  f.setSession({id:'verified-user'})
+  assert.equal(f.elements['#grapes-sign-out'].hidden,false)
+  assert.equal(f.elements['#grapes-login-form'].hidden,true)
+  assert.equal(f.elements['#google-sign-in'].hidden,true)
+  assert.equal(f.elements['.footer-links'].hidden,true)
+  f.setSession(null)
+  assert.equal(f.elements['#grapes-sign-out'].hidden,true)
+  assert.equal(f.elements['#grapes-login-form'].hidden,false)
+  assert.equal(f.elements['#google-sign-in'].hidden,false)
+  assert.equal(f.elements['.footer-links'].hidden,false)
+})
+
+test('sign-out clears credentials, mode and account-specific state', async () => {
+  let signouts=0
+  const f = fixture({signOut:async()=>{signouts++}})
+  f.setSession({id:'verified-user'})
+  f.elements['#grapes-username'].value = 'private@example.invalid'
+  f.elements['#grapes-password'].value = 'previous password'
+  await f.elements['#grapes-sign-out'].emit('click')
+  assert.equal(signouts,1)
+  assert.equal(f.elements['#grapes-username'].value,'')
+  assert.equal(f.elements['#grapes-password'].value,'')
+  assert.equal(f.elements['#grapes-login-form'].hidden,false)
+  assert.equal(f.elements['#grapes-sign-out'].hidden,true)
+  assert.match(f.elements['#grapes-feedback'].textContent,/Kijelentkeztél/)
+})
+
+test('expired recovery session cannot leave a password-update form available', () => {
+  const f=fixture({updatePassword: async()=>{}})
+  f.setSession({id:'recovering-user'})
+  f.setRecoveryMode()
+  assert.equal(f.elements['#grapes-login-form'].hidden,false)
+  f.setSession(null)
+  assert.equal(f.getMode(),'login')
+  assert.equal(f.elements['#grapes-sign-out'].hidden,true)
+  assert.equal(f.elements['#grapes-username'].hidden,false)
+  assert.equal(f.elements['#grapes-login-form'].hidden,false)
 })
