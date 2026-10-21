@@ -51,8 +51,32 @@ export function claimLegacyWaterStore(storage, profileId) {
   const existing = readWaterStore(storage, profileId)
   if (Object.keys(existing).length) throw new Error('A jelenlegi profil víznaplója már tartalmaz adatot. Előbb készíts biztonsági másolatot.')
   const legacy = parseStore(storage.getItem(LEGACY_WATER_KEY))
-  storage.setItem(LEGACY_OWNER_KEY, profileId)
-  writeWaterStore(storage, profileId, legacy)
+  const profileKey = waterKey(profileId)
+  const previous = storage.getItem(profileKey)
+  const copied = JSON.stringify(legacy)
+  // A legacy owner may only be recorded *after* its destination bytes exist.
+  // Failed quota/device storage writes must leave the legacy diary claimable.
+  try {
+    writeWaterStore(storage, profileId, legacy)
+    if (storage.getItem(profileKey) !== copied) {
+      throw new Error('A víznapló másolata nem ellenőrizhető; nem jelöljük átvettnek.')
+    }
+    storage.setItem(LEGACY_OWNER_KEY, profileId)
+  } catch (error) {
+    // Undo only the exact copy we just wrote. Never clobber concurrent edits.
+    if (storage.getItem(LEGACY_OWNER_KEY) !== profileId &&
+        storage.getItem(profileKey) === copied) {
+      try {
+        if (previous === null) storage.removeItem(profileKey)
+        else storage.setItem(profileKey, previous)
+      } catch {
+        // The original legacy source is still intact; the new copy remains
+        // available for explicit recovery instead of destructive replacement.
+        throw new Error('A víznapló átvétele megszakadt, a másolat nem törölhető biztonságosan. Ne indíts új átvételt, készíts mentést.', { cause: error })
+      }
+    }
+    throw error
+  }
   return Object.keys(legacy).length
 }
 
