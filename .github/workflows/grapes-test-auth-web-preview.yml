@@ -1,0 +1,118 @@
+name: Grapes isolated Supabase TEST web login one-shot publish
+on:
+  push:
+    branches: [release/grapes-auth-web-test-preview-20261022]
+    paths: ['.github/workflows/grapes-test-auth-web-preview.yml']
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      VITE_GRAPES_TEST_SUPABASE_URL: https://aighqtqjlzirlokxwupt.supabase.co
+      VITE_GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY: ${{ vars.GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY }}
+      VITE_GRAPES_TEST_AUTH_ENABLED: 'true'
+      VITE_GRAPES_TEST_HEALTH_SYNC_ENABLED: 'false'
+    steps:
+      - name: Require public TEST Supabase key from GitHub repository variable
+        run: |
+          case "$VITE_GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY" in
+            sb_publishable_????????????????*) echo "Public Grapes TEST key configured" ;;
+            *) echo "::error::Set Actions variable GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY to the Grapes TEST public sb_publishable_... key."; exit 1 ;;
+          esac
+      - uses: actions/checkout@v4
+        with:
+          ref: 2fe7ad5990245c3b63ebef755ac5dbdf0bb381fc
+          path: site-main
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 8b6fa16ec23702a1bbc2a0f467ce79a70202cb84
+          path: auth-test
+          persist-credentials: false
+      - name: Verify exact original Pages and reviewed Auth commits
+        run: |
+          test "$(git -C site-main rev-parse HEAD)" = "2fe7ad5990245c3b63ebef755ac5dbdf0bb381fc"
+          test "$(git -C auth-test rev-parse HEAD)" = "8b6fa16ec23702a1bbc2a0f467ce79a70202cb84"
+          test "$(git ls-remote https://github.com/fabianpetermark-commits/Grapes.git refs/heads/main | cut -f1)" = "2fe7ad5990245c3b63ebef755ac5dbdf0bb381fc"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Rebuild the original Pages site without changing its source
+        working-directory: site-main
+        env:
+          VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
+          VITE_GOOGLE_PICKER_API_KEY: ${{ secrets.GOOGLE_PICKER_API_KEY }}
+          VITE_GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
+          VITE_GOOGLE_APP_ID: '991532871119'
+          VITE_DEVELOPER_EMAIL: projectsoundmodel@gmail.com
+          VITE_DEVELOPER_PIN: '2026'
+          VITE_EBOOK_EPUB_WRITE_ENABLED: 'true'
+          VITE_EBOOK_TRANSFER_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
+          VITE_FOOD_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
+        run: |
+          npm ci
+          npm test
+          npm run build
+          npm run build -- --base=/Grapes/ebook-pilot/ --outDir=dist/ebook-pilot
+      - name: Record original web output and disallow existing test path
+        run: |
+          test -f site-main/dist/index.html
+          test -d site-main/dist/ebook-pilot
+          test ! -e site-main/dist/login-auth-test.html
+          test ! -e site-main/dist/test-auth-assets
+          find site-main/dist -type f -print0 | sort -z | xargs -0 sha256sum > "$RUNNER_TEMP/pages-original.sha256"
+      - name: Build ONLY the reviewed Supabase Auth screen in a separate bundle
+        working-directory: auth-test
+        run: |
+          npm ci
+          node --test tests/grapes-auth-flow.test.js tests/grapes-login-controller.test.js tests/grapes-test-runtime.test.js
+          cat > vite.auth-only.config.mjs <<'EOF'
+          import { defineConfig } from 'vite'
+          import { resolve } from 'node:path'
+          export default defineConfig({
+            base: '/Grapes/',
+            build: {
+              outDir: 'dist/auth-only',
+              emptyOutDir: true,
+              assetsDir: 'test-auth-assets',
+              rollupOptions: { input: { loginAuthTest: resolve('login-auth-test.html') } },
+            },
+          })
+          EOF
+          npx vite build --config vite.auth-only.config.mjs
+          test -s dist/auth-only/login-auth-test.html
+          test -d dist/auth-only/test-auth-assets
+          grep -q 'Grapes TEST' dist/auth-only/login-auth-test.html
+          grep -R -q 'aighqtqjlzirlokxwupt' dist/auth-only/test-auth-assets
+      - name: Add TEST Auth-only files without changing the existing site
+        run: |
+          cp auth-test/dist/auth-only/login-auth-test.html site-main/dist/login-auth-test.html
+          cp -R auth-test/dist/auth-only/test-auth-assets site-main/dist/test-auth-assets
+          sha256sum --check "$RUNNER_TEMP/pages-original.sha256"
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site-main/dist
+      - id: deployment
+        uses: actions/deploy-pages@v4
+      - name: Verify live URL is the separate TEST screen
+        run: |
+          URL=https://fabianpetermark-commits.github.io/Grapes/login-auth-test.html
+          for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            if curl --fail --location --silent "$URL" -o "$RUNNER_TEMP/grapes-test-auth.html" && grep -q 'Grapes TEST' "$RUNNER_TEMP/grapes-test-auth.html"; then
+              echo "Verified TEST login: $URL"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::Live OAuth preview not confirmed; do not claim usable sign-in."
+          exit 1
