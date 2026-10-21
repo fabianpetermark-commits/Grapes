@@ -32,7 +32,36 @@ test('célérték-teljesülést és 4/4/9 makróenergia-megoszlást számol', ()
   const series = buildDailyNutritionSeries(entries, profile.id)
   assert.deepEqual(targetAchievement(series, project, 'energyKcal'), { eligibleDays: 3, hitDays: 3, percent: 100 })
   const macro = macroEnergyDistribution(series)
-  assert.equal(macro.kcal.protein, 800)
+  assert.equal(macro.kcal.protein, null)
   assert.equal(macro.kcal.fat, 2025)
+  assert.equal(macro.totalKcal, null)
+  assert.equal(macro.percent.protein, null)
   assert.equal(macro.complete.protein, false)
+})
+
+test('teljes makrók esetén 4/4/9 százalék számolható, üres sorozatnál ismeretlen', () => {
+  const complete = macroEnergyDistribution(buildDailyNutritionSeries(entries.slice(0, 2), profile.id))
+  assert.equal(complete.totalKcal, 800 + 1800 + 1305)
+  assert.ok(complete.percent.protein > 0)
+  assert.equal(macroEnergyDistribution([]).totalKcal, null)
+})
+
+test('a történeti folyadékrekord nem számít naplózott étkezési napnak', () => {
+  const water = { profileId: profile.id, occurredAt: '2026-10-09T12:00:00.000Z',
+    snapshot: { category: 'Folyadék', nutrients: {} } }
+  const series = buildDailyNutritionSeries([...entries, water], profile.id)
+  assert.equal(series.length, 3)
+})
+
+test('50 000 bejegyzést 1000 napon veszteség nélkül csoportosít', () => {
+  const dates = Array.from({ length: 1000 }, (_, index) => {
+    const date = new Date('2023-01-01T12:00:00Z')
+    date.setUTCDate(date.getUTCDate() + index)
+    return date.toISOString().slice(0, 10)
+  })
+  const rows = Array.from({ length: 50000 }, (_, index) => entry(String(index), dates[index % dates.length],
+    { energyKcal: 10, protein: 1, carbohydrate: 1, fat: 0 }))
+  const series = buildDailyNutritionSeries(rows, profile.id)
+  assert.equal(series.length, 1000)
+  assert.ok(series.every(day => day.entries === 50 && day.nutrients.energyKcal === 500))
 })

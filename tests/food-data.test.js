@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 
 import {
   createEmptyFoodProject,
+  calculateMacroEnergy,
   calculateRecipeFood,
   currentTargets,
   entriesForLocalDay,
@@ -236,4 +237,19 @@ test('az önállóan megadott hozam marad az irányadó, a súlyát ebből szám
   })
   assert.equal(result.yieldCount, 25)
   assert.equal(result.averageUnitWeight, 30)
+})
+
+test('hiányzó makró nem számolható nullaként és részleges nap nem teljes összeg', () => {
+  assert.equal(calculateMacroEnergy({ protein: null, carbohydrate: 10, fat: 5 }), null)
+  assert.equal(calculateMacroEnergy({ protein: 0, carbohydrate: 10, fat: 5 }), 85)
+  const complete = { snapshot: { nutrients: { energyKcal: 100, protein: 10, carbohydrate: 10, fat: 5 } } }
+  const partial = { snapshot: { nutrients: { energyKcal: null, protein: null, carbohydrate: null, fat: null } } }
+  const total = summarizeEntries([complete, partial])
+  assert.equal(total.energyKcal, null)
+  assert.equal(total.protein, null)
+  assert.equal(total.carbohydrate, null)
+  assert.equal(total.fat, null)
+  assert.equal(summarizeEntries([complete]).energyKcal, 100)
+  assert.equal(summarizeEntries([complete, { snapshot: { category: 'Folyadék', nutrients: {} } }]).energyKcal, 100)
+  assert.equal(summarizeEntries([]).energyKcal, null)
 })

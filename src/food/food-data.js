@@ -51,9 +51,9 @@ export function normalizeNutrients(value = {}, digits = 2) {
 }
 
 export function calculateMacroEnergy(nutrients = {}) {
-  const protein = Number(nutrients.protein)
-  const carbohydrate = Number(nutrients.carbohydrate)
-  const fat = Number(nutrients.fat)
+  const values = ['protein', 'carbohydrate', 'fat'].map(key => nutrients[key])
+  if (values.some(value => value === null || value === undefined || value === '')) return null
+  const [protein, carbohydrate, fat] = values.map(Number)
   if (![protein, carbohydrate, fat].every(Number.isFinite)) return null
   return rounded(protein * 4 + carbohydrate * 4 + fat * 9)
 }
@@ -289,21 +289,23 @@ export function normalizeDiaryEntry(value = {}, foodValue = null) {
 }
 
 export function summarizeEntries(entries = []) {
+  const nutritionEntries = entries.filter(entry => entry.snapshot?.category !== 'Folyadék')
   const result = Object.fromEntries(CORE_NUTRIENTS.map(key => [key, 0]))
-  const availability = Object.fromEntries(CORE_NUTRIENTS.map(key => [key, false]))
-  for (const entry of entries) {
+  const complete = Object.fromEntries(CORE_NUTRIENTS.map(key => [key, nutritionEntries.length > 0]))
+  for (const entry of nutritionEntries) {
     for (const key of CORE_NUTRIENTS) {
       const value = entry.snapshot?.nutrients?.[key]
-      if (value !== null && value !== undefined && Number.isFinite(Number(value))) {
+      if (value === null || value === undefined || value === '' || !Number.isFinite(Number(value))) {
+        complete[key] = false
+      } else {
         result[key] += Number(value)
-        availability[key] = true
       }
     }
   }
-  for (const key of CORE_NUTRIENTS) result[key] = availability[key] ? rounded(result[key]) : null
+  for (const key of CORE_NUTRIENTS) result[key] = complete[key] ? rounded(result[key]) : null
   // Imported micronutrients are keyed separately to keep the original Food core schema intact.
   const extraTotals = new Map()
-  for (const entry of entries) for (const [name, nutrient] of Object.entries(entry.snapshot?.nutrients?.extras || {})) {
+  for (const entry of nutritionEntries) for (const [name, nutrient] of Object.entries(entry.snapshot?.nutrients?.extras || {})) {
     if (!/^[a-zA-Z0-9_]+$/.test(name) || !Number.isFinite(Number(nutrient?.amount))) continue
     const key = 'extra:' + name
     extraTotals.set(key, (extraTotals.get(key) || 0) + Number(nutrient.amount))
