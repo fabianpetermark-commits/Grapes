@@ -25,7 +25,9 @@ The reviewed references are `poc/supabase-sync/PHASE_0_ARCHITECTURE.md`,
 The exact Grapes TEST project URL is
 `https://aighqtqjlzirlokxwupt.supabase.co`. Only a project publishable key is
 accepted by the forward-ported runtime. `VITE_GRAPES_TEST_AUTH_ENABLED=false`
-by default. The login is a separate `/Grapes/login-auth-test.html` entrypoint;
+by default. The Health outbox additionally requires the explicit
+`VITE_GRAPES_TEST_HEALTH_SYNC_ENABLED=true` flag and the exact TEST project URL;
+it is false in normal builds. The login is a separate `/Grapes/login-auth-test.html` entrypoint;
 the shipped login and E-book Google Drive Auth, scopes, folder discovery,
 import, reader state and user files remain unchanged. Supabase Google sign-in
 must request only OpenID, email and profile, without Drive scopes.
@@ -70,14 +72,16 @@ completion before reporting queue success. Offline/network/unknown responses
 remain pending. It validates Auth identity before and after each RPC; account
 switch pauses replay. Conflict retains the candidate and server snapshot ID.
 It **must not** be wired to the Food UI until #94/#95 local journal, profile
-pinning and true IndexedDB CAS are resolved. A browser test covers synthetic
+pinning and true IndexedDB CAS are resolved. The local Food save and this
+separate outbox transaction are not yet atomic together; a crash between them
+can leave an unsynced local change. No active application path uses this adapter. A browser test covers synthetic
 offline/reload, retries, account switch, conflict and aborted local add.
 
 `src/sync/grapes-health-migration-preview.js` is pure and read-only. A future
 inventory adapter must collect Food, Water, YAZIO, Health and recovery originals
 with profile/source/version, validate IDs and schema, and export backups before
 calling it. Its preview rejects E-book, corrupt profiles and existing target
-heads; only identical record IDs from the same source/version are duplicates.
+heads; only identical record IDs from the same provider/source/version are duplicates.
 Equal-looking independent meals remain distinct. The preview result alone
 never writes, deletes or claims ownership. Source version changes require a
 new preview. Earlier missing TEST data recovery is intentionally deferred.
