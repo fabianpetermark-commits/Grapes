@@ -7,6 +7,7 @@ function storage(initial = {}) {
   return {
     getItem: key => values.has(key) ? values.get(key) : null,
     setItem: (key, value) => values.set(key, String(value)),
+    removeItem: key => values.delete(key),
     raw: key => values.get(key),
     keys: () => values.keys(),
   }
@@ -58,4 +59,45 @@ test('Water backup roundtrip, profile gate and recovery copy', () => {
   assert.equal(restoreWaterBackup(local, 'anna', exported), 1)
   assert.equal(readWaterStore(local, 'anna')['2026-10-19'].entries[0].amount, 350)
   assert.ok([...local.keys()].some(name => name.startsWith(key + ':before-restore:')))
+})
+
+
+test('failed copy cannot reserve legacy owner or damage the original diary', () => {
+  const original = JSON.stringify({'2026-10-18': {goal: 1900, entries: [{id:'legacy',amount:275}]}})
+  const local = storage({'grapes-water-v1':original})
+  const priorSet = local.setItem
+  local.setItem = (key,value) => {
+    if(key===waterKey('anna')) throw new Error('QuotaExceededError')
+    priorSet(key,value)
+  }
+  assert.throws(() => claimLegacyWaterStore(local,'anna'),/QuotaExceededError/)
+  assert.equal(local.raw('grapes-water-v1'),original)
+  assert.equal(local.raw('grapes-water-v1-claimed-by'),undefined)
+  assert.equal(local.raw(waterKey('anna')),undefined)
+  assert.equal(legacyWaterStatus(local,'bela').available,true,'A felülírás nélküli régi napló továbbra is kiosztható')
+})
+
+test('failed legacy owner marker rolls back only a verified newly copied profile snapshot', () => {
+  const original=JSON.stringify({'2026-10-17':{goal:2100,entries:[{id:'a',amount:400}]}})
+  const local=storage({'grapes-water-v1':original})
+  const before=local.setItem
+  local.setItem=(key,value)=>{
+    if(key==='grapes-water-v1-claimed-by') throw new Error('OwnerMarkerWriteFailed')
+    before(key,value)
+  }
+  assert.throws(()=>claimLegacyWaterStore(local,'anna'),/OwnerMarkerWriteFailed/)
+  assert.equal(local.raw(waterKey('anna')),undefined)
+  assert.equal(local.raw('grapes-water-v1-claimed-by'),undefined)
+  assert.equal(local.raw('grapes-water-v1'),original)
+})
+
+test('successful legacy claim persists copied diary before owner assignment', () => {
+  const original=JSON.stringify({'2026-10-16':{goal:2000,entries:[{id:'a',amount:200}]}})
+  const local=storage({'grapes-water-v1':original})
+  const writes=[]
+  const before=local.setItem
+  local.setItem=(key,value)=>{writes.push(key);before(key,value)}
+  claimLegacyWaterStore(local,'anna')
+  assert.deepEqual(writes,[waterKey('anna'),'grapes-water-v1-claimed-by'])
+  assert.equal(local.raw('grapes-water-v1'),original)
 })
