@@ -140,5 +140,6 @@ export async function retryHealthOperations({ client, ownerId, profileId }) {
       committed++
     }
   }
-  return { status: 'done', attempted: operations.length, committed, conflicted, unknown }
+  return { status: unknown ? 'pending' : conflicted ? 'conflict' : 'synced',
+    attempted: operations.length, committed, conflicted, unknown }
 }
