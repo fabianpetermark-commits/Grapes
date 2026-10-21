@@ -75,22 +75,54 @@ export async function startGrapesTestAuth({ createClient, root, url, publishable
     recoveryUrl: config.recoveryUrl,
   })
   const ui = bindGrapesTestLogin(root, flow)
-  const { data: listener } = client.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_IN' && session?.user?.id) ui.setSession({ id: session.user.id })
-    if (event === 'PASSWORD_RECOVERY') ui.setRecoveryMode()
-    if (event === 'SIGNED_OUT') ui.setSession(null)
+  let authRevision = 0
+  let recoveryPending = false
+  let disposed = false
+  const { data: listener } = client.auth.onAuthStateChange((event) => {
+    if (disposed) return
+    if (event === 'SIGNED_OUT') {
+      authRevision += 1
+      recoveryPending = false
+      ui.setSession(null)
+      return
+    }
+    if (event !== 'SIGNED_IN' && event !== 'PASSWORD_RECOVERY') return
+    if (event === 'PASSWORD_RECOVERY') recoveryPending = true
+    const revision = ++authRevision
+    // Supabase recommends not awaiting other auth methods inside its callback:
+    // defer the network-backed identity check to a separate microtask.
+    Promise.resolve().then(async () => {
+      let current = null
+      try { current = await flow.currentUser() } catch {
+        // An invalidated/expired session is not considered authenticated.
+      }
+      if (disposed || revision !== authRevision) return
+      ui.setSession(current)
+      if (current?.id && recoveryPending) ui.setRecoveryMode()
+      if (!current?.id && recoveryPending) {
+        ui.setNotice('A jelszó-visszaállítási munkamenet lejárt. Kérj új e-mailt.')
+      }
+    })
   })
+  const initialRevision = authRevision
   try {
-    // Explicitly validate session server-side; never trust a cached user object.
+    // Initial state must be validated server-side. Ignore this result if a
+    // later auth event superseded it while getUser() was in flight.
     const current = await flow.currentUser()
-    ui.setSession(current)
+    if (!disposed && initialRevision === authRevision) ui.setSession(current)
   } catch {
-    ui.setSession(null)
-    ui.setNotice('A korábbi TEST-munkamenet nem ellenőrizhető. Jelentkezz be újra.')
+    if (!disposed && initialRevision === authRevision) {
+      ui.setSession(null)
+      ui.setNotice('A TEST-kapcsolat nem ellenőrizhető. Próbáld újra később.')
+    }
   }
   return {
     client,
     ui,
-    dispose: () => listener?.subscription?.unsubscribe?.(),
+    dispose: () => {
+      disposed = true
+      authRevision += 1
+      listener?.subscription?.unsubscribe?.()
+    },
   }
 }
