@@ -143,7 +143,7 @@ test('initial no-session page is a normal signed-out state', async () => {
   const running = await startGrapesTestAuth({...config(),root,createClient:sdk.createClient})
   assert.equal(elements['#grapes-sign-out'].hidden,true)
   assert.equal(elements['#grapes-login-form'].hidden,false)
-  assert.notMatch(elements['#grapes-feedback'].textContent, /nem ellenőrizhető/)
+  assert.doesNotMatch(elements['#grapes-feedback'].textContent, /nem ellenőrizhető/)
   running.dispose()
 })
 
