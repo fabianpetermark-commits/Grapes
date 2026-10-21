@@ -175,8 +175,10 @@ export function foodFromUsdaSearchHit(hit, label = '') {
   const nutrients = hit.foodNutrients
   const find = (ids, unit) => {
     for (const id of ids) {
-      const found = nutrients.find(n => Number(n?.nutrientId) === id && String(n?.unitName || '').toLowerCase() === unit)
-      if (found) return nonNegative(found.value)
+      const found = nutrients.find(n =>
+        Number(n?.nutrientId ?? n?.nutrient?.id) === id &&
+        String(n?.unitName ?? n?.nutrient?.unitName ?? '').toLowerCase() === unit)
+      if (found) return nonNegative(found.value ?? found.amount)
     }
     return null
   }
@@ -184,7 +186,9 @@ export function foodFromUsdaSearchHit(hit, label = '') {
   const protein = find([1003], 'g')
   const carbohydrate = find([1005], 'g')
   const fat = find([1004], 'g')
-  if ([energy, protein, carbohydrate, fat].some(value => value === null)) return null
+  // Missing measurements remain null; do not discard a real USDA identity
+  // just because its source has not published every macro.
+  if ([energy, protein, carbohydrate, fat].every(value => value === null)) return null
   const sodium = find([1093], 'mg')
   const description = hit.description.trim().slice(0, 135)
   const localized = localizeUsdaDescription(description, label)
@@ -203,6 +207,7 @@ export function foodFromUsdaSearchHit(hit, label = '') {
       salt: sodium === null ? null : Math.round(sodium * 25) / 10000,
     },
     verified: false,
+    nutritionIncomplete: [energy, protein, carbohydrate, fat].some(value => value === null),
     source: { type: 'usda', id: String(hit.fdcId), attribution: 'USDA FoodData Central · ' + hit.dataType },
   }
 }
