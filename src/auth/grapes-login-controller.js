@@ -15,12 +15,15 @@ export function bindGrapesTestLogin(root, flow = null) {
   const submit = $('.submit-button')
   const feedback = $('#grapes-feedback')
   const signOut = $('#grapes-sign-out')
-  if ([form, username, password, google, register, forgot, toggle, submit, feedback, signOut].some(x => !x)) {
+  const separator = $('.separator')
+  const footer = $('.footer-links')
+  if ([form, username, password, google, register, forgot, toggle, submit, feedback, signOut, separator, footer].some(x => !x)) {
     throw new Error('Approved Grapes TEST login markup is incomplete')
   }
 
   let mode = 'login'
   let busy = false
+  let authenticated = false
   const configured = Boolean(flow)
   const show = (message) => {
     feedback.textContent = message
@@ -28,11 +31,19 @@ export function bindGrapesTestLogin(root, flow = null) {
   }
   const setBusy = (value) => {
     busy = value
-    submit.disabled = value || !configured
-    google.disabled = value || !configured || mode === 'update'
-    forgot.disabled = value || !configured || mode === 'update'
-    register.disabled = value || !configured || mode === 'update'
+    submit.disabled = value || !configured || (authenticated && mode !== 'update')
+    google.disabled = value || !configured || authenticated || mode === 'update'
+    forgot.disabled = value || !configured || authenticated || mode === 'update'
+    register.disabled = value || !configured || authenticated || mode === 'update'
     signOut.disabled = value || !configured
+  }
+  const renderState = () => {
+    form.hidden = authenticated && mode !== 'update'
+    google.hidden = authenticated || mode === 'update'
+    separator.hidden = authenticated || mode === 'update'
+    footer.hidden = authenticated || mode === 'update'
+    signOut.hidden = !authenticated
+    setBusy(busy)
   }
   const setMode = next => {
     mode = next
@@ -44,9 +55,9 @@ export function bindGrapesTestLogin(root, flow = null) {
     register.textContent = next === 'login' ? 'Regisztráció' : 'Bejelentkezés'
     forgot.textContent = next === 'recovery' ? 'Bejelentkezés' : 'Elfelejtett jelszó?'
     feedback.hidden = true
-    setBusy(busy)
+    renderState()
   }
-  setBusy(false)
+  renderState()
   signOut.hidden = true
   if (!configured) {
     show('A Grapes TEST hitelesítése még nincs konfigurálva. A meglévő bejelentkezés változatlanul működik.')
@@ -57,10 +68,10 @@ export function bindGrapesTestLogin(root, flow = null) {
     toggle.setAttribute('aria-pressed', String(visible))
     toggle.setAttribute('aria-label', visible ? 'Jelszó elrejtése' : 'Jelszó megjelenítése')
   })
-  register.addEventListener('click', () => { if (!busy && configured && mode !== 'update') setMode(mode === 'registration' ? 'login' : 'registration') })
-  forgot.addEventListener('click', () => { if (!busy && configured && mode !== 'update') setMode(mode === 'recovery' ? 'login' : 'recovery') })
+  register.addEventListener('click', () => { if (!busy && configured && !authenticated && mode !== 'update') setMode(mode === 'registration' ? 'login' : 'registration') })
+  forgot.addEventListener('click', () => { if (!busy && configured && !authenticated && mode !== 'update') setMode(mode === 'recovery' ? 'login' : 'recovery') })
   google.addEventListener('click', async () => {
-    if (busy || !configured) return
+    if (busy || !configured || authenticated || mode === 'update') return
     setBusy(true)
     try {
       await flow.signInWithGoogle()
@@ -71,7 +82,7 @@ export function bindGrapesTestLogin(root, flow = null) {
   })
   form.addEventListener('submit', async event => {
     event.preventDefault()
-    if (busy || !configured) return
+    if (busy || !configured || (authenticated && mode !== 'update')) return
     const identifier = username.value.trim()
     if (mode !== 'update' && !identifier.includes('@')) {
       show('A tesztfázisban e-mail-címmel tudsz belépni. A felhasználónév még előkészítés alatt áll.')
@@ -81,12 +92,13 @@ export function bindGrapesTestLogin(root, flow = null) {
     try {
       if (mode === 'login') {
         await flow.signInWithPassword(identifier, password.value)
-        signOut.hidden = false
+        authenticated = true
+        renderState()
         show('Sikeres Grapes TEST-bejelentkezés. Az éles app és az adataid nem módosultak.')
       } else if (mode === 'registration') {
         const r = await flow.signUp(identifier, password.value)
         show(r.status === 'confirmation_required' ? 'Nézd meg az e-mail-fiókodat a regisztráció megerősítéséhez.' : 'Sikeres Grapes TEST-regisztráció.')
-        if (r.status === 'authenticated') signOut.hidden = false
+        if (r.status === 'authenticated') { authenticated = true; renderState() }
       } else if (mode === 'update') {
         await flow.updatePassword(password.value)
         setMode('login')
@@ -103,11 +115,14 @@ export function bindGrapesTestLogin(root, flow = null) {
     }
   })
   signOut.addEventListener('click', async () => {
-    if (busy || !configured) return
+    if (busy || !configured || !authenticated) return
     setBusy(true)
     try {
       await flow.signOut()
-      signOut.hidden = true
+      authenticated = false
+      username.value = ''
+      password.value = ''
+      setMode('login')
       show('Kijelentkeztél a Grapes TEST-fiókból.')
     } catch { show('A TEST-kijelentkezés nem sikerült.') }
     finally { setBusy(false) }
@@ -121,8 +136,16 @@ export function bindGrapesTestLogin(root, flow = null) {
       show('Adj meg egy új, legalább 8 karakteres jelszót a Grapes TEST-fiókodhoz.')
     },
     setSession(user) {
-      signOut.hidden = !user?.id
-      if (user?.id && mode !== 'update') show('Grapes TEST-fiók hitelesítve. A Health és az E-book adatai változatlanok.')
+      const previous = authenticated
+      authenticated = Boolean(user?.id)
+      if (!authenticated && previous) {
+        username.value = ''
+        password.value = ''
+        setMode('login')
+        show('A Grapes TEST-munkamenet véget ért. Újra bejelentkezhetsz.')
+      }
+      renderState()
+      if (authenticated && mode !== 'update') show('Grapes TEST-fiók hitelesítve. A Health és az E-book adatai változatlanok.')
     },
   }
 }
