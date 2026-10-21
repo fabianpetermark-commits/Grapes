@@ -1,0 +1,60 @@
+name: Grapes TEST Native Barcode Scanner QA (NO RELEASE)
+
+on:
+  pull_request:
+    branches:
+      - integration/grapes-test-v15-combined-base-20261021
+    paths:
+      - 'src/android-bridge.js'
+      - 'src/food/**'
+      - 'android-health-connect-poc/**'
+      - 'tests/**'
+      - '.github/workflows/grapes-test-native-barcode-qa.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-test-native-barcode-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  barcode-web-and-native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      VITE_GRAPES_TEST_CHANNEL: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Existing unit and Food regressions
+        run: |
+          npm test
+          node tests/android-food-mobile.browser.mjs
+          node tests/android-recipe-ingredient.browser.mjs
+      - name: Android web bundle
+        run: npm run build:android-web
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android SDK 36
+        run: |
+          SDKMANAGER=$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | sort -V | tail -1)
+          "$SDKMANAGER" "platforms;android-36" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.11.1
+      - name: Compile isolated QA variant; do not sign or release
+        run: gradle --project-dir android-health-connect-poc :app:assembleQa
+      - name: Verify isolated TEST package ID
+        run: |
+          APK=android-health-connect-poc/app/build/outputs/apk/qa/app-qa.apk
+          test -s "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -F "package: name='hu.grapes.healthconnect.test'"
