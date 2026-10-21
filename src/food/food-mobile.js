@@ -1165,10 +1165,17 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const externalFoods = expandedSearchQuery === normalized ? allExternalFoods : allExternalFoods.slice(0, 8)
     const container = $('[data-food-search-results]'); container.replaceChildren()
     if (!localFoods.length && !externalFoods.length) {
-      const empty = foodSearchFilter === 'favorites' ? 'Még nincs kedvencnek jelölt ételed.'
+      const isSearching = loading && normalized.length >= 2 && !['own', 'favorites'].includes(foodSearchFilter)
+      const empty = isSearching ? 'Keresés folyamatban…'
+        : foodSearchFilter === 'favorites' ? 'Még nincs kedvencnek jelölt ételed.'
         : foodSearchFilter === 'own' ? 'Nincs illeszkedő saját ételed.'
-          : normalized ? 'Nincs találat. A Saját étel gombbal hozhatsz létre újat.' : 'Még nincs saját ételed. A Saját étel gombbal hozhatsz létre egyet.'
-      container.innerHTML = `<div class="food-empty">${empty}</div>`
+        : normalized ? 'Nincs találat. A Saját étel gombbal hozhatsz létre újat.' : 'Még nincs saját ételed. A Saját étel gombbal hozhatsz létre egyet.'
+      container.replaceChildren()
+      const emptyNode = document.createElement('div')
+      emptyNode.className = 'food-empty'
+      emptyNode.textContent = empty
+      emptyNode.setAttribute('role', 'status')
+      container.append(emptyNode)
     }
     const renderLocalRow = (food, legacy = false) => {
       const row = foodSearchRow(food, { favorite: project.favorites.includes(food.id) })
@@ -1273,7 +1280,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const normalizedQuery = query.trim().toLocaleLowerCase('hu-HU')
     if (expandedSearchQuery !== normalizedQuery) expandedSearchQuery = ''
     const verifiedFoods = searchVerifiedUsdaFoods(query)
-    renderFoodSearch(query, { remoteFoods: verifiedFoods })
+    renderFoodSearch(query, { remoteFoods: verifiedFoods, loading: query.trim().length >= 2 })
     if (query.trim().length < 2) return
     searchTimer = setTimeout(async () => {
       renderFoodSearch(query, { remoteFoods: verifiedFoods, loading: true })
@@ -1285,8 +1292,8 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
         renderFoodSearch(query, { remoteFoods: verifiedFoods, remoteError: 'Az online kereső nem érhető el; az offline USDA és a saját ételek használhatók.' })
         return
       }
-      renderFoodSearch(query, { remoteFoods: result.products, remoteError: result.errors.join(' · ') || (result.products.length ? '' : 'Nincs további találat.') })
-    }, 1550)
+      renderFoodSearch(query, { remoteFoods: result.products, remoteError: result.errors.join(' · ') })
+    }, 380)
   }
 
   async function lookupBarcode(code) {
@@ -2016,7 +2023,6 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-date-next]').addEventListener('click', () => shiftDate(1))
     $('[data-food-date]').addEventListener('change', event => { selectedDate = event.currentTarget.value || localDate(); renderOverview() })
     $('[data-food-back]').addEventListener('click', closeMeal)
-    $('[data-food-detail-add]').addEventListener('click', openAddSheet)
     $('[data-food-recipes-back]').addEventListener('click', showOverview)
     $('[data-food-recipe-back]').addEventListener('click', openRecipes)
     $('[data-food-recipe-share]').addEventListener('click', openShareSheet)
