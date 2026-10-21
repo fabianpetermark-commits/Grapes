@@ -22,7 +22,7 @@ import { prepareYazioCsvImport, yazioImportEntries } from './yazio-import.js'
 import { getGrapesAccount, isGrapesDriveConnected, listGrapesProjects, loadGrapesProject, saveGrapesProject } from '../storage/grapes-drive.js'
 import { loadLocalProject, saveLocalProject } from '../storage/local-project-store.js'
 import { assertFoodDriveCreateSafe, chooseFoodDriveProject, foodDriveSignature, verifyFoodRemoteBeforeUpload } from './food-drive-safety.js'
-import { isGrapesAndroidApp, readAndroidHealthExport, readAndroidHealthExportSilent, readAndroidSamsungHealthExport, requestAndroidYazio, saveAndroidJsonBackup } from '../android-bridge.js'
+import { isGrapesAndroidApp, readAndroidHealthExport, readAndroidHealthExportSilent, readAndroidSamsungHealthExport, requestAndroidYazio, scanAndroidFoodBarcode, saveAndroidJsonBackup } from '../android-bridge.js'
 import { mobileIconSvg } from '../android-mobile-icons.js'
 
 const MODULE = 'Ételnapló'
@@ -1340,6 +1340,21 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
 
   async function requestBarcode(forRecipe = false) {
     const status = $(forRecipe ? '[data-food-recipe-ingredient-status]' : '[data-food-search-status]')
+    // Android TEST: CameraX + ML Kit full-screen scanner; never change food data
+    // until a verified barcode has been returned from the native activity.
+    if (isGrapesAndroidApp()) {
+      stopBarcodeCamera()
+      status.textContent = 'Élő vonalkódolvasó megnyitása…'
+      try {
+        const code = await scanAndroidFoodBarcode()
+        if (code) await addBarcode(code, forRecipe)
+        else status.textContent = ''
+      } catch (error) {
+        status.textContent = (error?.message || 'A natív olvasó nem indítható.') +
+          ' Próbáld a fotós olvasót vagy a kézi vonalkódbevitelt.'
+      }
+      return
+    }
     if (!navigator.mediaDevices?.getUserMedia || !('BarcodeDetector' in window)) {
       status.textContent = 'Az élő vonalkódolvasó nem támogatott ezen a készüléken. Add meg a kódot kézzel.'
       const code = window.prompt('Termékvonalkód (7–14 számjegy):')
