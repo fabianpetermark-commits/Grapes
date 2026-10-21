@@ -13,7 +13,7 @@ const translations = Object.freeze({
   avokado: ['Avocados, raw', 'Avokádó'], ananasz: ['Pineapple, raw', 'Ananász'],
   dinnye: ['Watermelon, raw', 'Dinnye'], krumpli: ['Potatoes, raw', 'Burgonya'],
   burgonya: ['Potatoes, raw', 'Burgonya'], edesburgonya: ['Sweet potatoes, raw', 'Édesburgonya'],
-  voroshagyma: ['Onions, raw', 'Vöröshagyma'], fokhagyma: ['Garlic, raw', 'Fokhagyma'],
+  hagyma: ['Onions, raw', 'Hagyma'], voroshagyma: ['Onions, raw', 'Vöröshagyma'], fokhagyma: ['Garlic, raw', 'Fokhagyma'],
   sargarepa: ['Carrots, raw', 'Sárgarépa'], paprika: ['Peppers, sweet, raw', 'Paprika'],
   paradicsom: ['Tomatoes, raw', 'Paradicsom'], uborka: ['Cucumber, with peel, raw', 'Uborka'],
   cukkini: ['Zucchini, raw', 'Cukkini'], brokkoli: ['Broccoli, raw', 'Brokkoli'],
