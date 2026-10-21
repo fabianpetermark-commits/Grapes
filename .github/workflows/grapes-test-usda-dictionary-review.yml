@@ -33,7 +33,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
           persist-credentials: false
       - name: Never revert the published TEST v15 source
         run: git merge-base --is-ancestor e968dc16dfb14fc4e1c7d9efba24b63795412746 HEAD
