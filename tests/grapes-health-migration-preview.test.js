@@ -53,3 +53,12 @@ test('equal bytes from distinct providers are not silently collapsed', () => {
   assert.equal(result.canImport, false)
   assert.equal(result.conflicts.length, 1)
 })
+
+test('preview preserves original Health Connect identity, time and source payload', () => {
+  const original = { externalKey: 'healthconnect:package:record-7',
+    sourceRecordId: 'record-7', measuredAt: '2026-10-20T12:30:00Z',
+    original: { packageName: 'com.synthetic.health', calories: null } }
+  const result = previewHealthMigration({ sources: [source([entry('record-7', original, 'health_record')])] })
+  assert.equal(result.canImport, true)
+  assert.deepEqual(result.plan[0].payload, original)
+})
