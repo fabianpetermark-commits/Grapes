@@ -1,0 +1,35 @@
+name: Health v16 Water claim protection (NO RELEASE)
+
+on:
+  pull_request:
+    branches:
+      - feature/grapes-test-health-v16-combined-20261021
+    paths:
+      - 'src/water-store.js'
+      - 'tests/water-store.test.js'
+      - '.github/workflows/grapes-v16-water-claim-regression.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Verify Water legacy profile claim and backup failure cases
+        run: node --test tests/water-store.test.js tests/water-backup.test.js
+      - name: Full regression suite
+        run: npm test
+      - name: Protect published TEST and PROD channels
+        run: |
+          test ! -e .github/workflows/grapes-test-v16-auto-publish.yml
+          echo 'No signed APK, no release, only synthetic Water tests.'
