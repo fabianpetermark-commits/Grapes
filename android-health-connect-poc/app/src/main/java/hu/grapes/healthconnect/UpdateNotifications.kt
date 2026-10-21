@@ -47,7 +47,10 @@ object UpdateNotifications {
         )
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Grapes frissítés érhető el")
+            .setContentTitle(
+                if (BuildConfig.BUILD_TYPE == "qa") "Grapes TEST frissítés érhető el"
+                else "Grapes frissítés érhető el"
+            )
             .setContentText("${release.versionName} letölthető. Koppints a frissítéshez.")
             .setStyle(NotificationCompat.BigTextStyle().bigText(
                 buildString {
