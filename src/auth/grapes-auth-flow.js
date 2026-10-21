@@ -102,8 +102,12 @@ export function createGrapesAuthFlow(client, { callbackUrl, recoveryUrl } = {}) 
       return { status: 'request_received' } // Non-enumerating feedback.
     },
     async currentUser() {
-      const data = check(await auth.getUser())
-      return data.user ? { id: data.user.id, email: data.user.email ?? null } : null
+      const result = await auth.getUser()
+      // The first visit normally has no session. This is not an auth failure.
+      // Do not turn genuine network/provider errors into a signed-out success.
+      if (result?.error?.name === 'AuthSessionMissingError') return null
+      const data = check(result)
+      return data.user?.id ? { id: data.user.id, email: data.user.email ?? null } : null
     },
     async signOut() {
       check(await auth.signOut({ scope: 'local' }))
