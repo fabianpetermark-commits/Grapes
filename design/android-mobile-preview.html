@@ -177,7 +177,7 @@
     .sheet-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .sheet-form label { display: grid; gap: 5px; color: var(--muted); font-size: 10px; }
     .sheet-form label:last-child { grid-column: 1 / -1; }
-    .fab { position: absolute; right: 18px; bottom: 92px; z-index: 8; display: grid; place-items: center; width: 58px; height: 58px; color: #031014; cursor: pointer; background: linear-gradient(135deg, #62eff8, #55a6ff); border: 0; border-radius: 20px; box-shadow: 0 15px 35px rgb(77 143 255 / 35%); font-size: 28px; }
+    .fab { position: absolute; right: 18px; bottom: 92px; z-index: 8; display: grid; place-items: center; width: 68px; height: 68px; color: #031014; cursor: pointer; background: linear-gradient(135deg, #62eff8, #55a6ff); border: 0; border-radius: 22px; box-shadow: 0 15px 35px rgb(77 143 255 / 35%); font-size: 33px; }
     .fab[hidden] { display: none; }
     .toast { position: absolute; right: 16px; bottom: 90px; left: 16px; z-index: 30; padding: 13px 15px; color: #cbd7e4; background: #17222e; border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 16px 40px rgb(0 0 0 / 45%); font-size: 12px; transform: translateY(20px); opacity: 0; pointer-events: none; transition: .2s ease; }
     .toast.is-visible { transform: none; opacity: 1; }
@@ -695,7 +695,7 @@
           </section>
           <section data-food-detail hidden>
             <div class="food-detail-head"><button type="button" data-food-back aria-label="Vissza">‹</button><div><h1 data-food-detail-title>Étkezés</h1><p data-food-detail-copy></p></div><button type="button" class="food-share" data-food-share aria-label="Étkezés megosztása">⌯</button></div>
-            <button class="food-detail-add" type="button" data-food-detail-add>＋ Étel hozzáadása</button>
+            
             <div data-food-entries></div>
           </section>
           <section data-food-recipes-view hidden>
