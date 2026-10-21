@@ -23,7 +23,7 @@ function fakeEl() {
   }
 }
 function rootFixture() {
-  const names = ['#grapes-login-form','#grapes-username','#grapes-password','#google-sign-in','#register','#forgot-password','#toggle-password','.submit-button','#grapes-feedback','#grapes-sign-out']
+  const names = ['#grapes-login-form','#grapes-username','#grapes-password','#google-sign-in','#register','#forgot-password','#toggle-password','.submit-button','#grapes-feedback','#grapes-sign-out','.separator','.footer-links']
   const elements = Object.fromEntries(names.map(n=>[n,fakeEl()]))
   return { root:{querySelector:s=>elements[s]},elements }
 }
