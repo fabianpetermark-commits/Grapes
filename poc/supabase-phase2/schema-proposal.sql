@@ -208,7 +208,7 @@ grant execute on function api.read_attempt(uuid) to authenticated;
 
 create or replace function grapes_private.create_profile_internal()
 returns text language plpgsql security definer set search_path = ''
-as $
+as $$
 declare v_user uuid := auth.uid(); v_id text;
 begin
   if v_user is null or coalesce(auth.jwt()->>'is_anonymous', 'false') = 'true' then
@@ -218,18 +218,18 @@ begin
   insert into grapes_private.profiles(user_id, profile_id) values (v_user, v_id);
   return v_id;
 end;
-$;
+$$;
 revoke all on function grapes_private.create_profile_internal() from public, anon;
 grant execute on function grapes_private.create_profile_internal() to authenticated;
 create or replace function api.create_profile()
 returns text language sql security invoker set search_path = ''
-as $ select grapes_private.create_profile_internal() $;
+as $$ select grapes_private.create_profile_internal() $$;
 revoke all on function api.create_profile() from public, anon;
 grant execute on function api.create_profile() to authenticated;
 
 create or replace function grapes_private.list_profiles_internal()
 returns jsonb language plpgsql security definer set search_path = ''
-as $
+as $$
 declare v_user uuid := auth.uid(); v_result jsonb;
 begin
   if v_user is null or coalesce(auth.jwt()->>'is_anonymous', 'false') = 'true' then
@@ -240,19 +240,19 @@ begin
     into v_result from grapes_private.profiles p where p.user_id = v_user;
   return v_result;
 end;
-$;
+$$;
 revoke all on function grapes_private.list_profiles_internal() from public, anon;
 grant execute on function grapes_private.list_profiles_internal() to authenticated;
 create or replace function api.list_profiles()
 returns jsonb language sql security invoker set search_path = ''
-as $ select grapes_private.list_profiles_internal() $;
+as $$ select grapes_private.list_profiles_internal() $$;
 revoke all on function api.list_profiles() from public, anon;
 grant execute on function api.list_profiles() to authenticated;
 
 create or replace function grapes_private.read_document_internal(
   p_profile_id text, p_kind text, p_record_id text
 ) returns jsonb language plpgsql security definer set search_path = ''
-as $
+as $$
 declare v_user uuid := auth.uid(); v_result jsonb;
 begin
   if v_user is null or coalesce(auth.jwt()->>'is_anonymous', 'false') = 'true' then
@@ -270,19 +270,19 @@ begin
       and d.kind = p_kind and d.record_id = p_record_id;
   return v_result;
 end;
-$;
+$$;
 revoke all on function grapes_private.read_document_internal(text,text,text) from public, anon;
 grant execute on function grapes_private.read_document_internal(text,text,text) to authenticated;
 create or replace function api.read_document(p_profile_id text, p_kind text, p_record_id text)
 returns jsonb language sql security invoker set search_path = ''
-as $ select grapes_private.read_document_internal($1,$2,$3) $;
+as $$ select grapes_private.read_document_internal($$1,$$2,$$3) $$;
 revoke all on function api.read_document(text,text,text) from public, anon;
 grant execute on function api.read_document(text,text,text) to authenticated;
 
 create or replace function grapes_private.list_documents_internal(
   p_profile_id text, p_kind text, p_after_record_id text default null, p_limit integer default 50
 ) returns jsonb language plpgsql security definer set search_path = ''
-as $
+as $$
 declare v_user uuid := auth.uid(); v_items jsonb; v_cursor text;
 begin
   if v_user is null or coalesce(auth.jwt()->>'is_anonymous', 'false') = 'true' then
@@ -303,20 +303,20 @@ begin
       order by record_id limit least(greatest(coalesce(p_limit, 50), 1), 100)) d;
   return jsonb_build_object('items', v_items, 'nextCursor', v_cursor);
 end;
-$;
+$$;
 revoke all on function grapes_private.list_documents_internal(text,text,text,integer) from public, anon;
 grant execute on function grapes_private.list_documents_internal(text,text,text,integer) to authenticated;
 create or replace function api.list_documents(
   p_profile_id text, p_kind text, p_after_record_id text default null, p_limit integer default 50
 ) returns jsonb language sql security invoker set search_path = ''
-as $ select grapes_private.list_documents_internal($1,$2,$3,$4) $;
+as $$ select grapes_private.list_documents_internal($$1,$$2,$$3,$$4) $$;
 revoke all on function api.list_documents(text,text,text,integer) from public, anon;
 grant execute on function api.list_documents(text,text,text,integer) to authenticated;
 
 create or replace function grapes_private.read_revision_internal(
   p_profile_id text, p_kind text, p_record_id text, p_revision bigint
 ) returns jsonb language plpgsql security definer set search_path = ''
-as $
+as $$
 declare v_user uuid := auth.uid(); v_result jsonb;
 begin
   if v_user is null or coalesce(auth.jwt()->>'is_anonymous', 'false') = 'true' then
@@ -333,13 +333,13 @@ begin
       and r.record_id = p_record_id and r.revision = p_revision;
   return v_result;
 end;
-$;
+$$;
 revoke all on function grapes_private.read_revision_internal(text,text,text,bigint) from public, anon;
 grant execute on function grapes_private.read_revision_internal(text,text,text,bigint) to authenticated;
 create or replace function api.read_revision(
   p_profile_id text, p_kind text, p_record_id text, p_revision bigint
 ) returns jsonb language sql security invoker set search_path = ''
-as $ select grapes_private.read_revision_internal($1,$2,$3,$4) $;
+as $$ select grapes_private.read_revision_internal($$1,$$2,$$3,$$4) $$;
 revoke all on function api.read_revision(text,text,text,bigint) from public, anon;
 grant execute on function api.read_revision(text,text,text,bigint) to authenticated;
 
@@ -347,7 +347,7 @@ create or replace function grapes_private.list_revisions_internal(
   p_profile_id text, p_kind text, p_record_id text,
   p_before_revision bigint default null, p_limit integer default 50
 ) returns jsonb language plpgsql security definer set search_path = ''
-as $
+as $$
 declare v_user uuid := auth.uid(); v_items jsonb; v_cursor bigint;
 begin
   if v_user is null or coalesce(auth.jwt()->>'is_anonymous', 'false') = 'true' then
@@ -369,14 +369,14 @@ begin
       order by revision desc limit least(greatest(coalesce(p_limit, 50), 1), 100)) r;
   return jsonb_build_object('items', v_items, 'nextBeforeRevision', v_cursor);
 end;
-$;
+$$;
 revoke all on function grapes_private.list_revisions_internal(text,text,text,bigint,integer) from public, anon;
 grant execute on function grapes_private.list_revisions_internal(text,text,text,bigint,integer) to authenticated;
 create or replace function api.list_revisions(
   p_profile_id text, p_kind text, p_record_id text,
   p_before_revision bigint default null, p_limit integer default 50
 ) returns jsonb language sql security invoker set search_path = ''
-as $ select grapes_private.list_revisions_internal($1,$2,$3,$4,$5) $;
+as $$ select grapes_private.list_revisions_internal($$1,$$2,$$3,$$4,$$5) $$;
 revoke all on function api.list_revisions(text,text,text,bigint,integer) from public, anon;
 grant execute on function api.list_revisions(text,text,text,bigint,integer) to authenticated;
 
