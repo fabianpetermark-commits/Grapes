@@ -40,3 +40,31 @@ jobs:
           done
           echo "Unchanged TEST v16 browser files: $passed PASS, $failed FAIL"
           test "$failed" -eq 0
+
+  finance-import-repeat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Repeat unchanged Finance import browser file
+        env:
+          PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH: /usr/bin/google-chrome
+        shell: bash
+        run: |
+          failed=0
+          for attempt in 1 2 3 4 5; do
+            echo "Finance import baseline attempt $attempt"
+            if node tests/finance-import.browser.mjs; then
+              echo "PASS $attempt"
+            else
+              echo "FAIL $attempt"
+              failed=$((failed + 1))
+            fi
+          done
+          echo "Finance import baseline failures: $failed"
+          test "$failed" -eq 0
