@@ -1,6 +1,8 @@
 // Isolated Phase 2 Health outbox. No application module imports this while the
 // TEST Health sync gate is off. A caller must first complete its local save.
 const databaseName = 'grapes-supabase-phase2-v1'
+const testProjectUrl = 'https://aighqtqjlzirlokxwupt.supabase.co'
+const healthGateEnabled = () => import.meta.env.VITE_GRAPES_TEST_HEALTH_SYNC_ENABLED === 'true'
 const storeName = 'operations'
 const kinds = new Set(['food', 'water', 'health', 'yazio', 'food_diary', 'food_custom',
   'food_recipe', 'food_recipe_ingredient', 'water_entry', 'yazio_import', 'nutrient_goal'])
@@ -48,6 +50,7 @@ function validate(input) {
   return candidateJson
 }
 export async function enqueueHealthOperation(input) {
+  if (!healthGateEnabled()) throw new Error('TEST Health sync is disabled')
   const operationId = input.operationId || crypto.randomUUID()
   const candidateJson = validate({ ...input, operationId })
   const db = await openOutbox()
@@ -97,7 +100,8 @@ async function verifiedOwner(client) {
   return data.user.id
 }
 export async function retryHealthOperations({ client, ownerId, profileId }) {
-  if (!client?.auth?.getUser || !client?.schema || await verifiedOwner(client) !== ownerId) {
+  if (!healthGateEnabled() || client?.supabaseUrl !== testProjectUrl ||
+      !client?.auth?.getUser || !client?.schema || await verifiedOwner(client) !== ownerId) {
     return { status: 'paused', attempted: 0 }
   }
   const operations = (await listHealthOperations(ownerId, profileId))
