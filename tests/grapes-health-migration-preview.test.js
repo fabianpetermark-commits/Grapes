@@ -45,3 +45,11 @@ test('existing target revision blocks initial import', () => {
   assert.equal(result.canImport, false)
   assert.equal(result.conflicts[0].targetRevision, 3)
 })
+
+test('equal bytes from distinct providers are not silently collapsed', () => {
+  const record = entry('same-id', { amount: 100 })
+  const result = previewHealthMigration({ sources: [source([record]),
+    { ...source([structuredClone(record)]), provider: 'indexeddb' }] })
+  assert.equal(result.canImport, false)
+  assert.equal(result.conflicts.length, 1)
+})
