@@ -35,6 +35,7 @@ try {
     const outcome = await retryHealthOperations({ client, ownerId, profileId: 'grapes:synthetic-a' })
     return { operationId, outcome, rows: await listHealthOperations(ownerId, 'grapes:synthetic-a') }
   }, owner)
+  assert.equal(first.outcome.status, 'pending')
   assert.equal(first.outcome.unknown, 1)
   assert.equal(first.rows[0].state, 'pending')
   assert.equal(first.rows[0].candidateJson, '{"id":"entry-a","value":7}')
@@ -65,6 +66,7 @@ try {
     const result = await retryHealthOperations({ client, ownerId, profileId: 'grapes:synthetic-a' })
     return { result, calls, rows: await listHealthOperations(ownerId, 'grapes:synthetic-a') }
   }, owner)
+  assert.equal(resumed.result.status, 'synced')
   assert.equal(resumed.result.committed, 1)
   assert.equal(resumed.calls[0].args.p_operation_id, first.operationId)
   assert.deepEqual(resumed.calls[0].args.p_candidate, { id: 'entry-a', value: 7 })
@@ -90,6 +92,7 @@ try {
     } catch { duplicateRejected = true }
     return { result, duplicateRejected, rows: await listHealthOperations(ownerId, 'grapes:synthetic-a') }
   }, owner)
+  assert.equal(conflict.result.status, 'conflict')
   assert.equal(conflict.result.conflicted, 1)
   assert.equal(conflict.duplicateRejected, true, 'Failed IndexedDB add must reject')
   assert.equal(conflict.rows.find(row => row.kind === 'water_entry').state, 'conflict')
