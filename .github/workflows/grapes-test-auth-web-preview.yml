@@ -16,10 +16,10 @@ jobs:
     timeout-minutes: 40
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }
+      url: ${{ steps.deployment.outputs.page_url }}
     env:
       VITE_GRAPES_TEST_SUPABASE_URL: https://aighqtqjlzirlokxwupt.supabase.co
-      VITE_GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY: ${{ vars.GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY }
+      VITE_GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY: ${{ vars.GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY }}
       VITE_GRAPES_TEST_AUTH_ENABLED: 'true'
       VITE_GRAPES_TEST_HEALTH_SYNC_ENABLED: 'false'
     steps:
@@ -51,8 +51,8 @@ jobs:
         working-directory: site-main
         env:
           VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
-          VITE_GOOGLE_PICKER_API_KEY: ${{ secrets.GOOGLE_PICKER_API_KEY }
-          VITE_GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }
+          VITE_GOOGLE_PICKER_API_KEY: ${{ secrets.GOOGLE_PICKER_API_KEY }}
+          VITE_GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
           VITE_GOOGLE_APP_ID: '991532871119'
           VITE_DEVELOPER_EMAIL: projectsoundmodel@gmail.com
           VITE_DEVELOPER_PIN: '2026'
