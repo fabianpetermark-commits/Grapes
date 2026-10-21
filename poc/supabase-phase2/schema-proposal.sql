@@ -21,7 +21,7 @@ create table grapes_private.profiles (
 create table grapes_private.documents (
   user_id uuid not null,
   profile_id text not null,
-  kind text not null check (kind in ('food', 'water', 'health', 'yazio', 'food_diary', 'food_custom', 'food_recipe', 'food_recipe_ingredient', 'water_entry', 'yazio_import', 'nutrient_goal')),
+  kind text not null check (kind in ('food', 'water', 'health', 'yazio', 'food_diary', 'food_custom', 'food_recipe', 'food_recipe_ingredient', 'water_entry', 'yazio_import', 'nutrient_goal', 'health_record')),
   record_id text not null check (length(record_id) between 1 and 200),
   schema_version integer not null check (schema_version > 0),
   revision bigint not null check (revision > 0),
@@ -107,7 +107,7 @@ begin
   if v_user is null or coalesce(auth.jwt()->>'is_anonymous', 'false') = 'true' then
     raise exception 'authentication required' using errcode = '28000';
   end if;
-  if p_kind not in ('food', 'water', 'health', 'yazio', 'food_diary', 'food_custom', 'food_recipe', 'food_recipe_ingredient', 'water_entry', 'yazio_import', 'nutrient_goal') or
+  if p_kind not in ('food', 'water', 'health', 'yazio', 'food_diary', 'food_custom', 'food_recipe', 'food_recipe_ingredient', 'water_entry', 'yazio_import', 'nutrient_goal', 'health_record') or
      length(p_profile_id) not between 1 and 200 or
      length(p_record_id) not between 1 and 200 or
      p_operation_id is null or p_expected_revision is null or p_expected_revision < 0 or
