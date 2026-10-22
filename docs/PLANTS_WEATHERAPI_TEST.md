@@ -46,3 +46,17 @@ A `Home → Növények` felület és a WeatherAPI HTTP-proxy összekapcsolása k
 | 2026-10-24 | 6,8 °C | 11,2 °C | 1,43 mm |
 
 Ez a CI-környezetben hitelesített, éles időjárási API-val végzett TEST-lekérdezés; **nem** élő Grapes APK-integráció és **nem** gondozási javaslat. A GitHub Action sem a WeatherAPI kulcsot, sem az OIDC tokent nem írja ki.
+
+## Publikus, kvótakímélő TEST cache (2026-10-22)
+
+A `/cached-forecast` **csak olvasott, előkészített időjárási adatot** ad vissza; nem hívja a WeatherAPI-t és nem teszi közzé a szolgáltatói kulcsot. A hivatalos `/forecast` továbbra is felhasználói Supabase Auth hitelesítéshez kötött, a `/ci-forecast` GitHub Actions OIDC-ellenőrzést végez. 
+
+- **Elkülönített TEST adatbázistábla:** `public.grapes_weather_public_cache`, RLS engedélyezve, közvetlen `anon`/`authenticated` olvasás visszavonva; kiszolgálás kizárólag Edge Function által, szerveroldali jogosultsággal.
+- A cache-t a GitHub-szignatúrával hitelesített, már bevált `weatherapi-live-verify.yml` sikeres futása tölti fel a **megtisztított** szolgáltatói válasszal.
+- Nyilvános olvasási teszt: [GitHub Actions #39856254269](https://github.com/fabianpetermark-commits/Grapes/actions/runs/39856254269) — a cache válaszolt, 3 napra tartalmazott adatot, a hozzáférés nélküli privát `/forecast` 401.
+- **Tesztpélda helyszíne: Szentendre, Magyarország**, nem kérünk GPS-t, így a felhasználó helyadata nem kerül a WeatherAPI-hoz.
+- **NEM automatikusan frissülő végleges rendszer.** A GitHub Actions push/hitelesített újrafuttatás frissíti; egy időzített, kvótavédett szerveroldali adatfrissítés külön feladat a későbbi TEST/PROD integrációhoz.
+- A mobil UI a `src/outdoor/plants-weather.js` komponensben erről a csak olvasható végpontról dolgozik, és csupán **Grapes TEST** buildben engedi a lekérdezést. A PROD buildnek másik, kifejezetten éles környezetet kell használnia, ami jelenleg nincs kialakítva.
+- A frissítési időbélyeg és a 6 óránál régebbi adat jelzése kötelező; nem konvertáljuk automatikusan öntözési vagy fagyvédelmi utasítássá.
+
+**Kiadás:** sem API-kulcs, sem felhasználói adatok, sem APK nem került az éles rendszerbe. A PR draft/NO-GO.
