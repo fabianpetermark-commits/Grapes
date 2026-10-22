@@ -71,7 +71,7 @@ jobs:
           grep -Fq 'GRAPES_TEST_AUTH_ENABLED", "false"' android-health-connect-poc/app/build.gradle.kts
           grep -Fq 'id="grapes-qa-startup"' login-auth-test.html
           grep -Fq 'data-grapes-qa-starting' src/styles/screens/login-auth-test.css
-          grep -Fq 'data-mobile-icon="exit"' design/android-mobile-preview.html
+          grep -Fq 'data-test-exit-icon="exit"' design/android-mobile-preview.html
           grep -Fq '<strong>Kijelentkezés</strong>' design/android-mobile-preview.html
           grep -Fq 'notifyVerified(data.user)' src/login-auth-test.js
           test -s android-health-connect-poc/app/src/qa/AndroidManifest.xml
