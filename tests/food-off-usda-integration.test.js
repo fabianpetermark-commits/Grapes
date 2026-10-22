@@ -47,3 +47,17 @@ test('Android natív OFF 404 csak ismeretlen vonalkód; nem adatbázis-kiesés',
   assert.match(native, /JSONObject\(\)\.put\("status", 0\)\.put\("code", missingBarcode\)/)
   assert.match(native, /429 -> "A szolgáltató keresési korlátja betelt\."/)
 })
+
+test('Natív vonalkódolvasó: csak a két felesleges felirat tűnik el, hibák megmaradnak', () => {
+  const scanner = readFileSync(new URL('../android-health-connect-poc/app/src/main/java/hu/grapes/healthconnect/NativeBarcodeScannerActivity.kt', import.meta.url), 'utf8')
+  assert.doesNotMatch(scanner, /Vonalkód keresése… · két egyező felismerés szükséges/)
+  assert.doesNotMatch(scanner, /A kamera csak a vonalkódot olvassa/)
+  assert.doesNotMatch(scanner, /Kamera indítása…/)
+  assert.match(scanner, /visibility = View\.GONE/)
+  assert.match(scanner, /private fun showScannerProblem\(message: String\)/)
+  assert.match(scanner, /Nincs kameraengedély/)
+  assert.match(scanner, /Érvénytelen EAN\/UPC vonalkód/)
+  assert.match(scanner, /Ezen a kamerán nincs elérhető vaku/)
+  assert.match(scanner, /ic_grapes_flashlight/)
+  assert.match(scanner, /Gravity\.END or Gravity\.BOTTOM/)
+})
