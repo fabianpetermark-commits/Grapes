@@ -4,6 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Grapes Android UI előnézet</title>
+  <script>
+    // No legacy Google Drive welcome flash after native QA verified the
+    // separate Grapes TEST account. PROD and ordinary web preview unchanged.
+    // The native TestAuthGate is the actual security check, not this flag.
+    if ('%VITE_GRAPES_TEST_AUTH_ENABLED%' === 'true' &&
+        location.href === 'https://appassets.androidplatform.net/assets/design/android-mobile-preview.html') {
+      document.documentElement.setAttribute('data-grapes-qa-native-app', 'true')
+    }
+  </script>
   <style>
     :root {
       color-scheme: dark;
@@ -40,6 +49,8 @@
     .screen { position: absolute; inset: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); padding-top: 44px; background: radial-gradient(circle at 12% 0, rgb(59 220 242 / 7%), transparent 30%), var(--bg); }
     .screen[hidden] { display: none; }
     .login { display: grid; align-content: center; padding: 72px 22px 28px; overflow-y: auto; text-align: center; }
+    /* Suppress only the stale Drive welcome frame during verified QA startup. */
+    html[data-grapes-qa-native-app="true"] #login { visibility: hidden; }
     .login[hidden] { display: none; }
     .logo { width: 76px; height: 76px; padding: 7px; margin: 0 auto 22px; background: radial-gradient(circle, rgb(59 220 242 / 15%), transparent 68%); filter: drop-shadow(0 12px 22px rgb(0 194 230 / 20%)); }
     .login h2 { margin: 0; font-size: 31px; line-height: 1.08; letter-spacing: -.04em; }
@@ -117,6 +128,7 @@
     .sync-provider__status { min-height: 15px; margin-top: 5px; color: var(--muted); font-size: 9px; line-height: 1.35; }
     .sync-provider-status { min-height: 18px; margin: 7px 4px 0; color: var(--muted); font-size: 11px; }
     .setting { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; gap: 12px; align-items: center; min-height: 66px; padding: 10px 6px; border-bottom: 1px solid var(--line); }
+    [data-grapes-test-logout][hidden] { display: none !important; }
     button.setting { width: 100%; color: inherit; text-align: left; background: transparent; border: 0; border-bottom: 1px solid var(--line); cursor: pointer; }
     .setting > .setting__icon { display: grid; place-items: center; width: 42px; height: 42px; margin-top: 0; color: var(--accent); background: var(--raised); border-radius: 13px; }
     .setting strong, .setting span { display: block; }
@@ -667,12 +679,14 @@
         </div>
 
         <div class="content" data-page="more" hidden>
-          <p class="eyebrow">Beállítások</p><h1>Továbbiak</h1><p class="lead">Fiók, nyelv és alkalmazásbeállítások.</p>
-<div class="settings-links" aria-label="További oldalak"><button class="settings-link" type="button" data-nav="projects"><span class="settings-link__icon" data-module-icon="projects"></span><span><strong>Projektek</strong><small>Helyi és Drive munkák</small></span><span aria-hidden="true">›</span></button><button class="settings-link" type="button" data-nav="sync"><span class="settings-link__icon" data-module-icon="sync"></span><span><strong>Szinkron</strong><small>Adatok és fiók</small></span><span aria-hidden="true">›</span></button></div>
+          <p class="eyebrow">Fiók és alkalmazás</p><h1>Beállítások</h1><p class="lead">Fiók, nyelv és alkalmazásbeállítások.</p>
+<div class="settings-links" aria-label="Kapcsolódó oldalak"><button class="settings-link" type="button" data-nav="projects"><span class="settings-link__icon" data-module-icon="projects"></span><span><strong>Projektek</strong><small>Helyi és Drive munkák</small></span><span aria-hidden="true">›</span></button><button class="settings-link" type="button" data-nav="sync"><span class="settings-link__icon" data-module-icon="sync"></span><span><strong>Szinkron</strong><small>Adatok és fiók</small></span><span aria-hidden="true">›</span></button></div>
           <button class="setting" type="button" data-account-login><span class="setting__icon" data-mobile-icon="google"></span><span><strong data-account-action>Google-fiók csatlakoztatása</strong><span data-account-mode>Helyi mód</span></span><span>›</span></button>
           <div class="setting"><div class="setting__icon" data-mobile-icon="language"></div><div><strong>Nyelv</strong><span>Magyar</span></div><span>›</span></div>
           <div class="setting"><div class="setting__icon" data-mobile-icon="appearance"></div><div><strong>Megjelenés</strong><span>Rendszerbeállítás</span></div><span>›</span></div>
           <div class="setting"><div class="setting__icon" data-mobile-icon="info"></div><div><strong>A Grapes névjegye</strong><span>Android mobilalkalmazás</span></div><span>›</span></div>
+          <!-- TEST Supabase sign-out only: never disconnect the separate Drive account. -->
+          <button class="setting" type="button" data-grapes-test-logout hidden aria-label="Kijelentkezés"><span class="setting__icon" data-test-exit-icon="exit" aria-hidden="true"></span><span><strong>Kijelentkezés</strong></span><span aria-hidden="true">›</span></button>
         </div>
 
         <div class="content module-preview" data-page="food" hidden>
@@ -987,7 +1001,7 @@
     const toast = document.querySelector('.toast')
     const sheet = document.querySelector('.bottom-sheet')
     const sheetBackdrop = document.querySelector('.sheet-backdrop')
-    const labels = { home: ['Grapes', 'Helyi mód'], projects: ['Projektek', 'Helyi és Drive'], sync: ['Szinkron', 'Adatok és fiók'], more: ['Továbbiak', 'Beállítások'], food: ['Ételnapló', 'Mai áttekintés'], water: ['Víz', 'Napi folyadékbevitel'], ebook: ['E-book', 'Könyvtár'], reader: ['A csend térképe', '3. fejezet'], transfer: ['E-book átvitel', 'Kindle Paperwhite'] }
+    const labels = { home: ['Grapes', 'Helyi mód'], projects: ['Projektek', 'Helyi és Drive'], sync: ['Szinkron', 'Adatok és fiók'], more: ['Beállítások', 'Fiók és alkalmazás'], food: ['Ételnapló', 'Mai áttekintés'], water: ['Víz', 'Napi folyadékbevitel'], ebook: ['E-book', 'Könyvtár'], reader: ['A csend térképe', '3. fejezet'], transfer: ['E-book átvitel', 'Kindle Paperwhite'] }
     let waterTotal = 1250
 
     function showToast(message = 'Ez egy látványterv — a művelet még nem ment adatot.') {

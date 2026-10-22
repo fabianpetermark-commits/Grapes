@@ -66,6 +66,7 @@ export async function lookupOpenFoodFactsProduct(barcode, { signal, baseUrl = im
     payload = await requestAndroidFoodApi('offBarcode', code)
   } else {
     const response = await fetchImpl(`${endpoint}/api/v2/product/${encodeURIComponent(code)}.json`, { signal })
+    if (response.status === 404) throw new Error('Nem található termék ezzel a vonalkóddal.')
     if (!response.ok) throw new Error(`A termékadatbázis nem érhető el (${response.status}).`)
     payload = await response.json()
   }

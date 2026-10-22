@@ -29,6 +29,7 @@ test('az Open Food Facts választ Food-étellé alakítja és a magyar nevet ré
 
 test('a termék API hibáit és az érvénytelen vonalkódot érthetően jelzi', async () => {
   await assert.rejects(() => lookupOpenFoodFactsProduct('12abc'), /7–14 számjegyből/)
+  await assert.rejects(() => lookupOpenFoodFactsProduct('5991234567890', { fetchImpl: async () => response({}, { ok: false, status: 404 }) }), /Nem található termék ezzel a vonalkóddal/)
   await assert.rejects(() => lookupOpenFoodFactsProduct('5991234567890', { fetchImpl: async () => response({}, { ok: false, status: 503 }) }), /503/)
   await assert.rejects(() => lookupOpenFoodFactsProduct('5991234567890', { fetchImpl: async () => response({ status: 0 }) }), /Nem található termék/)
   await assert.rejects(() => lookupOpenFoodFactsProduct('5991234567890', { fetchImpl: async () => response({ status: 1, product: { nutriments: {} } }) }), /használható név/)

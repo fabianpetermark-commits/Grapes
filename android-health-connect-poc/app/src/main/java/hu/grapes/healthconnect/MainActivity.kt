@@ -43,6 +43,10 @@ import java.time.LocalDate
 
 class MainActivity : ComponentActivity() {
     private val healthConnect by lazy { HealthConnectBridge(this) }
+    private val testAuth by lazy { TestAuthCallback(this) }
+    private val isTestQa get() = BuildConfig.APPLICATION_ID == "hu.grapes.healthconnect.test" && BuildConfig.GRAPES_TEST_AUTH_ENABLED
+    private val testGate by lazy { TestAuthGate(isTestQa) }
+    private val testGatePreferences by lazy { getSharedPreferences("grapes-test-auth-gate-v1", MODE_PRIVATE) }
     private val yazioApi by lazy { YazioApi(this) }
     private val foodApi by lazy { FoodApiBridge() }
     private val samsungWaterBridge by lazy { SamsungWaterBridgeFactory.create(this) }
@@ -52,6 +56,7 @@ class MainActivity : ComponentActivity() {
     private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
     private var pendingCapturedPhoto: Uri? = null
     private var pendingCameraPermission: PermissionRequest? = null
+    private var pendingBarcodeRequestId: String? = null
     private var pendingHealthRequest: PendingHealthRequest? = null
     private var pendingDriveRequestId: String? = null
     private var pendingBackupPickerRequestId: String? = null
@@ -71,6 +76,23 @@ class MainActivity : ComponentActivity() {
         val request = pendingCameraPermission
         pendingCameraPermission = null
         if (granted) request?.grant(arrayOf(PermissionRequest.RESOURCE_VIDEO_CAPTURE)) else request?.deny()
+    }
+
+    // Separate native screen; only the scanned digits return to the trusted WebView.
+    private val barcodeScannerLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val requestId = pendingBarcodeRequestId ?: return@registerForActivityResult
+        pendingBarcodeRequestId = null
+        if (result.resultCode == RESULT_OK) {
+            val barcode = result.data?.getStringExtra(NativeBarcodeScannerActivity.EXTRA_CODE)
+            if (barcode.isNullOrBlank()) sendError(requestId, "Nincs felismert vonalkód.")
+            else sendResult(requestId, barcode)
+        } else {
+            val error = result.data?.getStringExtra(NativeBarcodeScannerActivity.EXTRA_ERROR)
+            if (error.isNullOrBlank()) sendResult(requestId, "") // User dismissed scanner.
+            else sendError(requestId, error)
+        }
     }
 
     private val backupFilePicker = registerForActivityResult(
@@ -155,10 +177,16 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         configureWebView()
+        // TEST: only the login page is shown until this Activity receives a
+        // verified session acknowledgement from the isolated Auth origin.
+        // The previous TEST navigation strip is intentionally removed.
         setContentView(webView)
         UpdateNotifications.createChannel(this)
         UpdateCheckWorker.schedule(this)
-        webView.loadUrl(APP_URL)
+        val authReturn = isTestQa && testAuth.accept(intent?.data)
+        if (authReturn) setIntent(Intent(intent).setData(null))
+        if (authReturn) testGate.lock()
+        webView.loadUrl(testGate.initialUrl(APP_URL, TEST_AUTH_URL))
         // A foreground launch must always see a release published since the previous
         // background check. The six-hour throttle only belongs to WorkManager.
         checkForAppUpdate(force = true)
@@ -169,7 +197,10 @@ class MainActivity : ComponentActivity() {
                     "(() => typeof window.grapesHandleAndroidBack === 'function' && window.grapesHandleAndroidBack())()"
                 ) { handled ->
                     if (handled == "true") return@evaluateJavascript
-                    if (webView.canGoBack()) webView.goBack() else finish()
+                    // Never navigate backwards from QA login to an app page.
+                    if (isTestQa && !testGate.canDisplayApp()) finish()
+                    else if (isTestQa && webView.url == APP_URL) finish()
+                    else if (webView.canGoBack()) webView.goBack() else finish()
                 }
             }
         })
@@ -177,6 +208,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        if (isTestQa && testAuth.accept(intent.data)) {
+            testGate.lock()
+            setIntent(Intent(intent).setData(null))
+            webView.loadUrl(TEST_AUTH_URL)
+            return
+        }
         setIntent(intent)
         if (intent.getBooleanExtra(UpdateNotifications.EXTRA_OPEN_UPDATE, false)) {
             checkForAppUpdate(force = true)
@@ -236,6 +273,10 @@ class MainActivity : ComponentActivity() {
         val assetLoader = WebViewAssetLoader.Builder()
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
             .build()
+        val authAssetLoader = WebViewAssetLoader.Builder()
+            .setDomain(TEST_AUTH_HOST)
+            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
+            .build()
         webView = WebView(this).apply {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
@@ -244,17 +285,28 @@ class MainActivity : ComponentActivity() {
             WebViewCompat.addWebMessageListener(
                 this,
                 "GrapesAndroid",
-                setOf(APP_ORIGIN)
+                if (isTestQa) setOf(APP_ORIGIN, TEST_AUTH_ORIGIN) else setOf(APP_ORIGIN)
             ) { _, message, _, isMainFrame, _ ->
                 if (!isMainFrame) return@addWebMessageListener
                 handleBridgeMessage(message.data ?: return@addWebMessageListener)
             }
             webViewClient = object : WebViewClient() {
                 override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest) =
-                    assetLoader.shouldInterceptRequest(request.url)
+                    if (isTestQa && request.url.host == TEST_AUTH_HOST)
+                        authAssetLoader.shouldInterceptRequest(request.url)
+                    else assetLoader.shouldInterceptRequest(request.url)
 
                 override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-                    if (request.url.host == APP_HOST) return false
+                    if (request.url.scheme == "https" && request.url.host == APP_HOST) {
+                        if (isTestQa && !testGate.canDisplayApp()) {
+                            view.loadUrl(TEST_AUTH_URL)
+                            return true
+                        }
+                        return false
+                    }
+                    if (isTestQa && request.url.scheme == "https" &&
+                        request.url.host == TEST_AUTH_HOST &&
+                        request.url.path == "/assets/login-auth-test.html") return false
                     runCatching { startActivity(Intent(Intent.ACTION_VIEW, request.url)) }
                         .onFailure {
                             Toast.makeText(
@@ -307,7 +359,68 @@ class MainActivity : ComponentActivity() {
         val message = runCatching { JSONObject(rawMessage) }.getOrElse { return }
         val requestId = message.optString("requestId")
         if (requestId.isBlank()) return
+        if (isTrustedTestAuthPage() && message.optString("method") !in
+            setOf(
+                "beginTestAuthOAuth", "takeTestAuthCallback", "cancelTestAuthOAuth",
+                "takeTestAuthLaunchMode", "finishTestAuthSignOut", "completeTestAuthLogin"
+            )) {
+            return sendError(requestId, "Nem engedélyezett TEST Auth-művelet.")
+        }
         when (message.optString("method")) {
+            "scanFoodBarcode" -> {
+                if (pendingBarcodeRequestId != null) {
+                    sendError(requestId, "Már nyitva van a vonalkódolvasó.")
+                } else {
+                    pendingBarcodeRequestId = requestId
+                    runCatching {
+                        barcodeScannerLauncher.launch(
+                            Intent(this, NativeBarcodeScannerActivity::class.java)
+                        )
+                    }.onFailure {
+                        pendingBarcodeRequestId = null
+                        sendError(requestId, it.message ?: "A kamera nem indítható.")
+                    }
+                }
+            }
+            "beginTestAuthOAuth" -> beginTestAuthOAuth(message, requestId)
+            "takeTestAuthLaunchMode" -> {
+                if (!isTrustedTestAuthPage()) sendError(requestId, "A TEST Auth oldal nem aktív.")
+                else sendResult(requestId, JSONObject().apply {
+                    put("logout", testGatePreferences.getBoolean("logout-pending", false))
+                }.toString())
+            }
+            "finishTestAuthSignOut" -> {
+                if (!isTrustedTestAuthPage()) sendError(requestId, "A TEST Auth oldal nem aktív.")
+                else if (!testGatePreferences.edit().remove("logout-pending").commit())
+                    sendError(requestId, "A kijelentkezés állapota nem menthető.")
+                else { testGate.lock(); sendResult(requestId, "{}") }
+            }
+            "completeTestAuthLogin" -> {
+                if (testGatePreferences.getBoolean("logout-pending", false) ||
+                    !testGate.allowApp(isTrustedTestAuthPage())) {
+                    sendError(requestId, "A TEST-fiók nincs hitelesítve.")
+                } else webView.loadUrl(APP_URL)
+            }
+            "getTestAuthEnabled" -> sendResult(
+                requestId, (isTestQa && isTrustedTestAppPage()).toString()
+            )
+            "openTestAuthSignOut" -> {
+                if (!testGate.startLogout(isTrustedTestAppPage())) {
+                    sendError(requestId, "A Grapes TEST-fiók nem aktív.")
+                } else if (!testGatePreferences.edit().putBoolean("logout-pending", true).commit()) {
+                    sendError(requestId, "A kijelentkezés nem készíthető elő.")
+                } else {
+                    webView.loadUrl(TEST_AUTH_URL)
+                }
+            }
+            "takeTestAuthCallback" -> {
+                if (!isTrustedTestAuthPage()) sendError(requestId, "A TEST Auth oldal nem aktív.")
+                else sendResult(requestId, testAuth.consume().toString())
+            }
+            "cancelTestAuthOAuth" -> {
+                if (!isTrustedTestAuthPage()) sendError(requestId, "A TEST Auth oldal nem aktív.")
+                else { testAuth.cancel(); sendResult(requestId, "{}") }
+            }
             "beginFoodBackupExport" -> beginFoodBackupExport(message, requestId)
             "appendFoodBackupExport" -> appendFoodBackupExport(message, requestId)
             "finishFoodBackupExport" -> finishFoodBackupExport(message, requestId)
@@ -374,6 +487,25 @@ class MainActivity : ComponentActivity() {
             }
             else -> sendError(requestId, "Ismeretlen Android-művelet.")
         }
+    }
+
+    private fun isTrustedTestAuthPage(): Boolean = isTestQa && webView.url == TEST_AUTH_URL
+
+    private fun isTrustedTestAppPage(): Boolean = isTestQa && webView.url == APP_URL
+
+    private fun beginTestAuthOAuth(message: JSONObject, requestId: String) {
+        if (!isTrustedTestAuthPage()) return sendError(requestId, "A TEST Auth oldal nem aktív.")
+        val args = message.optJSONArray("args") ?: return sendError(requestId, "Érvénytelen Auth-kérés.")
+        val authorizeUrl = args.optString(0)
+        val state = args.optString(1)
+        if (!testAuth.begin(authorizeUrl, state)) return sendError(requestId, "Érvénytelen TEST OAuth-cím.")
+        runCatching {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(authorizeUrl)).addCategory(Intent.CATEGORY_BROWSABLE))
+        }.onSuccess { sendResult(requestId, "{}") }
+            .onFailure {
+                testAuth.cancel()
+                sendError(requestId, "A rendszerböngésző nem nyitható meg.")
+            }
     }
 
     private fun beginFoodBackupExport(message: JSONObject, requestId: String) {
@@ -611,6 +743,9 @@ class MainActivity : ComponentActivity() {
         private const val APP_HOST = "appassets.androidplatform.net"
         private const val APP_ORIGIN = "https://$APP_HOST"
         private const val APP_URL = "https://$APP_HOST/assets/design/android-mobile-preview.html"
+        private const val TEST_AUTH_HOST = "grapes-test-auth.invalid"
+        private const val TEST_AUTH_ORIGIN = "https://$TEST_AUTH_HOST"
+        private const val TEST_AUTH_URL = "$TEST_AUTH_ORIGIN/assets/login-auth-test.html"
         private const val DRIVE_FILE_SCOPE = "https://www.googleapis.com/auth/drive.file"
         private const val DRIVE_READ_SCOPE = "https://www.googleapis.com/auth/drive.readonly"
         private const val NOTIFICATION_PREFERENCES = "grapes-notifications"

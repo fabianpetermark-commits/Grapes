@@ -14,7 +14,7 @@ import { createYazioApiPanel } from './food/yazio-api-panel.js'
 import { registerFoodSharing, sendMealShare, sendRecipeShare } from './food/food-sharing-client.js'
 import { hydrateMobileIcons, mobileIconSvg } from './android-mobile-icons.js'
 import { createHomeMobile } from './home/home-mobile.js'
-import { getAndroidAppUpdate, installAndroidAppUpdate, isGrapesAndroidApp, openAndroidHealthConnectSettings, saveAndroidJsonBackup } from './android-bridge.js'
+import { getAndroidAppUpdate, getAndroidTestAuthEnabled, requestAndroidTestAccountSignOut, installAndroidAppUpdate, isGrapesAndroidApp, openAndroidHealthConnectSettings, saveAndroidJsonBackup } from './android-bridge.js'
 import { waterBackupToJson, waterBackupFromJson, readWaterStoreStrict, waterBackupSummary } from './water/water-backup.js'
 import {
   isMobileShareableBook,
@@ -67,7 +67,7 @@ document.addEventListener('grapes:food-subtitle', event => {
 
 const labels = {
   home: ['Grapes', 'Mobil munkaterület'], projects: ['Projektek', 'Helyi és Drive'],
-  sync: ['Szinkron', 'Adatok és fiók'], more: ['Továbbiak', 'Beállítások'],
+  sync: ['Szinkron', 'Adatok és fiók'], more: ['Beállítások', 'Fiók és alkalmazás'],
   food: ['Ételnapló', 'Mai áttekintés'], water: ['Víz', 'Napi folyadékbevitel'],
   household: ['Home / Háztartás', 'Ezen az eszközön tárolva'],
   'hub-home': ['Home', 'Háztartás'],
@@ -667,6 +667,9 @@ function renderAccount() {
 }
 
 function showLogin(message = '') {
+  // This screen is still needed if the user explicitly wants to connect
+  // Google Drive. The startup-only QA concealment must not hide it forever.
+  document.documentElement.removeAttribute('data-grapes-qa-native-app')
   app.hidden = true
   login.hidden = false
   const status = $('[data-login-status]')
@@ -1020,6 +1023,32 @@ $('[data-local]').addEventListener('click', () => { setLocalMode(true); showApp(
 $('[data-login]').addEventListener('click', connectDrive)
 $('[data-connect-drive]').addEventListener('click', connectDrive)
 $('[data-account-login]').addEventListener('click', openAccountLogin)
+// This is a different account from the Google Drive/E-book connection above.
+// Only the QA native host reveals the setting after confirming TEST Auth is ON.
+const grapesTestLogout = $('[data-grapes-test-logout]')
+if (grapesTestLogout) {
+  grapesTestLogout.addEventListener('click', () => {
+    grapesTestLogout.disabled = true
+    try {
+      requestAndroidTestAccountSignOut()
+    } catch {
+      grapesTestLogout.disabled = false
+      showToast('A Grapes TEST-kijelentkezés nem indítható.')
+    }
+  })
+  if (isGrapesAndroidApp()) {
+    getAndroidTestAuthEnabled().then(enabled => {
+      if (enabled) {
+        // Only hydrate the QA-only SVG when the native host verified TEST Auth.
+        // In PROD and web preview the hidden row must not affect icon-count
+        // checks or render an unused "exit" graphic.
+        const icon = grapesTestLogout.querySelector('[data-test-exit-icon]')
+        if (icon) icon.innerHTML = mobileIconSvg('exit')
+      }
+      grapesTestLogout.hidden = !enabled
+    }).catch(() => { grapesTestLogout.hidden = true })
+  }
+}
 $('[data-notifications]').addEventListener('click', openUpdateInbox)
 $('[data-food-share-open]').addEventListener('click', async () => {
   closeSheet()
@@ -1271,4 +1300,11 @@ window.grapesHandleAndroidBack = () => {
 }
 renderWater()
 if (isGrapesDriveConnected()) registerFoodSharing().catch(() => {})
-if (isGrapesDriveConnected() || localMode()) showApp()
+// A verified Grapes TEST account is the main-app entry gate. Do not route
+// such users through the old, unrelated Google Drive welcome screen first.
+// This is QA-only and does NOT change the Drive account or localMode flag.
+const qaNativeAuthenticated =
+  import.meta.env?.VITE_GRAPES_TEST_AUTH_ENABLED === 'true' &&
+  globalThis.location?.href === 'https://appassets.androidplatform.net/assets/design/android-mobile-preview.html' &&
+  isGrapesAndroidApp()
+if (isGrapesDriveConnected() || localMode() || qaNativeAuthenticated) showApp()

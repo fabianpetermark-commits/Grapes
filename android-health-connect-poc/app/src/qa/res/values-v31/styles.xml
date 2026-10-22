@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+ must still show the OS splash, but not a duplicate Grapes logo. -->
+    <style name="GrapesQaLaunchTheme" parent="AppTheme">
+        <item name="android:windowBackground">#05080C</item>
+        <item name="android:windowSplashScreenBackground">#05080C</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/grapes_qa_transparent_splash</item>
+    </style>
+</resources>
