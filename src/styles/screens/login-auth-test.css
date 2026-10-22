@@ -7,3 +7,36 @@
 
 /* Author-level display rules otherwise override the UA hidden attribute. */
 .login-page [hidden] { display: none !important; }
+
+/* QA-only pre-paint cover: the real login must never flash during the
+   existing Supabase session verification. No token or login state is read
+   from markup. The normal web preview and PROD never get this attribute. */
+.grapes-qa-startup { display: none; }
+html[data-grapes-qa-starting="true"] .login-page { visibility: hidden; }
+html[data-grapes-qa-starting="true"] .grapes-qa-startup {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: 28px;
+  color: #f2f7fb;
+  text-align: center;
+  background: #05080c;
+}
+.grapes-qa-startup__mark {
+  display: grid;
+  place-items: center;
+  width: 86px;
+  height: 86px;
+  margin-bottom: 18px;
+  background: #0c1e26;
+  border: 1px solid #204956;
+  border-radius: 22px;
+}
+.grapes-qa-startup__mark svg { width: 54px; height: 54px; }
+.grapes-qa-startup strong { font-size: 29px; letter-spacing: -.035em; }
+.grapes-qa-startup p { margin: 10px 0 0; color: #94a5b8; font-size: 13px; }
