@@ -3,6 +3,7 @@ package hu.grapes.healthconnect
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.AlertDialog
+import android.app.KeyguardManager
 import android.content.Intent
 import android.provider.MediaStore
 import androidx.core.content.FileProvider
@@ -18,6 +19,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
+import android.widget.CheckBox
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.IntentSenderRequest
@@ -47,6 +49,7 @@ class MainActivity : ComponentActivity() {
     private val isProdAuth get() = BuildConfig.APPLICATION_ID == "hu.grapes.healthconnect" && BuildConfig.GRAPES_PROD_AUTH_ENABLED
     private val prodGatePreferences by lazy { getSharedPreferences("grapes-prod-auth-gate-v1", MODE_PRIVATE) }
     private val prodGate by lazy { ProdAuthGate(isProdAuth, prodGatePreferences) }
+    private var pendingProdOwnerRequest: Pair<String, String>? = null
     private val yazioApi by lazy { YazioApi(this) }
     private val foodApi by lazy { FoodApiBridge() }
     private val samsungWaterBridge by lazy { SamsungWaterBridgeFactory.create(this) }
@@ -154,6 +157,30 @@ class MainActivity : ComponentActivity() {
         runCatching { googleAuthorization.getAuthorizationResultFromIntent(data) }
             .onSuccess { sendGoogleAuthorizationResult(requestId, it) }
             .onFailure { sendError(requestId, googleAuthorizationError(it)) }
+    }
+
+    // Native device-credential confirmation is required before any legacy
+    // local records can be assigned to the first authenticated PROD account.
+    private val prodOwnerCredentialLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val pending = pendingProdOwnerRequest ?: return@registerForActivityResult
+        pendingProdOwnerRequest = null
+        val (requestId, verifiedUserId) = pending
+        if (result.resultCode != RESULT_OK || !prodGate.canOfferBinding(isTrustedProdAuthPage(), verifiedUserId)) {
+            sendError(requestId, "A készülék és a Grapes-fiók összekapcsolása megszakadt.")
+            return@registerForActivityResult
+        }
+        if (!prodGatePreferences.edit().putString("owner-uid", verifiedUserId).commit()) {
+            sendError(requestId, "A Grapes-fiók hozzárendelése nem menthető.")
+            return@registerForActivityResult
+        }
+        if (!prodGate.allowApp(isTrustedProdAuthPage(), verifiedUserId)) {
+            prodGate.lock()
+            sendError(requestId, "A Grapes-fiókhoz tartozó helyi adatok nem nyithatók meg.")
+            return@registerForActivityResult
+        }
+        completeProdAppEntry(requestId)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -361,16 +388,22 @@ class MainActivity : ComponentActivity() {
                 else { prodGate.lock(); sendResult(requestId, "{}") }
             }
             "completeProdAuthLogin" -> {
-                if (prodGatePreferences.getBoolean("logout-pending", false) ||
-                    !prodGate.allowApp(isTrustedProdAuthPage(), message.optJSONArray("args")?.optString(0).orEmpty())) {
-                    sendError(requestId, "A PROD-fiók nincs hitelesítve.")
-                } else webView.loadUrl(APP_URL)
+                val userId = message.optJSONArray("args")?.optString(0).orEmpty()
+                if (prodGatePreferences.getBoolean("logout-pending", false) || !isTrustedProdAuthPage()) {
+                    sendError(requestId, "A Grapes-fiók nincs hitelesítve.")
+                } else if (prodGate.allowApp(true, userId)) {
+                    completeProdAppEntry(requestId)
+                } else if (prodGate.canOfferBinding(true, userId)) {
+                    offerProdOwnerBinding(requestId, userId)
+                } else {
+                    sendError(requestId, "Ezen a készüléken másik Grapes-fiókhoz tartoznak a meglévő adatok.")
+                }
             }
             "getProdAuthEnabled" -> sendResult(
-                requestId, (isProdAuth && isTrustedTestAppPage()).toString()
+                requestId, (isProdAuth && isTrustedProdAppPage()).toString()
             )
             "openProdAuthSignOut" -> {
-                if (!prodGate.startLogout(isTrustedTestAppPage())) {
+                if (!prodGate.startLogout(isTrustedProdAppPage())) {
                     sendError(requestId, "A Grapes PROD-fiók nem aktív.")
                 } else if (!prodGatePreferences.edit().putBoolean("logout-pending", true).commit()) {
                     sendError(requestId, "A kijelentkezés nem készíthető elő.")
@@ -456,7 +489,90 @@ class MainActivity : ComponentActivity() {
 
     private fun isTrustedProdAuthPage(): Boolean = isProdAuth && webView.url == PROD_AUTH_URL
 
-    private fun isTrustedTestAppPage(): Boolean = isProdAuth && webView.url == APP_URL
+    private fun isTrustedProdAppPage(): Boolean = isProdAuth && webView.url == APP_URL
+
+    /**
+     * Binding is a deliberate, one-time migration decision. User-supplied
+     * acknowledgement is NOT independently verified backup evidence.
+     */
+    private fun offerProdOwnerBinding(requestId: String, userId: String) {
+        if (!prodGate.canOfferBinding(isTrustedProdAuthPage(), userId)) {
+            return sendError(requestId, "Ehhez a készülékhez nem rendelhető új Grapes-fiók.")
+        }
+        if (pendingProdOwnerRequest != null) {
+            return sendError(requestId, "Egy másik fiókhozzárendelés már folyamatban van.")
+        }
+        val keyguard = getSystemService(KEYGUARD_SERVICE) as? KeyguardManager
+        if (keyguard?.isDeviceSecure != true) {
+            return sendError(requestId, "Az első fiókhozzárendelés előtt állíts be PIN-kódot vagy képernyőzárat.")
+        }
+        pendingProdOwnerRequest = requestId to userId
+        val acknowledgement = CheckBox(this).apply {
+            text = "A fontos Grapes-adataimról biztonsági mentést készítettem."
+        }
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Grapes-fiók és helyi adatok")
+            .setMessage(
+                "Az eszköz korábbi étkezési, víz-, pénzügyi és könyvadatai még " +
+                "nincsenek felhasználói fiókonként elkülönítve. Ezt a készüléket " +
+                "egyetlen Grapes-fiókhoz kapcsolhatod. Másik fiók ezekhez az " +
+                "adatokhoz nem férhet hozzá. A hozzárendelés nem készít mentést. " +
+                "A folytatáshoz erősítsd meg a készülék képernyőzárát."
+            )
+            .setView(acknowledgement)
+            .setPositiveButton("Összekapcsolás", null)
+            .setNegativeButton("Mégsem") { _, _ ->
+                pendingProdOwnerRequest = null
+                sendError(requestId, "A fiók és a helyi adatok összekapcsolását megszakítottad.")
+            }
+            .create()
+        dialog.setOnCancelListener {
+            pendingProdOwnerRequest = null
+            sendError(requestId, "A fiók és a helyi adatok összekapcsolását megszakítottad.")
+        }
+        dialog.setOnShowListener {
+            val positive = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+            positive.isEnabled = false
+            acknowledgement.setOnCheckedChangeListener { _, checked ->
+                positive.isEnabled = checked
+            }
+            positive.setOnClickListener {
+                if (!acknowledgement.isChecked || pendingProdOwnerRequest != (requestId to userId)) {
+                    return@setOnClickListener
+                }
+                @Suppress("DEPRECATION")
+                val credentialIntent = keyguard.createConfirmDeviceCredentialIntent(
+                    "Grapes-fiók hozzárendelése",
+                    "Igazold, hogy ez a te készüléked."
+                )
+                if (credentialIntent == null) {
+                    pendingProdOwnerRequest = null
+                    dialog.dismiss()
+                    sendError(requestId, "Nem indítható a készülék biztonsági azonosítása.")
+                    return@setOnClickListener
+                }
+                dialog.dismiss()
+                runCatching { prodOwnerCredentialLauncher.launch(credentialIntent) }
+                    .onFailure {
+                        pendingProdOwnerRequest = null
+                        sendError(requestId, "Nem indítható a készülék biztonsági azonosítása.")
+                    }
+            }
+        }
+        dialog.show()
+    }
+
+    private fun completeProdAppEntry(requestId: String) {
+        // The bridge event must arrive before the WebView navigates away.
+        val detail = JSONObject().apply {
+            put("requestId", requestId)
+            put("ok", true)
+            put("payload", "{}")
+        }
+        webView.evaluateJavascript(
+            "window.dispatchEvent(new CustomEvent('grapes:android-result',{detail:${detail}}))"
+        ) { if (prodGate.canDisplayApp() && isTrustedProdAuthPage()) webView.loadUrl(APP_URL) }
+    }
 
     private fun beginProdAuthOAuth(message: JSONObject, requestId: String) {
         if (!isTrustedProdAuthPage()) return sendError(requestId, "A PROD Auth oldal nem aktív.")
@@ -696,6 +812,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        pendingProdOwnerRequest = null
         backupSession?.temporaryFile?.delete()
         backupSession = null
         fileChooserCallback?.onReceiveValue(null)
