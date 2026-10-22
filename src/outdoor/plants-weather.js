@@ -1,6 +1,7 @@
 // Grapes TEST weather presentation. Only reads sanitized public cache;
 // never sends provider keys, user profiles, or precise coordinates.
 const ENDPOINT = 'https://aighqtqjlzirlokxwupt.supabase.co/functions/v1/weather-forecast/cached-forecast';
+const IS_GRAPES_TEST = import.meta.env.VITE_GRAPES_TEST_CHANNEL === '1';
 const formatNumber = (n, unit) => typeof n === 'number' && Number.isFinite(n)
   ? `${n.toLocaleString('hu-HU', { maximumFractionDigits: 1 })} ${unit}`
   : '—';
@@ -56,6 +57,10 @@ export function createPlantsWeather({ root = document, fetcher = fetch } = {}) {
   };
 
   const refresh = async ({ force = false } = {}) => {
+    if (!IS_GRAPES_TEST) {
+      status.textContent = 'Időjárási kapcsolat csak a Grapes TEST-ben érhető el.';
+      return false;
+    }
     if (inflight) return inflight;
     if (!force && lastReadAt && Date.now() - lastReadAt < 10 * 60 * 1000) return true;
     button.disabled = true;
