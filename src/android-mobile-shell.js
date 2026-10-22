@@ -667,6 +667,9 @@ function renderAccount() {
 }
 
 function showLogin(message = '') {
+  // This screen is still needed if the user explicitly wants to connect
+  // Google Drive. The startup-only QA concealment must not hide it forever.
+  document.documentElement.removeAttribute('data-grapes-qa-native-app')
   app.hidden = true
   login.hidden = false
   const status = $('[data-login-status]')
@@ -1297,4 +1300,11 @@ window.grapesHandleAndroidBack = () => {
 }
 renderWater()
 if (isGrapesDriveConnected()) registerFoodSharing().catch(() => {})
-if (isGrapesDriveConnected() || localMode()) showApp()
+// A verified Grapes TEST account is the main-app entry gate. Do not route
+// such users through the old, unrelated Google Drive welcome screen first.
+// This is QA-only and does NOT change the Drive account or localMode flag.
+const qaNativeAuthenticated =
+  import.meta.env?.VITE_GRAPES_TEST_AUTH_ENABLED === 'true' &&
+  globalThis.location?.href === 'https://appassets.androidplatform.net/assets/design/android-mobile-preview.html' &&
+  isGrapesAndroidApp()
+if (isGrapesDriveConnected() || localMode() || qaNativeAuthenticated) showApp()
