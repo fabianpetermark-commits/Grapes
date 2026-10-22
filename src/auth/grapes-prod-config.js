@@ -8,6 +8,8 @@
  * reviewed before activating the feature in a production release.
  */
 export const GRAPES_TEST_PROJECT_REF = 'aighqtqjlzirlokxwupt'
+// Verified 2026-10-22: separate Frankfurt Grapes PROD Supabase project.
+export const GRAPES_PROD_PROJECT_REF = 'yopabovoxyffhokhbgxl'
 export const GRAPES_PROD_ANDROID_PACKAGE = 'hu.grapes.healthconnect'
 export const GRAPES_PROD_AUTH_ORIGIN = 'https://grapes-prod-auth.invalid'
 export const GRAPES_PROD_ANDROID_CALLBACK = 'hu.grapes.healthconnect://auth/callback'
@@ -47,7 +49,7 @@ export function validateGrapesProdAuthConfig({
     throw new GrapesProdAuthConfigError('Az éles helyi adatok tulajdonjogának és fiókszeparációjának ellenőrzése szükséges.')
   }
   if (typeof projectRef !== 'string' || !PROJECT_REF.test(projectRef) ||
-      projectRef === GRAPES_TEST_PROJECT_REF || approvedProjectRef !== projectRef) {
+      projectRef !== GRAPES_PROD_PROJECT_REF || approvedProjectRef !== GRAPES_PROD_PROJECT_REF) {
     throw new GrapesProdAuthConfigError('Külön, jóváhagyott Grapes PROD Supabase projektazonosító szükséges.')
   }
   if (supabaseUrl !== `https://${projectRef}.supabase.co`) {
