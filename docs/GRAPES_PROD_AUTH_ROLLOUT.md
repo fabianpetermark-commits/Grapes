@@ -42,7 +42,7 @@ The separate PROD login HTML, styles, Supabase 2.118.0 locked client, login flow
 
 1. In Google Cloud, use the existing owner-approved OAuth application or create a separate OAuth Web client for Grapes PROD; register the exact authorized redirect URI `https://yopabovoxyffhokhbgxl.supabase.co/auth/v1/callback`. Keep the Google OAuth client secret in Supabase Auth provider settings only.
 2. In the **PROD** Supabase project's Authentication > Providers > Google, enable Google and use its own OAuth client ID/secret. This project is not the TEST one.
-3. In the **PROD** Supabase project's Authentication > URL Configuration, allow the exact Android redirect `hu.grapes.healthconnect://auth/callback` and check the Site URL. On-device PKCE and state validation are already staged in the PR.
+3. In the **PROD** Supabase project's Authentication > URL Configuration, allow the narrowly scoped Android redirect pattern `hu.grapes.healthconnect://auth/callback?state=*` (the real OAuth `redirectTo` appends a per-login 64-character `state` query value) and check the Site URL. Validate the allowlist on-device; do not permit a global `**` or a TEST scheme. On-device PKCE and state validation are already staged in the PR.
 4. Before signing any PROD release, obtain a verified backup of existing app data and test the first-owner enrollment, same-account relaunch, denied second-account login, cancellation, lock screen requirement, Google Drive independence, and in-place upgrade from v28. Feature flags must remain OFF until all checks pass.
 
 The connected Supabase tools do not expose the Google provider's private credentials or Auth URL configuration, so those secure provider-side steps cannot be silently configured by a repository commit.
