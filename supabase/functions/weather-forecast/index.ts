@@ -1,4 +1,5 @@
 import { verifiedGithubWeatherWorkflow } from "./github-oidc.ts";
+import { readWeatherCache, saveWeatherCache } from "./weather-cache.ts";
 
 // Grapes TEST only: WeatherAPI proxy proof of concept.
 // The public health endpoint never calls the provider or returns secret values.
@@ -47,6 +48,21 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
   if (req.method !== "GET") return json({ error: "method_not_allowed" }, 405);
   const path = new URL(req.url).pathname;
+  if (path.endsWith("/cached-forecast")) {
+    const cached = await readWeatherCache();
+    if (cached.status === "empty") return json({ error: "forecast_not_prepared" }, 503);
+    if (cached.status !== "ok" || !cached.payload || !cached.updatedAt) {
+      return json({ error: "forecast_cache_unavailable" }, 503);
+    }
+    const ageMs = Date.now() - Date.parse(cached.updatedAt);
+    if (!Number.isFinite(ageMs) || ageMs < -60000) return json({ error: "forecast_cache_invalid" }, 503);
+    return json({
+      ...cached.payload,
+      cachedAt: cached.updatedAt,
+      stale: ageMs > 6 * 60 * 60 * 1000,
+      staticTestLocation: true,
+    });
+  }
   if (path.endsWith("/health")) {
     const configured = Boolean(Deno.env.get("WEATHERAPI_KEY")?.trim());
     return json({
@@ -89,7 +105,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (!data?.location || !data?.current || !Array.isArray(data?.forecast?.forecastday)) {
       return json({ error: "invalid_weather_response" }, 502);
     }
-    return json({
+    const result = {
       source: "WeatherAPI.com",
       demoOnly: true,
       fetchedAt: new Date().toISOString(),
@@ -114,7 +130,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
         rainChancePct: numeric(item.day?.daily_chance_of_rain),
         condition: item.day?.condition?.text || null,
       })),
-    });
+    };
+    if (githubProbe && !(await saveWeatherCache(result))) {
+      return json({ error: "forecast_cache_write_failed" }, 503);
+    }
+    return json(result);
   } catch {
     return json({ error: "weather_provider_unreachable" }, 502);
   }
