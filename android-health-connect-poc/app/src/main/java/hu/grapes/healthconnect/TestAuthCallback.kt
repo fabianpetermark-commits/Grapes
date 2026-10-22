@@ -52,7 +52,8 @@ internal class TestAuthCallback(context: Context, private val now: () -> Long = 
             prefs.edit().putString("code", code).putString("result", "code").apply()
             return true
         }
-        if (error == "access_denied" && names == setOf("state", "error") &&
+        if (error == "access_denied" && names.containsAll(setOf("state", "error")) &&
+            names.all { it in setOf("state", "error", "error_description", "error_code") } &&
             uri.getQueryParameters("error").size == 1) {
             prefs.edit().putString("result", "cancel").apply()
             return true

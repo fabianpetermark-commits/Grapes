@@ -164,7 +164,8 @@ class MainActivity : ComponentActivity() {
         UpdateCheckWorker.schedule(this)
         val authReturn = isTestQa && testAuth.accept(intent?.data)
         if (authReturn) setIntent(Intent(intent).setData(null))
-        webView.loadUrl(if (authReturn) TEST_AUTH_URL else APP_URL)
+        if (authReturn) webView.loadUrl(TEST_AUTH_URL)
+        else webView.loadUrl(APP_URL)
         // A foreground launch must always see a release published since the previous
         // background check. The six-hour throttle only belongs to WorkManager.
         checkForAppUpdate(force = true)
