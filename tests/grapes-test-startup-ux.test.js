@@ -87,3 +87,20 @@ test('TEST and existing Drive authorization remain separate; no new token or acc
   assert.match(shell, /if \(isGrapesDriveConnected\(\)\) registerFoodSharing/)
   assert.match(shell, /function showLogin\(/)
 })
+
+
+test('TEST v24 keeps exactly one visible logo, with no account-check text or second Android logo', () => {
+  const splash = authHtml.match(/<div id="grapes-qa-startup"[\s\S]*?<main class="login-page">/)?.[0]
+  assert.ok(splash, 'QA startup markup missing')
+  assert.match(splash, /<img src="\.\/grapes-logo\.svg"/)
+  assert.equal((splash.match(/<img\b/g) || []).length, 1, 'one canonical logo only')
+  assert.doesNotMatch(splash, /<strong>|<p\b|Fiók ellenőrzése|<svg/)
+  const manifest = read('android-health-connect-poc/app/src/qa/AndroidManifest.xml')
+  const qaTheme = read('android-health-connect-poc/app/src/qa/res/values-v31/styles.xml')
+  const qaShape = read('android-health-connect-poc/app/src/qa/res/drawable/grapes_qa_transparent_splash.xml')
+  const mainManifest = read('android-health-connect-poc/app/src/main/AndroidManifest.xml')
+  assert.match(manifest, /android:theme="@style\/GrapesQaLaunchTheme"/)
+  assert.match(qaTheme, /android:windowSplashScreenAnimatedIcon.*@drawable\/grapes_qa_transparent_splash/)
+  assert.match(qaShape, /@android:color\/transparent/)
+  assert.doesNotMatch(mainManifest, /GrapesQaLaunchTheme/)
+})
