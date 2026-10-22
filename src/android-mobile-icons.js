@@ -25,6 +25,8 @@ const ICON_PATHS = {
   health: '<path d="M20.8 9.2c0 5-8.8 10.3-8.8 10.3S3.2 14.2 3.2 9.2A4.7 4.7 0 0 1 12 6.8a4.7 4.7 0 0 1 8.8 2.4zM7.5 12h2l1.2-2.5 2.2 5 1.2-2.5h2.4"/>',
   samsung: '<rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M9 6h6M10 15l1.4-3 1.8 4 1-2H16M11 18.5h2"/>',
   yazio: '<path d="M5 4h14v16H5zM8 8h8M8 12h5M12 16v-3M9.5 15.5 12 18l2.5-2.5"/>',
+  // Emergency-exit style door + outward arrow, matching the other line icons.
+  exit: '<path d="M10 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h5M14 6h5a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-5M9 12h10M16 9l3 3-3 3"/>',
   google: '<circle cx="12" cy="12" r="9"/><path d="M20.5 12H12v3.5h4.8A6 6 0 1 1 17 8"/>',
   language: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
   appearance: '<path d="M20 15.5A8 8 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5z"/>',
