@@ -1006,9 +1006,9 @@ $$('[data-menu-group]').forEach(button => button.addEventListener('click', () =>
   const group = button.dataset.menuGroup
   if (['home', 'health', 'utility', 'finance'].includes(group)) showPage('hub-' + group)
 }))
-$('[data-menu-back]').forEach(button => button.addEventListener('click', () => showPage('home')))
-$('[data-plants-home-back]').forEach(button => button.addEventListener('click', () => showPage('hub-home')))
-$('[data-outdoor-back]').forEach(button => button.addEventListener('click', () => showPage('hub-outdoor', { parent: 'hub-home' })))
+$$('[data-menu-back]').forEach(button => button.addEventListener('click', () => showPage('home')))
+$$('[data-plants-home-back]').forEach(button => button.addEventListener('click', () => showPage('hub-home')))
+$$('[data-outdoor-back]').forEach(button => button.addEventListener('click', () => showPage('hub-outdoor', { parent: 'hub-home' })))
 $$('[data-menu-destination]').forEach(button => button.addEventListener('click', () => {
   const destination = button.dataset.menuDestination
   const parent = button.closest('[data-page]')?.dataset.page
