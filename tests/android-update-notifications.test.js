@@ -35,7 +35,7 @@ test('a frissítési értesítés az app frissítési folyamatába vezet vissza'
 
 test('minden appindítás frissen ellenőrzi az elérhető kiadást', () => {
   const activity = read('src/main/java/hu/grapes/healthconnect/MainActivity.kt')
-  assert.match(activity, /webView\.loadUrl\(APP_URL\)[\s\S]*checkForAppUpdate\(force = true\)/)
+  assert.match(activity, /webView\.loadUrl\(testGate\.initialUrl\(APP_URL, TEST_AUTH_URL\)\)[\s\S]*checkForAppUpdate\(force = true\)/)
 })
 
 test('az Android app közvetlenül a telefonos alkalmazáskeretet nyitja meg', () => {
