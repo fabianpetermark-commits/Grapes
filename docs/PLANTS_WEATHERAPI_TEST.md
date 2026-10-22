@@ -1,6 +1,6 @@
 # Grapes Növények – WeatherAPI Edge Function TEST próba
 
-**Állapot (2026-10-22):** `Grapes TEST` Supabase-projektben a `weather-forecast` Edge Function v1 **ACTIVE** és a telepített forrás visszaolvasva ellenőrizve. A valós WeatherAPI-kérés **még nincs végponttól végpontig igazolva**. Nem érintett `Grapes PROD`, Android TEST/éles APK, Food, Water, Drive vagy bármely növényadat.
+**Állapot (2026-10-22):** `Grapes TEST` Supabase-projektben a `weather-forecast` Edge Function v2 **ACTIVE**, és a valódi WeatherAPI-válasz **sikeresen ellenőrizve** a GitHub Actions [39853094500](https://github.com/fabianpetermark-commits/Grapes/actions/runs/39853094500) futásával. Nem érintett `Grapes PROD`, Android TEST/éles APK, Food, Water, Drive vagy bármely növényadat.
 
 ## Az elérhető TEST végpontok
 
@@ -26,8 +26,23 @@ A TEST próbában a lekérdezési hely **fixen Szentendre, Hungary**. Az adatok 
 3. `GET /forecast` Authorization nélkül → HTTP 401, `authentication_required`.
 4. **Későbbi, külön hitelesített próba**: Supabase Auth felhasználói hozzáférési tokent használva `GET /forecast` → HTTP 200 és 3 forecast nap. Az eredményt mint időjárási mérési értéket kell kezelni, nem előírt gondozási feladatként.
 
-A 2–3. pont nem ellenőrzi a WeatherAPI kulcs érvényességét vagy a valós előrejelzést: ahhoz a 4. pont szükséges.
+A 2–3. pont önmagában nem ellenőrzi a WeatherAPI kulcs érvényességét. A 2026-10-22-i **sikeres GitHub OIDC CI-próba** ezt ténylegesen ellenőrizte az erre kialakított `/ci-forecast` útvonalon. A normál `/forecast` Supabase Auth mobilbelépési folyamat továbbra sem készült el.
 
 ## Következő lépés
 
 A `Home → Növények` felület és a WeatherAPI HTTP-proxy összekapcsolása külön TEST UI és adatmodell munka. **Nincs PROD deploy vagy kiadás** a felhasználó külön jóváhagyása nélkül.
+
+## Igazolt élő WeatherAPI-próba – 2026-10-22
+
+- **CI**: [WeatherAPI TEST live OIDC verification – sikeres futás #39853094500](https://github.com/fabianpetermark-commits/Grapes/actions/runs/39853094500).
+- **Biztonság**: `GET /ci-forecast` csak GitHub által aláírt, rövid élettartamú OIDC-tokennel, konkrét Grapes-repository/branch/workflow claimjeivel és RS256-aláírásellenőrzéssel hívható. A hitelesítés nélküli kérés 401.
+- **Eredmény**: WeatherAPI.com élő válasz, Szentendre; aktuális hőmérséklet a próba idején **11,4 °C**.
+- **Előrejelzés**:
+
+| Nap | Minimum | Maximum | Csapadék |
+| --- | ---: | ---: | ---: |
+| 2026-10-22 | 9 °C | 16,5 °C | 8,67 mm |
+| 2026-10-23 | 5,7 °C | 15,3 °C | 0 mm |
+| 2026-10-24 | 6,8 °C | 11,2 °C | 1,43 mm |
+
+Ez a CI-környezetben hitelesített, éles időjárási API-val végzett TEST-lekérdezés; **nem** élő Grapes APK-integráció és **nem** gondozási javaslat. A GitHub Action sem a WeatherAPI kulcsot, sem az OIDC tokent nem írja ki.
