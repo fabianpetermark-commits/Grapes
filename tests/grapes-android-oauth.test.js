@@ -103,12 +103,12 @@ test('Android TEST runtime requires exact asset origin and public key', () => {
   const args = { url: project, publishableKey: 'sb_publishable_' + 'a'.repeat(20),
     sessionStorage: storage, nativeOAuth }
   assert.equal(makeGrapesTestAuthConfig({ ...args,
-    location: 'https://test-auth.androidplatform.net/assets/login-auth-test.html' }).callbackUrl, null)
+    location: 'https://grapes-test-auth.invalid/assets/login-auth-test.html' }).callbackUrl, null)
   assert.throws(() => makeGrapesTestAuthConfig({ ...args,
     location: 'https://fabianpetermark-commits.github.io/Grapes/login-auth-test.html' }))
   assert.throws(() => makeGrapesTestAuthConfig({ ...args,
-    location: 'https://test-auth.androidplatform.net/assets/login-auth-test.html?other=1' }))
+    location: 'https://grapes-test-auth.invalid/assets/login-auth-test.html?other=1' }))
   assert.throws(() => makeGrapesTestAuthConfig({ ...args,
-    location: 'https://test-auth.androidplatform.net/assets/login-auth-test.html',
+    location: 'https://grapes-test-auth.invalid/assets/login-auth-test.html',
     publishableKey: 'sb_secret_bad' }))
 })

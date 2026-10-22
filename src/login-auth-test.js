@@ -20,7 +20,7 @@ export async function activateGrapesAuthTest({
   location = globalThis.location?.href,
   sessionStorage = globalThis.sessionStorage,
 } = {}) {
-  const isAndroid = location === 'https://test-auth.androidplatform.net/assets/login-auth-test.html' &&
+  const isAndroid = location === 'https://grapes-test-auth.invalid/assets/login-auth-test.html' &&
     typeof globalThis.GrapesAndroid?.postMessage === 'function'
   const nativeOAuth = isAndroid ? createAndroidTestOAuth() : null
   const app = await startGrapesTestAuth({

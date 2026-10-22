@@ -10,7 +10,7 @@ export const GRAPES_TEST_PROJECT_URL = 'https://aighqtqjlzirlokxwupt.supabase.co
 export const GRAPES_TEST_STORAGE_KEY = 'grapes-test-auth-aighqtqjlzirlokxwupt'
 const VALID_HOSTS = new Set(['fabianpetermark-commits.github.io', 'localhost', '127.0.0.1'])
 const CALLBACK_PATH = '/Grapes/login-auth-test.html'
-const ANDROID_AUTH_URL = 'https://test-auth.androidplatform.net/assets/login-auth-test.html'
+const ANDROID_AUTH_URL = 'https://grapes-test-auth.invalid/assets/login-auth-test.html'
 
 export class GrapesTestAuthConfigError extends Error {
   constructor(message) {
