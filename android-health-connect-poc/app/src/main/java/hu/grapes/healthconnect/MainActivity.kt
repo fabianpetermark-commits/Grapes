@@ -4,10 +4,6 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.content.Intent
-import android.graphics.Color
-import android.view.ViewGroup
-import android.widget.Button
-import android.widget.LinearLayout
 import android.provider.MediaStore
 import androidx.core.content.FileProvider
 import java.io.File
@@ -49,6 +45,8 @@ class MainActivity : ComponentActivity() {
     private val healthConnect by lazy { HealthConnectBridge(this) }
     private val testAuth by lazy { TestAuthCallback(this) }
     private val isTestQa get() = BuildConfig.APPLICATION_ID == "hu.grapes.healthconnect.test" && BuildConfig.GRAPES_TEST_AUTH_ENABLED
+    private val testGate by lazy { TestAuthGate(isTestQa) }
+    private val testGatePreferences by lazy { getSharedPreferences("grapes-test-auth-gate-v1", MODE_PRIVATE) }
     private val yazioApi by lazy { YazioApi(this) }
     private val foodApi by lazy { FoodApiBridge() }
     private val samsungWaterBridge by lazy { SamsungWaterBridgeFactory.create(this) }
@@ -179,32 +177,16 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         configureWebView()
-        if (isTestQa) {
-            // The shipped NoActionBar theme has no options menu. An explicit
-            // QA-only navigation strip makes the isolated login reachable.
-            val nav = Button(this).apply {
-                text = "Grapes TEST-fiók / alkalmazás"
-                setBackgroundColor(Color.rgb(9, 14, 20))
-                setTextColor(Color.rgb(59, 220, 242))
-                setOnClickListener {
-                    webView.loadUrl(if (webView.url == TEST_AUTH_URL) APP_URL else TEST_AUTH_URL)
-                }
-            }
-            val root = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                addView(nav, LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-                addView(webView, LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-            }
-            setContentView(root)
-        } else setContentView(webView)
+        // TEST: only the login page is shown until this Activity receives a
+        // verified session acknowledgement from the isolated Auth origin.
+        // The previous TEST navigation strip is intentionally removed.
+        setContentView(webView)
         UpdateNotifications.createChannel(this)
         UpdateCheckWorker.schedule(this)
         val authReturn = isTestQa && testAuth.accept(intent?.data)
         if (authReturn) setIntent(Intent(intent).setData(null))
-        if (authReturn) webView.loadUrl(TEST_AUTH_URL)
-        else webView.loadUrl(APP_URL)
+        if (authReturn) testGate.lock()
+        webView.loadUrl(testGate.initialUrl(APP_URL, TEST_AUTH_URL))
         // A foreground launch must always see a release published since the previous
         // background check. The six-hour throttle only belongs to WorkManager.
         checkForAppUpdate(force = true)
@@ -215,7 +197,10 @@ class MainActivity : ComponentActivity() {
                     "(() => typeof window.grapesHandleAndroidBack === 'function' && window.grapesHandleAndroidBack())()"
                 ) { handled ->
                     if (handled == "true") return@evaluateJavascript
-                    if (webView.canGoBack()) webView.goBack() else finish()
+                    // Never navigate backwards from QA login to an app page.
+                    if (isTestQa && !testGate.canDisplayApp()) finish()
+                    else if (isTestQa && webView.url == APP_URL) finish()
+                    else if (webView.canGoBack()) webView.goBack() else finish()
                 }
             }
         })
@@ -224,6 +209,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         if (isTestQa && testAuth.accept(intent.data)) {
+            testGate.lock()
             setIntent(Intent(intent).setData(null))
             webView.loadUrl(TEST_AUTH_URL)
             return
@@ -311,7 +297,13 @@ class MainActivity : ComponentActivity() {
                     else assetLoader.shouldInterceptRequest(request.url)
 
                 override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-                    if (request.url.scheme == "https" && request.url.host == APP_HOST) return false
+                    if (request.url.scheme == "https" && request.url.host == APP_HOST) {
+                        if (isTestQa && !testGate.canDisplayApp()) {
+                            view.loadUrl(TEST_AUTH_URL)
+                            return true
+                        }
+                        return false
+                    }
                     if (isTestQa && request.url.scheme == "https" &&
                         request.url.host == TEST_AUTH_HOST &&
                         request.url.path == "/assets/login-auth-test.html") return false
@@ -368,7 +360,10 @@ class MainActivity : ComponentActivity() {
         val requestId = message.optString("requestId")
         if (requestId.isBlank()) return
         if (isTrustedTestAuthPage() && message.optString("method") !in
-            setOf("beginTestAuthOAuth", "takeTestAuthCallback", "cancelTestAuthOAuth")) {
+            setOf(
+                "beginTestAuthOAuth", "takeTestAuthCallback", "cancelTestAuthOAuth",
+                "takeTestAuthLaunchMode", "finishTestAuthSignOut", "completeTestAuthLogin"
+            )) {
             return sendError(requestId, "Nem engedélyezett TEST Auth-művelet.")
         }
         when (message.optString("method")) {
@@ -388,6 +383,36 @@ class MainActivity : ComponentActivity() {
                 }
             }
             "beginTestAuthOAuth" -> beginTestAuthOAuth(message, requestId)
+            "takeTestAuthLaunchMode" -> {
+                if (!isTrustedTestAuthPage()) sendError(requestId, "A TEST Auth oldal nem aktív.")
+                else sendResult(requestId, JSONObject().apply {
+                    put("logout", testGatePreferences.getBoolean("logout-pending", false))
+                }.toString())
+            }
+            "finishTestAuthSignOut" -> {
+                if (!isTrustedTestAuthPage()) sendError(requestId, "A TEST Auth oldal nem aktív.")
+                else if (!testGatePreferences.edit().remove("logout-pending").commit())
+                    sendError(requestId, "A kijelentkezés állapota nem menthető.")
+                else { testGate.lock(); sendResult(requestId, "{}") }
+            }
+            "completeTestAuthLogin" -> {
+                if (testGatePreferences.getBoolean("logout-pending", false) ||
+                    !testGate.allowApp(isTrustedTestAuthPage())) {
+                    sendError(requestId, "A TEST-fiók nincs hitelesítve.")
+                } else webView.loadUrl(APP_URL)
+            }
+            "getTestAuthEnabled" -> sendResult(
+                requestId, (isTestQa && isTrustedTestAppPage()).toString()
+            )
+            "openTestAuthSignOut" -> {
+                if (!testGate.startLogout(isTrustedTestAppPage())) {
+                    sendError(requestId, "A Grapes TEST-fiók nem aktív.")
+                } else if (!testGatePreferences.edit().putBoolean("logout-pending", true).commit()) {
+                    sendError(requestId, "A kijelentkezés nem készíthető elő.")
+                } else {
+                    webView.loadUrl(TEST_AUTH_URL)
+                }
+            }
             "takeTestAuthCallback" -> {
                 if (!isTrustedTestAuthPage()) sendError(requestId, "A TEST Auth oldal nem aktív.")
                 else sendResult(requestId, testAuth.consume().toString())
@@ -465,6 +490,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun isTrustedTestAuthPage(): Boolean = isTestQa && webView.url == TEST_AUTH_URL
+
+    private fun isTrustedTestAppPage(): Boolean = isTestQa && webView.url == APP_URL
 
     private fun beginTestAuthOAuth(message: JSONObject, requestId: String) {
         if (!isTrustedTestAuthPage()) return sendError(requestId, "A TEST Auth oldal nem aktív.")
