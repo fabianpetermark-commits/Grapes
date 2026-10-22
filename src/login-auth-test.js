@@ -23,6 +23,10 @@ export async function activateGrapesAuthTest({
   const isAndroid = location === 'https://grapes-test-auth.invalid/assets/login-auth-test.html' &&
     typeof globalThis.GrapesAndroid?.postMessage === 'function'
   const nativeOAuth = isAndroid ? createAndroidTestOAuth() : null
+  let navigatingToApp = false
+  const revealLogin = () => {
+    if (isAndroid) globalThis.document?.documentElement?.removeAttribute('data-grapes-qa-starting')
+  }
   // Read the app-private logout request before checking the persisted session,
   // otherwise a formerly signed-in user could be forwarded to the app again.
   const logoutRequested = nativeOAuth
@@ -30,7 +34,10 @@ export async function activateGrapesAuthTest({
   const app = await startGrapesTestAuth({
     createClient: createClientFactory, root, url, publishableKey, location,
     sessionStorage: nativeOAuth ? nativeOAuth.storage : sessionStorage, nativeOAuth,
-    onAuthenticated: nativeOAuth ? () => nativeOAuth.enterApp() : null,
+    onAuthenticated: nativeOAuth ? () => {
+      navigatingToApp = true
+      nativeOAuth.enterApp()
+    } : null,
     suppressAutoOpen: logoutRequested,
   })
   if (nativeOAuth && logoutRequested) {
@@ -53,6 +60,17 @@ export async function activateGrapesAuthTest({
       app.ui.setNotice('A TEST-visszatérés nem ellenőrizhető. Indíts új belépést.')
     })
   }
+  if (nativeOAuth && !logoutRequested && !navigatingToApp) {
+    // A SIGNED_IN event can supersede the first getUser() during restoration.
+    // Verify one final time before revealing the login; only a validated
+    // Supabase user may request the native app handoff.
+    try {
+      const { data, error } = await app.client.auth.getUser()
+      if (!error && data?.user?.id) app.notifyVerified(data.user)
+    } catch { /* Keep the original actionable Auth notice. */ }
+    await Promise.resolve() // drain the onAuthenticated microtask
+  }
+  if (nativeOAuth && !navigatingToApp) revealLogin()
   return app
 }
 
@@ -60,6 +78,9 @@ if (typeof document !== 'undefined' && document.querySelector('#grapes-login-for
   if (import.meta.env?.VITE_GRAPES_TEST_AUTH_ENABLED === 'true') {
     activateGrapesAuthTest().catch(() => {
       // Fail closed: do not let an unconfigured page transmit credentials.
+      // A broken TEST config must still expose the error instead of showing
+      // an endless account-check splash.
+      document.documentElement.removeAttribute('data-grapes-qa-starting')
       initializeGrapesAuthTest()
       const feedback = document.querySelector('#grapes-feedback')
       if (feedback) {
