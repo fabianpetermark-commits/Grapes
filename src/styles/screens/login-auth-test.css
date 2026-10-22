@@ -30,13 +30,15 @@ html[data-grapes-qa-starting="true"] .grapes-qa-startup {
 .grapes-qa-startup__mark {
   display: grid;
   place-items: center;
-  width: 86px;
-  height: 86px;
+  width: 96px;
+  height: 96px;
   margin-bottom: 18px;
-  background: #0c1e26;
-  border: 1px solid #204956;
-  border-radius: 22px;
 }
-.grapes-qa-startup__mark svg { width: 54px; height: 54px; }
+.grapes-qa-startup__mark img {
+  display: block;
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+}
 .grapes-qa-startup strong { font-size: 29px; letter-spacing: -.035em; }
 .grapes-qa-startup p { margin: 10px 0 0; color: #94a5b8; font-size: 13px; }
