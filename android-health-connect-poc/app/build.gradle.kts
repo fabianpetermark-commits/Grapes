@@ -47,6 +47,7 @@ android {
         }
     }
     buildFeatures { buildConfig = true }
+    testOptions { unitTests.isIncludeAndroidResources = true }
     sourceSets["main"].java.srcDir(
         if (samsungSdk.exists()) "src/samsung/java" else "src/samsungStub/java"
     )
@@ -66,6 +67,8 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.10.0")
     implementation("com.google.android.gms:play-services-auth:21.5.0")
     implementation("com.google.code.gson:gson:2.13.2")
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.14.1")
     if (samsungSdk.exists()) {
         implementation(files(samsungSdk))
     }
