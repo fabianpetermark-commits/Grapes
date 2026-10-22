@@ -35,9 +35,17 @@ export async function activateGrapesAuthProd({
     createClient: createClientFactory, root, url, publishableKey, location,
     sessionStorage: nativeOAuth ? nativeOAuth.storage : sessionStorage, nativeOAuth,
     legacyDataIsolationReviewed: import.meta.env?.VITE_GRAPES_PROD_LEGACY_DATA_ISOLATION_REVIEWED === 'true',
-    onAuthenticated: nativeOAuth ? verifiedUser => {
+    onAuthenticated: nativeOAuth ? async verifiedUser => {
       navigatingToApp = true
-      nativeOAuth.enterApp(verifiedUser.id)
+      try {
+        // The Android owner may cancel enrollment or decline the backup
+        // acknowledgement; neither outcome may unlock the legacy profile.
+        await nativeOAuth.enterApp(verifiedUser.id)
+      } catch (error) {
+        navigatingToApp = false
+        revealLogin()
+        throw error
+      }
     } : null,
     suppressAutoOpen: logoutRequested,
   })
