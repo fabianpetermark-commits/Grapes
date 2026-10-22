@@ -5,6 +5,7 @@ on:
       - feature/grapes-test-v16-android-auth-107-20261022
     paths:
       - '.github/workflows/grapes-test-v19-auth-signed.yml'
+      - 'src/styles/screens/finance-tracker.css'
 
 permissions:
   contents: write
