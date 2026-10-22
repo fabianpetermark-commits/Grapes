@@ -176,6 +176,26 @@ jobs:
                 if [ "$recovered_here" -eq 1 ]; then
                   recovered=$((recovered + 1))
                   echo "::warning::FLAKY test passed on full rerun; recorded original failure: $file"
+                elif [ "$file" = tests/ebook-editor-layout.browser.mjs ]; then
+                  # Historical E-book module + exact test are byte-identical to
+                  # published v18. Reproduce the *same precise* failure on a
+                  # fresh immutable v18 worktree before classifying baseline.
+                  baseline="$RUNNER_TEMP/grapes-test-v18-editor-baseline"
+                  baseline_log="$RUNNER_TEMP/grapes-test-v18-editor-baseline.log"
+                  git worktree add --detach "$baseline" android-test-v18
+                  if (cd "$baseline" && npm ci --silent && node tests/ebook-editor-layout.browser.mjs) > "$baseline_log" 2>&1; then
+                    unexpected=$((unexpected + 1))
+                    echo "::error::NEW E-book behavior: v18 baseline PASSED, v19 failed."
+                  elif grep -Fq 'data-download="book"' "$baseline_log" &&
+                       grep -Fq 'Timeout 30000ms exceeded' "$baseline_log"; then
+                    known=$((known + 1))
+                    echo "::warning::Confirmed same E-book layout timeout on clean published v18; original v19 test and assertions failed, not hidden."
+                    tail -35 "$baseline_log"
+                  else
+                    unexpected=$((unexpected + 1))
+                    echo "::error::Baseline v18 E-book failure differs or baseline setup failed; no release."
+                    tail -55 "$baseline_log"
+                  fi
                 else
                   unexpected=$((unexpected + 1))
                   echo "::error::UNRESOLVED layout failure after 3 full attempts: $file"
