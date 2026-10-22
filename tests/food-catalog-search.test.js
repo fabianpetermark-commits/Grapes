@@ -105,3 +105,22 @@ test('ismeretlen főválasz esetén is használható a tartalék JSON terméklis
   } })
   assert.equal(result.products.length, 1)
 })
+
+test('OFF-ból hiányzó vonalkód üres találat, nem adatbázis-leállás', async () => {
+  const result = await searchFoodCatalog('5991234567890', {
+    offBarcode: async () => { throw new Error('Nem található termék ezzel a vonalkóddal.') },
+  })
+  assert.deepEqual(result.products, [])
+  assert.equal(result.providers[0].status, 'ok')
+  assert.equal(result.unavailable, false)
+  assert.deepEqual(result.errors, [])
+})
+
+test('OFF vonalkód valós hálózati hibája továbbra is látható', async () => {
+  const result = await searchFoodCatalog('5991234567890', {
+    offBarcode: async () => { throw new Error('Az adatbázis nem érhető el (HTTP 503).') },
+  })
+  assert.equal(result.providers[0].status, 'error')
+  assert.equal(result.unavailable, true)
+  assert.equal(result.errors.length, 1)
+})
