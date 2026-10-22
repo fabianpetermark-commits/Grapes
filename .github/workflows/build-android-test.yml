@@ -5,6 +5,7 @@ on:
     branches:
       - integration/grapes-test-food-20261017
       - feature/mobile-module-hubs-test-20261019
+      - feature/outdoor-plant-cards-preview-20261020
     paths:
       - android-health-connect-poc/**
       - src/**
