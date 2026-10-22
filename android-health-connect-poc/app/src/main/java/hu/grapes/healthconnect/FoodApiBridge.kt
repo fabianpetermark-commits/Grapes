@@ -23,7 +23,8 @@ internal class FoodApiBridge {
             "offLegacySearch" -> request("https://world.openfoodfacts.org/cgi/search.pl?" + offParameters(query, page, pageSize, true, region))
             "offBarcode" -> {
                 require(Regex("^\\d{7,14}$").matches(query)) { "Érvénytelen vonalkód." }
-                request("https://world.openfoodfacts.org/api/v2/product/" + encode(query) + ".json")
+                request("https://world.openfoodfacts.org/api/v2/product/" + encode(query) + ".json",
+                    missingBarcode = query)
             }
             "usdaSearch" -> request(
                 "https://api.nal.usda.gov/fdc/v1/foods/search?api_key=DEMO_KEY",
@@ -69,7 +70,7 @@ internal class FoodApiBridge {
         return params.joinToString("&") { (key, value) -> encode(key) + "=" + encode(value) }
     }
 
-    private fun request(url: String, body: String? = null): JSONObject {
+    private fun request(url: String, body: String? = null, missingBarcode: String? = null): JSONObject {
         val connection = URL(url).openConnection() as HttpURLConnection
         try {
             connection.instanceFollowRedirects = false
@@ -84,8 +85,14 @@ internal class FoodApiBridge {
                 connection.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
             }
             val status = connection.responseCode
+            // OFF's product API may return HTTP 404 (or HTTP 200 with status=0)
+            // for a barcode that is simply absent; that is not a network outage.
+            if (status == 404 && missingBarcode != null) {
+                return JSONObject().put("status", 0).put("code", missingBarcode)
+            }
             if (status !in 200..299) {
                 val explanation = when (status) {
+                    404 -> "A szolgáltatás keresési végpontja nem található."
                     429 -> "A szolgáltató keresési korlátja betelt."
                     403 -> "A szolgáltató elutasította a kérést."
                     else -> "Az adatbázis nem érhető el."
