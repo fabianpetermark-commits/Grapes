@@ -1,0 +1,230 @@
+name: Grapes TEST v19 Google Auth + v18 Food signed update (TEST ONLY)
+on:
+  push:
+    branches:
+      - feature/grapes-test-v16-android-auth-107-20261022
+    paths:
+      - '.github/workflows/grapes-test-v19-auth-signed.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: grapes-test-v19-auth-signed
+  cancel-in-progress: false
+
+jobs:
+  verify-sign-and-publish-test-only:
+    if: github.repository == 'fabianpetermark-commits/Grapes' && github.ref == 'refs/heads/feature/grapes-test-v16-android-auth-107-20261022'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GRAPES_TEST_AUTH_ENABLED: 'true'
+      VITE_GRAPES_TEST_SUPABASE_URL: https://aighqtqjlzirlokxwupt.supabase.co
+      VITE_GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY: ${{ vars.GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY }}
+      VITE_GRAPES_TEST_HEALTH_SYNC_ENABLED: 'false'
+      VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
+      VITE_GOOGLE_APP_ID: '991532871119'
+      VITE_GOOGLE_PICKER_API_KEY: ${{ secrets.GOOGLE_PICKER_API_KEY }}
+      VITE_GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
+      VITE_EBOOK_EPUB_WRITE_ENABLED: 'true'
+      VITE_EBOOK_TRANSFER_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
+      VITE_FOOD_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
+      GRAPES_VERSION_CODE: '19'
+      GRAPES_VERSION_NAME: '0.9.10'
+    steps:
+      - name: Check out exact TEST source (never main or PROD)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify immutable v18 baseline, TEST Auth and no accidental release overwrite
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse 'android-test-v18^{commit}')" = '4c10bab63e26d04b9daeaac54e300c6b540e7017'
+          git merge-base --is-ancestor ec8e7fa08f86967afc75f495e5fc82b62a5c4a97 HEAD
+          if gh release view android-test-v19 >/dev/null 2>&1; then
+            echo "::error::Refusing to overwrite existing android-test-v19"
+            exit 1
+          fi
+          case "$VITE_GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY" in
+            sb_publishable_????????????????*) echo 'TEST-only public Supabase key present' ;;
+            *) echo '::error::Missing approved Grapes TEST publishable key'; exit 1 ;;
+          esac
+          test "$VITE_GRAPES_TEST_SUPABASE_URL" = 'https://aighqtqjlzirlokxwupt.supabase.co'
+          test "$VITE_GRAPES_TEST_HEALTH_SYNC_ENABLED" = false
+          git diff --exit-code android-test-v18 -- \
+            android-health-connect-poc/app/src/main/AndroidManifest.xml \
+            android-health-connect-poc/app/src/main/java/hu/grapes/healthconnect/NativeBarcodeScannerActivity.kt \
+            android-health-connect-poc/app/src/main/java/hu/grapes/healthconnect/FoodApiBridge.kt \
+            android-health-connect-poc/app/src/main/res/drawable/ic_grapes_flashlight.xml \
+            src/android-bridge.js src/food/food-api.js \
+            src/food/food-catalog-search.js src/food/food-mobile.js \
+            tests/food-api.test.js tests/food-catalog-search.test.js \
+            tests/food-off-usda-integration.test.js
+          grep -Fq 'barcodeScannerLauncher' android-health-connect-poc/app/src/main/java/hu/grapes/healthconnect/MainActivity.kt
+          grep -Fq 'scanFoodBarcode' android-health-connect-poc/app/src/main/java/hu/grapes/healthconnect/MainActivity.kt
+          grep -Fq 'beginTestAuthOAuth' android-health-connect-poc/app/src/main/java/hu/grapes/healthconnect/MainActivity.kt
+          grep -Fq 'setOf(APP_ORIGIN, TEST_AUTH_ORIGIN)' android-health-connect-poc/app/src/main/java/hu/grapes/healthconnect/MainActivity.kt
+          test -s android-health-connect-poc/app/src/qa/AndroidManifest.xml
+          test -s android-health-connect-poc/app/src/main/java/hu/grapes/healthconnect/TestAuthCallback.kt
+          echo 'v18 scanner, OFF 404, torch and isolated Android Auth invariants verified'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Clean lockfile install
+        run: npm ci
+      - name: Unit suite + dedicated Auth/Drive regressions
+        run: |
+          set -euo pipefail
+          npm test
+          node --test tests/grapes-android-oauth.test.js tests/grapes-auth-flow.test.js \
+            tests/grapes-login-controller.test.js tests/grapes-test-runtime.test.js \
+            tests/ebook-drive-boundary.test.js
+      - name: Build TEST Android web assets with real public TEST Auth config
+        run: |
+          set -euo pipefail
+          npm run build:android-web
+          test -s android-health-connect-poc/app/src/main/assets/login-auth-test.html
+          grep -R -q 'aighqtqjlzirlokxwupt' android-health-connect-poc/app/src/main/assets/assets
+      - name: Find Chromium for browser regressions
+        run: |
+          if command -v google-chrome >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            npx playwright-core install --with-deps chromium
+            browser=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path '*chrome-linux*' | head -1)
+            test -n "$browser"
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$browser" >> "$GITHUB_ENV"
+          fi
+      - name: Focused Auth, native Food and E-book / Finance browser regressions
+        run: |
+          set -euo pipefail
+          node tests/grapes-test-auth.browser.mjs
+          node tests/android-food-mobile.browser.mjs
+          node tests/android-recipe-ingredient.browser.mjs
+          node tests/food-app.browser.mjs
+          node tests/android-ebook-reader.browser.mjs
+          node tests/android-ebook-shelf.browser.mjs
+          node tests/finance-import.browser.mjs
+      - name: Full browser suite — disallow any new failure beyond unchanged v16 baseline
+        run: |
+          set -euo pipefail
+          passed=0
+          known=0
+          unexpected=0
+          for file in tests/*.browser.mjs; do
+            if [ "$file" = tests/food-live-api.browser.mjs ]; then
+              echo "NOT TESTED external API: $file"
+              continue
+            fi
+            echo "Running $file"
+            if [[ "$file" == tests/android-* ]]; then
+              if VITE_GRAPES_TEST_CHANNEL=1 node "$file"; then
+                passed=$((passed + 1))
+              else
+                case "$file" in
+                  tests/android-food-yazio.browser.mjs|tests/android-mobile-entry.browser.mjs|tests/android-mobile-preview.browser.mjs|tests/android-yazio-api.browser.mjs|tests/ebook-content.browser.mjs|tests/finance-backup.browser.mjs)
+                    known=$((known + 1)); echo "KNOWN v16 BASELINE FAIL: $file" ;;
+                  *) unexpected=$((unexpected + 1)); echo "::error::NEW BROWSER REGRESSION: $file" ;;
+                esac
+              fi
+            else
+              if node "$file"; then
+                passed=$((passed + 1))
+              else
+                case "$file" in
+                  tests/android-food-yazio.browser.mjs|tests/android-mobile-entry.browser.mjs|tests/android-mobile-preview.browser.mjs|tests/android-yazio-api.browser.mjs|tests/ebook-content.browser.mjs|tests/finance-backup.browser.mjs)
+                    known=$((known + 1)); echo "KNOWN v16 BASELINE FAIL: $file" ;;
+                  *) unexpected=$((unexpected + 1)); echo "::error::NEW BROWSER REGRESSION: $file" ;;
+                esac
+              fi
+            fi
+          done
+          echo "BROWSER: $passed PASS, $known known baseline FAIL, $unexpected new FAIL"
+          test "$unexpected" -eq 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK 36
+        run: |
+          SDKMANAGER=$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | sort -V | tail -1)
+          test -n "$SDKMANAGER"
+          "$SDKMANAGER" "platforms;android-36" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.11.1
+      - name: Native callback QA Robolectric tests
+        run: gradle --project-dir android-health-connect-poc :app:testQaUnitTest
+      - name: Build signed TEST QA v19 with historical TEST key only
+        env:
+          ANDROID_TEST_KEYSTORE_BASE64: ${{ secrets.ANDROID_TEST_KEYSTORE_BASE64 }}
+          ANDROID_TEST_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_TEST_KEYSTORE_PASSWORD }}
+          ANDROID_TEST_KEY_ALIAS: ${{ secrets.ANDROID_TEST_KEY_ALIAS }}
+          ANDROID_TEST_KEY_PASSWORD: ${{ secrets.ANDROID_TEST_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$ANDROID_TEST_KEYSTORE_BASE64"
+          test -n "$ANDROID_TEST_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_TEST_KEY_ALIAS"
+          test -n "$ANDROID_TEST_KEY_PASSWORD"
+          export ANDROID_TEST_KEYSTORE_PATH="$RUNNER_TEMP/grapes-test-v19.p12"
+          trap 'rm -f "$ANDROID_TEST_KEYSTORE_PATH"' EXIT
+          printf '%s' "$ANDROID_TEST_KEYSTORE_BASE64" | base64 --decode > "$ANDROID_TEST_KEYSTORE_PATH"
+          chmod 600 "$ANDROID_TEST_KEYSTORE_PATH"
+          gradle --project-dir android-health-connect-poc :app:assembleQa
+          SOURCE=android-health-connect-poc/app/build/outputs/apk/qa/app-qa.apk
+          test -s "$SOURCE"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$SOURCE" | grep -F "package: name='hu.grapes.healthconnect.test'"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$SOURCE" | grep -F "versionCode='19'"
+          CERT=$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$SOURCE")
+          EXPECTED=cc9dc997fa4bff3845884afd2f011efe939c02806f91393a1ddb0455b6a2ff33
+          printf '%s\n' "$CERT" | grep -Fi "Signer #1 certificate SHA-256 digest: $EXPECTED"
+          mv "$SOURCE" grapes-test-v19.apk
+          sha256sum grapes-test-v19.apk > grapes-test-v19.apk.sha256
+      - name: Preserve signed TEST v19 APK and checksum for manual installation
+        uses: actions/upload-artifact@v4
+        with:
+          name: grapes-test-v19-auth-signed-qa
+          path: |
+            grapes-test-v19.apk
+            grapes-test-v19.apk.sha256
+          if-no-files-found: error
+          retention-days: 7
+      - name: Publish distinct TEST v19 prerelease via existing TEST updater (never PROD)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view android-test-v19 >/dev/null 2>&1; then
+            echo "::error::TEST v19 already exists, no overwrite"
+            exit 1
+          fi
+          sha256sum -c grapes-test-v19.apk.sha256
+          cat > "$RUNNER_TEMP/grapes-test-v19-notes.md" <<'EOF'
+          Grapes TEST v19 (0.9.10-test) — a meglévő TEST v18 frissítése ugyanazzal a csomagnévvel és TEST aláírással.
+
+          - Új: különálló Google-fiókos Grapes TEST Auth bejelentkezési képernyő; natív gombból nyílik, külső rendszerböngészős Google-belépés és csak TEST callback.
+          - A Supabase kizárólag az elkülönített Grapes TEST Auth projekthez csatlakozik; a Health felhőszinkron kikapcsolva.
+          - A v18 natív CameraX/ML Kit vonalkódolvasó, neon-cián vakuikon, OFF 404 javítás, Food/Water/YAZIO/Finance és a meglévő E-book Drive továbbra is megmarad.
+          - Nincs adatbázis-migráció, automatikus adatfeltöltés vagy felhasználói adatösszefésülés.
+          - A webes OAuth már sikeresen tesztelt, de Android készüléken az első Google visszatérés, megszakítás, munkamenet-megőrzés és kijelentkezés most következik.
+
+          FONTOS: csak a meglévő hu.grapes.healthconnect.test TEST appot frissítsd, ne töröld az appot/adatokat. Frissítés előtt készíts ellenőrzött mentést a TEST Food, Water, E-book és Finance adatairól.
+          Ha telepítési/aláírási hiba van, ne távolítsd el a jelenlegi alkalmazást.
+          A PROD Grapes és annak adatai változatlanok.
+          EOF
+          gh release create android-test-v19 grapes-test-v19.apk grapes-test-v19.apk.sha256 \
+            --target "$GITHUB_SHA" \
+            --title 'Grapes TEST 0.9.10 (v19) – Google fiókbelépés' \
+            --notes-file "$RUNNER_TEMP/grapes-test-v19-notes.md" \
+            --prerelease
+          gh release view android-test-v19 --json tagName,isPrerelease,assets,url
