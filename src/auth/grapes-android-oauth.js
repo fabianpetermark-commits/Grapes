@@ -51,6 +51,17 @@ export function createAndroidTestOAuth({ bridge = globalThis.GrapesAndroid,
 
   return Object.freeze({
     storage,
+    // This flag lives in Android app-private preferences; reading it does not
+    // expose a token or share the separate Supabase Auth origin with Drive.
+    async takeLaunchMode() { return call('takeTestAuthLaunchMode') },
+    // Native side accepts this only from the exact isolated login page.
+    // Do not await a WebView reply: navigation destroys the calling page.
+    enterApp() {
+      bridge.postMessage(JSON.stringify({
+        method: 'completeTestAuthLogin', requestId: crypto.randomUUID(), args: [],
+      }))
+    },
+    async finishSignOut() { await call('finishTestAuthSignOut') },
     async begin(client) {
       const state = randomState()
       const redirectTo = CALLBACK + '?state=' + state
@@ -69,7 +80,7 @@ export function createAndroidTestOAuth({ bridge = globalThis.GrapesAndroid,
         throw error
       }
     },
-    async resume(client, ui) {
+    async resume(client, ui, onVerified = null) {
       const result = await call('takeTestAuthCallback')
       if (result.status === 'none') return
       const saved = pending()
@@ -87,7 +98,9 @@ export function createAndroidTestOAuth({ bridge = globalThis.GrapesAndroid,
         const { error } = await client.auth.exchangeCodeForSession(result.code)
         if (error) throw error
         const { data } = await client.auth.getUser()
-        ui.setSession(data?.user?.id ? { id: data.user.id, email: data.user.email } : null)
+        const user = data?.user?.id ? { id: data.user.id, email: data.user.email } : null
+        ui.setSession(user)
+        if (user?.id && typeof onVerified === 'function') onVerified(user)
       } catch {
         ui.setNotice('A TEST-bejelentkezés nem fejeződött be. Indíts új belépést.')
       }
