@@ -4,6 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Grapes Android UI előnézet</title>
+  <script>
+    // No legacy Google Drive welcome flash after native QA verified the
+    // separate Grapes TEST account. PROD and ordinary web preview unchanged.
+    // The native TestAuthGate is the actual security check, not this flag.
+    if ('%VITE_GRAPES_TEST_AUTH_ENABLED%' === 'true' &&
+        location.href === 'https://appassets.androidplatform.net/assets/design/android-mobile-preview.html') {
+      document.documentElement.setAttribute('data-grapes-qa-native-app', 'true')
+    }
+  </script>
   <style>
     :root {
       color-scheme: dark;
@@ -40,6 +49,8 @@
     .screen { position: absolute; inset: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); padding-top: 44px; background: radial-gradient(circle at 12% 0, rgb(59 220 242 / 7%), transparent 30%), var(--bg); }
     .screen[hidden] { display: none; }
     .login { display: grid; align-content: center; padding: 72px 22px 28px; overflow-y: auto; text-align: center; }
+    /* Suppress only the stale Drive welcome frame during verified QA startup. */
+    html[data-grapes-qa-native-app="true"] #login { visibility: hidden; }
     .login[hidden] { display: none; }
     .logo { width: 76px; height: 76px; padding: 7px; margin: 0 auto 22px; background: radial-gradient(circle, rgb(59 220 242 / 15%), transparent 68%); filter: drop-shadow(0 12px 22px rgb(0 194 230 / 20%)); }
     .login h2 { margin: 0; font-size: 31px; line-height: 1.08; letter-spacing: -.04em; }
