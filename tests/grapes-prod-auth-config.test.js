@@ -13,6 +13,7 @@ const valid = {
   applicationId: GRAPES_PROD_ANDROID_PACKAGE,
   projectRef: ref,
   approvedProjectRef: ref,
+  legacyDataIsolationReviewed: true,
   supabaseUrl: `https://${ref}.supabase.co`,
   publishableKey: 'sb_publishable_0123456789abcdefghijklmn',
 }
@@ -35,6 +36,7 @@ test('production MUST NOT use TEST Supabase project or spoofed production URLs',
   fail({ ...valid, projectRef: 'rrqrmbiclapopgrcypye', supabaseUrl: 'https://rrqrmbiclapopgrcypye.supabase.co' })
   fail({ ...valid, projectRef: 'not a project!' })
   fail({ ...valid, approvedProjectRef: undefined })
+  fail({ ...valid, legacyDataIsolationReviewed: false })
 })
 
 test('PROD package is distinct from TEST and no secret/service-role API key allowed', () => {
