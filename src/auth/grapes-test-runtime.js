@@ -55,7 +55,10 @@ export function makeGrapesTestAuthConfig({ url, publishableKey, location, sessio
  * The only route permitted to initialize Supabase TEST Auth. Scope is limited
  * to auth; no Food/Water/Drive/Health store is imported or passed to the SDK.
  */
-export async function startGrapesTestAuth({ createClient, root, url, publishableKey, location, sessionStorage, nativeOAuth } = {}) {
+export async function startGrapesTestAuth({
+  createClient, root, url, publishableKey, location, sessionStorage, nativeOAuth,
+  onAuthenticated = null, suppressAutoOpen = false,
+} = {}) {
   if (typeof createClient !== 'function') {
     throw new GrapesTestAuthConfigError('A hivatalos Supabase-kliens még nincs telepítve.')
   }
@@ -83,17 +86,35 @@ export async function startGrapesTestAuth({ createClient, root, url, publishable
   const flow = nativeOAuth ? Object.freeze({
     ...baseFlow,
     signInWithGoogle: () => nativeOAuth.begin(client),
-    signOut: async () => { await nativeOAuth.cancel(); return baseFlow.signOut() },
+    signOut: async () => {
+      await nativeOAuth.cancel()
+      const result = await baseFlow.signOut()
+      if (typeof nativeOAuth.finishSignOut === 'function') await nativeOAuth.finishSignOut()
+      return result
+    },
   }) : baseFlow
   const ui = bindGrapesTestLogin(root, flow)
   let authRevision = 0
   let recoveryPending = false
   let disposed = false
+  let forwarded = false
+  const notifyVerified = (user) => {
+    // Only getUser-validated sessions may unlock the QA app. The native gate
+    // cannot be bypassed by simply clicking a button on the login screen.
+    if (!user?.id || recoveryPending || suppressAutoOpen || disposed ||
+      forwarded || typeof onAuthenticated !== 'function') return
+    forwarded = true
+    Promise.resolve().then(() => onAuthenticated(user)).catch(() => {
+      forwarded = false
+      if (!disposed) ui.setNotice('A Grapes TEST főoldala nem nyitható meg. Próbáld újra.')
+    })
+  }
   const { data: listener } = client.auth.onAuthStateChange((event) => {
     if (disposed) return
     if (event === 'SIGNED_OUT') {
       authRevision += 1
       recoveryPending = false
+      forwarded = false
       ui.setSession(null)
       return
     }
@@ -110,6 +131,7 @@ export async function startGrapesTestAuth({ createClient, root, url, publishable
       if (disposed || revision !== authRevision) return
       ui.setSession(current)
       if (current?.id && recoveryPending) ui.setRecoveryMode()
+      notifyVerified(current)
       if (!current?.id && recoveryPending) {
         ui.setNotice('A jelszó-visszaállítási munkamenet lejárt. Kérj új e-mailt.')
       }
@@ -120,7 +142,10 @@ export async function startGrapesTestAuth({ createClient, root, url, publishable
     // Initial state must be validated server-side. Ignore this result if a
     // later auth event superseded it while getUser() was in flight.
     const current = await flow.currentUser()
-    if (!disposed && initialRevision === authRevision) ui.setSession(current)
+    if (!disposed && initialRevision === authRevision) {
+      ui.setSession(current)
+      notifyVerified(current)
+    }
   } catch {
     if (!disposed && initialRevision === authRevision) {
       ui.setSession(null)
@@ -130,6 +155,7 @@ export async function startGrapesTestAuth({ createClient, root, url, publishable
   return {
     client,
     ui,
+    notifyVerified,
     dispose: () => {
       disposed = true
       authRevision += 1
