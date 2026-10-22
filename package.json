@@ -59,6 +59,7 @@
     "three": "^0.185.1",
     "three-bvh-csg": "^0.0.18",
     "three-mesh-bvh": "^0.9.7",
-    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
+    "@supabase/supabase-js": "2.118.0"
   }
 }
