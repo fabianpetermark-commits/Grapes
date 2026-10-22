@@ -1,4 +1,4 @@
-name: Grapes TEST v17 Signed Barcode Candidate (NO RELEASE)
+name: Grapes TEST v17 Update (TEST ONLY)
 on:
   push:
     branches:
@@ -9,7 +9,7 @@ on:
       - 'src/food/**'
       - 'src/android-bridge.js'
 permissions:
-  contents: read
+  contents: write
 concurrency:
   group: grapes-test-v17-barcode-signed
   cancel-in-progress: false
@@ -94,3 +94,34 @@ jobs:
             grapes-test-v17-signed-candidate.apk.sha256
           if-no-files-found: error
           retention-days: 7
+
+      - name: Publish Grapes TEST v17 prerelease (never PROD)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view android-test-v17 >/dev/null 2>&1; then
+            echo "android-test-v17 already exists, refusing to overwrite an existing update"
+            exit 1
+          fi
+          test -s grapes-test-v17-signed-candidate.apk
+          test -s grapes-test-v17-signed-candidate.apk.sha256
+          sha256sum -c grapes-test-v17-signed-candidate.apk.sha256
+          cp grapes-test-v17-signed-candidate.apk grapes-test-v17.apk
+          sha256sum grapes-test-v17.apk > grapes-test-v17.apk.sha256
+          cat > "$RUNNER_TEMP/grapes-test-v17-notes.md" <<'EOF'
+          Grapes TEST v17 (0.9.8-test) — a meglévő Grapes TEST v16 frissítése, nem külön alkalmazás.
+
+          - Food: új natív élő kamerás EAN/UPC vonalkódolvasó CameraX + ML Kit használatával.
+          - Grapes sötét, visszafogott neon-cián kamera felület, be-/kikapcsolható folyamatos LED-vaku és kétujjas zoom.
+          - Az ellenőrzőszám és két egyező felismerés csökkenti a téves beolvasást; kézi vonalkódbevitel továbbra is elérhető.
+          - A már meglévő OFF-terméklekérdezés, szerkeszthető tápértékadatok, receptek, Food/Water/Finance/E-book adatformátumok és a TEST Google Drive mappák változatlanok.
+          - A korábbi TEST v16 magyar USDA és keresési javításait megtartja.
+          - A teljes Health/Water/Drive ütközésvédelmi audit és az új Auth-kísérletek nincsenek ebben a kiadásban.
+
+          A TEST APK csomagneve hu.grapes.healthconnect.test, verziókód 17, ugyanazzal a TEST aláíró tanúsítvánnyal, mint a v16.
+          Telepítés előtt készíts ellenőrzött biztonsági mentést a TEST adataidról. A TEST appot ne töröld, és ne töröld az adatait. Ha a frissítést elutasítja a telefon, ne próbáld újratelepítéssel megoldani.
+          A vaku, a kamerás felismerés és a felület telefonos tesztje még szükséges. A fő Grapes PROD nincs módosítva.
+          EOF
+          gh release create android-test-v17             grapes-test-v17.apk grapes-test-v17.apk.sha256             --target "$GITHUB_SHA"             --title "Grapes TEST 0.9.8 (v17) – Vonalkódolvasó és vaku"             --notes-file "$RUNNER_TEMP/grapes-test-v17-notes.md"             --prerelease
+          gh release view android-test-v17 --json tagName,isPrerelease,assets,url
