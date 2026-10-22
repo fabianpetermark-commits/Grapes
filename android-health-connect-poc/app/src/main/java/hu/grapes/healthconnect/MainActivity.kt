@@ -58,6 +58,7 @@ class MainActivity : ComponentActivity() {
     private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
     private var pendingCapturedPhoto: Uri? = null
     private var pendingCameraPermission: PermissionRequest? = null
+    private var pendingBarcodeRequestId: String? = null
     private var pendingHealthRequest: PendingHealthRequest? = null
     private var pendingDriveRequestId: String? = null
     private var pendingBackupPickerRequestId: String? = null
@@ -77,6 +78,23 @@ class MainActivity : ComponentActivity() {
         val request = pendingCameraPermission
         pendingCameraPermission = null
         if (granted) request?.grant(arrayOf(PermissionRequest.RESOURCE_VIDEO_CAPTURE)) else request?.deny()
+    }
+
+    // Separate native screen; only the scanned digits return to the trusted WebView.
+    private val barcodeScannerLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val requestId = pendingBarcodeRequestId ?: return@registerForActivityResult
+        pendingBarcodeRequestId = null
+        if (result.resultCode == RESULT_OK) {
+            val barcode = result.data?.getStringExtra(NativeBarcodeScannerActivity.EXTRA_CODE)
+            if (barcode.isNullOrBlank()) sendError(requestId, "Nincs felismert vonalkód.")
+            else sendResult(requestId, barcode)
+        } else {
+            val error = result.data?.getStringExtra(NativeBarcodeScannerActivity.EXTRA_ERROR)
+            if (error.isNullOrBlank()) sendResult(requestId, "") // User dismissed scanner.
+            else sendError(requestId, error)
+        }
     }
 
     private val backupFilePicker = registerForActivityResult(
@@ -354,6 +372,21 @@ class MainActivity : ComponentActivity() {
             return sendError(requestId, "Nem engedélyezett TEST Auth-művelet.")
         }
         when (message.optString("method")) {
+            "scanFoodBarcode" -> {
+                if (pendingBarcodeRequestId != null) {
+                    sendError(requestId, "Már nyitva van a vonalkódolvasó.")
+                } else {
+                    pendingBarcodeRequestId = requestId
+                    runCatching {
+                        barcodeScannerLauncher.launch(
+                            Intent(this, NativeBarcodeScannerActivity::class.java)
+                        )
+                    }.onFailure {
+                        pendingBarcodeRequestId = null
+                        sendError(requestId, it.message ?: "A kamera nem indítható.")
+                    }
+                }
+            }
             "beginTestAuthOAuth" -> beginTestAuthOAuth(message, requestId)
             "takeTestAuthCallback" -> {
                 if (!isTrustedTestAuthPage()) sendError(requestId, "A TEST Auth oldal nem aktív.")
