@@ -33,11 +33,27 @@ try {
   const page = await context.newPage()
   const pageErrors = []
   page.on('pageerror', error => pageErrors.push(error.message))
+  const providerRequests = []
+  page.on('request', request => { if (/api\\.weatherapi\\.com/.test(request.url())) providerRequests.push(request.url()) })
+  await page.route('https://aighqtqjlzirlokxwupt.supabase.co/functions/v1/weather-forecast/cached-forecast', async route => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+      source: 'WeatherAPI.com',
+      cachedAt: new Date().toISOString(),
+      stale: false, demoOnly: true, staticTestLocation: true,
+      location: { name: 'Szentendre', country: 'Hungary' },
+      current: { temperatureC: 12.4, condition: 'Felhős' },
+      forecast: [
+        { date: '2026-10-22', minTemperatureC: -2, maxTemperatureC: 14, precipitationMm: 1 },
+        { date: '2026-10-23', minTemperatureC: 4, maxTemperatureC: 35, precipitationMm: 6 },
+        { date: '2026-10-24', minTemperatureC: 6, maxTemperatureC: 17, precipitationMm: 0 },
+      ],
+    }) })
+  })
   await page.goto(url, { waitUntil: 'networkidle' })
   await page.locator('[data-page="home"]').waitFor({ state: 'visible' })
   assert.deepEqual(await page.locator('[data-menu-group]').evaluateAll(nodes => nodes.map(x => x.dataset.menuGroup)),
-    ['home', 'health', 'utility', 'finance', 'outdoor'])
-  assert.equal(await page.locator('[data-page="home"] .hub-card__icon svg').count(), 5)
+    ['home', 'health', 'utility', 'finance'])
+  assert.equal(await page.locator('[data-page="home"] .hub-card__icon svg').count(), 4)
   assert.match(await page.locator('[data-menu-group="health"]').textContent(), /Food.*Receptek.*Statisztika/)
 
   for (const width of [320, 360, 390, 412]) {
@@ -87,10 +103,17 @@ try {
   assert.equal(await page.locator('[data-page="hub-finance"] [data-menu-destination="finance"]').count(), 1)
   await page.locator('[data-page="hub-finance"] [data-menu-back]').click()
 
-  await page.locator('[data-menu-group="outdoor"]').click()
+  await page.locator('[data-menu-group="home"]').click()
+  await page.locator('[data-page="hub-home"] [data-menu-destination="garden"]').click()
   await page.locator('[data-page="hub-outdoor"]').waitFor({ state: 'visible' })
-  assert.equal(await page.locator('[data-page="hub-outdoor"] .outdoor-weather').count(), 1, 'Időjárás a főoldali fejlécben, nem külön menükártyán.')
-  assert.match(await page.locator('[data-page="hub-outdoor"] .outdoor-weather').textContent(), /nincs bekötve/)
+  assert.equal(await page.locator('[data-page="hub-outdoor"] h1').textContent(), 'Növények')
+  assert.equal(await page.locator('[data-page="hub-outdoor"] .outdoor-weather').count(), 1, 'Időjárás a Növények fejlécében, nem külön almodulkártyán.')
+  await page.locator('[data-plants-weather-temperature]').filter({ hasText: '12,4' }).waitFor()
+  assert.match(await page.locator('[data-plants-weather-status]').textContent(), /frissítve/)
+  assert.match(await page.locator('[data-plants-weather-frost]').textContent(), /Fagy előfordulhat/)
+  assert.match(await page.locator('[data-plants-weather-heat]').textContent(), /Hőség előfordulhat/)
+  assert.match(await page.locator('[data-plants-weather-rain]').textContent(), /7 mm/)
+  assert.equal(providerRequests.length, 0, 'A WeatherAPI szolgáltatói URL-je és kulcsa nem kerül a klienshez.')
   assert.match(await page.locator('[data-page="hub-outdoor"] .outdoor-tasks').textContent(), /Még nincs megjeleníthető teendő/)
   assert.equal(await page.locator('[data-page="hub-outdoor"] [data-menu-destination]').count(), 2)
   await page.locator('[data-page="hub-outdoor"] [data-menu-destination="plants"]').click()
@@ -113,6 +136,10 @@ try {
   assert.equal(await page.locator('[data-outdoor-panel="journal"]').isVisible(), true)
   await page.locator('[data-outdoor-tab="photos"]').click()
   assert.equal(await page.locator('[data-outdoor-panel="photos"]').isVisible(), true)
+  await page.locator('[data-outdoor-tab="propagation"]').click()
+  assert.equal(await page.locator('[data-outdoor-panel="propagation"]').isVisible(), true)
+  assert.match(await page.locator('[data-outdoor-panel="propagation"]').textContent(), /Dugványozás.*Magvetés.*Tőosztás/)
+  assert.match(await page.locator('[data-outdoor-panel="propagation"]').textContent(), /anyanövény/)
 
   for (const width of [320, 360, 390, 412]) {
     await page.setViewportSize({ width, height: 844 })
@@ -138,6 +165,8 @@ try {
   await page.locator('[data-page="outdoor-catalog"] [data-outdoor-back]').click()
   await page.locator('[data-page="hub-outdoor"]').waitFor({ state: 'visible' })
   await page.evaluate(() => window.grapesHandleAndroidBack())
+  await page.locator('[data-page="hub-home"]').waitFor({ state: 'visible' })
+  await page.locator('[data-page="hub-home"] [data-menu-back]').click()
   await page.locator('[data-page="home"]').waitFor({ state: 'visible' })
 
   await page.locator('.bottom-nav [data-nav="projects"]').click()
@@ -145,7 +174,7 @@ try {
   await page.locator('.bottom-nav [data-nav="home"]').click()
   assert.equal(await page.locator('[data-page="home"]').isVisible(), true)
   assert.deepEqual(pageErrors, [])
-  console.log('Grapes 2x2 + Outdoor hubs: Home lista/készlet, Health Food/Receptek/Statisztika, Utility E-book, Finance, 320–412 px, back és Projektek: OK')
+  console.log('Grapes Home/Növények: weather cache, szaporítás, 2x2 main menu, navigation, 320–412 px, existing modules OK')
 } finally {
   await browser?.close()
   server.kill()
