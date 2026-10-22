@@ -13,7 +13,7 @@ permissions:
 jobs:
   prod-auth-config-no-go:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -49,6 +49,10 @@ jobs:
         env:
           VITE_GRAPES_PROD_AUTH_ENABLED: 'false'
         run: gradle --project-dir android-health-connect-poc :app:compileReleaseKotlin
+      - name: Run native owner-account isolation and PKCE OAuth regressions
+        env:
+          VITE_GRAPES_PROD_AUTH_ENABLED: 'false'
+        run: gradle --project-dir android-health-connect-poc :app:testReleaseUnitTest
       - name: Assert this staging PR cannot accidentally release PROD or TEST
         run: |
           set -euo pipefail
