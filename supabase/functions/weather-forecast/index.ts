@@ -1,3 +1,5 @@
+import { verifiedGithubWeatherWorkflow } from "./github-oidc.ts";
+
 // Grapes TEST only: WeatherAPI proxy proof of concept.
 // The public health endpoint never calls the provider or returns secret values.
 // Forecasts require a verified Supabase Auth session, not just a publishable/anon key.
@@ -56,8 +58,14 @@ Deno.serve(async (req: Request): Promise<Response> => {
       forecastRequiresAuthenticatedUser: true,
     });
   }
-  if (!path.endsWith("/forecast")) return json({ error: "not_found" }, 404);
-  if (!(await verifiedUser(req))) return json({ error: "authentication_required" }, 401);
+  const githubProbe = path.endsWith("/ci-forecast");
+  const userForecast = path.endsWith("/forecast");
+  if (!githubProbe && !userForecast) return json({ error: "not_found" }, 404);
+  // CI identity is validated by GitHub's signed OIDC token, not a public API key.
+  const permitted = githubProbe
+    ? await verifiedGithubWeatherWorkflow(req)
+    : await verifiedUser(req);
+  if (!permitted) return json({ error: "authentication_required" }, 401);
   const key = Deno.env.get("WEATHERAPI_KEY")?.trim();
   if (!key) return json({ error: "weather_provider_unconfigured" }, 503);
   const url = new URL("https://api.weatherapi.com/v1/forecast.json");
