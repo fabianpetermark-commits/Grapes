@@ -1,0 +1,44 @@
+/* Only the PROD sign-in preview; preserve the approved login styles. */
+.test-signout { display: block; margin: 12px auto 0; color: var(--grapes-cyan); }
+.test-signout[hidden] { display: none; }
+.google-button:disabled, .submit-button:disabled { opacity: .55; cursor: not-allowed; }
+.footer-links .text-action:disabled { opacity: .55; cursor: not-allowed; }
+.field[hidden] { display: none; }
+
+/* Author-level display rules otherwise override the UA hidden attribute. */
+.login-page [hidden] { display: none !important; }
+
+/* QA-only pre-paint cover: the real login must never flash during the
+   existing Supabase session verification. No token or login state is read
+   from markup. The normal web preview and PROD never get this attribute. */
+.grapes-prod-startup { display: none; }
+html[data-grapes-prod-starting="true"] .login-page { visibility: hidden; }
+html[data-grapes-prod-starting="true"] .grapes-prod-startup {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: 28px;
+  color: #f2f7fb;
+  text-align: center;
+  background: #05080c;
+}
+.grapes-prod-startup__mark {
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 96px;
+  margin-bottom: 18px;
+}
+.grapes-prod-startup__mark img {
+  display: block;
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+}
+.grapes-prod-startup strong { font-size: 29px; letter-spacing: -.035em; }
+.grapes-prod-startup p { margin: 10px 0 0; color: #94a5b8; font-size: 13px; }

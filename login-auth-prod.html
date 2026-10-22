@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#000000">
+  <meta name="description" content="Grapes – jóváhagyott bejelentkezési képernyő, önálló UI-előnézet.">
+  <title>Grapes PROD – Bejelentkezés</title>
+  <script>
+    // Pre-paint hint only, NEVER proof of authentication. The official
+    // Supabase PROD client still verifies getUser() before native navigation.
+    // No saved session? Render login directly, without an intermediate splash.
+    // Use the existing SDK storage key so installed v22 sessions work as-is.
+    if (location.href === 'https://grapes-prod-auth.invalid/assets/login-auth-prod.html') {
+      try {
+        if (localStorage.getItem('grapes-prod-auth-yopabovoxyffhokhbgxl')) {
+          document.documentElement.setAttribute('data-grapes-prod-starting', 'true')
+        }
+      } catch { /* Storage unavailable: show login; native auth still fails closed. */ }
+    }
+  </script>
+  <link rel="stylesheet" href="./src/styles/screens/login-preview.css">
+  <link rel="stylesheet" href="./src/styles/screens/login-auth-prod.css">
+</head>
+<body>
+  <div id="grapes-prod-startup" class="grapes-prod-startup" role="status" aria-label="Grapes-fiók ellenőrzése">
+    <div class="grapes-prod-startup__mark" aria-hidden="true">
+      <img src="./grapes-logo.svg" width="96" height="96" alt="" decoding="async">
+    </div>
+  </div>
+  <main class="login-page">
+    <section class="login-card" aria-labelledby="grapes-title">
+      <header class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M26 11c1.5-4 5.3-6.6 10-6.8-1.1 5.4-4.2 8.3-10 8.7M25 12c-2.6-3.4-5.7-4.6-10.1-4.7 1.2 4.5 4.7 7.1 9.8 7.5" stroke="#3BDCF2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M25 10c-.4 3-.6 4.9-.4 7" stroke="#3BDCF2" stroke-width="2" stroke-linecap="round"/>
+            <g fill="#3BDCF2" fill-opacity=".13" stroke="#3BDCF2" stroke-width="1.8">
+              <circle cx="17" cy="21" r="6.2"/><circle cx="29" cy="21" r="6.2"/>
+              <circle cx="12.9" cy="31.5" r="5.9"/><circle cx="24" cy="31.5" r="6.2"/><circle cx="35" cy="31.5" r="5.9"/>
+              <circle cx="24" cy="40" r="5.2"/>
+            </g>
+          </svg>
+        </div>
+        <h1 id="grapes-title">Grapes</h1>
+        <p class="subtitle">Jelentkezz be a fiókodba</p>
+      </header>
+
+      <button class="google-button" id="google-sign-in" type="button" aria-label="Folytatás Google-fiókkal">
+        <svg class="google-mark" viewBox="0 0 24 24" role="img" aria-label="Google" xmlns="http://www.w3.org/2000/svg">
+          <path fill="#4285F4" d="M21.35 12.25c0-.72-.06-1.41-.19-2.08H12v3.94h5.23a4.47 4.47 0 0 1-1.94 2.94v2.45h3.14c1.85-1.7 2.92-4.2 2.92-7.25Z"/>
+          <path fill="#34A853" d="M12 21.75c2.65 0 4.88-.88 6.5-2.39l-3.14-2.45c-.87.59-1.99.94-3.36.94-2.58 0-4.76-1.74-5.55-4.07H3.2v2.53a9.79 9.79 0 0 0 8.8 5.44Z"/>
+          <path fill="#FBBC05" d="M6.45 13.78a5.84 5.84 0 0 1 0-3.56V7.69H3.2a9.8 9.8 0 0 0 0 8.62l3.25-2.53Z"/>
+          <path fill="#EA4335" d="M12 6.15c1.44 0 2.73.5 3.75 1.47l2.81-2.81C16.88 3.24 14.65 2.25 12 2.25a9.79 9.79 0 0 0-8.8 5.44l3.25 2.53C7.24 7.89 9.42 6.15 12 6.15Z"/>
+        </svg>
+        <span>Folytatás Google-fiókkal</span>
+      </button>
+
+      <div class="separator" aria-hidden="true"><span>vagy</span></div>
+
+      <form id="grapes-login-form" autocomplete="off" novalidate>
+        <div class="field">
+          <label for="grapes-username">Felhasználónév vagy e-mail-cím</label>
+          <input id="grapes-username" type="text" autocomplete="username" placeholder="Felhasználónév / e-mail">
+        </div>
+        <div class="field">
+          <label for="grapes-password">Jelszó</label>
+          <div class="password-container">
+            <input id="grapes-password" type="password" autocomplete="current-password" placeholder="••••••••••">
+            <button id="toggle-password" class="toggle-password" type="button" aria-label="Jelszó megjelenítése" aria-pressed="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M2 12s3.7-6 10-6 10 6 10 6-3.7 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <button class="submit-button" type="submit">Bejelentkezés</button>
+      </form>
+
+      <nav class="footer-links" aria-label="Fiókkezelés">
+        <button class="text-action" id="forgot-password" type="button">Elfelejtett jelszó?</button>
+        <span class="footer-separator" aria-hidden="true">·</span>
+        <button class="text-action" id="register" type="button">Regisztráció</button>
+      </nav>
+      <button id="grapes-sign-out" class="text-action test-signout" type="button" hidden>Kijelentkezés a PROD-fiókból</button>
+      <p id="grapes-feedback" class="feedback" role="status" aria-live="polite" hidden></p>
+    </section>
+    <p class="prototype-note">Grapes PROD • A működő belépés csak külön, ellenőrzött Supabase-konfigurációval engedélyezhető.</p>
+  </main>
+  <script type="module" src="./src/login-auth-prod.js"></script>
+</body>
+</html>

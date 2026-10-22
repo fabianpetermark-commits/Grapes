@@ -23,6 +23,10 @@ The signed, phone-approved Grapes TEST v24 proves the user experience, not produ
 - Explicit legacyDataIsolationReviewed gate is required before enabling Auth. This is a technical preflight gate, not proof of data isolation.
 - PROD Auth currently OFF; this branch changes no Android APK or PROD release workflow, no Drive data or existing Food/Water/Finance/E-book records.
 
+## Production web Auth integration staged (2026-10-22)
+
+The separate PROD login HTML, styles, Supabase 2.118.0 locked client, login flow, Android OAuth JavaScript adapter and Vite bundling are now staged in this PR. Default remains **AUTH OFF**; activation requires both explicit environment flags `VITE_GRAPES_PROD_AUTH_ENABLED=true` and `VITE_GRAPES_PROD_LEGACY_DATA_ISOLATION_REVIEWED=true`. In addition the PROD runtime independently validates the hard-pinned production project ID, URL, key and data-isolation gate. This is only the JS layer: **native Android callback, explicit multi-account data ownership, Google Cloud provider and Supabase redirect allowlisting are NOT complete**. Do not set these flags yet, publish an APK, or merge this PR.
+
 ## Remaining blockers BEFORE production release
 
 1. **DONE:** owner approved organization, 0 USD/month quote, independent Grapes PROD created in Frankfurt and verified active. TEST project and older project unchanged.
