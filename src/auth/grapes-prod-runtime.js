@@ -106,9 +106,15 @@ export async function startGrapesProdAuth({
     if (!user?.id || recoveryPending || suppressAutoOpen || disposed ||
       forwarded || typeof onAuthenticated !== 'function') return
     forwarded = true
-    Promise.resolve().then(() => onAuthenticated(user)).catch(() => {
+    Promise.resolve().then(() => onAuthenticated(user)).catch(error => {
       forwarded = false
-      if (!disposed) ui.setNotice('A Grapes PROD főoldala nem nyitható meg. Próbáld újra.')
+      if (!disposed) {
+        // Native owner-binding failures are already sanitized on the Android
+        // side. Show a concrete recovery message instead of an endless splash.
+        const message = typeof error?.message === 'string' && error.message.length <= 200
+          ? error.message : 'A Grapes-fiók összekapcsolása nem sikerült. Próbáld újra.'
+        ui.setNotice(message)
+      }
     })
   }
   const { data: listener } = client.auth.onAuthStateChange((event) => {
