@@ -18,6 +18,7 @@ import android.view.ScaleGestureDetector
 import android.view.View
 import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.ComponentActivity
@@ -54,7 +55,7 @@ class NativeBarcodeScannerActivity : ComponentActivity() {
     private var repeatCount = 0
     private lateinit var previewView: PreviewView
     private lateinit var status: TextView
-    private lateinit var torch: TextView
+    private lateinit var torch: ImageView
     private lateinit var manualCode: EditText
 
     // Bundled ML Kit model: first scan works without a model download.
@@ -135,11 +136,6 @@ class NativeBarcodeScannerActivity : ComponentActivity() {
             gravity = Gravity.CENTER_VERTICAL
         }
         toolbar.addView(title, LinearLayout.LayoutParams(0, -1, 1f))
-        torch = text("⚡", 28f, Color.rgb(151, 171, 179)).apply {
-            contentDescription = "Vaku bekapcsolása"
-            setOnClickListener { toggleTorch() }
-        }
-        toolbar.addView(torch, LinearLayout.LayoutParams(dp(52), -1))
 
         root.addView(text("Irányítsd a kamerát a vonalkódra", 16f, Color.WHITE, true),
             LinearLayout.LayoutParams(-1, dp(38)))
@@ -161,6 +157,22 @@ class NativeBarcodeScannerActivity : ComponentActivity() {
         }
         frame.addView(previewView, FrameLayout.LayoutParams(-1, -1))
         frame.addView(ScannerReticle(this), FrameLayout.LayoutParams(-1, -1))
+        // Floating flashlight at the camera viewfinder, not the page title.
+        torch = ImageView(this).apply {
+            setImageResource(R.drawable.ic_grapes_flashlight)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+            background = torchBackground(false)
+            contentDescription = "Vaku bekapcsolása"
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { toggleTorch() }
+        }
+        frame.addView(torch, FrameLayout.LayoutParams(dp(52), dp(52),
+            Gravity.END or Gravity.BOTTOM).apply {
+            rightMargin = dp(20)
+            bottomMargin = dp(22)
+        })
         previewView.setOnTouchListener { _, event -> zoomGesture.onTouchEvent(event); true }
 
         status = text("Kamera indítása…", 14f, Color.rgb(169, 211, 217))
@@ -198,6 +210,13 @@ class NativeBarcodeScannerActivity : ComponentActivity() {
             Color.rgb(127, 150, 159)), LinearLayout.LayoutParams(-1, dp(38)))
     }
 
+    private fun torchBackground(on: Boolean): GradientDrawable =
+        GradientDrawable().apply {
+            setColor(if (on) Color.rgb(26, 74, 80) else Color.rgb(18, 38, 46))
+            cornerRadius = dp(16).toFloat()
+            setStroke(dp(if (on) 2 else 1), CYAN)
+        }
+
     private fun toggleTorch() {
         val current = camera ?: return
         if (!current.cameraInfo.hasFlashUnit()) {
@@ -208,7 +227,7 @@ class NativeBarcodeScannerActivity : ComponentActivity() {
         current.cameraControl.enableTorch(desired).addListener({
             torchOn = current.cameraInfo.torchState.value ==
                 androidx.camera.core.TorchState.ON
-            torch.setTextColor(if (torchOn) CYAN else Color.rgb(151, 171, 179))
+            torch.background = torchBackground(torchOn)
             torch.contentDescription = if (torchOn) "Vaku kikapcsolása" else "Vaku bekapcsolása"
         }, ContextCompat.getMainExecutor(this))
     }
