@@ -282,6 +282,7 @@
     .progress > i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); border-radius: inherit; }
     .food-overview-actions { display: grid; grid-column: 1 / -1; grid-template-columns: 1fr 1fr; gap: 8px; }
     .food-overview-actions button { min-height: 44px; color: var(--accent); background: var(--accent-soft); border: 1px solid rgb(59 220 242 / 24%); border-radius: 13px; font-size: 10px; font-weight: 800; }
+    .food-overview-actions [data-food-backup-export] { grid-column: 1 / -1; }
     .water-card { display: flex; gap: 12px; align-items: center; padding: 13px 14px; margin-top: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 17px; }
     .water-card > .water-card__icon { display: grid; place-items: center; flex: 0 0 42px; width: 42px; height: 42px; margin-top: 0; color: #7bc8ff; background: rgb(77 143 255 / 12%); border-radius: 13px; }
     .water-card div { min-width: 0; flex: 1; }
@@ -685,7 +686,7 @@
               <div class="macro"><span>Fehérje</span><div class="progress"><i data-food-protein-bar style="width:0%"></i></div><b data-food-protein>0 g</b></div>
               <div class="macro"><span>Szénhidrát</span><div class="progress"><i data-food-carbohydrate-bar style="width:0%"></i></div><b data-food-carbohydrate>0 g</b></div>
               <div class="macro"><span>Zsír</span><div class="progress"><i data-food-fat-bar style="width:0%"></i></div><b data-food-fat>0 g</b></div>
-            </div></div><div class="food-overview-actions"><button type="button" data-food-open-stats>Statisztika</button><button type="button" data-food-open-targets>Napi célok</button></div>
+            </div></div><div class="food-overview-actions"><button type="button" data-food-open-stats>Statisztika</button><button type="button" data-food-open-targets>Napi célok</button><button type="button" data-food-backup-export>Ételnapló mentése ↓</button></div>
           </div>
           <div class="water-card water-card--button" data-water-open role="button" tabindex="0"><span class="water-card__icon" data-mobile-icon="water"></span><div><strong>Víz</strong><span><b data-water-summary>5 / 8 pohár · 1,25 l</b></span></div><button class="mini-add" data-water-add="250" aria-label="250 milliliter víz hozzáadása">+</button></div>
           <div class="section-head"><h2>Receptek</h2><div style="display:flex;gap:12px"><button type="button" data-food-open-recipes>Megnyitás</button><button type="button" data-food-overview-new-recipe aria-label="Új recept hozzáadása">＋</button></div></div>
