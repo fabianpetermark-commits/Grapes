@@ -237,7 +237,7 @@ jobs:
           SOURCE=android-health-connect-poc/app/build/outputs/apk/qa/app-qa.apk
           test -s "$SOURCE"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$SOURCE" | grep -F "package: name='hu.grapes.healthconnect.test'"
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$SOURCE" | grep -F "versionCode='20'"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$SOURCE" | grep -F "versionCode='21'"
           CERT=$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$SOURCE")
           EXPECTED=cc9dc997fa4bff3845884afd2f011efe939c02806f91393a1ddb0455b6a2ff33
           printf '%s\n' "$CERT" | grep -Fi "Signer #1 certificate SHA-256 digest: $EXPECTED"
