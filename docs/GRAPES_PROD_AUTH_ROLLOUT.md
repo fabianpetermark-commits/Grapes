@@ -38,6 +38,10 @@ The separate PROD login HTML, styles, Supabase 2.118.0 locked client, login flow
 
 **NO-GO remains:** This is a preparatory Draft PR and must never be merged or treated as a production APK by itself. PROD v28 and TEST v24 stay intact.
 
+## Verified v28 backup checklist (NO-GO until real files checked)
+
+See [GRAPES_PROD_V28_BACKUP_PREFLIGHT.md](./GRAPES_PROD_V28_BACKUP_PREFLIGHT.md) for exact Food, Water, Finance, E-book and project backup coverage, real-device safety steps, and evidence fields. The current native JSON file saver supports Food and Water, **not** Finance: the latter's existing browser blob export may not work in Android WebView, so verify an independent Finance JSON/Drive project if used. No actual phone backup is yet verified and no signed candidate has been installed.
+
 ## External OAuth configuration and validation
 
 1. **OWNER COMPLETED:** Google Cloud Web OAuth client for Grapes PROD created, exact redirect `https://yopabovoxyffhokhbgxl.supabase.co/auth/v1/callback` entered. The secret remains exclusively in provider settings.
