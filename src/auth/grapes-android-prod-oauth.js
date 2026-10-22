@@ -31,7 +31,7 @@ export function createAndroidProdOAuth({ bridge = globalThis.GrapesAndroid,
     const onResult = event => {
       if (event.detail?.requestId !== requestId) return
       events.removeEventListener('grapes:android-result', onResult)
-      if (!event.detail.ok) reject(new Error('PROD Android Auth handoff failed'))
+      if (!event.detail.ok) reject(new Error(typeof event.detail.error === 'string' ? event.detail.error : 'PROD Android Auth handoff failed'))
       else {
         try { resolve(JSON.parse(event.detail.payload)) }
         catch { reject(new Error('Invalid PROD Android Auth response')) }
@@ -54,13 +54,12 @@ export function createAndroidProdOAuth({ bridge = globalThis.GrapesAndroid,
     // This flag lives in Android app-private preferences; reading it does not
     // expose a token or share the separate Supabase Auth origin with Drive.
     async takeLaunchMode() { return call('takeProdAuthLaunchMode') },
-    // Native side accepts this only from the exact isolated login page.
-    // Do not await a WebView reply: navigation destroys the calling page.
+    // The owner-binding consent and secure device challenge are asynchronous.
+    // Wait for an explicit native acknowledgement instead of silently assuming
+    // that successful Supabase login already unlocked unscoped local records.
     enterApp(verifiedUserId) {
       if (typeof verifiedUserId !== 'string' || !/^[a-f0-9-]{36}$/i.test(verifiedUserId)) throw new Error('Invalid PROD user identity')
-      bridge.postMessage(JSON.stringify({
-        method: 'completeProdAuthLogin', requestId: crypto.randomUUID(), args: [verifiedUserId],
-      }))
+      return call('completeProdAuthLogin', [verifiedUserId])
     },
     async finishSignOut() { await call('finishProdAuthSignOut') },
     async begin(client) {
