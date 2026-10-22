@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { bindGrapesTestLogin } from './auth/grapes-login-controller.js'
 import { startGrapesTestAuth } from './auth/grapes-test-runtime.js'
+import { createAndroidTestOAuth } from './auth/grapes-android-oauth.js'
 
 /**
  * Grapes TEST route only. The existing login-preview.html and Google Drive
@@ -19,9 +20,17 @@ export async function activateGrapesAuthTest({
   location = globalThis.location?.href,
   sessionStorage = globalThis.sessionStorage,
 } = {}) {
-  return startGrapesTestAuth({
-    createClient: createClientFactory, root, url, publishableKey, location, sessionStorage,
+  const isAndroid = location === 'https://test-auth.androidplatform.net/assets/login-auth-test.html' &&
+    typeof globalThis.GrapesAndroid?.postMessage === 'function'
+  const nativeOAuth = isAndroid ? createAndroidTestOAuth() : null
+  const app = await startGrapesTestAuth({
+    createClient: createClientFactory, root, url, publishableKey, location,
+    sessionStorage: nativeOAuth ? nativeOAuth.storage : sessionStorage, nativeOAuth,
   })
+  if (nativeOAuth) await nativeOAuth.resume(app.client, app.ui).catch(() => {
+    app.ui.setNotice('A TEST-visszatérés nem ellenőrizhető. Indíts új belépést.')
+  })
+  return app
 }
 
 if (typeof document !== 'undefined' && document.querySelector('#grapes-login-form')) {

@@ -10,6 +10,7 @@ export const GRAPES_TEST_PROJECT_URL = 'https://aighqtqjlzirlokxwupt.supabase.co
 export const GRAPES_TEST_STORAGE_KEY = 'grapes-test-auth-aighqtqjlzirlokxwupt'
 const VALID_HOSTS = new Set(['fabianpetermark-commits.github.io', 'localhost', '127.0.0.1'])
 const CALLBACK_PATH = '/Grapes/login-auth-test.html'
+const ANDROID_AUTH_URL = 'https://test-auth.androidplatform.net/assets/login-auth-test.html'
 
 export class GrapesTestAuthConfigError extends Error {
   constructor(message) {
@@ -18,7 +19,7 @@ export class GrapesTestAuthConfigError extends Error {
   }
 }
 
-export function makeGrapesTestAuthConfig({ url, publishableKey, location, sessionStorage } = {}) {
+export function makeGrapesTestAuthConfig({ url, publishableKey, location, sessionStorage, nativeOAuth } = {}) {
   if (url !== GRAPES_TEST_PROJECT_URL) {
     throw new GrapesTestAuthConfigError('A Grapes TEST Supabase URL nem egyezik a külön tesztprojektével.')
   }
@@ -31,7 +32,9 @@ export function makeGrapesTestAuthConfig({ url, publishableKey, location, sessio
   let origin
   try {
     const loc = new URL(String(location))
-    if (!VALID_HOSTS.has(loc.hostname) || (loc.protocol !== 'https:' && !(['localhost', '127.0.0.1'].includes(loc.hostname) && loc.protocol === 'http:')) || loc.pathname !== CALLBACK_PATH) {
+    const android = Boolean(nativeOAuth) && loc.href === ANDROID_AUTH_URL
+    if (nativeOAuth && !android) throw new Error('Android Auth origin mismatch')
+    if (!android && (!VALID_HOSTS.has(loc.hostname) || (loc.protocol !== 'https:' && !(['localhost', '127.0.0.1'].includes(loc.hostname) && loc.protocol === 'http:')) || loc.pathname !== CALLBACK_PATH)) {
       throw new Error('Invalid login TEST URL')
     }
     origin = loc.origin
@@ -41,8 +44,8 @@ export function makeGrapesTestAuthConfig({ url, publishableKey, location, sessio
   return Object.freeze({
     url: GRAPES_TEST_PROJECT_URL,
     publishableKey,
-    callbackUrl: origin + CALLBACK_PATH,
-    recoveryUrl: origin + CALLBACK_PATH,
+    callbackUrl: nativeOAuth ? null : origin + CALLBACK_PATH,
+    recoveryUrl: nativeOAuth ? null : origin + CALLBACK_PATH,
     storage: sessionStorage,
     storageKey: GRAPES_TEST_STORAGE_KEY,
   })
@@ -52,15 +55,18 @@ export function makeGrapesTestAuthConfig({ url, publishableKey, location, sessio
  * The only route permitted to initialize Supabase TEST Auth. Scope is limited
  * to auth; no Food/Water/Drive/Health store is imported or passed to the SDK.
  */
-export async function startGrapesTestAuth({ createClient, root, url, publishableKey, location, sessionStorage } = {}) {
+export async function startGrapesTestAuth({ createClient, root, url, publishableKey, location, sessionStorage, nativeOAuth } = {}) {
   if (typeof createClient !== 'function') {
     throw new GrapesTestAuthConfigError('A hivatalos Supabase-kliens még nincs telepítve.')
   }
-  const config = makeGrapesTestAuthConfig({ url, publishableKey, location, sessionStorage })
+  if (nativeOAuth && ['begin', 'resume', 'cancel'].some(name => typeof nativeOAuth[name] !== 'function')) {
+    throw new GrapesTestAuthConfigError('Érvénytelen Android TEST OAuth-adapter.')
+  }
+  const config = makeGrapesTestAuthConfig({ url, publishableKey, location, sessionStorage, nativeOAuth })
   const client = createClient(config.url, config.publishableKey, {
     auth: {
       flowType: 'pkce',
-      detectSessionInUrl: true,
+      detectSessionInUrl: !nativeOAuth,
       autoRefreshToken: true,
       persistSession: true,
       storageKey: config.storageKey,
@@ -70,10 +76,15 @@ export async function startGrapesTestAuth({ createClient, root, url, publishable
   if (!client?.auth?.onAuthStateChange || !client?.auth?.getUser) {
     throw new GrapesTestAuthConfigError('Nem megfelelő Supabase Auth-kliens.')
   }
-  const flow = createGrapesAuthFlow(client, {
+  const baseFlow = createGrapesAuthFlow(client, {
     callbackUrl: config.callbackUrl,
     recoveryUrl: config.recoveryUrl,
   })
+  const flow = nativeOAuth ? Object.freeze({
+    ...baseFlow,
+    signInWithGoogle: () => nativeOAuth.begin(client),
+    signOut: async () => { await nativeOAuth.cancel(); return baseFlow.signOut() },
+  }) : baseFlow
   const ui = bindGrapesTestLogin(root, flow)
   let authRevision = 0
   let recoveryPending = false

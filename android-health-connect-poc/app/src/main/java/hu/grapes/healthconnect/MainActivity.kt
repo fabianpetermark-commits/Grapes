@@ -4,6 +4,8 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.content.Intent
+import android.view.Menu
+import android.view.MenuItem
 import android.provider.MediaStore
 import androidx.core.content.FileProvider
 import java.io.File
@@ -43,6 +45,8 @@ import java.time.LocalDate
 
 class MainActivity : ComponentActivity() {
     private val healthConnect by lazy { HealthConnectBridge(this) }
+    private val testAuth by lazy { TestAuthCallback(this) }
+    private val isTestQa get() = BuildConfig.APPLICATION_ID == "hu.grapes.healthconnect.test" && BuildConfig.GRAPES_TEST_AUTH_ENABLED
     private val yazioApi by lazy { YazioApi(this) }
     private val foodApi by lazy { FoodApiBridge() }
     private val samsungWaterBridge by lazy { SamsungWaterBridgeFactory.create(this) }
@@ -158,7 +162,9 @@ class MainActivity : ComponentActivity() {
         setContentView(webView)
         UpdateNotifications.createChannel(this)
         UpdateCheckWorker.schedule(this)
-        webView.loadUrl(APP_URL)
+        val authReturn = isTestQa && testAuth.accept(intent?.data)
+        if (authReturn) setIntent(Intent(intent).setData(null))
+        webView.loadUrl(if (authReturn) TEST_AUTH_URL else APP_URL)
         // A foreground launch must always see a release published since the previous
         // background check. The six-hour throttle only belongs to WorkManager.
         checkForAppUpdate(force = true)
@@ -177,10 +183,28 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        if (isTestQa && testAuth.accept(intent.data)) {
+            setIntent(Intent(intent).setData(null))
+            webView.loadUrl(TEST_AUTH_URL)
+            return
+        }
         setIntent(intent)
         if (intent.getBooleanExtra(UpdateNotifications.EXTRA_OPEN_UPDATE, false)) {
             checkForAppUpdate(force = true)
         }
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        if (isTestQa) menu.add(0, TEST_AUTH_MENU, 0, "Grapes TEST-fiók")
+        return super.onCreateOptionsMenu(menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (isTestQa && item.itemId == TEST_AUTH_MENU) {
+            webView.loadUrl(TEST_AUTH_URL)
+            return true
+        }
+        return super.onOptionsItemSelected(item)
     }
 
     override fun onResume() {
@@ -236,6 +260,10 @@ class MainActivity : ComponentActivity() {
         val assetLoader = WebViewAssetLoader.Builder()
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
             .build()
+        val authAssetLoader = WebViewAssetLoader.Builder()
+            .setDomain(TEST_AUTH_HOST)
+            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
+            .build()
         webView = WebView(this).apply {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
@@ -244,17 +272,22 @@ class MainActivity : ComponentActivity() {
             WebViewCompat.addWebMessageListener(
                 this,
                 "GrapesAndroid",
-                setOf(APP_ORIGIN)
+                if (isTestQa) setOf(APP_ORIGIN, TEST_AUTH_ORIGIN) else setOf(APP_ORIGIN)
             ) { _, message, _, isMainFrame, _ ->
                 if (!isMainFrame) return@addWebMessageListener
                 handleBridgeMessage(message.data ?: return@addWebMessageListener)
             }
             webViewClient = object : WebViewClient() {
                 override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest) =
-                    assetLoader.shouldInterceptRequest(request.url)
+                    if (isTestQa && request.url.host == TEST_AUTH_HOST)
+                        authAssetLoader.shouldInterceptRequest(request.url)
+                    else assetLoader.shouldInterceptRequest(request.url)
 
                 override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-                    if (request.url.host == APP_HOST) return false
+                    if (request.url.scheme == "https" && request.url.host == APP_HOST) return false
+                    if (isTestQa && request.url.scheme == "https" &&
+                        request.url.host == TEST_AUTH_HOST &&
+                        request.url.path == "/assets/login-auth-test.html") return false
                     runCatching { startActivity(Intent(Intent.ACTION_VIEW, request.url)) }
                         .onFailure {
                             Toast.makeText(
@@ -307,7 +340,20 @@ class MainActivity : ComponentActivity() {
         val message = runCatching { JSONObject(rawMessage) }.getOrElse { return }
         val requestId = message.optString("requestId")
         if (requestId.isBlank()) return
+        if (isTrustedTestAuthPage() && message.optString("method") !in
+            setOf("beginTestAuthOAuth", "takeTestAuthCallback", "cancelTestAuthOAuth")) {
+            return sendError(requestId, "Nem engedélyezett TEST Auth-művelet.")
+        }
         when (message.optString("method")) {
+            "beginTestAuthOAuth" -> beginTestAuthOAuth(message, requestId)
+            "takeTestAuthCallback" -> {
+                if (!isTrustedTestAuthPage()) sendError(requestId, "A TEST Auth oldal nem aktív.")
+                else sendResult(requestId, testAuth.consume().toString())
+            }
+            "cancelTestAuthOAuth" -> {
+                if (!isTrustedTestAuthPage()) sendError(requestId, "A TEST Auth oldal nem aktív.")
+                else { testAuth.cancel(); sendResult(requestId, "{}") }
+            }
             "beginFoodBackupExport" -> beginFoodBackupExport(message, requestId)
             "appendFoodBackupExport" -> appendFoodBackupExport(message, requestId)
             "finishFoodBackupExport" -> finishFoodBackupExport(message, requestId)
@@ -374,6 +420,23 @@ class MainActivity : ComponentActivity() {
             }
             else -> sendError(requestId, "Ismeretlen Android-művelet.")
         }
+    }
+
+    private fun isTrustedTestAuthPage(): Boolean = isTestQa && webView.url == TEST_AUTH_URL
+
+    private fun beginTestAuthOAuth(message: JSONObject, requestId: String) {
+        if (!isTrustedTestAuthPage()) return sendError(requestId, "A TEST Auth oldal nem aktív.")
+        val args = message.optJSONArray("args") ?: return sendError(requestId, "Érvénytelen Auth-kérés.")
+        val authorizeUrl = args.optString(0)
+        val state = args.optString(1)
+        if (!testAuth.begin(authorizeUrl, state)) return sendError(requestId, "Érvénytelen TEST OAuth-cím.")
+        runCatching {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(authorizeUrl)).addCategory(Intent.CATEGORY_BROWSABLE))
+        }.onSuccess { sendResult(requestId, "{}") }
+            .onFailure {
+                testAuth.cancel()
+                sendError(requestId, "A rendszerböngésző nem nyitható meg.")
+            }
     }
 
     private fun beginFoodBackupExport(message: JSONObject, requestId: String) {
@@ -611,6 +674,10 @@ class MainActivity : ComponentActivity() {
         private const val APP_HOST = "appassets.androidplatform.net"
         private const val APP_ORIGIN = "https://$APP_HOST"
         private const val APP_URL = "https://$APP_HOST/assets/design/android-mobile-preview.html"
+        private const val TEST_AUTH_HOST = "test-auth.androidplatform.net"
+        private const val TEST_AUTH_ORIGIN = "https://$TEST_AUTH_HOST"
+        private const val TEST_AUTH_URL = "$TEST_AUTH_ORIGIN/assets/login-auth-test.html"
+        private const val TEST_AUTH_MENU = 107
         private const val DRIVE_FILE_SCOPE = "https://www.googleapis.com/auth/drive.file"
         private const val DRIVE_READ_SCOPE = "https://www.googleapis.com/auth/drive.readonly"
         private const val NOTIFICATION_PREFERENCES = "grapes-notifications"

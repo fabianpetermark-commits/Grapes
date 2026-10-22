@@ -46,6 +46,7 @@ android {
         targetSdk = 35
         versionCode = grapesVersionCode
         versionName = grapesVersionName
+        buildConfigField("boolean", "GRAPES_TEST_AUTH_ENABLED", "false")
     }
     buildTypes {
         getByName("debug") {
@@ -62,6 +63,11 @@ android {
             initWith(getByName("release"))
             applicationIdSuffix = ".test"
             versionNameSuffix = "-test"
+            val authEnabled = providers.environmentVariable("VITE_GRAPES_TEST_AUTH_ENABLED").orNull == "true" &&
+                providers.environmentVariable("VITE_GRAPES_TEST_SUPABASE_URL").orNull == "https://aighqtqjlzirlokxwupt.supabase.co" &&
+                providers.environmentVariable("VITE_GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY").orNull
+                    ?.matches(Regex("sb_publishable_[A-Za-z0-9_-]{16,}")) == true
+            buildConfigField("boolean", "GRAPES_TEST_AUTH_ENABLED", authEnabled.toString())
             signingConfig = if (!testKeystorePath.isNullOrBlank()) {
                 signingConfigs.getByName("qa")
             } else {
@@ -79,6 +85,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
+    testOptions { unitTests.isIncludeAndroidResources = true }
 }
 
 dependencies {
@@ -90,6 +97,8 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.10.0")
     implementation("com.google.android.gms:play-services-auth:21.5.0")
     implementation("com.google.code.gson:gson:2.13.2")
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.14.1")
     if (samsungSdk.exists()) {
         implementation(files(samsungSdk))
     }
