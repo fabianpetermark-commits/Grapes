@@ -26,7 +26,7 @@
 | Config/docs | .env.example, this document | Flags OFF by default; TEST-only setup |
 
 ## Owner configuration required for eventual phone UAT
-1. Supabase Grapes TEST project aighqtqjlzirlokxwupt only, Authentication → URL Configuration → Redirect URLs: add a narrow custom-scheme rule for hu.grapes.healthconnect.test://auth/callback?state=*, verify the Dashboard's matching behavior with a synthetic state, and retain the existing web redirect. Do not alter any other project.
+1. Supabase Grapes TEST project aighqtqjlzirlokxwupt only, Authentication → URL Configuration → Redirect URLs: add a narrow custom-scheme rule for hu.grapes.healthconnect.test://auth/callback\?state=*, where the backslash escapes the literal question mark in Supabase's glob syntax; verify the Dashboard's matching behavior with a synthetic state, and retain the existing web redirect. Do not alter any other project.
 2. Keep the existing Google Cloud TEST web OAuth client callback https://aighqtqjlzirlokxwupt.supabase.co/auth/v1/callback. Do not add Drive scopes or put a client secret into the app or repository.
 3. A future reviewed QA build needs only the project's public sb_publishable_... key as Vite build configuration and VITE_GRAPES_TEST_AUTH_ENABLED=true. The TEST URL must match exactly. Keep VITE_GRAPES_TEST_HEALTH_SYNC_ENABLED=false. No key value is needed in issue comments or chat.
 4. Do not install or publish an APK from this PR. After native/security review and resolution of #106's v17 reservation, choose a new TEST candidate version and verify package, signer, upgrade backups and device data continuity separately.
