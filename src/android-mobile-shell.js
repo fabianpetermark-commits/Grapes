@@ -1220,6 +1220,23 @@ mobileFood = createMobileFoodController({
   getHydrationExternalKeys: hydrationExternalKeys,
 })
 hydrateMobileIcons()
+// PROD Grapes identity is distinct from Google Drive authorization.
+// Hide this control on web, TEST and every Auth-disabled Android build.
+const prodSignoutButton = $('[data-prod-auth-signout]')
+if (prodSignoutButton) {
+  const prodAuthNative = import.meta.env?.VITE_GRAPES_PROD_AUTH_ENABLED === 'true' &&
+    import.meta.env?.VITE_GRAPES_PROD_LEGACY_DATA_ISOLATION_REVIEWED === 'true' &&
+    globalThis.location?.href === 'https://appassets.androidplatform.net/assets/design/android-mobile-preview.html' &&
+    isGrapesAndroidApp()
+  prodSignoutButton.hidden = !prodAuthNative
+  prodSignoutButton.style.display = prodAuthNative ? '' : 'none'
+  prodSignoutButton.addEventListener('click', () => {
+    if (!prodAuthNative) return
+    globalThis.GrapesAndroid.postMessage(JSON.stringify({
+      method: 'openProdAuthSignOut', requestId: crypto.randomUUID(), args: [],
+    }))
+  })
+}
 installSheetGestures()
 refreshUpdateInbox()
 window.grapesHandleAndroidBack = () => {
