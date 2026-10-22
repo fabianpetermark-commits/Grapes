@@ -40,3 +40,10 @@ test('Android OFF kérés: ország, országmező és márka nem veszhet el a nat
   assert.match(native, /countries_tags:/)
   assert.match(native, /tagtype_0/)
 })
+
+test('Android natív OFF 404 csak ismeretlen vonalkód; nem adatbázis-kiesés', () => {
+  assert.match(native, /request\("https:\/\/world\.openfoodfacts\.org\/api\/v2\/product\/"[\s\S]*missingBarcode = query/)
+  assert.match(native, /status == 404 && missingBarcode != null/)
+  assert.match(native, /JSONObject\(\)\.put\("status", 0\)\.put\("code", missingBarcode\)/)
+  assert.match(native, /429 -> "A szolgáltató keresési korlátja betelt\."/)
+})
