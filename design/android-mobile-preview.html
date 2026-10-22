@@ -1,10 +1,19 @@
 <!doctype html>
 <html lang="hu">
 <head>
+  <!-- Only the native PROD app after Auth verification may conceal Drive welcome. -->
+  <script>
+    if ('%VITE_GRAPES_PROD_AUTH_ENABLED%' === 'true' &&
+        '%VITE_GRAPES_PROD_LEGACY_DATA_ISOLATION_REVIEWED%' === 'true' &&
+        location.href === 'https://appassets.androidplatform.net/assets/design/android-mobile-preview.html') {
+      document.documentElement.setAttribute('data-grapes-prod-native-app', 'true')
+    }
+  </script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Grapes Android UI előnézet</title>
   <style>
+    html[data-grapes-prod-native-app="true"] #login { visibility: hidden; }
     :root {
       color-scheme: dark;
       --bg: #090e14;

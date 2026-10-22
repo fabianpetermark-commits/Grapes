@@ -43,6 +43,10 @@ import java.time.LocalDate
 
 class MainActivity : ComponentActivity() {
     private val healthConnect by lazy { HealthConnectBridge(this) }
+    private val prodAuth by lazy { ProdAuthCallback(this) }
+    private val isProdAuth get() = BuildConfig.APPLICATION_ID == "hu.grapes.healthconnect" && BuildConfig.GRAPES_PROD_AUTH_ENABLED
+    private val prodGatePreferences by lazy { getSharedPreferences("grapes-prod-auth-gate-v1", MODE_PRIVATE) }
+    private val prodGate by lazy { ProdAuthGate(isProdAuth, prodGatePreferences) }
     private val yazioApi by lazy { YazioApi(this) }
     private val foodApi by lazy { FoodApiBridge() }
     private val samsungWaterBridge by lazy { SamsungWaterBridgeFactory.create(this) }
@@ -158,7 +162,10 @@ class MainActivity : ComponentActivity() {
         setContentView(webView)
         UpdateNotifications.createChannel(this)
         UpdateCheckWorker.schedule(this)
-        webView.loadUrl(APP_URL)
+        val oauthReturn = isProdAuth && prodAuth.accept(intent?.data)
+        if (oauthReturn) setIntent(Intent(intent).setData(null))
+        if (oauthReturn) prodGate.lock()
+        webView.loadUrl(prodGate.initialUrl(APP_URL, PROD_AUTH_URL))
         // A foreground launch must always see a release published since the previous
         // background check. The six-hour throttle only belongs to WorkManager.
         checkForAppUpdate(force = true)
@@ -169,7 +176,9 @@ class MainActivity : ComponentActivity() {
                     "(() => typeof window.grapesHandleAndroidBack === 'function' && window.grapesHandleAndroidBack())()"
                 ) { handled ->
                     if (handled == "true") return@evaluateJavascript
-                    if (webView.canGoBack()) webView.goBack() else finish()
+                    if (isProdAuth && !prodGate.canDisplayApp()) finish()
+                    else if (isProdAuth && webView.url == APP_URL) finish()
+                    else if (webView.canGoBack()) webView.goBack() else finish()
                 }
             }
         })
@@ -177,6 +186,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        if (isProdAuth && prodAuth.accept(intent.data)) {
+            prodGate.lock()
+            setIntent(Intent(intent).setData(null))
+            webView.loadUrl(PROD_AUTH_URL)
+            return
+        }
         setIntent(intent)
         if (intent.getBooleanExtra(UpdateNotifications.EXTRA_OPEN_UPDATE, false)) {
             checkForAppUpdate(force = true)
@@ -236,6 +251,10 @@ class MainActivity : ComponentActivity() {
         val assetLoader = WebViewAssetLoader.Builder()
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
             .build()
+        val authAssetLoader = WebViewAssetLoader.Builder()
+            .setDomain(PROD_AUTH_HOST)
+            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
+            .build()
         webView = WebView(this).apply {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
@@ -244,17 +263,28 @@ class MainActivity : ComponentActivity() {
             WebViewCompat.addWebMessageListener(
                 this,
                 "GrapesAndroid",
-                setOf(APP_ORIGIN)
+                if (isProdAuth) setOf(APP_ORIGIN, PROD_AUTH_ORIGIN) else setOf(APP_ORIGIN)
             ) { _, message, _, isMainFrame, _ ->
                 if (!isMainFrame) return@addWebMessageListener
                 handleBridgeMessage(message.data ?: return@addWebMessageListener)
             }
             webViewClient = object : WebViewClient() {
                 override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest) =
-                    assetLoader.shouldInterceptRequest(request.url)
+                    if (isProdAuth && request.url.host == PROD_AUTH_HOST)
+                        authAssetLoader.shouldInterceptRequest(request.url)
+                    else assetLoader.shouldInterceptRequest(request.url)
 
                 override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-                    if (request.url.host == APP_HOST) return false
+                    if (request.url.scheme == "https" && request.url.host == APP_HOST) {
+                        if (isProdAuth && !prodGate.canDisplayApp()) {
+                            view.loadUrl(PROD_AUTH_URL)
+                            return true
+                        }
+                        return false
+                    }
+                    if (isProdAuth && request.url.scheme == "https" &&
+                        request.url.host == PROD_AUTH_HOST &&
+                        request.url.path == "/assets/login-auth-prod.html") return false
                     runCatching { startActivity(Intent(Intent.ACTION_VIEW, request.url)) }
                         .onFailure {
                             Toast.makeText(
@@ -307,7 +337,53 @@ class MainActivity : ComponentActivity() {
         val message = runCatching { JSONObject(rawMessage) }.getOrElse { return }
         val requestId = message.optString("requestId")
         if (requestId.isBlank()) return
+        if (isTrustedProdAuthPage() && message.optString("method") !in
+            setOf(
+                "beginProdAuthOAuth", "takeProdAuthCallback", "cancelProdAuthOAuth",
+                "takeProdAuthLaunchMode", "finishProdAuthSignOut", "completeProdAuthLogin"
+            )) {
+            return sendError(requestId, "Nem engedélyezett PROD Auth-művelet.")
+        }
         when (message.optString("method")) {
+            "beginProdAuthOAuth" -> beginProdAuthOAuth(message, requestId)
+            "takeProdAuthLaunchMode" -> {
+                if (!isTrustedProdAuthPage()) sendError(requestId, "A PROD Auth oldal nem aktív.")
+                else sendResult(requestId, JSONObject().apply {
+                    put("logout", prodGatePreferences.getBoolean("logout-pending", false))
+                }.toString())
+            }
+            "finishProdAuthSignOut" -> {
+                if (!isTrustedProdAuthPage()) sendError(requestId, "A PROD Auth oldal nem aktív.")
+                else if (!prodGatePreferences.edit().remove("logout-pending").commit())
+                    sendError(requestId, "A kijelentkezés állapota nem menthető.")
+                else { prodGate.lock(); sendResult(requestId, "{}") }
+            }
+            "completeProdAuthLogin" -> {
+                if (prodGatePreferences.getBoolean("logout-pending", false) ||
+                    !prodGate.allowApp(isTrustedProdAuthPage(), message.optJSONArray("args")?.optString(0).orEmpty())) {
+                    sendError(requestId, "A PROD-fiók nincs hitelesítve.")
+                } else webView.loadUrl(APP_URL)
+            }
+            "getProdAuthEnabled" -> sendResult(
+                requestId, (isProdAuth && isTrustedTestAppPage()).toString()
+            )
+            "openProdAuthSignOut" -> {
+                if (!prodGate.startLogout(isTrustedTestAppPage())) {
+                    sendError(requestId, "A Grapes PROD-fiók nem aktív.")
+                } else if (!prodGatePreferences.edit().putBoolean("logout-pending", true).commit()) {
+                    sendError(requestId, "A kijelentkezés nem készíthető elő.")
+                } else {
+                    webView.loadUrl(PROD_AUTH_URL)
+                }
+            }
+            "takeProdAuthCallback" -> {
+                if (!isTrustedProdAuthPage()) sendError(requestId, "A PROD Auth oldal nem aktív.")
+                else sendResult(requestId, prodAuth.consume().toString())
+            }
+            "cancelProdAuthOAuth" -> {
+                if (!isTrustedProdAuthPage()) sendError(requestId, "A PROD Auth oldal nem aktív.")
+                else { prodAuth.cancel(); sendResult(requestId, "{}") }
+            }
             "beginFoodBackupExport" -> beginFoodBackupExport(message, requestId)
             "appendFoodBackupExport" -> appendFoodBackupExport(message, requestId)
             "finishFoodBackupExport" -> finishFoodBackupExport(message, requestId)
@@ -374,6 +450,25 @@ class MainActivity : ComponentActivity() {
             }
             else -> sendError(requestId, "Ismeretlen Android-művelet.")
         }
+    }
+
+    private fun isTrustedProdAuthPage(): Boolean = isProdAuth && webView.url == PROD_AUTH_URL
+
+    private fun isTrustedTestAppPage(): Boolean = isProdAuth && webView.url == APP_URL
+
+    private fun beginProdAuthOAuth(message: JSONObject, requestId: String) {
+        if (!isTrustedProdAuthPage()) return sendError(requestId, "A PROD Auth oldal nem aktív.")
+        val args = message.optJSONArray("args") ?: return sendError(requestId, "Érvénytelen Auth-kérés.")
+        val authorizeUrl = args.optString(0)
+        val state = args.optString(1)
+        if (!prodAuth.begin(authorizeUrl, state)) return sendError(requestId, "Érvénytelen PROD OAuth-cím.")
+        runCatching {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(authorizeUrl)).addCategory(Intent.CATEGORY_BROWSABLE))
+        }.onSuccess { sendResult(requestId, "{}") }
+            .onFailure {
+                prodAuth.cancel()
+                sendError(requestId, "A rendszerböngésző nem nyitható meg.")
+            }
     }
 
     private fun beginFoodBackupExport(message: JSONObject, requestId: String) {
@@ -611,6 +706,9 @@ class MainActivity : ComponentActivity() {
         private const val APP_HOST = "appassets.androidplatform.net"
         private const val APP_ORIGIN = "https://$APP_HOST"
         private const val APP_URL = "https://$APP_HOST/assets/design/android-mobile-preview.html"
+        private const val PROD_AUTH_HOST = "grapes-prod-auth.invalid"
+        private const val PROD_AUTH_ORIGIN = "https://$PROD_AUTH_HOST"
+        private const val PROD_AUTH_URL = "$PROD_AUTH_ORIGIN/assets/login-auth-prod.html"
         private const val DRIVE_FILE_SCOPE = "https://www.googleapis.com/auth/drive.file"
         private const val DRIVE_READ_SCOPE = "https://www.googleapis.com/auth/drive.readonly"
         private const val NOTIFICATION_PREFERENCES = "grapes-notifications"

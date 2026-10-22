@@ -667,6 +667,7 @@ function renderAccount() {
 }
 
 function showLogin(message = '') {
+  document.documentElement.removeAttribute('data-grapes-prod-native-app')
   app.hidden = true
   login.hidden = false
   const status = $('[data-login-status]')
@@ -1240,4 +1241,10 @@ window.grapesHandleAndroidBack = () => {
 }
 renderWater()
 if (isGrapesDriveConnected()) registerFoodSharing().catch(() => {})
-if (isGrapesDriveConnected() || localMode()) showApp()
+// A native server-verified PROD session, once account ownership is confirmed,
+// enters the main UI without the unrelated Drive welcome screen.
+const prodNativeAuthenticated = import.meta.env?.VITE_GRAPES_PROD_AUTH_ENABLED === 'true' &&
+  import.meta.env?.VITE_GRAPES_PROD_LEGACY_DATA_ISOLATION_REVIEWED === 'true' &&
+  globalThis.location?.href === 'https://appassets.androidplatform.net/assets/design/android-mobile-preview.html' &&
+  isGrapesAndroidApp()
+if (isGrapesDriveConnected() || localMode() || prodNativeAuthenticated) showApp()

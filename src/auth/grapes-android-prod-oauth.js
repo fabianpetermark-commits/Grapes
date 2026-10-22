@@ -56,9 +56,10 @@ export function createAndroidProdOAuth({ bridge = globalThis.GrapesAndroid,
     async takeLaunchMode() { return call('takeProdAuthLaunchMode') },
     // Native side accepts this only from the exact isolated login page.
     // Do not await a WebView reply: navigation destroys the calling page.
-    enterApp() {
+    enterApp(verifiedUserId) {
+      if (typeof verifiedUserId !== 'string' || !/^[a-f0-9-]{36}$/i.test(verifiedUserId)) throw new Error('Invalid PROD user identity')
       bridge.postMessage(JSON.stringify({
-        method: 'completeProdAuthLogin', requestId: crypto.randomUUID(), args: [],
+        method: 'completeProdAuthLogin', requestId: crypto.randomUUID(), args: [verifiedUserId],
       }))
     },
     async finishSignOut() { await call('finishProdAuthSignOut') },

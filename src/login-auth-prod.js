@@ -35,9 +35,9 @@ export async function activateGrapesAuthProd({
     createClient: createClientFactory, root, url, publishableKey, location,
     sessionStorage: nativeOAuth ? nativeOAuth.storage : sessionStorage, nativeOAuth,
     legacyDataIsolationReviewed: import.meta.env?.VITE_GRAPES_PROD_LEGACY_DATA_ISOLATION_REVIEWED === 'true',
-    onAuthenticated: nativeOAuth ? () => {
+    onAuthenticated: nativeOAuth ? verifiedUser => {
       navigatingToApp = true
-      nativeOAuth.enterApp()
+      nativeOAuth.enterApp(verifiedUser.id)
     } : null,
     suppressAutoOpen: logoutRequested,
   })

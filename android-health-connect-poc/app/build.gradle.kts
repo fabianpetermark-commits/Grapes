@@ -32,10 +32,18 @@ android {
         targetSdk = 35
         versionCode = grapesVersionCode
         versionName = grapesVersionName
+        // Explicit production opt-in; defaults OFF on every ordinary release.
+        buildConfigField("boolean", "GRAPES_PROD_AUTH_ENABLED", "false")
     }
     buildTypes {
         getByName("release") {
             if (!releaseKeystorePath.isNullOrBlank()) signingConfig = signingConfigs.getByName("release")
+            val approvedProdAuth = providers.environmentVariable("VITE_GRAPES_PROD_AUTH_ENABLED").orNull == "true" &&
+                providers.environmentVariable("VITE_GRAPES_PROD_LEGACY_DATA_ISOLATION_REVIEWED").orNull == "true" &&
+                providers.environmentVariable("VITE_GRAPES_PROD_SUPABASE_URL").orNull == "https://yopabovoxyffhokhbgxl.supabase.co" &&
+                providers.environmentVariable("VITE_GRAPES_PROD_SUPABASE_PUBLISHABLE_KEY").orNull
+                    ?.matches(Regex("sb_publishable_[A-Za-z0-9_-]{16,}")) == true
+            buildConfigField("boolean", "GRAPES_PROD_AUTH_ENABLED", approvedProdAuth.toString())
         }
     }
     buildFeatures { buildConfig = true }
