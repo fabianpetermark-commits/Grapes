@@ -73,6 +73,11 @@ test('signed-in QA users see a branded startup cover until Supabase verification
 test('the last Settings action is exactly Kijelentkezés with a door exit pictogram', () => {
   const more = mobile.split('data-page="more" hidden>')[1]?.split('data-page="food"')[0]
   assert.ok(more, 'Settings markup missing')
+  assert.match(more, /<h1>Beállítások<\/h1>/)
+  assert.match(more, /<p class="eyebrow">Fiók és alkalmazás<\/p>/)
+  assert.match(more, /aria-label="Kapcsolódó oldalak"/)
+  assert.match(mobile, /more: \['Beállítások', 'Fiók és alkalmazás'\]/)
+  assert.match(shell, /more: \['Beállítások', 'Fiók és alkalmazás'\]/)
   assert.ok(more.lastIndexOf('data-grapes-test-logout hidden') > more.lastIndexOf('A Grapes névjegye'))
   assert.match(more, /data-grapes-test-logout hidden[^>]*><span class="setting__icon" data-mobile-icon="exit"/)
   assert.match(more, /<strong>Kijelentkezés<\/strong><\/span>/)
