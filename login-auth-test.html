@@ -7,10 +7,28 @@
   <meta name="theme-color" content="#000000">
   <meta name="description" content="Grapes – jóváhagyott bejelentkezési képernyő, önálló UI-előnézet.">
   <title>Grapes TEST – Bejelentkezés</title>
+  <script>
+    // The QA Auth origin is isolated from PROD and Drive. Show only a branded
+    // loading surface until the stored Supabase session has been verified.
+    // Set before first paint: already-signed-in users never see the login form.
+    if (location.href === 'https://grapes-test-auth.invalid/assets/login-auth-test.html') {
+      document.documentElement.setAttribute('data-grapes-qa-starting', 'true')
+    }
+  </script>
   <link rel="stylesheet" href="./src/styles/screens/login-preview.css">
   <link rel="stylesheet" href="./src/styles/screens/login-auth-test.css">
 </head>
 <body>
+  <div id="grapes-qa-startup" class="grapes-qa-startup" role="status" aria-label="Grapes-fiók ellenőrzése">
+    <div class="grapes-qa-startup__mark" aria-hidden="true">
+      <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M26 11c1.5-4 5.3-6.6 10-6.8-1.1 5.4-4.2 8.3-10 8.7M25 12c-2.6-3.4-5.7-4.6-10.1-4.7 1.2 4.5 4.7 7.1 9.8 7.5M25 10c-.4 3-.6 4.9-.4 7" stroke="#3BDCF2" stroke-width="2" stroke-linecap="round"/>
+        <g fill="#3BDCF2" fill-opacity=".13" stroke="#3BDCF2" stroke-width="1.8"><circle cx="17" cy="21" r="6.2"/><circle cx="29" cy="21" r="6.2"/><circle cx="12.9" cy="31.5" r="5.9"/><circle cx="24" cy="31.5" r="6.2"/><circle cx="35" cy="31.5" r="5.9"/><circle cx="24" cy="40" r="5.2"/></g>
+      </svg>
+    </div>
+    <strong>Grapes</strong>
+    <p>Fiók ellenőrzése…</p>
+  </div>
   <main class="login-page">
     <section class="login-card" aria-labelledby="grapes-title">
       <header class="brand">
