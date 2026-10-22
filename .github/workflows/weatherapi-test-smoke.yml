@@ -1,0 +1,42 @@
+name: WeatherAPI TEST gateway smoke
+on:
+  push:
+    branches: [feature/plants-weatherapi-edge-test-20261022]
+    paths:
+      - 'supabase/functions/weather-forecast/**'
+      - '.github/workflows/weatherapi-test-smoke.yml'
+  pull_request:
+    paths:
+      - 'supabase/functions/weather-forecast/**'
+      - '.github/workflows/weatherapi-test-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  weather-gateway:
+    name: Public health + unauthenticated access denied
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check Grapes TEST weather gateway without any API secrets
+        run: |
+          node --input-type=module <<'JS'
+          const base = 'https://aighqtqjlzirlokxwupt.supabase.co/functions/v1/weather-forecast';
+          const request = async (path) => {
+            const res = await fetch(base + path, { signal: AbortSignal.timeout(16000) });
+            const data = await res.json();
+            return { status: res.status, data };
+          };
+          const healthy = await request('/health');
+          if (healthy.status !== 200 || healthy.data.service !== 'grapes-test-weather'
+              || healthy.data.secretPresent !== true || healthy.data.providerCallExecuted !== false) {
+            throw new Error('TEST Edge Function health/configuration check failed (no secret values returned).');
+          }
+          const denied = await request('/forecast');
+          if (denied.status !== 401 || denied.data.error !== 'authentication_required') {
+            throw new Error('TEST forecast is accessible without user authentication, or endpoint failed.');
+          }
+          console.log('TEST gateway health: configured; unauthenticated forecast: denied; provider call: not tested');
+          JS
