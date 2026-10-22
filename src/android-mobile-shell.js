@@ -67,7 +67,7 @@ document.addEventListener('grapes:food-subtitle', event => {
 
 const labels = {
   home: ['Grapes', 'Mobil munkaterület'], projects: ['Projektek', 'Helyi és Drive'],
-  sync: ['Szinkron', 'Adatok és fiók'], more: ['Továbbiak', 'Beállítások'],
+  sync: ['Szinkron', 'Adatok és fiók'], more: ['Beállítások', 'Fiók és alkalmazás'],
   food: ['Ételnapló', 'Mai áttekintés'], water: ['Víz', 'Napi folyadékbevitel'],
   household: ['Home / Háztartás', 'Ezen az eszközön tárolva'],
   'hub-home': ['Home', 'Háztartás'],
