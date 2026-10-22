@@ -30,8 +30,10 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           const base = 'https://yopabovoxyffhokhbgxl.supabase.co'
+          // Public, low-privilege client key (never a service-role/secret key).
+          const publishableKey = "sb_publishable_ZbcYVjCGzHeLmRWluW5bwQ_qJaSIGfs"
           const timeout = () => AbortSignal.timeout(20000)
-          const settingsResponse = await fetch(base + '/auth/v1/settings', { signal: timeout() })
+          const settingsResponse = await fetch(base + '/auth/v1/settings', { headers: { apikey: publishableKey }, signal: timeout() })
           if (!settingsResponse.ok) throw new Error('PROD Auth settings endpoint unavailable: HTTP ' + settingsResponse.status)
           const settings = await settingsResponse.json()
           if (settings.external?.google !== true) throw new Error('Google OAuth is not enabled on the PROD Supabase project')
@@ -40,7 +42,7 @@ jobs:
           const url = new URL(base + '/auth/v1/authorize')
           url.searchParams.set('provider', 'google')
           url.searchParams.set('redirect_to', redirect)
-          const response = await fetch(url, { redirect: 'manual', signal: timeout() })
+          const response = await fetch(url, { headers: { apikey: publishableKey }, redirect: 'manual', signal: timeout() })
           if (![302, 303, 307].includes(response.status)) {
             throw new Error('PROD OAuth or exact Android redirect was rejected: HTTP ' + response.status)
           }
