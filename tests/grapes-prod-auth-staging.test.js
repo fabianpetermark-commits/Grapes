@@ -14,7 +14,9 @@ const authorize = project + '/auth/v1/authorize?provider=google&redirect_to=' + 
 test('PROD native OAuth strict callback, project and request validation', () => {
   assert.equal(validateProdAuthorizeUrl(authorize, state), true)
   assert.equal(validateProdAuthorizeUrl(authorize.replace(project, 'https://aighqtqjlzirlokxwupt.supabase.co'), state), false)
-  assert.equal(validateProdAuthorizeUrl(authorize.replace('hu.grapes.healthconnect:', 'hu.grapes.healthconnect.test:'), state), false)
+  const wrongCallback = new URL(authorize)
+  wrongCallback.searchParams.set('redirect_to', 'hu.grapes.healthconnect.test://auth/callback?state=' + state)
+  assert.equal(validateProdAuthorizeUrl(wrongCallback.href, state), false)
   assert.equal(validateProdAuthorizeUrl(authorize + '&scope=drive', state), false)
   assert.equal(validateProdAuthorizeUrl(authorize + '&provider=google', state), false)
   assert.equal(validateProdAuthorizeUrl(authorize, 'b'.repeat(64)), false)
