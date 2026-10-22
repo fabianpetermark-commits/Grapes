@@ -1035,6 +1035,13 @@ if (grapesTestLogout) {
   })
   if (isGrapesAndroidApp()) {
     getAndroidTestAuthEnabled().then(enabled => {
+      if (enabled) {
+        // Only hydrate the QA-only SVG when the native host verified TEST Auth.
+        // In PROD and web preview the hidden row must not affect icon-count
+        // checks or render an unused "exit" graphic.
+        const icon = grapesTestLogout.querySelector('[data-test-exit-icon]')
+        if (icon) icon.innerHTML = mobileIconSvg('exit')
+      }
       grapesTestLogout.hidden = !enabled
     }).catch(() => { grapesTestLogout.hidden = true })
   }
