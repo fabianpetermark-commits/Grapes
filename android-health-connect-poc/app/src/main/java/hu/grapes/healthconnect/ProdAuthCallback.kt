@@ -36,7 +36,7 @@ internal class ProdAuthCallback(context: Context, private val now: () -> Long = 
     }
 
     fun accept(uri: Uri?): Boolean {
-        if (uri == null || uri.scheme != "hu.grapes.healthconnect.test" ||
+        if (uri == null || uri.scheme != "hu.grapes.healthconnect" ||
             uri.host != "auth" || uri.path != "/callback" || uri.port != -1 ||
             uri.userInfo != null || uri.fragment != null) return false
         val state = uri.getQueryParameter("state") ?: return false
