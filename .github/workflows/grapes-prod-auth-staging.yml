@@ -16,6 +16,8 @@ jobs:
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -29,7 +31,7 @@ jobs:
       - name: Assert this staging PR cannot accidentally release PROD or TEST
         run: |
           set -euo pipefail
-          ! git diff --name-only codex/android-app HEAD | grep -E '^(android-health-connect-poc/|\.github/workflows/release-android\.yml|src/food/|src/finance|src/ebook|src/android-bridge\.js)' || {
+          ! git diff --name-only origin/codex/android-app HEAD | grep -E '^(android-health-connect-poc/|\.github/workflows/release-android\.yml|src/food/|src/finance|src/ebook|src/android-bridge\.js)' || {
             echo "::error::Sensitive Android/Drive/Food/Finance or signed release changed in config-only staging"; exit 1;
           }
           test -s docs/GRAPES_PROD_AUTH_ROLLOUT.md
