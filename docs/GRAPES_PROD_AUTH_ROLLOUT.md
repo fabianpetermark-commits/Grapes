@@ -9,14 +9,15 @@ The signed, phone-approved Grapes TEST v24 proves the user experience, not produ
 
 - PROD: android-v28, native ID hu.grapes.healthconnect, branch codex/android-app, manually signed via the existing release-android.yml workflow.
 - TEST: android-test-v24, separate package hu.grapes.healthconnect.test, separate signing, and Supabase ref aighqtqjlzirlokxwupt in eu-central-1.
-- Connected Supabase organization: fabianpetermark-commits's Org (rpotkuinbwxycjhiicuq). No separate Grapes PROD project currently exists. A second unrelated Supabase project is INACTIVE; do not alter or reuse it.
-- New Supabase project incremental cost returned 0 USD/month on 2026-10-22, but the tool requires an explicit selection of the target organization before creating.
+- Connected Supabase organization: fabianpetermark-commits's Org (rpotkuinbwxycjhiicuq). **Separate Grapes PROD created and ACTIVE_HEALTHY on 2026-10-22:** ref `yopabovoxyffhokhbgxl`, Frankfurt (`eu-central-1`), URL `https://yopabovoxyffhokhbgxl.supabase.co`. Its publishable API key exists and is enabled, but has **not** been wired into any stable build.
+- Grapes TEST remains distinct, ACTIVE_HEALTHY, ref `aighqtqjlzirlokxwupt`. The unrelated third project (`rrqrmbiclapopgrcypye`) is INACTIVE and untouched. Fresh PROD `public` schema has no application tables; the security advisor reported no lints when checked. This does not validate OAuth, accounts, or existing local records.
+- User approved the **0 USD/month incremental cost** quote in chat; the cost confirmation succeeded and the separate PROD project was created in the sole connected organization.
 - TEST OAuth, Android callback and TEST publishable keys must never be reused for production.
 
 ## Prepared production config (does NOT turn on authentication)
 
 - src/auth/grapes-prod-config.js is a pure, no-side-effect validation module.
-- A production client must receive a separately approved project ref, the exact corresponding HTTPS Supabase URL and only a public sb_publishable_ API key. A secret/service-role key must NEVER go into the APK, code or chat.
+- The preflight now pins exactly `yopabovoxyffhokhbgxl` as the approved PROD ref and validates its matching HTTPS URL. Caller-controlled alternate refs (even valid 20-letter project IDs) and the TEST ref are rejected. Only a public `sb_publishable_` key may be used. A secret/service-role key must NEVER go into the APK, code or chat.
 - Dedicated production app ID: hu.grapes.healthconnect; callback planned as hu.grapes.healthconnect://auth/callback with a one-time PKCE state, or a verified HTTPS Android App Link. Auth WebView asset origin reserved: https://grapes-prod-auth.invalid/assets/login-auth-prod.html.
 - Distinct local Supabase key: grapes-prod-auth-<production-project-ref>. Existing TEST tokens and user identities are not imported.
 - Explicit legacyDataIsolationReviewed gate is required before enabling Auth. This is a technical preflight gate, not proof of data isolation.
@@ -24,8 +25,8 @@ The signed, phone-approved Grapes TEST v24 proves the user experience, not produ
 
 ## Remaining blockers BEFORE production release
 
-1. Confirm owner target organization, create independent Grapes PROD Supabase project in agreed region and verify it. No existing data/project changes.
-2. Set up Google OAuth provider with the production Supabase OAuth callback https://<prod-ref>.supabase.co/auth/v1/callback in Google Cloud, and the exact production Android redirect allowlist in the new Supabase project's Auth URL configuration. Store secrets in proper provider settings, and public variables in the separate PROD release settings. Verify on device.
+1. **DONE:** owner approved organization, 0 USD/month quote, independent Grapes PROD created in Frankfurt and verified active. TEST project and older project unchanged.
+2. **OPEN:** set up the PROD Google OAuth provider with callback `https://yopabovoxyffhokhbgxl.supabase.co/auth/v1/callback` in Google Cloud and the exact production Android redirect in Supabase Auth URL Configuration. Provider credentials belong only in the secure dashboards. Build-time public key settings belong in the isolated PROD release configuration. Verify on device.
 3. Existing Android data is primarily LOCAL/Drive-scoped and not keyed to Supabase user ID. Sign-in alone does not authorize access to previous Food, grapes-water-v1, Finance, E-book and profiles. Define confirmed ownership/backup, account switch isolation, and explicit import or linking that cannot overwrite existing data. A second account must not see the first account's records on the same device.
 4. Stage and review a **separate** complete minimal native Android integration on codex/android-app: exact-origin WebView bridge, server-validated session, PKCE one-time code/state, lifecycle-safe logout, approved logo, and separate Drive Google OAuth. Do not port the entire TEST branch or enable Health cloud sync.
 5. Pass full unit + focused Android native, Auth, Food, Water, Finance, E-book/Drive checks. Use existing production signing identity. Verify in-place upgrade from signed v28 (no uninstall/clear), user data exports and rollback. Do phone smoke tests for login, startup, logout, Google Drive, offline/expired sessions and account switching.
