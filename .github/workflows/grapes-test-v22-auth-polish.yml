@@ -11,7 +11,7 @@ permissions:
 
 concurrency:
   group: grapes-test-v22-auth-polish-signed
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   verify-sign-and-publish-test-only:
@@ -59,7 +59,7 @@ jobs:
           # Signed v21 scanner, Food, Water, Finance, Drive and native login gate are immutable.
           # Only prepaint splash + final Settings logout UI + regression test/doc/workflow may change.
           unexpected=$(git diff --name-only android-test-v21 HEAD -- |
-            grep -Ev '^design/android-mobile-preview\.html$|^login-auth-test\.html$|^src/android-mobile-icons\.js$|^src/login-auth-test\.js$|^src/styles/screens/login-auth-test\.css$|^tests/grapes-android-account-gate\.test\.js$|^docs/GRAPES_TEST_ANDROID_AUTH_107\.md$|^\.github/workflows/grapes-test-v22-auth-polish\.yml$' || true)
+            grep -Ev '^design/android-mobile-preview\.html$|^login-auth-test\.html$|^src/android-mobile-icons\.js$|^src/android-mobile-shell\.js$|^src/login-auth-test\.js$|^src/styles/screens/login-auth-test\.css$|^tests/grapes-android-account-gate\.test\.js$|^docs/GRAPES_TEST_ANDROID_AUTH_107\.md$|^\.github/workflows/grapes-test-v22-auth-polish\.yml$' || true)
           test -z "$unexpected" || { echo "::error::Non Auth change relative to TEST v20: $unexpected"; exit 1; }
           ACTIVITY=android-health-connect-poc/app/src/main/java/hu/grapes/healthconnect/MainActivity.kt
           grep -Fq 'testGate.initialUrl(APP_URL, TEST_AUTH_URL)' "$ACTIVITY"
@@ -273,7 +273,7 @@ jobs:
 
           - A bejelentkezés nem villan be, ha a meglévő TEST-fiók munkamenete érvényes: helyette a sötét Grapes indítóképernyő látszik, amíg a Supabase azonosítás ellenőrzése lezárul. Érvényes fióknál azonnal a Grapes kezdőlap nyílik meg.
           - Kijelentkezett vagy lejárt munkamenet esetén az eredeti bejelentkezési oldal jelenik meg.
-          - Továbbiak: a Kijelentkezés sor legalul szerepel, nincs magyarázó szöveg, a meglévő ikonrendszerrel rajzolt kijárati/ajtó nyíl ikonja van.
+          - A korábbi Továbbiak oldal neve Beállítások lett. A Kijelentkezés sor legalul szerepel, nincs magyarázó szöveg, és a meglévő ikonrendszerrel rajzolt kijárati/ajtó nyíl ikonja van.
           - Továbbiak → Google-fiók csatlakoztatása továbbra is a különálló E-book/Drive kapcsolat, nem azonos a Grapes TEST-fiókkal.
           - A v21 Food/YAZIO/Water/Finance/E-book és scanner/OFF/neon vaku, meglévő helyi adatok és TEST/PROD elkülönítés változatlan. Nincs adatbázis-/Health migráció, nincs PROD vagy Google Drive adat-módosítás.
 
