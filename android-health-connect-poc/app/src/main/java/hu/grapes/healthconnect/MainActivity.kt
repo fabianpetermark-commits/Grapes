@@ -165,7 +165,9 @@ class MainActivity : ComponentActivity() {
         val oauthReturn = isProdAuth && prodAuth.accept(intent?.data)
         if (oauthReturn) setIntent(Intent(intent).setData(null))
         if (oauthReturn) prodGate.lock()
-        webView.loadUrl(prodGate.initialUrl(APP_URL, PROD_AUTH_URL))
+        // Preserve byte-for-byte legacy startup behavior when production Auth is disabled.
+        if (isProdAuth) webView.loadUrl(prodGate.initialUrl(APP_URL, PROD_AUTH_URL))
+        else webView.loadUrl(APP_URL)
         // A foreground launch must always see a release published since the previous
         // background check. The six-hour throttle only belongs to WorkManager.
         checkForAppUpdate(force = true)
