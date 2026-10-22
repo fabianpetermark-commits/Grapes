@@ -112,3 +112,27 @@ test('Android TEST runtime requires exact asset origin and public key', () => {
     location: 'https://grapes-test-auth.invalid/assets/login-auth-test.html',
     publishableKey: 'sb_secret_bad' }))
 })
+
+
+test('QA navigation handoff obtains persisted logout decision without exposing OAuth tokens', async () => {
+  const h = harness()
+  h.setResponse({ logout: true })
+  assert.deepEqual(await h.adapter.takeLaunchMode(), { logout: true })
+  assert.equal(h.calls.at(-1).method, 'takeTestAuthLaunchMode')
+  h.adapter.enterApp()
+  assert.equal(h.calls.at(-1).method, 'completeTestAuthLogin')
+  assert.deepEqual(h.calls.at(-1).args, [])
+  await h.adapter.finishSignOut()
+  assert.equal(h.calls.at(-1).method, 'finishTestAuthSignOut')
+})
+
+test('successful PKCE return invokes optional app-unlock callback only after getUser verification', async () => {
+  const h = harness()
+  const routed = []
+  await h.adapter.begin(h.client)
+  const pending = JSON.parse([...h.values.values()][0])
+  h.setResponse({ status: 'code', state: pending.state, code: 'one-time-code' })
+  await h.adapter.resume(h.client, h.ui, user => routed.push(user.id))
+  assert.deepEqual(routed, ['synthetic-user'])
+  assert.deepEqual(h.exchanges, ['one-time-code'])
+})
