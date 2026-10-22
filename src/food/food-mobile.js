@@ -22,7 +22,7 @@ import { prepareYazioCsvImport, yazioImportEntries } from './yazio-import.js'
 import { getGrapesAccount, isGrapesDriveConnected, listGrapesProjects, loadGrapesProject, saveGrapesProject } from '../storage/grapes-drive.js'
 import { loadLocalProject, saveLocalProject } from '../storage/local-project-store.js'
 import { assertFoodDriveCreateSafe, chooseFoodDriveProject, foodDriveSignature, verifyFoodRemoteBeforeUpload } from './food-drive-safety.js'
-import { isGrapesAndroidApp, readAndroidHealthExport, readAndroidHealthExportSilent, readAndroidSamsungHealthExport, requestAndroidYazio, saveAndroidJsonBackup } from '../android-bridge.js'
+import { isGrapesAndroidApp, readAndroidHealthExport, readAndroidHealthExportSilent, readAndroidSamsungHealthExport, requestAndroidYazio, scanAndroidFoodBarcode, saveAndroidJsonBackup } from '../android-bridge.js'
 import { mobileIconSvg } from '../android-mobile-icons.js'
 
 const MODULE = 'Ételnapló'
@@ -1165,10 +1165,17 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const externalFoods = expandedSearchQuery === normalized ? allExternalFoods : allExternalFoods.slice(0, 8)
     const container = $('[data-food-search-results]'); container.replaceChildren()
     if (!localFoods.length && !externalFoods.length) {
-      const empty = foodSearchFilter === 'favorites' ? 'Még nincs kedvencnek jelölt ételed.'
+      const isSearching = loading && normalized.length >= 2 && !['own', 'favorites'].includes(foodSearchFilter)
+      const empty = isSearching ? 'Keresés folyamatban…'
+        : foodSearchFilter === 'favorites' ? 'Még nincs kedvencnek jelölt ételed.'
         : foodSearchFilter === 'own' ? 'Nincs illeszkedő saját ételed.'
-          : normalized ? 'Nincs találat. A Saját étel gombbal hozhatsz létre újat.' : 'Még nincs saját ételed. A Saját étel gombbal hozhatsz létre egyet.'
-      container.innerHTML = `<div class="food-empty">${empty}</div>`
+        : normalized ? 'Nincs találat. A Saját étel gombbal hozhatsz létre újat.' : 'Még nincs saját ételed. A Saját étel gombbal hozhatsz létre egyet.'
+      container.replaceChildren()
+      const emptyNode = document.createElement('div')
+      emptyNode.className = 'food-empty'
+      emptyNode.textContent = empty
+      emptyNode.setAttribute('role', 'status')
+      container.append(emptyNode)
     }
     const renderLocalRow = (food, legacy = false) => {
       const row = foodSearchRow(food, { favorite: project.favorites.includes(food.id) })
@@ -1240,7 +1247,17 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       original.className = 'sheet-result__original'; original.lang = 'en'; original.textContent = food.usdaDescription
       main.append(original)
     }
-    const meta = document.createElement('span'); meta.textContent = `${calories} · ${sourceLabel}`
+    if (food.brand) {
+      const brand = document.createElement('span')
+      brand.className = 'sheet-result__brand'
+      brand.textContent = 'Márka: ' + food.brand
+      main.append(brand)
+    }
+    const missingCore = ['energyKcal', 'protein', 'carbohydrate', 'fat'].filter(key => food.nutrients?.[key] == null)
+    const languageNotice = food.source?.type === 'openfoodfacts' && food.productLanguage && food.productLanguage !== 'hu' && !food.hasHungarianName
+      ? ' · Nincs magyar terméknév az adatbázisban' : ''
+    const missingNotice = missingCore.length ? ' · Hiányos tápértékadatok' : ''
+    const meta = document.createElement('span'); meta.textContent = `${calories} · ${sourceLabel}${languageNotice}${missingNotice}`
     main.append(meta)
     const favoriteButton = document.createElement('button'); favoriteButton.type = 'button'; favoriteButton.className = 'sheet-result__favorite'; favoriteButton.hidden = external
     favoriteButton.textContent = favorite ? '★' : '☆'; favoriteButton.setAttribute('aria-label', favorite ? 'Eltávolítás a kedvencekből' : 'Hozzáadás a kedvencekhez')
@@ -1263,7 +1280,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const normalizedQuery = query.trim().toLocaleLowerCase('hu-HU')
     if (expandedSearchQuery !== normalizedQuery) expandedSearchQuery = ''
     const verifiedFoods = searchVerifiedUsdaFoods(query)
-    renderFoodSearch(query, { remoteFoods: verifiedFoods })
+    renderFoodSearch(query, { remoteFoods: verifiedFoods, loading: query.trim().length >= 2 })
     if (query.trim().length < 2) return
     searchTimer = setTimeout(async () => {
       renderFoodSearch(query, { remoteFoods: verifiedFoods, loading: true })
@@ -1275,8 +1292,8 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
         renderFoodSearch(query, { remoteFoods: verifiedFoods, remoteError: 'Az online kereső nem érhető el; az offline USDA és a saját ételek használhatók.' })
         return
       }
-      renderFoodSearch(query, { remoteFoods: result.products, remoteError: result.errors.join(' · ') || (result.products.length ? '' : 'Nincs további találat.') })
-    }, 1550)
+      renderFoodSearch(query, { remoteFoods: result.products, remoteError: result.errors.join(' · ') })
+    }, 380)
   }
 
   async function lookupBarcode(code) {
@@ -1330,6 +1347,20 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
 
   async function requestBarcode(forRecipe = false) {
     const status = $(forRecipe ? '[data-food-recipe-ingredient-status]' : '[data-food-search-status]')
+    // Use the trusted Android camera scanner; preserve the existing web/photo modes.
+    if (isGrapesAndroidApp()) {
+      stopBarcodeCamera()
+      status.textContent = 'Élő vonalkódolvasó megnyitása…'
+      try {
+        const code = await scanAndroidFoodBarcode()
+        if (code) await addBarcode(code, forRecipe)
+        else status.textContent = ''
+      } catch (error) {
+        status.textContent = (error?.message || 'A natív olvasó nem indítható.') +
+          ' Próbáld a fotós olvasót vagy a kézi vonalkódbevitelt.'
+      }
+      return
+    }
     if (!navigator.mediaDevices?.getUserMedia || !('BarcodeDetector' in window)) {
       status.textContent = 'Az élő vonalkódolvasó nem támogatott ezen a készüléken. Add meg a kódot kézzel.'
       const code = window.prompt('Termékvonalkód (7–14 számjegy):')
@@ -2006,6 +2037,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-date-next]').addEventListener('click', () => shiftDate(1))
     $('[data-food-date]').addEventListener('change', event => { selectedDate = event.currentTarget.value || localDate(); renderOverview() })
     $('[data-food-back]').addEventListener('click', closeMeal)
+    // PROD v28 regression guard: both the meal-detail add button and FAB open the sheet.
     $('[data-food-detail-add]').addEventListener('click', openAddSheet)
     $('[data-food-recipes-back]').addEventListener('click', showOverview)
     $('[data-food-recipe-back]').addEventListener('click', openRecipes)
@@ -2026,6 +2058,11 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-stats-from]').addEventListener('change', renderStats)
     $('[data-food-stats-to]').addEventListener('change', renderStats)
     $('[data-food-search]').addEventListener('input', event => startFoodSearch(event.currentTarget.value))
+    // Reset remote hits when the user switches the OFF country filter.
+    document.addEventListener('grapes:food-region-changed', () => {
+      const input = $('[data-food-search]')
+      if (input?.value?.trim()) startFoodSearch(input.value)
+    })
     $('[data-food-barcode-photo]').addEventListener('change', selectBarcodePhoto)
     $('[data-food-live-stop]').addEventListener('click', stopBarcodeCamera)
     $('[data-food-open-recipes]').addEventListener('click', openRecipes)

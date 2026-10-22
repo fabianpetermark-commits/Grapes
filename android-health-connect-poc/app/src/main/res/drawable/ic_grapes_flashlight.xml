@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="26dp"
+    android:height="26dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Clean flashlight glyph, not an emoji or a lightning bolt. -->
+    <path android:fillColor="@android:color/transparent"
+        android:strokeColor="#43DAE3"
+        android:strokeWidth="1.9"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M8,8 L16,8 L17.5,11 L15,13 L15,20 C15,21 14,21 13,21 L11,21 C10,21 9,21 9,20 L9,13 L6.5,11 Z"/>
+    <path android:fillColor="@android:color/transparent"
+        android:strokeColor="#43DAE3"
+        android:strokeWidth="1.9"
+        android:strokeLineCap="round"
+        android:pathData="M12,2 L12,5 M5.3,4.3 L7.4,6.4 M18.7,4.3 L16.6,6.4 M11,17 L13,17"/>
+</vector>
