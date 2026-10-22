@@ -3,11 +3,11 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import {
   validateGrapesProdAuthConfig, GrapesProdAuthConfigError,
-  GRAPES_TEST_PROJECT_REF, GRAPES_PROD_ANDROID_PACKAGE,
+  GRAPES_TEST_PROJECT_REF, GRAPES_PROD_PROJECT_REF, GRAPES_PROD_ANDROID_PACKAGE,
   GRAPES_PROD_ANDROID_CALLBACK,
 } from '../src/auth/grapes-prod-config.js'
 
-const ref = 'abcdefghijklmnopqrst'
+const ref = GRAPES_PROD_PROJECT_REF
 const valid = {
   enabled: true,
   applicationId: GRAPES_PROD_ANDROID_PACKAGE,
@@ -29,6 +29,7 @@ test('production auth stays OFF unless explicitly enabled', () => {
 
 test('production MUST NOT use TEST Supabase project or spoofed production URLs', () => {
   fail({ ...valid, projectRef: GRAPES_TEST_PROJECT_REF, supabaseUrl: `https://${GRAPES_TEST_PROJECT_REF}.supabase.co` })
+  fail({ ...valid, projectRef: 'abcdefghijklmnopqrst', approvedProjectRef: 'abcdefghijklmnopqrst', supabaseUrl: 'https://abcdefghijklmnopqrst.supabase.co' })
   fail({ ...valid, supabaseUrl: `https://${GRAPES_TEST_PROJECT_REF}.supabase.co` })
   fail({ ...valid, supabaseUrl: 'http://' + ref + '.supabase.co' })
   fail({ ...valid, supabaseUrl: `https://${ref}.supabase.co/evil` })
@@ -49,6 +50,7 @@ test('PROD package is distinct from TEST and no secret/service-role API key allo
 
 test('valid configuration is scoped to PROD Android and its isolated auth origin', () => {
   const config = validateGrapesProdAuthConfig(valid)
+  assert.equal(GRAPES_PROD_PROJECT_REF, 'yopabovoxyffhokhbgxl')
   assert.equal(config.enabled, true)
   assert.equal(config.supabaseUrl, `https://${ref}.supabase.co`)
   assert.equal(config.callbackUrl, GRAPES_PROD_ANDROID_CALLBACK)
