@@ -11,9 +11,9 @@ const translations = Object.freeze({
   afonya: ['Blueberries, raw', 'Áfonya'], narancs: ['Oranges, raw', 'Narancs'],
   mandarin: ['Tangerines, raw', 'Mandarin'], citrom: ['Lemons, raw', 'Citrom'],
   avokado: ['Avocados, raw', 'Avokádó'], ananasz: ['Pineapple, raw', 'Ananász'],
-  dinnye: ['Watermelon, raw', 'Dinnye'], krumpli: ['Potatoes, raw', 'Burgonya'],
+  gorogdinnye: ['Watermelon, raw', 'Görögdinnye'], sargadinnye: ['Cantaloupe, raw', 'Sárgadinnye'], krumpli: ['Potatoes, raw', 'Burgonya'],
   burgonya: ['Potatoes, raw', 'Burgonya'], edesburgonya: ['Sweet potatoes, raw', 'Édesburgonya'],
-  voroshagyma: ['Onions, raw', 'Vöröshagyma'], fokhagyma: ['Garlic, raw', 'Fokhagyma'],
+  hagyma: ['Onions, raw', 'Hagyma'], voroshagyma: ['Onions, raw', 'Vöröshagyma'], fokhagyma: ['Garlic, raw', 'Fokhagyma'],
   sargarepa: ['Carrots, raw', 'Sárgarépa'], paprika: ['Peppers, sweet, raw', 'Paprika'],
   paradicsom: ['Tomatoes, raw', 'Paradicsom'], uborka: ['Cucumber, with peel, raw', 'Uborka'],
   cukkini: ['Zucchini, raw', 'Cukkini'], brokkoli: ['Broccoli, raw', 'Brokkoli'],
@@ -34,9 +34,94 @@ const translations = Object.freeze({
   lazac: ['Salmon', 'Lazac'], tonhal: ['Tuna', 'Tonhal'],
   bab: ['Beans', 'Bab'], lencse: ['Lentils', 'Lencse'],
   csicseriborso: ['Chickpeas', 'Csicseriborsó'], mandula: ['Almonds', 'Mandula'],
-  dio: ['Walnuts', 'Dió'], mogyoro: ['Peanuts', 'Mogyoró'],
+  dio: ['Walnuts', 'Dió'], mogyoro: ['Hazelnuts', 'Mogyoró'], foldimogyoro: ['Peanuts', 'Földimogyoró'],
   cukor: ['Sugars, granulated', 'Cukor'], mez: ['Honey', 'Méz'],
   napraforgoolaj: ['Oil, sunflower', 'Napraforgóolaj'], olivaolaj: ['Oil, olive', 'Olívaolaj'],
+  // Carefully curated Hungarian search aliases: these alter the USDA query,
+  // never its FDC identifier, nutrition facts, or raw English description.
+  hagymat: ['Onions, raw', 'Hagyma'], lilahagyma: ['Onions, red, raw', 'Lilahagyma'],
+  feherhagyma: ['Onions, white, raw', 'Fehérhagyma'],
+  zoldhagyma: ['Onions, green, raw', 'Zöldhagyma'],
+  ujhagyma: ['Onions, green, raw', 'Újhagyma'],
+  porehagyma: ['Leeks, raw', 'Póréhagyma'],
+  repa: ['Carrots, raw', 'Sárgarépa'],
+  feherrepa: ['Parsley root, raw', 'Fehérrépa'],
+  paszternak: ['Parsnips, raw', 'Paszternák'],
+  petrezselyemgyoker: ['Parsley root, raw', 'Petrezselyemgyökér'],
+  zeller: ['Celery', 'Zeller'], szarzeller: ['Celery, raw', 'Szárzeller'],
+  zellergumo: ['Celeriac, raw', 'Zellergumó'],
+  padlizsan: ['Eggplant, raw', 'Padlizsán'],
+  karalabe: ['Kohlrabi, raw', 'Karalábé'],
+  kaposzta: ['Cabbage, raw', 'Káposzta'],
+  voroskaposzta: ['Cabbage, red, raw', 'Vöröskáposzta'],
+  kelkaposzta: ['Savoy cabbage, raw', 'Kelkáposzta'],
+  kelbimbo: ['Brussels sprouts, raw', 'Kelbimbó'],
+  cekla: ['Beets, raw', 'Cékla'],
+  retek: ['Radishes, raw', 'Retek'],
+  zoldbab: ['Beans, snap, green, raw', 'Zöldbab'],
+  jegsalata: ['Lettuce, iceberg, raw', 'Jégsaláta'],
+  rukola: ['Arugula, raw', 'Rukkola'],
+  rukkola: ['Arugula, raw', 'Rukkola'],
+  soska: ['Sorrel, raw', 'Sóska'],
+  petrezselyem: ['Parsley, fresh', 'Petrezselyem'],
+  kapor: ['Dill weed, fresh', 'Kapor'],
+  bazsalikom: ['Basil, fresh', 'Bazsalikom'],
+  koriander: ['Coriander leaves, raw', 'Koriander'],
+  kakukkfu: ['Thyme, fresh', 'Kakukkfű'],
+  rozmaring: ['Rosemary, fresh', 'Rozmaring'],
+  gyomber: ['Ginger root, raw', 'Gyömbér'],
+  // Common unbranded staples are distinct from flavored OFF products.
+  zab: ['Oats', 'Zab'],
+  bulgur: ['Bulgur, dry', 'Bulgur'],
+  kuszkusz: ['Couscous, dry', 'Kuszkusz'],
+  quinoa: ['Quinoa, uncooked', 'Quinoa'],
+  hajdina: ['Buckwheat groats, raw', 'Hajdina'],
+  arpagyongy: ['Barley, pearled, raw', 'Árpagyöngy'],
+  arpa: ['Barley, raw', 'Árpa'],
+  rozs: ['Rye grain', 'Rozs'],
+  'teljes kiorlesu liszt': ['Wheat flour, whole-grain', 'Teljes kiőrlésű liszt'],
+  'buza finomliszt': ['Wheat flour, white, all-purpose', 'Búzafinomliszt'],
+  'finomliszt': ['Wheat flour, white, all-purpose', 'Finomliszt'],
+  'zab liszt': ['Oat flour', 'Zabliszt'],
+  zabliszt: ['Oat flour', 'Zabliszt'],
+  'gorog joghurt': ['Yogurt, Greek, plain', 'Görög joghurt'],
+  kefir: ['Kefir, plain', 'Kefir'],
+  tejfol: ['Sour cream', 'Tejföl'],
+  tejszin: ['Cream, fluid', 'Tejszín'],
+  tehenturo: ['Cottage cheese', 'Tehéntúró'],
+  mozzarella: ['Mozzarella cheese', 'Mozzarella'],
+  feta: ['Feta cheese', 'Feta'],
+  // Specific seafood and meats are not guessed from a generic "meat" hit.
+  pulyka: ['Turkey', 'Pulyka'],
+  pulykamell: ['Turkey breast', 'Pulykamell'],
+  csirkecomb: ['Chicken thigh', 'Csirkecomb'],
+  kacsamell: ['Duck breast', 'Kacsamell'],
+  tokehal: ['Cod', 'Tőkehal'],
+  pisztrang: ['Trout', 'Pisztráng'],
+  szardinia: ['Sardines', 'Szardínia'],
+  garnela: ['Shrimp', 'Garnéla'],
+  tojasfeherje: ['Egg, white, raw', 'Tojásfehérje'],
+  tojassargaja: ['Egg, yolk, raw', 'Tojássárgája'],
+  // Fruit aliases intentionally do not imply USDA data for commercial products.
+  meggy: ['Cherries, sour, raw', 'Meggy'],
+  cseresznye: ['Cherries, sweet, raw', 'Cseresznye'],
+  ribizli: ['Currants, raw', 'Ribizli'],
+  szeder: ['Blackberries, raw', 'Szeder'],
+  kiwi: ['Kiwifruit, raw', 'Kivi'],
+  kivi: ['Kiwifruit, raw', 'Kivi'],
+  grapefruit: ['Grapefruit, raw', 'Grapefruit'],
+  mango: ['Mangos, raw', 'Mangó'],
+  datolya: ['Dates', 'Datolya'],
+  fuge: ['Figs, raw', 'Füge'],
+  birsalma: ['Quinces, raw', 'Birsalma'],
+  diofele: ['Nuts', 'Diófélék'],
+  torokmogyoro: ['Hazelnuts', 'Törökmogyoró'],
+  kesudio: ['Cashew nuts', 'Kesudió'],
+  pisztacia: ['Pistachio nuts', 'Pisztácia'],
+  tokmag: ['Pumpkin seeds', 'Tökmag'],
+  chia: ['Chia seeds', 'Chiamag'],
+  lenmag: ['Flaxseed', 'Lenmag'],
+  szezammag: ['Sesame seeds', 'Szezámmag'],
 })
 
 export function translateUsdaQuery(value) {
@@ -44,15 +129,20 @@ export function translateUsdaQuery(value) {
   const mapped = translations[normalized]
   if (mapped) return { query: mapped[0], label: mapped[1] }
   const tokens = normalized.split(' ')
-  const modifiers = new Set(['fott', 'fozott', 'nyers', 'szaraz', 'szaritott', 'elgozolt'])
-  const baseKey = tokens.filter(token => !modifiers.has(token)).join(' ')
+  // Preparation is a search modifier, never part of an ingredient identity.
+  // Preserve the identity and original USDA description when displaying hits.
+  const preparations = Object.freeze({
+    fott: 'cooked', fozott: 'cooked', parolt: 'cooked',
+    sult: 'roasted', sutott: 'roasted', grillezett: 'grilled',
+    piritott: 'roasted',
+    nyers: 'raw', szaraz: 'dried', szaritott: 'dried',
+    elgozolt: 'parboiled',
+  })
+  const baseKey = tokens.filter(token => !Object.hasOwn(preparations, token)).join(' ')
   const base = baseKey !== normalized ? translations[baseKey] : null
   if (base) {
-    const state = tokens.some(token => ['fott', 'fozott'].includes(token)) ? 'cooked'
-      : tokens.includes('nyers') ? 'raw'
-        : tokens.some(token => ['szaraz', 'szaritott'].includes(token)) ? 'dried'
-          : tokens.includes('elgozolt') ? 'parboiled' : ''
-    const genericState = /^(raw|cooked|dry|dried|parboiled)$/i
+    const state = tokens.map(token => preparations[token]).find(Boolean) || ''
+    const genericState = /^(raw|cooked|boiled|steamed|roasted|grilled|fried|dry|dried|parboiled)$/i
     const query = [...base[0].split(',').map(part => part.trim()).filter(part => !genericState.test(part)), state]
       .filter(Boolean).join(', ')
     return { query, label: base[1] }
@@ -63,9 +153,9 @@ export function translateUsdaQuery(value) {
 const nonNegative = value => value != null && value !== '' && Number.isFinite(Number(value)) && Number(value) >= 0 ? Number(value) : null
 
 const descriptionTraits = Object.freeze([
-  { id: 'cooked', group: 'preparation', pattern: /\b(cooked|boiled|steamed)\b/i, label: 'főtt' },
+  { id: 'cooked', group: 'preparation', pattern: /\b(cooked|boiled|steamed|sauteed|sautéed)\b/i, label: 'főtt' },
   { id: 'raw', group: 'preparation', pattern: /\braw\b/i, label: 'nyers' },
-  { id: 'roasted', group: 'preparation', pattern: /\broasted\b/i, label: 'sült' },
+  { id: 'roasted', group: 'preparation', pattern: /\b(roasted|baked|grilled)\b/i, label: 'sült' },
   { id: 'fried', group: 'preparation', pattern: /\bfried\b/i, label: 'sütött' },
   { id: 'dry', group: 'preparation', pattern: /\bdry\b/i, label: 'száraz' },
   { id: 'dried', group: 'preparation', pattern: /\bdried\b/i, label: 'szárított' },
@@ -85,13 +175,55 @@ const descriptionTraits = Object.freeze([
   { id: 'enriched', group: 'processing', pattern: /\benriched\b/i, label: 'dúsított' },
 ])
 
+// Only explicit ingredient identities receive a Hungarian display name.
+// Keep the USDA description immediately below it; unknown/mixed dishes remain
+// English rather than masquerading as an ingredient or its measured nutrients.
 const foodNames = Object.freeze([
-  [/\bchicken\b.*\bbreast\b|\bbreast\b.*\bchicken\b/i, 'Csirkemell'],
-  [/\brice\b/i, 'Rizs'], [/\bapples?\b/i, 'Alma'], [/\bonions?\b/i, 'Vöröshagyma'],
-  [/\bbananas?\b/i, 'Banán'], [/\bpears?\b/i, 'Körte'], [/\bpotatoes?\b/i, 'Burgonya'],
-  [/\btomatoes?\b/i, 'Paradicsom'], [/\bcucumbers?\b/i, 'Uborka'], [/\bcarrots?\b/i, 'Sárgarépa'],
-  [/\bbroccoli\b/i, 'Brokkoli'], [/\bcauliflower\b/i, 'Karfiol'], [/\bspinach\b/i, 'Spenót'],
-  [/\bmushrooms?\b/i, 'Gomba'], [/\blentils?\b/i, 'Lencse'], [/\bchickpeas?\b/i, 'Csicseriborsó'],
+  [/^chicken\b.*\bbreast\b|^breast,?\s+chicken\b/i, 'Csirkemell'],
+  [/^chicken\b.*\bthigh\b/i, 'Csirkecomb'],
+  [/^turkey\b.*\bbreast\b/i, 'Pulykamell'],
+  [/^turkey\b/i, 'Pulyka'],
+  [/^duck\b.*\bbreast\b/i, 'Kacsamell'],
+  [/^rice,?\s*brown\b/i, 'Barna rizs'],
+  [/^rice,?\s*white\b/i, 'Fehér rizs'],
+  [/^rice\b/i, 'Rizs'],
+  [/^sweet potatoes?\b/i, 'Édesburgonya'],
+  [/^potatoes?\b/i, 'Burgonya'],
+  [/^onions?,?\s*(green|spring)\b|^scallions?\b/i, 'Újhagyma'],
+  [/^onions?,?\s*red\b/i, 'Lilahagyma'],
+  [/^onions?,?\s*white\b/i, 'Fehérhagyma'],
+  [/^onions?\b/i, 'Vöröshagyma'],
+  [/^garlic\b/i, 'Fokhagyma'], [/^leeks?\b/i, 'Póréhagyma'],
+  [/^carrots?\b/i, 'Sárgarépa'], [/^parsnips?\b/i, 'Paszternák'],
+  [/^parsley root\b/i, 'Fehérrépa'],
+  [/^peppers?,?\s*sweet\b/i, 'Paprika'],
+  [/^peppers?,?\s*(hot|chili)\b/i, 'Csilipaprika'],
+  [/^tomatoes?\b/i, 'Paradicsom'], [/^cucumbers?\b/i, 'Uborka'],
+  [/^squash,?\s*summer,?\s*zucchini\b|^zucchini\b/i, 'Cukkini'],
+  [/^broccoli\b/i, 'Brokkoli'], [/^cauliflower\b/i, 'Karfiol'],
+  [/^spinach\b/i, 'Spenót'], [/^mushrooms?\b/i, 'Gomba'],
+  [/^cabbage,?\s*red\b/i, 'Vöröskáposzta'],
+  [/^cabbage\b/i, 'Káposzta'],
+  [/^brussels sprouts?\b/i, 'Kelbimbó'], [/^eggplant\b/i, 'Padlizsán'],
+  [/^beets?\b/i, 'Cékla'], [/^radishes?\b/i, 'Retek'],
+  [/^apples?\b/i, 'Alma'], [/^bananas?\b/i, 'Banán'],
+  [/^pears?\b/i, 'Körte'], [/^plums?\b/i, 'Szilva'],
+  [/^strawberries\b/i, 'Eper'], [/^blueberries\b/i, 'Áfonya'],
+  [/^raspberries\b/i, 'Málna'], [/^blackberries\b/i, 'Szeder'],
+  [/^cherries,?\s*sour\b/i, 'Meggy'],
+  [/^cherries\b/i, 'Cseresznye'],
+  [/^oranges?\b/i, 'Narancs'], [/^lemons?\b/i, 'Citrom'],
+  [/^kiwifruit\b/i, 'Kivi'], [/^mangos?\b/i, 'Mangó'],
+  [/^pumpkin\b/i, 'Sütőtök'],
+  [/^lentils?\b/i, 'Lencse'], [/^chickpeas?\b/i, 'Csicseriborsó'],
+  [/^quinoa\b/i, 'Quinoa'], [/^oats?\b/i, 'Zab'],
+  [/^couscous\b/i, 'Kuszkusz'], [/^bulgur\b/i, 'Bulgur'],
+  [/^eggs?,?\s*white\b/i, 'Tojásfehérje'],
+  [/^eggs?,?\s*yolk\b/i, 'Tojássárgája'],
+  [/^eggs?\b/i, 'Tojás'],
+  [/^milk\b/i, 'Tej'], [/^yogurt\b/i, 'Joghurt'],
+  [/^salmon\b/i, 'Lazac'], [/^tuna\b/i, 'Tonhal'],
+  [/^cod\b/i, 'Tőkehal'], [/^trout\b/i, 'Pisztráng'],
 ])
 
 function traitsFromDescription(description) {
@@ -102,9 +234,10 @@ function queryIntent(value) {
   const query = normalizeFoodSearchText(value)
   const has = pattern => pattern.test(query)
   return {
-    preparation: has(/\b(fott|fozott|cooked|boiled|steamed)\b/) ? 'cooked'
-      : has(/\b(nyers|raw)\b/) ? 'raw'
-        : has(/\b(szaritott|szaraz|dry|dried)\b/) ? 'dried' : '',
+    preparation: has(/\b(sult|sutott|grillezett|piritott|roasted|grilled|baked)\b/) ? 'roasted'
+      : has(/\b(fott|fozott|parolt|cooked|boiled|steamed)\b/) ? 'cooked'
+        : has(/\b(nyers|raw)\b/) ? 'raw'
+          : has(/\b(szaritott|szaraz|dry|dried)\b/) ? 'dried' : '',
     color: has(/\b(barna|brown)\b/) ? 'brown' : has(/\b(feher|white)\b/) ? 'white' : '',
     parboiled: has(/\b(elgozolt|parboiled)\b/),
     skin: has(/\b(hejjal|borrel|with skin|with peel)\b/) ? 'with-skin'
@@ -113,6 +246,9 @@ function queryIntent(value) {
 }
 
 function localizedFoodName(description, fallbackLabel = '') {
+  // Mixed dishes and processed retail food must not inherit the nutrition
+  // identity of a single ingredient (e.g. "Onion soup" is not raw onion).
+  if (/\b(soup|pie|casserole|sandwich|stew|flavored|flavoured|dressing|sauce|chips|pizza|burger|bread|muffin|pudding|candy)\b/i.test(description)) return description
   let base = foodNames.find(([pattern]) => pattern.test(description))?.[1] || ''
   if (base === 'Rizs') {
     if (/\bbrown\b/i.test(description)) base = 'Barna rizs'
@@ -146,7 +282,8 @@ function scoreUsdaHit(hit, value, translatedQuery, index) {
   const meaningfulTerms = String(translatedQuery || '').toLocaleLowerCase('en-US').split(/[^a-z]+/)
     .filter(term => term.length > 2 && !['raw', 'cooked', 'white', 'brown', 'long', 'grain', 'with', 'without'].includes(term))
   score += meaningfulTerms.filter(term => normalized.includes(term)).length * 18
-  if (intent.preparation === 'cooked') score += cooked ? 120 : traits.has('raw') || dried ? -100 : -25
+  if (intent.preparation === 'roasted') score += traits.has('roasted') || traits.has('fried') ? 145 : traits.has('cooked') ? 75 : traits.has('raw') || dried ? -110 : -25
+  else if (intent.preparation === 'cooked') score += traits.has('cooked') ? 135 : traits.has('roasted') || traits.has('fried') ? 70 : traits.has('raw') || dried ? -110 : -25
   else if (intent.preparation === 'raw') score += traits.has('raw') ? 120 : cooked ? -100 : 0
   else if (intent.preparation === 'dried') score += dried ? 100 : cooked ? -65 : 0
   else score += traits.has('raw') ? 50 : dried ? 30 : cooked ? -45 : 0
@@ -175,8 +312,10 @@ export function foodFromUsdaSearchHit(hit, label = '') {
   const nutrients = hit.foodNutrients
   const find = (ids, unit) => {
     for (const id of ids) {
-      const found = nutrients.find(n => Number(n?.nutrientId) === id && String(n?.unitName || '').toLowerCase() === unit)
-      if (found) return nonNegative(found.value)
+      const found = nutrients.find(n =>
+        Number(n?.nutrientId ?? n?.nutrient?.id) === id &&
+        String(n?.unitName ?? n?.nutrient?.unitName ?? '').toLowerCase() === unit)
+      if (found) return nonNegative(found.value ?? found.amount)
     }
     return null
   }
@@ -184,7 +323,9 @@ export function foodFromUsdaSearchHit(hit, label = '') {
   const protein = find([1003], 'g')
   const carbohydrate = find([1005], 'g')
   const fat = find([1004], 'g')
-  if ([energy, protein, carbohydrate, fat].some(value => value === null)) return null
+  // Missing measurements remain null; do not discard a real USDA identity
+  // just because its source has not published every macro.
+  if ([energy, protein, carbohydrate, fat].every(value => value === null)) return null
   const sodium = find([1093], 'mg')
   const description = hit.description.trim().slice(0, 135)
   const localized = localizeUsdaDescription(description, label)
@@ -203,6 +344,7 @@ export function foodFromUsdaSearchHit(hit, label = '') {
       salt: sodium === null ? null : Math.round(sodium * 25) / 10000,
     },
     verified: false,
+    nutritionIncomplete: [energy, protein, carbohydrate, fat].some(value => value === null),
     source: { type: 'usda', id: String(hit.fdcId), attribution: 'USDA FoodData Central · ' + hit.dataType },
   }
 }
