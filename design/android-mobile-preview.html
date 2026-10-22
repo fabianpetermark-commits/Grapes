@@ -671,11 +671,11 @@
           <p class="eyebrow">Beállítások</p><h1>Továbbiak</h1><p class="lead">Fiók, nyelv és alkalmazásbeállítások.</p>
 <div class="settings-links" aria-label="További oldalak"><button class="settings-link" type="button" data-nav="projects"><span class="settings-link__icon" data-module-icon="projects"></span><span><strong>Projektek</strong><small>Helyi és Drive munkák</small></span><span aria-hidden="true">›</span></button><button class="settings-link" type="button" data-nav="sync"><span class="settings-link__icon" data-module-icon="sync"></span><span><strong>Szinkron</strong><small>Adatok és fiók</small></span><span aria-hidden="true">›</span></button></div>
           <button class="setting" type="button" data-account-login><span class="setting__icon" data-mobile-icon="google"></span><span><strong data-account-action>Google-fiók csatlakoztatása</strong><span data-account-mode>Helyi mód</span></span><span>›</span></button>
-          <!-- QA-only: this affects the Grapes TEST Supabase account, never Drive. -->
-          <button class="setting" type="button" data-grapes-test-logout hidden aria-label="Kijelentkezés a Grapes TEST-fiókból"><span class="setting__icon" aria-hidden="true">↪</span><span><strong>Kijelentkezés a Grapes-fiókból</strong><span>Csak a TEST-fiók munkamenetét zárja le</span></span><span aria-hidden="true">›</span></button>
           <div class="setting"><div class="setting__icon" data-mobile-icon="language"></div><div><strong>Nyelv</strong><span>Magyar</span></div><span>›</span></div>
           <div class="setting"><div class="setting__icon" data-mobile-icon="appearance"></div><div><strong>Megjelenés</strong><span>Rendszerbeállítás</span></div><span>›</span></div>
           <div class="setting"><div class="setting__icon" data-mobile-icon="info"></div><div><strong>A Grapes névjegye</strong><span>Android mobilalkalmazás</span></div><span>›</span></div>
+          <!-- TEST Supabase sign-out only: never disconnect the separate Drive account. -->
+          <button class="setting" type="button" data-grapes-test-logout hidden aria-label="Kijelentkezés"><span class="setting__icon" data-mobile-icon="exit" aria-hidden="true"></span><span><strong>Kijelentkezés</strong></span><span aria-hidden="true">›</span></button>
         </div>
 
         <div class="content module-preview" data-page="food" hidden>
