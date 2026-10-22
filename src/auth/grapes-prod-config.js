@@ -31,6 +31,7 @@ const PUBLISHABLE_KEY = /^sb_publishable_[A-Za-z0-9_-]{16,}$/
 export function validateGrapesProdAuthConfig({
   enabled = false,
   projectRef,
+  approvedProjectRef,
   supabaseUrl,
   publishableKey,
   applicationId = GRAPES_PROD_ANDROID_PACKAGE,
@@ -40,7 +41,7 @@ export function validateGrapesProdAuthConfig({
     throw new GrapesProdAuthConfigError('Az éles bejelentkezés csak az éles Android alkalmazáshoz engedélyezhető.')
   }
   if (typeof projectRef !== 'string' || !PROJECT_REF.test(projectRef) ||
-      projectRef === GRAPES_TEST_PROJECT_REF) {
+      projectRef === GRAPES_TEST_PROJECT_REF || approvedProjectRef !== projectRef) {
     throw new GrapesProdAuthConfigError('Külön, jóváhagyott Grapes PROD Supabase projektazonosító szükséges.')
   }
   if (supabaseUrl !== `https://${projectRef}.supabase.co`) {
