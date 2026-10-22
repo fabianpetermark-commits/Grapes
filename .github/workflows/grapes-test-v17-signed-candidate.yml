@@ -1,4 +1,4 @@
-name: Grapes TEST v17 Update (TEST ONLY)
+name: Grapes TEST v18 Update (TEST ONLY)
 on:
   push:
     branches:
@@ -11,7 +11,7 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: grapes-test-v17-barcode-signed
+  group: grapes-test-v18-food-ui-fix
   cancel-in-progress: false
 jobs:
   sign-verify-and-archive:
@@ -27,8 +27,8 @@ jobs:
       VITE_EBOOK_EPUB_WRITE_ENABLED: 'true'
       VITE_EBOOK_TRANSFER_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
       VITE_FOOD_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
-      GRAPES_VERSION_CODE: '17'
-      GRAPES_VERSION_NAME: '0.9.8'
+      GRAPES_VERSION_CODE: '18'
+      GRAPES_VERSION_NAME: '0.9.9'
       PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH: /usr/bin/google-chrome
     steps:
       - uses: actions/checkout@v4
@@ -71,7 +71,7 @@ jobs:
           test -n "$ANDROID_TEST_KEYSTORE_PASSWORD"
           test -n "$ANDROID_TEST_KEY_ALIAS"
           test -n "$ANDROID_TEST_KEY_PASSWORD"
-          export ANDROID_TEST_KEYSTORE_PATH="$RUNNER_TEMP/grapes-test-v17.p12"
+          export ANDROID_TEST_KEYSTORE_PATH="$RUNNER_TEMP/grapes-test-v18.p12"
           trap 'rm -f "$ANDROID_TEST_KEYSTORE_PATH"' EXIT
           printf '%s' "$ANDROID_TEST_KEYSTORE_BASE64" | base64 --decode > "$ANDROID_TEST_KEYSTORE_PATH"
           chmod 600 "$ANDROID_TEST_KEYSTORE_PATH"
@@ -79,19 +79,19 @@ jobs:
           SRC=android-health-connect-poc/app/build/outputs/apk/qa/app-qa.apk
           test -s "$SRC"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$SRC" | grep -F "package: name='hu.grapes.healthconnect.test'"
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$SRC" | grep -F "versionCode='17'"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$SRC" | grep -F "versionCode='18'"
           CERT=$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$SRC")
           EXPECTED=cc9dc997fa4bff3845884afd2f011efe939c02806f91393a1ddb0455b6a2ff33
           printf '%s\n' "$CERT" | grep -Fi "Signer #1 certificate SHA-256 digest: $EXPECTED"
-          mv "$SRC" grapes-test-v17-signed-candidate.apk
-          sha256sum grapes-test-v17-signed-candidate.apk > grapes-test-v17-signed-candidate.apk.sha256
+          mv "$SRC" grapes-test-v18-signed-candidate.apk
+          sha256sum grapes-test-v18-signed-candidate.apk > grapes-test-v18-signed-candidate.apk.sha256
       - name: Archive 7-day APK for manual TEST, never release
         uses: actions/upload-artifact@v4
         with:
-          name: grapes-test-v17-native-barcode-signed-candidate
+          name: grapes-test-v18-native-barcode-signed-candidate
           path: |
-            grapes-test-v17-signed-candidate.apk
-            grapes-test-v17-signed-candidate.apk.sha256
+            grapes-test-v18-signed-candidate.apk
+            grapes-test-v18-signed-candidate.apk.sha256
           if-no-files-found: error
           retention-days: 7
 
@@ -100,28 +100,28 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          if gh release view android-test-v17 >/dev/null 2>&1; then
-            echo "android-test-v17 already exists, refusing to overwrite an existing update"
+          if gh release view android-test-v18 >/dev/null 2>&1; then
+            echo "android-test-v18 already exists, refusing to overwrite an existing update"
             exit 1
           fi
-          test -s grapes-test-v17-signed-candidate.apk
-          test -s grapes-test-v17-signed-candidate.apk.sha256
-          sha256sum -c grapes-test-v17-signed-candidate.apk.sha256
-          cp grapes-test-v17-signed-candidate.apk grapes-test-v17.apk
-          sha256sum grapes-test-v17.apk > grapes-test-v17.apk.sha256
-          cat > "$RUNNER_TEMP/grapes-test-v17-notes.md" <<'EOF'
-          Grapes TEST v17 (0.9.8-test) — a meglévő Grapes TEST v16 frissítése, nem külön alkalmazás.
+          test -s grapes-test-v18-signed-candidate.apk
+          test -s grapes-test-v18-signed-candidate.apk.sha256
+          sha256sum -c grapes-test-v18-signed-candidate.apk.sha256
+          cp grapes-test-v18-signed-candidate.apk grapes-test-v18.apk
+          sha256sum grapes-test-v18.apk > grapes-test-v18.apk.sha256
+          cat > "$RUNNER_TEMP/grapes-test-v18-notes.md" <<'EOF'
+          Grapes TEST v18 (0.9.9-test) — a meglévő Grapes TEST v17 frissítése, nem külön alkalmazás.
 
-          - Food: új natív élő kamerás EAN/UPC vonalkódolvasó CameraX + ML Kit használatával.
-          - Grapes sötét, visszafogott neon-cián kamera felület, be-/kikapcsolható folyamatos LED-vaku és kétujjas zoom.
-          - Az ellenőrzőszám és két egyező felismerés csökkenti a téves beolvasást; kézi vonalkódbevitel továbbra is elérhető.
+          - Vonalkódolvasó: a korábbi villám emoji helyett egységes neon-cián rajzolt vakuikon jelenik meg, a kameraképen jobb alul, könnyen elérhető helyen. A LED-vaku vezérlése változatlan.
+          - Food API: a nem található OFF-vonalkód HTTP 404 / status=0 válaszára helyesen termékhiányt jelez, nem tévesen adatbázis-elérhetetlenséget.
+          - A valódi hálózati és szolgáltatási hibákat továbbra is külön jelzi, a név szerinti keresés és a receptoldal megmarad.
           - A már meglévő OFF-terméklekérdezés, szerkeszthető tápértékadatok, receptek, Food/Water/Finance/E-book adatformátumok és a TEST Google Drive mappák változatlanok.
           - A korábbi TEST v16 magyar USDA és keresési javításait megtartja.
           - A teljes Health/Water/Drive ütközésvédelmi audit és az új Auth-kísérletek nincsenek ebben a kiadásban.
 
-          A TEST APK csomagneve hu.grapes.healthconnect.test, verziókód 17, ugyanazzal a TEST aláíró tanúsítvánnyal, mint a v16.
+          A TEST APK csomagneve hu.grapes.healthconnect.test, verziókód 18, ugyanazzal a TEST aláíró tanúsítvánnyal, mint a v17.
           Telepítés előtt készíts ellenőrzött biztonsági mentést a TEST adataidról. A TEST appot ne töröld, és ne töröld az adatait. Ha a frissítést elutasítja a telefon, ne próbáld újratelepítéssel megoldani.
-          A vaku, a kamerás felismerés és a felület telefonos tesztje még szükséges. A fő Grapes PROD nincs módosítva.
+          Az új vakuikon pontos elhelyezésének és a hiányzó bolti termékeknek a telefonos tesztje még szükséges. A fő Grapes PROD nincs módosítva.
           EOF
-          gh release create android-test-v17             grapes-test-v17.apk grapes-test-v17.apk.sha256             --target "$GITHUB_SHA"             --title "Grapes TEST 0.9.8 (v17) – Vonalkódolvasó és vaku"             --notes-file "$RUNNER_TEMP/grapes-test-v17-notes.md"             --prerelease
-          gh release view android-test-v17 --json tagName,isPrerelease,assets,url
+          gh release create android-test-v18             grapes-test-v18.apk grapes-test-v18.apk.sha256             --target "$GITHUB_SHA"             --title "Grapes TEST 0.9.9 (v18) – OFF 404 és neon vakuikon"             --notes-file "$RUNNER_TEMP/grapes-test-v18-notes.md"             --prerelease
+          gh release view android-test-v18 --json tagName,isPrerelease,assets,url
