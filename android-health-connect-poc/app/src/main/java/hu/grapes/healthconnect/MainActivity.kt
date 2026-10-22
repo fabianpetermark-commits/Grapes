@@ -4,8 +4,10 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.content.Intent
-import android.view.Menu
-import android.view.MenuItem
+import android.graphics.Color
+import android.view.ViewGroup
+import android.widget.Button
+import android.widget.LinearLayout
 import android.provider.MediaStore
 import androidx.core.content.FileProvider
 import java.io.File
@@ -159,7 +161,26 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         configureWebView()
-        setContentView(webView)
+        if (isTestQa) {
+            // The shipped NoActionBar theme has no options menu. An explicit
+            // QA-only navigation strip makes the isolated login reachable.
+            val nav = Button(this).apply {
+                text = "Grapes TEST-fiók / alkalmazás"
+                setBackgroundColor(Color.rgb(9, 14, 20))
+                setTextColor(Color.rgb(59, 220, 242))
+                setOnClickListener {
+                    webView.loadUrl(if (webView.url == TEST_AUTH_URL) APP_URL else TEST_AUTH_URL)
+                }
+            }
+            val root = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(nav, LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+                addView(webView, LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+            }
+            setContentView(root)
+        } else setContentView(webView)
         UpdateNotifications.createChannel(this)
         UpdateCheckWorker.schedule(this)
         val authReturn = isTestQa && testAuth.accept(intent?.data)
@@ -193,19 +214,6 @@ class MainActivity : ComponentActivity() {
         if (intent.getBooleanExtra(UpdateNotifications.EXTRA_OPEN_UPDATE, false)) {
             checkForAppUpdate(force = true)
         }
-    }
-
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        if (isTestQa) menu.add(0, TEST_AUTH_MENU, 0, "Grapes TEST-fiók")
-        return super.onCreateOptionsMenu(menu)
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        if (isTestQa && item.itemId == TEST_AUTH_MENU) {
-            webView.loadUrl(TEST_AUTH_URL)
-            return true
-        }
-        return super.onOptionsItemSelected(item)
     }
 
     override fun onResume() {
@@ -678,7 +686,6 @@ class MainActivity : ComponentActivity() {
         private const val TEST_AUTH_HOST = "test-auth.androidplatform.net"
         private const val TEST_AUTH_ORIGIN = "https://$TEST_AUTH_HOST"
         private const val TEST_AUTH_URL = "$TEST_AUTH_ORIGIN/assets/login-auth-test.html"
-        private const val TEST_AUTH_MENU = 107
         private const val DRIVE_FILE_SCOPE = "https://www.googleapis.com/auth/drive.file"
         private const val DRIVE_READ_SCOPE = "https://www.googleapis.com/auth/drive.readonly"
         private const val NOTIFICATION_PREFERENCES = "grapes-notifications"
