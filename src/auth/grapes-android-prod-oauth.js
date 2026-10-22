@@ -1,4 +1,4 @@
-const CALLBACK = 'hu.grapes.healthconnect.test://auth/callback'
+const CALLBACK = 'hu.grapes.healthconnect://auth/callback'
 const PROJECT = 'https://yopabovoxyffhokhbgxl.supabase.co'
 const PENDING_KEY = 'grapes-prod-android-oauth-pending-v1'
 const MAX_AGE_MS = 5 * 60 * 1000
@@ -20,7 +20,7 @@ export function validateProdAuthorizeUrl(value, state) {
   } catch { return false }
 }
 
-export function createAndroidTestOAuth({ bridge = globalThis.GrapesAndroid,
+export function createAndroidProdOAuth({ bridge = globalThis.GrapesAndroid,
   events = globalThis, storage = globalThis.localStorage, now = Date.now } = {}) {
   if (!bridge || typeof bridge.postMessage !== 'function' ||
       !storage || typeof storage.getItem !== 'function' ||

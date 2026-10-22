@@ -1,6 +1,6 @@
 import { validateGrapesProdAuthConfig, GRAPES_PROD_PROJECT_REF } from './grapes-prod-config.js'
 import { createGrapesAuthFlow } from './grapes-auth-flow.js'
-import { bindGrapesProdLogin } from './grapes-login-controller.js'
+import { bindGrapesProdLogin } from './grapes-prod-login-controller.js'
 
 /**
  * Grapes PROD only. This accepts the official Supabase JS createClient factory
@@ -22,7 +22,7 @@ export class GrapesProdAuthConfigError extends Error {
 
 export function makeGrapesProdAuthConfig({ url, publishableKey, location, sessionStorage, nativeOAuth, legacyDataIsolationReviewed = false } = {}) {
   if (url !== GRAPES_PROD_PROJECT_URL) {
-    throw new GrapesProdAuthConfigError('A Grapes PROD Supabase URL nem egyezik a külön tesztprojektével.')
+    throw new GrapesProdAuthConfigError('A Grapes PROD Supabase URL nem egyezik a külön éles projektével.')
   }
   if (typeof publishableKey !== 'string' || !/^sb_publishable_[A-Za-z0-9_-]{16,}$/.test(publishableKey)) {
     throw new GrapesProdAuthConfigError('Kizárólag a Grapes PROD publishable kulcsa használható.')
@@ -101,7 +101,7 @@ export async function startGrapesProdAuth({
   let disposed = false
   let forwarded = false
   const notifyVerified = (user) => {
-    // Only getUser-validated sessions may unlock the QA app. The native gate
+    // Only getUser-validated sessions may unlock the PROD app. The native gate
     // cannot be bypassed by simply clicking a button on the login screen.
     if (!user?.id || recoveryPending || suppressAutoOpen || disposed ||
       forwarded || typeof onAuthenticated !== 'function') return

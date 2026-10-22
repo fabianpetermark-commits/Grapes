@@ -1,18 +1,18 @@
 import { createClient } from '@supabase/supabase-js'
-import { bindGrapesProdLogin } from './auth/grapes-login-controller.js'
+import { bindGrapesProdLogin } from './auth/grapes-prod-login-controller.js'
 import { startGrapesProdAuth } from './auth/grapes-prod-runtime.js'
-import { createAndroidTestOAuth } from './auth/grapes-android-oauth.js'
+import { createAndroidProdOAuth } from './auth/grapes-android-prod-oauth.js'
 
 /**
  * Grapes PROD route only. The existing login-preview.html and Google Drive
  * login do not import this entrypoint. No SDK credentials are baked into
  * source. The publishable key is client configuration, never a secret.
  */
-export function initializeGrapesAuthTest({ root = document } = {}) {
+export function initializeGrapesAuthProd({ root = document } = {}) {
   return bindGrapesProdLogin(root, null)
 }
 
-export async function activateGrapesAuthTest({
+export async function activateGrapesAuthProd({
   createClientFactory = createClient,
   root = document,
   url = import.meta.env?.VITE_GRAPES_PROD_SUPABASE_URL,
@@ -22,10 +22,10 @@ export async function activateGrapesAuthTest({
 } = {}) {
   const isAndroid = location === 'https://grapes-prod-auth.invalid/assets/login-auth-prod.html' &&
     typeof globalThis.GrapesAndroid?.postMessage === 'function'
-  const nativeOAuth = isAndroid ? createAndroidTestOAuth() : null
+  const nativeOAuth = isAndroid ? createAndroidProdOAuth() : null
   let navigatingToApp = false
   const revealLogin = () => {
-    if (isAndroid) globalThis.document?.documentElement?.removeAttribute('data-grapes-qa-starting')
+    if (isAndroid) globalThis.document?.documentElement?.removeAttribute('data-grapes-prod-starting')
   }
   // Read the app-private logout request before checking the persisted session,
   // otherwise a formerly signed-in user could be forwarded to the app again.
@@ -78,12 +78,12 @@ export async function activateGrapesAuthTest({
 if (typeof document !== 'undefined' && document.querySelector('#grapes-login-form')) {
   if (import.meta.env?.VITE_GRAPES_PROD_AUTH_ENABLED === 'true' &&
       import.meta.env?.VITE_GRAPES_PROD_LEGACY_DATA_ISOLATION_REVIEWED === 'true') {
-    activateGrapesAuthTest().catch(() => {
+    activateGrapesAuthProd().catch(() => {
       // Fail closed: do not let an unconfigured page transmit credentials.
       // A broken PROD config must still expose the error instead of showing
       // an endless account-check splash.
-      document.documentElement.removeAttribute('data-grapes-qa-starting')
-      initializeGrapesAuthTest()
+      document.documentElement.removeAttribute('data-grapes-prod-starting')
+      initializeGrapesAuthProd()
       const feedback = document.querySelector('#grapes-feedback')
       if (feedback) {
         feedback.textContent = 'A Grapes PROD bejelentkezése még nem használható. Ellenőrizni kell az Auth-konfigurációt.'
@@ -92,6 +92,6 @@ if (typeof document !== 'undefined' && document.querySelector('#grapes-login-for
     })
   } else {
     // This remains the default on main, PROD and ordinary Android builds.
-    initializeGrapesAuthTest()
+    initializeGrapesAuthProd()
   }
 }
