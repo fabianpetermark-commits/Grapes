@@ -15,6 +15,7 @@ import { registerFoodSharing, sendMealShare, sendRecipeShare } from './food/food
 import { hydrateMobileIcons, mobileIconSvg } from './android-mobile-icons.js'
 import { createHomeMobile } from './home/home-mobile.js'
 import { initOutdoorPlantPreview } from './outdoor/outdoor-preview.js'
+import { createPlantsWeather } from './outdoor/plants-weather.js'
 import { getAndroidAppUpdate, installAndroidAppUpdate, isGrapesAndroidApp, openAndroidHealthConnectSettings } from './android-bridge.js'
 import {
   isMobileShareableBook,
@@ -56,6 +57,7 @@ let activeTransferBookId = ''
 let activePairingNonce = ''
 let mobileFood = null
 const household = createHomeMobile($('[data-household-root]'))
+const plantsWeather = createPlantsWeather()
 let activePage = 'home'
 let menuReturnPage = ''
 let menuEntry = ''
@@ -74,10 +76,10 @@ const labels = {
   'hub-health': ['Health', 'Ételnapló és receptek'],
   'hub-utility': ['Utility', 'Eszközök'],
   'hub-finance': ['Finance', 'Pénzügyek'],
-  'hub-outdoor': ['Outdoor', 'Növények és kert'],
-  'outdoor-plants': ['Növényeim', 'Outdoor'],
-  'outdoor-catalog': ['Növénykatalógus', 'Outdoor'],
-  'outdoor-detail': ['Növényadatlap', 'Outdoor / Növényeim'],
+  'hub-outdoor': ['Növények', 'Home / Növények'],
+  'outdoor-plants': ['Növényeim', 'Home / Növények'],
+  'outdoor-catalog': ['Növénykatalógus', 'Home / Növények'],
+  'outdoor-detail': ['Növényadatlap', 'Home / Növényeim'],
   ebook: ['E-book', 'Könyvtár'], reader: ['A csend térképe', 'Olvasó'],
   transfer: ['E-book átvitel', 'Olvasóeszköz'],
 }
@@ -340,6 +342,7 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   ;[title.textContent, subtitle.textContent] = labels[page] || labels.home
   fab.hidden = page !== 'food' || !mobileFood?.isDetailOpen()
   closeSheet()
+  if (page === 'hub-outdoor') plantsWeather.refresh().catch(() => {})
   if (page === 'projects') renderProjects()
   if (page === 'sync') renderSync()
   if (page === 'water') renderWater()
@@ -1001,16 +1004,19 @@ $('[data-sync-projects]').addEventListener('click', () => showPage('projects'))
 $$('[data-nav]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.nav)))
 $$('[data-menu-group]').forEach(button => button.addEventListener('click', () => {
   const group = button.dataset.menuGroup
-  if (['home', 'health', 'utility', 'finance', 'outdoor'].includes(group)) showPage('hub-' + group)
+  if (['home', 'health', 'utility', 'finance'].includes(group)) showPage('hub-' + group)
 }))
-$$('[data-menu-back]').forEach(button => button.addEventListener('click', () => showPage('home')))
-$$('[data-outdoor-back]').forEach(button => button.addEventListener('click', () => showPage('hub-outdoor')))
+$('[data-menu-back]').forEach(button => button.addEventListener('click', () => showPage('home')))
+$('[data-plants-home-back]').forEach(button => button.addEventListener('click', () => showPage('hub-home')))
+$('[data-outdoor-back]').forEach(button => button.addEventListener('click', () => showPage('hub-outdoor', { parent: 'hub-home' })))
 $$('[data-menu-destination]').forEach(button => button.addEventListener('click', () => {
   const destination = button.dataset.menuDestination
   const parent = button.closest('[data-page]')?.dataset.page
   if (!['hub-home', 'hub-health', 'hub-utility', 'hub-finance', 'hub-outdoor'].includes(parent)) return
   if (parent === 'hub-home' && ['inventory', 'shopping'].includes(destination)) {
     showPage('household', { parent, entry: destination })
+  } else if (parent === 'hub-home' && destination === 'garden') {
+    showPage('hub-outdoor', { parent: 'hub-home' })
   } else if (parent === 'hub-health' && ['food', 'recipes', 'stats'].includes(destination)) {
     showPage('food', { parent, entry: destination === 'food' ? 'overview' : destination })
   } else if (parent === 'hub-outdoor' && ['plants', 'catalog'].includes(destination)) {
@@ -1178,7 +1184,8 @@ installSheetGestures()
 refreshUpdateInbox()
 window.grapesHandleAndroidBack = () => {
   if (activePage === 'outdoor-detail') { showPage('outdoor-plants', { parent: 'hub-outdoor' }); return true }
-  if (['outdoor-plants', 'outdoor-catalog'].includes(activePage)) { showPage('hub-outdoor'); return true }
+  if (['outdoor-plants', 'outdoor-catalog'].includes(activePage)) { showPage('hub-outdoor', { parent: 'hub-home' }); return true }
+  if (activePage === 'hub-outdoor') { showPage('hub-home'); return true }
   if ($('[data-notifications-sheet].is-open')) { closeSheet(); return true }
   if (activePage === 'household' && household.handleBack()) return true
   if (activePage === 'food' && menuReturnPage === 'hub-health') {
