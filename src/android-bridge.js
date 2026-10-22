@@ -63,6 +63,21 @@ export function disconnectAndroidGoogleDrive(accessToken = '') {
   return nativeRequest('disconnectGoogleDrive', accessToken)
 }
 
+// Grapes account login is independent from the existing E-book Google Drive.
+// Both methods are deliberately TEST-only on the native side.
+export async function getAndroidTestAuthEnabled() {
+  return (await nativeRequest('getTestAuthEnabled')) === 'true'
+}
+
+export function requestAndroidTestAccountSignOut() {
+  if (!isGrapesAndroidApp()) throw new Error('A Grapes TEST alkalmazás nem érhető el.')
+  // The native Activity immediately navigates to the isolated Auth origin;
+  // do not await a response from the WebView being navigated away from.
+  window.GrapesAndroid.postMessage(JSON.stringify({
+    method: 'openTestAuthSignOut', requestId: crypto.randomUUID(), args: [],
+  }))
+}
+
 export async function getAndroidAppUpdate() {
   const payload = await nativeRequest('getAvailableUpdate')
   return JSON.parse(payload || 'null')
