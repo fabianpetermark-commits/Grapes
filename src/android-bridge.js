@@ -28,6 +28,11 @@ function nativeRequest(method, ...args) {
   })
 }
 
+// Shared native barcode scanner; preserves the web / photo / manual fallback.
+export function scanAndroidFoodBarcode() {
+  return nativeRequest('scanFoodBarcode')
+}
+
 export function readAndroidHealthExport(fromDate) {
   return nativeRequest('readHealthData', fromDate)
 }
