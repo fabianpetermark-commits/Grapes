@@ -2037,6 +2037,8 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-date-next]').addEventListener('click', () => shiftDate(1))
     $('[data-food-date]').addEventListener('change', event => { selectedDate = event.currentTarget.value || localDate(); renderOverview() })
     $('[data-food-back]').addEventListener('click', closeMeal)
+    // PROD v28 regression guard: both the meal-detail add button and FAB open the sheet.
+    $('[data-food-detail-add]').addEventListener('click', openAddSheet)
     $('[data-food-recipes-back]').addEventListener('click', showOverview)
     $('[data-food-recipe-back]').addEventListener('click', openRecipes)
     $('[data-food-recipe-share]').addEventListener('click', openShareSheet)
