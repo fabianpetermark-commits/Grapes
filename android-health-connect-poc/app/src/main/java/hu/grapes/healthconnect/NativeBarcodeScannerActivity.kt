@@ -70,7 +70,7 @@ class NativeBarcodeScannerActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission()
     ) { allowed ->
         if (allowed) startCamera()
-        else status.text = "Nincs kameraengedély. A kódot alul kézzel is beírhatod."
+        else showScannerProblem("Nincs kameraengedély. A kódot alul kézzel is beírhatod.")
     }
 
     private val zoomGesture by lazy {
@@ -175,8 +175,15 @@ class NativeBarcodeScannerActivity : ComponentActivity() {
         })
         previewView.setOnTouchListener { _, event -> zoomGesture.onTouchEvent(event); true }
 
-        status = text("Kamera indítása…", 14f, Color.rgb(169, 211, 217))
-        root.addView(status, LinearLayout.LayoutParams(-1, dp(54)))
+        // Routine scanning needs no extra caption. Show this row only for an
+        // actionable camera, permission, torch or manual-input error.
+        status = text("", 14f, Color.rgb(169, 211, 217)).apply {
+            visibility = View.GONE
+        }
+        root.addView(status, LinearLayout.LayoutParams(-1, -2).apply {
+            topMargin = dp(8)
+            bottomMargin = dp(8)
+        })
 
         val manual = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -199,15 +206,18 @@ class NativeBarcodeScannerActivity : ComponentActivity() {
             background = rounded(CYAN, 10)
             setOnClickListener {
                 val code = normalize(manualCode.text.toString(), null)
-                if (code == null) status.text = "Érvénytelen EAN/UPC vonalkód."
+                if (code == null) showScannerProblem("Érvénytelen EAN/UPC vonalkód.")
                 else returnBarcode(code)
             }
         }
         manual.addView(submit, LinearLayout.LayoutParams(dp(92), dp(48)).apply {
             leftMargin = dp(8)
         })
-        root.addView(text("A kamera csak a vonalkódot olvassa · a képet nem mentjük", 11f,
-            Color.rgb(127, 150, 159)), LinearLayout.LayoutParams(-1, dp(38)))
+    }
+
+    private fun showScannerProblem(message: String) {
+        status.text = message
+        status.visibility = View.VISIBLE
     }
 
     private fun torchBackground(on: Boolean): GradientDrawable =
@@ -220,7 +230,7 @@ class NativeBarcodeScannerActivity : ComponentActivity() {
     private fun toggleTorch() {
         val current = camera ?: return
         if (!current.cameraInfo.hasFlashUnit()) {
-            status.text = "Ezen a kamerán nincs elérhető vaku."
+            showScannerProblem("Ezen a kamerán nincs elérhető vaku.")
             return
         }
         val desired = !torchOn
@@ -264,9 +274,9 @@ class NativeBarcodeScannerActivity : ComponentActivity() {
                 camera = activeProvider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA,
                     preview, analysis)
                 torch.alpha = if (camera?.cameraInfo?.hasFlashUnit() == true) 1f else 0.35f
-                status.text = "Vonalkód keresése… · két egyező felismerés szükséges"
+                status.visibility = View.GONE
             } catch (error: Exception) {
-                status.text = "A kamera nem indult el. A kódot kézzel is beírhatod."
+                showScannerProblem("A kamera nem indult el. A kódot kézzel is beírhatod.")
             }
         }, ContextCompat.getMainExecutor(this))
     }
