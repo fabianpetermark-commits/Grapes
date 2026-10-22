@@ -44,7 +44,14 @@ export async function searchFoodCatalog(query, {
     ] : []),
     { id: 'openfoodfacts', label: 'Open Food Facts',
       search: () => isBarcode
-        ? offBarcode(term).then(product => ({ count: 1, products: [product] }))
+        ? offBarcode(term)
+            .then(product => ({ count: 1, products: [product] }))
+            .catch(error => {
+              // No such barcode is a successful empty lookup, not an outage.
+              if (/^Nem található termék ezzel a vonalkóddal\.$/.test(error?.message || ''))
+                return { count: 0, products: [] }
+              throw error
+            })
         : offSearch(term) }
   ]
   const settled = await Promise.allSettled(sources.map(source => source.search()))
