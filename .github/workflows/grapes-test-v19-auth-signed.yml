@@ -1,4 +1,4 @@
-name: Grapes TEST v20 scanner UI cleanup (TEST ONLY)
+name: Grapes TEST v19 Google Auth + v18 Food signed update (TEST ONLY)
 on:
   push:
     branches:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: grapes-test-v20-scanner-ui
+  group: grapes-test-v19-auth-signed
   cancel-in-progress: false
 
 jobs:
@@ -32,25 +32,24 @@ jobs:
       VITE_EBOOK_EPUB_WRITE_ENABLED: 'true'
       VITE_EBOOK_TRANSFER_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
       VITE_FOOD_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
-      GRAPES_VERSION_CODE: '20'
-      GRAPES_VERSION_NAME: '0.9.11'
+      GRAPES_VERSION_CODE: '19'
+      GRAPES_VERSION_NAME: '0.9.10'
     steps:
       - name: Check out exact TEST source (never main or PROD)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Verify released v19 baseline, TEST Auth and scanner UI only
+      - name: Verify immutable v18 baseline, TEST Auth and no accidental release overwrite
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(git rev-parse 'android-test-v19^{commit}')" = '259efa59ef3487cf7877c20f7954648fe8d79e6d'
-          git merge-base --is-ancestor 259efa59ef3487cf7877c20f7954648fe8d79e6d HEAD
+          test "$(git rev-parse 'android-test-v18^{commit}')" = '4c10bab63e26d04b9daeaac54e300c6b540e7017'
           git merge-base --is-ancestor ec8e7fa08f86967afc75f495e5fc82b62a5c4a97 HEAD
-          if gh release view android-test-v20 >/dev/null 2>&1; then
-            echo "::error::Refusing to overwrite existing android-test-v20"
+          if gh release view android-test-v19 >/dev/null 2>&1; then
+            echo "::error::Refusing to overwrite existing android-test-v19"
             exit 1
           fi
           case "$VITE_GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY" in
@@ -59,22 +58,22 @@ jobs:
           esac
           test "$VITE_GRAPES_TEST_SUPABASE_URL" = 'https://aighqtqjlzirlokxwupt.supabase.co'
           test "$VITE_GRAPES_TEST_HEALTH_SYNC_ENABLED" = false
-          git diff --exit-code android-test-v19 -- \
+          git diff --exit-code android-test-v18 -- \
             android-health-connect-poc/app/src/main/AndroidManifest.xml \
+            android-health-connect-poc/app/src/main/java/hu/grapes/healthconnect/NativeBarcodeScannerActivity.kt \
             android-health-connect-poc/app/src/main/java/hu/grapes/healthconnect/FoodApiBridge.kt \
             android-health-connect-poc/app/src/main/res/drawable/ic_grapes_flashlight.xml \
             src/android-bridge.js src/food/food-api.js \
             src/food/food-catalog-search.js src/food/food-mobile.js \
             tests/food-api.test.js tests/food-catalog-search.test.js \
+            tests/food-off-usda-integration.test.js
           grep -Fq 'barcodeScannerLauncher' android-health-connect-poc/app/src/main/java/hu/grapes/healthconnect/MainActivity.kt
           grep -Fq 'scanFoodBarcode' android-health-connect-poc/app/src/main/java/hu/grapes/healthconnect/MainActivity.kt
           grep -Fq 'beginTestAuthOAuth' android-health-connect-poc/app/src/main/java/hu/grapes/healthconnect/MainActivity.kt
           grep -Fq 'setOf(APP_ORIGIN, TEST_AUTH_ORIGIN)' android-health-connect-poc/app/src/main/java/hu/grapes/healthconnect/MainActivity.kt
           test -s android-health-connect-poc/app/src/qa/AndroidManifest.xml
           test -s android-health-connect-poc/app/src/main/java/hu/grapes/healthconnect/TestAuthCallback.kt
-          # No unexpected file changes compared to immutable v19; native scanner
-          # and one focused regression test are the only accepted code deltas.
-          unexpected=$(git diff --name-only android-test-v19 -- | grep -Ev '^android-health-connect-poc/app/src/main/java/hu/grapes/healthconnect/NativeBarcodeScannerActivity.kt$|^tests/food-off-usda-integration.test.js$|^\.github/workflows/grapes-test-v19-auth-signed.yml
+          echo 'v18 scanner, OFF 404, torch and isolated Android Auth invariants verified'
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -222,7 +221,7 @@ jobs:
           gradle-version: 8.11.1
       - name: Native callback QA Robolectric tests
         run: gradle --project-dir android-health-connect-poc :app:testQaUnitTest
-      - name: Build signed TEST QA v20 with historical TEST key only
+      - name: Build signed TEST QA v19 with historical TEST key only
         env:
           ANDROID_TEST_KEYSTORE_BASE64: ${{ secrets.ANDROID_TEST_KEYSTORE_BASE64 }}
           ANDROID_TEST_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_TEST_KEYSTORE_PASSWORD }}
@@ -234,7 +233,7 @@ jobs:
           test -n "$ANDROID_TEST_KEYSTORE_PASSWORD"
           test -n "$ANDROID_TEST_KEY_ALIAS"
           test -n "$ANDROID_TEST_KEY_PASSWORD"
-          export ANDROID_TEST_KEYSTORE_PATH="$RUNNER_TEMP/grapes-test-v20.p12"
+          export ANDROID_TEST_KEYSTORE_PATH="$RUNNER_TEMP/grapes-test-v19.p12"
           trap 'rm -f "$ANDROID_TEST_KEYSTORE_PATH"' EXIT
           printf '%s' "$ANDROID_TEST_KEYSTORE_BASE64" | base64 --decode > "$ANDROID_TEST_KEYSTORE_PATH"
           chmod 600 "$ANDROID_TEST_KEYSTORE_PATH"
@@ -242,247 +241,32 @@ jobs:
           SOURCE=android-health-connect-poc/app/build/outputs/apk/qa/app-qa.apk
           test -s "$SOURCE"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$SOURCE" | grep -F "package: name='hu.grapes.healthconnect.test'"
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$SOURCE" | grep -F "versionCode='20'"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$SOURCE" | grep -F "versionCode='19'"
           CERT=$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$SOURCE")
           EXPECTED=cc9dc997fa4bff3845884afd2f011efe939c02806f91393a1ddb0455b6a2ff33
           printf '%s\n' "$CERT" | grep -Fi "Signer #1 certificate SHA-256 digest: $EXPECTED"
-          mv "$SOURCE" grapes-test-v20.apk
-          sha256sum grapes-test-v20.apk > grapes-test-v20.apk.sha256
-      - name: Preserve signed TEST v20 APK and checksum for manual installation
+          mv "$SOURCE" grapes-test-v19.apk
+          sha256sum grapes-test-v19.apk > grapes-test-v19.apk.sha256
+      - name: Preserve signed TEST v19 APK and checksum for manual installation
         uses: actions/upload-artifact@v4
         with:
-          name: grapes-test-v20-scanner-ui-signed-qa
+          name: grapes-test-v19-auth-signed-qa
           path: |
-            grapes-test-v20.apk
-            grapes-test-v20.apk.sha256
+            grapes-test-v19.apk
+            grapes-test-v19.apk.sha256
           if-no-files-found: error
           retention-days: 7
-      - name: Publish distinct TEST v20 prerelease via existing TEST updater (never PROD)
+      - name: Publish distinct TEST v19 prerelease via existing TEST updater (never PROD)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          if gh release view android-test-v20 >/dev/null 2>&1; then
-            echo "::error::TEST v20 already exists, no overwrite"
+          if gh release view android-test-v19 >/dev/null 2>&1; then
+            echo "::error::TEST v19 already exists, no overwrite"
             exit 1
           fi
-          sha256sum -c grapes-test-v20.apk.sha256
-          cat > "$RUNNER_TEMP/grapes-test-v20-notes.md" <<'EOF'
-          Grapes TEST v20 (0.9.11-test) — a meglévő Grapes TEST v19 felületi frissítése, azonos TEST csomaggal és aláírással.
-
-          - Az élő vonalkódolvasó kamerája alatti állandó keresési felirat megszűnt.
-          - Az alsó adatvédelmi/magyarázó szöveg eltűnt; a felület letisztultabb.
-          - A kameraengedély, hibás kézi vonalkód és vaku probléma esetén a szükséges hibaüzenet továbbra is látszik.
-          - A v19 Google OAuth TEST Auth, Supabase TEST, neon-cián vaku, OFF 404-kezelés, Food/USDA/YAZIO/Water/Finance és E-book Drive funkciók változatlanok.
-          - Nincs adatmigráció, adatmentés-törlés, Health szinkron vagy PROD frissítés.
-
-          A meglévő TEST app fölé telepíthető a korábbi TEST-aláírással; adatbiztonsági mentés javasolt. Az appot ne töröld.
-          EOF
-          gh release create android-test-v20 grapes-test-v20.apk grapes-test-v20.apk.sha256 \
-            --target "$GITHUB_SHA" \
-            --title 'Grapes TEST 0.9.11 (v20) – Letisztult vonalkódolvasó' \
-            --notes-file "$RUNNER_TEMP/grapes-test-v20-notes.md" \
-            --prerelease
-          gh release view android-test-v19 --json tagName,isPrerelease,assets,url
- || true)
-          test -z "$unexpected" || { echo "::error::Unexpected v19 changes: $unexpected"; exit 1; }
-          ! grep -Fq 'Vonalkód keresése… · két egyező felismerés szükséges' android-health-connect-poc/app/src/main/java/hu/grapes/healthconnect/NativeBarcodeScannerActivity.kt
-          ! grep -Fq 'A kamera csak a vonalkódot olvassa' android-health-connect-poc/app/src/main/java/hu/grapes/healthconnect/NativeBarcodeScannerActivity.kt
-          grep -Fq 'private fun showScannerProblem' android-health-connect-poc/app/src/main/java/hu/grapes/healthconnect/NativeBarcodeScannerActivity.kt
-          echo 'TEST v19 Auth, OFF barcode fixes, torch and error feedback remain'
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: npm
-      - name: Clean lockfile install
-        run: npm ci
-      - name: Unit suite + dedicated Auth/Drive regressions
-        run: |
-          set -euo pipefail
-          npm test
-          node --test tests/grapes-android-oauth.test.js tests/grapes-auth-flow.test.js \
-            tests/grapes-login-controller.test.js tests/grapes-test-runtime.test.js \
-            tests/ebook-drive-boundary.test.js
-      - name: Build TEST Android web assets with real public TEST Auth config
-        run: |
-          set -euo pipefail
-          npm run build:android-web
-          test -s android-health-connect-poc/app/src/main/assets/login-auth-test.html
-          grep -R -q 'aighqtqjlzirlokxwupt' android-health-connect-poc/app/src/main/assets/assets
-      - name: Find Chromium for browser regressions
-        run: |
-          if command -v google-chrome >/dev/null; then
-            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
-          elif command -v chromium >/dev/null; then
-            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
-          else
-            npx playwright-core install --with-deps chromium
-            browser=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path '*chrome-linux*' | head -1)
-            test -n "$browser"
-            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$browser" >> "$GITHUB_ENV"
-          fi
-      - name: Focused Auth, native Food and E-book / Finance browser regressions
-        # These browser tests explicitly assert the normal app's Auth-OFF default.
-        # The already-built Android QA assets above were compiled with Auth ON.
-        env:
-          VITE_GRAPES_TEST_AUTH_ENABLED: 'false'
-        run: |
-          set -euo pipefail
-          node tests/grapes-test-auth.browser.mjs
-          node tests/android-food-mobile.browser.mjs
-          node tests/android-recipe-ingredient.browser.mjs
-          node tests/food-app.browser.mjs
-          node tests/android-ebook-reader.browser.mjs
-          node tests/android-ebook-shelf.browser.mjs
-          # Known intermittent layout overflow on untouched v16 (#103): do not
-          # weaken the assertion; require a complete clean retry.
-          finance_pass=0
-          for attempt in 1 2 3; do
-            echo "Finance import browser attempt $attempt / 3"
-            if node tests/finance-import.browser.mjs; then
-              finance_pass=1
-              break
-            fi
-            echo "::warning::Finance import assertion failed on attempt $attempt (known v16 flake)"
-          done
-          test "$finance_pass" -eq 1
-      - name: Full browser suite — reject unknown failures, retest two observed layout flakes
-        # Normal browser tests assert Auth-OFF by default; QA web build above was Auth-ON.
-        env:
-          VITE_GRAPES_TEST_AUTH_ENABLED: 'false'
-        run: |
-          set -euo pipefail
-          passed=0
-          known=0
-          recovered=0
-          unexpected=0
-          for file in tests/*.browser.mjs; do
-            if [ "$file" = tests/food-live-api.browser.mjs ]; then
-              echo "NOT TESTED external API: $file"
-              continue
-            fi
-            echo "Running $file"
-            run_browser() {
-              if [[ "$file" == tests/android-* ]]; then
-                VITE_GRAPES_TEST_CHANNEL=1 node "$file"
-              else
-                node "$file"
-              fi
-            }
-            if run_browser; then
-              passed=$((passed + 1))
-              continue
-            fi
-            case "$file" in
-              tests/android-food-yazio.browser.mjs|tests/android-mobile-entry.browser.mjs|tests/android-mobile-preview.browser.mjs|tests/android-yazio-api.browser.mjs|tests/ebook-content.browser.mjs|tests/finance-backup.browser.mjs)
-                known=$((known + 1))
-                echo "::warning::KNOWN v16 BASELINE FAIL (unaltered assertions): $file" ;;
-              tests/ebook-editor-layout.browser.mjs|tests/finance-import.browser.mjs)
-                # Both of these precise untouched layout files have displayed
-                # intermittent CI-only assertion failures in this investigation;
-                # permit success ONLY after the original complete test passes.
-                recovered_here=0
-                for attempt in 2 3; do
-                  echo "RETEST original full browser test: $file, attempt $attempt / 3"
-                  if run_browser; then
-                    recovered_here=1
-                    break
-                  fi
-                done
-                if [ "$recovered_here" -eq 1 ]; then
-                  recovered=$((recovered + 1))
-                  echo "::warning::FLAKY test passed on full rerun; recorded original failure: $file"
-                elif [ "$file" = tests/ebook-editor-layout.browser.mjs ]; then
-                  # Historical E-book module + exact test are byte-identical to
-                  # published v18. Reproduce the *same precise* failure on a
-                  # fresh immutable v18 worktree before classifying baseline.
-                  baseline="$RUNNER_TEMP/grapes-test-v18-editor-baseline"
-                  baseline_log="$RUNNER_TEMP/grapes-test-v18-editor-baseline.log"
-                  git worktree add --detach "$baseline" android-test-v18
-                  if (cd "$baseline" && npm ci --silent && node tests/ebook-editor-layout.browser.mjs) > "$baseline_log" 2>&1; then
-                    unexpected=$((unexpected + 1))
-                    echo "::error::NEW E-book behavior: v18 baseline PASSED, v19 failed."
-                  elif grep -Fq 'data-download="book"' "$baseline_log" &&
-                       grep -Fq 'Timeout 30000ms exceeded' "$baseline_log"; then
-                    known=$((known + 1))
-                    echo "::warning::Confirmed same E-book layout timeout on clean published v18; original v19 test and assertions failed, not hidden."
-                    tail -35 "$baseline_log"
-                  else
-                    unexpected=$((unexpected + 1))
-                    echo "::error::Baseline v18 E-book failure differs or baseline setup failed; no release."
-                    tail -55 "$baseline_log"
-                  fi
-                else
-                  unexpected=$((unexpected + 1))
-                  echo "::error::UNRESOLVED layout failure after 3 full attempts: $file"
-                fi ;;
-              *)
-                unexpected=$((unexpected + 1))
-                echo "::error::NEW BROWSER REGRESSION: $file" ;;
-            esac
-          done
-          echo "BROWSER: $passed first-pass PASS, $known known v16 baseline FAIL, $recovered recovered full-suite PASS, $unexpected unresolved/new FAIL"
-          test "$unexpected" -eq 0
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-      - name: Install Android SDK 36
-        run: |
-          SDKMANAGER=$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | sort -V | tail -1)
-          test -n "$SDKMANAGER"
-          "$SDKMANAGER" "platforms;android-36" "build-tools;35.0.0"
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: 8.11.1
-      - name: Native callback QA Robolectric tests
-        run: gradle --project-dir android-health-connect-poc :app:testQaUnitTest
-      - name: Build signed TEST QA v20 with historical TEST key only
-        env:
-          ANDROID_TEST_KEYSTORE_BASE64: ${{ secrets.ANDROID_TEST_KEYSTORE_BASE64 }}
-          ANDROID_TEST_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_TEST_KEYSTORE_PASSWORD }}
-          ANDROID_TEST_KEY_ALIAS: ${{ secrets.ANDROID_TEST_KEY_ALIAS }}
-          ANDROID_TEST_KEY_PASSWORD: ${{ secrets.ANDROID_TEST_KEY_PASSWORD }}
-        run: |
-          set -euo pipefail
-          test -n "$ANDROID_TEST_KEYSTORE_BASE64"
-          test -n "$ANDROID_TEST_KEYSTORE_PASSWORD"
-          test -n "$ANDROID_TEST_KEY_ALIAS"
-          test -n "$ANDROID_TEST_KEY_PASSWORD"
-          export ANDROID_TEST_KEYSTORE_PATH="$RUNNER_TEMP/grapes-test-v20.p12"
-          trap 'rm -f "$ANDROID_TEST_KEYSTORE_PATH"' EXIT
-          printf '%s' "$ANDROID_TEST_KEYSTORE_BASE64" | base64 --decode > "$ANDROID_TEST_KEYSTORE_PATH"
-          chmod 600 "$ANDROID_TEST_KEYSTORE_PATH"
-          gradle --project-dir android-health-connect-poc :app:assembleQa
-          SOURCE=android-health-connect-poc/app/build/outputs/apk/qa/app-qa.apk
-          test -s "$SOURCE"
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$SOURCE" | grep -F "package: name='hu.grapes.healthconnect.test'"
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$SOURCE" | grep -F "versionCode='20'"
-          CERT=$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$SOURCE")
-          EXPECTED=cc9dc997fa4bff3845884afd2f011efe939c02806f91393a1ddb0455b6a2ff33
-          printf '%s\n' "$CERT" | grep -Fi "Signer #1 certificate SHA-256 digest: $EXPECTED"
-          mv "$SOURCE" grapes-test-v20.apk
-          sha256sum grapes-test-v20.apk > grapes-test-v20.apk.sha256
-      - name: Preserve signed TEST v20 APK and checksum for manual installation
-        uses: actions/upload-artifact@v4
-        with:
-          name: grapes-test-v20-scanner-ui-signed-qa
-          path: |
-            grapes-test-v20.apk
-            grapes-test-v20.apk.sha256
-          if-no-files-found: error
-          retention-days: 7
-      - name: Publish distinct TEST v20 prerelease via existing TEST updater (never PROD)
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          if gh release view android-test-v20 >/dev/null 2>&1; then
-            echo "::error::TEST v20 already exists, no overwrite"
-            exit 1
-          fi
-          sha256sum -c grapes-test-v20.apk.sha256
-          cat > "$RUNNER_TEMP/grapes-test-v20-notes.md" <<'EOF'
+          sha256sum -c grapes-test-v19.apk.sha256
+          cat > "$RUNNER_TEMP/grapes-test-v19-notes.md" <<'EOF'
           Grapes TEST v19 (0.9.10-test) — a meglévő TEST v18 frissítése ugyanazzal a csomagnévvel és TEST aláírással.
 
           - Új: különálló Google-fiókos Grapes TEST Auth bejelentkezési képernyő; natív gombból nyílik, külső rendszerböngészős Google-belépés és csak TEST callback.
@@ -495,9 +279,9 @@ jobs:
           Ha telepítési/aláírási hiba van, ne távolítsd el a jelenlegi alkalmazást.
           A PROD Grapes és annak adatai változatlanok.
           EOF
-          gh release create android-test-v20 grapes-test-v20.apk grapes-test-v20.apk.sha256 \
+          gh release create android-test-v19 grapes-test-v19.apk grapes-test-v19.apk.sha256 \
             --target "$GITHUB_SHA" \
-            --title 'Grapes TEST 0.9.11 (v20) – Letisztult vonalkódolvasó' \
-            --notes-file "$RUNNER_TEMP/grapes-test-v20-notes.md" \
+            --title 'Grapes TEST 0.9.10 (v19) – Google fiókbelépés' \
+            --notes-file "$RUNNER_TEMP/grapes-test-v19-notes.md" \
             --prerelease
           gh release view android-test-v19 --json tagName,isPrerelease,assets,url
