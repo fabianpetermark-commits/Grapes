@@ -34,6 +34,14 @@ jobs:
               || healthy.data.secretPresent !== true || healthy.data.providerCallExecuted !== false) {
             throw new Error('TEST Edge Function health/configuration check failed (no secret values returned).');
           }
+          const cached = await request('/cached-forecast');
+          if (cached.status !== 200 || cached.data?.source !== 'WeatherAPI.com'
+            || !Array.isArray(cached.data?.forecast) || cached.data.forecast.length !== 3
+            || !cached.data.cachedAt || cached.data.staticTestLocation !== true
+            || 'key' in cached.data || 'WEATHERAPI_KEY' in cached.data) {
+            throw new Error('Public sanitized TEST forecast cache could not be read safely.');
+          }
+          console.log('TEST public cached forecast: 3-day WeatherAPI data verified, no provider key');
           const denied = await request('/forecast');
           if (denied.status !== 401 || denied.data.error !== 'authentication_required') {
             throw new Error('TEST forecast is accessible without user authentication, or endpoint failed.');
