@@ -105,6 +105,10 @@ jobs:
             echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$browser" >> "$GITHUB_ENV"
           fi
       - name: Focused Auth, native Food and E-book / Finance browser regressions
+        # These browser tests explicitly assert the normal app's Auth-OFF default.
+        # The already-built Android QA assets above were compiled with Auth ON.
+        env:
+          VITE_GRAPES_TEST_AUTH_ENABLED: 'false'
         run: |
           set -euo pipefail
           node tests/grapes-test-auth.browser.mjs
@@ -115,6 +119,9 @@ jobs:
           node tests/android-ebook-shelf.browser.mjs
           node tests/finance-import.browser.mjs
       - name: Full browser suite — disallow any new failure beyond unchanged v16 baseline
+        # The generic browser suite expects disabled-by-default Auth; do not weaken assertions.
+        env:
+          VITE_GRAPES_TEST_AUTH_ENABLED: 'false'
         run: |
           set -euo pipefail
           passed=0
