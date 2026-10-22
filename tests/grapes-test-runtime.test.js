@@ -156,3 +156,71 @@ test('a disposed TEST runtime ignores subsequent auth events', async () => {
   assert.equal(elements['#grapes-sign-out'].hidden,false)
   assert.equal(sdk.unsubscribed,true)
 })
+
+
+test('verified persisted TEST session opens QA app once; Auth events do not duplicate navigation', async () => {
+  const sdk = sdkFixture()
+  const { root } = rootFixture()
+  const routed = []
+  const running = await startGrapesTestAuth({
+    ...config(), root, createClient: sdk.createClient,
+    onAuthenticated: user => routed.push(user.id),
+  })
+  await flush()
+  assert.deepEqual(routed, ['user1'])
+  sdk.emit('SIGNED_IN', {user:{id:'user1'}})
+  await flush()
+  assert.deepEqual(routed, ['user1'])
+  running.dispose()
+})
+
+test('no Android app handoff for logged-out, revoked or unverified sessions', async () => {
+  const sdk = sdkFixture()
+  sdk.auth.getUser = async () => ({
+    data:{ user:null }, error:{ name:'AuthSessionMissingError' },
+  })
+  const { root } = rootFixture()
+  const routed = []
+  const running = await startGrapesTestAuth({
+    ...config(), root, createClient:sdk.createClient,
+    onAuthenticated: user => routed.push(user.id),
+  })
+  sdk.emit('SIGNED_IN', { user:{id:'unverified-account'} })
+  await flush()
+  assert.deepEqual(routed, [])
+  running.dispose()
+})
+
+test('explicit logout launch suppresses auto-open even when a persistent session exists', async () => {
+  const sdk = sdkFixture()
+  const { root } = rootFixture()
+  const routed = []
+  const running = await startGrapesTestAuth({
+    ...config(), root, createClient:sdk.createClient,
+    suppressAutoOpen:true,
+    onAuthenticated: user => routed.push(user.id),
+  })
+  sdk.emit('SIGNED_IN', { user:{id:'user1'} })
+  await flush()
+  assert.deepEqual(routed, [])
+  running.dispose()
+})
+
+test('Android QA logout releases only TEST Supabase session and clears native logout intent', async () => {
+  const sdk = sdkFixture()
+  const { root } = rootFixture()
+  const actions = []
+  const nativeOAuth = {
+    begin:async()=>{},resume:async()=>{},cancel:async()=>actions.push('cancel'),
+    finishSignOut: async()=>actions.push('finish-qa-logout'),
+  }
+  const running = await startGrapesTestAuth({
+    ...config({location:'https://grapes-test-auth.invalid/assets/login-auth-test.html',nativeOAuth}),
+    root,createClient:sdk.createClient,
+  })
+  await running.ui.getMode()
+  const button = root.querySelector('#grapes-sign-out')
+  await button.emit('click')
+  assert.deepEqual(actions,['cancel','finish-qa-logout'])
+  running.dispose()
+})
