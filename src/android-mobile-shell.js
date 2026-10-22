@@ -14,7 +14,7 @@ import { createYazioApiPanel } from './food/yazio-api-panel.js'
 import { registerFoodSharing, sendMealShare, sendRecipeShare } from './food/food-sharing-client.js'
 import { hydrateMobileIcons, mobileIconSvg } from './android-mobile-icons.js'
 import { createHomeMobile } from './home/home-mobile.js'
-import { getAndroidAppUpdate, installAndroidAppUpdate, isGrapesAndroidApp, openAndroidHealthConnectSettings, saveAndroidJsonBackup } from './android-bridge.js'
+import { getAndroidAppUpdate, getAndroidTestAuthEnabled, requestAndroidTestAccountSignOut, installAndroidAppUpdate, isGrapesAndroidApp, openAndroidHealthConnectSettings, saveAndroidJsonBackup } from './android-bridge.js'
 import { waterBackupToJson, waterBackupFromJson, readWaterStoreStrict, waterBackupSummary } from './water/water-backup.js'
 import {
   isMobileShareableBook,
@@ -1020,6 +1020,25 @@ $('[data-local]').addEventListener('click', () => { setLocalMode(true); showApp(
 $('[data-login]').addEventListener('click', connectDrive)
 $('[data-connect-drive]').addEventListener('click', connectDrive)
 $('[data-account-login]').addEventListener('click', openAccountLogin)
+// This is a different account from the Google Drive/E-book connection above.
+// Only the QA native host reveals the setting after confirming TEST Auth is ON.
+const grapesTestLogout = $('[data-grapes-test-logout]')
+if (grapesTestLogout) {
+  grapesTestLogout.addEventListener('click', () => {
+    grapesTestLogout.disabled = true
+    try {
+      requestAndroidTestAccountSignOut()
+    } catch {
+      grapesTestLogout.disabled = false
+      showToast('A Grapes TEST-kijelentkezés nem indítható.')
+    }
+  })
+  if (isGrapesAndroidApp()) {
+    getAndroidTestAuthEnabled().then(enabled => {
+      grapesTestLogout.hidden = !enabled
+    }).catch(() => { grapesTestLogout.hidden = true })
+  }
+}
 $('[data-notifications]').addEventListener('click', openUpdateInbox)
 $('[data-food-share-open]').addEventListener('click', async () => {
   closeSheet()
