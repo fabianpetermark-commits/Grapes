@@ -1,0 +1,70 @@
+name: WeatherAPI TEST live OIDC verification
+on:
+  push:
+    branches: [feature/plants-weatherapi-edge-test-20261022]
+    paths:
+      - 'supabase/functions/weather-forecast/**'
+      - '.github/workflows/weatherapi-live-verify.yml'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  provider-probe:
+    name: Verify real 3-day WeatherAPI forecast without stored CI secrets
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Exchange GitHub Actions OIDC identity for a TEST forecast
+        env:
+          WEATHER_TEST_URL: https://aighqtqjlzirlokxwupt.supabase.co/functions/v1/weather-forecast
+          OIDC_AUDIENCE: grapes-weatherapi-test-aighqtqjlzirlokxwupt
+        run: |
+          node --input-type=module <<'JS'
+          const endpoint = process.env.WEATHER_TEST_URL;
+          const call = async (path, token) => {
+            const response = await fetch(endpoint + path, {
+              headers: token ? { Authorization: `Bearer ${token}` } : {},
+              signal: AbortSignal.timeout(20000),
+            });
+            const data = await response.json();
+            return { status: response.status, data };
+          };
+
+          // Negative check: no one can invoke the live provider without a signed identity.
+          const denied = await call('/ci-forecast');
+          if (denied.status !== 401 || denied.data.error !== 'authentication_required') {
+            throw new Error('CI weather forecast route is not protected.');
+          }
+
+          const url = new URL(process.env.ACTIONS_ID_TOKEN_REQUEST_URL);
+          url.searchParams.set('audience', process.env.OIDC_AUDIENCE);
+          const tokenResponse = await fetch(url, {
+            headers: { Authorization: `Bearer ${process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN}` },
+            signal: AbortSignal.timeout(15000),
+          });
+          if (!tokenResponse.ok) throw new Error('GitHub OIDC token request failed.');
+          const payload = await tokenResponse.json();
+          if (!payload.value || typeof payload.value !== 'string') {
+            throw new Error('GitHub OIDC token missing.');
+          }
+          const result = await call('/ci-forecast', payload.value);
+          // Deliberately never print tokens, upstream URLs, or API secrets.
+          if (result.status !== 200) {
+            throw new Error(`Authenticated weather probe failed: HTTP ${result.status}, code ${result.data?.error || 'unexpected'}${result.data?.providerStatus ? ', upstream ' + result.data.providerStatus : ''}`);
+          }
+          const d = result.data;
+          if (d.source !== 'WeatherAPI.com' || !d.demoOnly || !Array.isArray(d.forecast)
+            || d.forecast.length !== 3 || typeof d.current?.temperatureC !== 'number'
+            || d.forecast.some(day => !day.date || typeof day.minTemperatureC !== 'number'
+              || typeof day.maxTemperatureC !== 'number')) {
+            throw new Error('Forecast did not contain 3 actual provider days and temperatures.');
+          }
+          console.log('Grapes TEST WeatherAPI: live forecast verified');
+          console.log(`Location: ${d.location?.name}, ${d.location?.country}`);
+          console.log(`Current temperature: ${d.current.temperatureC} °C`);
+          for (const day of d.forecast) {
+            console.log(`${day.date}: min ${day.minTemperatureC} °C, max ${day.maxTemperatureC} °C, precipitation ${day.precipitationMm ?? 'n/a'} mm`);
+          }
+          JS
