@@ -32,6 +32,7 @@ export function validateGrapesProdAuthConfig({
   enabled = false,
   projectRef,
   approvedProjectRef,
+  legacyDataIsolationReviewed = false,
   supabaseUrl,
   publishableKey,
   applicationId = GRAPES_PROD_ANDROID_PACKAGE,
@@ -39,6 +40,11 @@ export function validateGrapesProdAuthConfig({
   if (enabled !== true) return Object.freeze({ enabled: false })
   if (applicationId !== GRAPES_PROD_ANDROID_PACKAGE) {
     throw new GrapesProdAuthConfigError('Az éles bejelentkezés csak az éles Android alkalmazáshoz engedélyezhető.')
+  }
+  // Signing in is not a data-migration mechanism. Existing unscoped local
+  // records must not become visible across distinct PROD account holders.
+  if (legacyDataIsolationReviewed !== true) {
+    throw new GrapesProdAuthConfigError('Az éles helyi adatok tulajdonjogának és fiókszeparációjának ellenőrzése szükséges.')
   }
   if (typeof projectRef !== 'string' || !PROJECT_REF.test(projectRef) ||
       projectRef === GRAPES_TEST_PROJECT_REF || approvedProjectRef !== projectRef) {
