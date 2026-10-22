@@ -1,0 +1,37 @@
+name: Grapes PROD Auth config gate (NO RELEASE)
+on:
+  push:
+    branches:
+      - feature/grapes-prod-auth-staging-20261022
+  pull_request:
+    branches:
+      - codex/android-app
+
+permissions:
+  contents: read
+
+jobs:
+  prod-auth-config-no-go:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install exactly the pinned PROD dependencies
+        run: npm ci
+      - name: Verify independent PROD project and data isolation guards
+        run: node --test tests/grapes-prod-auth-config.test.js
+      - name: Run complete PROD baseline unit tests
+        run: npm test
+      - name: Assert this staging PR cannot accidentally release PROD or TEST
+        run: |
+          set -euo pipefail
+          ! git diff --name-only codex/android-app HEAD | grep -E '^(android-health-connect-poc/|\.github/workflows/release-android\.yml|src/food/|src/finance|src/ebook|src/android-bridge\.js)' || {
+            echo "::error::Sensitive Android/Drive/Food/Finance or signed release changed in config-only staging"; exit 1;
+          }
+          test -s docs/GRAPES_PROD_AUTH_ROLLOUT.md
+          grep -Fq 'NO-GO' docs/GRAPES_PROD_AUTH_ROLLOUT.md
+          echo "Only independent Auth config staging has passed; no APK is published."
