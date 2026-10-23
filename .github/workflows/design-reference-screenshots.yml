@@ -23,7 +23,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Install isolated Chromium for reference rendering
-        run: npx playwright install --with-deps chromium
+        run: npx playwright-core install --with-deps chromium
       - name: Start local HTTP server (no external API, no secrets)
         run: python3 -m http.server 4177 --bind 127.0.0.1 > /tmp/grapes-ref-http.log 2>&1 &
       - name: Smoke tests and 320/390/412 px screenshots
