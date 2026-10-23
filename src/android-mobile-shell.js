@@ -1210,7 +1210,7 @@ $('[data-health-water-add]').addEventListener('click', () => { addWater(250); re
 $('[data-health-water-open]').addEventListener('click', () => showPage('water'))
 $('[data-health-recipe-open]').addEventListener('click', async event => {
   const recipeId = event.currentTarget.dataset.recipeId
-  showPage('food',{parent:'hub-health'})
+  showPage('food',{parent:'hub-health',entry:recipeId?'':'recipes'})
   try {
     await mobileFood?.load()
     if (activePage !== 'food') return
