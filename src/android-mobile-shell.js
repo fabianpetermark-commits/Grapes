@@ -333,7 +333,7 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   activePage = page
   toast.classList.remove('is-visible')
   $$('[data-page]').forEach(node => { node.hidden = node.dataset.page !== page })
-  $$$('[data-nav]').forEach(node => node.classList.toggle('is-active', node.dataset.nav === page))
+  $$('[data-nav]').forEach(node => node.classList.toggle('is-active', node.dataset.nav === page))
   ;[title.textContent, subtitle.textContent] = labels[page] || labels.home
   fab.hidden = page !== 'food' || !mobileFood?.isDetailOpen()
   closeSheet()
@@ -1183,7 +1183,7 @@ $('[data-update-install]').addEventListener('click', async event => {
 })
 $('[data-sync-refresh]').addEventListener('click', () => renderSync({ refreshed: true }))
 $('[data-sync-projects]').addEventListener('click', () => showPage('projects'))
-$('[data-nav]').forEach(button => button.addEventListener('click', () => {
+$$('[data-nav]').forEach(button => button.addEventListener('click', () => {
   if (button.dataset.nav === 'more' && activePage === 'hub-health') showPage('health-settings', { parent:'hub-health' })
   else showPage(button.dataset.nav)
 }))
