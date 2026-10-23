@@ -345,7 +345,7 @@ try {
   // Full end-to-end recipe draft import and local image. No remote save
   // occurs until the user explicitly saves the recipe.
   await page.locator('[data-fab]').click()
-  await page.locator('[data-food-back]').click()
+  await page.evaluate(() => window.grapesHandleAndroidBack())
   await page.locator('[data-food-open-recipes]').click()
   await page.locator('[data-food-recipes-new]').click()
   await page.locator('[data-food-recipe-edit-sheet].is-open').waitFor({state:'visible'})
