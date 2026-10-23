@@ -84,7 +84,7 @@
 3. **Ajánló / aktuális tartalom**: csak valós felhasználói adatból, előzményből vagy a modul megbízható adatforrásából. A Health prototípus számai és receptcíme mintaadatok.
 4. **Modul gyorssáv**: a Health tervezeten Fotó, Étel, Víz + külön Vonalkód. Az adott modul fontos műveleteit tartalmazza, nem egyenlő a Grapes globális navigációjával.
 5. **Egyedi modulbeállítások**: widgetek elrejtése, célok, naplók, mértékegységek, integrációk és adatok a funkcióhoz igazítva. Ne töröljenek mentett adatot a widget elrejtésekor.
-6. A négy Grapes fő terület **Home / Health / Utility / Finance** megmarad. A **gyökérfőmenü pontos új elrendezése csak PROPOSED**, külön felhasználói döntést igényel.
+6. A négy Grapes fő terület **Home / Health / Utility / Finance** megmarad. A **gyökérfőmenü 2026-10-23-i, felhasználói visszajelzés alapján egyeztetett új navigációja** az alábbi 0.6. fejezetben található. A képi tervezet még PROPOSED, az alsó navigáció megszüntetése és a felső ikonsor használata már kötelező funkcionális tervezési követelmény.
 
 ### 0.5. Tipográfia, hozzáférhetőség és bevezetési kapuk
 
@@ -92,6 +92,41 @@
 - A demo HTML-ben előforduló 9–11 px címkék **nem** éles, akadálymentesítési jóváhagyások. Nagyobb rendszerbetűnél is olvasható tördelés és 320/360/390/412 px teszt kell.
 - A négy elsődleges modul és minden valós funkció megmarad; az új külső **nem írhatja felül** Google/Supabase Auth, PIN, Food/Víz/Drive mentések és Android release működését.
 - A 2026-10-23-i elismert minta **APPROVED DESIGN**, de a Grapes PROD/TEST implementáció **külön, ellenőrzendő**. Minden migráció célzott PR, screenshot/böngészős regresszió és külön telefonos próba alapján történjen; dokumentáció-módosítás után **nincs automatikus merge vagy APK-kiadás**.
+
+### 0.6. Új Grapes főmenü – felső ikonsor és intelligens kezdőoldal (2026-10-23)
+
+**Felhasználói UI-követelmény (elfogadott irány):** a régi alsó „Főmenü / Projektek / Szinkron / Továbbiak” sáv **már nem része a Grapes kívánt főmenüjének**, ezért NEM szabad a későbbi UI-tervekbe visszahozni. A „Modulok” felirat, a 2×2-es nagy főmenücsempék és a „2×2 / Lista” kapcsoló szintén megszűnnek. Az alábbi, felső vízszintes főmodul-ikonsor lesz az alkalmazás gyökérnavigációja:
+
+```text
+┌──────────────────────────────────────────┐
+│ Grapes                              [⚙] │
+├──────────────────────────────────────────┤
+│ [⌂★]     [⌂]      [♡]      [▦]      [$] │
+│ Kezdő    Home    Health   Utility  Finance│
+├──────────────────────────────────────────┤
+│ Gyakran használt             [+ Hozzáadás]│
+│ [ Ételnapló ]  [ Víznapló ]               │
+│ [ Növények ]  [ Receptek ]               │
+│ ...                                       │
+└──────────────────────────────────────────┘
+```
+
+- **Felső fej:** a gyökérfőmenüben balra csak `Grapes`, jobbra a **globális** fogaskerék. Az egyes modulok saját képernyőjén továbbra is modulnév + modulbeállítás fogaskerék az elfogadott fejléc. Nincs ismételt dekoráció/alcím.
+- **Közvetlenül alatta egyetlen vízszintes főmenü-ikonsor**, ikon és rövid egyértelmű felirat, legalább 44–48 px működő érintési területtel. Fókusz- és aktív állapot legyen jól megkülönböztethető, ne csak színnel.
+- **Az első ikon egy házikó/kedvenc-ház**, amely az **„Gyakran használt” kezdőoldal**. Az app ezt nyissa meg induláskor, és a felső sávból ide bármikor vissza lehessen térni. Ez nem egyenlő a külön `Home` főmodullal.
+- **A további ikonok:** Home, Health, Utility, Finance, az alkalmazás ténylegesen elérhető gyökérmoduljainak regiszterében szereplő sorrendben. **Ha új főmodul készül, automatikusan ebbe a felső ikonsorba kerül**, ikon+név azonosítóval; nincs hardcoded maximum 4 vagy 5 modul. Szűk képernyőn a sor **vízszintesen görgethető**, swipe-tal és billentyűzetes/fókuszos eléréssel, úgy, hogy az ikonok nem zsugorodnak olvashatatlanra. A telepített modulok és sorrendjük ugyanabból a modulregiszterből származzanak, ne UI-ban kézzel duplikált listából.
+- **Nincs alsó főmenü-navigáció**, nincs második főmenüsor; a modulok saját alsó **műveletsávja** (pl. Health Fotó/Étel/Víz/Vonalkód) ettől elkülönült, továbbra is megengedett.
+- **Gyakran használt kezdőoldal:** közvetlenül nyitható kisebb widgetkártyák a fontos modulokhoz és almodulokhoz. Két forrásuk lehet: (a) kézzel, + Hozzáadás művelettel rögzített elemek; (b) az alkalmazás által az aktuális felhasználó tényleges modulmegnyitásai alapján automatikusan kiválasztott, leggyakrabban használt elemek.
+- **Világos, külön jelölés**: `Rögzítve` vs. `Automatikus`; a rögzített elemek mindig elöl jelenjenek meg, az automatikus sorrend a használati gyakoriságot kövesse. A kézzel kiválasztottakat az alkalmazás automatikus rendezése **nem** távolíthatja el.
+- **Kedvencek kezelése:** az összes valóban elérhető belső modulból/almodulból kereshető hozzáadás és eltávolítás. Az automatikus javaslat elrejthető úgy, hogy az egyéni elrejtés/tiltás később is érvényesüljön; ettől a modul maga továbbra is elérhető marad az eredeti navigációjából.
+- **Személyes adatok:** a kézi kedvencek, elrejtések és a használatszámlálók a **Grapes-profilhoz** tartoznak, nem a másik felhasználóhoz; a használat nyilvántartása ne gyűjtsön tartalmi Food/Finance/E-book adatokat, csak a navigációhoz szükséges eseményszámot/időszakot. Biztonságos mentés/szinkron és konfliktuskezelés a valódi implementáció külön terve. A gyakoriságszámítás legyen determinisztikus, korlátozott és magyarázható, az automatikus widgethelyek ne korlátlanul növekedjenek.
+- **Első indulás, még nincs használat:** tiszta, értelmes üres állapot és `Modul hozzáadása` lehetőség. A rögzített kedvenceket nem írja felül automatikus érték.
+- **Szín / felület:** minden widget és kedvenckártya a 0.1–0.4 pontban elfogadott sötét Grapes háttérrel és rövid neon-cián peremszakasszal jelenjen meg. A fejlécre és ikonokra ne tegyünk teljes, erős kék aurát.
+
+**Állapot: jóváhagyott navigációs irány + még felülvizsgálandó részletes HTML kompozíció.** A mostani statikus HTML-próba rövid időre `localStorage` alapú demonstrációs számlálókat/kedvenceket használ; ez **nem kész Grapes-profilos tároló** és nem módosít éles rendszeradatot.
+
+**Külön implementációs kapuk:** indulás a Kezdő oldalon; a négy meglévő ikon és új modul bővítésének próbája; navigációs visszalépés; megnyitások alapján változó automatikus ajánlások; kézi rögzítés, elrejtés és profilváltás; 320/360/390/412 px, nagyobb font; beszélő címkék/TalkBack; Auth/PIN/Drive érintetlenség. A design doc frissítése **nem** triggerelhet merge-et, PROD APK-t vagy bejelentkezési átépítést.
+
 
 ---
 
