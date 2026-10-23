@@ -69,7 +69,11 @@ try {
 
   await page.locator('.appbar [data-nav="more"]').click()
   await page.locator('[data-page="more"]').waitFor({ state: 'visible' })
-  assert.equal(await page.locator('[data-page="more"] .setting__icon svg').count(), 4, 'Minden beállítássornak egységes SVG ikon kell.')
+  assert.equal(await page.locator('[data-prod-auth-signout]').isVisible(), false,
+    'A PROD Auth kijelentkezés Auth nélküli appban nem jelenhet meg.')
+  const visibleSettings = page.locator('[data-page="more"] .setting:not([hidden])')
+  assert.equal(await visibleSettings.locator('.setting__icon svg').count(), await visibleSettings.count(),
+    'Minden látható beállítássornak egységes SVG ikon kell.')
   await page.screenshot({ path: 'mobile-more-icons.png', fullPage: true })
 
   await page.locator('[data-page="more"] [data-nav="sync"]').click()

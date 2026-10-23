@@ -1,0 +1,118 @@
+    /* GRAPES LOGIN — APPROVED UI REFERENCE (2026-10-20)
+       Standalone visual prototype. No live authentication is implemented.
+       Integrators: preserve the approved layout, copy and color hierarchy. */
+    :root {
+      color-scheme: dark;
+      --grapes-bg: #000000;
+      --grapes-card: #080f14;
+      --grapes-input: #050b10;
+      --grapes-surface: #121d28;
+      --grapes-border: #293b4a;
+      --grapes-text: #f0f6f9;
+      --grapes-muted: #a5b8c5;
+      --grapes-subtle: #758b9a;
+      --grapes-cyan: #3bdcf2;
+      --grapes-cyan-hover: #68e7f7;
+      --grapes-cyan-ink: #072431;
+      --grapes-radius: 16px;
+      --grapes-font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: var(--grapes-font);
+      background: var(--grapes-bg);
+      color: var(--grapes-text);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; min-width: 280px; min-height: 100vh; min-height: 100dvh; }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    .login-page {
+      min-height: 100vh; min-height: 100dvh;
+      padding: max(30px, env(safe-area-inset-top)) 18px max(22px, env(safe-area-inset-bottom));
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: var(--grapes-bg);
+    }
+    .login-card {
+      width: min(100%, 390px);
+      padding: 34px 30px 30px;
+      background: var(--grapes-card);
+      border: 1px solid var(--grapes-border);
+      border-radius: 22px;
+      box-shadow: 0 18px 48px rgba(0, 0, 0, .42), 0 0 18px rgba(59, 220, 242, .025);
+    }
+    .brand { display: flex; flex-direction: column; align-items: center; text-align: center; margin-bottom: 29px; }
+    .brand-mark {
+      width: 70px; height: 70px; display: grid; place-items: center;
+      border: 1px solid rgba(59, 220, 242, .23);
+      border-radius: 21px; background: rgba(59, 220, 242, .07);
+      margin-bottom: 15px;
+    }
+    .brand-mark svg { width: 44px; height: 44px; display: block; }
+    h1 { font-size: 31px; line-height: 1.1; letter-spacing: -.9px; margin: 0; font-weight: 750; }
+    .subtitle { margin: 8px 0 0; font-size: 13px; line-height: 1.45; color: var(--grapes-muted); }
+    .google-button {
+      width: 100%; min-height: 50px;
+      display: flex; align-items: center; justify-content: center; gap: 11px;
+      padding: 11px 14px; background: var(--grapes-surface);
+      border: 1px solid #324556; border-radius: 12px;
+      color: var(--grapes-text); font-size: 14px; font-weight: 650;
+      transition: background-color .15s, border-color .15s;
+    }
+    .google-button:hover { background: #1d2d3e; border-color: #476072; }
+    .google-mark { width: 20px; height: 20px; flex: none; }
+    .separator { display: flex; align-items: center; gap: 12px; color: var(--grapes-subtle); font-size: 12px; margin: 22px 0; }
+    .separator::before, .separator::after { content: ""; height: 1px; background: var(--grapes-border); flex: 1; }
+    form { display: flex; flex-direction: column; gap: 18px; }
+    .field { display: flex; flex-direction: column; gap: 8px; }
+    label { font-size: 12px; font-weight: 650; line-height: 1.4; color: #d9e8ed; }
+    .field input {
+      display: block; width: 100%; min-width: 0; height: 49px; border-radius: 12px;
+      padding: 12px 14px; border: 1px solid var(--grapes-border);
+      background: var(--grapes-input); color: var(--grapes-text);
+      outline: none; font-size: 14px; transition: border-color .15s, box-shadow .15s;
+    }
+    .field input::placeholder { color: #8196a4; opacity: 1; }
+    .field input:hover { border-color: #466074; }
+    .field input:focus-visible { border-color: var(--grapes-cyan); box-shadow: 0 0 0 3px rgba(59, 220, 242, .12); }
+    .password-container { position: relative; }
+    .password-container input { padding-right: 51px; }
+    .toggle-password {
+      position: absolute; right: 5px; top: 4px; width: 41px; height: 41px;
+      display: grid; place-items: center; color: var(--grapes-muted);
+      border: 0; background: transparent; border-radius: 9px;
+    }
+    .toggle-password:hover { color: var(--grapes-text); background: rgba(255,255,255,.04); }
+    .toggle-password svg { width: 18px; height: 18px; }
+    :where(button, a):focus-visible { outline: 2px solid var(--grapes-cyan); outline-offset: 3px; }
+    .submit-button {
+      min-height: 50px; margin-top: 3px; padding: 12px 18px;
+      border: 1px solid var(--grapes-cyan); border-radius: 12px;
+      color: var(--grapes-cyan-ink); background: var(--grapes-cyan);
+      font-size: 14px; font-weight: 800;
+      transition: background-color .15s, transform .15s;
+    }
+    .submit-button:hover { background: var(--grapes-cyan-hover); }
+    .submit-button:active { transform: translateY(1px); }
+    .footer-links { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 5px 9px; margin-top: 23px; }
+    .text-action { border: 0; padding: 5px 0; color: var(--grapes-muted); background: transparent; font-size: 12px; text-decoration: none; }
+    .text-action:hover { color: var(--grapes-cyan); text-decoration: underline; text-underline-offset: 3px; }
+    .footer-separator { color: #4b5e6d; font-size: 12px; user-select: none; }
+    .feedback { margin: 18px 0 0; padding: 11px 12px; color: #cbe5ec; background: rgba(59, 220, 242, .065); border: 1px solid rgba(59, 220, 242, .19); border-radius: 10px; font-size: 12px; line-height: 1.5; }
+    .feedback[hidden] { display: none; }
+    .prototype-note { color: #8298a7; font-size: 11px; text-align: center; margin: 17px 0 0; max-width: 340px; line-height: 1.5; }
+    @media (max-width: 420px) {
+      .login-page { padding-inline: 14px; }
+      .login-card { padding: 30px 22px 25px; border-radius: 18px; }
+      .brand { margin-bottom: 26px; }
+    }
+    @media (max-height: 670px) {
+      .login-page { justify-content: flex-start; }
+      .login-card { padding-top: 23px; padding-bottom: 23px; }
+      .brand { margin-bottom: 20px; }
+      .brand-mark { width: 58px; height: 58px; margin-bottom: 10px; }
+      .separator { margin: 16px 0; }
+      form { gap: 13px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+    }

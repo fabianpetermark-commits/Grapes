@@ -807,6 +807,7 @@ function renderAccount() {
 }
 
 function showLogin(message = '') {
+  document.documentElement.removeAttribute('data-grapes-prod-native-app')
   app.hidden = true
   login.hidden = false
   const status = $('[data-login-status]')
@@ -1392,6 +1393,22 @@ mobileFood = createMobileFoodController({
   getHydrationExternalKeys: hydrationExternalKeys,
 })
 hydrateMobileIcons()
+// Grapes PROD login is independent of the user's Google Drive authorization.
+const prodSignoutButton = $('[data-prod-auth-signout]')
+if (prodSignoutButton) {
+  const prodAuthNative = import.meta.env?.VITE_GRAPES_PROD_AUTH_ENABLED === 'true' &&
+    import.meta.env?.VITE_GRAPES_PROD_LEGACY_DATA_ISOLATION_REVIEWED === 'true' &&
+    globalThis.location?.href === 'https://appassets.androidplatform.net/assets/design/android-mobile-preview.html' &&
+    isGrapesAndroidApp()
+  prodSignoutButton.hidden = !prodAuthNative
+  prodSignoutButton.style.display = prodAuthNative ? '' : 'none'
+  prodSignoutButton.addEventListener('click', () => {
+    if (!prodAuthNative) return
+    globalThis.GrapesAndroid.postMessage(JSON.stringify({
+      method: 'openProdAuthSignOut', requestId: crypto.randomUUID(), args: [],
+    }))
+  })
+}
 installSheetGestures()
 refreshUpdateInbox()
 window.grapesHandleAndroidBack = () => {
@@ -1413,4 +1430,10 @@ window.grapesHandleAndroidBack = () => {
 }
 renderWater()
 if (isGrapesDriveConnected()) registerFoodSharing().catch(() => {})
-if (isGrapesDriveConnected() || localMode()) showApp()
+// Only the native MainActivity's validated session/owner gate can load this
+// asset; a web or TEST build must not skip the Drive onboarding screen.
+const prodNativeAuthenticated = import.meta.env?.VITE_GRAPES_PROD_AUTH_ENABLED === 'true' &&
+  import.meta.env?.VITE_GRAPES_PROD_LEGACY_DATA_ISOLATION_REVIEWED === 'true' &&
+  globalThis.location?.href === 'https://appassets.androidplatform.net/assets/design/android-mobile-preview.html' &&
+  isGrapesAndroidApp()
+if (isGrapesDriveConnected() || localMode() || prodNativeAuthenticated) showApp()

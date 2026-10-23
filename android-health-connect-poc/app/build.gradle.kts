@@ -32,13 +32,22 @@ android {
         targetSdk = 35
         versionCode = grapesVersionCode
         versionName = grapesVersionName
+        // Explicit production opt-in; defaults OFF on every ordinary release.
+        buildConfigField("boolean", "GRAPES_PROD_AUTH_ENABLED", "false")
     }
     buildTypes {
         getByName("release") {
             if (!releaseKeystorePath.isNullOrBlank()) signingConfig = signingConfigs.getByName("release")
+            val approvedProdAuth = providers.environmentVariable("VITE_GRAPES_PROD_AUTH_ENABLED").orNull == "true" &&
+                providers.environmentVariable("VITE_GRAPES_PROD_LEGACY_DATA_ISOLATION_REVIEWED").orNull == "true" &&
+                providers.environmentVariable("VITE_GRAPES_PROD_SUPABASE_URL").orNull == "https://yopabovoxyffhokhbgxl.supabase.co" &&
+                providers.environmentVariable("VITE_GRAPES_PROD_SUPABASE_PUBLISHABLE_KEY").orNull
+                    ?.matches(Regex("sb_publishable_[A-Za-z0-9_-]{16,}")) == true
+            buildConfigField("boolean", "GRAPES_PROD_AUTH_ENABLED", approvedProdAuth.toString())
         }
     }
     buildFeatures { buildConfig = true }
+    testOptions { unitTests.isIncludeAndroidResources = true }
     sourceSets["main"].java.srcDir(
         if (samsungSdk.exists()) "src/samsung/java" else "src/samsungStub/java"
     )
@@ -58,6 +67,8 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.10.0")
     implementation("com.google.android.gms:play-services-auth:21.5.0")
     implementation("com.google.code.gson:gson:2.13.2")
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.14.1")
     if (samsungSdk.exists()) {
         implementation(files(samsungSdk))
     }

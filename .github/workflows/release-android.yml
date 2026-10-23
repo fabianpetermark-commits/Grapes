@@ -37,6 +37,12 @@ jobs:
       VITE_GOOGLE_APP_ID: 991532871119
       VITE_GOOGLE_PICKER_API_KEY: ${{ secrets.GOOGLE_PICKER_API_KEY }}
       VITE_GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
+      # Match the previously phone-approved, PROD-signed v29 Auth candidate.
+      # This is still manual-only until the owner verifies the repaired APK.
+      VITE_GRAPES_PROD_AUTH_ENABLED: 'true'
+      VITE_GRAPES_PROD_LEGACY_DATA_ISOLATION_REVIEWED: 'true'
+      VITE_GRAPES_PROD_SUPABASE_URL: https://yopabovoxyffhokhbgxl.supabase.co
+      VITE_GRAPES_PROD_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ZbcYVjCGzHeLmRWluW5bwQ_qJaSIGfs
       VITE_EBOOK_EPUB_WRITE_ENABLED: 'true'
       VITE_EBOOK_TRANSFER_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
       VITE_FOOD_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
@@ -107,6 +113,11 @@ jobs:
       - run: npm ci
       # A failure here blocks signing and publishing, even on an already
       # merged PROD branch. Use the same browser regressions that protect Food.
+      - name: Assert PROD Auth configuration and previously tested ownership gate
+        run: |
+          node --test tests/grapes-prod-auth-config.test.js tests/grapes-prod-auth-flow.test.js tests/grapes-prod-auth-staging.test.js tests/grapes-prod-oauth-redirect.test.js
+          test -s login-auth-prod.html
+          grep -Fq 'GRAPES_PROD_AUTH_ENABLED' android-health-connect-poc/app/src/main/java/hu/grapes/healthconnect/MainActivity.kt
       - name: Validate data and Android UI regressions
         run: |
           npm test
