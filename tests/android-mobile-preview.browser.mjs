@@ -292,7 +292,7 @@ try {
   await page.locator('.appbar [data-nav="home"]').click()
   await page.locator('[data-page="home"]').waitFor({ state: 'visible' })
   await page.locator('[data-menu-group="health"]').click()
-  await page.locator('[data-page="hub-health"] [data-menu-destination="food"]').click()
+  await page.locator('[data-page="hub-health"] [data-health-food-open]').click()
   await page.locator('[data-page="food"]').waitFor({ state: 'visible' })
   await page.locator('[data-water-open]').click()
   assert.equal((await page.locator('[data-water-total]').textContent()).replace(/\s/g, ''), '550ml')
