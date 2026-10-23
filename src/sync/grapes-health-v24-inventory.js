@@ -24,7 +24,7 @@ export function inventoryV24FoodSnapshot({
 }) {
   if (!['indexeddb', 'google-drive'].includes(provider) ||
       !validText(sourceId) || !document || typeof document !== 'object' ||
-      document.module !== 'food' || !document.data ||
+      document.module !== 'Ételnapló' || !document.data ||
       (provider === 'google-drive' && document.grapesProject !== true)) {
     throw new Error('Invalid v24 Food source')
   }
