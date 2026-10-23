@@ -71,7 +71,7 @@ try {
   assert.equal(await page.locator('[data-nav="home"]').count(), 1)
   assert.equal(await page.locator('[data-menu-group]').count(), 4)
   await page.locator('[data-menu-group="home"]').click()
-  await page.locator('[data-page="hub-home"] [data-menu-destination="inventory"]').click()
+  await page.locator('[data-page="hub-home"] [data-widget-action="inventory"]').click()
   await page.locator('[data-page="household"]').waitFor({ state: 'visible' })
   assert.match(await page.locator('[data-household-root]').textContent(), /Ezen az eszközön tárolva/)
 
@@ -113,7 +113,7 @@ try {
   await page.locator('[data-household-split] button[type="submit"]').click()
   await page.reload({ waitUntil: 'networkidle' })
   await page.locator('[data-menu-group="home"]').click()
-  await page.locator('[data-page="hub-home"] [data-menu-destination="inventory"]').click()
+  await page.locator('[data-page="hub-home"] [data-widget-action="inventory"]').click()
   assert.equal(await page.locator('[data-household-lots] .household-card').count(), 2, 'A készlet nem maradt meg újraindítás után.')
   await page.locator('[data-household-tab="shopping"]').click()
   assert.match(await page.locator('[data-household-items]').textContent(), /Elintézve/)
