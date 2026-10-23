@@ -50,7 +50,7 @@ try {
   await page.goto(previewUrl, { waitUntil: 'networkidle' })
   await page.locator('[data-local]').click()
   await page.locator('[data-menu-group="health"]').click()
-  await page.locator('[data-page="hub-health"] [data-menu-destination="food"]').click()
+  await page.locator('[data-page="hub-health"] [data-health-food-open]').click()
   await page.locator('[data-page="food"]').waitFor({ state: 'visible' })
   await page.locator('[data-food-meals] .meal').first().waitFor()
   await page.locator('[data-food-open-recipes]').click()
