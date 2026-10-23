@@ -63,7 +63,7 @@ the JS tests cover PROD/TEST config and Drive-independent sign-out.
 Baseline head `176dae8` had successful PROD Auth, Food backup, Food staging and
 PROD menu workflow runs. Code head `a1691ae` passed PROD Auth config gate (including npm tests, Android Kotlin compile and native unit tests), PROD menu, Food staging and Food backup workflows on 2026-10-23. The final documentation-only commit still needs its own CI status checked.
 
-**Candidate build, still blocked on signing access and owner approval to install:**
+**Candidate build procedure, now executed after owner approval:**
 build the candidate only from this draft head using the existing PROD signing
 keystore, unchanged application ID `hu.grapes.healthconnect`, and a version
 code greater than v28. Build the Vite assets with the PROD URL, the PROD
@@ -73,8 +73,11 @@ the web bundle. Keep those values out of source and logs. Verify the candidate
 APK's package and signing certificate against signed v28 with `apksigner`;
 retain it as a private CI artifact, with no GitHub Release or Play upload.
 The ordinary `release-android.yml` still checks out `codex/android-app`
-and has Auth OFF. It is unsuitable for this draft candidate. No signed
-candidate has been built or installed in this task.
+and has Auth OFF. It was not used for the candidate. The separately staged
+`grapes-prod-auth-encrypted-candidate.yml` workflow built one signed v29
+candidate from this Draft branch after explicit owner approval, compared its
+package and signing certificate against signed v28, and uploaded only encrypted
+bytes as a one-day artifact. The candidate has not been installed.
 
 **Minimal owner phone acceptance, only after explicit approval to install:**
 
@@ -96,3 +99,20 @@ candidate has been built or installed in this task.
 device end-to-end Google OAuth, process-restart callback, session restoration
 and expiry, cancellation, first binding/foreign UID, Grapes sign-out versus
 Drive, and in-place upgrade checks. Do not merge or publish based on CI alone.
+
+## Approved signed candidate result (2026-10-23)
+
+Owner explicitly approved the production-signed, encrypted CI candidate after
+the scope of signing-secret use and encrypted artifact storage was explained.
+Workflow [run 39916060591](https://github.com/fabianpetermark-commits/Grapes/actions/runs/39916060591)
+completed successfully on code head `a7a3db3`: npm tests, Android web build,
+native release unit tests, signed APK assembly, package/version check
+(`hu.grapes.healthconnect`, versionCode 29), v28 signing-certificate match,
+and encrypted artifact upload. The public artifact contains only AES-encrypted
+APK bytes and an RSA-wrapped passphrase; it expires after one day. The APK was
+decrypted locally and its SHA-256 verified as
+`2046222d32e636b38c5b045e908b7b87ec335d1b584de47b0ad87094d1b59a51`.
+The local candidate is `/workspace/grapes-candidate-output/grapes-prod-auth-v29.apk`.
+No APK was published as a GitHub Release or installed on a phone. This runner
+has no connected Android device, so the owner's in-place phone checks below
+remain the acceptance gate. Do not uninstall or clear v28.
