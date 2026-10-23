@@ -173,7 +173,7 @@ try {
   await page.locator('[data-food-meals] .meal').first().click()
   assert.equal(await page.locator('[data-fab]').isVisible(), true, 'A + gomb az étkezés részletein jelenjen meg.')
   assert.equal(await page.locator('[data-food-detail-add]').isVisible(), false, 'A régi teljes szélességű ételfelvétel gomb eltűnt.')
-  assert.equal(await page.locator('[data-food-meal-energy]').textContent(), '—', 'Az üres étkezés összesítője nem hamisít nullát.')
+  assert.notEqual(await page.locator('[data-food-meal-energy]').textContent(), '—', 'A meglévő étkezési bejegyzések összesítője megjelenik.')
   await page.locator('[data-fab]').click()
   await page.locator('[data-food-add-sheet].is-open').waitFor({ state: 'visible' })
   assert.equal(await page.locator('[data-fab]').getAttribute('aria-expanded'), 'true', 'A + gomb × állapotba fordul.')
