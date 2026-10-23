@@ -31,8 +31,7 @@ internal class ProdAuthCallback(context: Context, private val now: () -> Long = 
             (uri.queryParameterNames.contains("scopes") || uri.queryParameterNames.contains("scope")) ||
             uri.getQueryParameters("provider").size != 1 ||
             uri.getQueryParameters("redirect_to").size != 1) return false
-        prefs.edit().clear().putString("state", state).putLong("started", now()).apply()
-        return true
+        return prefs.edit().clear().putString("state", state).putLong("started", now()).commit()
     }
 
     fun accept(uri: Uri?): Boolean {
@@ -49,14 +48,12 @@ internal class ProdAuthCallback(context: Context, private val now: () -> Long = 
         if (uri.getQueryParameters("state").size != 1) return false
         if (code != null && names == setOf("state", "code") &&
             uri.getQueryParameters("code").size == 1 && CODE.matches(code)) {
-            prefs.edit().putString("code", code).putString("result", "code").apply()
-            return true
+            return prefs.edit().putString("code", code).putString("result", "code").commit()
         }
         if (error == "access_denied" && names.containsAll(setOf("state", "error")) &&
             names.all { it in setOf("state", "error", "error_description", "error_code") } &&
             uri.getQueryParameters("error").size == 1) {
-            prefs.edit().putString("result", "cancel").apply()
-            return true
+            return prefs.edit().putString("result", "cancel").commit()
         }
         return false
     }
@@ -68,11 +65,11 @@ internal class ProdAuthCallback(context: Context, private val now: () -> Long = 
         val fresh = fresh()
         val output = JSONObject().put("status", "none")
         if (!fresh || state == null) {
-            prefs.edit().clear().apply()
+            prefs.edit().clear().commit()
             return output
         }
         if (result == null) return output // browser is still open; keep transaction
-        prefs.edit().clear().apply() // one-shot after an actual return
+        prefs.edit().clear().commit() // one-shot after an actual return
         if (result == "cancel") return output.put("status", "cancel").put("state", state)
         if (result == "code" && code != null) {
             return output.put("status", "code").put("state", state).put("code", code)
@@ -80,7 +77,7 @@ internal class ProdAuthCallback(context: Context, private val now: () -> Long = 
         return output
     }
 
-    fun cancel() { prefs.edit().clear().apply() }
+    fun cancel() { prefs.edit().clear().commit() }
 
     private fun fresh(): Boolean {
         val age = now() - prefs.getLong("started", 0)
