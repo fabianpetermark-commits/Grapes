@@ -259,7 +259,7 @@ try {
   page.once('dialog', dialog => dialog.accept())
   await page.locator('[data-food-entries] .food-entry-card', { hasText: 'Mobil tesztétel' }).first().locator('[data-entry-delete]').click()
   assert.equal(await page.locator('[data-food-entries] .food-entry-card').count(), beforeRepeat)
-  await page.locator('[data-food-back]').click()
+  await page.evaluate(() => window.grapesHandleAndroidBack())
   await page.locator('[data-food-open-recipes]').click()
   await page.locator('[data-food-recipes-new]').click()
   await page.locator('[data-food-recipe-edit-sheet].is-open').waitFor({ state: 'visible' })
