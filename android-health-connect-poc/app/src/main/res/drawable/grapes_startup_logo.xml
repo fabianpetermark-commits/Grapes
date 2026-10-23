@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Native geometry/colors from public/grapes-mark.svg, used by the main menu.
+     Keep the 96dp mark inside Android's 288dp splash icon safe area. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="288dp" android:height="288dp"
+    android:viewportWidth="288" android:viewportHeight="288">
+    <group android:translateX="96" android:translateY="95">
+        <path android:pathData="M48,8v12" android:strokeWidth="6" android:strokeLineCap="round">
+            <aapt:attr name="android:strokeColor">
+            <gradient android:type="linear" android:startX="28" android:startY="14" android:endX="67" android:endY="88">
+                <item android:offset="0" android:color="#B5FBFF" />
+                <item android:offset="0.22" android:color="#49EDFA" />
+                <item android:offset="0.62" android:color="#00B8E1" />
+                <item android:offset="1" android:color="#00699F" />
+            </gradient>
+            </aapt:attr>
+        </path>
+        <path android:pathData="M48,18c-6,-6 -16,-4 -16,4 6,4 12,2 16,-4Z"
+            android:fillColor="#24DCE9" android:strokeColor="#9BFBFF" android:strokeWidth="0.6" />
+        <path android:pathData="M40,32a8,8 0,1 0,16,0a8,8 0,1 0,-16,0Z M27,46a9,9 0,1 0,18,0a9,9 0,1 0,-18,0Z M51,46a9,9 0,1 0,18,0a9,9 0,1 0,-18,0Z M15,60a9,9 0,1 0,18,0a9,9 0,1 0,-18,0Z M39,60a9,9 0,1 0,18,0a9,9 0,1 0,-18,0Z M63,60a9,9 0,1 0,18,0a9,9 0,1 0,-18,0Z M27,74a9,9 0,1 0,18,0a9,9 0,1 0,-18,0Z M51,74a9,9 0,1 0,18,0a9,9 0,1 0,-18,0Z M40,86a8,8 0,1 0,16,0a8,8 0,1 0,-16,0Z"
+            android:strokeColor="#9CFCFF" android:strokeAlpha="0.55" android:strokeWidth="0.7">
+            <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="28" android:startY="14" android:endX="67" android:endY="88">
+                <item android:offset="0" android:color="#B5FBFF" />
+                <item android:offset="0.22" android:color="#49EDFA" />
+                <item android:offset="0.62" android:color="#00B8E1" />
+                <item android:offset="1" android:color="#00699F" />
+            </gradient>
+            </aapt:attr>
+        </path>
+        <path android:pathData="M43.3,29.5a2.2,1.25 0,1 0,4.4,0a2.2,1.25 0,1 0,-4.4,0Z M31,43a2.3,1.3 0,1 0,4.6,0a2.3,1.3 0,1 0,-4.6,0Z M55,43a2.3,1.3 0,1 0,4.6,0a2.3,1.3 0,1 0,-4.6,0Z M19,57a2.3,1.3 0,1 0,4.6,0a2.3,1.3 0,1 0,-4.6,0Z M43,57a2.3,1.3 0,1 0,4.6,0a2.3,1.3 0,1 0,-4.6,0Z M67,57a2.3,1.3 0,1 0,4.6,0a2.3,1.3 0,1 0,-4.6,0Z" android:fillColor="#FFFFFF" android:fillAlpha="0.72" />
+    </group>
+</vector>

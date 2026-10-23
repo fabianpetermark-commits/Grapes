@@ -42,7 +42,7 @@ test('PROD login assets remain separate from TEST, guarded by explicit flags', (
   assert.match(entry, /VITE_GRAPES_PROD_AUTH_ENABLED/)
   assert.match(entry, /VITE_GRAPES_PROD_LEGACY_DATA_ISOLATION_REVIEWED/)
   assert.match(entry, /grapes-android-prod-oauth/)
-  assert.match(html, /src="\.\/grapes-logo\.svg"/)
+  assert.match(html, /src="\.\/grapes-mark\.svg"/)
   assert.doesNotMatch(html, /Fiók ellenőrzése…<\/p>/)
   assert.doesNotMatch(entry, /grapes-test-auth|grapes-android-oauth\.js|data-grapes-qa-starting/)
   assert.doesNotMatch(oauth, /hu\.grapes\.healthconnect\.test:\/\/auth/)

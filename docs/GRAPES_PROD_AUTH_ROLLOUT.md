@@ -204,6 +204,26 @@ are pending. Foreign-account, expiry/offline and first-binding cancellation
 phone checks remain open unless explicitly reported.
 
 The next explicitly authorized normal production release must use a versionCode
-greater than the privately installed candidate 31 (at least 32). Candidate 31
+greater than the latest privately installed candidate (v32 requires at least 33). Candidate 31
 is not a published stable release; do not reuse its version code for the final
 upgrade. The candidate-only updater flag must stay OFF in normal releases.
+
+## Startup branding correction (v32 candidate, 2026-10-23)
+
+The owner confirmed the v31 main menu works but reported a wrong Grapes logo
+flashing on a light gray startup background. Android previously inherited the
+platform splash/theme background and old launcher icon; the web restoration
+cover also used a separate rounded logo asset.
+
+The native starting window and Android 12+ splash now use a dark #05080C
+background and a native rendition of the existing `public/grapes-mark.svg`
+geometry/colors. The persisted-session web cover uses that same main-menu mark,
+and the WebView has a dark background before its first paint. No Auth, UID,
+local store, Health or Drive behavior changed for this visual correction.
+
+Existing PROD config/staging/redirect tests pass locally. The Auth-enabled web
+build succeeds. A Chromium visual check with a synthetic saved-session hint
+shows the main-menu mark on the dark background and keeps the login hidden
+while verification is pending; it does not simulate an authenticated user.
+Native resource compilation and signed private v32 delivery are pending CI;
+actual cold-start appearance still requires the owner's phone confirmation.

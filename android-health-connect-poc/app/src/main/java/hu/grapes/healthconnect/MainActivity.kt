@@ -286,6 +286,7 @@ class MainActivity : ComponentActivity() {
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
             .build()
         webView = WebView(this).apply {
+            setBackgroundColor(android.graphics.Color.rgb(5, 8, 12))
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             settings.allowFileAccess = false

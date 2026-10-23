@@ -27,9 +27,9 @@ jobs:
       VITE_GRAPES_PROD_LEGACY_DATA_ISOLATION_REVIEWED: 'true'
       VITE_GRAPES_PROD_SUPABASE_URL: https://yopabovoxyffhokhbgxl.supabase.co
       VITE_GRAPES_PROD_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ZbcYVjCGzHeLmRWluW5bwQ_qJaSIGfs
-      GRAPES_VERSION_CODE: '31'
+      GRAPES_VERSION_CODE: '32'
       GRAPES_PROD_AUTH_CANDIDATE: 'true'
-      GRAPES_VERSION_NAME: '0.3.31-auth-candidate'
+      GRAPES_VERSION_NAME: '0.3.32-auth-candidate'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -135,15 +135,15 @@ jobs:
           mkdir -m 700 candidate-encrypted
           APK=android-health-connect-poc/app/build/outputs/apk/release/app-release.apk
           openssl rand -hex 32 > "$RUNNER_TEMP/candidate-passphrase"
-          openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -in "$APK" -out candidate-encrypted/grapes-prod-auth-v31.apk.enc -pass file:"$RUNNER_TEMP/candidate-passphrase"
+          openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -in "$APK" -out candidate-encrypted/grapes-prod-auth-v32.apk.enc -pass file:"$RUNNER_TEMP/candidate-passphrase"
           openssl pkeyutl -encrypt -pubin -inkey .github/grapes-prod-auth-candidate-public.pem -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256 -in "$RUNNER_TEMP/candidate-passphrase" -out candidate-encrypted/passphrase.enc
           sha256sum "$APK" | awk '{print $1}' > candidate-encrypted/apk.sha256
-          test -s candidate-encrypted/grapes-prod-auth-v31.apk.enc
+          test -s candidate-encrypted/grapes-prod-auth-v32.apk.enc
           test -s candidate-encrypted/passphrase.enc
           rm -f "$APK" "$RUNNER_TEMP/candidate-passphrase" "$RUNNER_TEMP/grapes-release.p12"
       - uses: actions/upload-artifact@v4
         with:
-          name: grapes-prod-auth-v31-encrypted
+          name: grapes-prod-auth-v32-encrypted
           path: candidate-encrypted/
           if-no-files-found: error
           retention-days: 1

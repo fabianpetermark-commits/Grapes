@@ -1,0 +1,9 @@
+<resources>
+    <!-- Android 12+ otherwise uses the old launcher artwork and theme gray. -->
+    <style name="AppTheme" parent="GrapesBaseTheme">
+        <item name="android:windowSplashScreenBackground">@color/grapes_startup_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/grapes_startup_logo</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
+        <item name="android:windowSplashScreenAnimationDuration">0</item>
+    </style>
+</resources>
