@@ -1,11 +1,11 @@
-# Home → Növények – TEST integráció és Szaporítás (2026-10-22)
+# Home → Növények – TEST időjárás-integráció
 
 ## Navigáció / dizájn
 - A Grapes főmenüje továbbra is **4 darab 2×2 kártya**: Home, Health, Utility, Finance.
 - A `Home` almoduljai: Bevásárlólista, Készletkezelő, **Növények**.
 - A Növények képernyőn az **időjárás a fejléc része**, nem önálló kártya/modul. Mellette Növényeim, Növénykatalógus; alul Aktuális teendők (egyelőre tényleges teendőkezelés nélkül).
 - Növényeim kártyák **mintapéldányok**; nem tárolunk még valódi kert- vagy lakásnövény-adatot.
-- Növényadatlap fülei: **Áttekintés, Gondozás, Napló, Képek, Szaporítás** (320 px-en vízszintesen gördíthető).
+- Növényadatlap fülei: **Áttekintés, Gondozás, Napló, Képek**. A Szaporítás egyelőre nincs a felületen.
 - Visszalépés: Növényadatlap → Növényeim → Növények → Home → Grapes.
 
 ## WeatherAPI kapcsolat – előrejelzés a TEST UI-ban
@@ -23,22 +23,8 @@ A mobil/web felület kizárólag ezt a **publikus, csak olvasható** Supabase TE
 
 Kapcsolódó backend PR: [#112](https://github.com/fabianpetermark-commits/Grapes/pull/112).
 
-## Szaporítás – elfogadandó adatmodell (még nincs éles implementáció)
-Minden saját példányhoz rögzíthető *szaporítási esemény*, melyből később egy vagy több új saját növénypéldány létrehozható.
-
-Tervezett mezők:
-- `id`, `parent_plant_id` (nullable, ha eredet ismeretlen), `method` (dugvány, magvetés, tőosztás, bujtás, egyéb),
-- `started_at`, `status` (elindítva, gyökeresedik/csírázik, sikeres, sikertelen), `notes`, opcionális `photos`,
-- `child_plant_ids` az eredményként létrehozott növénypéldányokra hivatkozva (egyszeri létrehozás / duplikáció elleni védelem).
-
-Viselkedési elvek:
-1. Elindított szaporítás **nem** készít automatikusan új növényt és nem jelenti azt, hogy sikeres.
-2. A sikeres utód **önálló azonosítót, nevet, elhelyezést, naplót és képeket** kap; kapcsolata az anyanövényhez megmarad.
-3. A sikertelen próbálkozás az előzményekben marad, nem tűnik el.
-4. Magvetésnél a származási kapcsolat **nem garantálja** a genetikai azonosságot vagy fajtaazonosságot.
-5. Növénypéldány csak felhasználói jóváhagyással, egyedi adatrögzítéssel hozható létre; verziózással/konfliktusvédelemmel, profilok elkülönítésével.
-
-**Jelenleg** a Szaporítás fül kizárólag mintafelület, nincs rögzítés vagy szinkron.
+## Halasztott lehetőség
+A szaporítás (dugvány, magvetés, szülő–utód kapcsolatok) **nem része a jelenlegi fejlesztési körnek**. A felhasználó kérésére a mintafelületről és az aktuális tesztekből is kikerült. Később külön tervezhető, ha szükség lesz rá.
 
 ## Biztonsági állapot
 A korábbi Food / Víz / YAZIO / e-book / Google Drive felhasználói adatokhoz nem nyúlunk. Nem készült vagy került kiadásra APK, nem történt merge; a TEST UI és backend PR-ok külön, felülvizsgálható állapotban maradnak.
