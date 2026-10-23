@@ -36,7 +36,15 @@ Az ikonokat olvasható rövid név kíséri. Legalább 44–48 px érintési ter
 - Nagy 2×2 Home, Health, Utility, Finance főmenükártyák.
 - Korábbi alsó **Főmenü / Projektek / Szinkron / Továbbiak** ikonsáv – a felhasználó szerint régen megszűnt, ezért sem referenciaként, sem jövőbeli főmenüelemként nem szerepelhet.
 
-A modulok **belső** gyorsműveletsávja (pl. Health Fotó, Étel, Víz, Vonalkód) továbbra is működhet; ez nem alsó globális navigáció.
+**A főmenü alsó navigációját eltávolítjuk, DE az alsó modul-gyorsműveleteket megtartjuk minden fő területen.** A felhasználó külön megerősítette a Health-ből ismert, fix alsó pill sávot. A felső ikonsor kategóriát választ; alul az éppen látható kategória **saját műveletei** vannak, ezért a dock tartalma főmodulváltáskor változik. Ezek nem másodlagos navigációs fülek.
+
+- **Health (konkrétan jóváhagyott):** Fotó, Étel, Víz és külön kerek Vonalkódolvasó. A Health adatwidgetekkel egy képernyőn látható, nem újabb menübe vezet.
+- **Home / Utility / Finance:** ugyanilyen szerkezeti és vizuális szabály szerinti, de **még megtervezendő** saját gyorsműveleti készlet; ne emeljünk át Health-es gombokat ezekbe automatikusan.
+- **Kezdő / Gyakran használt:** helyben releváns gyors műveletek (pl. kedvencek hozzáadása / rendezése) külön egyeztetendők, hogy ne duplázzuk a Kezdő tartalmában levő műveleteket.
+- **Új főmodul:** saját, deklarált gyorsműveleteivel bővíti az alsó dock tartalmát is a felső ikonsoros navigációhoz illeszkedve.
+- **Elhelyezés:** alul rögzített/sticky, androidos safe-area fölött, megfelelő scroll-paddinggel, a tartalmat és utolsó widgetet nem takarja. Teljes képernyős szerkesztőn vagy megnyitott billentyűzetnél kontextus szerint elrejthető és visszatérve helyreáll.
+- **Látvány:** Health-minimal minta; sötét, lekerekített pill 2–4 gyakori gyorsgombbal, indokolt esetben külön kerek fő action; matt fill, finom neon-cián csak a keret rövid szakaszán, nincs túlerős glow.
+- **Adatbiztonság:** az újratervezés nem módosít mentett Food/Víz/Drive/Finance adatot és nem töri el az Auth / PIN folyamatot.
 
 ## Elfogadott vizuális nyelv
 
