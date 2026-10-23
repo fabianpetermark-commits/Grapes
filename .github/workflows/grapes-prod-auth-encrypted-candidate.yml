@@ -1,0 +1,114 @@
+name: Grapes PROD Auth encrypted candidate (NO RELEASE)
+
+on:
+  push:
+    branches:
+      - feature/grapes-prod-auth-staging-20261022
+    paths:
+      - .github/workflows/grapes-prod-auth-encrypted-candidate.yml
+
+permissions:
+  contents: read
+
+jobs:
+  signed-candidate:
+    if: contains(github.event.head_commit.message, '[candidate-build]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VITE_GRAPES_PROD_AUTH_ENABLED: 'true'
+      VITE_GRAPES_PROD_LEGACY_DATA_ISOLATION_REVIEWED: 'true'
+      VITE_GRAPES_PROD_SUPABASE_URL: https://yopabovoxyffhokhbgxl.supabase.co
+      VITE_GRAPES_PROD_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ZbcYVjCGzHeLmRWluW5bwQ_qJaSIGfs
+      GRAPES_VERSION_CODE: '29'
+      GRAPES_VERSION_NAME: '0.2.0-auth-candidate'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirm isolated candidate and signing inputs
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = feature/grapes-prod-auth-staging-20261022
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          test -n "$ANDROID_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_KEY_ALIAS"
+          test -n "$ANDROID_KEY_PASSWORD"
+          test -s .github/grapes-prod-auth-candidate-public.pem
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build:android-web
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK 36
+        run: |
+          set -euo pipefail
+          SDKMANAGER=$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | sort -V | tail -1)
+          test -n "$SDKMANAGER"
+          "$SDKMANAGER" 'platforms;android-36' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.11.1
+      - name: Sign isolated candidate with existing PROD identity
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/grapes-release.p12"
+          chmod 600 "$RUNNER_TEMP/grapes-release.p12"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/grapes-release.p12" >> "$GITHUB_ENV"
+      - name: Test and assemble signed candidate
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: gradle --project-dir android-health-connect-poc :app:testReleaseUnitTest :app:assembleRelease
+      - name: Verify package, version, and signing certificate against signed v28
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          APK=android-health-connect-poc/app/build/outputs/apk/release/app-release.apk
+          test -s "$APK"
+          gh release download android-v28 --repo "$GITHUB_REPOSITORY" --pattern grapes-android-v28.apk --dir "$RUNNER_TEMP/baseline"
+          BASELINE="$RUNNER_TEMP/baseline/grapes-android-v28.apk"
+          AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          SIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          "$SIGNER" verify "$BASELINE"
+          "$SIGNER" verify "$APK"
+          "$AAPT" dump badging "$APK" | grep -F "package: name='hu.grapes.healthconnect' versionCode='29'"
+          "$AAPT" dump badging "$BASELINE" | grep -F "package: name='hu.grapes.healthconnect' versionCode='28'"
+          "$SIGNER" verify --print-certs "$BASELINE" > "$RUNNER_TEMP/baseline-cert.txt"
+          "$SIGNER" verify --print-certs "$APK" > "$RUNNER_TEMP/candidate-cert.txt"
+          baseline_cert=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/baseline-cert.txt" | head -1)
+          candidate_cert=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/candidate-cert.txt" | head -1)
+          test -n "$baseline_cert"
+          test "$baseline_cert" = "$candidate_cert"
+          echo 'PASS: candidate package, version, and PROD signing certificate match the in-place upgrade requirements.'
+      - name: Encrypt APK before uploading any artifact
+        run: |
+          set -euo pipefail
+          mkdir -m 700 candidate-encrypted
+          APK=android-health-connect-poc/app/build/outputs/apk/release/app-release.apk
+          openssl rand -hex 32 > "$RUNNER_TEMP/candidate-passphrase"
+          openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -in "$APK" -out candidate-encrypted/grapes-prod-auth-v29.apk.enc -pass file:"$RUNNER_TEMP/candidate-passphrase"
+          openssl pkeyutl -encrypt -pubin -inkey .github/grapes-prod-auth-candidate-public.pem -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256 -in "$RUNNER_TEMP/candidate-passphrase" -out candidate-encrypted/passphrase.enc
+          sha256sum "$APK" | awk '{print $1}' > candidate-encrypted/apk.sha256
+          test -s candidate-encrypted/grapes-prod-auth-v29.apk.enc
+          test -s candidate-encrypted/passphrase.enc
+          rm -f "$APK" "$RUNNER_TEMP/candidate-passphrase" "$RUNNER_TEMP/grapes-release.p12"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: grapes-prod-auth-v29-encrypted
+          path: candidate-encrypted/
+          if-no-files-found: error
+          retention-days: 1
