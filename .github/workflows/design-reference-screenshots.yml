@@ -28,6 +28,14 @@ jobs:
         run: python3 -m http.server 4177 --bind 127.0.0.1 > /tmp/grapes-ref-http.log 2>&1 &
       - name: Smoke tests and 320/390/412 px screenshots
         run: node tests/design-references.browser.mjs
+      - name: Archive complete HTML/CSS/JS reference gallery
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: grapes-design-html-references
+          path: design/references/
+          if-no-files-found: error
+          retention-days: 90
       - name: Upload proposal screenshot gallery
         if: always()
         uses: actions/upload-artifact@v4
