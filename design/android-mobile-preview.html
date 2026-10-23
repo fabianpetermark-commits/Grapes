@@ -552,6 +552,49 @@
       .hub-card strong { font-size: 18px; }
       .hub-card__icon { width: 56px; height: 56px; }
     }
+
+    /* PROD Health dashboard — real Food and Water sources, no static demo values */
+    .health-dashboard{position:relative;padding-bottom:16px}
+    .health-settings-trigger{position:absolute;right:16px;top:10px;width:40px;height:40px;border:1px solid #315868;border-radius:12px;background:#132b35;color:var(--accent);font-size:24px}
+    .health-panel{margin-bottom:12px;padding:15px;background:linear-gradient(155deg,#152932,#101821 46%);border:1px solid #294653;border-radius:21px;box-shadow:0 6px 20px rgb(0 0 0 / 18%)}
+    .health-panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:17px}
+    .health-panel-head>strong{font-weight:780}.health-panel-head>span{font-size:11px;color:var(--muted)}
+    .health-food-metrics{display:grid;grid-template-columns:124px minmax(0,1fr);gap:12px;align-items:center;padding:13px 0 6px}
+    .health-calorie-ring{width:124px;height:124px;border:0;border-radius:50%;background:transparent;position:relative;display:grid;place-items:center;padding:0}
+    .health-calorie-ring svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+    .health-ring-track{fill:none;stroke:#263747;stroke-width:8}
+    .health-ring-progress{fill:none;stroke:var(--accent);stroke-width:8;stroke-linecap:round;stroke-dasharray:0 100}
+    .health-calorie-ring[data-progress-visible="true"] .health-ring-progress{filter:drop-shadow(0 0 2px rgb(59 220 242 / 30%))}
+    .health-ring-value{position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;pointer-events:none}
+    .health-ring-value small{font-size:10px;color:var(--muted)}.health-ring-value b{font-size:23px}.health-ring-value em{font-style:normal;font-size:10px;color:var(--muted)}
+    .health-macros{display:grid;gap:12px;min-width:0}.health-macros label{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--muted)}
+    .health-macros label b{color:var(--text);font-size:11px}.health-track{height:6px;overflow:hidden;border-radius:99px;background:#27394a;margin-top:7px}
+    .health-track i{display:block;width:0;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),var(--accent-2))}
+    .health-panel-split{display:flex;justify-content:space-between;gap:8px;align-items:center;margin:10px 0 12px;padding-top:12px;border-top:1px solid #2c4350}
+    .health-panel-split strong{font-size:13px}.health-panel-split span{font-size:10px;color:var(--muted)}
+    .health-meals{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+    .health-meals button{display:grid;gap:8px;place-content:center;min-width:0;min-height:65px;background:#182a34;border:1px solid #2e4653;border-radius:13px;font-size:10px}
+    .health-meals button b{font-size:11px}.health-meals button span{color:#c8d6e0}
+    .health-text-link{display:inline-block;margin-top:11px;padding:2px 0;background:none;border:0;color:var(--accent);font-size:11px;font-weight:730;text-align:left}
+    .health-panel--water .health-water-line{display:flex;align-items:center;gap:12px;margin-top:14px}
+    .health-water-line .health-track{flex:1;margin:0}.health-water-line button{border:1px solid #356474;border-radius:12px;background:#193a46;color:var(--accent);padding:10px;font-size:12px;font-weight:750;white-space:nowrap}
+    .health-recipe{display:flex;align-items:center;gap:12px;width:100%;text-align:left;color:var(--text);cursor:pointer}
+    .health-recipe-icon{display:grid;place-items:center;width:48px;height:48px;flex:none;background:#193641;border-radius:13px;border:1px solid #335563;color:var(--accent);font-size:29px}
+    .health-recipe-text{flex:1;min-width:0;display:grid;gap:5px}.health-recipe-text small{font-size:10px;font-weight:800;color:var(--accent)}
+    .health-recipe-text strong{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.health-recipe-text em{font-size:11px;color:var(--muted);font-style:normal}
+    .health-dock{display:flex;gap:9px;align-items:center;position:sticky;bottom:0;z-index:2;margin-top:18px;background:linear-gradient(transparent,#090e14 22%);padding:12px 0 4px}
+    .health-dock-pill{flex:1;min-width:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid #3a5260;background:#192c36;border-radius:35px;padding:5px}
+    .health-dock-pill button{min-width:0;min-height:55px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:0;background:none;color:#cbd7e1;font-size:22px}
+    .health-dock-pill button span{font-size:10px}.health-dock-scan{width:67px;height:67px;flex:none;border-radius:50%;border:1px solid #416c7a;background:#203b47;color:var(--accent);font-size:27px}
+    .health-settings-page h2{margin:2px 0 8px;font-size:24px}.health-settings-intro{font-size:12px;color:var(--muted);margin-bottom:18px}
+    .health-settings-item{width:100%;display:flex;flex-direction:column;gap:6px;text-align:left;margin:8px 0;padding:17px;border-radius:15px;border:1px solid #2a4653;background:#111f28;color:var(--text)}
+    .health-settings-item strong{font-size:14px}.health-settings-item small{font-size:11px;color:var(--muted)}
+    .health-settings-box{padding:15px;border:1px solid #2b4b57;border-radius:16px;background:#10202a;margin:12px 0}
+    .health-settings-box button{display:block;width:100%;text-align:left;margin:9px 0;padding:12px;border-radius:12px;background:#1c3945;border:1px solid #345968;color:#d5f7fb;font-size:12px}
+    .health-settings-box p{font-size:12px;color:var(--muted);line-height:1.5}.health-settings-box strong{font-size:14px}
+    [data-food-overview]>.daily-card{display:none}
+    @media(max-width:360px){.health-food-metrics{grid-template-columns:105px 1fr;gap:8px}.health-calorie-ring{width:105px;height:105px}.health-panel{padding:12px}.health-meals{gap:4px}.health-meals button{min-height:58px}.health-dock-scan{height:60px;width:60px}}
+
   </style>
   <link rel="stylesheet" href="../src/home/home-mobile.css">
 </head>
@@ -600,15 +643,68 @@
           </div>
         </div>
 
-        <div class="content" data-page="hub-health" hidden>
+        <div class="content health-dashboard" data-page="hub-health" hidden>
           <button type="button" class="hub-back" data-menu-back>‹ Főmenü</button>
-          <p class="eyebrow">Health</p><h1>Egészség és táplálkozás</h1>
-          <p class="lead">A meglévő Food funkciók és adatok közvetlen elérése.</p>
-          <div class="hub-options" aria-label="Health almodulok">
-            <button type="button" class="hub-option" data-menu-destination="food"><span class="hub-option__icon" data-module-icon="food"></span><strong>Food</strong></button>
-            <button type="button" class="hub-option" data-menu-destination="recipes"><span class="hub-option__icon" data-module-icon="recipe"></span><strong>Receptek</strong></button>
-            <button type="button" class="hub-option" data-menu-destination="stats"><span class="hub-option__icon" data-module-icon="stats"></span><strong>Statisztika</strong></button>
+          <button class="health-settings-trigger" type="button" data-health-settings-open aria-label="Health beállítások">⚙</button>
+
+          <section class="health-panel health-panel--food" aria-label="Napi Food összesítő">
+            <div class="health-panel-head"><strong>♜ Food</strong><span>Mai összesítő</span></div>
+            <div class="health-food-metrics">
+              <button type="button" class="health-calorie-ring" data-health-stats aria-label="Részletes Statisztika megnyitása">
+                <svg viewBox="0 0 120 120" aria-hidden="true"><circle class="health-ring-track" cx="60" cy="60" r="49" pathLength="100"/><circle class="health-ring-progress" data-health-ring-progress cx="60" cy="60" r="49" pathLength="100"/></svg>
+                <span class="health-ring-value"><small>Elfogyasztva</small><b data-health-kcal>—</b><small>kcal</small><em data-health-kcal-target>Nincs cél</em></span>
+              </button>
+              <div class="health-macros">
+                <div><label>Fehérje <b data-health-protein>—</b></label><div class="health-track"><i data-health-protein-bar></i></div></div>
+                <div><label>Szénhidrát <b data-health-carbohydrate>—</b></label><div class="health-track"><i data-health-carbohydrate-bar></i></div></div>
+                <div><label>Zsír <b data-health-fat>—</b></label><div class="health-track"><i data-health-fat-bar></i></div></div>
+              </div>
+            </div>
+            <div class="health-panel-split"><strong>Mai étkezések</strong><span>Válassz egy étkezést</span></div>
+            <div class="health-meals">
+              <button type="button" data-health-meal="breakfast"><span>Reggeli</span><b data-health-meal-kcal="breakfast">—</b></button>
+              <button type="button" data-health-meal="lunch"><span>Ebéd</span><b data-health-meal-kcal="lunch">—</b></button>
+              <button type="button" data-health-meal="afternoonSnack"><span>Uzsonna</span><b data-health-meal-kcal="afternoonSnack">—</b></button>
+              <button type="button" data-health-meal="dinner"><span>Vacsora</span><b data-health-meal-kcal="dinner">—</b></button>
+            </div>
+            <button type="button" class="health-text-link" data-health-food-open>Teljes ételnapló (tízóraival) →</button>
+          </section>
+
+          <section class="health-panel health-panel--water" data-health-water-panel aria-label="Vízfogyasztás">
+            <div class="health-panel-head"><strong>♢ Víz</strong><span data-health-water-total>—</span></div>
+            <div class="health-water-line"><div class="health-track"><i data-health-water-fill></i></div>
+              <button type="button" data-health-water-add>＋ 250 ml</button></div>
+            <button type="button" class="health-text-link" data-health-water-open>Víznapló megnyitása →</button>
+          </section>
+
+          <button type="button" class="health-panel health-recipe" data-health-recipe-open>
+            <span class="health-recipe-icon">♧</span><span class="health-recipe-text"><small data-health-recipe-label>SAJÁT RECEPTEK</small><strong data-health-recipe-name>Még nincs saját recept</strong><em>Receptek megnyitása</em></span><b aria-hidden="true">›</b>
+          </button>
+          <div class="health-dock" aria-label="Health gyorsműveletek">
+            <div class="health-dock-pill">
+              <button type="button" data-health-quick="photo">▧<span>Fotó</span></button>
+              <button type="button" data-health-quick="food">＋<span>Étel</span></button>
+              <button type="button" data-health-quick="water">♢<span>Víz</span></button>
+            </div>
+            <button type="button" class="health-dock-scan" data-health-quick="barcode" aria-label="Vonalkódolvasó">▥</button>
           </div>
+        </div>
+
+        <div class="content health-settings-page" data-page="health-settings" hidden>
+          <button type="button" class="hub-back" data-health-settings-back>‹ Health</button>
+          <h2>Health beállítások</h2><p class="health-settings-intro">Személyes célok és egészségügyi adatforrások.</p>
+          <div data-health-settings-index>
+            <button class="health-settings-item" data-health-section="goals"><strong>◎ Célok</strong><small>Kalória, makrók, testsúly, víz</small></button>
+            <button class="health-settings-item" data-health-section="units"><strong>↔ Mértékegységek</strong><small>Metrikus / Imperial</small></button>
+            <button class="health-settings-item" data-health-section="display"><strong>▤ Napló és megjelenítés</strong><small>Widgetek testreszabása</small></button>
+            <button class="health-settings-item" data-health-section="integrations"><strong>⤳ Integrációk</strong><small>Health Connect, Samsung Health, YAZIO</small></button>
+            <button class="health-settings-item" data-health-section="data"><strong>⬡ Adatok és biztonság</strong><small>Mentések és importelőzmények</small></button>
+          </div>
+          <section data-health-settings-detail hidden>
+            <button class="health-text-link" type="button" data-health-section-back>‹ Minden Health beállítás</button>
+            <h3 data-health-section-title></h3>
+            <div data-health-settings-content></div>
+          </section>
         </div>
 
         <div class="content" data-page="hub-utility" hidden>
