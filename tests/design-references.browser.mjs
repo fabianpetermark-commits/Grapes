@@ -59,8 +59,23 @@ try {
         if (!(await page.locator('[data-qr-panel="colors"]').isVisible())) throw new Error('QR colors tab failed');
       }
       if (item.path === 'candidates/finance.html' && width === 390) {
-        await page.locator('[data-finance-tab="savings"]').click();
-        if (!(await page.locator('[data-finance-panel]').innerText()).includes('Megtakarítás')) throw new Error('Finance tabs failed');
+        if (!(await page.locator('#balance-amount').innerText()).includes('Ft')) throw new Error('Finance overview metrics absent');
+        await page.locator('[data-tab="ledger"]').click();
+        await page.locator('#quick-expense').click();
+        await page.locator('#transaction-form input[name="amount"]').fill('5500');
+        await page.locator('#transaction-form input[name="date"]').fill('2026-10-23');
+        await page.locator('#transaction-form input[name="category"]').fill('Teszt');
+        await page.locator('#transaction-form button[type="submit"]').click();
+        if (!(await page.locator('#ledger-list').innerText()).includes('Teszt')) throw new Error('Finance transaction demo form failed');
+        await page.locator('[data-tab="savings"]').click();
+        if (!(await page.locator('#panel-savings').isVisible())) throw new Error('Finance savings view failed');
+        await page.locator('[data-tab="forecast"]').click();
+        if (!(await page.locator('#panel-forecast').isVisible())) throw new Error('Finance forecast view failed');
+        await page.locator('[data-tab="import"]').click();
+        if (!(await page.locator('#panel-import').isVisible())) throw new Error('Finance import view failed');
+        await page.locator('[data-tab="overview"]').click();
+        await page.locator('#demo-data').uncheck();
+        if (!(await page.locator('#income-value').innerText()).includes('0')) throw new Error('Finance empty state failed');
       }
       await page.screenshot({ path: resolve(output, item.name + '-' + width + '.png'), fullPage: true, animations: 'disabled' });
       console.log('Reference OK:', item.name, width, 'px');
