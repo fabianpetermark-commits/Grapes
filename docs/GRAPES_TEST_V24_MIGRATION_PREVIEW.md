@@ -26,12 +26,37 @@ from the v24 repository tree.
 - The function has no storage, network, Drive or Supabase write path. Its
   `canImport` result is an advisory preview, never permission to write.
 
+## v24 source inventory
+
+`grapes-health-v24-inventory.js` accepts caller-supplied copies of the actual
+v24 IndexedDB Food project envelope, Drive Food project envelope or raw
+`grapes-water-v1` JSON. It performs no reads or writes. In particular it
+does not call `listGrapesProjects()`, which creates Drive folders while
+locating the module folder and is unsuitable for a read-only migration scan.
+
+Food diary, custom food, recipe, ingredient, nutrient goal and YAZIO batch
+identifiers remain distinct; imported YAZIO provenance stays in the raw
+payload. The Water adapter retains Health Connect external keys and timestamps.
+Both adapters return `ownerId: null`, because existing Drive/local profile
+IDs do not establish ownership by the newly signed-in Supabase user.
+The caller must supply a stable snapshot version and must recheck source bytes
+before any eventual write.
+
+The adapter reports data without a reviewed target mapping as `unmapped`
+and `complete: false`. This includes Water daily goals, nonempty Food profile
+metadata, recipe libraries and other Food settings. The migration UI must
+display these items and block transfer until each has an approved mapping or
+an explicit retain-local decision. Current provider sync metadata is retained
+in the untouched source and is not part of the proposed Health records.
+
 ## Verification and next gate
 
-Seven focused Node tests cover separate record IDs, legacy claim, two-user
+Thirteen focused Node tests cover separate record IDs, legacy claim, two-user
 isolation, foreign target rejection, provenance conflict, E-book exclusion,
-and Health Connect identity. Run `node tests/grapes-health-migration-preview.test.js`.
-Local result on Node 24.19.0: 7 PASS, 0 FAIL.
+Health Connect identity, v24 Food/Water extraction and damaged-source denial.
+Run `node tests/grapes-health-migration-preview.test.js` and
+`node tests/grapes-health-v24-inventory.test.js`.
+Local result on Node 24.19.0: 13 PASS, 0 FAIL.
 
 This is **not** end-to-end migration or fiókonkénti isolation of existing
 local data. The released v24 app does not call this module. The #94/#95 Health
