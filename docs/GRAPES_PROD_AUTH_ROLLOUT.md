@@ -40,7 +40,7 @@ The separate PROD login HTML, styles, Supabase 2.118.0 locked client, login flow
 
 ## v28 preflight: no backup needed for owner's empty app
 
-On 2026-10-23 the owner explicitly confirmed the installed Grapes app is empty. Do **not** require Food/Water/Finance/E-book exports or ask the owner to hunt for missing backup buttons. [Conditional backup preflight](./GRAPES_PROD_V28_BACKUP_PREFLIGHT.md) remains relevant only if meaningful existing records are later found. No Auth-enabled candidate has yet been installed and phone-tested.
+On 2026-10-23 the owner explicitly confirmed the installed Grapes app is empty. Do **not** require Food/Water/Finance/E-book exports or ask the owner to hunt for missing backup buttons. [Conditional backup preflight](./GRAPES_PROD_V28_BACKUP_PREFLIGHT.md) remains relevant only if meaningful existing records are later found. The owner has installed candidate v29; Google sign-in returned to localhost, so successful app entry remains unverified.
 
 ## External OAuth configuration and validation
 
@@ -77,7 +77,7 @@ and has Auth OFF. It was not used for the candidate. The separately staged
 `grapes-prod-auth-encrypted-candidate.yml` workflow built one signed v29
 candidate from this Draft branch after explicit owner approval, compared its
 package and signing certificate against signed v28, and uploaded only encrypted
-bytes as a one-day artifact. The candidate has not been installed.
+bytes as a one-day artifact. The owner has since installed it and reported the localhost return failure below.
 
 **Minimal owner phone acceptance, only after explicit approval to install:**
 
@@ -112,9 +112,10 @@ APK bytes and an RSA-wrapped passphrase; it expires after one day. The APK was
 decrypted locally and its SHA-256 verified as
 `2046222d32e636b38c5b045e908b7b87ec335d1b584de47b0ad87094d1b59a51`.
 The local candidate is `/workspace/grapes-candidate-output/grapes-prod-auth-v29.apk`.
-No APK was published as a GitHub Release or installed on a phone. This runner
-has no connected Android device, so the owner's in-place phone checks below
-remain the acceptance gate. Do not uninstall or clear v28.
+No APK was published as a GitHub Release. The owner has since installed the
+candidate and reported the localhost return failure below. This runner has no
+connected Android device; successful phone acceptance remains open. Do not
+uninstall or clear app data.
 
 ## Phone failure: localhost fallback (2026-10-23)
 
@@ -129,7 +130,8 @@ This corrects the earlier claim that a 302 to Google verified the Android
 allowlist. That only proved provider handoff. The new
 `scripts/check-prod-oauth-redirect.mjs` also follows its own synthetic denial
 through the PROD callback and requires the exact Android return and original
-nonce. It does not exchange a user code or sign anyone in. Regressions cover
+nonce. It does not exchange a user code or sign anyone in. Future candidate builds
+also run this check before signing. Regressions cover
 localhost fallback, missing/wrong/duplicate state, TEST scheme, unexpected
 provider callback, and secret-key rejection.
 
