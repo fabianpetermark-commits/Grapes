@@ -94,13 +94,13 @@ try {
   await page.locator('[data-page="hub-health"] [data-menu-back]').click()
 
   await page.locator('[data-menu-group="utility"]').click()
-  await page.locator('[data-page="hub-utility"] [data-widget-action="ebook"]').click()
+  await page.locator('[data-page="hub-utility"] [data-widget-action="ebook"]').first().click()
   await page.locator('[data-page="ebook"]').waitFor({ state: 'visible' })
   await page.evaluate(() => window.grapesHandleAndroidBack())
   await page.locator('[data-page="hub-utility"]').waitFor({ state: 'visible' })
   await page.locator('[data-nav="home"]').click()
   await page.locator('[data-menu-group="finance"]').click()
-  assert.equal(await page.locator('[data-page="hub-finance"] [data-widget-action="finance"]').count(), 2)
+  assert.equal(await page.locator('[data-page="hub-finance"] [data-widget-action="finance"]').count(), 3)
   await page.locator('[data-nav="home"]').click()
 
   await page.locator('.appbar [data-nav="more"]').click()
