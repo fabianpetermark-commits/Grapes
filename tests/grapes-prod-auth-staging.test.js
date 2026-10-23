@@ -88,7 +88,7 @@ test('PROD Grapes sign-out is independently gated and never replaces Drive sign-
   assert.match(shell, /disconnectGrapesDrive/)
 })
 
-test('owner enrollment never binds implicitly and requires local acknowledgement + Android device credential', () => {
+test('empty installs need no backup; owner enrollment still requires informed consent and Android device credential', () => {
   const activity = read('android-health-connect-poc/app/src/main/java/hu/grapes/healthconnect/MainActivity.kt')
   const gate = read('android-health-connect-poc/app/src/main/java/hu/grapes/healthconnect/ProdAuthGate.kt')
   const nativeOAuth = read('src/auth/grapes-android-prod-oauth.js')
@@ -98,7 +98,9 @@ test('owner enrollment never binds implicitly and requires local acknowledgement
   assert.doesNotMatch(gate, /putString\("owner-uid"/)
   assert.match(activity, /KeyguardManager/)
   assert.match(activity, /keyguard\?\.isDeviceSecure != true/)
-  assert.match(activity, /A fontos Grapes-adataimról biztonsági mentést készítettem/)
+  assert.match(activity, /Ha a Grapes alkalmazás üres, nincs szükség biztonsági mentésre/)
+  assert.match(activity, /nincs megőrzendő korábbi adatom/)
+  assert.doesNotMatch(activity, /A fontos Grapes-adataimról biztonsági mentést készítettem/)
   assert.match(activity, /prodOwnerCredentialLauncher\.launch\(credentialIntent\)/)
   assert.match(activity, /result\.resultCode != RESULT_OK \|\| !prodGate\.canOfferBinding/)
   assert.match(activity, /prodGatePreferences\.edit\(\)\.putString\("owner-uid", verifiedUserId\)\.commit\(\)/)
