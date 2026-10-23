@@ -1,0 +1,32 @@
+name: Dispatch owner-approved Grapes v33 update
+on:
+  push:
+    branches:
+      - feature/grapes-prod-auth-staging-20261022
+    paths:
+      - .github/workflows/grapes-approved-v33-dispatch.yml
+permissions:
+  contents: read
+  actions: write
+concurrency:
+  group: grapes-approved-v33-dispatch
+  cancel-in-progress: false
+jobs:
+  dispatch-reviewed-release:
+    if: contains(github.event.head_commit.message, '[publish-approved-update-v33]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify reviewed production source and dispatch existing manual release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          current=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/codex/android-app" --jq .object.sha)
+          test "$current" = "783d505e1071724c684e8cad305c5fbe0acf1f53"
+          latest=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq '[.[] | select(.draft == false and .prerelease == false and (.tag_name | test("^android-v[0-9]+$"))) | (.tag_name | ltrimstr("android-v") | tonumber)] | max // 0')
+          (( latest < 33 ))
+          gh workflow run release-android.yml --repo "$GITHUB_REPOSITORY" --ref codex/android-app \
+            -f version_code=33 -f version_name=0.3.33 \
+            -f 'release_notes=Javított Grapes indulólogó és egységes sötét háttér. Az új Health-felület és a helyreállított Google-belépés megőrizve. Normál alkalmazásfrissítő ismét engedélyezve.'
