@@ -69,7 +69,7 @@ internal class ProdAuthCallback(context: Context, private val now: () -> Long = 
             return output
         }
         if (result == null) return output // browser is still open; keep transaction
-        prefs.edit().clear().commit() // one-shot after an actual return
+        if (!prefs.edit().clear().commit()) return output // never return a replayable code
         if (result == "cancel") return output.put("status", "cancel").put("state", state)
         if (result == "code" && code != null) {
             return output.put("status", "code").put("state", state).put("code", code)
