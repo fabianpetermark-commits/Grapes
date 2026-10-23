@@ -136,10 +136,8 @@ try {
   assert.equal(await page.locator('[data-outdoor-panel="journal"]').isVisible(), true)
   await page.locator('[data-outdoor-tab="photos"]').click()
   assert.equal(await page.locator('[data-outdoor-panel="photos"]').isVisible(), true)
-  await page.locator('[data-outdoor-tab="propagation"]').click()
-  assert.equal(await page.locator('[data-outdoor-panel="propagation"]').isVisible(), true)
-  assert.match(await page.locator('[data-outdoor-panel="propagation"]').textContent(), /Dugványozás.*Magvetés.*Tőosztás/)
-  assert.match(await page.locator('[data-outdoor-panel="propagation"]').textContent(), /anyanövény/)
+  assert.equal(await page.locator('[data-outdoor-tab]').count(), 4, 'A szaporítás későbbre halasztva; az eredeti négy fül marad.')
+  assert.equal(await page.locator('[data-outdoor-tab="propagation"]').count(), 0)
 
   for (const width of [320, 360, 390, 412]) {
     await page.setViewportSize({ width, height: 844 })
@@ -174,7 +172,7 @@ try {
   await page.locator('.bottom-nav [data-nav="home"]').click()
   assert.equal(await page.locator('[data-page="home"]').isVisible(), true)
   assert.deepEqual(pageErrors, [])
-  console.log('Grapes Home/Növények: weather cache, szaporítás, 2x2 main menu, navigation, 320–412 px, existing modules OK')
+  console.log('Grapes Home/Növények: weather cache, 4 plant detail tabs, 2x2 main menu, navigation, 320–412 px, existing modules OK')
 } finally {
   await browser?.close()
   server.kill()
