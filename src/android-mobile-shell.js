@@ -1183,14 +1183,16 @@ $('[data-update-install]').addEventListener('click', async event => {
 })
 $('[data-sync-refresh]').addEventListener('click', () => renderSync({ refreshed: true }))
 $('[data-sync-projects]').addEventListener('click', () => showPage('projects'))
-$$('[data-nav]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.nav)))
+$('[data-nav]').forEach(button => button.addEventListener('click', () => {
+  if (button.dataset.nav === 'more' && activePage === 'hub-health') showPage('health-settings', { parent:'hub-health' })
+  else showPage(button.dataset.nav)
+}))
 $$('[data-menu-group]').forEach(button => button.addEventListener('click', () => {
   const group = button.dataset.menuGroup
   if (['home', 'health', 'utility', 'finance'].includes(group)) showPage('hub-' + group)
 }))
 $$('[data-menu-back]').forEach(button => button.addEventListener('click', () => showPage('home')))
 
-$('[data-health-settings-open]').addEventListener('click', () => showPage('health-settings', { parent:'hub-health' }))
 $('[data-health-settings-back]').addEventListener('click', () => showPage('hub-health'))
 $('[data-health-section-back]').addEventListener('click', showHealthSettingsIndex)
 $$('[data-health-section]').forEach(button => button.addEventListener('click', () => showHealthSettingsSection(button.dataset.healthSection)))
