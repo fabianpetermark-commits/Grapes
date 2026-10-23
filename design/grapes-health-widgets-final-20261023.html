@@ -7,19 +7,36 @@
 <style>
 :root{--bg:#090e14;--surface:#101821;--raised:#17222e;--line:#243343;--text:#f2f7fb;--muted:#94a5b8;--accent:#3bdcf2;--accent2:#4d8fff;--a-soft:rgb(59 220 242 / 12%);--warn:#f2b84b;--red:#ff7083;font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;color-scheme:dark}
 *{box-sizing:border-box}body{margin:0;background:#05080c;color:var(--text);min-height:100dvh;display:grid;place-items:center}button{color:inherit;font:inherit;cursor:pointer}button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}button:disabled{cursor:default}.ico{display:block;width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}.shell{width:min(390px,100vw);height:min(844px,100dvh);position:relative;overflow:hidden;border:1px solid #253744;border-radius:31px;background:radial-gradient(ellipse 350px 180px at 10% 0%,#142d37 0%,transparent 100%),var(--bg);box-shadow:0 25px 80px #0008}
-.status{height:25px;display:flex;align-items:center;justify-content:space-between;padding:5px 23px 0;font-size:11px;font-weight:750;color:#e3eef5;letter-spacing:.05em}
 .appbar{height:76px;display:flex;gap:12px;align-items:center;padding:10px 16px 12px;border-bottom:1px solid #283946;background:linear-gradient(155deg,#0d1d24,#0b131c)}.brandlogo{width:44px;height:44px;flex:none}.heading{min-width:0;flex:1}.heading strong{display:block;font-size:20px;line-height:1.1;letter-spacing:-.35px}.heading small{display:block;color:var(--muted);font-size:11px;margin-top:5px}.app-actions{display:flex;gap:8px;align-items:center}.iconbtn{display:grid;place-items:center;width:37px;height:40px;padding:0;background:none;border:0;border-radius:12px;color:#dbe6ef}.iconbtn.config{border:1px solid #315565;background:#102833;color:var(--accent)}.iconbtn .ico{width:23px;height:23px}
-.scroller{position:absolute;inset:101px 0 0;overflow:auto;overscroll-behavior:contain;scrollbar-width:none;padding:13px 15px 123px}.scroller::-webkit-scrollbar{display:none}.back{display:flex;gap:3px;align-items:center;background:none;border:0;color:var(--accent);font-size:11px;font-weight:730;padding:1px 0 10px;margin:0}.back .ico{width:14px;height:14px}
+.scroller{position:absolute;inset:76px 0 0;overflow:auto;overscroll-behavior:contain;scrollbar-width:none;padding:13px 15px 123px}.scroller::-webkit-scrollbar{display:none}.back{display:flex;gap:3px;align-items:center;background:none;border:0;color:var(--accent);font-size:11px;font-weight:730;padding:1px 0 10px;margin:0}.back .ico{width:14px;height:14px}
 .widget{background:linear-gradient(150deg,#152831 0%,#101821 36%,#101821 100%);border:1px solid #28404c;border-radius:20px;box-shadow:0 7px 19px #0002}.food{padding:14px 13px 12px}.widget-header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:13px}.widget-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:750;letter-spacing:-.1px}.widget-title .ico{width:18px;height:18px;color:var(--accent)}.widget-note{font-size:10px;color:var(--muted)}.foodinner{display:grid;grid-template-columns:117px minmax(0,1fr);align-items:center;gap:13px}.ring{width:116px;height:116px;display:grid;place-items:center;background:transparent;border:0;padding:0;position:relative;border-radius:50%;isolation:isolate}.ring svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}.ring-track{fill:none;stroke:#293b48;stroke-width:7.5}.ring-active{fill:none;stroke:var(--accent);stroke-width:7.5;stroke-linecap:round;stroke-dasharray:0 100;transition:stroke-dasharray .35s ease;filter:drop-shadow(0 0 2px #3bdcf25c)}.ringtext{display:flex;flex-direction:column;align-items:center;gap:2px;z-index:1;pointer-events:none}.ringtext small{color:var(--muted);font-size:9px}.ringtext strong{font-size:22px;letter-spacing:-.7px;line-height:1.15;font-weight:800}.ringtext em{font-size:9px;color:#bfd1da;font-style:normal}.ringtext span{font-size:8.5px;color:var(--muted)}
 .macros{display:grid;gap:12px}.macrohead{display:flex;justify-content:space-between;align-items:baseline;gap:4px;margin-bottom:5px}.macrohead span{font-size:10px;color:var(--muted)}.macrohead b{font-size:10px;white-space:nowrap;font-weight:700}.track{height:4px;border-radius:10px;background:#293b49;overflow:hidden}.fill{height:100%;border-radius:10px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .25s ease}
 .food-divider{height:1px;background:#2a3e49;margin:15px 0 11px}.meals-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}.meals-header strong{font-size:11px}.meals-header small{font-size:9.5px;color:var(--muted)}.meal-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.meal{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-width:0;min-height:59px;padding:7px 1px;background:#17242d;border:1px solid #2a3f4c;border-radius:12px;transition:background .15s,border-color .15s}.meal span{font-size:10px;color:#d9e2e8;white-space:nowrap}.meal b{font-size:10px;font-weight:750;color:#f2f7fb}.meal.selected{background:#173641;border-color:#3bdcf289}.meal.selected span{color:var(--accent)}
 .water{margin-top:11px;padding:13px 13px 12px;background:#101b25}.water-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}.water-numbers{font-size:12px;font-weight:760;white-space:nowrap}.water-numbers em{font-size:10px;font-style:normal;font-weight:450;color:var(--muted)}.water-bottom{display:flex;gap:11px;align-items:center}.water .track{flex:1;height:6px}.water-add{min-height:36px;min-width:83px;display:flex;align-items:center;justify-content:center;gap:4px;padding:7px 9px;font-size:11px;font-weight:750;color:var(--accent);border:1px solid #315969;border-radius:12px;background:#16323c}.water-add .ico{width:15px;height:15px}
 .recipe{margin-top:11px;width:100%;padding:11px;display:flex;align-items:center;gap:11px;text-align:left;background:#101b25}.recipe-thumb{width:51px;height:51px;flex:none;display:grid;place-items:center;background:#1c3540;border:1px solid #34515e;border-radius:13px;color:var(--accent)}.recipe-thumb .ico{width:26px;height:26px}.recipe-copy{flex:1;min-width:0}.recipe-copy .eyebrow{display:block;color:var(--accent);font-size:9px;letter-spacing:.055em;font-weight:750;margin-bottom:4px}.recipe-copy strong{display:block;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.recipe-copy small{display:block;font-size:10px;color:var(--muted);margin-top:5px}.chevron{width:16px;height:16px;color:var(--muted)}
 .dock-shade{position:absolute;pointer-events:none;inset:auto 0 0;height:115px;background:linear-gradient(transparent,#090e14 48%,#090e14);z-index:3}.dock{position:absolute;z-index:5;left:15px;right:15px;bottom:24px;display:flex;align-items:center;gap:10px;height:69px}.dock-pill{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));flex:1;gap:2px;background:linear-gradient(160deg,#1c303b,#18232d);border:1px solid #3a4d5b;border-radius:36px;padding:5px;height:68px;box-shadow:0 9px 20px #0008}.dock-item{display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:center;min-width:0;background:none;border:0;border-radius:28px;font-size:10px;color:#d1dde5}.dock-item .ico{width:22px;height:22px}.dock-item:active{background:#2b4550}.scanner{display:grid;place-items:center;flex:0 0 68px;width:68px;height:68px;background:#1b3540;border:1px solid #3d6a79;border-radius:50%;color:var(--accent);box-shadow:0 9px 22px #0009}.scanner .ico{width:29px;height:29px}.homeindicator{position:absolute;z-index:6;bottom:8px;left:50%;transform:translateX(-50%);background:#889aa5;width:106px;height:3px;border-radius:99px}
-.overlay{position:absolute;z-index:15;inset:101px 0 0;display:none;align-items:end;background:#02080ebd}.overlay.show{display:flex}.sheet{width:100%;margin:0 7px 10px;border:1px solid #355260;border-radius:24px;background:#14232d;padding:16px;box-shadow:0 20px 48px #000a}.sheetheading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.sheetheading strong{font-size:15px}.sheetheading button{border:0;border-radius:50%;width:32px;height:32px;background:#223542;font-size:22px}.sheet p{font-size:12px;line-height:1.5;color:var(--muted);margin:7px 0 13px}.sheet .mock-chart{height:85px;display:flex;align-items:end;justify-content:space-around;gap:12px;margin:13px 0}.sheet .mock-chart i{flex:1;max-width:29px;display:block;background:linear-gradient(0deg,#164a65,var(--accent));border-radius:6px 6px 0 0}.sheet button.primary{width:100%;padding:12px;border-radius:13px;background:#235364;border:1px solid #3e7c86;font-size:12px;font-weight:750;color:#d7faff}.sheet .options{display:flex;gap:7px;flex-wrap:wrap;margin:11px 0}.sheet .options span{padding:6px 9px;border:1px solid #2d4857;background:#182d38;border-radius:11px;font-size:11px}
+.overlay{position:absolute;z-index:15;inset:76px 0 0;display:none;align-items:end;background:#02080ebd}.overlay.show{display:flex}.sheet{width:100%;margin:0 7px 10px;border:1px solid #355260;border-radius:24px;background:#14232d;padding:16px;box-shadow:0 20px 48px #000a}.sheetheading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.sheetheading strong{font-size:15px}.sheetheading button{border:0;border-radius:50%;width:32px;height:32px;background:#223542;font-size:22px}.sheet p{font-size:12px;line-height:1.5;color:var(--muted);margin:7px 0 13px}.sheet .mock-chart{height:85px;display:flex;align-items:end;justify-content:space-around;gap:12px;margin:13px 0}.sheet .mock-chart i{flex:1;max-width:29px;display:block;background:linear-gradient(0deg,#164a65,var(--accent));border-radius:6px 6px 0 0}.sheet button.primary{width:100%;padding:12px;border-radius:13px;background:#235364;border:1px solid #3e7c86;font-size:12px;font-weight:750;color:#d7faff}.sheet .options{display:flex;gap:7px;flex-wrap:wrap;margin:11px 0}.sheet .options span{padding:6px 9px;border:1px solid #2d4857;background:#182d38;border-radius:11px;font-size:11px}
 @media(max-width:380px){.shell{border:0;border-radius:0;height:100dvh}.scroller{padding-left:12px;padding-right:12px}.foodinner{grid-template-columns:108px 1fr;gap:9px}.ring{width:108px;height:108px}.dock{left:12px;right:12px}}
 @media(max-height:720px){.scroller{padding-bottom:114px}.dock{bottom:17px}.food{padding-top:11px;padding-bottom:11px}.food-divider{margin:11px 0 8px}.meal{min-height:54px}.water,.recipe{margin-top:9px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
+
+/* Health-specific settings visual handoff: demo controls, no persisted state. */
+.sheet.health-settings-sheet{max-height:calc(100% - 24px);overflow-y:auto;overscroll-behavior:contain}
+.health-settings-note{font-size:11px;color:var(--muted);line-height:1.45;padding:10px 12px;border-radius:12px;background:#101e27}
+.health-settings-section{padding:12px 0;border-top:1px solid #2c4552}
+.health-settings-section h3{display:flex;align-items:center;gap:7px;font-size:13px;margin:0 0 9px;color:var(--text)}
+.health-settings-section h3:before{content:"";display:block;width:5px;height:15px;border-radius:99px;background:var(--accent)}
+.health-settings-section label{display:flex;gap:7px;align-items:center;justify-content:space-between;padding:5px 0;font-size:12px;color:#cfdae3}
+.health-settings-section label span{flex:1}
+.health-settings-section input[type=number]{width:95px;min-width:0;padding:9px 11px;background:#0b1821;border:1px solid #35505e;border-radius:10px;color:var(--text);font-size:12px;text-align:right}
+.health-settings-section input[type=checkbox]{width:17px;height:17px;accent-color:var(--accent)}
+.health-settings-section input:focus-visible,.health-unit-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.health-settings-section small{font-size:10px;color:var(--muted)}
+.health-unit-switch{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:8px 0}
+.health-unit-btn{min-height:44px;border:1px solid #375462;border-radius:12px;background:#162733;font-size:12px;color:var(--muted)}
+.health-unit-btn[aria-pressed=true]{border-color:var(--accent);background:#1c424b;color:#d2faff}
+.health-settings-footnote{font-size:11px;color:var(--muted);line-height:1.4}
+
 </style>
 </head>
 <body>
@@ -36,11 +53,10 @@
  <symbol id="i-scanner" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3M21 16v3a2 2 0 0 1-2 2h-3M8 9v6M11 8v8M14 9v6M17 8v8"/></symbol>
  </defs></svg>
 <div class="shell">
- <div class="status"><span>9:41</span><span>◆ ◖◖ ▰ 87%</span></div>
  <header class="appbar">
  <svg class="brandlogo" viewBox="0 0 96 96" role="img" aria-label="Grapes logó"><defs><linearGradient id="gs" x1="28" y1="14" x2="67" y2="88" gradientUnits="userSpaceOnUse"><stop stop-color="#b5fbff"/><stop offset=".22" stop-color="#49edfa"/><stop offset=".62" stop-color="#00b8e1"/><stop offset="1" stop-color="#00699f"/></linearGradient></defs><path d="M48 8v12" stroke="url(#gs)" stroke-width="6" stroke-linecap="round"/><path d="M48 18c-6-6-16-4-16 4 6 4 12 2 16-4z" fill="#24dce9" stroke="#9bfbff" stroke-width=".6"/><g fill="url(#gs)" stroke="#9cfcff" stroke-opacity=".55" stroke-width=".7"><circle cx="48" cy="32" r="8"/><circle cx="36" cy="46" r="9"/><circle cx="60" cy="46" r="9"/><circle cx="24" cy="60" r="9"/><circle cx="48" cy="60" r="9"/><circle cx="72" cy="60" r="9"/><circle cx="36" cy="74" r="9"/><circle cx="60" cy="74" r="9"/><circle cx="48" cy="86" r="8"/></g><g fill="#fff" opacity=".65"><ellipse cx="45.5" cy="29.5" rx="2.2" ry="1.25"/><ellipse cx="33.3" cy="43" rx="2.3" ry="1.3"/><ellipse cx="57.3" cy="43" rx="2.3" ry="1.3"/></g></svg>
  <div class="heading"><strong>Health</strong><small>Napi egészségügyi áttekintés</small></div>
- <div class="app-actions"><button type="button" class="iconbtn" id="appsearch" aria-label="Keresés"><svg class="ico"><use href="#i-search"/></svg></button><button type="button" class="iconbtn config" id="settings" aria-label="Beállítások"><svg class="ico"><use href="#i-settings"/></svg></button></div>
+ <div class="app-actions"><button type="button" class="iconbtn" id="appsearch" aria-label="Keresés"><svg class="ico"><use href="#i-search"/></svg></button><button type="button" class="iconbtn config" id="settings" aria-label="Health beállítások"><svg class="ico"><use href="#i-settings"/></svg></button></div>
  </header>
  <main class="scroller">
  <button type="button" class="back" id="back"><svg class="ico"><use href="#i-back"/></svg>Főmenü</button>
@@ -88,7 +104,7 @@
  const $=x=>document.querySelector(x);
  const overlay=$('#overlay'),title=$('#sheetTitle'),body=$('#sheetBody');
  let water=1200;
- function open(name,html){title.textContent=name;body.innerHTML=html;overlay.classList.add('show');$('#sheetClose').focus();}
+ function open(name,html){title.textContent=name;body.innerHTML=html;document.querySelector('.sheet').classList.toggle('health-settings-sheet',name==='Health beállítások');overlay.classList.add('show');$('#sheetClose').focus();}
  function close(){overlay.classList.remove('show');}
  $('#sheetClose').onclick=close;$('#sheetAction').onclick=close;overlay.addEventListener('click',e=>{if(e.target===overlay)close();});document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});
  $('#statsTrigger').addEventListener('click',()=>open('Részletes Statisztika','<p>A valódi Grapes alkalmazásban innen nyílik a meglévő teljes Statisztika modul. Ez csak interaktív látványterv, illusztratív értékekkel.</p><div class="mock-chart"><i style="height:42%"></i><i style="height:67%"></i><i style="height:75%"></i><i style="height:58%"></i><i style="height:93%"></i><i style="height:65%"></i><i style="height:83%"></i></div>'));
@@ -96,7 +112,57 @@
  function updateWater(){const l=(water/1000).toLocaleString('hu-HU',{maximumFractionDigits:2});$('#waterTotal').textContent=l;$('#waterFill').style.width=Math.min(100,water/2000*100)+'%';}
  $('#waterAdd').onclick=()=>{water+=250;updateWater()};
  $('#recipeButton').onclick=()=>open('Saját receptajánló','<p>A valódi alkalmazás az aktív profil megfelelő saját receptjét nyitja meg. A <b>Quarkos palacsinta</b> itt kizárólag bemutatóadat.</p>');
- const msgs={photo:['Fotó','A meglévő fotón látható vonalkód felismerését nyitná meg, nem AI-ételfelismerést.'],foodAdd:['Étel hozzáadása','Közvetlen keresés és ételrögzítés a meglévő Food modulban.'],waterQuick:['Víz naplózása','A meglévő víznapló gyors rögzítőjét nyitná meg.'],scanner:['Vonalkódolvasó','A már létező natív vonalkódolvasó indulna, vakuval és kézi bevitel opcióval.'],appsearch:['Keresés','A Health keresési útvonalának helye.'],settings:['Beállítások','A meglévő Grapes beállításai nyílnának meg.'],back:['Főmenü','Visszatérés a Grapes négy főmoduljához.']};
+
+ let healthUnits='metric';
+ function healthSettingsMarkup(){
+   const metric=healthUnits==='metric';
+   const weight=metric?'kg':'lb';
+   const waterUnit=metric?'ml':'fl oz';
+   return '<div class="health-settings-note">Csak interaktív dizájnminta. Az itt megadott számokat nem mentjük, a valódi Grapes-adatok nem változnak.</div>'+
+     '<div class="health-settings-section"><h3>Energia- és tápanyagcélok</h3>'+
+     '<label><span>Napi energiakeret (kcal)</span><input type="number" min="0" step="10" placeholder="—" aria-label="Napi energiakeret"></label>'+
+     '<label><span>Fehérjecél (g)</span><input type="number" min="0" step="1" placeholder="—"></label>'+
+     '<label><span>Szénhidrátcél (g)</span><input type="number" min="0" step="1" placeholder="—"></label>'+
+     '<label><span>Zsírcél (g)</span><input type="number" min="0" step="1" placeholder="—"></label>'+
+     '<small>Étkezési keretek a meglévő Food célbeállításokból.</small></div>'+
+     '<div class="health-settings-section"><h3>Testsúly és célok</h3>'+
+     '<label><span>Aktuális testsúly ('+weight+')</span><input type="number" min="0" step="0.1" placeholder="—"></label>'+
+     '<label><span>Célsúly ('+weight+')</span><input type="number" min="0" step="0.1" placeholder="—"></label>'+
+     '<small>Jövőbeli, profilhoz tartozó funkció; nem állít be automatikus kalóriadeficitet.</small></div>'+
+     '<div class="health-settings-section"><h3>Vízfogyasztás</h3>'+
+     '<label><span>Napi vízcél ('+waterUnit+')</span><input type="number" min="0" step="1" placeholder="—"></label>'+
+     '<label><span>Gyorsbevitel ('+waterUnit+')</span><input type="number" min="0" step="1" placeholder="—"></label>'+
+     '</div>'+
+     '<div class="health-settings-section"><h3>Mértékegységek</h3>'+
+     '<div class="health-unit-switch" role="group" aria-label="Mértékegység rendszere">'+
+     '<button class="health-unit-btn" type="button" data-health-unit="metric" aria-pressed="'+metric+'">Metrikus</button>'+
+     '<button class="health-unit-btn" type="button" data-health-unit="imperial" aria-pressed="'+(!metric)+'">Imperial</button></div>'+
+     '<small>A váltás csak megjelenítést módosíthat, a tárolt naplóbejegyzéseket nem.</small></div>'+
+     '<div class="health-settings-section"><h3>Napló és megjelenítés</h3>'+
+     '<label><span>Étkezési áttekintés a Food widgetben</span><input type="checkbox" checked></label>'+
+     '<label><span>Receptajánló megjelenítése</span><input type="checkbox" checked></label>'+
+     '<small>Modulszintű, profilhoz kötött kijelzési opciók.</small></div>'+
+     '<p class="health-settings-footnote">A globális Grapes-beállítások továbbra is a főmenüből érhetők el.</p>';
+ }
+ function openHealthSettings(){
+   open('Health beállítások',healthSettingsMarkup());
+   body.querySelectorAll('[data-health-unit]').forEach(button=>button.addEventListener('click',()=>{
+     healthUnits=button.dataset.healthUnit;
+     body.innerHTML=healthSettingsMarkup();
+     openHealthSettingsControls();
+   }));
+ }
+ function openHealthSettingsControls(){
+   body.querySelectorAll('[data-health-unit]').forEach(button=>button.addEventListener('click',()=>{
+     healthUnits=button.dataset.healthUnit;
+     const placeholders={metric:'',imperial:''};
+     body.innerHTML=healthSettingsMarkup();
+     openHealthSettingsControls();
+   }));
+ }
+ $('#settings').onclick=openHealthSettings;
+
+ const msgs={photo:['Fotó','A meglévő fotón látható vonalkód felismerését nyitná meg, nem AI-ételfelismerést.'],foodAdd:['Étel hozzáadása','Közvetlen keresés és ételrögzítés a meglévő Food modulban.'],waterQuick:['Víz naplózása','A meglévő víznapló gyors rögzítőjét nyitná meg.'],scanner:['Vonalkódolvasó','A már létező natív vonalkódolvasó indulna, vakuval és kézi bevitel opcióval.'],appsearch:['Keresés','A Health keresési útvonalának helye.'],back:['Főmenü','Visszatérés a Grapes négy főmoduljához.']};
  Object.entries(msgs).forEach(([id,v])=>$('#'+id).onclick=()=>open(v[0],'<p>'+v[1]+'</p>'));
  setTimeout(()=>$('#ringActive').style.strokeDasharray='69 100',80);
 })();
