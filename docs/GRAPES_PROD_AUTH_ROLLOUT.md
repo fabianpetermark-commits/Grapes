@@ -225,5 +225,11 @@ Existing PROD config/staging/redirect tests pass locally. The Auth-enabled web
 build succeeds. A Chromium visual check with a synthetic saved-session hint
 shows the main-menu mark on the dark background and keeps the login hidden
 while verification is pending; it does not simulate an authenticated user.
-Native resource compilation and signed private v32 delivery are pending CI;
-actual cold-start appearance still requires the owner's phone confirmation.
+Native resource compilation, Android regressions, signing, version/package and
+latest stable certificate comparison passed in candidate run 39976438106.
+All related code-head CI checks are green. The encrypted v32 artifact is
+12511278153 (source e34776b). Delivery is temporarily blocked because the
+execution workspace became unavailable: its local decryption key cannot be
+used until the workspace is ready. The existing private Drive candidate file
+still contains v31; it must not be described as v32 until upload/readback.
+Actual cold-start appearance still requires the owner's phone confirmation.
