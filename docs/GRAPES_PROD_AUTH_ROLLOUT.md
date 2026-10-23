@@ -3,7 +3,7 @@
 Created 2026-10-22. Target Android source: codex/android-app.
 Status: PREPARATION ONLY; NO-GO for production release.
 
-## Current recovery candidate (v31, preparation in progress)
+## Current recovery candidate (v31, built and privately delivered)
 
 The phone is currently on stable v30, which replaced the private v29 Auth
 candidate and shows the old login path. The PROD redirect configuration has
@@ -178,3 +178,32 @@ redirect used by v29. It does not prove a completed Google login or native app
 entry. The owner was asked to close the stale localhost browser tab and start a
 fresh Google login from the installed v29 app; no reinstall or new APK is
 needed for the corrected redirect configuration.
+
+## v31 candidate verification and delivery (2026-10-23)
+
+Signed candidate run 39972538613 completed successfully from source `097f17f`,
+which includes PROD recovery/Health source `44f68cd`. It passed npm tests, all
+three Health/mobile/recipe browser regressions, the actual Android return probe,
+Auth-enabled web and Kotlin compilation/native tests, signed assembly, version
+31 > published stable 30, current-PROD-source checks, and certificate comparison
+against v30. Auth config/recovery, Food staging and menu CI checks passed too.
+The separate backup-debug job initially failed while Maven returned HTTP 403
+for dependencies; its failed-job retry passed. All related code-head CI runs
+are now green, including normal debug and both Auth-OFF/Auth-ON native builds.
+
+The encrypted artifact was decrypted locally and SHA-256 checked:
+`48c41b0936650b3f0916f150d8e03f735b9ff717b873496e005ca168a8734682`.
+The owner's private Drive candidate file was updated in place to
+`grapes-prod-auth-v31.apk` (19,297,375 bytes), then downloaded again and byte
+compared successfully. The existing owner-only permissions were preserved.
+No stable GitHub Release was created by this task. The owner was given the
+Drive link and asked to install over v30 without uninstalling or clearing data.
+The owner confirmed that Google sign-in on v31 opened the Grapes main screen.
+Relaunch and independent Grapes logout/relogin checks were requested; results
+are pending. Foreign-account, expiry/offline and first-binding cancellation
+phone checks remain open unless explicitly reported.
+
+The next explicitly authorized normal production release must use a versionCode
+greater than the privately installed candidate 31 (at least 32). Candidate 31
+is not a published stable release; do not reuse its version code for the final
+upgrade. The candidate-only updater flag must stay OFF in normal releases.
