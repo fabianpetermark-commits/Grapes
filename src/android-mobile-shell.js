@@ -1188,12 +1188,12 @@ $$('[data-menu-group]').forEach(button => button.addEventListener('click', () =>
   const group = button.dataset.menuGroup
   if (['home', 'health', 'utility', 'finance'].includes(group)) showPage('hub-' + group)
 }))
-$('[data-menu-back]').forEach(button => button.addEventListener('click', () => showPage('home')))
+$$('[data-menu-back]').forEach(button => button.addEventListener('click', () => showPage('home')))
 
 $('[data-health-settings-open]').addEventListener('click', () => showPage('health-settings', { parent:'hub-health' }))
 $('[data-health-settings-back]').addEventListener('click', () => showPage('hub-health'))
 $('[data-health-section-back]').addEventListener('click', showHealthSettingsIndex)
-$('[data-health-section]').forEach(button => button.addEventListener('click', () => showHealthSettingsSection(button.dataset.healthSection)))
+$$('[data-health-section]').forEach(button => button.addEventListener('click', () => showHealthSettingsSection(button.dataset.healthSection)))
 $('[data-health-settings-content]').addEventListener('click', event => {
   const command = event.target.closest('[data-health-command]')
   if (command) runHealthCommand(command.dataset.healthCommand).catch(e=>showToast(e?.message || 'A művelet sikertelen.'))
@@ -1205,7 +1205,7 @@ $('[data-health-settings-content]').addEventListener('change', event => {
 })
 $('[data-health-stats]').addEventListener('click', () => openHealthFood('stats'))
 $('[data-health-food-open]').addEventListener('click', () => openHealthFood('overview'))
-$('[data-health-meal]').forEach(button => button.addEventListener('click', () => openHealthMeal(button.dataset.healthMeal)))
+$$('[data-health-meal]').forEach(button => button.addEventListener('click', () => openHealthMeal(button.dataset.healthMeal)))
 $('[data-health-water-add]').addEventListener('click', () => { addWater(250); renderHealthDashboard() })
 $('[data-health-water-open]').addEventListener('click', () => showPage('water'))
 $('[data-health-recipe-open]').addEventListener('click', async event => {
@@ -1218,7 +1218,7 @@ $('[data-health-recipe-open]').addEventListener('click', async event => {
     else mobileFood?.openNavigationView('recipes')
   } catch(e) { showToast(e?.message || 'A receptek nem tölthetők be.') }
 })
-$('[data-health-quick]').forEach(button => button.addEventListener('click', () => openHealthQuick(button.dataset.healthQuick)))
+$$('[data-health-quick]').forEach(button => button.addEventListener('click', () => openHealthQuick(button.dataset.healthQuick)))
 
 $$('[data-menu-destination]').forEach(button => button.addEventListener('click', () => {
   const destination = button.dataset.menuDestination
