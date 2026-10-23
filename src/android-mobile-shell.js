@@ -401,7 +401,7 @@ function renderHealthDashboard() {
     $('[data-health-' + key + '-bar]').style.width = v != null && targets[key] != null && goal > 0
       ? Math.min(100,Math.max(0,Number(v)/goal*100)) + '%' : '0%'
   }
-  for (const btn of $('[data-health-meal]')) {
+  for (const btn of $$('[data-health-meal]')) {
     const type = btn.dataset.healthMeal
     const item = snapshot?.meals?.[type]
     const v = item?.energyKcal
