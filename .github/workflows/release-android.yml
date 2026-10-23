@@ -1,6 +1,12 @@
 name: Release Android APK
 
 on:
+  # Every checked-in PROD app change produces its next signed APK.
+  push:
+    branches: [codex/android-app]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
   workflow_dispatch:
     inputs:
       version_code:
@@ -19,8 +25,14 @@ on:
 permissions:
   contents: write
 
+# Serialize releases so monotonically increasing versionCodes are not reused.
+concurrency:
+  group: grapes-android-prod-signed-release
+  cancel-in-progress: false
+
 jobs:
   release-apk:
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/codex/android-app'
     runs-on: ubuntu-latest
     env:
       VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
@@ -30,9 +42,6 @@ jobs:
       VITE_EBOOK_EPUB_WRITE_ENABLED: 'true'
       VITE_EBOOK_TRANSFER_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
       VITE_FOOD_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
-      GRAPES_VERSION_CODE: ${{ inputs.version_code }}
-      GRAPES_VERSION_NAME: ${{ inputs.version_name }}
-      RELEASE_NOTES: ${{ inputs.release_notes }}
       ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
       ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
       ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
@@ -40,6 +49,48 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: codex/android-app
+
+      - name: Resolve next production version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_CODE: ${{ inputs.version_code }}
+          REQUESTED_NAME: ${{ inputs.version_name }}
+          REQUESTED_NOTES: ${{ inputs.release_notes }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Run against the published production release sequence, not a guessed v29.
+          latest=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq \
+            '[.[] | select(.draft == false and .prerelease == false and (.tag_name | test("^android-v[0-9]+$"))) | (.tag_name | ltrimstr("android-v") | tonumber)] | max // 0')
+          [[ "$latest" =~ ^[0-9]+$ ]]
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            code="$REQUESTED_CODE"
+            [[ "$code" =~ ^[0-9]+$ ]]
+            name="$REQUESTED_NAME"
+            notes="$REQUESTED_NOTES"
+          else
+            code=$((latest + 1))
+            name="0.3.$code"
+            notes=$(printf 'Ellenőrzött automatikus Grapes PROD-frissítés:\n%s' "$(git log -5 --pretty='- %s')")
+          fi
+          (( code > latest )) || { echo "ERROR: Release versionCode must exceed latest published $latest"; exit 1; }
+          # Existing installed production builds must remain updatable; compare
+          # the signing cert to the latest published Android release later.
+          (( latest > 0 )) || { echo "ERROR: No prior signed production release for signature comparison"; exit 1; }
+          [[ -n "$name" && -n "$notes" ]]
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            [[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]] || { echo "ERROR: A newer PROD branch commit exists; skipping stale release"; exit 1; }
+          fi
+          echo "GRAPES_VERSION_CODE=$code" >> "$GITHUB_ENV"
+          echo "GRAPES_VERSION_NAME=$name" >> "$GITHUB_ENV"
+          echo "PREVIOUS_VERSION_CODE=$latest" >> "$GITHUB_ENV"
+          echo "RELEASE_TARGET=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          {
+            echo 'RELEASE_NOTES<<GRAPES_RELEASE_NOTE_EOF'
+            printf '%s\n' "$notes"
+            echo 'GRAPES_RELEASE_NOTE_EOF'
+          } >> "$GITHUB_ENV"
+          echo "Preparing signed Android v$code, comparing with published v$latest"
       - name: Validate release signing secrets
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -53,6 +104,14 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      # A failure here blocks signing and publishing, even on an already
+      # merged PROD branch. Use the same browser regressions that protect Food.
+      - name: Validate data and Android UI regressions
+        run: |
+          npm test
+          node tests/android-module-hubs.browser.mjs
+          node tests/android-mobile-preview.browser.mjs
+          node tests/android-recipe-ingredient.browser.mjs
       - run: npm run build:android-web
       - uses: actions/setup-java@v4
         with:
@@ -74,20 +133,48 @@ jobs:
           echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/grapes-release.p12" >> "$GITHUB_ENV"
       - name: Build signed release APK
         run: gradle --project-dir android-health-connect-poc :app:assembleRelease
-      - name: Verify and name release APK
-        run: |
-          SOURCE="android-health-connect-poc/app/build/outputs/apk/release/app-release.apk"
-          TARGET="grapes-android-v${GRAPES_VERSION_CODE}.apk"
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$SOURCE"
-          mv "$SOURCE" "$TARGET"
-          echo "APK_PATH=$TARGET" >> "$GITHUB_ENV"
-          echo "RELEASE_TARGET=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
-      - name: Publish GitHub release
+      - name: Verify update-compatible signed APK and release version
         env:
           GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
-          gh release create "android-v${GRAPES_VERSION_CODE}" "$APK_PATH" \
-            --title "Grapes Android ${GRAPES_VERSION_NAME}" \
+          set -euo pipefail
+          SOURCE="android-health-connect-poc/app/build/outputs/apk/release/app-release.apk"
+          TARGET="grapes-android-v$GRAPES_VERSION_CODE.apk"
+          TOOLS="$ANDROID_HOME/build-tools/35.0.0"
+          "$TOOLS/apksigner" verify --print-certs "$SOURCE"
+          info=$("$TOOLS/aapt" dump badging "$SOURCE")
+          package_line=$(printf '%s\n' "$info" | grep -m 1 '^package:')
+          [[ "$package_line" == *"name='hu.grapes.healthconnect'"* ]]
+          [[ "$package_line" == *"versionCode='$GRAPES_VERSION_CODE'"* ]]
+          mkdir -p "$RUNNER_TEMP/previous-release"
+          gh release download "android-v$PREVIOUS_VERSION_CODE" \
+            --pattern "grapes-android-v$PREVIOUS_VERSION_CODE.apk" \
+            --dir "$RUNNER_TEMP/previous-release"
+          previous="$RUNNER_TEMP/previous-release/grapes-android-v$PREVIOUS_VERSION_CODE.apk"
+          test -s "$previous"
+          "$TOOLS/apksigner" verify --print-certs "$previous"
+          old_cert=$("$TOOLS/apksigner" verify --print-certs "$previous" \
+            | awk -F': ' '/Signer #1 certificate SHA-256 digest/{print $2; exit}')
+          new_cert=$("$TOOLS/apksigner" verify --print-certs "$SOURCE" \
+            | awk -F': ' '/Signer #1 certificate SHA-256 digest/{print $2; exit}')
+          [[ -n "$old_cert" && -n "$new_cert" && "$old_cert" == "$new_cert" ]] \
+            || { echo "ERROR: Signing certificate mismatch; cannot update installed Grapes safely"; exit 1; }
+          mv "$SOURCE" "$TARGET"
+          sha256sum "$TARGET"
+          echo "APK_PATH=$TARGET" >> "$GITHUB_ENV"
+      - name: Publish update to Grapes app updater
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            current=$(gh api "repos/$GITHUB_REPOSITORY/branches/codex/android-app" --jq '.commit.sha')
+            [[ "$current" == "$RELEASE_TARGET" ]] || { echo "ERROR: PROD changed; refusing to publish stale APK"; exit 1; }
+          fi
+          gh release create "android-v$GRAPES_VERSION_CODE" "$APK_PATH" \
+            --title "Grapes Android $GRAPES_VERSION_NAME" \
             --notes "$RELEASE_NOTES" \
-            --target "${RELEASE_TARGET}" \
+            --target "$RELEASE_TARGET" \
             --latest
