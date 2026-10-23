@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#090e14">
+  <meta name="description" content="Grapes Növények – widgetes HTML/CSS dizájntervezet, visszafogott neon-cyan szegélyekkel.">
+  <title>Grapes · Növények – widgetes dizájntervezet</title>
+  <style>
+/* Grapes Növények · widget design concept. Dark surfaces, CYAN ON EDGES ONLY.
+   Brand: #090e14 / #101821 / #17222e / #243343 / #3bdcf2. */
+:root { color-scheme:dark; --bg:#090e14;--surface:#101821;--raised:#17222e;--stroke:#243343;--text:#f2f7fb;--muted:#94a5b8;--accent:#3bdcf2;--accent-muted:#77c6d2;--accent-ink:rgba(59,220,242,.38);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif }
+*,*::before,*::after{box-sizing:border-box} html{scroll-behavior:smooth} body{margin:0;background:#070c11;color:var(--text);-webkit-font-smoothing:antialiased}button,input{font:inherit}button{color:inherit;cursor:pointer}button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}[hidden]{display:none!important}.icon-defs{position:absolute;width:0;height:0;overflow:hidden}.icon{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.desktop-layout{display:flex;justify-content:center;gap:50px;align-items:flex-start;min-height:100dvh;padding:27px 24px;background:radial-gradient(ellipse at 26% 20%,rgba(34,58,72,.16),transparent 45%),#070c11}.designer-note{width:257px;padding-top:104px}.designer-note__eyebrow{font-size:10px;font-weight:850;letter-spacing:.18em;color:var(--accent)}.designer-note h1{font-size:31px;line-height:1.15;letter-spacing:-.05em;margin:13px 0 19px}.designer-note h1 span{color:#77c6d2}.designer-note p{color:#a7b6c3;font-size:12px;line-height:1.75;margin:0 0 19px}.designer-note__line{height:1px;background:linear-gradient(90deg,#3bdcf2,rgba(59,220,242,.12),transparent);margin:24px 0 18px}.designer-note__small{font-size:11px!important}.palette{display:flex;gap:8px;margin-top:24px}.palette span{height:28px;width:28px;border-radius:9px;border:1px solid #60728175;background:var(--sample)}
+.phone{width:390px;max-width:100%;height:845px;background:var(--bg);border:1px solid #2c4252;border-radius:35px;padding:6px;overflow:hidden;box-shadow:0 26px 80px #0009;flex-shrink:0}.phone__screen{height:100%;min-height:0;display:flex;flex-direction:column;border-radius:29px;background:var(--bg);overflow:hidden}.appbar{height:65px;flex:0 0 65px;display:flex;align-items:center;gap:10px;padding:0 15px;border-bottom:1px solid #233440;background:#0c131c}.brandmark{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;border-radius:12px;background:#172732;border:1px solid #2a4756}.appbar__text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.appbar__text strong{font-size:15px;letter-spacing:-.015em}.appbar__text small{font-size:10px;color:var(--muted)}.demo-tag{border:1px solid #3a5664;border-radius:7px;color:#abc5cd;padding:4px 6px;font-size:9px;letter-spacing:.08em;font-weight:800}.icon-button{width:36px;height:36px;border:1px solid transparent;border-radius:10px;background:transparent;color:#bdcad6;display:grid;place-items:center;flex-shrink:0}.icon-button .icon{width:20px;height:20px}.icon-button--settings{width:40px;height:40px;border-color:#335a66;color:var(--accent);background:#111e29}
+.scroll-content{overflow-y:auto;overflow-x:hidden;min-height:0;flex:1;overscroll-behavior:contain;padding:21px 15px 25px;scrollbar-width:thin;scrollbar-color:#304753 transparent}.page-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}.overline{font-size:9.5px;color:#7ac7d4;font-weight:800;letter-spacing:.16em;margin:0 0 8px}.page-top h2{font-size:30px;line-height:1.13;letter-spacing:-.045em;margin:0;font-weight:780}.title-period{color:var(--accent)}
+/* Border-only neon: the glow is restricted to short strokes along panel outlines. */
+.neon-edge{position:relative;isolation:isolate;border:1px solid #293e4c;background:var(--surface);border-radius:19px;overflow:hidden}.neon-edge::before{content:"";position:absolute;pointer-events:none;z-index:1;left:17px;top:-1px;width:45%;height:1px;background:linear-gradient(90deg,rgba(59,220,242,.87),rgba(59,220,242,.35) 53%,transparent);box-shadow:0 0 4px rgba(59,220,242,.22)}.neon-edge::after{content:"";pointer-events:none;position:absolute;z-index:1;top:19px;left:-1px;width:1px;height:52px;background:linear-gradient(180deg,rgba(59,220,242,.42),transparent);box-shadow:0 0 3px rgba(59,220,242,.2)}
+.weather-strip{display:flex;align-items:center;gap:12px;min-height:83px;padding:14px 13px;border-radius:17px;margin-bottom:8px;background:#101821}.weather-strip__symbol{display:grid;place-items:center;flex:0 0 39px;height:39px;border-radius:12px;background:#182936;border:1px solid #335261;color:var(--accent)}.weather-strip__symbol .icon{width:25px;height:25px}.weather-strip__text{min-width:0;display:flex;flex-direction:column;gap:7px}.weather-strip__text strong{font-size:13px;font-weight:800}.muted-inline{color:var(--muted);font-size:10px;font-weight:500}.weather-strip__text>span{color:#c0cdd7;font-size:10.5px;white-space:nowrap}.weather-strip__text>span b{color:#607787;font-weight:500;margin:0 1px}.weather-strip__chevron{margin-left:auto;color:#63818d;width:16px;height:16px}.sample-disclosure{font-size:9.5px;color:#708997;margin:0 1px 16px;line-height:1.45}
+.widget{padding:15px 13px 14px;margin-bottom:12px}.widget__heading{display:flex;align-items:center;gap:9px;margin-bottom:15px}.heading-icon{color:var(--accent);display:grid;place-items:center}.heading-icon .icon{width:19px;height:19px}.widget__heading h3{font-size:16px;line-height:1.25;letter-spacing:-.025em;margin:0;font-weight:760;white-space:nowrap}.heading-count{font-size:9px;color:#a3b4bf;padding:4px 6px;border:1px solid #354b59;border-radius:7px;white-space:nowrap}.text-link{margin-left:auto;background:none;border:0;padding:4px 0;color:var(--accent);font-weight:750;font-size:10.5px;white-space:nowrap}
+.plant-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.plant-card{display:flex;flex-direction:column;align-items:flex-start;min-width:0;border:1px solid #2b404f;background:#15202b;padding:8px;border-radius:14px;text-align:left;transition:border-color .15s,transform .15s}.plant-card:hover,.plant-card:focus-visible{border-color:#3bdcf280}.plant-card:active{transform:scale(.986)}.plant-card__art{display:grid;place-items:center;width:100%;height:113px;overflow:hidden;border-radius:10px;border:1px solid #3b575b67}.plant-card__art svg{height:100%;width:100%;max-width:160px}.plant-card__art--chili{background:radial-gradient(ellipse at 52% 96%,#24423e 0,transparent 60%),#142b2e}.plant-card__art--basil{background:radial-gradient(ellipse at 50% 100%,#284038 0,transparent 65%),#1a2b29}.plant-card__badge{color:#7db8c0;letter-spacing:.08em;font-size:8px;font-weight:800;margin-top:11px}.plant-card>strong{font-size:13.5px;letter-spacing:-.025em;line-height:1.35;margin-top:4px}.plant-card>small{color:var(--muted);font-size:10px;margin-top:5px}.plant-card__bottom{display:flex;align-items:center;justify-content:space-between;width:100%;gap:5px;border-top:1px solid #2a3b47;margin-top:12px;padding-top:9px;color:#aabecb;font-size:9px}.plant-card__bottom>span{color:var(--accent);font-size:16px;line-height:0.9}
+.search-input{display:flex;align-items:center;gap:9px;background:#0b141d;border:1px solid #344b5b;border-radius:12px;padding:0 11px;height:44px;color:#83bac5}.search-input>.icon{width:19px;height:19px}.search-input input{width:100%;min-width:0;color:var(--text);background:transparent;outline:none;border:0;font-size:12px;appearance:none}.search-input input:focus-visible{outline:none}.search-input:focus-within{border-color:#3bdcf2a8}.search-input input::placeholder{color:#8194a4}.search-input__shortcut{font-size:20px;color:#536d7b}.widget-hint{font-size:10px;color:var(--muted);margin:10px 2px 0}.search-results{padding:9px 1px 0;display:grid;gap:6px}.search-result{background:#162631;border:1px solid #355160;color:#d9ebef;text-align:left;padding:10px;border-radius:9px;font-size:11px;display:flex;justify-content:space-between;gap:8px}.search-result small{color:var(--muted);font-size:10px}
+.task-list{display:grid}.task-row{display:flex;align-items:center;text-align:left;gap:11px;width:100%;border:0;border-top:1px solid #263944;background:transparent;padding:15px 0}.task-row:first-child{border-top:0;padding-top:1px}.task-check{display:grid;place-items:center;width:29px;height:29px;border:1px solid #436071;border-radius:9px;color:transparent;flex:0 0 29px}.task-check .icon{height:16px;width:16px}.task-row[aria-pressed="true"] .task-check{border-color:var(--accent);background:#1b4048;color:var(--accent)}.task-row[aria-pressed="true"] .task-copy{text-decoration:line-through;opacity:.55}.task-copy{display:grid;gap:5px;min-width:0;flex:1}.task-copy strong{font-size:11.7px;font-weight:750;line-height:1.3}.task-copy small{font-size:10px;color:var(--muted)}.task-meta{font-size:9px;white-space:nowrap;font-weight:800;color:var(--accent);align-self:flex-start;padding-top:4px}.task-meta--quiet{color:#92a6b2}.widget-footnote{display:flex;align-items:flex-start;gap:8px;border-top:1px solid #263944;padding-top:12px;color:#94a6b3;font-size:10px;line-height:1.5}.widget-footnote .icon{width:15px;height:15px;color:#78b6c1}.weather-source{font-size:10px;text-align:center;color:#718896;padding:2px 0 4px}.weather-source strong{font-weight:650;color:#92aeba}
+.action-dock{height:78px;flex:0 0 78px;display:flex;align-items:center;gap:9px;background:linear-gradient(180deg,#0d141b,#0a1119);border-top:1px solid #243846;padding:9px 15px 12px}.action-dock__pill{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));flex:1;border:1px solid #385260;border-radius:24px;background:#162530;padding:3px;min-width:0}.action-dock__pill button{display:flex;align-items:center;flex-direction:column;justify-content:center;gap:3px;height:53px;min-width:0;border:0;background:transparent;font-size:10px;color:#c1d3dd}.action-dock__pill button .icon{width:21px;height:21px;color:#83d2dc}.action-dock__pill button span{white-space:nowrap}.action-dock__primary{width:56px;height:56px;flex:0 0 56px;display:grid;place-items:center;border-radius:50%;border:1px solid #3b8190;background:#152e3a;color:var(--accent);position:relative}.action-dock__primary .icon{width:24px;height:24px}.action-dock__primary::before{position:absolute;content:"";left:9px;right:18px;top:-1px;height:1px;background:linear-gradient(90deg,var(--accent),transparent)}
+.toast{position:fixed;bottom:105px;left:50%;transform:translateX(-50%);width:min(calc(100vw - 28px),360px);z-index:10;border-radius:12px;background:#1d3440;color:#f2f7fb;border:1px solid #3f7180;padding:13px 15px;font-size:12px;box-shadow:0 9px 36px #000a;text-align:center}.modal-backdrop{position:fixed;inset:0;background:#000b;display:grid;place-items:center;z-index:11;padding:15px}.modal{width:min(380px,100%);padding:18px 16px 16px}.modal__header{display:flex;align-items:center;justify-content:space-between;gap:9px;margin-bottom:14px}.modal__header h2{font-size:18px;margin:0}.modal__header .icon-button{font-size:25px}.modal p{font-size:12px;line-height:1.6;color:var(--muted)}.modal__button{border:1px solid #45737d;border-radius:12px;color:var(--accent);background:#193541;padding:11px 14px;margin-top:16px;width:100%;font-weight:750}.option-row{display:flex;justify-content:space-between;align-items:center;gap:15px;color:#d5e3e9;font-size:12px;border-bottom:1px solid #293b47;padding:13px 1px}.option-row input{accent-color:#3bdcf2;width:18px;height:18px}.modal__sub{font-size:10px;color:var(--muted)}
+@media(max-width:700px){.desktop-layout{display:block;padding:0;background:var(--bg)}.designer-note{display:none}.phone{height:100dvh;width:100%;max-width:none;border:0;border-radius:0;padding:0;box-shadow:none}.phone__screen{border-radius:0}.scroll-content{padding-bottom:28px}.action-dock{padding-bottom:max(12px,env(safe-area-inset-bottom));height:calc(78px + env(safe-area-inset-bottom));flex-basis:calc(78px + env(safe-area-inset-bottom))}}
+@media(max-width:355px){.widget{padding:13px 10px}.scroll-content{padding:18px 11px}.plant-grid{gap:7px}.plant-card{padding:6px}.plant-card>strong{font-size:12px}.plant-card__art{height:98px}.widget__heading h3{font-size:14.5px}.appbar{padding:0 11px}.action-dock{padding-left:11px;padding-right:11px}.weather-strip{gap:9px}.weather-strip__text>span{font-size:10px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}
+
+</style>
+</head>
+<body>
+  <svg class="icon-defs" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="ic-leaf" viewBox="0 0 24 24"><path d="M20 4C9 4 4 8 4 15a5 5 0 0 0 5 5C16 20 20 15 20 4Z"/><path d="M5 19c3-5 7-8 12-11"/></symbol>
+    <symbol id="ic-back" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="ic-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="ic-cloud" viewBox="0 0 24 24"><path d="M5 18h13.5a3.5 3.5 0 0 0 0-7 6 6 0 0 0-11.5-1A4.5 4.5 0 0 0 5 18Z"/><path d="M13 3v2M5 4l1.5 1.5"/></symbol>
+    <symbol id="ic-settings" viewBox="0 0 24 24"><path d="M10 2.5h4l.6 2.4 1.6.9 2.4-.7 2 3.5-1.8 1.7v1.9l1.8 1.7-2 3.5-2.4-.7-1.6.9-.6 2.4h-4l-.6-2.4-1.6-.9-2.4.7-2-3.5 1.8-1.7v-1.9L3.4 8.6l2-3.5 2.4.7 1.6-.9Z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="ic-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.2 16.2 5 5"/></symbol>
+    <symbol id="ic-book" viewBox="0 0 24 24"><path d="M12 6c-3-2-6-2-9-1v14c3-1 6-1 9 1 3-2 6-2 9-1V5c-3-1-6-1-9 1ZM12 6v14"/></symbol>
+    <symbol id="ic-list" viewBox="0 0 24 24"><path d="m3 7 2 2 4-4M12 7h9M3 17l2 2 4-4M12 17h9"/></symbol>
+    <symbol id="ic-drop" viewBox="0 0 24 24"><path d="M12 2s7 7 7 12a7 7 0 1 1-14 0c0-5 7-12 7-12Z"/><path d="M9 16a3 3 0 0 0 3 3"/></symbol>
+    <symbol id="ic-snow" viewBox="0 0 24 24"><path d="M12 2v20M4 6l16 12M20 6 4 18M9 5l3 3 3-3M9 19l3-3 3 3"/></symbol>
+    <symbol id="ic-plus" viewBox="0 0 24 24"><path d="M12 4v16M4 12h16"/></symbol>
+    <symbol id="ic-notes" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="2"/><path d="M9 9h6M9 13h6M9 17h3"/></symbol>
+    <symbol id="ic-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
+    <symbol id="ic-home" viewBox="0 0 24 24"><path d="M3 11 12 3l9 8v10H3Z"/><path d="M9 21v-7h6v7"/></symbol>
+    <symbol id="ic-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="ic-bell" viewBox="0 0 24 24"><path d="M5 18h14l-2-3V9a5 5 0 0 0-10 0v6l-2 3ZM10 21h4"/></symbol>
+    <symbol id="ic-pin" viewBox="0 0 24 24"><path d="M12 21s7-7 7-12a7 7 0 0 0-14 0c0 5 7 12 7 12Z"/><circle cx="12" cy="9" r="2"/></symbol>
+  </svg>
+  <div class="desktop-layout">
+    <aside class="designer-note">
+      <div class="designer-note__eyebrow">GRAPES / UI CONCEPT 02</div>
+      <h1>Élő widgetek.<br><span>Finom neonélek.</span></h1>
+      <p>A Health irányítópult szerkezetére épülő Növények-tervezet. A Grapes neonkékje csak a panelek peremén és néhány interaktív ikonon jelenik meg.</p>
+      <div class="designer-note__line"></div>
+      <p class="designer-note__small">A kártyák mintatartalmat mutatnak. Nem olvasunk élő WeatherAPI-adatot, és semmi nem kerül mentésre.</p>
+      <div class="palette" aria-label="Grapes színpaletta">
+        <span style="--sample:#090e14" title="Háttér #090E14"></span>
+        <span style="--sample:#101821" title="Panel #101821"></span>
+        <span style="--sample:#17222e" title="Emelt felület #17222E"></span>
+        <span style="--sample:#243343" title="Szegély #243343"></span>
+        <span style="--sample:#3bdcf2" title="Grapes neon #3BDCF2"></span>
+      </div>
+    </aside>
+    <div class="phone" aria-label="Grapes Növények mobilos prototípus">
+      <div class="phone__screen">
+        <header class="appbar">
+          <div class="brandmark" aria-hidden="true">
+            <svg viewBox="0 0 36 36" width="26" height="26" fill="none">
+              <path d="M18 10c0-3 3-5 6-5M18 11c-2-4-6-5-9-3" stroke="#80dba9" stroke-width="1.8" stroke-linecap="round"/>
+              <circle cx="17" cy="14" r="4" fill="#3BDCF2" fill-opacity=".95"/><circle cx="25" cy="15" r="4" fill="#44aebf"/>
+              <circle cx="12" cy="21" r="4" fill="#5bc5ca"/><circle cx="20" cy="22" r="4" fill="#2f96ad"/><circle cx="16" cy="29" r="3.4" fill="#3bdcf2"/>
+            </svg>
+          </div>
+          <div class="appbar__text"><strong>Grapes</strong><small>Home / Növények</small></div>
+          <span class="demo-tag">TERVEZET</span>
+          <button class="icon-button" type="button" id="notification-button" aria-label="Értesítések"><svg class="icon"><use href="#ic-bell"/></svg></button>
+        </header>
+        <main class="scroll-content" id="scroll-content">
+          <div class="page-top">
+            <div>
+              <p class="overline">HOME / NÖVÉNYEK</p>
+              <h2>Növények<span class="title-period">.</span></h2>
+            </div>
+            <button type="button" class="icon-button icon-button--settings" id="settings-open" aria-label="Növények beállításai"><svg class="icon"><use href="#ic-settings"/></svg></button>
+          </div>
+
+          <section class="weather-strip neon-edge" aria-label="Időjárási összefoglaló">
+            <div class="weather-strip__symbol"><svg class="icon"><use href="#ic-cloud"/></svg></div>
+            <div class="weather-strip__text"><strong>Szentendre <span class="muted-inline">· helyszínminta</span></strong><span>12 °C <b>·</b> Felhős <b>·</b> 3 napos előrejelzés</span></div>
+            <svg class="icon weather-strip__chevron"><use href="#ic-right"/></svg>
+          </section>
+          <div class="sample-disclosure">Mintanézet · Az időjárás és a növényadatok nem élő adatok.</div>
+
+          <section class="widget neon-edge" id="widget-plants">
+            <div class="widget__heading"><div class="heading-icon"><svg class="icon"><use href="#ic-leaf"/></svg></div><h3>Növényeim</h3><span class="heading-count">2 minta</span><button class="text-link" type="button" data-action="all-plants">Mind →</button></div>
+            <div class="plant-grid">
+              <button class="plant-card" type="button" data-plant="chili" aria-label="Csilipaprika mintanövény adatlapja">
+                <div class="plant-card__art plant-card__art--chili">
+                  <svg viewBox="0 0 150 114" aria-hidden="true">
+                    <defs><linearGradient id="pepper" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ed8266"/><stop offset="1" stop-color="#a93337"/></linearGradient></defs>
+                    <path d="M72 99V32M75 61C55 51 49 36 45 29M73 50c15-15 22-22 33-22" stroke="#598a65" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+                    <path d="M71 64C40 65 29 50 27 40c19-6 36 3 44 24ZM75 44c7-22 24-29 40-26-4 16-18 27-40 26ZM65 37C53 23 38 24 30 29c9 10 21 13 35 8Z" fill="#59896f"/>
+                    <path d="M64 55c-4 7-6 19-1 27 5 7 9 7 11-1 4-10 3-20-1-27Z" fill="url(#pepper)"/>
+                    <path d="M65 55c4-4 8-4 11 0M70 52v-4" stroke="#7bb68c" stroke-width="2" fill="none" stroke-linecap="round"/>
+                    <path d="M51 79h46l-7 28H59Z" fill="#293e41" stroke="#60827e" stroke-width="1.3"/><path d="M52 80h44" stroke="#789289" stroke-width="4" stroke-linecap="round"/>
+                    <ellipse cx="73" cy="106" rx="37" ry="4" fill="#0b1c23" opacity=".65"/>
+                  </svg>
+                </div>
+                <span class="plant-card__badge">KÜLTÉRI</span><strong>Csilipaprika</strong><small>Terasz · Cserép</small><span class="plant-card__bottom">Adatlap megnyitása <span aria-hidden="true">›</span></span>
+              </button>
+              <button class="plant-card" type="button" data-plant="basil" aria-label="Bazsalikom mintanövény adatlapja">
+                <div class="plant-card__art plant-card__art--basil">
+                  <svg viewBox="0 0 150 114" aria-hidden="true">
+                    <path d="M75 100V34M73 58 54 39M77 66l26-32M75 77 44 63" stroke="#6aa879" stroke-width="3.1" fill="none" stroke-linecap="round"/>
+                    <path d="M76 38c-16-8-19-24-13-30 14 5 18 18 13 30ZM75 43c6-17 20-24 33-20-6 15-16 22-33 20ZM72 62c-21-2-32-12-32-26 20-2 30 10 32 26ZM75 69c8-23 24-33 38-30-4 19-17 29-38 30ZM72 81c-17 0-30-5-36-18 16-9 28 0 36 18Z" fill="#619b6b"/>
+                    <path d="M66 20c2 5 5 10 10 18M105 30c-12 3-19 7-29 13M43 41c15 4 22 12 28 21M108 44c-14 4-26 17-33 24" stroke="#90bb80" stroke-width="1" fill="none" opacity=".6"/>
+                    <path d="M51 82h49l-7 25H58Z" fill="#41564a" stroke="#7d9784" stroke-width="1.4"/><path d="M53 83h46" stroke="#9da68d" stroke-width="4" stroke-linecap="round"/>
+                    <ellipse cx="75" cy="107" rx="35" ry="4" fill="#0b1c23" opacity=".55"/>
+                  </svg>
+                </div>
+                <span class="plant-card__badge">BELTÉRI</span><strong>Bazsalikom</strong><small>Konyhaablak</small><span class="plant-card__bottom">Adatlap megnyitása <span aria-hidden="true">›</span></span>
+              </button>
+            </div>
+          </section>
+
+          <section class="widget neon-edge" id="widget-catalog">
+            <div class="widget__heading"><div class="heading-icon"><svg class="icon"><use href="#ic-book"/></svg></div><h3>Növénykatalógus</h3><button class="text-link" type="button" data-action="catalog">Katalógus →</button></div>
+            <label class="search-input"><svg class="icon"><use href="#ic-search"/></svg><input id="plant-search" type="search" placeholder="Név vagy tudományos név…" autocomplete="off"><span class="search-input__shortcut">⌕</span></label>
+            <div id="search-feedback" class="widget-hint">Magyar, angol vagy tudományos név alapján.</div>
+            <div class="search-results" id="search-results" hidden></div>
+          </section>
+
+          <section class="widget neon-edge" id="widget-tasks">
+            <div class="widget__heading"><div class="heading-icon"><svg class="icon"><use href="#ic-list"/></svg></div><h3>Aktuális teendők</h3><span class="heading-count" id="task-count">2 minta</span></div>
+            <div class="task-list">
+              <button class="task-row" type="button" data-task="1" aria-pressed="false">
+                <span class="task-check"><svg class="icon"><use href="#ic-check"/></svg></span>
+                <span class="task-copy"><strong>Teleltetés előkészítése</strong><small>Csilipaprika · Szezonális minta</small></span><span class="task-meta">MA</span>
+              </button>
+              <button class="task-row" type="button" data-task="2" aria-pressed="false">
+                <span class="task-check"><svg class="icon"><use href="#ic-check"/></svg></span>
+                <span class="task-copy"><strong>Talaj nedvességének ellenőrzése</strong><small>Bazsalikom · Gondozási minta</small></span><span class="task-meta task-meta--quiet">HOLNAP</span>
+              </button>
+            </div>
+            <div class="widget-footnote"><svg class="icon"><use href="#ic-snow"/></svg><span>A valós figyelmeztetések majd saját növényeid és a helyi időjárás alapján készülnek.</span></div>
+          </section>
+          <div class="weather-source">A majdani élő adatok forrása: <strong>WeatherAPI.com</strong></div>
+        </main>
+        <footer class="action-dock" aria-label="Növények gyorsműveletek">
+          <div class="action-dock__pill">
+            <button type="button" data-action="new" aria-label="Új növény felvétele"><svg class="icon"><use href="#ic-plus"/></svg><span>Új növény</span></button>
+            <button type="button" data-action="water" aria-label="Öntözés naplózása"><svg class="icon"><use href="#ic-drop"/></svg><span>Öntözés</span></button>
+            <button type="button" data-action="journal" aria-label="Gondozási napló megnyitása"><svg class="icon"><use href="#ic-notes"/></svg><span>Napló</span></button>
+          </div>
+          <button class="action-dock__primary" type="button" data-action="catalog" aria-label="Növénykatalógus megnyitása"><svg class="icon"><use href="#ic-search"/></svg></button>
+        </footer>
+      </div>
+    </div>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <div class="modal-backdrop" id="modal-backdrop" hidden>
+    <section class="modal neon-edge" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal__header"><h2 id="modal-title">Növények beállításai</h2><button type="button" class="icon-button" id="modal-close" aria-label="Bezárás">×</button></div>
+      <div id="modal-body"></div>
+      <button type="button" class="modal__button" id="modal-done">Rendben</button>
+    </section>
+  </div>
+  <script>
+// Standalone design-preview interactions only. Nothing is saved or sent to a server.
+(() => {
+  const $ = (selector) => document.querySelector(selector);
+  const $$ = (selector) => [...document.querySelectorAll(selector)];
+  let toastTimer;
+  function toast(message) {
+    const el = $('#toast');
+    el.textContent = message;
+    el.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.hidden = true; }, 3300);
+  }
+
+  const modalBackdrop = $('#modal-backdrop');
+  const title = $('#modal-title');
+  const body = $('#modal-body');
+  const modalClose = () => { modalBackdrop.hidden = true; document.body.style.overflow = ''; };
+  const openModal = (name, content) => {
+    title.textContent = name;
+    body.innerHTML = content;
+    modalBackdrop.hidden = false;
+    document.body.style.overflow = 'hidden';
+    $('#modal-close').focus();
+  };
+  $('#modal-close').addEventListener('click', modalClose);
+  $('#modal-done').addEventListener('click', modalClose);
+  modalBackdrop.addEventListener('click', (event) => { if (event.target === modalBackdrop) modalClose(); });
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape') modalClose(); });
+
+  $('#settings-open').addEventListener('click', () => {
+    const choices = [
+      ['widget-plants', 'Növényeim'], ['widget-catalog', 'Növénykatalógus'], ['widget-tasks', 'Aktuális teendők']
+    ];
+    openModal('Növények beállításai',
+      '<p>Tervezett, Health-szerű widgetbeállítások. Ezek csak az előnézetben működnek, mentés nélkül.</p>' +
+      choices.map(([id, label]) => `<label class="option-row"><span>${label}</span><input type="checkbox" data-show-widget="${id}" ${$('#' + id).hidden ? '' : 'checked'}></label>`).join('') +
+      '<p class="modal__sub">Később itt szerepelhetnek a helyszínek, értesítések és mértékegységek is.</p>');
+  });
+  body.addEventListener('change', (event) => {
+    const id = event.target.dataset.showWidget;
+    if (id && $('#' + id)) $('#' + id).hidden = !event.target.checked;
+  });
+
+  const plantDetails = {
+    chili: { name: 'Csilipaprika', location: 'Terasz', botanical: 'Capsicum spp. (minta)' },
+    basil: { name: 'Bazsalikom', location: 'Konyhaablak', botanical: 'Ocimum basilicum (minta)' }
+  };
+  $$('[data-plant]').forEach((item) => item.addEventListener('click', () => {
+    const plant = plantDetails[item.dataset.plant];
+    openModal(plant.name, `<p><strong>${plant.botanical}</strong><br>${plant.location} · mintapéldány.</p><p>A tényleges növényadatlap négy fülből áll majd: Áttekintés, Gondozás, Napló és Képek. Ez egyelőre csak a kezdőoldal dizájnja.</p>`);
+  }));
+
+  $$('.task-row').forEach((task) => task.addEventListener('click', () => {
+    const completed = task.getAttribute('aria-pressed') !== 'true';
+    task.setAttribute('aria-pressed', String(completed));
+    $('#task-count').textContent = `${$$('.task-row[aria-pressed="false"]').length} minta`;
+    toast(completed ? 'Minta teendő kipipálva. Semmit nem mentettünk.' : 'Minta teendő visszaállítva.');
+  }));
+
+  const catalog = [
+    { name: 'Csilipaprika', latin: 'Capsicum annuum' },
+    { name: 'Bazsalikom', latin: 'Ocimum basilicum' },
+    { name: 'Rozmaring', latin: 'Salvia rosmarinus' },
+    { name: 'Paradicsom', latin: 'Solanum lycopersicum' }
+  ];
+  $('#plant-search').addEventListener('input', (event) => {
+    const query = event.target.value.toLocaleLowerCase('hu-HU').trim();
+    const found = catalog.filter(plant => `${plant.name} ${plant.latin}`.toLocaleLowerCase('hu-HU').includes(query));
+    const list = $('#search-results');
+    list.replaceChildren();
+    list.hidden = !query;
+    $('#search-feedback').textContent = query ? 'Helyi mintatalálatok – nem élő katalógus.' : 'Magyar, angol vagy tudományos név alapján.';
+    if (!query) return;
+    for (const result of found) {
+      const btn = document.createElement('button');
+      btn.className = 'search-result';
+      btn.type = 'button';
+      const name = document.createElement('span'); name.textContent = result.name;
+      const latin = document.createElement('small'); latin.textContent = result.latin;
+      btn.append(name, latin);
+      btn.addEventListener('click', () => openModal(result.name, '<p>Ez egy helyi mintatalálat. A valódi növényadatbázis bekötése még hátravan.</p>'));
+      list.append(btn);
+    }
+    if (!found.length) {
+      const note = document.createElement('div'); note.className = 'widget-hint'; note.textContent = 'Nincs ilyen minta a helyi bemutatókatalógusban.'; list.append(note);
+    }
+  });
+
+  $$('[data-action]').forEach((button) => button.addEventListener('click', () => {
+    const action = button.dataset.action;
+    if (action === 'catalog') { $('#widget-catalog').hidden = false; $('#widget-catalog').scrollIntoView({ behavior: 'smooth', block: 'center' }); $('#plant-search').focus({ preventScroll: true }); }
+    else if (action === 'all-plants') { $('#widget-plants').scrollIntoView({ behavior: 'smooth', block: 'start' }); toast('Ez a teljes növénylista mintanézete.'); }
+    else if (action === 'new') openModal('Új növény', '<p>A felvételi folyamat tervezés alatt áll. Ide kerül majd a katalóguskeresés, a saját név, elhelyezés és fotó.</p>');
+    else if (action === 'water') openModal('Öntözés naplózása', '<p>A későbbi működésben kiválaszthatod a saját növényt, és rögzítheted a tényleges öntözést.</p>');
+    else if (action === 'journal') openModal('Gondozási napló', '<p>A gondozási események növényenként és időrendben jelennek majd meg.</p>');
+  }));
+  $('#notification-button').addEventListener('click', () => toast('Bemutató: még nincsenek valódi növényértesítések.'));
+})();
+
+</script>
+</body>
+</html>
