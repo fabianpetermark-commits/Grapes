@@ -5,6 +5,8 @@
 > **Cél:** Grapes-azonos szín, tipó, ikon, navigáció, effektek és komponensműködés minden modulban: Ételnapló, Víz, Pénzügy, E-book, QR, 3D, E-mail, Brossúra stb.; éles Android + TEST ugyanazt a vizuális rendszert használja, de adat- és release-környezeteik továbbra is külön maradnak.
 
 
+> **HTML referencia-források:** [Grapes Design Reference Gallery](../design/references/index.html) és a [referencia- és pixelparitás-szerződés](../design/references/README.md). A valódi, korábban jóváhagyott HTML-ek pontos forrása itt verziózott; az új Home, Tools, E-book, QR és Finance képernyők a `candidates/` mappában **PROPOSED**, még jóváhagyandók. **Implementáció előtt mindig ezt az indexet kell használni, nem a régi history/minta HTML-eket.**
+
 ## 0. Jóváhagyott Grapes mobil megjelenés (2026-10-23) – ez az elsődleges szabvány
 
 **Referencia:** a felhasználó által képernyőképes iterációkban véglegesített **Grapes Health minimal** önálló HTML/CSS/JS-tervezet. A mintában a fejléc bal oldalán kizárólag **Health** látható, a jobb oldalán kizárólag az adott modul **beállítás-fogaskereke**; a widgetkártyák rövid, halvány ciánfényes peremszegélyekkel jelennek meg. Az interaktív prototípus mintaadatokat használ, nem az éles Food/Víz napló tartalma.
