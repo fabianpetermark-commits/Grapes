@@ -26,32 +26,10 @@ jobs:
         run: npm ci
       - name: Verify independent PROD project and data isolation guards
         run: node --test tests/grapes-prod-auth-config.test.js
-      - name: Verify live PROD Google provider and Android redirect (no login, no secrets)
-        run: |
-          node --input-type=module <<'NODE'
-          const base = 'https://yopabovoxyffhokhbgxl.supabase.co'
-          // Public, low-privilege client key (never a service-role/secret key).
-          const publishableKey = "sb_publishable_ZbcYVjCGzHeLmRWluW5bwQ_qJaSIGfs"
-          const timeout = () => AbortSignal.timeout(20000)
-          const settingsResponse = await fetch(base + '/auth/v1/settings', { headers: { apikey: publishableKey }, signal: timeout() })
-          if (!settingsResponse.ok) throw new Error('PROD Auth settings endpoint unavailable: HTTP ' + settingsResponse.status)
-          const settings = await settingsResponse.json()
-          if (settings.external?.google !== true) throw new Error('Google OAuth is not enabled on the PROD Supabase project')
-          const state = 'a'.repeat(64)
-          const redirect = 'hu.grapes.healthconnect://auth/callback?state=' + state
-          const url = new URL(base + '/auth/v1/authorize')
-          url.searchParams.set('provider', 'google')
-          url.searchParams.set('redirect_to', redirect)
-          const response = await fetch(url, { headers: { apikey: publishableKey }, redirect: 'manual', signal: timeout() })
-          if (![302, 303, 307].includes(response.status)) {
-            throw new Error('PROD OAuth or exact Android redirect was rejected: HTTP ' + response.status)
-          }
-          const destination = new URL(response.headers.get('location') ?? '', base)
-          if (destination.protocol !== 'https:' || destination.hostname !== 'accounts.google.com') {
-            throw new Error('PROD OAuth did not hand off to official Google accounts')
-          }
-          console.log('PASS: PROD Google provider enabled and Android OAuth redirect accepted (no sign-in performed).')
-          NODE
+      - name: Verify live PROD Google handoff and actual Android return (synthetic denial, no login)
+        env:
+          VITE_GRAPES_PROD_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ZbcYVjCGzHeLmRWluW5bwQ_qJaSIGfs
+        run: node scripts/check-prod-oauth-redirect.mjs
       - name: Run complete PROD baseline unit tests
         run: npm test
       - name: Verify separately bundled PROD Auth page is buildable (no APK published)

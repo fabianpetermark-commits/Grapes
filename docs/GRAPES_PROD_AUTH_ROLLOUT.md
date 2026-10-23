@@ -30,7 +30,7 @@ The separate PROD login HTML, styles, Supabase 2.118.0 locked client, login flow
 ## Remaining blockers BEFORE production release
 
 1. **DONE:** owner approved organization, 0 USD/month quote, independent Grapes PROD created in Frankfurt and verified active. TEST project and older project unchanged.
-2. **PROVIDER + REDIRECT VERIFIED (NO DEVICE LOGIN):** on 2026-10-22 the owner created the dedicated Google Cloud Web OAuth client with callback `https://yopabovoxyffhokhbgxl.supabase.co/auth/v1/callback`, configured the Google provider in Supabase PROD, and added the Android allowlist `hu.grapes.healthconnect://auth/callback?state=*`. The staging GitHub Actions live HTTP smoke check subsequently passed: `/auth/v1/settings` confirms `external.google=true`; `/auth/v1/authorize` with the exact Android redirect returns a handoff to `accounts.google.com`. No user signed in and no account/secret was accessed. This is **not** proof of working end-to-end OAuth on the phone. Stable release Auth flags remain OFF. The separately approved v29 candidate used the PROD public key and both explicit Auth flags; it still needs phone UAT.
+2. **PROVIDER HANDOFF VERIFIED; RETURN ALLOWLIST FAILED ON DEVICE:** on 2026-10-22 the owner created the dedicated Google Cloud Web OAuth client with callback `https://yopabovoxyffhokhbgxl.supabase.co/auth/v1/callback`, configured the Google provider in Supabase PROD, and added the Android allowlist `hu.grapes.healthconnect://auth/callback?state=*`. The staging GitHub Actions live HTTP smoke check subsequently passed: `/auth/v1/settings` confirms `external.google=true`; `/auth/v1/authorize` with the exact Android redirect returns a handoff to `accounts.google.com`. No user signed in and no account/secret was accessed. This is **not** proof of working end-to-end OAuth on the phone. Stable release Auth flags remain OFF. The separately approved v29 candidate used the PROD public key and both explicit Auth flags; it still needs phone UAT.
 3. **PARTIALLY STAGED; OWNER CONFIRMED EMPTY APP:** The owner stated on 2026-10-23 that the installed Grapes app contains no data worth preserving. Therefore no backup or export is required for their device. This is a user declaration, not a remote inspection. Onboarding now allows explicit acknowledgement of an empty app (or the same account owning pre-existing local data), followed by device-credential confirmation. If meaningful legacy records are found on a different device, preserve those before upgrading; never silently merge across user accounts. Native per-account storage remains out of scope.
 4. **STAGED, NOT ENABLED:** The native PROD-only WebView callback, PKCE, Gradle flags (default OFF), and fail-closed `ProdAuthGate` remain isolated. First ownership binding requires a user acknowledgement that the installation is empty **or** existing local data belongs to the signing-in account, followed by Android screen-lock verification. It does not delete local data and cannot grant access to a different UID. The owner's empty-app confirmation means no export requirement for their device. End-to-end phone login, logout and user verification remain open.
 5. Pass full unit + focused Android native, Auth, Food, Water, Finance, E-book/Drive checks. Use existing production signing identity. Verify in-place upgrade from signed v28 (no uninstall/clear), preserve meaningful data if any appears, and plan rollback. Do phone smoke tests for login, startup, logout, Google Drive, offline/expired sessions and account switching.
@@ -46,7 +46,7 @@ On 2026-10-23 the owner explicitly confirmed the installed Grapes app is empty. 
 
 1. **OWNER COMPLETED:** Google Cloud Web OAuth client for Grapes PROD created, exact redirect `https://yopabovoxyffhokhbgxl.supabase.co/auth/v1/callback` entered. The secret remains exclusively in provider settings.
 2. **OWNER COMPLETED; LIVE CONFIG VERIFIED:** Google provider enabled in **PROD**, with dedicated ID/secret. GitHub CI confirmed the Google provider reports enabled on the real Supabase PROD endpoint. TEST was untouched.
-3. **OWNER COMPLETED; LIVE REDIRECT VERIFIED:** Supabase PROD URL Configuration includes `hu.grapes.healthconnect://auth/callback?state=*`, and GitHub CI successfully sent a 64-character state through the provider's real authorize endpoint, obtaining a Google handoff. Native PKCE callback/session and Google consent-screen behavior still require a real-device test. Do not allow global `**` or any TEST scheme. Verify Site URL behavior for email verification/recovery separately.
+3. **OWNER REPORTED COMPLETED; RETURN ALLOWLIST NOT VERIFIED BY OLD SMOKE:** Supabase PROD URL Configuration includes `hu.grapes.healthconnect://auth/callback?state=*`, and GitHub CI successfully sent a 64-character state through the provider's real authorize endpoint, obtaining a Google handoff. Native PKCE callback/session and Google consent-screen behavior still require a real-device test. Do not allow global `**` or any TEST scheme. Verify Site URL behavior for email verification/recovery separately.
 4. Before enabling or signing a PROD Auth release, verify owner-confirmed empty-app onboarding and the first-owner binding, same-account relaunch, denied different-account login, cancellation, lock-screen requirement, Google Drive independence and upgrade from v28. A backup is only necessary where meaningful pre-existing records are actually present. Default feature flags stay OFF until checks pass.
 
 GitHub Actions tests the public hosted provider endpoints using only the **public, low-privilege PROD publishable key** in its staging workflow; no `sb_secret_`/service-role key or user tokens are committed. Secure provider-side IDs, secrets and allowlist changes were made by the owner in Google Cloud/Supabase UI, then functionally verified by a non-login live smoke test. No APK was published.
@@ -115,3 +115,28 @@ The local candidate is `/workspace/grapes-candidate-output/grapes-prod-auth-v29.
 No APK was published as a GitHub Release or installed on a phone. This runner
 has no connected Android device, so the owner's in-place phone checks below
 remain the acceptance gate. Do not uninstall or clear v28.
+
+## Phone failure: localhost fallback (2026-10-23)
+
+The owner installed the signed v29 candidate and completed Google sign-in, but
+Supabase returned the browser to `http://localhost:3000` instead of Android.
+The authorization code supplied in the report was not used or stored in source.
+A fresh synthetic PKCE authorize request reproduced the failure: the PROD
+service persisted `referrer=http://localhost:3000`; simulated denial of that
+new flow also returned to localhost and lost the Android state.
+
+This corrects the earlier claim that a 302 to Google verified the Android
+allowlist. That only proved provider handoff. The new
+`scripts/check-prod-oauth-redirect.mjs` also follows its own synthetic denial
+through the PROD callback and requires the exact Android return and original
+nonce. It does not exchange a user code or sign anyone in. Regressions cover
+localhost fallback, missing/wrong/duplicate state, TEST scheme, unexpected
+provider callback, and secret-key rejection.
+
+Required external fix: in PROD Authentication → URL Configuration → Redirect
+URLs, save `hu.grapes.healthconnect://auth/callback?state=*`. Changing Site URL
+alone does not repair allowlisting or preserve the state. No Auth-config write
+tool is available in this session, so the owner was given the exact field/link.
+After saving, re-run the synthetic return check, then start a fresh Google
+login from the installed v29 app. No APK rebuild is required for this configuration
+fix. Real device success remains unverified until the owner completes that retry.
