@@ -1,8 +1,99 @@
-# Grapes – Brand Guide / Design System v1.0-rc1 (auditált tervezet)
+# Grapes – Brand Guide / Design System v1.1 (elfogadott mobil vizuális irány)
 
-> **Állapot: forráskóddal auditált v1.0-rc1 szabványtervezet; vizuális/készülékes ellenőrzés és felhasználói végső jóváhagyás még szükséges.** Lásd: [`GRAPES_BRAND_AUDIT.md`](./GRAPES_BRAND_AUDIT.md). Kiindulás: a repó valódi logója, Android mobilfelülete és meglévő design tokenjei (2026-10-18). A dokumentum önmagában nem módosít sem UI-t, sem adatkezelést. Ahol a régi webes UI és az Android eltér, ott ezt nyíltan jelöli; a változtatásokat külön PR-ben kell átvezetni.
+> **2026-10-23-i felhasználói döntés:** a Health minimal widgetes HTML-tervezet vizuális iránya elfogadva (APPROVED), és ettől kezdve ez a Grapes mobil arculati mintája. **Ez nem jelenti azt, hogy a már kiadott APK-k és valamennyi modul átálltak.** A 2026-10-18-i korábbi audit megállapításai történeti referenciák; ütközésnél az új 0. fejezet az elsődleges. Fizikai készülékes regresszió és külön implementáció továbbra is szükséges. Lásd: [`GRAPES_BRAND_AUDIT.md`](./GRAPES_BRAND_AUDIT.md). Kiindulás: a repó valódi logója, Android mobilfelülete és meglévő design tokenjei (2026-10-18). A dokumentum önmagában nem módosít sem UI-t, sem adatkezelést. Ahol a régi webes UI és az Android eltér, ott ezt nyíltan jelöli; a változtatásokat külön PR-ben kell átvezetni.
 >
 > **Cél:** Grapes-azonos szín, tipó, ikon, navigáció, effektek és komponensműködés minden modulban: Ételnapló, Víz, Pénzügy, E-book, QR, 3D, E-mail, Brossúra stb.; éles Android + TEST ugyanazt a vizuális rendszert használja, de adat- és release-környezeteik továbbra is külön maradnak.
+
+
+## 0. Jóváhagyott Grapes mobil megjelenés (2026-10-23) – ez az elsődleges szabvány
+
+**Referencia:** a felhasználó által képernyőképes iterációkban véglegesített **Grapes Health minimal** önálló HTML/CSS/JS-tervezet. A mintában a fejléc bal oldalán kizárólag **Health** látható, a jobb oldalán kizárólag az adott modul **beállítás-fogaskereke**; a widgetkártyák rövid, halvány ciánfényes peremszegélyekkel jelennek meg. Az interaktív prototípus mintaadatokat használ, nem az éles Food/Víz napló tartalma.
+
+### 0.1. Új, elfogadott arculati képlet
+
+- Fő háttér: **#090E14**; widgetek: **#101821**; emelt felületek: **#17222E**.
+- Semleges szegély: **#243343** (a bemutatópanelben kb. **#293E4C**); főszöveg: **#F2F7FB**; segédszöveg: **#94A5B8**.
+- Grapes cián: **#3BDCF2**, elsősorban interakciókhoz, fókuszhoz, ikonokhoz, linkekhez és a widgetek finom peremfényéhez.
+- Matt adat- és progress-kitöltések a Health-tervben: kb. **#60C1D2 / #77C6D2**; a figyelem a valódi számokon van, nem a glow-on.
+- Kártya: sötét belső, 1 px halk keret, 19 px körüli sarok, 13–16 px belső tér; a kártyák közt általában 12 px távolság.
+- Oldalsó margó: 15–16 px (kis kijelzőn 12 px). Az elválasztó vonalak sötétek, nem neonok.
+- Közvetlenül használható **widgetek** dominálnak: Healthben Food + víz + saját receptajánló, alul gyorsműveletsáv; más modulban a saját hasznos adatok és műveletek. A menü *ne* ismételje feleslegesen ugyanazt a címet.
+
+### 0.2. Neon kizárólag a dobozszegély rövid részén
+
+- A kártya szegélye egyébként matt sötétkék, **nem körben neon**.
+- Felül egy rövid, fokozatosan elhalványuló, kb. 1 px-es cián vonalszakasz; opcionálisan bal oldalon egy még halványabb, rövid függőleges vonalszakasz.
+- Referencia: a Health minimáltervben felső szegmens balról 17 px-nél kezdődik, maximum 45% széles; színe cián 87% alfától 35%-ig, majd átlátszó. A szegélyhez simuló árnyék: **0 0 4px rgba(59,220,242,.22)**.
+- **TILOS**: a dobozon kívüli nagy fényudvar, a belső felület megvilágítása, teljes neonkerület, háttérradiális ciánfolt, pörgő/pulzáló dekoratív glow, üres progress-szakasz világítása.
+- A pseudoelemek ne blokkolják az érintést; reduced motion módban animáció nélkül. A progress gyűrű matt, a track sötét marad.
+
+**Referencia CSS, izolált célstílus (nem állítás arról, hogy ez már központi komponens az APK-ban):**
+
+~~~css
+.grapes-widget {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid #293e4c;
+  border-radius: 19px;
+  background: #101821;
+}
+.grapes-widget::before {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  top: -1px;
+  left: 17px;
+  width: 45%;
+  height: 1px;
+  background: linear-gradient(90deg,
+    rgba(59,220,242,.87), rgba(59,220,242,.35) 53%, transparent);
+  box-shadow: 0 0 4px rgba(59,220,242,.22);
+}
+.grapes-widget::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  left: -1px;
+  top: 19px;
+  height: 52px;
+  width: 1px;
+  background: linear-gradient(180deg, rgba(59,220,242,.42), transparent);
+  box-shadow: 0 0 3px rgba(59,220,242,.20);
+}
+~~~
+
+### 0.3. Modulfejléc: a minimal Health terv az alap
+
+~~~text
+┌────────────────────────────────┐
+│ Health                   [ ⚙ ] │
+└────────────────────────────────┘
+~~~
+
+- Balra **csak** a modul neve, kb. 20–24 px, félkövér.
+- Jobbra **csak a modulbeállítás** fogaskereke (tap target 44–48 px), amely az aktuális modul céljaihoz, megjelenítéséhez és integrációihoz visz.
+- A modulfejlécben **NINCS** Grapes-logó, második alcímsor, „Grapes / Áttekintés”, újabb óriási Health H1, „TERVEZET” badge, dekoratív magyarázó szöveg vagy duplázott értesítési harang.
+- Közvetlenül utána indulhat az első adatwidget; nincs külön hero-kártya vagy fölösleges felvezető.
+- **Gyökérfőmenü/bejelentkezés**: lehet külön Grapes márkajelzés, mert ez nem egy adott modul aloldala. Ne töröljünk natív Back, globális értesítés, fiók vagy navigáció funkciót CSS-sel; a minimál UI funkcionálisan is legyen teljes.
+
+### 0.4. Widgetes oldalszerkezet és gyorsműveletek
+
+1. **Első nagy widget**: a modul legfontosabb tényleges állapota (Health: kalóriagyűrű/makrók/étkezések). Nem önmagáért épített dekoratív panel.
+2. **Kisebb, praktikus widget**: a gyakran frissülő feladat (Health: Víz, progress és egyértelmű „+250 ml” gyorsművelet).
+3. **Ajánló / aktuális tartalom**: csak valós felhasználói adatból, előzményből vagy a modul megbízható adatforrásából. A Health prototípus számai és receptcíme mintaadatok.
+4. **Modul gyorssáv**: a Health tervezeten Fotó, Étel, Víz + külön Vonalkód. Az adott modul fontos műveleteit tartalmazza, nem egyenlő a Grapes globális navigációjával.
+5. **Egyedi modulbeállítások**: widgetek elrejtése, célok, naplók, mértékegységek, integrációk és adatok a funkcióhoz igazítva. Ne töröljenek mentett adatot a widget elrejtésekor.
+6. A négy Grapes fő terület **Home / Health / Utility / Finance** megmarad. A **gyökérfőmenü pontos új elrendezése csak PROPOSED**, külön felhasználói döntést igényel.
+
+### 0.5. Tipográfia, hozzáférhetőség és bevezetési kapuk
+
+- Modulcím: 20–24 px / 700–800; widgetcím: 16–18 px; fontos stat-szám: 24–32 px; normál leírás: 14–16 px; lehetőleg min. 12–13 px kiegészítő címke.
+- A demo HTML-ben előforduló 9–11 px címkék **nem** éles, akadálymentesítési jóváhagyások. Nagyobb rendszerbetűnél is olvasható tördelés és 320/360/390/412 px teszt kell.
+- A négy elsődleges modul és minden valós funkció megmarad; az új külső **nem írhatja felül** Google/Supabase Auth, PIN, Food/Víz/Drive mentések és Android release működését.
+- A 2026-10-23-i elismert minta **APPROVED DESIGN**, de a Grapes PROD/TEST implementáció **külön, ellenőrzendő**. Minden migráció célzott PR, screenshot/böngészős regresszió és külön telefonos próba alapján történjen; dokumentáció-módosítás után **nincs automatikus merge vagy APK-kiadás**.
+
+---
 
 ## 1. Arculati alapelv
 
@@ -10,7 +101,7 @@
 - **Fő szín:** az Android mobil UI valóban meglévő `--accent: #3BDCF2`. Ez legyen az interaktív kiemelés, aktív progress, link, fókusz meghatározó alapszíne.
 - **Kiegészítő:** `--accent-2: #4D8FFF` – csak második szín pl. makró progress/kiemelt fokozatos átmenet; **nem** önálló új arculati szín.
 - **Logó:** a forrás SVG saját gradientet használ. A logó árnyalatai nem helyettesítik a fő UI-akcentust, és nem indokolnak további tetszőleges, túlfényes ciánokat.
-- **Effekt:** a cián fény csak indokolt, jelentést hordozó **aktív elemre** kerülhet; szürke/üres progress trackre, teljes kártyára vagy középső korongra nem.
+- **Effekt:** a **rövid, finoman ciánnal világító widget-peremszegély** elfogadott arculati elem (lásd 0. fejezet). A **teljes kártya aurája**, a tömör neon háttér, az üres progress track és a középső korong továbbra sem világíthat.
 
 ## 2. Kanonikus logó és grafikai szabályok
 
@@ -86,7 +177,7 @@ Betűskála szűk képernyőn is olvasható, nagyobb rendszerbetűnél se legyen
 
 - Térközök: 4 / 8 / 12 / 16 / 20 / 24 / 32 / 40 px.
 - Mobil oldalsó margó: 16 px, 360 px alatt 12 px.
-- Kártyák: javasolt 16 px, hero/kiemelt kártyáknál 20–22 px; bottom sheet felső sarkok 24 px.
+- Kártyák: normál widgetnél **18–21 px** sugár (elfogadott minta: 19 px), hero/kiemelt elemeknél 20–22 px; bottom sheet felső sarkok 24 px.
 - Beviteli mezők és kompakt gombok: 12–14 px, egységesen.
 - Elsődleges érintési cél: **min. 48×48 px**; másodlagos is min. 44×44 px.
 - Kártyák alapja sötét surface; keret finom. Komoly árnyékot csak modálnál vagy overlay-nél.
@@ -105,7 +196,7 @@ Betűskála szűk képernyőn is olvasható, nagyobb rendszerbetűnél se legyen
 
 ## 7. Fény, glow, árnyék – fontos korlátozás
 
-**A fény nem márkajegy minden objektumon, hanem ritkán használt, jelentést hordozó állapotjelzés.** Alapállapotú kártyának nincs erős cián halo-ja. Logó: eredeti SVG drop shadow. Aktivált navigáció/gomb: finom soft highlight, nem 30–40 px külső aura.
+**A widgetek rövid, szegélyre korlátozott, halk neonja az új Grapes márkajegy része.** Alapállapotú kártyának sem lehet nagy cián halója, körben izzó kerete vagy feltűnően megvilágított belseje. Logó: eredeti SVG drop shadow. Aktivált navigáció/gomb: finom soft highlight, nem 30–40 px külső aura.
 
 **Food-kalóriakör (jóváhagyásra javasolt végső irány):**
 1. A kör trackje körben vékony, sötét és **teljesen fénytelen**: `#243343` vagy azzal ekvivalens border token.
@@ -148,14 +239,14 @@ Betűskála szűk képernyőn is olvasható, nagyobb rendszerbetűnél se legyen
 - `ANDROID_UI_DESIGN_PLAN.md` – korábbi mobil UI-felvevő követelmények, kontraszt és méretezés.
 - `docs/CODEX_FOOD_RING_BRIEF.md` – azonnali, pontos megvalósítási brief.
 
-**Verzió:** v1.0-rc1 / 2026-10-18. Az arculati tényeket repo-forrásból ellenőriztük, a normatív komponensszabályok **célállapotok**, nem már minden modulon megvalósított viselkedés. Vizuális jóváhagyás még hátravan. Ez csak dokumentáció, nem UI-implementáció vagy release.
+**Verzió:** v1.1 / 2026-10-23. A 0. fejezet szerinti mobilos megjelenés felhasználói jóváhagyást kapott (APPROVED). A 2026-10-18-i alapszabályok és audit megőrzött forrásadatok, nem mindenütt kész implementációk. A jóváhagyás önmagában nem kódváltozás és nem APK-release.
 
 
 ## 11. Ellenőrizhető komponensszerződés (célállapot, nem kész implementáció)
 
 | Elem | Tervezési szabály | Kötelező ellenőrzés |
 | --- | --- | --- |
-| Appbar és fő navigáció | Sötét surface; a mobil fejlécben a meglévő `grapes-mark.svg` jel; az alsó navigáció négy fő cél és szöveges felirat. | 320px-től helyes tördelés; safe-area, visszalépés, érthető hozzáférhető gombnév. |
+| Appbar és fő navigáció | A modul saját fejlécében **csak modulnév balra és modulspecifikus beállítás-fogaskerék jobbra**; nincs ismétlődő Grapes-logó és alcím. A globális főmenü/bejelentkezés ettől eltérhet és továbbra is használhat Grapes-logót. | 320px-től helyes tördelés; safe-area, visszalépés, érthető hozzáférhető gombnév. |
 | Elsődleges CTA | `#3BDCF2` kitöltés, **sötét** szöveg, nincs fölösleges külső glow. | 48×48px használható érintési terület; fókusz, disabled, loading és hibaállapot. |
 | Másodlagos/destruktív gomb | Raised háttér + halk border; törlés csak szemantikus pirossal és megfelelő megerősítéssel. | Minimum 44×44px célzott másodlagos hitbox; aktív/fókusz állapot nem csak színnel. |
 | Kereső, input, select, űrlapcímke | Raised háttér, következetes 12–14px sarok; olvasható normál szöveg 15–16px. | Képernyőbillentyűzet, input focus, nagy rendszerfont, hosszú magyar szöveg, hibajelzés. |
@@ -201,4 +292,4 @@ A forrásellenőrzés 14 megállapítást rögzít a [Grapes Brand Audit](./GRAP
 
 **Vizuális kapuk:** 0/50/100%, napi cél nélkül, ismeretlen kcal; 320/360/390/412px, emelt rendszerbetű, hosszú magyar címke, mentés/képernyőbillentyűzet, fókusz/TalkBack, safe-area és `prefers-reduced-motion`. Lefutott `npm test`, `npm run build:android-web`, releváns Chromium/Playwright regresszió és szükség szerint natív debug. GitHub CI **nem** fizikailag telepített APK-teszt.
 
-**Státusznyelv:** `CURRENT` = forrásban meglevő; `TARGET` = tervezett szerződés; `VERIFIED` = futás közben/screenshoton igazolt; `APPROVED` = felhasználó külön elfogadta. A jelen v1.0-rc1 útmutatóban a közös komponensszerződés **TARGET**, nem `VERIFIED` és nem `APPROVED`. A végleges **v1.0** akkor jelölhető ki, ha a képreferenciák és a nyitott kivételek elfogadását is rögzítettük; ez nem jelenti a teljes Grapes-migráció automatikus befejezését.
+**Státusznyelv:** `CURRENT` = forrásban meglevő; `TARGET` = tervezett; `VERIFIED` = működés/screenshot alapján igazolt; `APPROVED` = a felhasználó a megjelenési irányt elfogadta. A v1.1-es mobil **vizuális nyelv APPROVED**, alkalmazásbeli, modulonkénti integrációja külön TARGET/VERIFIED állapotú. Az új főmenü tartalma/elrendezése mindaddig csak PROPOSED, amíg azt külön elfogadják.
