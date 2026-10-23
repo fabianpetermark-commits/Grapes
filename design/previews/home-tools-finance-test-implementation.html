@@ -1,0 +1,262 @@
+<!doctype html><html lang="hu"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Grapes – TEST #121 valódi widgetek izolált HTML előnézete</title><style>:root{color-scheme:dark;font-family:Inter,system-ui,Arial,sans-serif;--bg:#090e14;--surface:#101821;--raised:#17222e;--line:#243343;--text:#f2f7fb;--accent:#3bdcf2;--muted:#94a5b8}*{box-sizing:border-box}body{margin:0;background:#090e14;color:#f2f7fb}button{font:inherit}button:focus-visible{outline:2px solid #3bdcf2;outline-offset:3px}[hidden]{display:none!important}.preview-top{max-width:480px;margin:auto;padding:13px 15px;background:#0d1821;border-bottom:1px solid #263e4c}.preview-top strong{color:#aee9f1;font-size:12px}.preview-top p{font-size:11px;color:#94a5b8;line-height:1.45}.preview-tabs{display:flex;gap:8px;margin-top:10px}.preview-tabs button{border:1px solid #304e59;background:#172833;border-radius:12px;flex:1;min-height:44px;color:#e4f2f6}.preview-tabs button.active{background:#234350;border-color:#3e8190;color:#a3eef6}.shell{max-width:480px;min-height:calc(100dvh - 120px);margin:auto;background:#090e14}.shellhead{min-height:74px;padding:14px 17px;border-bottom:1px solid #243343;display:flex;align-items:center;justify-content:space-between}.shellhead h1{margin:0;font-size:24px}.shellhead span{color:#3bdcf2;font-size:22px}.module-pane{min-height:calc(100dvh - 204px);overflow-y:auto;position:relative;padding:0 0 14px}.preview-output{min-height:25px;margin:0 auto;max-width:480px;padding:5px 15px 12px;color:#91d6df;font-size:12px}.shellhead button{width:46px;height:46px;border-radius:14px;border:1px solid #345b65;background:#162f3b;color:#3bdcf2;font-size:22px}
+/* Grapes Brand v1.1 TEST-only Home / Tools / Finance dashboards.
+ * No global auth / Food / modal / finance styles modified. */
+[data-page].grapes-widget-redesign-on > :not(.grapes-widget-redesign){display:none!important}
+[data-page].grapes-widget-redesign-on{padding:13px 15px 16px;background:#090e14}
+.grapes-widget-redesign{display:grid;gap:12px;color:#f2f7fb}
+.grapes-dash-widget{isolation:isolate;position:relative;overflow:hidden;border:1px solid #293e4c;border-radius:19px;background:#101821;padding:16px}
+.grapes-dash-widget::before{content:"";position:absolute;top:-1px;left:17px;width:45%;height:1px;pointer-events:none;background:linear-gradient(90deg,rgba(59,220,242,.87),rgba(59,220,242,.35) 53%,transparent);box-shadow:0 0 4px rgba(59,220,242,.22)}
+.grapes-dash-widget::after{content:"";position:absolute;top:19px;left:-1px;width:1px;height:52px;pointer-events:none;background:linear-gradient(180deg,rgba(59,220,242,.42),transparent);box-shadow:0 0 3px rgba(59,220,242,.20)}
+.grapes-dash-widget__head{display:flex;align-items:center;justify-content:space-between;margin:0 0 13px}
+.grapes-dash-widget__head strong{display:flex;align-items:center;gap:9px;font-size:19px;letter-spacing:-.025em}
+.grapes-widget-icon{width:24px;height:24px;stroke:#3bdcf2;flex:none}
+.grapes-dash-muted{font-size:13px;line-height:1.5;color:#94a5b8;margin:0 0 10px}
+.grapes-dash-value{font-size:29px;line-height:1.15;letter-spacing:-.045em;font-weight:780;margin:8px 0 12px}
+.grapes-dash-value--compact{font-size:20px;overflow-wrap:anywhere}
+.grapes-dash-lines{margin:11px 0;padding-top:4px;border-top:1px solid #243343}
+.grapes-dash-line{margin:0;padding:10px 0;border-bottom:1px solid #243343;font-size:14px}
+.grapes-dash-line:last-child{border-bottom:0}
+.grapes-dash-line::before{content:"•";color:#77c6d2;margin-right:10px}
+.grapes-dash-empty{margin:10px 0;color:#94a5b8;font-size:13px;line-height:1.55}
+.grapes-dash-link{min-height:44px;margin-top:5px;padding:8px 0;background:transparent;border:0;text-align:left;color:#3bdcf2;font-weight:750;font-size:13px;cursor:pointer}
+.grapes-dash-primary{min-height:48px;margin:8px 0 1px;width:100%;background:#172e39;border:1px solid #385f6a;border-radius:13px;color:#aef5ff;font-weight:700;cursor:pointer}
+.grapes-dash-link:focus-visible,.grapes-dash-primary:focus-visible,.grapes-dash-action:focus-visible{outline:2px solid #3bdcf2;outline-offset:3px}
+.grapes-dash-dock{position:sticky;bottom:0;z-index:2;padding:12px 0 max(4px, env(safe-area-inset-bottom));margin-top:4px;background:linear-gradient(180deg,transparent,#090e14 26%)}
+.grapes-dash-dock__pill{display:flex;align-items:stretch;justify-content:space-around;background:#192c36;border:1px solid #3a5260;border-radius:35px;padding:5px}
+.grapes-dash-action{min-width:0;min-height:58px;flex:1;display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:center;border:0;border-radius:24px;background:transparent;color:#d0dce4;cursor:pointer}
+.grapes-dash-action .grapes-widget-icon{width:23px;height:23px;stroke:#8fcbd3}
+.grapes-dash-action span{font-size:11px;font-weight:600;overflow-wrap:anywhere;text-align:center}
+@media(max-width:360px){[data-page].grapes-widget-redesign-on{padding:11px 12px}.grapes-dash-widget{padding:13px}.grapes-dash-widget__head strong{font-size:17px}.grapes-dash-action span{font-size:10px}}
+@media(prefers-reduced-motion:reduce){.grapes-widget-redesign *{transition:none!important;animation:none!important}}
+</style></head><body>
+<div class="preview-top"><strong>Grapes TEST · PR #121 – eredeti widget-sablonok</strong><div class="preview-tabs" aria-label="Előnézeti lapválasztó"><button data-preview-tab="hub-home">Home</button><button data-preview-tab="hub-utility">Tools</button><button data-preview-tab="hub-finance">Finance</button></div><p>A lapválasztó itt csak tesztelő eszköz: a tényleges Grapes felső ikonsora még nincs bekötve. Az üres adatok szándékosak, nem a valódi fiók adatai.</p></div>
+<div class="shell"><header class="shellhead"><h1 data-preview-heading>Home</h1><button type="button" aria-label="Beállítások" onclick="document.querySelector('[data-preview-output]').textContent='A modulbeállítások nem részei ennek az izolált tesztnek.'">⚙</button></header>
+<section class="module-pane" data-page="hub-home"></section><section class="module-pane" data-page="hub-utility" hidden></section><section class="module-pane" data-page="hub-finance" hidden></section></div><p class="preview-output" data-preview-output role="status"></p>
+<script>// SNIPPET PREVIEW ONLY: the implementation above is mechanically copied from
+// src/redesign/module-widgets.js, except import lines and TEST flag.
+// Real store/actions are not used in this isolated preview; any click reports the intended route.
+const ICON_PATHS = {
+  utility: '<path d="M3.5 7h8v9h-8zM14 4h7v7h-7zM14 14h7v7h-7zM7.5 3v4M16 7h3M7.5 16v4"/>',
+  sync: '<path d="M20 7a8 8 0 0 0-14-1L4 8M4 4v4h4M4 17a8 8 0 0 0 14 1l2-2M20 20v-4h-4"/>',
+  projects: '<path d="M3 7h7l2 2h9v11H3zM3 7V5h7l2 2M7 13h10M7 16h7"/>',
+  stats: '<path d="M4 20V4M4 20h16M8 16v-5M13 16V7M18 16v-9"/>',
+  shopping: '<path d="M3 5h2l2 11h12l2-8H6M8 20h.01M18 20h.01M9 8h10"/>',
+  food: '<path d="M5 3v6a3 3 0 0 0 6 0V3M8 3v18M17 3v18M17 3c2.2 1.2 3.5 3.7 3.5 7H17"/>',
+  finance: '<path d="M4 6.5h13.5A2.5 2.5 0 0 1 20 9v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6.5A2.5 2.5 0 0 1 5.5 4H17M15 12h5M16.5 12h.01"/>',
+  qr: '<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM15 14h2v2h-2zM19 14h1v3h-3v3h-3v-2M19 19h1v1h-1z"/>',
+  ebook: '<path d="M4 5.5A3.5 3.5 0 0 1 7.5 4H11v16H7.5A3.5 3.5 0 0 0 4 21.5zM20 5.5A3.5 3.5 0 0 0 16.5 4H13v16h3.5a3.5 3.5 0 0 1 3.5 1.5z"/>',
+  billing: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6M9 16h3"/>',
+  brochure: '<path d="M4 4h16v16H4zM4 9h16M10 9v11M7 7h.01M13 13l2-2 3 4"/>',
+  studio: '<path d="m12 3 8 4.5v9L12 21l-8-4.5v-9zM4.5 7.8 12 12l7.5-4.2M12 12v9"/>',
+  email: '<path d="M3 5h18v14H3zM4 6l8 7 8-7"/>',
+  water: '<path d="M12 3s6 6.2 6 11a6 6 0 0 1-12 0c0-4.8 6-11 6-11zM9 15.2a3.2 3.2 0 0 0 3 2"/>',
+  breakfast: '<path d="M4 10h12v3a6 6 0 0 1-6 6 6 6 0 0 1-6-6zM16 11h2a2 2 0 0 1 0 4h-2M7 3c-1 1-.2 2 0 3M11 3c-1 1-.2 2 0 3"/>',
+  morningSnack: '<path d="M12 7c-1.8-2.2-5.5-1.7-7 1.1-2 3.9 1.1 10.9 4.4 11.5 1 .2 1.6-.5 2.6-.5s1.6.7 2.6.5C17.9 19 21 12 19 8.1 17.5 5.3 13.8 4.8 12 7zM12 7c0-2 1.1-3.5 3-4M12 5C10.5 3.7 9 3.5 7.5 4"/>',
+  lunch: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/>',
+  afternoonSnack: '<path d="M6 8h12l-1 11H7zM9 8c0-2 1.3-4 3-4s3 2 3 4M9 12h6"/>',
+  dinner: '<path d="M20 15.5A8 8 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5zM16.5 5.5h.01M19 9h.01"/>',
+  recipe: '<path d="M6 3h12v18H6zM9 7h6M9 11h6M9 15h3"/>',
+  drive: '<path d="M8.5 4h7l5 8.7-3.5 6.1H7l-3.5-6.1zM8.5 4l5 8.7M15.5 4l-5 8.7M3.5 12.7h10"/>',
+  backup: '<path d="M4 12a8 8 0 1 0 2.3-5.7L4 8.5M4 4v4.5h4.5"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
+  health: '<path d="M20.8 9.2c0 5-8.8 10.3-8.8 10.3S3.2 14.2 3.2 9.2A4.7 4.7 0 0 1 12 6.8a4.7 4.7 0 0 1 8.8 2.4zM7.5 12h2l1.2-2.5 2.2 5 1.2-2.5h2.4"/>',
+  samsung: '<rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M9 6h6M10 15l1.4-3 1.8 4 1-2H16M11 18.5h2"/>',
+  yazio: '<path d="M5 4h14v16H5zM8 8h8M8 12h5M12 16v-3M9.5 15.5 12 18l2.5-2.5"/>',
+  google: '<circle cx="12" cy="12" r="9"/><path d="M20.5 12H12v3.5h4.8A6 6 0 1 1 17 8"/>',
+  account: '<circle cx="12" cy="8" r="4"/><path d="M4.5 21v-2.5a7.5 7.5 0 0 1 15 0V21"/>',
+  language: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+  appearance: '<path d="M20 15.5A8 8 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5z"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>',
+  default: '<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/>',
+}
+
+function mobileIconSvg(name, className = 'mobile-icon') {
+  const paths = ICON_PATHS[name] || ICON_PATHS.default
+  return `<svg class="${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${paths}</svg>`
+}
+
+function hydrateMobileIcons(root = document) {
+  root.querySelectorAll('[data-module-icon], [data-mobile-icon]').forEach(node => {
+    node.innerHTML = mobileIconSvg(node.dataset.moduleIcon || node.dataset.mobileIcon)
+  })
+}
+
+/**
+ * Grapes TEST-only first implementation of the Brand Guide v1.1 Home/Tools/Finance dashboards.
+ * Read-only previews of existing data; writes/navigation remain owned by established modules.
+ * This intentionally does NOT modify Auth, Drive data, Finance storage or the global shell.
+ */
+
+
+
+const TEST_ONLY = true;
+const icon = name => mobileIconSvg(name, 'grapes-widget-icon');
+const widget = (name, glyph, body) =>
+  `<section class="grapes-dash-widget"><div class="grapes-dash-widget__head"><strong>${icon(glyph)}${name}</strong></div>${body}</section>`;
+const action = (type, title, glyph) =>
+  `<button type="button" class="grapes-dash-action" data-widget-action="${type}">${icon(glyph)}<span>${title}</span></button>`;
+const dock = actions =>
+  `<div class="grapes-dash-dock" aria-label="Modul gyorsműveletek"><div class="grapes-dash-dock__pill">${actions.map(a=>action(...a)).join('')}</div></div>`;
+
+const templates = {
+  'hub-home': `
+    ${widget('Bevásárlólista', 'shopping', `<p class="grapes-dash-muted">Aktuális, még el nem intézett tételek</p>
+      <p class="grapes-dash-value" data-dash-shopping-count>—</p>
+      <div class="grapes-dash-lines" data-dash-shopping-list><p class="grapes-dash-empty">Betöltés…</p></div>
+      <button type="button" class="grapes-dash-link" data-widget-action="shopping">Teljes bevásárlólista →</button>`)}
+    ${widget('Készletkezelő', 'household', `<p class="grapes-dash-muted">Csak megerősített, meglévő készlettételek</p>
+      <p class="grapes-dash-value" data-dash-inventory-count>—</p>
+      <p class="grapes-dash-muted" data-dash-inventory-sub>Betöltés…</p>
+      <button type="button" class="grapes-dash-link" data-widget-action="inventory">Készlet megnyitása →</button>`)}
+    ${widget('Növények', 'household', `<p class="grapes-dash-muted">Saját növények, gondozás, időjárási jelzések.</p>
+      <p class="grapes-dash-empty">Ez a funkció külön Grapes TEST fejlesztésben készül. Itt még nincs valódi növényadat.</p>`)}
+    ${dock([['add-shopping','Listaelem','shopping'],['add-inventory','Készlet','household']])}
+  `,
+  'hub-utility': `
+    ${widget('E-book', 'ebook', `<p class="grapes-dash-muted">Folytatás a saját Drive-könyvtáradból</p>
+      <p class="grapes-dash-value grapes-dash-value--compact" data-dash-book-title>—</p>
+      <p class="grapes-dash-muted" data-dash-book-detail>Betöltés…</p>
+      <button type="button" class="grapes-dash-link" data-widget-action="ebook">Könyvtár megnyitása →</button>`)}
+    ${widget('QR Stúdió', 'qr', `<p class="grapes-dash-muted">Linkek, szövegek és egyéb adatok QR-kódja. A valódi szerkesztőt nyitja meg.</p>
+      <button type="button" class="grapes-dash-primary" data-widget-action="qr">QR Stúdió megnyitása →</button>`)}
+    ${dock([['ebook','Könyvek','ebook'],['import-book','Könyv hozzáadása','ebook'],['qr','QR','qr']])}
+  `,
+  'hub-finance': `
+    ${widget('Havi áttekintés', 'finance', `<p class="grapes-dash-muted">Bevételek, kiadások és egyenleg</p>
+      <p class="grapes-dash-empty">A meglévő Finance adatait még nem kapcsoltuk az új widgethez. Nem jelenítünk meg kitalált összegeket.</p>
+      <button type="button" class="grapes-dash-link" data-widget-action="finance">Pénzügyi napló megnyitása →</button>`)}
+    ${widget('Megtakarítások és kimutatások', 'stats', `<p class="grapes-dash-muted">Célok, kategóriák, előrejelzés és az importelőzmények.</p>
+      <button type="button" class="grapes-dash-link" data-widget-action="finance">Részletek a Finance modulban →</button>`)}
+    ${dock([['finance','Pénzügyi napló','finance']])}
+  `
+};
+
+function initGrapesWidgetHubs({
+  openHousehold, openEbook, openQR, openFinance, importEbook,
+  listBooks, isDriveConnected, storage = globalThis.localStorage
+} = {}) {
+  if (!TEST_ONLY) return { active: false, refresh() {} };
+  const roots = {};
+  for (const [page, markup] of Object.entries(templates)) {
+    const root = document.querySelector(`[data-page="${page}"]`);
+    if (!root) continue;
+    root.classList.add('grapes-widget-redesign-on');
+    const container = document.createElement('div');
+    container.className = 'grapes-widget-redesign';
+    container.innerHTML = markup;
+    root.append(container);
+    roots[page] = container;
+    container.addEventListener('click', event => {
+      const button = event.target.closest('[data-widget-action]');
+      if (!button || !container.contains(button)) return;
+      const commands = {
+        shopping: () => openHousehold('shopping'),
+        inventory: () => openHousehold('inventory'),
+        'add-shopping': () => openHousehold('shopping', true),
+        'add-inventory': () => openHousehold('inventory', true),
+        ebook: openEbook,
+        'import-book': importEbook,
+        qr: openQR,
+        finance: openFinance
+      };
+      commands[button.dataset.widgetAction]?.();
+    });
+  }
+
+  function showHome() {
+    const root = roots['hub-home'];
+    if (!root) return;
+    const set = (selector, value) => { const n=root.querySelector(selector); if (n) n.textContent=value; };
+    const list = root.querySelector('[data-dash-shopping-list]');
+    try {
+      // createHomeStore reads and validates a clone; no dispatch or storage write.
+      const state = createHomeStore(storage).getState();
+      const pending = state.shopping.filter(x => x.status === 'planned');
+      set('[data-dash-shopping-count]', `${pending.length} tétel`);
+      set('[data-dash-inventory-count]', `${state.inventory.length} tétel`);
+      set('[data-dash-inventory-sub]', state.inventory.length ? 'Megerősített készlet ebben az eszközben.' : 'A készleted még üres.');
+      list.replaceChildren();
+      if (!pending.length) {
+        const p = document.createElement('p'); p.className = 'grapes-dash-empty'; p.textContent = 'Nincs nyitott bevásárlólista-tétel.'; list.append(p);
+      } else {
+        for (const item of pending.slice(0, 3)) {
+          const p = document.createElement('p'); p.className='grapes-dash-line'; p.textContent=item.name; list.append(p);
+        }
+        if (pending.length > 3) {
+          const p = document.createElement('p');p.className='grapes-dash-muted';p.textContent=`További ${pending.length - 3} tétel a listában`;list.append(p);
+        }
+      }
+    } catch {
+      set('[data-dash-shopping-count]', '—');
+      set('[data-dash-inventory-count]', '—');
+      set('[data-dash-inventory-sub]', 'A Home mentés nem olvasható biztonságosan. A meglévő adatokat nem módosítottuk.');
+      list.replaceChildren();
+      const p=document.createElement('p');p.className='grapes-dash-empty';p.textContent='Az összesítő nem elérhető. Ellenőrizd a Home adatait.';list.append(p);
+    }
+  }
+
+  let requestId = 0;
+  async function showTools() {
+    const root = roots['hub-utility'];
+    if (!root) return;
+    const stamp = ++requestId;
+    const title = root.querySelector('[data-dash-book-title]');
+    const detail = root.querySelector('[data-dash-book-detail]');
+    title.textContent = '—';
+    if (!isDriveConnected()) {
+      detail.textContent = 'A Drive nincs csatlakoztatva; az E-book könyvtár innen nem olvasható.';
+      return;
+    }
+    detail.textContent = 'Könyvtár betöltése…';
+    try {
+      const books = await listBooks();
+      if (stamp !== requestId || document.querySelector('[data-page="hub-utility"]')?.hidden) return;
+      if (!books.length) { title.textContent='Nincs könyv';detail.textContent='Még nem töltöttél fel könyvet a Drive-könyvtárba.';return; }
+      const readable = books.filter(book => book?.reading);
+      const recent = [...readable].sort((a,b)=>(Date.parse(b.reading.updatedAt)||0)-(Date.parse(a.reading.updatedAt)||0))[0] || books[0];
+      title.textContent = recent.title || recent.name || 'Könyv';
+      detail.textContent = recent.reading
+        ? `${Math.round(Math.max(0,Math.min(100,Number(recent.reading.overallPercent)||0)))}% elolvasva · saját könyvtár`
+        : `${books.length} könyv a saját könyvtárban`;
+    } catch {
+      if (stamp !== requestId) return;
+      title.textContent = '—';
+      detail.textContent = 'A Drive-könyvtár nem tölthető be. A mentett könyvek változatlanok.';
+    }
+  }
+
+  return {
+    active: true,
+    refresh(page) {
+      if (page === 'hub-home') showHome();
+      if (page === 'hub-utility') showTools();
+      if (page === 'hub-finance') ++requestId;
+    }
+  };
+}
+
+let demoState={shopping:[],inventory:[]};
+const createHomeStore=()=>({getState:()=>structuredClone(demoState)});
+const out=document.querySelector('[data-preview-output]');
+const explain=action=>out.textContent='TEST funkció: '+action+'. Itt csak az önálló vizuális előnézetet látod; adatmentés nem történik.';
+const controls=initGrapesWidgetHubs({
+ openHousehold:(tab,add)=>explain('Home / '+tab+(add?' / hozzáadás':'')),
+ openEbook:()=>explain('E-book könyvtár'),
+ openQR:()=>explain('QR Stúdió'),
+ openFinance:()=>explain('Pénzügyi napló'),
+ importEbook:()=>explain('Könyv importálása'),
+ listBooks:async()=>[],
+ isDriveConnected:()=>false,
+ storage:{getItem:()=>null}
+});
+let screen='hub-home';
+function switchTo(key) {
+ screen=key;
+ document.querySelectorAll('[data-page]').forEach(n=>n.hidden=n.dataset.page!==key);
+ document.querySelector('[data-preview-heading]').textContent=key==='hub-home'?'Home':key==='hub-utility'?'Tools':'Finance';
+ document.querySelectorAll('[data-preview-tab]').forEach(n=>n.classList.toggle('active',n.dataset.previewTab===key));
+ out.textContent='';
+ controls.refresh(key);
+}
+document.querySelectorAll('[data-preview-tab]').forEach(n=>n.addEventListener('click',()=>switchTo(n.dataset.previewTab)));
+switchTo(screen);</script></body></html>
