@@ -333,7 +333,7 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   activePage = page
   toast.classList.remove('is-visible')
   $$('[data-page]').forEach(node => { node.hidden = node.dataset.page !== page })
-  $$('[data-nav]').forEach(node => node.classList.toggle('is-active', node.dataset.nav === page))
+  $$$('[data-nav]').forEach(node => node.classList.toggle('is-active', node.dataset.nav === page))
   ;[title.textContent, subtitle.textContent] = labels[page] || labels.home
   fab.hidden = page !== 'food' || !mobileFood?.isDetailOpen()
   closeSheet()
