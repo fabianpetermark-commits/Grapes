@@ -14,7 +14,7 @@ Start with [the interactive reference gallery](./index.html). **Never pick a des
 | Integrated top rail with new Tools name | [candidates/main-shell-tools.html](candidates/main-shell-tools.html) | **PROPOSED** | Same base shell, displayed label changed to Tools; internal utility code key unchanged |
 | Home | [candidates/home.html](candidates/home.html) | **PROPOSED** | Shopping, inventory, plants, contextual dock |
 | Tools | [candidates/tools.html](candidates/tools.html) | **PROPOSED** | E-book & QR widgets, contextual dock |
-| Finance | [candidates/finance.html](candidates/finance.html) | **PROPOSED** | Budget widgets and five existing Finance routes / tabs |
+| Finance – **teljes Pénzügyi napló** | [candidates/finance.html](candidates/finance.html) | **PROPOSED**, user review pending | Full standalone HTML with overview, transaction ledger/editor, savings goals and movements, projection, import preview, settings and Finance bottom dock; preserves real-module feature scope at implementation |
 | E-book details | [candidates/ebook.html](candidates/ebook.html) | **PROPOSED** | Library, reader, transfer; preserve reading font/theming |
 | QR Studio details | [candidates/qr.html](candidates/qr.html) | **PROPOSED** | Link, color, advanced settings; QR-looking graphic is **not scannable** |
 | Prior superseded variants | [history/](history/) | **HISTORY ONLY** | Never reuse just because filename contains “Health” or “main” |
@@ -67,3 +67,15 @@ node tests/design-references.browser.mjs
 Prototypes are intentionally isolated from the live environment; **no production credentials, API keys, user data or synchronized profile states** are included.
 
 **Maintained on draft PR #41.** Approval of the design reference alone never authorizes automatically merging implementation changes.
+
+
+## Finance full-module candidate — 2026-10-23
+
+The latest `candidates/finance.html` **replaces the previous summary-only proposal** with a complete interactive, single-file (inline CSS/JS) module prototype. It does **not** redesign the Grapes global main menu. It is visually derived from the **APPROVED Health minimal reference**, but remains **PROPOSED** until the user reviews it.
+
+- Five internal Finance destinations: Áttekintés, Napló, Megtakarítás, Előrejelzés, Import.
+- Header: simple `Finance` + module settings, no duplicate branding. Separate contextual dock: Kiadás / Bevétel / Félretétel / Import.
+- Visual demo: active-period summary, six-month income/expense/planned chart, category breakdown, recent transactions, goals, editable/addable in-memory entries, filter/delete/undo, savings deposit/withdrawal, forecast selectors, CSV column-preview, currency/backup/export demo.
+- **Real implementation must keep existing functionality** in `src/finance-tracker.js`, `src/finance-data.js`, `src/finance-import-ui.js`: actual finance model, XLS/XLSM/XLSX file mapping and duplicate checks, receipt upload/local OCR, persons/categories, scheduled/real transactions, Drive synchronization, CSV export, JSON backup/import, currency lock, savings ledger and forecast logic. Demo CSV parsing is illustrative, **not a replacement**.
+- Preview toggle `Mintadatok` is **not a production Finance control**. All numbers are generated demo values; the HTML never calls Grapes data sources.
+- Run prototype tests on 320 / 360 / 390 / 412px; compare matching screenshots of all five Finance internal screens from real Grapes TEST **before PROD approval**.
