@@ -12,8 +12,8 @@
 body{margin:0;min-height:100vh;display:grid;place-items:center;background:#04080d;color:var(--text)}
 button{font:inherit;color:inherit;cursor:pointer}
 .phone{position:relative;width:min(390px,100vw);height:min(844px,100dvh);min-height:640px;overflow:hidden;border:1px solid #25333c;border-radius:34px;background:radial-gradient(ellipse 390px 250px at 22% 0%,#142e3d 0%,transparent 80%),var(--bg)}
-.status{height:30px;padding:10px 23px;display:flex;justify-content:space-between;font-size:11px;font-weight:750}
-.status-icons{font-size:11px;letter-spacing:2px}
+
+
 .appbar{height:80px;display:flex;align-items:center;gap:12px;padding:11px 18px;border-bottom:1px solid #263640;background:#0a131a}
 .logo{width:40px;height:40px;object-fit:contain}
 .appname{flex:1;min-width:0}
@@ -22,7 +22,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .icon{width:22px;height:22px;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;fill:none;flex:none}
 .headeraction{display:grid;place-items:center;width:36px;height:38px;background:transparent;border:0}
 .settings{color:var(--cyan);border:1px solid #33606c;border-radius:12px;background:#10252c}
-.content{position:absolute;inset:110px 0 0;overflow:auto;padding:16px 16px 126px;scrollbar-width:none}
+.content{position:absolute;inset:80px 0 0;overflow:auto;padding:16px 16px 126px;scrollbar-width:none}
 .content::-webkit-scrollbar{display:none}
 .back{display:inline-flex;align-items:center;gap:5px;background:transparent;color:var(--cyan);border:0;font-size:12px;font-weight:700;padding:3px 0 13px}
 .back .icon{width:15px;height:15px}
@@ -81,7 +81,7 @@ button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 </head>
 <body>
 <div class="phone" id="phone" aria-label="Grapes Health kész UI-referencia">
-  <div class="status"><span>9:41</span><span class="status-icons">▂▅▇ ◉ ▰</span></div>
+  
   <header class="appbar">
     <img class="logo" src="../public/grapes-mark.svg" alt="Grapes">
     <div class="appname"><strong>Health</strong><small>Ételnapló és receptek</small></div>
