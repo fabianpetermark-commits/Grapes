@@ -14,7 +14,10 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
 
-class AndroidUpdateManager(private val context: Context) {
+class AndroidUpdateManager(
+    private val context: Context,
+    private val candidateBuild: Boolean = BuildConfig.GRAPES_PROD_AUTH_CANDIDATE,
+) {
     data class Release(
         val versionCode: Int,
         val versionName: String,
@@ -27,6 +30,8 @@ class AndroidUpdateManager(private val context: Context) {
     private val updateFile = File(context.cacheDir, "updates/grapes-update.apk")
 
     suspend fun findAvailableRelease(force: Boolean = false): Release? = withContext(Dispatchers.IO) {
+        // Private Auth acceptance builds must not offer unrelated stable APKs.
+        if (candidateBuild) return@withContext null
         val now = System.currentTimeMillis()
         val lastCheck = preferences.getLong(LAST_CHECK_KEY, 0L)
         if (!force && now - lastCheck < CHECK_INTERVAL_MS) return@withContext null
@@ -65,6 +70,7 @@ class AndroidUpdateManager(private val context: Context) {
     }
 
     suspend fun download(release: Release): File = withContext(Dispatchers.IO) {
+        check(!candidateBuild) { "Ehhez a próbaverzióhoz ellenőrzött jelöltfrissítés szükséges." }
         updateFile.parentFile?.mkdirs()
         val temporary = File(updateFile.parentFile, "grapes-update.download")
         val digest = MessageDigest.getInstance("SHA-256")
@@ -99,6 +105,7 @@ class AndroidUpdateManager(private val context: Context) {
     }
 
     fun requestInstall(apk: File) {
+        check(!candidateBuild) { "Ehhez a próbaverzióhoz ellenőrzött jelöltfrissítés szükséges." }
         check(apk.isFile) { "A frissítési fájl nem található." }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !context.packageManager.canRequestPackageInstalls()) {
             preferences.edit().putBoolean(PENDING_INSTALL_KEY, true).apply()
@@ -117,6 +124,7 @@ class AndroidUpdateManager(private val context: Context) {
     }
 
     fun resumePendingInstall(): Boolean {
+        if (candidateBuild) return false
         if (!preferences.getBoolean(PENDING_INSTALL_KEY, false) || !updateFile.isFile) return false
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !context.packageManager.canRequestPackageInstalls()) return false
         requestInstall(updateFile)

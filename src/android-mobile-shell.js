@@ -71,7 +71,8 @@ const labels = {
   food: ['Ételnapló', 'Mai áttekintés'], water: ['Víz', 'Napi folyadékbevitel'],
   household: ['Home / Háztartás', 'Ezen az eszközön tárolva'],
   'hub-home': ['Home', 'Háztartás'],
-  'hub-health': ['Health', 'Ételnapló és receptek'],
+  'hub-health': ['Health', 'Napi egészségügyi áttekintés'],
+  'health-settings': ['Health', 'Modulbeállítások'],
   'hub-utility': ['Utility', 'Eszközök'],
   'hub-finance': ['Finance', 'Pénzügyek'],
   ebook: ['E-book', 'Könyvtár'], reader: ['A csend térképe', 'Olvasó'],
@@ -339,6 +340,15 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   if (page === 'projects') renderProjects()
   if (page === 'sync') renderSync()
   if (page === 'water') renderWater()
+  if (page === 'hub-health') {
+    renderHealthDashboard()
+    mobileFood?.load().then(() => {
+      if (activePage === 'hub-health') renderHealthDashboard()
+    }).catch(() => {
+      if (activePage === 'hub-health') showToast('A Food összesítő most nem tölthető be.')
+    })
+  }
+  if (page === 'health-settings') showHealthSettingsIndex()
   if (page === 'household') {
     household.load()
     if (entry === 'shopping' || entry === 'inventory') household.openTab(entry)
@@ -356,6 +366,136 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   if (['ebook', 'reader', 'transfer'].includes(page)) {
     $$('[data-ebook-view]').forEach(button => button.classList.toggle('is-active', button.dataset.ebookView === page))
   }
+}
+
+
+const healthNumber = (value, digits = 0) => value == null || !Number.isFinite(Number(value))
+  ? '—' : new Intl.NumberFormat('hu-HU', { maximumFractionDigits: digits }).format(Number(value))
+const HEALTH_PREFS_KEY = 'grapes-health-dashboard-options-v1:'
+const currentHealthProfileKey = () => String(getGrapesAccount()?.id || getGrapesAccount()?.email || 'local-food-profile').toLocaleLowerCase('hu-HU')
+function healthOptions() {
+  try { return JSON.parse(localStorage.getItem(HEALTH_PREFS_KEY + currentHealthProfileKey()) || '{}') || {} }
+  catch { return {} }
+}
+function setHealthOption(key, value) {
+  const next = { ...healthOptions(), [key]: value }
+  localStorage.setItem(HEALTH_PREFS_KEY + currentHealthProfileKey(), JSON.stringify(next))
+}
+function renderHealthDashboard() {
+  if (activePage !== 'hub-health') return
+  const snapshot = mobileFood?.getHealthSnapshot?.()
+  const totals = snapshot?.totals || null
+  const targets = snapshot?.targets || {}
+  const kcal = totals?.energyKcal
+  $('[data-health-kcal]').textContent = healthNumber(kcal)
+  const target = Number(targets.energyKcal)
+  const hasTarget = targets.energyKcal != null && Number.isFinite(target) && target > 0
+  $('[data-health-kcal-target]').textContent = hasTarget ? '/ ' + healthNumber(target) + ' kcal' : 'Nincs cél'
+  const fraction = hasTarget && kcal != null ? Math.max(0,Math.min(100, Number(kcal) / target * 100)) : 0
+  $('[data-health-ring-progress]').style.strokeDasharray = fraction + ' 100'
+  $('[data-health-stats]').dataset.progressVisible = fraction > 0 ? 'true' : 'false'
+  for (const key of ['protein','carbohydrate','fat']) {
+    const v = totals?.[key]
+    $('[data-health-' + key + ']').textContent = healthNumber(v,1) + (v == null ? '' : ' g')
+    const goal = Number(targets[key])
+    $('[data-health-' + key + '-bar]').style.width = v != null && targets[key] != null && goal > 0
+      ? Math.min(100,Math.max(0,Number(v)/goal*100)) + '%' : '0%'
+  }
+  for (const btn of $$('[data-health-meal]')) {
+    const type = btn.dataset.healthMeal
+    const item = snapshot?.meals?.[type]
+    const v = item?.energyKcal
+    $('[data-health-meal-kcal="' + type + '"]').textContent =
+      v == null ? '—' : healthNumber(v) + ' kcal'
+  }
+  const recipe = snapshot?.recipe || null
+  $('[data-health-recipe-name]').textContent = recipe?.name || 'Még nincs saját recept'
+  const category = recipe?.category || ''
+  const realMeal = /reggeli|ebéd|uzsonna|vacsora|breakfast|lunch|dinner/i.test(category)
+  $('[data-health-recipe-label]').textContent = realMeal ? 'SAJÁT RECEPT · ' + category.toLocaleUpperCase('hu-HU') : 'SAJÁT RECEPTEK'
+  $('[data-health-recipe-open]').dataset.recipeId = recipe?.id || ''
+  const { day } = currentWaterDay()
+  const total = day.entries.reduce((sum,e) => sum + (Number.isFinite(Number(e.amount)) ? Math.max(0,Number(e.amount)) : 0),0)
+  $('[data-health-water-total]').textContent = healthNumber(total) + ' / ' + healthNumber(day.goal) + ' ml'
+  $('[data-health-water-fill]').style.width = Math.min(100, 100*total/day.goal) + '%'
+  const preferences = healthOptions()
+  $('[data-health-water-panel]').hidden = preferences.water === false
+  $('[data-health-recipe-open]').hidden = preferences.recipe === false
+  $('.health-meals').hidden = preferences.meals === false
+}
+document.addEventListener('grapes:health-food-changed', () => {
+  if (activePage === 'hub-health') renderHealthDashboard()
+})
+function openHealthFood(entry = 'overview') { showPage('food', { parent: 'hub-health', entry }) }
+async function openHealthMeal(type) {
+  showPage('food', { parent: 'hub-health' })
+  try {
+    await mobileFood?.load()
+    if (activePage === 'food') mobileFood?.openMealToday(type)
+  } catch (error) { showToast(error?.message || 'Az étkezés nem tölthető be.') }
+}
+async function openHealthQuick(kind) {
+  if (kind === 'water') { showPage('water'); return }
+  const hour = new Date().getHours()
+  const meal = hour < 11 ? 'breakfast' : hour < 15 ? 'lunch' : hour < 18 ? 'afternoonSnack' : 'dinner'
+  showPage('food', { parent: 'hub-health' })
+  try {
+    await mobileFood?.load()
+    if (activePage !== 'food') return
+    mobileFood?.openMealToday(meal)
+    fab.click()
+    if (kind === 'photo' || kind === 'barcode') {
+      $('[data-food-quick="' + kind + '"]')?.click()
+    }
+  } catch (error) { showToast(error?.message || 'Az ételkereső nem nyitható meg.') }
+}
+function showHealthSettingsIndex() {
+  $('[data-health-settings-index]').hidden = false
+  $('[data-health-settings-detail]').hidden = true
+}
+function showHealthSettingsSection(section) {
+  const names = {goals:'Célok',units:'Mértékegységek',display:'Napló és megjelenítés',integrations:'Integrációk',data:'Adatok és biztonság'}
+  if (!names[section]) return
+  $('[data-health-settings-index]').hidden = true
+  $('[data-health-settings-detail]').hidden = false
+  $('[data-health-section-title]').textContent = names[section]
+  const el = $('[data-health-settings-content]')
+  const box = (inner) => '<div class="health-settings-box">' + inner + '</div>'
+  if (section === 'goals') {
+    el.innerHTML = box('<strong>Napi kalória- és makrócélok</strong><p>A meglévő Food célokat módosítod, érvényességi dátummal.</p><button data-health-command="food-targets">Kalória, fehérje, szénhidrát, zsír és étkezési keretek</button>') +
+      box('<strong>Testsúly és célsúly</strong><p>Testsúlynapló és célsúly kezelése: következő fejlesztési fázis. Most nem mentünk súlyadatokat.</p>') +
+      box('<strong>Folyadékbevitel</strong><p>Napi vízcél és a meglévő víznapló.</p><button data-health-command="water-goal">Napi vízcél módosítása</button>')
+  } else if (section === 'units') {
+    el.innerHTML = box('<strong>Metrikus mértékegységek</strong><p>kg, cm, ml és liter. A teljes Imperial bevitel / kijelzés biztonságos konverziója későbbi funkció, mert a tárolt adatok nem írhatók át.</p><button disabled aria-disabled="true">Imperial – még nem elérhető</button>')
+  } else if (section === 'display') {
+    const p = healthOptions()
+    el.innerHTML = box('<strong>Health widgetek</strong><p>A beállítások az aktuális profilhoz tartoznak.</p>' +
+      [['meals','Étkezési gyorsgombok'],['water','Víz widget'],['recipe','Saját receptajánló']].map(([key,label]) =>
+      '<label style="display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 0;font-size:12px">' + label +
+      '<input type="checkbox" data-health-pref="' + key + '" ' + (p[key] === false ? '' : 'checked') + '></label>').join(''))
+  } else if (section === 'integrations') {
+    el.innerHTML = box('<strong>Health Connect</strong><p>Import előnézettel, a meglévő Android-jogosultságokkal.</p><button data-health-command="health-import">Beolvasás</button>') +
+      box('<strong>Samsung Health</strong><p>Health Connect vagy az elérhető Samsung-adatkapcsolat.</p><button data-health-command="samsung-import">Beolvasás</button>') +
+      box('<strong>YAZIO</strong><p>CSV / JSON előzményimport, duplikációszűréssel és visszavonási lehetőséggel.</p><button data-health-command="yazio-import">Import megnyitása</button>')
+  } else if (section === 'data') {
+    el.innerHTML = box('<strong>Food és Víz mentések</strong><p>A két napló biztonsági mentése továbbra is külön történik.</p><button data-health-command="food-backup">Ételnapló mentésének megnyitása</button><button data-health-command="water-backup">Víznapló exportálása</button>') +
+      box('<strong>Szinkron és importelőzmények</strong><p>A meglévő Drive- és importkezelés marad érvényben.</p><button data-health-command="sync">Szinkron állapota</button>')
+  }
+}
+async function runHealthCommand(command) {
+  if (command === 'food-targets') {
+    showPage('food', { parent:'hub-health' })
+    await mobileFood?.load()
+    if (activePage === 'food') mobileFood?.openTargetsForToday()
+  } else if (command === 'water-goal') changeWaterGoal()
+  else if (command === 'water-backup') exportWaterBackup()
+  else if (command === 'food-backup') {
+    showPage('food',{parent:'hub-health'})
+    showToast('Ételnapló → Menü → Biztonsági mentés')
+  } else if (command === 'sync') showPage('sync')
+  else if (command === 'health-import') openSyncImport('health')
+  else if (command === 'samsung-import') openSyncImport('samsung')
+  else if (command === 'yazio-import') openSyncImport('yazio')
 }
 
 async function openModule(module, project = null, view = '', itemId = '', action = '') {
@@ -1044,12 +1184,45 @@ $('[data-update-install]').addEventListener('click', async event => {
 })
 $('[data-sync-refresh]').addEventListener('click', () => renderSync({ refreshed: true }))
 $('[data-sync-projects]').addEventListener('click', () => showPage('projects'))
-$$('[data-nav]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.nav)))
+$$('[data-nav]').forEach(button => button.addEventListener('click', () => {
+  if (button.dataset.nav === 'more' && activePage === 'hub-health') showPage('health-settings', { parent:'hub-health' })
+  else showPage(button.dataset.nav)
+}))
 $$('[data-menu-group]').forEach(button => button.addEventListener('click', () => {
   const group = button.dataset.menuGroup
   if (['home', 'health', 'utility', 'finance'].includes(group)) showPage('hub-' + group)
 }))
 $$('[data-menu-back]').forEach(button => button.addEventListener('click', () => showPage('home')))
+
+$('[data-health-settings-back]').addEventListener('click', () => showPage('hub-health'))
+$('[data-health-section-back]').addEventListener('click', showHealthSettingsIndex)
+$$('[data-health-section]').forEach(button => button.addEventListener('click', () => showHealthSettingsSection(button.dataset.healthSection)))
+$('[data-health-settings-content]').addEventListener('click', event => {
+  const command = event.target.closest('[data-health-command]')
+  if (command) runHealthCommand(command.dataset.healthCommand).catch(e=>showToast(e?.message || 'A művelet sikertelen.'))
+})
+$('[data-health-settings-content]').addEventListener('change', event => {
+  if (!event.target.matches('[data-health-pref]')) return
+  try { setHealthOption(event.target.dataset.healthPref, event.target.checked) }
+  catch { showToast('A beállítás nem menthető.') }
+})
+$('[data-health-stats]').addEventListener('click', () => openHealthFood('stats'))
+$('[data-health-food-open]').addEventListener('click', () => openHealthFood('overview'))
+$$('[data-health-meal]').forEach(button => button.addEventListener('click', () => openHealthMeal(button.dataset.healthMeal)))
+$('[data-health-water-add]').addEventListener('click', () => { addWater(250); renderHealthDashboard() })
+$('[data-health-water-open]').addEventListener('click', () => showPage('water'))
+$('[data-health-recipe-open]').addEventListener('click', async event => {
+  const recipeId = event.currentTarget.dataset.recipeId
+  showPage('food',{parent:'hub-health',entry:recipeId?'':'recipes'})
+  try {
+    await mobileFood?.load()
+    if (activePage !== 'food') return
+    if (recipeId && mobileFood?.getHealthSnapshot()?.recipe?.id === recipeId) mobileFood?.openRecipeFromHealth(recipeId)
+    else mobileFood?.openNavigationView('recipes')
+  } catch(e) { showToast(e?.message || 'A receptek nem tölthetők be.') }
+})
+$$('[data-health-quick]').forEach(button => button.addEventListener('click', () => openHealthQuick(button.dataset.healthQuick)))
+
 $$('[data-menu-destination]').forEach(button => button.addEventListener('click', () => {
   const destination = button.dataset.menuDestination
   const parent = button.closest('[data-page]')?.dataset.page
@@ -1220,8 +1393,7 @@ mobileFood = createMobileFoodController({
   getHydrationExternalKeys: hydrationExternalKeys,
 })
 hydrateMobileIcons()
-// PROD Grapes identity is distinct from Google Drive authorization.
-// Hide this control on web, TEST and every Auth-disabled Android build.
+// Grapes PROD login is independent of the user's Google Drive authorization.
 const prodSignoutButton = $('[data-prod-auth-signout]')
 if (prodSignoutButton) {
   const prodAuthNative = import.meta.env?.VITE_GRAPES_PROD_AUTH_ENABLED === 'true' &&
@@ -1258,8 +1430,8 @@ window.grapesHandleAndroidBack = () => {
 }
 renderWater()
 if (isGrapesDriveConnected()) registerFoodSharing().catch(() => {})
-// A native server-verified PROD session, once account ownership is confirmed,
-// enters the main UI without the unrelated Drive welcome screen.
+// Only the native MainActivity's validated session/owner gate can load this
+// asset; a web or TEST build must not skip the Drive onboarding screen.
 const prodNativeAuthenticated = import.meta.env?.VITE_GRAPES_PROD_AUTH_ENABLED === 'true' &&
   import.meta.env?.VITE_GRAPES_PROD_LEGACY_DATA_ISOLATION_REVIEWED === 'true' &&
   globalThis.location?.href === 'https://appassets.androidplatform.net/assets/design/android-mobile-preview.html' &&

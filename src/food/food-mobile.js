@@ -396,6 +396,12 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     sheet.classList.toggle('is-open', open)
     sheet.setAttribute('aria-hidden', String(!open))
     sheet.inert = !open
+    if (sheet === addSheet) {
+      const expanded = open && sheet.classList.contains('meal-quick-panel')
+      fab.classList.toggle('is-add-open', expanded)
+      fab.setAttribute('aria-expanded', String(expanded))
+      fab.setAttribute('aria-label', expanded ? 'Ételkereső bezárása' : 'Étel hozzáadása')
+    }
     if (open) {
       backdrop.classList.add('is-open')
       setTimeout(() => sheet.querySelector('input:not([type="hidden"]), select, textarea, button')?.focus({ preventScroll: true }), 50)
@@ -1045,6 +1051,12 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   function renderMealDetail() {
     const container = $('[data-food-entries]'); container.replaceChildren()
     const entries = selectedEntries().filter(item => item.mealType === selectedMeal)
+    const total = entries.length ? summarizeEntries(entries) : null
+    // Unknown nutrients stay unknown; an empty meal must not look like 0 kcal.
+    $('[data-food-meal-energy]').textContent = nutrient(total?.energyKcal, 1)
+    for (const key of ['protein', 'carbohydrate', 'fat']) {
+      $('[data-food-meal-' + key + ']').textContent = nutrient(total?.[key], 1, ' g')
+    }
     if (!entries.length) { container.innerHTML = '<div class="empty-state">Ebben az étkezésben még nincs étel. A + gombbal adhatsz hozzá.</div>'; return }
     for (const entry of entries) {
       const card = document.createElement('article'); card.className = 'food-entry-card'
@@ -1057,15 +1069,25 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
 
   function openAddSheet() {
     if (!selectedMeal && !recipeCatalogActive) return
+    // The same FAB opens/closes a compact in-place sheet for meal logging.
+    if (!recipeCatalogActive && addSheet.classList.contains('is-open')) {
+      closeSheets()
+      return
+    }
     setAddPageMode(recipeCatalogActive)
     setFoodSearchFilter('all')
     setSheetOpen(addSheet, true)
     $('[data-food-search]').value = ''; startFoodSearch('')
-    setTimeout(() => $('[data-food-search]').focus({ preventScroll: true }), 100)
+    setTimeout(() => {
+      if (addSheet.classList.contains('is-open')) $('[data-food-search]').focus({ preventScroll: true })
+    }, 100)
   }
 
   function setAddPageMode(forRecipe) {
     const title = forRecipe ? 'Hozzávaló kiválasztása' : 'Étel hozzáadása'
+    // Recipe ingredient search keeps the old fullscreen, independently
+    // scrollable selector. Only meal logging gets the compact popover.
+    addSheet.classList.toggle('meal-quick-panel', !forRecipe)
     addSheet.setAttribute('aria-label', title)
     $('[data-food-add-title]').textContent = title
     $('[data-food-add-copy]').textContent = forRecipe
@@ -1971,7 +1993,58 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const date = new Date(`${selectedDate}T12:00:00`); date.setDate(date.getDate() + days); selectedDate = localDate(date); renderOverview()
   }
 
-  function render() { renderOverview(); if (selectedMeal) renderMealDetail() }
+  function render() {
+    renderOverview()
+    if (selectedMeal) renderMealDetail()
+    // The Health dashboard reads the same normalized Food project, never a second store.
+    document.dispatchEvent(new CustomEvent('grapes:health-food-changed'))
+  }
+
+  function getHealthSnapshot() {
+    // A profile switch must never briefly reveal the previous person's diary.
+    if (!project || !profile || loadedProfileId !== accountProfile().id || profile.id !== loadedProfileId) return null
+    const date = localDate()
+    const entries = entriesForLocalDay(project.diaryEntries, date, profile.id)
+      .filter(entry => entry.snapshot?.category !== 'Folyadék')
+    const meals = Object.fromEntries(MEALS.map(([type, label]) => {
+      const items = entries.filter(entry => entry.mealType === type)
+      return [type, { label, count: items.length, energyKcal: items.length ? summarizeEntries(items).energyKcal : null }]
+    }))
+    const latest = [...project.recipes]
+      .filter(recipe => !recipe.ownerProfileId || recipe.ownerProfileId === profile.id)
+      .sort((a,b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')))
+    const hour = new Date().getHours()
+    const mealKeyword = hour < 11 ? /reggeli|breakfast|zab|palacsinta/i
+      : hour < 14 ? /ebéd|lunch|főétel/i
+      : hour < 18 ? /uzsonna|snack|desszert/i : /vacsora|dinner/i
+    const recommended = latest.find(recipe => mealKeyword.test(recipe.category || '')) || latest[0] || null
+    return {
+      profileId: profile.id, date, totals: entries.length ? summarizeEntries(entries) : null,
+      targets: currentTargets(project, date), meals,
+      recipe: recommended ? {
+        id: recommended.id, name: recommended.name,
+        imageUrl: recommended.imageUrl || '', category: recommended.category || ''
+      } : null,
+    }
+  }
+
+  function openTargetsForToday() {
+    selectedDate = localDate()
+    showOverview()
+    openTargets()
+  }
+
+  function openMealToday(type) {
+    if (!LABELS[type]) return
+    selectedDate = localDate()
+    showOverview()
+    openMeal(type)
+  }
+
+  function openRecipeFromHealth(id) {
+    showOverview()
+    openRecipe(id)
+  }
 
   async function openLegacyAfterSave(module, view, itemId = '', action = '') {
     await flush()
@@ -2123,7 +2196,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     showOverview()
     if (view === 'stats') openStats()
   }
-  return { load, render, openNavigationView, closeMeal, handleBack, isDetailOpen: () => Boolean(selectedMeal), flush, openHealthImport, openSamsungImport, importYazioCsv, importYazio, undoYazio,
+  return { load, render, getHealthSnapshot, openMealToday, openRecipeFromHealth, openTargetsForToday, openTargets, openNavigationView, closeMeal, handleBack, isDetailOpen: () => Boolean(selectedMeal), flush, openHealthImport, openSamsungImport, importYazioCsv, importYazio, undoYazio,
     syncFood, autoImportHealth, autoImportYazio, refreshInbox, openInbox, inboxSummary: () => ({ pending: inbox.length, unread: inbox.filter(item => !inboxSeen().has(item.id)).length }) }
 }
 

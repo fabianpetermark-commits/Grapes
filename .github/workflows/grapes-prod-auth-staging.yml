@@ -60,13 +60,14 @@ jobs:
       - name: Assert this staging PR cannot accidentally release PROD or TEST
         run: |
           set -euo pipefail
-          ! git diff --name-only origin/codex/android-app HEAD | grep -E '^(\.github/workflows/release-android\.yml|src/food/|src/finance|src/ebook|src/android-bridge\.js)' || {
-            echo "::error::Sensitive Android/Drive/Food/Finance or signed release changed in config-only staging"; exit 1;
-          }
+          base=$(git merge-base origin/codex/android-app HEAD)
+          git diff --name-only "$base" HEAD > "$RUNNER_TEMP/prod-auth-changed-paths"
+          if grep -E '^(\.github/workflows/release-android\.yml|src/food/|src/finance|src/ebook|src/android-bridge\.js)' "$RUNNER_TEMP/prod-auth-changed-paths"; then
+            echo "::error::This Auth PR changes a protected stable release or data module"; exit 1
+          fi
           test -s docs/GRAPES_PROD_AUTH_ROLLOUT.md
           grep -Fq 'buildConfigField("boolean", "GRAPES_PROD_AUTH_ENABLED", "false")' android-health-connect-poc/app/build.gradle.kts
           grep -Fq 'ownerPreferences.getString("owner-uid", null)' android-health-connect-poc/app/src/main/java/hu/grapes/healthconnect/ProdAuthGate.kt
           ! grep -Fq 'putString("owner-uid"' android-health-connect-poc/app/src/main/java/hu/grapes/healthconnect/ProdAuthGate.kt
-          ! grep -Fq 'VITE_GRAPES_PROD_AUTH_ENABLED' .github/workflows/release-android.yml
           grep -Fq 'NO-GO' docs/GRAPES_PROD_AUTH_ROLLOUT.md
           echo "Only independent Auth config staging has passed; no APK is published."

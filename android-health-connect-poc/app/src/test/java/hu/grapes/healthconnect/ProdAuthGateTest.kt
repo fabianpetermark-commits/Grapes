@@ -112,6 +112,20 @@ class ProdAuthCallbackTest {
     }
 
     @Test
+    fun supabaseCancellationMayMirrorOnlyIdenticalErrorFieldsInFragment() {
+        val callback = ProdAuthCallback(context) { 10_000L }
+        val url = "$project/auth/v1/authorize?provider=google&redirect_to=${Uri.encode(redirect)}"
+        assertTrue(callback.begin(url, state))
+        assertFalse(callback.accept(Uri.parse("$redirect&error=access_denied#error=other")))
+        assertFalse(callback.accept(Uri.parse("$redirect&error=access_denied#code=$code")))
+        assertFalse(callback.accept(Uri.parse("$redirect&error=access_denied#error=access_denied#code=$code")))
+        assertFalse(callback.accept(Uri.parse("$redirect&code=$code#error=access_denied")))
+        assertTrue(callback.accept(Uri.parse("$redirect&error=access_denied&error_description=cancelled#error=access_denied&error_description=cancelled")))
+        assertEquals("cancel", callback.consume().getString("status"))
+        assertEquals("none", callback.consume().getString("status"))
+    }
+
+    @Test
     fun expiredCallbackIsRejectedAndDoesNotReleaseTokens() {
         val callback = ProdAuthCallback(context) { 1_000L }
         val url = "$project/auth/v1/authorize?provider=google&redirect_to=${Uri.encode(redirect)}"

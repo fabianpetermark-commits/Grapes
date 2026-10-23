@@ -34,6 +34,7 @@ android {
         versionName = grapesVersionName
         // Explicit production opt-in; defaults OFF on every ordinary release.
         buildConfigField("boolean", "GRAPES_PROD_AUTH_ENABLED", "false")
+        buildConfigField("boolean", "GRAPES_PROD_AUTH_CANDIDATE", "false")
     }
     buildTypes {
         getByName("release") {
@@ -44,6 +45,9 @@ android {
                 providers.environmentVariable("VITE_GRAPES_PROD_SUPABASE_PUBLISHABLE_KEY").orNull
                     ?.matches(Regex("sb_publishable_[A-Za-z0-9_-]{16,}")) == true
             buildConfigField("boolean", "GRAPES_PROD_AUTH_ENABLED", approvedProdAuth.toString())
+            val authCandidate = approvedProdAuth &&
+                providers.environmentVariable("GRAPES_PROD_AUTH_CANDIDATE").orNull == "true"
+            buildConfigField("boolean", "GRAPES_PROD_AUTH_CANDIDATE", authCandidate.toString())
         }
     }
     buildFeatures { buildConfig = true }

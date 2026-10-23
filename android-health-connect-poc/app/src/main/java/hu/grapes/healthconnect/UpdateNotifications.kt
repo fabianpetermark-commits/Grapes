@@ -17,6 +17,10 @@ object UpdateNotifications {
     private const val CHANNEL_ID = "grapes_app_updates"
     private const val NOTIFICATION_ID = 5001
 
+    fun clear(context: Context) {
+        NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID)
+    }
+
     fun createChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val channel = NotificationChannel(

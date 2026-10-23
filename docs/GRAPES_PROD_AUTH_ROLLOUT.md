@@ -3,6 +3,30 @@
 Created 2026-10-22. Target Android source: codex/android-app.
 Status: PREPARATION ONLY; NO-GO for production release.
 
+## Current recovery candidate (v31, preparation in progress)
+
+The phone is currently on stable v30, which replaced the private v29 Auth
+candidate and shows the old login path. The PROD redirect configuration has
+been corrected and passed the actual synthetic Android return check. Phone
+acceptance must be repeated with the recovered candidate.
+
+The candidate branch now incorporates the current PROD source `44f68cd`,
+including the new Health widgets, Food updates, and the separately merged
+Auth recovery from #119. The existing stable release workflow is preserved
+exactly from that base; this task builds an encrypted private candidate only.
+Candidate versionCode 31 must exceed the latest published stable, use its
+matching signing certificate, and include the current PROD head or fail before
+delivery. The normal Drive/E-book build variables are retained.
+
+A candidate-only native flag blocks stable update lookup, download, and pending
+installer resume, cancels its old update worker/notification, and leaves normal
+builds unchanged. Native regressions check that stale stable APK requests cannot
+change the cached file or launch an installer. Cancellation callbacks accept
+Supabase's mirrored query/fragment errors only when they agree; code-bearing
+fragments remain rejected. No local data or owner binding is cleared.
+
+
+
 The signed, phone-approved Grapes TEST v24 proves the user experience, not production Auth, data ownership or account migration. Never merge the TEST branch wholesale into PROD.
 
 ## Verified environment

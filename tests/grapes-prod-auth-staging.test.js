@@ -70,7 +70,12 @@ test('native PROD callback and owner gate cannot expose unbound legacy data', ()
   assert.doesNotMatch(callback, /uri\.scheme != "hu\.grapes\.healthconnect\.test"/)
   assert.match(gradle, /buildConfigField\("boolean", "GRAPES_PROD_AUTH_ENABLED", "false"\)/)
   assert.match(manifest, /android:scheme="hu\.grapes\.healthconnect"/)
-  assert.doesNotMatch(stableRelease, /VITE_GRAPES_PROD_AUTH_ENABLED/)
+  // Restored after the owner verified the signed v29 auth candidate.
+  // The recovery release is MANUAL-ONLY until device acceptance.
+  assert.match(stableRelease, /VITE_GRAPES_PROD_AUTH_ENABLED: 'true'/)
+  assert.match(stableRelease, /VITE_GRAPES_PROD_LEGACY_DATA_ISOLATION_REVIEWED: 'true'/)
+  assert.doesNotMatch(stableRelease, /^  push:/m)
+  assert.match(stableRelease, /workflow_dispatch:/)
 })
 
 test('PROD Grapes sign-out is independently gated and never replaces Drive sign-out', () => {
