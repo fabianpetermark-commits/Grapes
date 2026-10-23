@@ -13,11 +13,11 @@ A fejléc alatt **egyetlen vízszintes, swipe-pal gördíthető ikonsor** van. B
 | 1 | Kedvences házikó | **Kezdő** | A gyakran használt oldal, induláskor aktív |
 | 2 | Ház | **Home** | Növények, bevásárlólista, készletkezelő |
 | 3 | Szív | **Health** | Food, Víz, Receptek, Statisztika |
-| 4 | Négyzetek | **Utility** | E-book, QR és az egyéb eszközök |
+| 4 | Négyzetek | **Tools** | Korábbi Utility – E-book, QR és a későbbi eszközök |
 | 5 | Pénzügy | **Finance** | Pénzügyi napló és kimutatások |
 | 6+ | Saját ikon | **Későbbi új főmodul** | A modulregiszterből automatikusan az ikonsor végére kerül |
 
-Az ikonokat olvasható rövid név kíséri. Legalább 44–48 px érintési terület, kiemelt aktív állapot, hozzáférhető szemantika és vízszintes görgetés, ha minden ikon nem fér ki. **Nincs modulmaximálás vagy régi alsó navigáció.**
+Az ikonokat olvasható rövid név kíséri. Legalább 44–48 px érintési terület, kiemelt aktív állapot, hozzáférhető szemantika és vízszintes görgetés, ha minden ikon nem fér ki. **Nincs fix maximális modulszám vagy régi alsó navigáció.**
 
 ## A Kezdő oldal – kézi + automatikus kedvencek
 
@@ -45,6 +45,19 @@ Az ikonokat olvasható rövid név kíséri. Legalább 44–48 px érintési ter
 - **Elhelyezés:** alul rögzített/sticky, androidos safe-area fölött, megfelelő scroll-paddinggel, a tartalmat és utolsó widgetet nem takarja. Teljes képernyős szerkesztőn vagy megnyitott billentyűzetnél kontextus szerint elrejthető és visszatérve helyreáll.
 - **Látvány:** Health-minimal minta; sötét, lekerekített pill 2–4 gyakori gyorsgombbal, indokolt esetben külön kerek fő action; matt fill, finom neon-cián csak a keret rövid szakaszán, nincs túlerős glow.
 - **Adatbiztonság:** az újratervezés nem módosít mentett Food/Víz/Drive/Finance adatot és nem töri el az Auth / PIN folyamatot.
+
+## A widgetek nem puszta menühivatkozások
+
+A 2026-10-23-i további felhasználói pontosítás szerint a Healthből átvett **Food, Víz, Recept** widgetek mintájára a Tools / Home / Finance is **valós, interaktív összesítőket és közvetlen műveleteket** mutat a felső főmodul-ikonsor kiválasztásakor. Ez nem egy újabb `E-book vagy QR?`, `Pénzügyi napló megnyitása`, `Háztartás funkciói` választóképernyő.
+
+- **Tools** (korábbi Utility): E-book könyvfolytatás/könyvtár és QR-generáló widget, a teljes régi olvasó/átvitel/QR-szerkesztő belső oldalak megőrzésével.
+- **Finance**: hónap bevétel–kiadás/kategória/megtakarítás/tranzakciók widgetek, a meglevő pénzügyi adatmodellre kapcsolva.
+- **Home**: bevásárlólista/készletkezelő/növények widgetek, hiányzó valós adatnál tiszta üres állapottal.
+- **Kezdő**: ugyanennek a három főmodulnak és Healthnek a külön widgetjei megjeleníthetők személyre szabott összeállításban.
+- Minden főmodul saját alsó, kontextuális gyorssávval működik; **nem** az egyszer már elvetett globális alsó főmenüvel.
+- A működés és bármely tárolási változás külön, adatokat védő TEST feladat; a Tools csak **kijelzett új név**, belső `utility` azonosítók és Drive-mappák változatlanok.
+
+Részletes modulonkénti átvezetési brief: [Tools / Finance / Home – widgetes redesign](./GRAPES_TOOLS_FINANCE_HOME_WIDGET_REDESIGN_20261023.md).
 
 ## Elfogadott vizuális nyelv
 
