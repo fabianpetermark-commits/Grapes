@@ -247,6 +247,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun maybeRequestUpdateNotificationPermission() {
+        if (BuildConfig.GRAPES_PROD_AUTH_CANDIDATE) return
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return
         val preferences = getSharedPreferences(NOTIFICATION_PREFERENCES, MODE_PRIVATE)
@@ -285,6 +286,7 @@ class MainActivity : ComponentActivity() {
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
             .build()
         webView = WebView(this).apply {
+            setBackgroundColor(android.graphics.Color.rgb(5, 8, 12))
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             settings.allowFileAccess = false

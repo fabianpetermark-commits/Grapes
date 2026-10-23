@@ -8,9 +8,8 @@
 /* Author-level display rules otherwise override the UA hidden attribute. */
 .login-page [hidden] { display: none !important; }
 
-/* QA-only pre-paint cover: the real login must never flash during the
-   existing Supabase session verification. No token or login state is read
-   from markup. The normal web preview and PROD never get this attribute. */
+/* Native PROD cover while the persisted Supabase session is verified.
+   It uses the same mark/background as the Android splash and main menu. */
 .grapes-prod-startup { display: none; }
 html[data-grapes-prod-starting="true"] .login-page { visibility: hidden; }
 html[data-grapes-prod-starting="true"] .grapes-prod-startup {
@@ -32,7 +31,6 @@ html[data-grapes-prod-starting="true"] .grapes-prod-startup {
   place-items: center;
   width: 96px;
   height: 96px;
-  margin-bottom: 18px;
 }
 .grapes-prod-startup__mark img {
   display: block;

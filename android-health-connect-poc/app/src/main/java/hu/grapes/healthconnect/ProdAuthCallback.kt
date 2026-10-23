@@ -37,7 +37,7 @@ internal class ProdAuthCallback(context: Context, private val now: () -> Long = 
     fun accept(uri: Uri?): Boolean {
         if (uri == null || uri.scheme != "hu.grapes.healthconnect" ||
             uri.host != "auth" || uri.path != "/callback" || uri.port != -1 ||
-            uri.userInfo != null || uri.fragment != null) return false
+            uri.userInfo != null) return false
         val state = uri.getQueryParameter("state") ?: return false
         if (!STATE.matches(state) || state != prefs.getString("state", null) ||
             !fresh()) return false
@@ -46,16 +46,28 @@ internal class ProdAuthCallback(context: Context, private val now: () -> Long = 
         val code = uri.getQueryParameter("code")
         val error = uri.getQueryParameter("error")
         if (uri.getQueryParameters("state").size != 1) return false
-        if (code != null && names == setOf("state", "code") &&
+        if (code != null && uri.fragment == null && names == setOf("state", "code") &&
             uri.getQueryParameters("code").size == 1 && CODE.matches(code)) {
             return prefs.edit().putString("code", code).putString("result", "code").commit()
         }
         if (error == "access_denied" && names.containsAll(setOf("state", "error")) &&
             names.all { it in setOf("state", "error", "error_description", "error_code") } &&
-            uri.getQueryParameters("error").size == 1) {
+            names.all { uri.getQueryParameters(it).size == 1 } && matchingCancellationFragment(uri)) {
             return prefs.edit().putString("result", "cancel").commit()
         }
         return false
+    }
+
+    // Supabase mirrors denial details into query AND fragment. Accept only
+    // identical cancellation fields; never permit a fragment carrying a code.
+    private fun matchingCancellationFragment(uri: Uri): Boolean {
+        val fragment = uri.encodedFragment ?: return true
+        val details = Uri.parse("https://callback.invalid/?$fragment")
+        val names = details.queryParameterNames
+        return details.fragment == null && names.contains("error") &&
+            names.all { it in setOf("error", "error_description", "error_code") } &&
+            names.all { details.getQueryParameters(it).size == 1 &&
+                details.getQueryParameter(it) == uri.getQueryParameter(it) }
     }
 
     fun consume(): JSONObject {

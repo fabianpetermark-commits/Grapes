@@ -24,6 +24,11 @@ class UpdateCheckWorker(
         private const val UNIQUE_WORK = "grapes-periodic-update-check"
 
         fun schedule(context: Context) {
+            if (BuildConfig.GRAPES_PROD_AUTH_CANDIDATE) {
+                WorkManager.getInstance(context).cancelUniqueWork(UNIQUE_WORK)
+                UpdateNotifications.clear(context)
+                return
+            }
             val request = PeriodicWorkRequestBuilder<UpdateCheckWorker>(6, TimeUnit.HOURS).build()
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
                 UNIQUE_WORK,

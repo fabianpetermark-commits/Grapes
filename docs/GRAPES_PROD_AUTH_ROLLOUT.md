@@ -3,6 +3,30 @@
 Created 2026-10-22. Target Android source: codex/android-app.
 Status: PREPARATION ONLY; NO-GO for production release.
 
+## Current recovery candidate (v31, built and privately delivered)
+
+The phone is currently on stable v30, which replaced the private v29 Auth
+candidate and shows the old login path. The PROD redirect configuration has
+been corrected and passed the actual synthetic Android return check. Phone
+acceptance must be repeated with the recovered candidate.
+
+The candidate branch now incorporates the current PROD source `44f68cd`,
+including the new Health widgets, Food updates, and the separately merged
+Auth recovery from #119. The existing stable release workflow is preserved
+exactly from that base; this task builds an encrypted private candidate only.
+Candidate versionCode 31 must exceed the latest published stable, use its
+matching signing certificate, and include the current PROD head or fail before
+delivery. The normal Drive/E-book build variables are retained.
+
+A candidate-only native flag blocks stable update lookup, download, and pending
+installer resume, cancels its old update worker/notification, and leaves normal
+builds unchanged. Native regressions check that stale stable APK requests cannot
+change the cached file or launch an installer. Cancellation callbacks accept
+Supabase's mirrored query/fragment errors only when they agree; code-bearing
+fragments remain rejected. No local data or owner binding is cleared.
+
+
+
 The signed, phone-approved Grapes TEST v24 proves the user experience, not production Auth, data ownership or account migration. Never merge the TEST branch wholesale into PROD.
 
 ## Verified environment
@@ -30,7 +54,7 @@ The separate PROD login HTML, styles, Supabase 2.118.0 locked client, login flow
 ## Remaining blockers BEFORE production release
 
 1. **DONE:** owner approved organization, 0 USD/month quote, independent Grapes PROD created in Frankfurt and verified active. TEST project and older project unchanged.
-2. **PROVIDER HANDOFF VERIFIED; RETURN ALLOWLIST FAILED ON DEVICE:** on 2026-10-22 the owner created the dedicated Google Cloud Web OAuth client with callback `https://yopabovoxyffhokhbgxl.supabase.co/auth/v1/callback`, configured the Google provider in Supabase PROD, and added the Android allowlist `hu.grapes.healthconnect://auth/callback?state=*`. The staging GitHub Actions live HTTP smoke check subsequently passed: `/auth/v1/settings` confirms `external.google=true`; `/auth/v1/authorize` with the exact Android redirect returns a handoff to `accounts.google.com`. No user signed in and no account/secret was accessed. This is **not** proof of working end-to-end OAuth on the phone. Stable release Auth flags remain OFF. The separately approved v29 candidate used the PROD public key and both explicit Auth flags; it still needs phone UAT.
+2. **PROVIDER AND ACTUAL ANDROID RETURN NOW VERIFIED; PHONE RETRY OPEN:** on 2026-10-22 the owner created the dedicated Google Cloud Web OAuth client with callback `https://yopabovoxyffhokhbgxl.supabase.co/auth/v1/callback`, configured the Google provider in Supabase PROD, and added the Android allowlist `hu.grapes.healthconnect://auth/callback?state=*`. The staging GitHub Actions live HTTP smoke check subsequently passed: `/auth/v1/settings` confirms `external.google=true`; `/auth/v1/authorize` with the exact Android redirect returns a handoff to `accounts.google.com`. No user signed in and no account/secret was accessed. This is **not** proof of working end-to-end OAuth on the phone. Stable release Auth flags remain OFF. The separately approved v29 candidate used the PROD public key and both explicit Auth flags; it still needs phone UAT.
 3. **PARTIALLY STAGED; OWNER CONFIRMED EMPTY APP:** The owner stated on 2026-10-23 that the installed Grapes app contains no data worth preserving. Therefore no backup or export is required for their device. This is a user declaration, not a remote inspection. Onboarding now allows explicit acknowledgement of an empty app (or the same account owning pre-existing local data), followed by device-credential confirmation. If meaningful legacy records are found on a different device, preserve those before upgrading; never silently merge across user accounts. Native per-account storage remains out of scope.
 4. **STAGED, NOT ENABLED:** The native PROD-only WebView callback, PKCE, Gradle flags (default OFF), and fail-closed `ProdAuthGate` remain isolated. First ownership binding requires a user acknowledgement that the installation is empty **or** existing local data belongs to the signing-in account, followed by Android screen-lock verification. It does not delete local data and cannot grant access to a different UID. The owner's empty-app confirmation means no export requirement for their device. End-to-end phone login, logout and user verification remain open.
 5. Pass full unit + focused Android native, Auth, Food, Water, Finance, E-book/Drive checks. Use existing production signing identity. Verify in-place upgrade from signed v28 (no uninstall/clear), preserve meaningful data if any appears, and plan rollback. Do phone smoke tests for login, startup, logout, Google Drive, offline/expired sessions and account switching.
@@ -40,13 +64,13 @@ The separate PROD login HTML, styles, Supabase 2.118.0 locked client, login flow
 
 ## v28 preflight: no backup needed for owner's empty app
 
-On 2026-10-23 the owner explicitly confirmed the installed Grapes app is empty. Do **not** require Food/Water/Finance/E-book exports or ask the owner to hunt for missing backup buttons. [Conditional backup preflight](./GRAPES_PROD_V28_BACKUP_PREFLIGHT.md) remains relevant only if meaningful existing records are later found. No Auth-enabled candidate has yet been installed and phone-tested.
+On 2026-10-23 the owner explicitly confirmed the installed Grapes app is empty. Do **not** require Food/Water/Finance/E-book exports or ask the owner to hunt for missing backup buttons. [Conditional backup preflight](./GRAPES_PROD_V28_BACKUP_PREFLIGHT.md) remains relevant only if meaningful existing records are later found. The owner has installed candidate v29; Google sign-in returned to localhost, so successful app entry remains unverified.
 
 ## External OAuth configuration and validation
 
 1. **OWNER COMPLETED:** Google Cloud Web OAuth client for Grapes PROD created, exact redirect `https://yopabovoxyffhokhbgxl.supabase.co/auth/v1/callback` entered. The secret remains exclusively in provider settings.
 2. **OWNER COMPLETED; LIVE CONFIG VERIFIED:** Google provider enabled in **PROD**, with dedicated ID/secret. GitHub CI confirmed the Google provider reports enabled on the real Supabase PROD endpoint. TEST was untouched.
-3. **OWNER REPORTED COMPLETED; RETURN ALLOWLIST NOT VERIFIED BY OLD SMOKE:** Supabase PROD URL Configuration includes `hu.grapes.healthconnect://auth/callback?state=*`, and GitHub CI successfully sent a 64-character state through the provider's real authorize endpoint, obtaining a Google handoff. Native PKCE callback/session and Google consent-screen behavior still require a real-device test. Do not allow global `**` or any TEST scheme. Verify Site URL behavior for email verification/recovery separately.
+3. **ACTUAL ANDROID RETURN NOW VERIFIED WITH SYNTHETIC DENIAL:** Supabase PROD URL Configuration includes `hu.grapes.healthconnect://auth/callback?state=*`, and GitHub CI successfully sent a 64-character state through the provider's real authorize endpoint, obtaining a Google handoff. Native PKCE callback/session and Google consent-screen behavior still require a real-device test. Do not allow global `**` or any TEST scheme. Verify Site URL behavior for email verification/recovery separately.
 4. Before enabling or signing a PROD Auth release, verify owner-confirmed empty-app onboarding and the first-owner binding, same-account relaunch, denied different-account login, cancellation, lock-screen requirement, Google Drive independence and upgrade from v28. A backup is only necessary where meaningful pre-existing records are actually present. Default feature flags stay OFF until checks pass.
 
 GitHub Actions tests the public hosted provider endpoints using only the **public, low-privilege PROD publishable key** in its staging workflow; no `sb_secret_`/service-role key or user tokens are committed. Secure provider-side IDs, secrets and allowlist changes were made by the owner in Google Cloud/Supabase UI, then functionally verified by a non-login live smoke test. No APK was published.
@@ -77,7 +101,7 @@ and has Auth OFF. It was not used for the candidate. The separately staged
 `grapes-prod-auth-encrypted-candidate.yml` workflow built one signed v29
 candidate from this Draft branch after explicit owner approval, compared its
 package and signing certificate against signed v28, and uploaded only encrypted
-bytes as a one-day artifact. The candidate has not been installed.
+bytes as a one-day artifact. The owner has since installed it and reported the localhost return failure below.
 
 **Minimal owner phone acceptance, only after explicit approval to install:**
 
@@ -112,9 +136,10 @@ APK bytes and an RSA-wrapped passphrase; it expires after one day. The APK was
 decrypted locally and its SHA-256 verified as
 `2046222d32e636b38c5b045e908b7b87ec335d1b584de47b0ad87094d1b59a51`.
 The local candidate is `/workspace/grapes-candidate-output/grapes-prod-auth-v29.apk`.
-No APK was published as a GitHub Release or installed on a phone. This runner
-has no connected Android device, so the owner's in-place phone checks below
-remain the acceptance gate. Do not uninstall or clear v28.
+No APK was published as a GitHub Release. The owner has since installed the
+candidate and reported the localhost return failure below. This runner has no
+connected Android device; successful phone acceptance remains open. Do not
+uninstall or clear app data.
 
 ## Phone failure: localhost fallback (2026-10-23)
 
@@ -129,7 +154,8 @@ This corrects the earlier claim that a 302 to Google verified the Android
 allowlist. That only proved provider handoff. The new
 `scripts/check-prod-oauth-redirect.mjs` also follows its own synthetic denial
 through the PROD callback and requires the exact Android return and original
-nonce. It does not exchange a user code or sign anyone in. Regressions cover
+nonce. It does not exchange a user code or sign anyone in. Future candidate builds
+also run this check before signing. Regressions cover
 localhost fallback, missing/wrong/duplicate state, TEST scheme, unexpected
 provider callback, and secret-key rejection.
 
@@ -140,3 +166,70 @@ tool is available in this session, so the owner was given the exact field/link.
 After saving, re-run the synthetic return check, then start a fresh Google
 login from the installed v29 app. No APK rebuild is required for this configuration
 fix. Real device success remains unverified until the owner completes that retry.
+
+## Return configuration verified after update (2026-10-23)
+
+After the owner's configuration update, the live
+`node scripts/check-prod-oauth-redirect.mjs` probe passed. A newly created
+synthetic Google PKCE flow returned to
+`hu.grapes.healthconnect://auth/callback` with its original state after simulated
+denial. This confirms the localhost fallback is resolved for the exact Android
+redirect used by v29. It does not prove a completed Google login or native app
+entry. The owner was asked to close the stale localhost browser tab and start a
+fresh Google login from the installed v29 app; no reinstall or new APK is
+needed for the corrected redirect configuration.
+
+## v31 candidate verification and delivery (2026-10-23)
+
+Signed candidate run 39972538613 completed successfully from source `097f17f`,
+which includes PROD recovery/Health source `44f68cd`. It passed npm tests, all
+three Health/mobile/recipe browser regressions, the actual Android return probe,
+Auth-enabled web and Kotlin compilation/native tests, signed assembly, version
+31 > published stable 30, current-PROD-source checks, and certificate comparison
+against v30. Auth config/recovery, Food staging and menu CI checks passed too.
+The separate backup-debug job initially failed while Maven returned HTTP 403
+for dependencies; its failed-job retry passed. All related code-head CI runs
+are now green, including normal debug and both Auth-OFF/Auth-ON native builds.
+
+The encrypted artifact was decrypted locally and SHA-256 checked:
+`48c41b0936650b3f0916f150d8e03f735b9ff717b873496e005ca168a8734682`.
+The owner's private Drive candidate file was updated in place to
+`grapes-prod-auth-v31.apk` (19,297,375 bytes), then downloaded again and byte
+compared successfully. The existing owner-only permissions were preserved.
+No stable GitHub Release was created by this task. The owner was given the
+Drive link and asked to install over v30 without uninstalling or clearing data.
+The owner confirmed that Google sign-in on v31 opened the Grapes main screen.
+Relaunch and independent Grapes logout/relogin checks were requested; results
+are pending. Foreign-account, expiry/offline and first-binding cancellation
+phone checks remain open unless explicitly reported.
+
+The next explicitly authorized normal production release must use a versionCode
+greater than the latest privately installed candidate (v32 requires at least 33). Candidate 31
+is not a published stable release; do not reuse its version code for the final
+upgrade. The candidate-only updater flag must stay OFF in normal releases.
+
+## Startup branding correction (v32 candidate, 2026-10-23)
+
+The owner confirmed the v31 main menu works but reported a wrong Grapes logo
+flashing on a light gray startup background. Android previously inherited the
+platform splash/theme background and old launcher icon; the web restoration
+cover also used a separate rounded logo asset.
+
+The native starting window and Android 12+ splash now use a dark #05080C
+background and a native rendition of the existing `public/grapes-mark.svg`
+geometry/colors. The persisted-session web cover uses that same main-menu mark,
+and the WebView has a dark background before its first paint. No Auth, UID,
+local store, Health or Drive behavior changed for this visual correction.
+
+Existing PROD config/staging/redirect tests pass locally. The Auth-enabled web
+build succeeds. A Chromium visual check with a synthetic saved-session hint
+shows the main-menu mark on the dark background and keeps the login hidden
+while verification is pending; it does not simulate an authenticated user.
+Native resource compilation, Android regressions, signing, version/package and
+latest stable certificate comparison passed in candidate run 39976438106.
+All related code-head CI checks are green. The encrypted v32 artifact is
+12511278153 (source e34776b). Delivery is temporarily blocked because the
+execution workspace became unavailable: its local decryption key cannot be
+used until the workspace is ready. The existing private Drive candidate file
+still contains v31; it must not be described as v32 until upload/readback.
+Actual cold-start appearance still requires the owner's phone confirmation.
