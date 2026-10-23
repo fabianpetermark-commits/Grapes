@@ -35,9 +35,7 @@
     .prototype-note { padding: 12px 14px; color: #b6c5d5; background: #111b25; border: 1px solid var(--line); border-radius: 14px; font-size: 13px; }
     .phone { position: relative; width: 390px; height: 844px; overflow: hidden; background: var(--bg); border: 1px solid #33465a; border-radius: 38px; box-shadow: 0 34px 100px rgb(0 0 0 / 62%), inset 0 0 0 6px #05080c; }
     .phone { overflow: clip; }
-    .phone::before { position: absolute; top: 10px; left: 50%; z-index: 20; width: 104px; height: 26px; content: ""; background: #020407; border-radius: 999px; transform: translateX(-50%); }
-    .statusbar { position: absolute; inset: 0 0 auto; z-index: 12; display: flex; align-items: center; justify-content: space-between; height: 44px; padding: 8px 25px 0; color: #cad6e2; font-size: 12px; font-weight: 700; pointer-events: none; }
-    .screen { position: absolute; inset: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); padding-top: 44px; background: radial-gradient(circle at 12% 0, rgb(59 220 242 / 7%), transparent 30%), var(--bg); }
+    .screen { position: absolute; inset: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); background: radial-gradient(circle at 12% 0, rgb(59 220 242 / 7%), transparent 30%), var(--bg); }
     .screen[hidden] { display: none; }
     .login { display: grid; align-content: center; padding: 72px 22px 28px; overflow-y: auto; text-align: center; }
     .login[hidden] { display: none; }
@@ -560,7 +558,6 @@
 <body>
   <main class="stage">
     <div class="phone" aria-label="Kattintható Grapes Android prototípus">
-      <div class="statusbar"><span>9:41</span><span>● ◔ 87%</span></div>
 
       <section id="login" class="login">
         <img class="logo" src="../public/grapes-mark.svg" alt="Grapes">
