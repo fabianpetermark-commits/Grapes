@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="hu"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Grapes — étkezés részletei és kompakt ételfelvétel (UI-handoff #115)</title>
+<style>
+/* Static, visual-only Codex reference. Do NOT write demo values to Food. */
+:root{--bg:#090e14;--surface:#101821;--raised:#17222e;--line:#243343;--accent:#3bdcf2;--accent2:#4d8fff;--text:#f2f7fb;--muted:#94a5b8;font-family:Inter,system-ui,sans-serif;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#05080c;color:var(--text);display:grid;place-items:center}button,input{font:inherit}button{cursor:pointer;color:inherit}.phone{position:relative;width:min(390px,100vw);height:min(844px,100dvh);min-height:600px;overflow:hidden;background:radial-gradient(circle at 15% 0%,#142a39,transparent 32%),var(--bg);border:1px solid #273845;border-radius:33px}
+.status{height:28px;padding:8px 22px;display:flex;justify-content:space-between;font-size:12px;font-weight:750}.appbar{height:83px;background:#0b151d;border-bottom:1px solid var(--line);padding:9px 18px;display:flex;align-items:center;gap:12px}.logo{width:39px;height:39px}.appname{flex:1}.appname b{font-size:20px;display:block}.appname small{color:var(--muted);font-size:11px}.headerbtn{width:39px;height:39px;background:transparent;border:0;font-size:22px}.headerbtn.settings{border:1px solid #285769;background:#122530;border-radius:12px;color:var(--accent)}
+.content{position:absolute;inset:111px 0 0;overflow:auto;padding:23px 16px 110px;scrollbar-width:none}.meal-title{padding:0 2px 17px}.meal-title h1{font-size:34px;letter-spacing:-1px;margin:0 0 5px}.meal-title p{color:var(--muted);font-size:12px;margin:0}.entries{display:grid;gap:12px}.entry{background:var(--surface);border:1px solid #2b3c4a;border-radius:21px;padding:16px;min-height:157px}.entryhead{display:flex;justify-content:space-between;gap:8px}.entryhead strong{font-size:16px}.entryhead b{white-space:nowrap;font-size:16px}.entry p{color:var(--muted);font-size:12px;margin:7px 0}.entry small{color:var(--muted);font-size:10px}.actions{display:flex;justify-content:flex-end;gap:7px;margin-top:18px}.actions button{background:var(--raised);border:1px solid var(--line);width:44px;height:43px;border-radius:12px}.actions .del{color:#ff7083}
+.fab{position:absolute;right:18px;bottom:33px;z-index:8;width:60px;height:60px;border:0;border-radius:19px;background:linear-gradient(140deg,#51e8f1,#4198ed);color:#061521;font-size:35px;line-height:1;box-shadow:0 4px 28px #3bdcf236}.fab span{display:block;transition:transform .18s}.fab[aria-expanded=true] span{transform:rotate(45deg)}
+.scrim{position:absolute;inset:111px 0 0;background:#03091177;z-index:4;display:none}.scrim.open{display:block}
+.panel{position:absolute;left:15px;right:15px;bottom:108px;z-index:6;max-height:min(475px,calc(100% - 235px));overflow:hidden;display:none;flex-direction:column;gap:11px;padding:14px;background:linear-gradient(145deg,#1b2d39,#101a22);border:1px solid #375d69;border-radius:22px;box-shadow:0 16px 45px #000a}.panel.open{display:flex}.panelhead{display:flex;justify-content:space-between;align-items:center}.panelhead strong{font-size:13px}.panelhead small{font-size:10px;color:var(--muted)}
+.quick{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;background:#101922;padding:5px;border:1px solid #283d49;border-radius:30px}.quick button{border:0;background:transparent;min-height:53px;border-radius:24px;display:grid;place-content:center;justify-items:center;gap:4px;color:#d2dfe7}.quick i{font-size:21px;color:var(--accent);font-style:normal}.quick span{font-size:10px;white-space:nowrap}.quick button:active{background:#243e48}
+.search{display:flex;gap:8px;align-items:center;background:#0a151e;border:1px solid #395663;border-radius:13px;padding:0 11px;min-height:45px;color:var(--accent)}.search input{background:transparent;border:0;outline:0;color:var(--text);font-size:12px;width:100%}.search input::placeholder{color:var(--muted)}
+.resulthead{display:flex;justify-content:space-between;align-items:center;font-size:11px;margin:0 3px}.resulthead small{color:var(--muted);font-size:10px}
+.results{display:flex;flex-direction:column;gap:6px;overflow:auto;overscroll-behavior:contain;max-height:225px;min-height:80px;scrollbar-width:thin;scrollbar-color:#496371 transparent}.result{width:100%;min-height:58px;padding:10px;display:flex;align-items:center;gap:10px;background:#14242e;border:1px solid #2d404d;border-radius:13px;text-align:left}.result>span:first-child{flex:1;min-width:0}.result strong{font-size:12px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.result small{display:block;font-size:10px;color:var(--muted);margin-top:4px}.result b{font-size:11px;white-space:nowrap}.result em{font-size:20px;font-style:normal;color:var(--accent);background:#204451;border-radius:8px;width:27px;height:27px;text-align:center}.note{font-size:10px;color:var(--muted);text-align:center;margin:0}.navline{position:absolute;bottom:10px;left:calc(50% - 52px);height:4px;width:104px;background:#94a5b8;border-radius:9px;z-index:10}
+@media(max-width:390px){.phone{height:100dvh;min-height:0;border:0;border-radius:0}}@media(max-height:700px){.panel{bottom:95px;max-height:calc(100% - 170px)}.results{max-height:27dvh}.fab{bottom:25px}}@media(prefers-reduced-motion:reduce){.fab span{transition:none}}
+</style></head><body>
+<div class="phone">
+<div class="status"><span>9:41</span><span>● ▰ 87%</span></div>
+<header class="appbar"><img class="logo" src="../public/grapes-mark.svg" alt=""><div class="appname"><b>Ételnapló</b><small>Reggeli</small></div><button class="headerbtn" aria-label="Keresés">⌕</button><button class="headerbtn settings" aria-label="Beállítások">⚙</button></header>
+<main class="content"><div class="meal-title"><h1>Reggeli</h1><p>október 23., péntek</p></div><section class="entries" aria-label="Naplózott ételek">
+<article class="entry"><div class="entryhead"><strong>Mieszanka Chińska</strong><b>28 kcal</b></div><p>100 g · 11:34</p><small>F: 1,5 g · Sz: 3,4 g · Zs: 0,3 g</small><div class="actions"><button aria-label="Szerkesztés">✎</button><button aria-label="Ismétlés">↻</button><button class="del" aria-label="Törlés">×</button></div></article>
+<article class="entry"><div class="entryhead"><strong>Red Kidney Beans</strong><b>29,2 kcal</b></div><p>30 g · 11:35</p><small>F: 2,5 g · Sz: 4,5 g · Zs: 0,3 g</small><div class="actions"><button aria-label="Szerkesztés">✎</button><button aria-label="Ismétlés">↻</button><button class="del" aria-label="Törlés">×</button></div></article>
+<article class="entry"><div class="entryhead"><strong>Mais groß</strong><b>23,1 kcal</b></div><p>30 g · 11:35</p><small>F: 0,8 g · Sz: 3,5 g · Zs: 0,5 g</small><div class="actions"><button aria-label="Szerkesztés">✎</button><button aria-label="Ismétlés">↻</button><button class="del" aria-label="Törlés">×</button></div></article>
+</section></main>
+<div id="scrim" class="scrim"></div>
+<section id="panel" class="panel" role="dialog" aria-label="Étel hozzáadása" aria-modal="false" aria-hidden="true">
+<div class="panelhead"><strong>Étel hozzáadása</strong><small>Reggeli</small></div>
+<div class="quick" aria-label="Gyorsműveletek"><button><i>▥</i><span>Kód</span></button><button><i>▧</i><span>Fotó</span></button><button><i>☆</i><span>Kedvencek</span></button><button><i>⊕</i><span>Saját</span></button></div>
+<label class="search"><span>⌕</span><input aria-label="Étel keresése" placeholder="Étel keresése…" value="csirke"></label>
+<div class="resulthead"><strong>Találatok</strong><small>3 bemutató találat</small></div>
+<div class="results">
+<button class="result"><span><strong>Csirkemell, sült</strong><small>USDA · 100 g</small></span><b>165 kcal</b><em>+</em></button>
+<button class="result"><span><strong>Csirkemell, nyers</strong><small>USDA · 100 g</small></span><b>120 kcal</b><em>+</em></button>
+<button class="result"><span><strong>Csirkemell sonka</strong><small>Példa termék · 100 g</small></span><b>— kcal</b><em>+</em></button>
+</div><p class="note">Csak UI-előnézet — a meglévő Food kereső működését kell bekötni.</p></section>
+<button id="fab" class="fab" aria-label="Étel hozzáadása" aria-controls="panel" aria-expanded="false"><span>+</span></button><div class="navline"></div></div>
+<script>
+const panel=document.getElementById('panel'),scrim=document.getElementById('scrim'),fab=document.getElementById('fab');
+function setOpen(open){panel.classList.toggle('open',open);scrim.classList.toggle('open',open);panel.setAttribute('aria-hidden',String(!open));fab.setAttribute('aria-expanded',String(open));fab.setAttribute('aria-label',open?'Panel bezárása':'Étel hozzáadása')}
+fab.addEventListener('click',()=>setOpen(!panel.classList.contains('open')));scrim.addEventListener('click',()=>setOpen(false));document.addEventListener('keydown',e=>{if(e.key==='Escape')setOpen(false)});
+if(new URLSearchParams(location.search).get('state')==='open')setOpen(true);
+// No data-mutating behavior in this reference. Implement using existing Food state/actions.
+</script></body></html>
