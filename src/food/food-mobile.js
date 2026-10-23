@@ -2006,6 +2006,12 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     }
   }
 
+  function openTargetsForToday() {
+    selectedDate = localDate()
+    showOverview()
+    openTargets()
+  }
+
   function openMealToday(type) {
     if (!LABELS[type]) return
     selectedDate = localDate()
@@ -2168,7 +2174,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     showOverview()
     if (view === 'stats') openStats()
   }
-  return { load, render, getHealthSnapshot, openMealToday, openRecipeFromHealth, openTargets, openNavigationView, closeMeal, handleBack, isDetailOpen: () => Boolean(selectedMeal), flush, openHealthImport, openSamsungImport, importYazioCsv, importYazio, undoYazio,
+  return { load, render, getHealthSnapshot, openMealToday, openRecipeFromHealth, openTargetsForToday, openTargets, openNavigationView, closeMeal, handleBack, isDetailOpen: () => Boolean(selectedMeal), flush, openHealthImport, openSamsungImport, importYazioCsv, importYazio, undoYazio,
     syncFood, autoImportHealth, autoImportYazio, refreshInbox, openInbox, inboxSummary: () => ({ pending: inbox.length, unread: inbox.filter(item => !inboxSeen().has(item.id)).length }) }
 }
 
