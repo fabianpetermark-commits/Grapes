@@ -50,3 +50,49 @@ On 2026-10-23 the owner explicitly confirmed the installed Grapes app is empty. 
 4. Before enabling or signing a PROD Auth release, verify owner-confirmed empty-app onboarding and the first-owner binding, same-account relaunch, denied different-account login, cancellation, lock-screen requirement, Google Drive independence and upgrade from v28. A backup is only necessary where meaningful pre-existing records are actually present. Default feature flags stay OFF until checks pass.
 
 GitHub Actions tests the public hosted provider endpoints using only the **public, low-privilege PROD publishable key** in its staging workflow; no `sb_secret_`/service-role key or user tokens are committed. Secure provider-side IDs, secrets and allowlist changes were made by the owner in Google Cloud/Supabase UI, then functionally verified by a non-login live smoke test. No APK was published.
+
+## #114 review and candidate handoff (2026-10-23)
+
+**Implemented on this draft branch:** `ProdAuthCallback.kt` now commits the OAuth
+state before opening the browser, commits the callback result before handling
+the return, and commits one-shot consumption. If a write fails, the handoff
+fails closed. `ProdAuthGateTest.kt::callbackSurvivesActivityRecreationAndCannotBeReplayed`
+covers a new callback instance after browser return and one-shot consumption.
+Existing native tests cover unbound/foreign UID denial and Auth-OFF navigation;
+the JS tests cover PROD/TEST config and Drive-independent sign-out.
+Baseline head `176dae8` had successful PROD Auth, Food backup, Food staging and
+PROD menu workflow runs. The new head's CI must complete before claiming green.
+
+**Candidate build, still blocked on signing access and owner approval to install:**
+build the candidate only from this draft head using the existing PROD signing
+keystore, unchanged application ID `hu.grapes.healthconnect`, and a version
+code greater than v28. Build the Vite assets with the PROD URL, the PROD
+`sb_publishable_` key and both explicit Auth flags; build Gradle with the
+same environment so native `BuildConfig.GRAPES_PROD_AUTH_ENABLED` matches
+the web bundle. Keep those values out of source and logs. Verify the candidate
+APK's package and signing certificate against signed v28 with `apksigner`;
+retain it as a private CI artifact, with no GitHub Release or Play upload.
+The ordinary `release-android.yml` still checks out `codex/android-app`
+and has Auth OFF. It is unsuitable for this draft candidate. No signed
+candidate has been built or installed in this task.
+
+**Minimal owner phone acceptance, only after explicit approval to install:**
+
+1. Confirm the installed production app is still empty. If meaningful records
+   appear, stop and preserve them before proceeding. Install the matching
+   signed candidate over v28 without uninstalling or clearing data.
+2. Start Google sign-in; complete the browser callback. Confirm the app offers
+   the one-time empty-app/ownership acknowledgement and Android screen-lock
+   prompt. Cancel each once and verify the app stays locked; then approve and
+   verify the owner account enters.
+3. Force-stop and reopen: the same account restores. Try a different PROD
+   account: it must not see the local app. Confirm expired/offline verification
+   does not open it.
+4. Sign out of Grapes and verify the local app locks; check that Google Drive
+   remains separately connected. Reopen and verify the owner can sign in
+   again. Confirm Food, Water, Finance and E-book data remain unchanged.
+
+**Release blockers:** signed candidate build and certificate comparison; real
+device end-to-end Google OAuth, process-restart callback, session restoration
+and expiry, cancellation, first binding/foreign UID, Grapes sign-out versus
+Drive, and in-place upgrade checks. Do not merge or publish based on CI alone.
