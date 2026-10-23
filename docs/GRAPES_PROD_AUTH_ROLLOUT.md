@@ -61,7 +61,7 @@ covers a new callback instance after browser return and one-shot consumption.
 Existing native tests cover unbound/foreign UID denial and Auth-OFF navigation;
 the JS tests cover PROD/TEST config and Drive-independent sign-out.
 Baseline head `176dae8` had successful PROD Auth, Food backup, Food staging and
-PROD menu workflow runs. The new head's CI must complete before claiming green.
+PROD menu workflow runs. Code head `a1691ae` passed PROD Auth config gate (including npm tests, Android Kotlin compile and native unit tests), PROD menu, Food staging and Food backup workflows on 2026-10-23. The final documentation-only commit still needs its own CI status checked.
 
 **Candidate build, still blocked on signing access and owner approval to install:**
 build the candidate only from this draft head using the existing PROD signing
