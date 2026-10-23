@@ -492,8 +492,9 @@ class MainActivity : ComponentActivity() {
     private fun isTrustedProdAppPage(): Boolean = isProdAuth && webView.url == APP_URL
 
     /**
-     * Binding is a deliberate, one-time migration decision. User-supplied
-     * acknowledgement is NOT independently verified backup evidence.
+     * Binding is a deliberate, one-time account ownership decision. Empty
+     * installs require no data export; existing records must not be silently
+     * migrated across accounts. Physical device confirmation is required.
      */
     private fun offerProdOwnerBinding(requestId: String, userId: String) {
         if (!prodGate.canOfferBinding(isTrustedProdAuthPage(), userId)) {
@@ -508,15 +509,15 @@ class MainActivity : ComponentActivity() {
         }
         pendingProdOwnerRequest = requestId to userId
         val acknowledgement = CheckBox(this).apply {
-            text = "A fontos Grapes-adataimról biztonsági mentést készítettem."
+            text = "A Grapes alkalmazásban nincs megőrzendő korábbi adatom, vagy a meglévő adataim ehhez a fiókhoz tartoznak."
         }
         val dialog = AlertDialog.Builder(this)
             .setTitle("Grapes-fiók és helyi adatok")
             .setMessage(
-                "Az eszköz korábbi étkezési, víz-, pénzügyi és könyvadatai még " +
-                "nincsenek felhasználói fiókonként elkülönítve. Ezt a készüléket " +
-                "egyetlen Grapes-fiókhoz kapcsolhatod. Másik fiók ezekhez az " +
-                "adatokhoz nem férhet hozzá. A hozzárendelés nem készít mentést. " +
+                "Ha a Grapes alkalmazás üres, nincs szükség biztonsági mentésre. " +
+                "Ezt a készüléket egyetlen Grapes-fiókhoz kapcsolhatod. " +
+                "Ha vannak korábbi helyi adatok, azok ehhez a fiókhoz " +
+                "tartoznak; másik fiók nem láthatja őket. " +
                 "A folytatáshoz erősítsd meg a készülék képernyőzárát."
             )
             .setView(acknowledgement)
