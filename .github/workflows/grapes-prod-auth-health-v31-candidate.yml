@@ -1,0 +1,130 @@
+name: Grapes PROD v31 signed Auth + Health candidate (NO RELEASE)
+on:
+  push:
+    branches:
+      - release/prod-auth-health-v31-candidate-20261023
+    paths:
+      - .github/workflows/grapes-prod-auth-health-v31-candidate.yml
+permissions:
+  contents: read
+jobs:
+  signed-candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      GRAPES_VERSION_CODE: '31'
+      GRAPES_VERSION_NAME: '0.3.31-auth-health'
+      VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
+      VITE_GOOGLE_APP_ID: '991532871119'
+      VITE_GOOGLE_PICKER_API_KEY: ${{ secrets.GOOGLE_PICKER_API_KEY }}
+      VITE_GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
+      VITE_EBOOK_EPUB_WRITE_ENABLED: 'true'
+      VITE_EBOOK_TRANSFER_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
+      VITE_FOOD_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
+      VITE_GRAPES_PROD_AUTH_ENABLED: 'true'
+      VITE_GRAPES_PROD_LEGACY_DATA_ISOLATION_REVIEWED: 'true'
+      VITE_GRAPES_PROD_SUPABASE_URL: https://yopabovoxyffhokhbgxl.supabase.co
+      VITE_GRAPES_PROD_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ZbcYVjCGzHeLmRWluW5bwQ_qJaSIGfs
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+    steps:
+      - name: Checkout reviewed PROD Auth and Health commit
+        uses: actions/checkout@v4
+        with:
+          ref: 44f68cdcb8d9772977e2c9364c9ad42ca763bfbd
+      - name: Assert pinned source and update version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$(git rev-parse HEAD)" == 44f68cdcb8d9772977e2c9364c9ad42ca763bfbd ]]
+          gh release view android-v30 > /dev/null
+          latest=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq '[.[] | select(.draft == false and .prerelease == false and (.tag_name | test("^android-v[0-9]+$"))) | (.tag_name | ltrimstr("android-v") | tonumber)] | max // 0')
+          [[ "$latest" =~ ^[0-9]+$ ]]
+          (( latest < 31 && latest >= 30 )) || { echo 'Version 31 is not newer than the latest PROD version.'; exit 1; }
+      - name: Verify production signing inputs
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          test -n "$ANDROID_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_KEY_ALIAS"
+          test -n "$ANDROID_KEY_PASSWORD"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Auth, Health, Food and regression tests
+        run: |
+          set -euo pipefail
+          npm test
+          node tests/android-module-hubs.browser.mjs
+          node tests/android-mobile-preview.browser.mjs
+          node tests/android-recipe-ingredient.browser.mjs
+      - name: Build PROD Auth and Health web assets
+        run: |
+          set -euo pipefail
+          npm run build:android-web
+          test -s android-health-connect-poc/app/src/main/assets/login-auth-prod.html
+          test -s android-health-connect-poc/app/src/main/assets/design/android-mobile-preview.html
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Install Android 36 SDK
+        run: |
+          set -euo pipefail
+          sdkmanager=$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | sort -V | tail -1)
+          "$sdkmanager" 'platforms;android-36' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.11.1
+      - name: Restore existing production signing key
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/grapes-release.p12"
+          chmod 600 "$RUNNER_TEMP/grapes-release.p12"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/grapes-release.p12" >> "$GITHUB_ENV"
+      - name: Validate native Auth gate and assemble signed APK
+        run: gradle --project-dir android-health-connect-poc :app:testReleaseUnitTest :app:assembleRelease
+      - name: Verify matching PROD signing certificate and version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdk="$ANDROID_HOME/build-tools/35.0.0"
+          apk=android-health-connect-poc/app/build/outputs/apk/release/app-release.apk
+          test -s "$apk"
+          "$sdk/apksigner" verify --print-certs "$apk"
+          package_info=$("$sdk/aapt" dump badging "$apk")
+          package_line=$(printf '%s\n' "$package_info" | grep -m 1 '^package:')
+          [[ "$package_line" == *"name='hu.grapes.healthconnect'"* ]]
+          [[ "$package_line" == *"versionCode='31'"* ]]
+          mkdir -p "$RUNNER_TEMP/previous"
+          gh release download android-v30 --pattern grapes-android-v30.apk --dir "$RUNNER_TEMP/previous"
+          original="$RUNNER_TEMP/previous/grapes-android-v30.apk"
+          test -s "$original"
+          "$sdk/apksigner" verify --print-certs "$original"
+          original_cert=$("$sdk/apksigner" verify --print-certs "$original" | awk -F': ' '/Signer #1 certificate SHA-256 digest/{print $2; exit}')
+          candidate_cert=$("$sdk/apksigner" verify --print-certs "$apk" | awk -F': ' '/Signer #1 certificate SHA-256 digest/{print $2; exit}')
+          [[ -n "$original_cert" && "$original_cert" == "$candidate_cert" ]] || { echo 'PROD signing identity mismatch'; exit 1; }
+          cp "$apk" grapes-prod-auth-health-v31.apk
+          sha256sum grapes-prod-auth-health-v31.apk > grapes-prod-auth-health-v31.apk.sha256
+          printf 'Grapes PROD Auth + Health v31 signed test candidate\nInstall OVER the current Grapes app; never uninstall or clear its data.\nCheck Google login, PIN/consent, relaunch, logout preserving Drive, Health/Food/Water.\nNot a GitHub Release. This is an in-place testing APK only.\n' > README-INSTALL.txt
+      - name: Upload signed APK as short-lived private Actions artifact, no GitHub release
+        uses: actions/upload-artifact@v4
+        with:
+          name: grapes-prod-auth-health-v31-signed
+          path: |
+            grapes-prod-auth-health-v31.apk
+            grapes-prod-auth-health-v31.apk.sha256
+            README-INSTALL.txt
+          if-no-files-found: error
+          retention-days: 7
