@@ -84,7 +84,7 @@
 3. **Ajánló / aktuális tartalom**: csak valós felhasználói adatból, előzményből vagy a modul megbízható adatforrásából. A Health prototípus számai és receptcíme mintaadatok.
 4. **Modul gyorssáv**: a Health tervezeten Fotó, Étel, Víz + külön Vonalkód. Az adott modul fontos műveleteit tartalmazza, nem egyenlő a Grapes globális navigációjával.
 5. **Egyedi modulbeállítások**: widgetek elrejtése, célok, naplók, mértékegységek, integrációk és adatok a funkcióhoz igazítva. Ne töröljenek mentett adatot a widget elrejtésekor.
-6. A négy Grapes fő terület **Home / Health / Utility / Finance** megmarad. A **gyökérfőmenü 2026-10-23-i, felhasználói visszajelzés alapján egyeztetett új navigációja** az alábbi 0.6. fejezetben található. A képi tervezet még PROPOSED, az alsó navigáció megszüntetése és a felső ikonsor használata már kötelező funkcionális tervezési követelmény.
+6. A négy Grapes fő terület **Home / Health / Tools / Finance** megmarad; a korábbi **Utility** csak felhasználói elnevezésként változik **Tools**-ra, a belső azonosítók automatikus átnevezése nélkül. A **gyökérfőmenü 2026-10-23-i, felhasználói visszajelzés alapján egyeztetett új navigációja** az alábbi 0.6. fejezetben található. A képi tervezet még PROPOSED, az alsó navigáció megszüntetése és a felső ikonsor használata már kötelező funkcionális tervezési követelmény.
 
 ### 0.5. Tipográfia, hozzáférhetőség és bevezetési kapuk
 
@@ -102,7 +102,7 @@
 │ Grapes                              [⚙] │
 ├──────────────────────────────────────────┤
 │ [⌂★]     [⌂]      [♡]      [▦]      [$] │
-│ Kezdő    Home    Health   Utility  Finance│
+│ Kezdő    Home    Health    Tools    Finance│
 ├──────────────────────────────────────────┤
 │ Gyakran használt             [+ Hozzáadás]│
 │ [ Ételnapló ]  [ Víznapló ]               │
@@ -114,8 +114,8 @@
 - **Felső fej:** a gyökérfőmenüben balra csak `Grapes`, jobbra a **globális** fogaskerék. Az egyes modulok saját képernyőjén továbbra is modulnév + modulbeállítás fogaskerék az elfogadott fejléc. Nincs ismételt dekoráció/alcím.
 - **Közvetlenül alatta egyetlen vízszintes főmenü-ikonsor**, ikon és rövid egyértelmű felirat, legalább 44–48 px működő érintési területtel. Fókusz- és aktív állapot legyen jól megkülönböztethető, ne csak színnel.
 - **Az első ikon egy házikó/kedvenc-ház**, amely az **„Gyakran használt” kezdőoldal**. Az app ezt nyissa meg induláskor, és a felső sávból ide bármikor vissza lehessen térni. Ez nem egyenlő a külön `Home` főmodullal.
-- **A további ikonok:** Home, Health, Utility, Finance, az alkalmazás ténylegesen elérhető gyökérmoduljainak regiszterében szereplő sorrendben. **Ha új főmodul készül, automatikusan ebbe a felső ikonsorba kerül**, ikon+név azonosítóval; nincs hardcoded maximum 4 vagy 5 modul. Szűk képernyőn a sor **vízszintesen görgethető**, swipe-tal és billentyűzetes/fókuszos eléréssel, úgy, hogy az ikonok nem zsugorodnak olvashatatlanra. A telepített modulok és sorrendjük ugyanabból a modulregiszterből származzanak, ne UI-ban kézzel duplikált listából.
-- **Nincs alsó főmenü-navigáció**, nincs második főmenüsor. Viszont **minden fő területnek megmarad a saját, kontextuális alsó gyorsműveleti sávja**. Ez a felhasználó által a Health képernyőn külön bekarikázott, jóváhagyott minta: Health = **Fotó / Étel / Víz + külön Vonalkód**. Nem navigációs tabok, hanem műveletek; főmodulváltáskor a sáv tartalma az aktív főmodul műveleteire vált. A Kezdőn a kedvencek kezelését szolgáló műveletek jelenhetnek meg; Home / Utility / Finance konkrét gyorsgombjai külön véglegesítendők. A modul gyorssávját a globális felső ikonsor nem helyettesíti.
+- **A további ikonok:** Home, Health, **Tools** (korábban Utility), Finance, az alkalmazás ténylegesen elérhető gyökérmoduljainak regiszterében szereplő sorrendben. **Ha új főmodul készül, automatikusan ebbe a felső ikonsorba kerül**, ikon+név azonosítóval; nincs hardcoded maximum 4 vagy 5 modul. Szűk képernyőn a sor **vízszintesen görgethető**, swipe-tal és billentyűzetes/fókuszos eléréssel, úgy, hogy az ikonok nem zsugorodnak olvashatatlanra. A telepített modulok és sorrendjük ugyanabból a modulregiszterből származzanak, ne UI-ban kézzel duplikált listából.
+- **Nincs alsó főmenü-navigáció**, nincs második főmenüsor. Viszont **minden fő területnek megmarad a saját, kontextuális alsó gyorsműveleti sávja**. Ez a felhasználó által a Health képernyőn külön bekarikázott, jóváhagyott minta: Health = **Fotó / Étel / Víz + külön Vonalkód**. Nem navigációs tabok, hanem műveletek; főmodulváltáskor a sáv tartalma az aktív főmodul műveleteire vált. A Kezdőn a kedvencek kezelését szolgáló műveletek jelenhetnek meg; Home / Tools / Finance konkrét gyorsgombjai külön véglegesítendők. A modul gyorssávját a globális felső ikonsor nem helyettesíti.
 - **A gyorssáv elhelyezése:** a főmodul- és Kezdő-nézeteken alul, a tartalom görgetésétől függetlenül elérhető, Android safe-area fölött. A görgethető widgetek alul megfelelő paddinget kapnak, hogy az utolsó kártyát se takarja ki a sáv. A főmenü alsó globális navigációját nem szabad összekeverni az egyes modulok gyorssávjával.
 - **Működés:** az adott gyorsgomb közvetlenül a hozzá tartozó műveletet indítsa, ne ugyanazt a kategóriamenüt nyissa meg újra; következetes 44–48 px érintési cél, szöveges címke/akadálymentes név. A modulon belül megnyitott teljes képernyős szerkesztő/billentyűzet esetén szükség szerint elrejthető, de az állapotnak navigációkor és visszalépéskor helyre kell állnia.
 - **Stílus:** a jóváhagyott Health-mintából: sötét, enyhén emelt, lekerekített pill az elsődleges 2–4 műveletnek, szükség esetén külön hangsúlyos kerek action gombbal. Matt háttér, finom keret és kizárólag rövid, diszkrét Grapes-cián peremfény. Az alsó dock nem lehet az egész szélességében világító neonkeret.
@@ -131,6 +131,20 @@
 
 **Külön implementációs kapuk:** indulás a Kezdő oldalon; a négy meglévő ikon és új modul bővítésének próbája; navigációs visszalépés; megnyitások alapján változó automatikus ajánlások; kézi rögzítés, elrejtés és profilváltás; 320/360/390/412 px, nagyobb font; beszélő címkék/TalkBack; Auth/PIN/Drive érintetlenség. A design doc frissítése **nem** triggerelhet merge-et, PROD APK-t vagy bejelentkezési átépítést.
 
+
+---
+
+### 0.7. Teljes Home / Tools / Finance widgetes átvezetés (2026-10-23)
+
+**Új felhasználói igény:** a korábbi `Utility` látható neve **Tools**. A **Home**, **Finance**, valamint a **Tools → E-book / QR** teljes moduljai – belső oldalaikkal együtt – a Healthből elfogadott, neon-cián peremszegélyes **widgetes megjelenést** kapják. Nem elég a főmodul csempéit átfesteni.
+
+- Felső ikonsorban főmodult választunk; **azonnal a főmodul saját tényleges widgetjeit** látjuk, nem újabb fő almodulválasztó menüt. Az egyes widgeteket a Kezdőre is lehet kézzel/gyakoriság szerint kitenni.
+- **Tools**: E-book folytatás/könyvtár/olvasó/átvitel + QR Stúdió generálás és beállítások. Olvasási tipográfia és a QR tényleges kódja nem kötelező ciánra festendő tartalom.
+- **Finance**: aktuális bevétel/kiadás, kategóriák, megtakarítás, tranzakciók; részletekben megtartandók az Áttekintés/Tranzakció/Megtakarítás/Előrejelzés/Import nézetek, minden adat és mentés.
+- **Home**: Bevásárlólista, Készletkezelő, Növények widgetek; az utóbbi nem válhat automatikusan éles, kitalált növény- vagy időjárásadattá.
+- **Minden főmodul** saját alsó kontextuális gyorsműveletsávot kap; az egyedi Home/Tools/Finance gombkiosztás **még jóváhagyandó**. A már jóváhagyott Health Fotó/Étel/Víz/Vonalkód elrendezést megőrizzük.
+- **Adatvédelem:** a régi belső `utility` modulazonosítók, Drive-mappák és a QR/E-book/Finance/Home mentései nem változnak pusztán név- és designfrissítés miatt. A QR-munkaoldal olvasható kontrasztja és az olvasó személyes tipográfiája marad.
+- **Tervezési hivatkozás:** [Tools / Home / Finance teljes widgetes átalakítása](./GRAPES_TOOLS_FINANCE_HOME_WIDGET_REDESIGN_20261023.md). Ezt külön TEST implementációs PR-ek követhetik; **nem** automatikus merge/release.
 
 ---
 
