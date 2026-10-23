@@ -71,8 +71,7 @@ jobs:
           else
             code=$((latest + 1))
             name="0.3.$code"
-            notes="Ellenőrzött automatikus Grapes PROD-frissítés:
-$(git log -5 --pretty='- %s')"
+            notes=$(printf 'Ellenőrzött automatikus Grapes PROD-frissítés:\n%s' "$(git log -5 --pretty='- %s')")
           fi
           (( code > latest )) || { echo "ERROR: Release versionCode must exceed latest published $latest"; exit 1; }
           # Existing installed production builds must remain updatable; compare
