@@ -396,6 +396,12 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     sheet.classList.toggle('is-open', open)
     sheet.setAttribute('aria-hidden', String(!open))
     sheet.inert = !open
+    if (sheet === addSheet) {
+      const expanded = open && sheet.classList.contains('meal-quick-panel')
+      fab.classList.toggle('is-add-open', expanded)
+      fab.setAttribute('aria-expanded', String(expanded))
+      fab.setAttribute('aria-label', expanded ? 'Ételkereső bezárása' : 'Étel hozzáadása')
+    }
     if (open) {
       backdrop.classList.add('is-open')
       setTimeout(() => sheet.querySelector('input:not([type="hidden"]), select, textarea, button')?.focus({ preventScroll: true }), 50)
@@ -1045,6 +1051,12 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   function renderMealDetail() {
     const container = $('[data-food-entries]'); container.replaceChildren()
     const entries = selectedEntries().filter(item => item.mealType === selectedMeal)
+    const total = entries.length ? summarizeEntries(entries) : null
+    // Unknown nutrients stay unknown; an empty meal must not look like 0 kcal.
+    $('[data-food-meal-energy]').textContent = nutrient(total?.energyKcal, 1)
+    for (const key of ['protein', 'carbohydrate', 'fat']) {
+      $('[data-food-meal-' + key + ']').textContent = nutrient(total?.[key], 1, ' g')
+    }
     if (!entries.length) { container.innerHTML = '<div class="empty-state">Ebben az étkezésben még nincs étel. A + gombbal adhatsz hozzá.</div>'; return }
     for (const entry of entries) {
       const card = document.createElement('article'); card.className = 'food-entry-card'
@@ -1057,15 +1069,25 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
 
   function openAddSheet() {
     if (!selectedMeal && !recipeCatalogActive) return
+    // The same FAB opens/closes a compact in-place sheet for meal logging.
+    if (!recipeCatalogActive && addSheet.classList.contains('is-open')) {
+      closeSheets()
+      return
+    }
     setAddPageMode(recipeCatalogActive)
     setFoodSearchFilter('all')
     setSheetOpen(addSheet, true)
     $('[data-food-search]').value = ''; startFoodSearch('')
-    setTimeout(() => $('[data-food-search]').focus({ preventScroll: true }), 100)
+    setTimeout(() => {
+      if (addSheet.classList.contains('is-open')) $('[data-food-search]').focus({ preventScroll: true })
+    }, 100)
   }
 
   function setAddPageMode(forRecipe) {
     const title = forRecipe ? 'Hozzávaló kiválasztása' : 'Étel hozzáadása'
+    // Recipe ingredient search keeps the old fullscreen, independently
+    // scrollable selector. Only meal logging gets the compact popover.
+    addSheet.classList.toggle('meal-quick-panel', !forRecipe)
     addSheet.setAttribute('aria-label', title)
     $('[data-food-add-title]').textContent = title
     $('[data-food-add-copy]').textContent = forRecipe
