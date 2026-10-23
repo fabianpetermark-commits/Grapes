@@ -115,7 +115,9 @@ try {
   await page.locator('.appbar [data-nav="home"]').click()
 
   await page.locator('[data-menu-group="health"]').click()
-  await page.locator('[data-page="hub-health"] [data-menu-destination="food"]').click()
+  await page.locator('[data-page="hub-health"] .health-panel--food').waitFor({ state: 'visible' })
+  assert.equal(await page.locator('.statusbar').count(), 0, 'A statikus óra/akku sáv eltávolítva.')
+  await page.locator('[data-page="hub-health"] [data-health-food-open]').click()
   await page.locator('[data-page="food"]').waitFor({ state: 'visible' })
   await page.locator('[data-food-meals] .meal').first().waitFor()
   assert.equal(await page.locator('[data-food-overview] [data-food-health-auto], [data-food-overview] [data-food-yazio-auto], [data-food-overview] [data-food-sync-refresh], [data-food-overview] [data-food-inbox]').count(), 0, 'Az import-, kézi szinkron- és megosztáskártyák ne maradjanak a Food főoldalon.')
