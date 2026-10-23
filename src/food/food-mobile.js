@@ -2019,8 +2019,6 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     $('[data-food-energy-ring]').addEventListener('click', openStats)
     $('[data-food-open-stats]').addEventListener('click', openStats)
     $('[data-food-open-targets]').addEventListener('click', openTargets)
-    // Expose the existing non-destructive native JSON exporter on the mobile overview.
-    $('[data-food-backup-export]').addEventListener('click', exportBackup)
     $('[data-food-stats-back]').addEventListener('click', closeSheets)
     $('[data-food-targets-back]').addEventListener('click', closeSheets)
     $('[data-food-stats-range]').addEventListener('change', renderStats)
