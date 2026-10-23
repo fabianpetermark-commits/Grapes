@@ -71,7 +71,8 @@ jobs:
           else
             code=$((latest + 1))
             name="0.3.$code"
-            notes="Ellenőrzött automatikus Grapes PROD-frissítés: $(git log -1 --format=%s)"
+            notes="Ellenőrzött automatikus Grapes PROD-frissítés:
+$(git log -5 --pretty='- %s')"
           fi
           (( code > latest )) || { echo "ERROR: Release versionCode must exceed latest published $latest"; exit 1; }
           # Existing installed production builds must remain updatable; compare
@@ -143,9 +144,10 @@ jobs:
           TARGET="grapes-android-v$GRAPES_VERSION_CODE.apk"
           TOOLS="$ANDROID_HOME/build-tools/35.0.0"
           "$TOOLS/apksigner" verify --print-certs "$SOURCE"
-          info=$("$TOOLS/aapt" dump badging "$SOURCE" | head -n 1)
-          echo "$info" | grep -F "name='hu.grapes.healthconnect'"
-          echo "$info" | grep -F "versionCode='$GRAPES_VERSION_CODE'"
+          info=$("$TOOLS/aapt" dump badging "$SOURCE")
+          package_line=$(printf '%s\n' "$info" | grep -m 1 '^package:')
+          [[ "$package_line" == *"name='hu.grapes.healthconnect'"* ]]
+          [[ "$package_line" == *"versionCode='$GRAPES_VERSION_CODE'"* ]]
           mkdir -p "$RUNNER_TEMP/previous-release"
           gh release download "android-v$PREVIOUS_VERSION_CODE" \
             --pattern "grapes-android-v$PREVIOUS_VERSION_CODE.apk" \
