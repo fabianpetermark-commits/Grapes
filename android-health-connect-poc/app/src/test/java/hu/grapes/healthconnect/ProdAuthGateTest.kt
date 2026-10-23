@@ -91,6 +91,18 @@ class ProdAuthCallbackTest {
     }
 
     @Test
+    fun callbackSurvivesActivityRecreationAndCannotBeReplayed() {
+        val url = "$project/auth/v1/authorize?provider=google&redirect_to=${Uri.encode(redirect)}"
+        assertTrue(ProdAuthCallback(context) { 10_000L }.begin(url, state))
+        val returnFromBrowser = ProdAuthCallback(context) { 10_001L }
+        assertTrue(returnFromBrowser.accept(Uri.parse("$redirect&code=$code")))
+        val resumed = ProdAuthCallback(context) { 10_002L }
+        assertEquals("code", resumed.consume().getString("status"))
+        assertEquals("none", ProdAuthCallback(context) { 10_003L }.consume().getString("status"))
+        assertFalse(ProdAuthCallback(context) { 10_004L }.accept(Uri.parse("$redirect&code=$code")))
+    }
+
+    @Test
     fun unknownProviderAndWrongProjectNeverStartOAuth() {
         val callback = ProdAuthCallback(context) { 10_000L }
         val badProject = "https://aighqtqjlzirlokxwupt.supabase.co/auth/v1/authorize?provider=google&redirect_to=${Uri.encode(redirect)}"
