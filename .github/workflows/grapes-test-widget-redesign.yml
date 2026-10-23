@@ -1,0 +1,49 @@
+name: Grapes TEST widget dashboards — review only
+on:
+  push:
+    branches:
+      - feature/grapes-test-home-tools-finance-widgets-20261023
+  pull_request:
+    branches:
+      - codex/android-app
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  safe-review:
+    name: TEST visual widgets, regressions, Android web build (NO RELEASE)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VITE_GRAPES_TEST_CHANNEL: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Browser matching playwright-core
+        run: npx playwright-core install --with-deps chromium
+      - name: Set browser executable
+        run: echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(node -e 'console.log(require("playwright-core").chromium.executablePath())')" >> "$GITHUB_ENV"
+      - name: Unit tests
+        run: npm test
+      - name: Android web compilation (no signing or APK)
+        run: npm run build:android-web
+      - name: Home storage regression
+        run: node tests/android-home-mobile.browser.mjs
+      - name: Hub navigation and Health regression
+        run: node tests/android-module-hubs.browser.mjs
+      - name: New Home Tools Finance visual smoke
+        run: node tests/android-redesign-hubs.browser.mjs
+      - name: TEST visual screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: grapes-home-tools-finance-test-screenshots
+          path: artifacts/redesign/*.png
+          if-no-files-found: ignore
+          retention-days: 30

@@ -14,6 +14,7 @@ import { createYazioApiPanel } from './food/yazio-api-panel.js'
 import { registerFoodSharing, sendMealShare, sendRecipeShare } from './food/food-sharing-client.js'
 import { hydrateMobileIcons, mobileIconSvg } from './android-mobile-icons.js'
 import { createHomeMobile } from './home/home-mobile.js'
+import { initGrapesWidgetHubs } from './redesign/module-widgets.js'
 import { getAndroidAppUpdate, installAndroidAppUpdate, isGrapesAndroidApp, openAndroidHealthConnectSettings, saveAndroidJsonBackup } from './android-bridge.js'
 import { waterBackupToJson, waterBackupFromJson, readWaterStoreStrict, waterBackupSummary } from './water/water-backup.js'
 import {
@@ -56,6 +57,21 @@ let activeTransferBookId = ''
 let activePairingNonce = ''
 let mobileFood = null
 const household = createHomeMobile($('[data-household-root]'))
+const widgetMenus = initGrapesWidgetHubs({
+  openHousehold: (tab, add = false) => {
+    showPage('household', { parent: 'hub-home', entry: tab })
+    if (add) document.querySelector(`[data-household-add="${tab}"]`)?.click()
+  },
+  openEbook: () => showPage('ebook', { parent: 'hub-utility', entry: 'ebook' }),
+  openQR: () => openModule('qr'),
+  openFinance: () => openModule('finance'),
+  importEbook: () => {
+    showPage('ebook', { parent: 'hub-utility', entry: 'ebook' })
+    $('[data-ebook-file]')?.click()
+  },
+  listBooks: listMobileEbooks,
+  isDriveConnected: isGrapesDriveConnected
+})
 let activePage = 'home'
 let menuReturnPage = ''
 let menuEntry = ''
@@ -73,7 +89,7 @@ const labels = {
   'hub-home': ['Home', 'Háztartás'],
   'hub-health': ['Health', 'Napi egészségügyi áttekintés'],
   'health-settings': ['Health', 'Modulbeállítások'],
-  'hub-utility': ['Utility', 'Eszközök'],
+  'hub-utility': ['Tools', 'Eszközök'],
   'hub-finance': ['Finance', 'Pénzügyek'],
   ebook: ['E-book', 'Könyvtár'], reader: ['A csend térképe', 'Olvasó'],
   transfer: ['E-book átvitel', 'Olvasóeszköz'],
@@ -349,6 +365,7 @@ function showPage(page, { parent = '', entry = '' } = {}) {
     })
   }
   if (page === 'health-settings') showHealthSettingsIndex()
+  widgetMenus.refresh(page)
   if (page === 'household') {
     household.load()
     if (entry === 'shopping' || entry === 'inventory') household.openTab(entry)
