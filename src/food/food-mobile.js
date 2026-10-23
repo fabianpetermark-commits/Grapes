@@ -1971,7 +1971,52 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     const date = new Date(`${selectedDate}T12:00:00`); date.setDate(date.getDate() + days); selectedDate = localDate(date); renderOverview()
   }
 
-  function render() { renderOverview(); if (selectedMeal) renderMealDetail() }
+  function render() {
+    renderOverview()
+    if (selectedMeal) renderMealDetail()
+    // The Health dashboard reads the same normalized Food project, never a second store.
+    document.dispatchEvent(new CustomEvent('grapes:health-food-changed'))
+  }
+
+  function getHealthSnapshot() {
+    // A profile switch must never briefly reveal the previous person's diary.
+    if (!project || !profile || loadedProfileId !== accountProfile().id || profile.id !== loadedProfileId) return null
+    const date = localDate()
+    const entries = entriesForLocalDay(project.diaryEntries, date, profile.id)
+      .filter(entry => entry.snapshot?.category !== 'Folyadék')
+    const meals = Object.fromEntries(MEALS.map(([type, label]) => {
+      const items = entries.filter(entry => entry.mealType === type)
+      return [type, { label, count: items.length, energyKcal: items.length ? summarizeEntries(items).energyKcal : null }]
+    }))
+    const latest = [...project.recipes]
+      .filter(recipe => !recipe.ownerProfileId || recipe.ownerProfileId === profile.id)
+      .sort((a,b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')))
+    const hour = new Date().getHours()
+    const mealKeyword = hour < 11 ? /reggeli|breakfast|zab|palacsinta/i
+      : hour < 14 ? /ebéd|lunch|főétel/i
+      : hour < 18 ? /uzsonna|snack|desszert/i : /vacsora|dinner/i
+    const recommended = latest.find(recipe => mealKeyword.test(recipe.category || '')) || latest[0] || null
+    return {
+      profileId: profile.id, date, totals: entries.length ? summarizeEntries(entries) : null,
+      targets: currentTargets(project, date), meals,
+      recipe: recommended ? {
+        id: recommended.id, name: recommended.name,
+        imageUrl: recommended.imageUrl || '', category: recommended.category || ''
+      } : null,
+    }
+  }
+
+  function openMealToday(type) {
+    if (!LABELS[type]) return
+    selectedDate = localDate()
+    showOverview()
+    openMeal(type)
+  }
+
+  function openRecipeFromHealth(id) {
+    showOverview()
+    openRecipe(id)
+  }
 
   async function openLegacyAfterSave(module, view, itemId = '', action = '') {
     await flush()
@@ -2123,7 +2168,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     showOverview()
     if (view === 'stats') openStats()
   }
-  return { load, render, openNavigationView, closeMeal, handleBack, isDetailOpen: () => Boolean(selectedMeal), flush, openHealthImport, openSamsungImport, importYazioCsv, importYazio, undoYazio,
+  return { load, render, getHealthSnapshot, openMealToday, openRecipeFromHealth, openTargets, openNavigationView, closeMeal, handleBack, isDetailOpen: () => Boolean(selectedMeal), flush, openHealthImport, openSamsungImport, importYazioCsv, importYazio, undoYazio,
     syncFood, autoImportHealth, autoImportYazio, refreshInbox, openInbox, inboxSummary: () => ({ pending: inbox.length, unread: inbox.filter(item => !inboxSeen().has(item.id)).length }) }
 }
 
