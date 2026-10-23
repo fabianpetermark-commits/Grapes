@@ -595,6 +595,56 @@
     [data-food-overview]>.daily-card{display:none}
     @media(max-width:360px){.health-food-metrics{grid-template-columns:105px 1fr;gap:8px}.health-calorie-ring{width:105px;height:105px}.health-panel{padding:12px}.health-meals{gap:4px}.health-meals button{min-height:58px}.health-dock-scan{height:60px;width:60px}}
 
+
+    /* Approved meal-detail redesign: no redundant controls, compact summary. */
+    .food-detail-head--compact{margin-bottom:13px}
+    .food-detail-head--compact button[hidden], .food-detail-add[hidden]{display:none !important}
+    .food-meal-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding:13px;margin:0 0 14px;
+      background:linear-gradient(145deg,#182f39,#101a24 67%);border:1px solid #315361;border-radius:17px}
+    .food-meal-summary__energy{grid-column:1/-1;display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:3px}
+    .food-meal-summary__energy>span{color:var(--muted);font-size:11px;font-weight:700}
+    .food-meal-summary__energy strong{color:var(--accent);font-size:22px;letter-spacing:-.02em}
+    .food-meal-summary__energy small{font-size:11px;color:var(--muted);font-weight:500}
+    .food-meal-summary__macros{display:contents}
+    .food-meal-summary__macros>div{display:flex;flex-direction:column;gap:6px;min-width:0;padding:8px;background:#192a35;border-radius:10px}
+    .food-meal-summary__macros span{font-size:10px;color:var(--muted)}
+    .food-meal-summary__macros b{font-size:13px;font-weight:750}
+    /* The original recipe-ingredient picker stays fullscreen. Only the meal's
+       existing food search sheet is presented as a popup beside the same FAB. */
+    .fab{bottom:max(25px,env(safe-area-inset-bottom));z-index:45}
+    .fab span{display:block;transform:rotate(0);transition:transform .18s ease}
+    .fab.is-add-open span{transform:rotate(45deg)}
+    [data-food-add-sheet].meal-quick-panel{position:absolute;inset:auto 14px max(99px,calc(env(safe-area-inset-bottom) + 94px));width:auto;
+      max-height:min(480px,calc(100dvh - 218px));height:min(480px,calc(100dvh - 218px));
+      overflow:hidden;padding:12px;border:1px solid #365b68;border-radius:21px;
+      background:linear-gradient(145deg,#1b2c38,#101a23 72%);
+      box-shadow:0 16px 45px rgb(0 0 0 / 65%);
+      transform:translateY(18px) scale(.98);opacity:0;pointer-events:none;
+      transition:transform .18s ease,opacity .18s ease;z-index:42}
+    [data-food-add-sheet].meal-quick-panel.is-open{transform:none;opacity:1;pointer-events:auto}
+    [data-food-add-sheet].meal-quick-panel .food-recipe-editor__header{margin:0 0 8px}
+    [data-food-add-sheet].meal-quick-panel [data-food-add-back]{display:none}
+    [data-food-add-sheet].meal-quick-panel .food-recipe-editor__header h2{font-size:14px}
+    [data-food-add-sheet].meal-quick-panel [data-food-add-copy]{display:none}
+    [data-food-add-sheet].meal-quick-panel .food-add-page__body{overflow:hidden}
+    [data-food-add-sheet].meal-quick-panel .food-add-page__quick-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;
+      margin:0 0 9px;padding:4px;background:#101a23;border:1px solid #29424f;border-radius:26px}
+    [data-food-add-sheet].meal-quick-panel .quick-action{grid-template-columns:1fr;grid-template-rows:22px auto;
+      min-height:54px;gap:3px;justify-items:center;padding:5px 1px;background:transparent;border:0;border-radius:20px}
+    [data-food-add-sheet].meal-quick-panel .quick-action i{width:auto;height:auto;background:transparent;font-size:20px}
+    [data-food-add-sheet].meal-quick-panel .quick-action span{font-size:9px;white-space:nowrap}
+    [data-food-add-sheet].meal-quick-panel .quick-action[aria-pressed="true"]{background:#21414a}
+    [data-food-add-sheet].meal-quick-panel [data-food-search]{min-height:44px;flex:0 0 auto;padding:0 11px;border:1px solid #3a6473;border-radius:12px;background:#0c1921}
+    [data-food-add-sheet].meal-quick-panel .sheet-results{height:auto;min-height:60px;max-height:none;flex:1 1 auto;
+      margin:9px 0 0;overflow-y:auto;overscroll-behavior:contain;align-content:start}
+    [data-food-add-sheet].meal-quick-panel [data-food-search-status]{flex:0 0 auto;max-height:34px;overflow:hidden;margin:4px 0 0}
+    [data-food-add-sheet].meal-quick-panel .food-recipe-ingredient-note{display:none}
+    [data-food-add-sheet].meal-quick-panel:has([data-food-live-scanner]:not([hidden])){height:min(65dvh,560px);max-height:calc(100dvh - 155px)}
+    [data-food-add-sheet].meal-quick-panel:has([data-food-live-scanner]:not([hidden])) .food-add-page__body{overflow-y:auto}
+    [data-food-add-sheet].meal-quick-panel:has([data-food-live-scanner]:not([hidden])) .sheet-results{flex:0 0 auto;max-height:120px}
+    @media(max-height:620px){[data-food-add-sheet].meal-quick-panel{bottom:84px;height:calc(100dvh - 170px);max-height:none}}
+    @media(prefers-reduced-motion:reduce){.fab span,[data-food-add-sheet].meal-quick-panel{transition:none}}
+
   </style>
   <link rel="stylesheet" href="../src/home/home-mobile.css">
 </head>
@@ -786,8 +836,16 @@
           <div data-food-meals></div>
           </section>
           <section data-food-detail hidden>
-            <div class="food-detail-head"><button type="button" data-food-back aria-label="Vissza">‹</button><div><h1 data-food-detail-title>Étkezés</h1><p data-food-detail-copy></p></div><button type="button" class="food-share" data-food-share aria-label="Étkezés megosztása">⌯</button></div>
-            <button class="food-detail-add" type="button" data-food-detail-add>＋ Étel hozzáadása</button>
+            <div class="food-detail-head food-detail-head--compact"><button type="button" data-food-back aria-label="Vissza" hidden>‹</button><div><h1 data-food-detail-title>Étkezés</h1><p data-food-detail-copy></p></div><button type="button" class="food-share" data-food-share aria-label="Étkezés megosztása" hidden>⌯</button></div>
+            <button class="food-detail-add" type="button" data-food-detail-add hidden>＋ Étel hozzáadása</button>
+            <section class="food-meal-summary" aria-label="Az étkezés összesített tápértékei">
+              <div class="food-meal-summary__energy"><span>Étkezés összesen</span><strong><b data-food-meal-energy>—</b> <small>kcal</small></strong></div>
+              <div class="food-meal-summary__macros">
+                <div><span>Fehérje</span><b data-food-meal-protein>—</b></div>
+                <div><span>Szénhidrát</span><b data-food-meal-carbohydrate>—</b></div>
+                <div><span>Zsír</span><b data-food-meal-fat>—</b></div>
+              </div>
+            </section>
             <div data-food-entries></div>
           </section>
           <section data-food-recipes-view hidden>
@@ -894,7 +952,7 @@
           <p class="reader-status" data-transfer-status role="status"></p>
         </div>
 
-        <button class="fab" data-fab hidden aria-label="Étel hozzáadása">+</button>
+        <button class="fab" type="button" data-fab hidden aria-label="Étel hozzáadása" aria-expanded="false" aria-controls="food-add-quick-panel"><span aria-hidden="true">+</span></button>
       </section>
       <div class="sheet-backdrop" data-sheet-close></div>
       <section class="bottom-sheet" data-notifications-sheet role="dialog" aria-modal="true" aria-label="Értesítések" aria-hidden="true" inert>
@@ -907,11 +965,11 @@
           <p data-update-status role="status" aria-live="polite"></p>
         </article>
       </section>
-      <section class="bottom-sheet food-add-page" data-food-add-sheet role="dialog" aria-modal="true" aria-label="Étel hozzáadása" aria-hidden="true" inert>
+      <section id="food-add-quick-panel" class="bottom-sheet food-add-page" data-food-add-sheet role="dialog" aria-modal="true" aria-label="Étel hozzáadása" aria-hidden="true" inert>
         <div class="food-recipe-editor__header"><button type="button" class="food-recipe-editor__back" data-food-add-back aria-label="Vissza">‹</button><div><h2 data-food-add-title>Étel hozzáadása</h2><p data-food-add-copy>Keresés vagy gyors bevitel — amelyik most kényelmesebb.</p></div></div>
         <div class="food-add-page__body">
-          <input class="search" data-food-search placeholder="Keresés az ételek között…">
           <div class="quick-grid food-add-page__quick-grid" aria-label="Gyorsműveletek"><button type="button" class="quick-action" data-food-quick="barcode"><i>▦</i><span>Vonalkód</span></button><button type="button" class="quick-action" data-food-quick="photo"><i>◉</i><span>Fotó alapján</span></button><button type="button" class="quick-action" data-food-quick="favorites" aria-pressed="false"><i>☆</i><span>Kedvencek</span></button><button type="button" class="quick-action" data-food-quick="custom"><i>＋</i><span>Saját étel</span></button></div>
+          <input class="search" data-food-search placeholder="Étel keresése…" aria-label="Étel keresése">
           <input type="file" accept="image/*" capture="environment" data-food-barcode-photo hidden>
           <div data-food-live-scanner hidden><video data-food-live-video autoplay muted playsinline style="display:block;width:100%;max-height:260px;object-fit:cover;border-radius:14px"></video><button class="food-scanner-close" type="button" data-food-live-stop><span aria-hidden="true">×</span>Olvasó bezárása</button></div>
           <div class="sheet-results" data-food-search-results></div>
