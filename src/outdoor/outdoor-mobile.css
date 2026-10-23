@@ -1,16 +1,4 @@
-/* Outdoor UI scaffold: isolate layout and preserve Food/Health styles. */
-.hub-grid .hub-card--outdoor {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: 61px minmax(0, 1fr);
-  align-items: center;
-  min-height: 112px;
-  gap: 16px;
-  padding: 16px;
-  background: linear-gradient(115deg, rgb(59 220 242 / 11%), var(--surface) 67%);
-}
-.hub-card--outdoor .hub-card__icon { flex: none; }
-.hub-card--outdoor .hub-card__copy { gap: 6px; }
+/* Plants module UI, isolated from Food/Health styles. */
 .outdoor-page .hub-back { margin-bottom: 12px; }
 .outdoor-weather {
   margin: 14px 0 21px;
@@ -43,3 +31,73 @@
   .outdoor-options { gap: 9px; }
   .outdoor-options .hub-option { padding: 14px 11px; }
 }
+
+/* Sample-only plant cards and per-instance detail; no real plant data yet. */
+.outdoor-preview-label { display: grid; gap: 5px; margin: 2px 0 18px; padding: 11px 13px; border-left: 3px solid var(--accent); background: rgb(59 220 242 / 7%); border-radius: 0 12px 12px 0; }
+.outdoor-preview-label strong { color: var(--accent); font-size: 12px; }
+.outdoor-preview-label span { color: var(--muted); font-size: 11px; line-height: 1.5; }
+.outdoor-plant-list-head { display: flex; align-items: center; justify-content: space-between; gap: 9px; margin-bottom: 11px; }
+.outdoor-plant-list-head h2 { font-size: 16px; margin: 0; }
+.outdoor-plant-list-head > span { color: var(--muted); font-size: 11px; }
+.outdoor-plant-list { display: grid; gap: 11px; }
+.outdoor-plant-card { display: grid; grid-template-columns: 91px minmax(0, 1fr); gap: 14px; width: 100%; min-height: 134px; padding: 11px; color: var(--text); text-align: left; background: linear-gradient(115deg, var(--raised), var(--surface) 67%); border: 1px solid var(--line); border-radius: 19px; cursor: pointer; }
+.outdoor-plant-card:hover, .outdoor-plant-card:focus-visible { border-color: rgb(59 220 242 / 55%); }
+.outdoor-plant-card:focus-visible, .outdoor-detail-tabs button:focus-visible, [data-outdoor-detail-back]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.outdoor-plant-card__visual { display: grid; place-items: center; min-height: 110px; border-radius: 13px; color: #7be6ba; background: radial-gradient(circle at 50% 80%, rgb(55 142 112 / 30%), transparent 57%), linear-gradient(145deg, #16352e, #12212b 80%); border: 1px solid rgb(123 230 186 / 11%); }
+.outdoor-plant-card__visual svg { width: 43px; height: 43px; stroke-width: 1.4; }
+.outdoor-plant-card__visual--two { background: radial-gradient(circle at 50% 80%, rgb(59 220 242 / 18%), transparent 58%), linear-gradient(145deg, #19323b, #121d2a); color: #72dfd8; }
+.outdoor-plant-card__visual--three { background: radial-gradient(circle at 50% 80%, rgb(99 179 104 / 18%), transparent 58%), linear-gradient(145deg, #20372b, #111e1c); color: #b3e999; }
+.outdoor-plant-card__body { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; padding: 5px 0 3px; }
+.outdoor-plant-card__species { color: var(--accent); font-size: 10px; font-weight: 700; letter-spacing: .015em; }
+.outdoor-plant-card__body strong { display: block; margin-top: 5px; font-size: 16px; line-height: 1.25; }
+.outdoor-plant-card__body small { display: block; margin-top: 6px; color: var(--muted); font-size: 11px; line-height: 1.35; }
+.outdoor-plant-card__bottom { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 6px; margin-top: auto; padding-top: 8px; }
+.outdoor-plant-card__status { padding: 5px 7px; color: #b9c6d2; background: rgb(255 255 255 / 5%); border: 1px solid rgb(255 255 255 / 8%); border-radius: 7px; font-size: 10px; }
+.outdoor-plant-card__bottom > span:last-child { color: var(--accent); font-size: 24px; }
+.outdoor-detail-hero { display: grid; grid-template-columns: 78px minmax(0, 1fr); align-items: center; gap: 14px; margin: 4px 0 19px; padding: 14px; background: linear-gradient(125deg, rgb(59 220 242 / 10%), var(--surface) 70%); border: 1px solid rgb(59 220 242 / 21%); border-radius: 20px; }
+.outdoor-detail-hero__visual { display: grid; place-items: center; width: 78px; height: 84px; background: rgb(59 220 242 / 8%); border-radius: 14px; color: var(--accent); }
+.outdoor-detail-hero__visual svg { width: 42px; height: 42px; }
+.outdoor-detail-hero__tag { display: inline-block; margin-bottom: 7px; color: var(--accent); font-size: 10px; font-weight: 700; line-height: 1.4; }
+.outdoor-detail-hero h1 { font-size: 22px; overflow-wrap: anywhere; }
+.outdoor-detail-hero p { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+.outdoor-detail-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin-bottom: 16px; padding: 4px; border: 1px solid var(--line); background: #0d151e; border-radius: 14px; }
+.outdoor-detail-tabs button { min-width: 0; min-height: 41px; padding: 4px 2px; font-size: 11px; font-weight: 700; color: var(--muted); background: transparent; border: 0; border-radius: 10px; cursor: pointer; }
+.outdoor-detail-tabs button.is-active { color: var(--text); background: var(--raised); box-shadow: 0 2px 8px rgb(0 0 0 / 15%); }
+.outdoor-tab-panel[hidden] { display: none; }
+.outdoor-tab-panel h2 { margin: 0 0 12px; font-size: 17px; }
+.outdoor-info-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.outdoor-info-grid > div { min-width: 0; padding: 13px 11px; background: var(--surface); border: 1px solid var(--line); border-radius: 13px; }
+.outdoor-info-grid span, .outdoor-info-grid strong { display: block; overflow-wrap: anywhere; }
+.outdoor-info-grid span { font-size: 10px; color: var(--muted); line-height: 1.4; }
+.outdoor-info-grid strong { margin-top: 6px; font-size: 12px; line-height: 1.45; }
+.outdoor-detail-hint { margin: 13px 2px 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
+.outdoor-tab-empty { display: grid; justify-items: center; gap: 10px; padding: 25px 20px; text-align: center; background: var(--surface); border: 1px dashed var(--line); border-radius: 16px; }
+.outdoor-tab-empty svg { width: 33px; height: 33px; color: var(--accent); }
+.outdoor-tab-empty strong { font-size: 14px; }
+.outdoor-tab-empty p { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.6; }
+@media (max-width: 360px) {
+  .outdoor-plant-card { grid-template-columns: 78px minmax(0, 1fr); gap: 10px; min-height: 126px; padding: 9px; }
+  .outdoor-plant-card__visual { min-height: 107px; }
+  .outdoor-plant-card__body strong { font-size: 14px; }
+  .outdoor-detail-hero { grid-template-columns: 64px minmax(0, 1fr); gap: 11px; padding: 11px; }
+  .outdoor-detail-hero__visual { width: 64px; height: 77px; }
+  .outdoor-detail-tabs button { font-size: 10px; }
+}
+
+/* Home → Növények, with live TEST weather from a read-only server cache. */
+.outdoor-weather__title { gap: 10px; }
+.outdoor-weather__copy { min-width: 0; flex: 1; }
+.outdoor-weather__copy > strong { font-size: 14px; }
+.outdoor-weather__copy > strong small { display: inline-block; margin-left: 5px; font-size: 10px; color: var(--accent); }
+.outdoor-weather__refresh { display: grid; place-items: center; flex: none; width: 42px; height: 42px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); color: var(--accent); font-size: 23px; cursor: pointer; }
+.outdoor-weather__refresh:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.outdoor-weather__refresh:disabled { opacity: .4; cursor: wait; }
+.outdoor-weather__summary { display: flex; align-items: center; gap: 15px; margin-top: 16px; padding: 12px; border-radius: 15px; background: var(--surface); border: 1px solid var(--line); }
+.outdoor-weather__summary[hidden] { display: none; }
+.outdoor-weather__temperature { color: var(--accent); font-size: 28px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.outdoor-weather__summary > div { display: grid; gap: 4px; min-width: 0; }
+.outdoor-weather__summary > div strong { font-size: 12px; }
+.outdoor-weather__summary > div small { color: var(--muted); font-size: 10px; line-height: 1.5; }
+.outdoor-weather__signals > span.is-alert { color: var(--accent); font-weight: 700; }
+.outdoor-weather__attribution { margin: 11px 0 0; font-size: 10px; line-height: 1.5; color: var(--muted); }
+.outdoor-weather__attribution a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
