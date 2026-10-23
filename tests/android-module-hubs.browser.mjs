@@ -81,7 +81,7 @@ try {
   await page.locator('[data-food-stats-sheet].is-open').waitFor({ state: 'visible' })
   await page.evaluate(() => window.grapesHandleAndroidBack())
   await page.locator('[data-page="hub-health"]').waitFor({ state: 'visible' })
-  await page.locator('[data-page="hub-health"] [data-health-settings-open]').click()
+  await page.locator('.appbar [data-nav="more"]').click()
   await page.locator('[data-page="health-settings"]').waitFor({ state: 'visible' })
   assert.equal(await page.locator('[data-health-section]').count(), 5)
   await page.locator('[data-health-section="integrations"]').click()
