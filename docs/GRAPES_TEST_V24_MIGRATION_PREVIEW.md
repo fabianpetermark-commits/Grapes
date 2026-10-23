@@ -33,6 +33,8 @@ v24 IndexedDB Food project envelope, Drive Food project envelope or raw
 `grapes-water-v1` JSON. It performs no reads or writes. In particular it
 does not call `listGrapesProjects()`, which creates Drive folders while
 locating the module folder and is unsuitable for a read-only migration scan.
+The v24 Food envelope's actual module value is `Ételnapló`; other modules,
+including E-book, are rejected.
 
 Food diary, custom food, recipe, ingredient, nutrient goal and YAZIO batch
 identifiers remain distinct; imported YAZIO provenance stays in the raw
