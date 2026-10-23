@@ -70,6 +70,9 @@ jobs:
             notes="$REQUESTED_NOTES"
           else
             code=$((latest + 1))
+            # The v29 signed candidate may already be installed even if not published.
+            # Always supersede that candidate to keep in-app upgrades monotonic.
+            if (( code < 30 )); then code=30; fi
             name="0.3.$code"
             notes=$(printf 'Ellenőrzött automatikus Grapes PROD-frissítés:\n%s' "$(git log -5 --pretty='- %s')")
           fi
