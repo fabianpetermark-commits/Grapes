@@ -1,0 +1,29 @@
+/* Grapes Brand v1.1 TEST-only Home / Tools / Finance dashboards.
+ * No global auth / Food / modal / finance styles modified. */
+[data-page].grapes-widget-redesign-on > :not(.grapes-widget-redesign){display:none!important}
+[data-page].grapes-widget-redesign-on{padding:13px 15px 16px;background:#090e14}
+.grapes-widget-redesign{display:grid;gap:12px;color:#f2f7fb}
+.grapes-dash-widget{isolation:isolate;position:relative;overflow:hidden;border:1px solid #293e4c;border-radius:19px;background:#101821;padding:16px}
+.grapes-dash-widget::before{content:"";position:absolute;top:-1px;left:17px;width:45%;height:1px;pointer-events:none;background:linear-gradient(90deg,rgba(59,220,242,.87),rgba(59,220,242,.35) 53%,transparent);box-shadow:0 0 4px rgba(59,220,242,.22)}
+.grapes-dash-widget::after{content:"";position:absolute;top:19px;left:-1px;width:1px;height:52px;pointer-events:none;background:linear-gradient(180deg,rgba(59,220,242,.42),transparent);box-shadow:0 0 3px rgba(59,220,242,.20)}
+.grapes-dash-widget__head{display:flex;align-items:center;justify-content:space-between;margin:0 0 13px}
+.grapes-dash-widget__head strong{display:flex;align-items:center;gap:9px;font-size:19px;letter-spacing:-.025em}
+.grapes-widget-icon{width:24px;height:24px;stroke:#3bdcf2;flex:none}
+.grapes-dash-muted{font-size:13px;line-height:1.5;color:#94a5b8;margin:0 0 10px}
+.grapes-dash-value{font-size:29px;line-height:1.15;letter-spacing:-.045em;font-weight:780;margin:8px 0 12px}
+.grapes-dash-value--compact{font-size:20px;overflow-wrap:anywhere}
+.grapes-dash-lines{margin:11px 0;padding-top:4px;border-top:1px solid #243343}
+.grapes-dash-line{margin:0;padding:10px 0;border-bottom:1px solid #243343;font-size:14px}
+.grapes-dash-line:last-child{border-bottom:0}
+.grapes-dash-line::before{content:"•";color:#77c6d2;margin-right:10px}
+.grapes-dash-empty{margin:10px 0;color:#94a5b8;font-size:13px;line-height:1.55}
+.grapes-dash-link{min-height:44px;margin-top:5px;padding:8px 0;background:transparent;border:0;text-align:left;color:#3bdcf2;font-weight:750;font-size:13px;cursor:pointer}
+.grapes-dash-primary{min-height:48px;margin:8px 0 1px;width:100%;background:#172e39;border:1px solid #385f6a;border-radius:13px;color:#aef5ff;font-weight:700;cursor:pointer}
+.grapes-dash-link:focus-visible,.grapes-dash-primary:focus-visible,.grapes-dash-action:focus-visible{outline:2px solid #3bdcf2;outline-offset:3px}
+.grapes-dash-dock{position:sticky;bottom:0;z-index:2;padding:12px 0 max(4px, env(safe-area-inset-bottom));margin-top:4px;background:linear-gradient(180deg,transparent,#090e14 26%)}
+.grapes-dash-dock__pill{display:flex;align-items:stretch;justify-content:space-around;background:#192c36;border:1px solid #3a5260;border-radius:35px;padding:5px}
+.grapes-dash-action{min-width:0;min-height:58px;flex:1;display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:center;border:0;border-radius:24px;background:transparent;color:#d0dce4;cursor:pointer}
+.grapes-dash-action .grapes-widget-icon{width:23px;height:23px;stroke:#8fcbd3}
+.grapes-dash-action span{font-size:11px;font-weight:600;overflow-wrap:anywhere;text-align:center}
+@media(max-width:360px){[data-page].grapes-widget-redesign-on{padding:11px 12px}.grapes-dash-widget{padding:13px}.grapes-dash-widget__head strong{font-size:17px}.grapes-dash-action span{font-size:10px}}
+@media(prefers-reduced-motion:reduce){.grapes-widget-redesign *{transition:none!important;animation:none!important}}
