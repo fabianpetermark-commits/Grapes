@@ -283,12 +283,12 @@ try {
   assert.doesNotMatch(await repairedCard.textContent(), /— kcal\/szelet/)
   console.log('Recipe staple repair: Só/Cukor/Víz offline, explicit consent, nonzero bread macros, 30 slices OK')
 
-  // Full-page food search: a single favorite must never stretch to fill an
+  // Compact popover food search: a single favorite must never stretch to fill an
   // enormous blank box; the height remains the same for many local records.
   await page.locator('[data-food-recipe-back]').click()
   await page.locator('[data-food-recipes-back]').click()
   await page.locator('[data-food-meals] .meal').first().click()
-  await page.locator('[data-food-detail-add]').click()
+  await page.locator('[data-fab]').click()
   await page.locator('[data-food-add-sheet].is-open').waitFor({ state: 'visible' })
   const searchArea = page.locator('[data-food-search-results]')
   const initialLayout = await searchArea.evaluate(el => ({
@@ -344,7 +344,7 @@ try {
 
   // Full end-to-end recipe draft import and local image. No remote save
   // occurs until the user explicitly saves the recipe.
-  await page.locator('[data-food-add-back]').click()
+  await page.locator('[data-fab]').click()
   await page.locator('[data-food-back]').click()
   await page.locator('[data-food-open-recipes]').click()
   await page.locator('[data-food-recipes-new]').click()
