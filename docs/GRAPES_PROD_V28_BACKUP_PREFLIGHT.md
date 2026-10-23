@@ -1,6 +1,6 @@
 # Grapes PROD v28 → Auth rollout: data-preservation preflight
 
-**Status: MANUAL VERIFICATION REQUIRED / NO-GO.** Prepared against the signed stable Android `android-v28` and the separate, unreleased PROD Auth draft PR #111 (2026-10-22). This document is not evidence that any backup has been created. It does not permit merging or publishing a signed APK.
+**Status: CONDITIONAL — no backup required for empty Grapes.** The owner confirmed on 2026-10-23 that the currently installed Grapes app is empty, with nothing to preserve. This is the owner's account, not a remote inventory of phone storage. No data exports should be required from this user. If meaningful data is later discovered, stop and preserve it before a risky upgrade. The Auth release still requires phone validation.
 
 ## Grounded backup coverage in currently released Android code
 
@@ -14,9 +14,9 @@
 
 ## User-safe steps for the currently installed v28
 
-1. Do not uninstall Grapes, use Android Settings → Clear data/storage, switch Google Drive accounts, restore backups, or force a migration. Keep v28 and its app data.
-2. **Current v28 Food UI is missing the menu trigger; do not send the owner looking for it.** Export Food after the separately approved, safely signed backup-UI candidate (Auth still OFF) exposes **Ételnapló mentése** on Food overview. Save the JSON outside app-specific storage and verify a nonempty file. Export each used Food profile/project separately; do not assume current-profile export includes the full household. Until that candidate is safely available, this remains OPEN.
-3. Export **Water** separately from the Water diary → **Víznapló mentése**. Confirm the second JSON exists and is nonempty. Food backup never contains this Water dataset.
+1. For the owner's stated **empty app, skip all backups**. Keep Grapes installed; do not clear data/storage or switch Google Drive accounts. This is not an instruction to delete anything.
+2. **Only if meaningful Food data exists:** v28 does not expose the old Food backup launcher; do not direct the owner to search for that missing button. The staged Auth PR adds a visible Food backup action, but an empty Food module requires no export.
+3. **Only if meaningful Water data exists:** export Water separately via **Víznapló mentése**. An empty Water module requires no export.
 4. If Finance has any records, verify **Drive → Grapes → Projects → Pénzügyi Napló** includes the current complete project, or obtain a verified **full Finance JSON** from a desktop/browser running the same data. A mobile blob-download confirmation is insufficient; a CSV export loses receipt attachments and is not equivalent.
 5. If E-books are used, verify Drive library and reading progress under the intended Google account; preserve irreplaceable original book files. Back up other actively used local modules separately.
 6. Keep these potentially sensitive files off GitHub, PR comments, chat attachments and public sharing. No OAuth client secrets/service-role keys belong in backups or build artifacts.
@@ -25,17 +25,17 @@
 ## Release gates after backup
 
 - PROD Google provider and exact Android redirect smoke-tested in staging; this is not proof of completed phone sign-in.
-- Test a separately staged signed candidate with the **existing production applicationId and existing signing certificate** as a non-destructive in-place upgrade only **after** verified backups and explicit user approval. Do not uninstall v28.
-- First login: verify Supabase authenticated UID, explicit owner pairing, acknowledgement, device credential, same-account relaunch and Google Drive independence. Rejected/cancelled enrollment must not expose old local data; a different UID must fail closed. Do not claim per-profile multitenancy.
+- Test a separately staged signed candidate with the **existing production applicationId and signing certificate** as a non-destructive in-place upgrade only after owner-confirmed empty-app status **or**, if meaningful data exists, adequate preservation, plus explicit upgrade approval. Never uninstall v28.
+- First login: verify actual Supabase UID, explicit empty-app/ownership acknowledgement, Android device credential, same-account relaunch and Google Drive independence. Reject different-account access and cancelled enrollment.
 - Recheck Food diary/recipes/profiles, Water historical entries, Finance, E-books/reading progress, offline startup and signed rollback strategy after test.
 - Keep `VITE_GRAPES_PROD_AUTH_ENABLED` and data isolation approval gates OFF in stable release. PR #111 remains Draft / NO-GO until the real-device evidence and explicit release approval.
 
 ## Verification record (fill only with real observations)
 
-- Food JSON file exists and coverage inspected: **NOT VERIFIED**
-- Water JSON file exists and coverage inspected: **NOT VERIFIED**
-- Finance complete backup if in use: **NOT VERIFIED / applicability unknown**
-- E-books and other modules if in use: **NOT VERIFIED / applicability unknown**
-- Backup restore route and non-destructive rollback examined: **NOT VERIFIED**
+- Food JSON file exists and coverage inspected: **NOT APPLICABLE IF EMPTY (owner-confirmed; no backup required)
+- Water JSON file exists and coverage inspected: **NOT APPLICABLE IF EMPTY (owner-confirmed; no backup required)
+- Finance complete backup if in use: **NOT APPLICABLE IF EMPTY (owner-confirmed; no backup required)
+- E-books and other modules if in use: **NOT APPLICABLE IF EMPTY (owner-confirmed; no backup required)
+- Backup restore route and non-destructive rollback examined: **NOT APPLICABLE IF EMPTY (owner-confirmed; no backup required)
 - Signed in-place candidate tested on phone: **NOT VERIFIED**
 - Final release authorization: **NOT GIVEN**
