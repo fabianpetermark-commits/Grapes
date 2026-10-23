@@ -1,12 +1,9 @@
 name: Release Android APK
 
 on:
-  # Every checked-in PROD app change produces its next signed APK.
-  push:
-    branches: [codex/android-app]
-    paths-ignore:
-      - 'docs/**'
-      - '**/*.md'
+  # EMERGENCY HOLD (2026-10-23): the v29 login path lives in an unmerged
+  # candidate. Prevent further unattended signed releases until auth is
+  # integrated, tested and a device regression has passed.
   workflow_dispatch:
     inputs:
       version_code:
@@ -32,7 +29,8 @@ concurrency:
 
 jobs:
   release-apk:
-    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/codex/android-app'
+    # Manual workflow dispatch only during the auth recovery hold.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     env:
       VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
