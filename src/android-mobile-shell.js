@@ -486,7 +486,7 @@ async function runHealthCommand(command) {
   if (command === 'food-targets') {
     showPage('food', { parent:'hub-health' })
     await mobileFood?.load()
-    if (activePage === 'food') mobileFood?.openTargets()
+    if (activePage === 'food') mobileFood?.openTargetsForToday()
   } else if (command === 'water-goal') changeWaterGoal()
   else if (command === 'water-backup') exportWaterBackup()
   else if (command === 'food-backup') {
