@@ -64,7 +64,7 @@ try{
   await page.locator('.appbar [data-nav="home"]').click();
   await page.locator('[data-menu-group="finance"]').click();
   assert.match(await page.locator('[data-page="hub-finance"]').textContent(),/Nem jelenítünk meg kitalált összegeket/);
-  assert.equal(await page.locator('[data-page="hub-finance"] [data-widget-action="finance"]').count(),2);
+  assert.equal(await page.locator('[data-page="hub-finance"] [data-widget-action="finance"]').count(),3);
   assert.deepEqual(errors,[]);
   console.log('Grapes TEST Home / Tools / Finance widgets: 320–412 px, no fake metrics, real Home count, existing routes, no JS pageerrors OK.');
 }finally{await browser?.close();server.kill();}
