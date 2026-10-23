@@ -35,9 +35,7 @@
     .prototype-note { padding: 12px 14px; color: #b6c5d5; background: #111b25; border: 1px solid var(--line); border-radius: 14px; font-size: 13px; }
     .phone { position: relative; width: 390px; height: 844px; overflow: hidden; background: var(--bg); border: 1px solid #33465a; border-radius: 38px; box-shadow: 0 34px 100px rgb(0 0 0 / 62%), inset 0 0 0 6px #05080c; }
     .phone { overflow: clip; }
-    .phone::before { position: absolute; top: 10px; left: 50%; z-index: 20; width: 104px; height: 26px; content: ""; background: #020407; border-radius: 999px; transform: translateX(-50%); }
-    .statusbar { position: absolute; inset: 0 0 auto; z-index: 12; display: flex; align-items: center; justify-content: space-between; height: 44px; padding: 8px 25px 0; color: #cad6e2; font-size: 12px; font-weight: 700; pointer-events: none; }
-    .screen { position: absolute; inset: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); padding-top: 44px; background: radial-gradient(circle at 12% 0, rgb(59 220 242 / 7%), transparent 30%), var(--bg); }
+    .screen { position: absolute; inset: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); background: radial-gradient(circle at 12% 0, rgb(59 220 242 / 7%), transparent 30%), var(--bg); }
     .screen[hidden] { display: none; }
     .login { display: grid; align-content: center; padding: 72px 22px 28px; overflow-y: auto; text-align: center; }
     .login[hidden] { display: none; }
@@ -554,13 +552,105 @@
       .hub-card strong { font-size: 18px; }
       .hub-card__icon { width: 56px; height: 56px; }
     }
+
+    /* PROD Health dashboard — real Food and Water sources, no static demo values */
+    .health-dashboard{position:relative;padding-bottom:16px}
+    .health-settings-trigger{position:absolute;right:16px;top:10px;width:40px;height:40px;border:1px solid #315868;border-radius:12px;background:#132b35;color:var(--accent);font-size:24px}
+    .health-panel{margin-bottom:12px;padding:15px;background:linear-gradient(155deg,#152932,#101821 46%);border:1px solid #294653;border-radius:21px;box-shadow:0 6px 20px rgb(0 0 0 / 18%)}
+    .health-panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:17px}
+    .health-panel-head>strong{font-weight:780}.health-panel-head>span{font-size:11px;color:var(--muted)}
+    .health-food-metrics{display:grid;grid-template-columns:124px minmax(0,1fr);gap:12px;align-items:center;padding:13px 0 6px}
+    .health-calorie-ring{width:124px;height:124px;border:0;border-radius:50%;background:transparent;position:relative;display:grid;place-items:center;padding:0}
+    .health-calorie-ring svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+    .health-ring-track{fill:none;stroke:#263747;stroke-width:8}
+    .health-ring-progress{fill:none;stroke:var(--accent);stroke-width:8;stroke-linecap:round;stroke-dasharray:0 100}
+    .health-calorie-ring[data-progress-visible="true"] .health-ring-progress{filter:drop-shadow(0 0 2px rgb(59 220 242 / 30%))}
+    .health-ring-value{position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;pointer-events:none}
+    .health-ring-value small{font-size:10px;color:var(--muted)}.health-ring-value b{font-size:23px}.health-ring-value em{font-style:normal;font-size:10px;color:var(--muted)}
+    .health-macros{display:grid;gap:12px;min-width:0}.health-macros label{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--muted)}
+    .health-macros label b{color:var(--text);font-size:11px}.health-track{height:6px;overflow:hidden;border-radius:99px;background:#27394a;margin-top:7px}
+    .health-track i{display:block;width:0;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),var(--accent-2))}
+    .health-panel-split{display:flex;justify-content:space-between;gap:8px;align-items:center;margin:10px 0 12px;padding-top:12px;border-top:1px solid #2c4350}
+    .health-panel-split strong{font-size:13px}.health-panel-split span{font-size:10px;color:var(--muted)}
+    .health-meals{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+    .health-meals button{display:grid;gap:8px;place-content:center;min-width:0;min-height:65px;background:#182a34;border:1px solid #2e4653;border-radius:13px;font-size:10px}
+    .health-meals button b{font-size:11px}.health-meals button span{color:#c8d6e0}
+    .health-text-link{display:inline-block;margin-top:11px;padding:2px 0;background:none;border:0;color:var(--accent);font-size:11px;font-weight:730;text-align:left}
+    .health-panel--water .health-water-line{display:flex;align-items:center;gap:12px;margin-top:14px}
+    .health-water-line .health-track{flex:1;margin:0}.health-water-line button{border:1px solid #356474;border-radius:12px;background:#193a46;color:var(--accent);padding:10px;font-size:12px;font-weight:750;white-space:nowrap}
+    .health-recipe{display:flex;align-items:center;gap:12px;width:100%;text-align:left;color:var(--text);cursor:pointer}
+    .health-recipe-icon{display:grid;place-items:center;width:48px;height:48px;flex:none;background:#193641;border-radius:13px;border:1px solid #335563;color:var(--accent);font-size:29px}
+    .health-recipe-text{flex:1;min-width:0;display:grid;gap:5px}.health-recipe-text small{font-size:10px;font-weight:800;color:var(--accent)}
+    .health-recipe-text strong{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.health-recipe-text em{font-size:11px;color:var(--muted);font-style:normal}
+    .health-dock{display:flex;gap:9px;align-items:center;position:sticky;bottom:0;z-index:2;margin-top:18px;background:linear-gradient(transparent,#090e14 22%);padding:12px 0 4px}
+    .health-dock-pill{flex:1;min-width:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid #3a5260;background:#192c36;border-radius:35px;padding:5px}
+    .health-dock-pill button{min-width:0;min-height:55px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:0;background:none;color:#cbd7e1;font-size:22px}
+    .health-dock-pill button span{font-size:10px}.health-dock-scan{width:67px;height:67px;flex:none;border-radius:50%;border:1px solid #416c7a;background:#203b47;color:var(--accent);font-size:27px}
+    .health-settings-page h2{margin:2px 0 8px;font-size:24px}.health-settings-intro{font-size:12px;color:var(--muted);margin-bottom:18px}
+    .health-settings-item{width:100%;display:flex;flex-direction:column;gap:6px;text-align:left;margin:8px 0;padding:17px;border-radius:15px;border:1px solid #2a4653;background:#111f28;color:var(--text)}
+    .health-settings-item strong{font-size:14px}.health-settings-item small{font-size:11px;color:var(--muted)}
+    .health-settings-box{padding:15px;border:1px solid #2b4b57;border-radius:16px;background:#10202a;margin:12px 0}
+    .health-settings-box button{display:block;width:100%;text-align:left;margin:9px 0;padding:12px;border-radius:12px;background:#1c3945;border:1px solid #345968;color:#d5f7fb;font-size:12px}
+    .health-settings-box p{font-size:12px;color:var(--muted);line-height:1.5}.health-settings-box strong{font-size:14px}
+    [data-food-overview]>.daily-card{display:none}
+    @media(max-width:360px){.health-food-metrics{grid-template-columns:105px 1fr;gap:8px}.health-calorie-ring{width:105px;height:105px}.health-panel{padding:12px}.health-meals{gap:4px}.health-meals button{min-height:58px}.health-dock-scan{height:60px;width:60px}}
+
+
+    /* Approved meal-detail redesign: no redundant controls, compact summary. */
+    .food-detail-head--compact{margin-bottom:13px}
+    .food-detail-head--compact button[hidden], .food-detail-add[hidden]{display:none !important}
+    .food-meal-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding:13px;margin:0 0 14px;
+      background:linear-gradient(145deg,#182f39,#101a24 67%);border:1px solid #315361;border-radius:17px}
+    .food-meal-summary__energy{grid-column:1/-1;display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:3px}
+    .food-meal-summary__energy>span{color:var(--muted);font-size:11px;font-weight:700}
+    .food-meal-summary__energy strong{color:var(--accent);font-size:22px;letter-spacing:-.02em}
+    .food-meal-summary__energy small{font-size:11px;color:var(--muted);font-weight:500}
+    .food-meal-summary__macros{display:contents}
+    .food-meal-summary__macros>div{display:flex;flex-direction:column;gap:6px;min-width:0;padding:8px;background:#192a35;border-radius:10px}
+    .food-meal-summary__macros span{font-size:10px;color:var(--muted)}
+    .food-meal-summary__macros b{font-size:13px;font-weight:750}
+    /* The original recipe-ingredient picker stays fullscreen. Only the meal's
+       existing food search sheet is presented as a popup beside the same FAB. */
+    .fab{bottom:max(25px,env(safe-area-inset-bottom));z-index:45}
+    .fab span{display:block;transform:rotate(0);transition:transform .18s ease}
+    .fab.is-add-open span{transform:rotate(45deg)}
+    [data-food-add-sheet].meal-quick-panel{position:absolute;inset:auto 14px max(99px,calc(env(safe-area-inset-bottom) + 94px));width:auto;
+      max-height:min(480px,calc(100dvh - 218px));height:min(480px,calc(100dvh - 218px));
+      overflow:hidden;padding:12px;border:1px solid #365b68;border-radius:21px;
+      background:linear-gradient(145deg,#1b2c38,#101a23 72%);
+      box-shadow:0 16px 45px rgb(0 0 0 / 65%);
+      transform:translateY(18px) scale(.98);opacity:0;pointer-events:none;
+      transition:transform .18s ease,opacity .18s ease;z-index:42}
+    [data-food-add-sheet].meal-quick-panel.is-open{transform:none;opacity:1;pointer-events:auto}
+    [data-food-add-sheet].meal-quick-panel .food-recipe-editor__header{margin:0 0 8px}
+    [data-food-add-sheet].meal-quick-panel [data-food-add-back]{display:none}
+    [data-food-add-sheet].meal-quick-panel .food-recipe-editor__header h2{font-size:14px}
+    [data-food-add-sheet].meal-quick-panel [data-food-add-copy]{display:none}
+    [data-food-add-sheet].meal-quick-panel .food-add-page__body{overflow:hidden}
+    [data-food-add-sheet].meal-quick-panel .food-add-page__quick-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;
+      margin:0 0 9px;padding:4px;background:#101a23;border:1px solid #29424f;border-radius:26px}
+    [data-food-add-sheet].meal-quick-panel .quick-action{grid-template-columns:1fr;grid-template-rows:22px auto;
+      min-height:54px;gap:3px;justify-items:center;padding:5px 1px;background:transparent;border:0;border-radius:20px}
+    [data-food-add-sheet].meal-quick-panel .quick-action i{width:auto;height:auto;background:transparent;font-size:20px}
+    [data-food-add-sheet].meal-quick-panel .quick-action span{font-size:9px;white-space:nowrap}
+    [data-food-add-sheet].meal-quick-panel .quick-action[aria-pressed="true"]{background:#21414a}
+    [data-food-add-sheet].meal-quick-panel [data-food-search]{min-height:44px;flex:0 0 auto;padding:0 11px;border:1px solid #3a6473;border-radius:12px;background:#0c1921}
+    [data-food-add-sheet].meal-quick-panel .sheet-results{height:auto;min-height:60px;max-height:none;flex:1 1 auto;
+      margin:9px 0 0;overflow-y:auto;overscroll-behavior:contain;align-content:start}
+    [data-food-add-sheet].meal-quick-panel [data-food-search-status]{flex:0 0 auto;max-height:34px;overflow:hidden;margin:4px 0 0}
+    [data-food-add-sheet].meal-quick-panel .food-recipe-ingredient-note{display:none}
+    [data-food-add-sheet].meal-quick-panel:has([data-food-live-scanner]:not([hidden])){height:min(65dvh,560px);max-height:calc(100dvh - 155px)}
+    [data-food-add-sheet].meal-quick-panel:has([data-food-live-scanner]:not([hidden])) .food-add-page__body{overflow-y:auto}
+    [data-food-add-sheet].meal-quick-panel:has([data-food-live-scanner]:not([hidden])) .sheet-results{flex:0 0 auto;max-height:120px}
+    @media(max-height:620px){[data-food-add-sheet].meal-quick-panel{bottom:84px;height:calc(100dvh - 170px);max-height:none}}
+    @media(prefers-reduced-motion:reduce){.fab span,[data-food-add-sheet].meal-quick-panel{transition:none}}
+
   </style>
   <link rel="stylesheet" href="../src/home/home-mobile.css">
 </head>
 <body>
   <main class="stage">
     <div class="phone" aria-label="Kattintható Grapes Android prototípus">
-      <div class="statusbar"><span>9:41</span><span>● ◔ 87%</span></div>
 
       <section id="login" class="login">
         <img class="logo" src="../public/grapes-mark.svg" alt="Grapes">
@@ -603,15 +693,67 @@
           </div>
         </div>
 
-        <div class="content" data-page="hub-health" hidden>
+        <div class="content health-dashboard" data-page="hub-health" hidden>
           <button type="button" class="hub-back" data-menu-back>‹ Főmenü</button>
-          <p class="eyebrow">Health</p><h1>Egészség és táplálkozás</h1>
-          <p class="lead">A meglévő Food funkciók és adatok közvetlen elérése.</p>
-          <div class="hub-options" aria-label="Health almodulok">
-            <button type="button" class="hub-option" data-menu-destination="food"><span class="hub-option__icon" data-module-icon="food"></span><strong>Food</strong></button>
-            <button type="button" class="hub-option" data-menu-destination="recipes"><span class="hub-option__icon" data-module-icon="recipe"></span><strong>Receptek</strong></button>
-            <button type="button" class="hub-option" data-menu-destination="stats"><span class="hub-option__icon" data-module-icon="stats"></span><strong>Statisztika</strong></button>
+
+          <section class="health-panel health-panel--food" aria-label="Napi Food összesítő">
+            <div class="health-panel-head"><strong>♜ Food</strong><span>Mai összesítő</span></div>
+            <div class="health-food-metrics">
+              <button type="button" class="health-calorie-ring" data-health-stats aria-label="Részletes Statisztika megnyitása">
+                <svg viewBox="0 0 120 120" aria-hidden="true"><circle class="health-ring-track" cx="60" cy="60" r="49" pathLength="100"/><circle class="health-ring-progress" data-health-ring-progress cx="60" cy="60" r="49" pathLength="100"/></svg>
+                <span class="health-ring-value"><small>Elfogyasztva</small><b data-health-kcal>—</b><small>kcal</small><em data-health-kcal-target>Nincs cél</em></span>
+              </button>
+              <div class="health-macros">
+                <div><label>Fehérje <b data-health-protein>—</b></label><div class="health-track"><i data-health-protein-bar></i></div></div>
+                <div><label>Szénhidrát <b data-health-carbohydrate>—</b></label><div class="health-track"><i data-health-carbohydrate-bar></i></div></div>
+                <div><label>Zsír <b data-health-fat>—</b></label><div class="health-track"><i data-health-fat-bar></i></div></div>
+              </div>
+            </div>
+            <div class="health-panel-split"><strong>Mai étkezések</strong><span>Válassz egy étkezést</span></div>
+            <div class="health-meals">
+              <button type="button" data-health-meal="breakfast"><span>Reggeli</span><b data-health-meal-kcal="breakfast">—</b></button>
+              <button type="button" data-health-meal="lunch"><span>Ebéd</span><b data-health-meal-kcal="lunch">—</b></button>
+              <button type="button" data-health-meal="afternoonSnack"><span>Uzsonna</span><b data-health-meal-kcal="afternoonSnack">—</b></button>
+              <button type="button" data-health-meal="dinner"><span>Vacsora</span><b data-health-meal-kcal="dinner">—</b></button>
+            </div>
+            <button type="button" class="health-text-link" data-health-food-open>Teljes ételnapló (tízóraival) →</button>
+          </section>
+
+          <section class="health-panel health-panel--water" data-health-water-panel aria-label="Vízfogyasztás">
+            <div class="health-panel-head"><strong>♢ Víz</strong><span data-health-water-total>—</span></div>
+            <div class="health-water-line"><div class="health-track"><i data-health-water-fill></i></div>
+              <button type="button" data-health-water-add>＋ 250 ml</button></div>
+            <button type="button" class="health-text-link" data-health-water-open>Víznapló megnyitása →</button>
+          </section>
+
+          <button type="button" class="health-panel health-recipe" data-health-recipe-open>
+            <span class="health-recipe-icon">♧</span><span class="health-recipe-text"><small data-health-recipe-label>SAJÁT RECEPTEK</small><strong data-health-recipe-name>Még nincs saját recept</strong><em>Receptek megnyitása</em></span><b aria-hidden="true">›</b>
+          </button>
+          <div class="health-dock" aria-label="Health gyorsműveletek">
+            <div class="health-dock-pill">
+              <button type="button" data-health-quick="photo">▧<span>Fotó</span></button>
+              <button type="button" data-health-quick="food">＋<span>Étel</span></button>
+              <button type="button" data-health-quick="water">♢<span>Víz</span></button>
+            </div>
+            <button type="button" class="health-dock-scan" data-health-quick="barcode" aria-label="Vonalkódolvasó">▥</button>
           </div>
+        </div>
+
+        <div class="content health-settings-page" data-page="health-settings" hidden>
+          <button type="button" class="hub-back" data-health-settings-back>‹ Health</button>
+          <h2>Health beállítások</h2><p class="health-settings-intro">Személyes célok és egészségügyi adatforrások.</p>
+          <div data-health-settings-index>
+            <button class="health-settings-item" data-health-section="goals"><strong>◎ Célok</strong><small>Kalória, makrók, testsúly, víz</small></button>
+            <button class="health-settings-item" data-health-section="units"><strong>↔ Mértékegységek</strong><small>Metrikus / Imperial</small></button>
+            <button class="health-settings-item" data-health-section="display"><strong>▤ Napló és megjelenítés</strong><small>Widgetek testreszabása</small></button>
+            <button class="health-settings-item" data-health-section="integrations"><strong>⤳ Integrációk</strong><small>Health Connect, Samsung Health, YAZIO</small></button>
+            <button class="health-settings-item" data-health-section="data"><strong>⬡ Adatok és biztonság</strong><small>Mentések és importelőzmények</small></button>
+          </div>
+          <section data-health-settings-detail hidden>
+            <button class="health-text-link" type="button" data-health-section-back>‹ Minden Health beállítás</button>
+            <h3 data-health-section-title></h3>
+            <div data-health-settings-content></div>
+          </section>
         </div>
 
         <div class="content" data-page="hub-utility" hidden>
@@ -694,8 +836,16 @@
           <div data-food-meals></div>
           </section>
           <section data-food-detail hidden>
-            <div class="food-detail-head"><button type="button" data-food-back aria-label="Vissza">‹</button><div><h1 data-food-detail-title>Étkezés</h1><p data-food-detail-copy></p></div><button type="button" class="food-share" data-food-share aria-label="Étkezés megosztása">⌯</button></div>
-            <button class="food-detail-add" type="button" data-food-detail-add>＋ Étel hozzáadása</button>
+            <div class="food-detail-head food-detail-head--compact"><button type="button" data-food-back aria-label="Vissza" hidden>‹</button><div><h1 data-food-detail-title>Étkezés</h1><p data-food-detail-copy></p></div><button type="button" class="food-share" data-food-share aria-label="Étkezés megosztása" hidden>⌯</button></div>
+            <button class="food-detail-add" type="button" data-food-detail-add hidden>＋ Étel hozzáadása</button>
+            <section class="food-meal-summary" aria-label="Az étkezés összesített tápértékei">
+              <div class="food-meal-summary__energy"><span>Étkezés összesen</span><strong><b data-food-meal-energy>—</b> <small>kcal</small></strong></div>
+              <div class="food-meal-summary__macros">
+                <div><span>Fehérje</span><b data-food-meal-protein>—</b></div>
+                <div><span>Szénhidrát</span><b data-food-meal-carbohydrate>—</b></div>
+                <div><span>Zsír</span><b data-food-meal-fat>—</b></div>
+              </div>
+            </section>
             <div data-food-entries></div>
           </section>
           <section data-food-recipes-view hidden>
@@ -802,7 +952,7 @@
           <p class="reader-status" data-transfer-status role="status"></p>
         </div>
 
-        <button class="fab" data-fab hidden aria-label="Étel hozzáadása">+</button>
+        <button class="fab" type="button" data-fab hidden aria-label="Étel hozzáadása" aria-expanded="false" aria-controls="food-add-quick-panel"><span aria-hidden="true">+</span></button>
       </section>
       <div class="sheet-backdrop" data-sheet-close></div>
       <section class="bottom-sheet" data-notifications-sheet role="dialog" aria-modal="true" aria-label="Értesítések" aria-hidden="true" inert>
@@ -815,11 +965,11 @@
           <p data-update-status role="status" aria-live="polite"></p>
         </article>
       </section>
-      <section class="bottom-sheet food-add-page" data-food-add-sheet role="dialog" aria-modal="true" aria-label="Étel hozzáadása" aria-hidden="true" inert>
+      <section id="food-add-quick-panel" class="bottom-sheet food-add-page" data-food-add-sheet role="dialog" aria-modal="true" aria-label="Étel hozzáadása" aria-hidden="true" inert>
         <div class="food-recipe-editor__header"><button type="button" class="food-recipe-editor__back" data-food-add-back aria-label="Vissza">‹</button><div><h2 data-food-add-title>Étel hozzáadása</h2><p data-food-add-copy>Keresés vagy gyors bevitel — amelyik most kényelmesebb.</p></div></div>
         <div class="food-add-page__body">
-          <input class="search" data-food-search placeholder="Keresés az ételek között…">
           <div class="quick-grid food-add-page__quick-grid" aria-label="Gyorsműveletek"><button type="button" class="quick-action" data-food-quick="barcode"><i>▦</i><span>Vonalkód</span></button><button type="button" class="quick-action" data-food-quick="photo"><i>◉</i><span>Fotó alapján</span></button><button type="button" class="quick-action" data-food-quick="favorites" aria-pressed="false"><i>☆</i><span>Kedvencek</span></button><button type="button" class="quick-action" data-food-quick="custom"><i>＋</i><span>Saját étel</span></button></div>
+          <input class="search" data-food-search placeholder="Étel keresése…" aria-label="Étel keresése">
           <input type="file" accept="image/*" capture="environment" data-food-barcode-photo hidden>
           <div data-food-live-scanner hidden><video data-food-live-video autoplay muted playsinline style="display:block;width:100%;max-height:260px;object-fit:cover;border-radius:14px"></video><button class="food-scanner-close" type="button" data-food-live-stop><span aria-hidden="true">×</span>Olvasó bezárása</button></div>
           <div class="sheet-results" data-food-search-results></div>
