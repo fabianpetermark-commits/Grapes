@@ -15,7 +15,7 @@ const data = () => ({ version: 2, profile: { id: 'drive-profile' },
   targets: [{ id: 'target-1', values: { energyKcal: 2000 } }],
   importBatches: [{ id: 'batch-1', profileId: 'drive-profile', source: 'yazio',
     sourceArchive: { nutrition_log: [{ id: 'y-7' }] } }] })
-const local = value => ({ id: 'food-tracker-drive-profile', module: 'food', data: value })
+const local = value => ({ id: 'food-tracker-drive-profile', module: 'Ételnapló', data: value })
 
 test('v24 Food inventory keeps record IDs, YAZIO source and recipe ingredients', () => {
   const document = local(data())
@@ -36,12 +36,15 @@ test('v24 Food inventory keeps record IDs, YAZIO source and recipe ingredients',
 test('v24 Drive Food snapshot keeps file provenance without a Drive request', () => {
   const result = food({ provider: 'google-drive', sourceId: 'synthetic-drive-file',
     version: 'modified-time-1', document: {
-      grapesProject: true, module: 'food', data: data() } })
+      grapesProject: true, module: 'Ételnapló', data: data() } })
   assert.equal(result.source.sourceId, 'synthetic-drive-file')
   assert.equal(result.source.provider, 'google-drive')
 })
 
 test('Food inventory rejects mismatched profile and duplicate record identities', () => {
+  assert.throws(() => food({ provider: 'google-drive', sourceId: 'ebook-file',
+    version: 'snapshot-1', document: {
+      grapesProject: true, module: 'E-book', data: data() } }), /Invalid v24 Food source/)
   assert.throws(() => food({ provider: 'indexeddb', sourceId: 'food-tracker-wrong',
     version: 'snapshot-1', document: local(data()) }), /profile/)
   const changed = data()
