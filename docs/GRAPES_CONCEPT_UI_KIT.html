@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Grapes – Concept UI Kit v0.2</title>
+<style>
+:root{color-scheme:dark;--bg:#090E14;--surface:#101821;--raised:#17222E;--line:#243343;--txt:#F2F7FB;--muted:#94A5B8;--cyan:#3BDCF2;--blue:#4D8FFF;--ok:#47D89B;--warn:#F2B84B;--bad:#FF7083}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.5 Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+.shell{max-width:1100px;margin:0 auto;padding:36px 22px 68px}
+.kicker{font-size:12px;letter-spacing:.16em;color:var(--cyan);font-weight:750}
+header{margin-bottom:30px}h1{font-size:clamp(25px,3vw,36px);margin:9px 0 8px;line-height:1.16;letter-spacing:-.035em}header p{color:var(--muted);margin:0;max-width:700px}
+.notice{border:1px solid var(--line);background:var(--raised);border-radius:12px;padding:10px 14px;color:var(--muted);margin-top:20px;font-size:13px}
+.gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
+.sample{min-width:0}.sample-label{display:flex;justify-content:space-between;gap:8px;align-items:baseline;padding:0 4px 10px}
+.sample-label strong{font-size:15px}.sample-label span{color:var(--muted);font-size:12px}
+.screen{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:18px;min-height:440px;display:flex;flex-direction:column;gap:15px}
+.screen-head{display:flex;justify-content:space-between;align-items:start;gap:12px}.eyebrow{font-size:11px;font-weight:700;letter-spacing:.09em;color:var(--muted)}
+h2{font-size:20px;line-height:1.25;letter-spacing:-.02em;margin:2px 0 2px}.sub{font-size:13px;color:var(--muted);margin:0}
+.icon{display:inline-grid;place-items:center;flex:none;width:34px;height:34px;border-radius:11px;background:rgb(59 220 242 / 10%);color:var(--cyan);font-size:19px}
+.option{border:1px solid var(--line);border-radius:15px;display:flex;align-items:center;gap:12px;padding:13px}
+.option.selected{border-color:var(--cyan);background:rgb(59 220 242 / 6%)}
+.option .icon{background:none;width:30px;height:30px}
+.option .main{min-width:0;flex:1}.option strong{display:block;font-size:14px;line-height:1.3}.option small{display:block;margin-top:3px;color:var(--muted);font-size:12px;line-height:1.35}
+.state-mark{flex:none;font-size:18px;color:var(--cyan);border:1px solid var(--cyan);width:26px;height:26px;border-radius:50%;text-align:center;line-height:24px}
+.circle{flex:none;width:24px;height:24px;border:2px solid #708398;border-radius:50%}
+.aux{color:var(--muted);font-size:12px;margin-top:auto;text-align:center}
+.recipe-hero{position:relative;overflow:hidden;border-radius:16px;background:radial-gradient(circle at 62% 35%,#283b45 0%,#14232c 52%,#0c151b 100%);height:145px;display:grid;place-items:center}
+.recipe-hero svg{width:100%;height:100%;max-width:420px}
+.pillrow{display:flex;flex-wrap:wrap;gap:7px}.pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:5px 9px;border:1px solid var(--line);border-radius:999px;color:var(--muted);background:var(--raised)}
+.pill.good{color:var(--ok);border-color:rgb(71 216 155 / 25%)}.pill.uncertain{color:var(--warn);border-color:rgb(242 184 75 / 32%)}
+.reason{display:flex;gap:10px;background:var(--raised);padding:12px;border-radius:12px;font-size:13px;color:var(--muted)}.reason b{color:var(--warn)}
+.actionline{display:flex;align-items:center;gap:9px;margin-top:auto;flex-wrap:wrap}.cta{display:inline-block;padding:12px 15px;border-radius:12px;background:var(--cyan);color:var(--bg);font-weight:750;font-size:13px}.secondary{border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-weight:650;font-size:13px}
+.balanced{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.storage{background:var(--raised);border:1px solid var(--line);border-radius:14px;padding:15px 10px;text-align:center}.storage .big-icon{font-size:28px;line-height:1.1}.storage .where{font-weight:700;font-size:14px;margin:7px 0 3px}.storage .quantity{font-size:24px;font-weight:800;line-height:1.2;font-variant-numeric:tabular-nums}.storage .portion{font-size:12px;color:var(--muted)}
+.track{display:flex;height:10px;border-radius:99px;overflow:hidden;background:var(--line)}.chill{width:60%;background:var(--cyan)}.freeze{width:40%;background:var(--blue)}
+.quick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.quick span{border:1px solid var(--line);padding:10px 3px;border-radius:10px;text-align:center;font-weight:650;font-size:12px}.quick span.active{border-color:var(--cyan);color:var(--cyan)}
+.meta{font-size:12px;color:var(--muted)}.suggest{background:var(--raised);border:1px solid var(--line);border-radius:15px;padding:16px;display:flex;align-items:center;gap:15px}
+.producticon{width:58px;height:64px;border-radius:10px;background:#203749;display:grid;place-items:center;font-size:30px}.suggest .copy{flex:1;min-width:0}.suggest strong{display:block;font-size:16px}.suggest small{display:block;color:var(--muted);font-size:12px}
+.question{background:var(--raised);border-radius:13px;padding:13px;display:grid;gap:5px}.question strong{font-size:14px}.question span{font-size:12px;color:var(--muted)}
+.two-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.two-actions span{border:1px solid var(--line);text-align:center;padding:11px;border-radius:11px;font-weight:650;font-size:13px}.two-actions .active{border-color:var(--cyan);color:var(--cyan)}
+.divider{height:1px;background:var(--line)}
+footer{margin-top:27px;color:var(--muted);font-size:12px;max-width:720px}
+@media(max-width:760px){.shell{padding:22px 14px 44px}.gallery{grid-template-columns:1fr;gap:22px}.screen{min-height:unset}.sample-label{padding-left:2px}}
+@media(max-width:360px){.shell{padding-left:10px;padding-right:10px}.screen{padding:13px}.option{padding:11px}.two-actions{gap:6px}.actionline{align-items:stretch;flex-direction:column;text-align:center}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
+
+/* Fifth reference: detail page for an existing Food recipe */
+.recipe-detail-image{height:128px;border-radius:15px;overflow:hidden;background:linear-gradient(125deg,#142a38,#294452 55%,#182d39);display:grid;place-items:center}
+.recipe-detail-image svg{height:100%;width:100%;max-width:360px}
+.nutrition{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.nutrition>div{padding:10px 5px;background:var(--raised);border:1px solid var(--line);border-radius:11px;text-align:center}
+.nutrition strong{display:block;font-variant-numeric:tabular-nums;font-size:16px;line-height:1.3}
+.nutrition small{font-size:11px;color:var(--muted)}
+.ingredient-list{display:grid;gap:6px}
+.ingredient-line{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;padding:7px 0;border-bottom:1px solid var(--line)}
+.ingredient-line:last-child{border-bottom:none}
+.ingredient-line .tick{color:var(--muted);margin-right:6px}
+.step{font-size:13px;color:var(--muted);display:flex;gap:9px}
+.step b{color:var(--cyan);flex:none}
+</style>
+</head>
+<body>
+<main class="shell">
+<header>
+<div class="kicker">GRAPES / DESIGN REFERENCE / 0.2</div>
+<h1>Kevesebb adminisztráció.<br>Okosabb mindennapok.</h1>
+<p>Öt, korábbi közös tervezésből újraalkotott mobilos komponens ugyanabban a Grapes-arculatban. Vizuális, statikus referencia: nem a jelenlegi alkalmazás és nem működő prototípus.</p>
+<div class="notice">TARGET / koncepció • Illusztratív számok és képi helyőrző • Az állapotjelzések mindig magyarázzák az adatok bizonyosságát.</div>
+</header>
+<div class="gallery">
+<section class="sample" aria-labelledby="goal">
+<div class="sample-label"><strong>01 / Goal Selection</strong><span>Cél az adatbevitel előtt</span></div>
+<div class="screen">
+<div class="screen-head"><div><div class="eyebrow">KÖSZÖNTÜNK A GRAPESBEN</div><h2 id="goal">Miben segíthetünk?</h2><p class="sub">Válassz egy vagy több célt. Később módosíthatod.</p></div><span class="icon" aria-hidden="true">✦</span></div>
+<div class="option selected"><span class="icon" aria-hidden="true">⚖</span><span class="main"><strong>Szeretnék fogyni</strong><small>Érthető segítség az adagokhoz és energiacélhoz</small></span><span class="state-mark" aria-label="Kiválasztva">✓</span></div>
+<div class="option"><span class="icon" aria-hidden="true">♡</span><span class="main"><strong>Tudatosabban étkeznék</strong><small>Egyszerűbb választások, változatosabb menü</small></span><span class="circle" aria-hidden="true"></span></div>
+<div class="option"><span class="icon" aria-hidden="true">▤</span><span class="main"><strong>Kevesebbet költenék</strong><small>Jobb bevásárlás- és költségtervezés</small></span><span class="circle" aria-hidden="true"></span></div>
+<div class="option"><span class="icon" aria-hidden="true">♧</span><span class="main"><strong>Kevesebb ételt dobnék ki</strong><small>Készlet, lejárat és receptjavaslatok</small></span><span class="circle" aria-hidden="true"></span></div>
+<div class="aux">Kihagyom · Később is beállítható</div>
+</div></section>
+
+<section class="sample" aria-labelledby="recipe">
+<div class="sample-label"><strong>02 / Recipe Recommendation</strong><span>Javaslat + indok + mentés</span></div>
+<div class="screen">
+<div class="screen-head"><div><div class="eyebrow">OTTHON / ÉTKEZÉSTERVEZÉS</div><h2 id="recipe">Mit főzzünk ma?</h2><p class="sub">A valószínűleg elérhető alapanyagokból</p></div><span class="icon" aria-hidden="true">♨</span></div>
+<div class="recipe-hero" role="img" aria-label="Stilizált tésztaétel-képi helyőrző, a végleges UI-ban receptfotó jelenhet meg">
+<svg viewBox="0 0 420 170" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><ellipse cx="210" cy="94" rx="128" ry="64" fill="#d2d9d7"/><ellipse cx="210" cy="94" rx="106" ry="48" fill="#394e53"/><ellipse cx="210" cy="91" rx="96" ry="41" fill="#dfae69"/><g stroke="#f4d29c" fill="none" stroke-width="6" stroke-linecap="round"><path d="M142 86q25-33 60 0t72 0"/><path d="M150 105q45-30 90 0t42-5"/><path d="M162 74q43 45 93-5"/><path d="M170 115q24-20 52-5t47-7"/></g><g fill="#8ec082"><ellipse cx="152" cy="72" rx="9" ry="4" transform="rotate(-20 152 72)"/><ellipse cx="264" cy="104" rx="10" ry="5" transform="rotate(28 264 104)"/><ellipse cx="231" cy="71" rx="9" ry="4" transform="rotate(-28 231 71)"/></g><g fill="#b97657"><circle cx="180" cy="93" r="9"/><circle cx="249" cy="88" r="10"/><circle cx="226" cy="109" r="7"/></g></svg>
+</div>
+<div><strong>Tejszínes csirkés tészta</strong><p class="sub">Receptjavaslat a közös háztartáshoz</p></div>
+<div class="pillrow"><span class="pill uncertain">◌ Készlet ellenőrzendő</span><span class="pill">◷ 30 perc</span><span class="pill">♙ 4 adag</span></div>
+<div class="reason"><b>✧</b><span>A csirkemell felhasználása időszerű lehet, de a hűtött mennyiséget érdemes ellenőrizni.</span></div>
+<div class="actionline"><span class="cta">Recept megnyitása</span><span class="secondary">♡ Mentés a receptjeim közé</span></div>
+</div></section>
+
+<section class="sample" aria-labelledby="split">
+<div class="sample-label"><strong>03 / Storage Split</strong><span>Két állapot, egy készlet</span></div>
+<div class="screen">
+<div class="screen-head"><div><div class="eyebrow">KÉSZLET / GYORS ELOSZTÁS</div><h2 id="split">Hová került?</h2><p class="sub">Csirkemell · Vásárolt mennyiség: 1 kg</p></div><span class="icon" aria-hidden="true">▦</span></div>
+<div class="balanced"><div class="storage"><div class="big-icon" aria-hidden="true">❄️</div><div class="where">Hűtő</div><div class="quantity">600 g</div><div class="portion">60%</div></div><div class="storage"><div class="big-icon" aria-hidden="true">🧊</div><div class="where">Fagyasztó</div><div class="quantity">400 g</div><div class="portion">40%</div></div></div>
+<div class="track" aria-label="60% hűtő, 40% fagyasztó"><span class="chill"></span><span class="freeze"></span></div>
+<div class="quick"><span>Hűtő</span><span>Fele-fele</span><span>Fagyasztó</span></div>
+<div class="question"><strong>Részletes beállítás, ha szükséges</strong><span>A végleges változatban csúszka és pontos, akadálymentes mennyiségmező is elérhető. A két rész összege mindig 1 kg.</span></div>
+<div class="reason"><b>✧</b><span>Külön hűtési/fagyasztási előrejelzés csak megerősített tárolási választás után.</span></div>
+<div class="actionline"><span class="cta">Elosztás megerősítése</span><span class="secondary">Később</span></div>
+</div></section>
+
+<section class="sample" aria-labelledby="shop">
+<div class="sample-label"><strong>04 / Shopping Suggestion</strong><span>Értelmes egyérintéses döntés</span></div>
+<div class="screen">
+<div class="screen-head"><div><div class="eyebrow">BEVÁSÁRLÁS / JAVASLAT</div><h2 id="shop">Pótoljuk a tejet?</h2><p class="sub">A korábbi vásárlási ritmus alapján</p></div><span class="icon" aria-hidden="true">▤</span></div>
+<div class="suggest"><div class="producticon" aria-hidden="true">🥛</div><div class="copy"><strong>Tej · 2 liter</strong><small>Nem megerősített készlethiány</small><span class="pill uncertain" style="margin-top:8px">◌ Becslés</span></div></div>
+<div class="question"><strong>Lehet, hogy hamarosan szükség lesz rá.</strong><span>A Grapesnek nincs friss, megerősített otthoni készletadata. A bevásárlólista még nem bizonyít vásárlást.</span></div>
+<div class="divider"></div>
+<div><strong style="font-size:14px">Van még otthon tej?</strong><p class="sub">Csak akkor válaszolj, ha most hasznos.</p></div>
+<div class="two-actions"><span>Elfogyott</span><span>Van még</span></div>
+<div class="actionline"><span class="cta">Listához adom</span><span class="secondary">Nem most</span></div>
+<div class="aux">Nincs automatikus készletmozgás vagy blokk nélkül feltételezett vásárlás.</div>
+</div></section>
+
+<section class="sample" aria-labelledby="food-detail">
+<div class="sample-label"><strong>05 / Food Recipe Detail</strong><span>A meglévő receptek olvasó nézete</span></div>
+<div class="screen">
+<div class="screen-head">
+<div><div class="eyebrow">FOOD / SAJÁT RECEPTEK</div><h2 id="food-detail">Bolognai spagetti</h2><p class="sub">Saját recept · 4 adag</p></div>
+<span class="icon" aria-hidden="true">♨</span>
+</div>
+<div class="recipe-detail-image" role="img" aria-label="Stilizált tésztaétel-helyőrző; a valódi Food-receptben a saját feltöltött kép jelenik meg, ha van">
+<svg viewBox="0 0 420 170" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+<ellipse cx="210" cy="84" rx="131" ry="70" fill="#c8d0ca"/>
+<ellipse cx="210" cy="84" rx="106" ry="49" fill="#384b4b"/>
+<ellipse cx="210" cy="82" rx="92" ry="40" fill="#dfb371"/>
+<g stroke="#f4dba5" stroke-width="7" stroke-linecap="round" fill="none"><path d="M145 73q22 35 48 15t55-14t37 13"/><path d="M150 99q39-39 71-6t67-9"/><path d="M180 64q30 24 63 13"/><path d="M160 109q38-25 76-2"/></g>
+<g fill="#b74e40"><ellipse cx="183" cy="73" rx="17" ry="9"/><ellipse cx="241" cy="96" rx="20" ry="12"/><ellipse cx="208" cy="84" rx="15" ry="11"/></g>
+<g fill="#6c9e61"><ellipse cx="175" cy="105" rx="9" ry="4" transform="rotate(27 175 105)"/><ellipse cx="253" cy="73" rx="9" ry="4" transform="rotate(-20 253 73)"/></g>
+</svg>
+</div>
+<div class="pillrow"><span class="pill">🍽 4 adag</span><span class="pill">Saját recept</span><span class="pill">Tápérték adagonként</span></div>
+<div class="nutrition" aria-label="Példa tápértékek adagonként"><div><strong>—</strong><small>kcal</small></div><div><strong>—</strong><small>Fehérje</small></div><div><strong>—</strong><small>Szénhidrát</small></div><div><strong>—</strong><small>Zsír</small></div></div>
+<p class="meta" style="margin:0">Tápértékek helyett szándékosan nincs kitalált szám: a valódi alkalmazás csak számított vagy igazolt adatokat mutasson.</p>
+<div class="divider"></div>
+<div><strong>Összetevők</strong><div class="ingredient-list" style="margin-top:7px">
+<div class="ingredient-line"><span><span class="tick">◯</span>Darált hús</span><span>400 g</span></div>
+<div class="ingredient-line"><span><span class="tick">◯</span>Paradicsomszósz</span><span>300 g</span></div>
+<div class="ingredient-line"><span><span class="tick">◯</span>Száraztészta</span><span>320 g</span></div>
+</div></div>
+<div class="divider"></div>
+<div><strong>Elkészítés</strong><div style="margin-top:6px;display:grid;gap:6px"><div class="step"><b>01</b><span>Pirítsd meg a húst, majd add hozzá a paradicsomszószt.</span></div><div class="step"><b>02</b><span>Főzd meg a tésztát, és keverd össze a szósszal.</span></div></div></div>
+<div class="actionline"><span class="cta">Étkezéshez adom</span><span class="secondary">✎ Szerkesztés</span></div>
+<div class="aux">A szerkesztés továbbra is a meglévő ötfüles Food-receptszerkesztőbe vezet. Csak statikus koncepció.</div>
+</div></section>
+</div>
+<footer>Dokumentációs vizuális referencialap, nem kész vagy jóváhagyott Grapes UI. Minden összeg, időtartam és elérhetőség szemléltető. A végleges alkalmazás a kanonikus Grapes ikon- és logóasseteket használja; az itt szereplő jelképek helyőrzők.</footer>
+</main></body></html>

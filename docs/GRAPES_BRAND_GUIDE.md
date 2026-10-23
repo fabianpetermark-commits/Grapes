@@ -202,3 +202,16 @@ A forrásellenőrzés 14 megállapítást rögzít a [Grapes Brand Audit](./GRAP
 **Vizuális kapuk:** 0/50/100%, napi cél nélkül, ismeretlen kcal; 320/360/390/412px, emelt rendszerbetű, hosszú magyar címke, mentés/képernyőbillentyűzet, fókusz/TalkBack, safe-area és `prefers-reduced-motion`. Lefutott `npm test`, `npm run build:android-web`, releváns Chromium/Playwright regresszió és szükség szerint natív debug. GitHub CI **nem** fizikailag telepített APK-teszt.
 
 **Státusznyelv:** `CURRENT` = forrásban meglevő; `TARGET` = tervezett szerződés; `VERIFIED` = futás közben/screenshoton igazolt; `APPROVED` = felhasználó külön elfogadta. A jelen v1.0-rc1 útmutatóban a közös komponensszerződés **TARGET**, nem `VERIFIED` és nem `APPROVED`. A végleges **v1.0** akkor jelölhető ki, ha a képreferenciák és a nyitott kivételek elfogadását is rögzítettük; ez nem jelenti a teljes Grapes-migráció automatikus befejezését.
+
+
+## 14. Termékvízió és koncepciós UI-referenciák (külön, TARGET tervezet)
+
+A vizuális szabályok mellett a Grapes fejlesztését az alábbi, **még közös review alatt álló** termék- és UX-elvek vezessék:
+
+- [Grapes – Product Vision & UX Principles](./GRAPES_PRODUCT_VISION_AND_UX_PRINCIPLES.md): „Kevesebb adminisztráció. Okosabb mindennapok.”; célközpontú működés, minimális interakció, bizonyossági szintek, önállóan hasznos alapélmény.
+- [Grapes – Concept UI Reference](./GRAPES_CONCEPT_UI_REFERENCE.md): öt közös referenciaminta és komponensszerződés: Goal Selection, Recipe Recommendation, Storage Split, Shopping Suggestion, valamint a meglévő Food Recipe Detail célmegjelenése.
+- [Grapes – Concept UI Kit (statikus HTML)](./GRAPES_CONCEPT_UI_KIT.html): ugyanazon stílusra épülő, mobilra is alkalmazkodó vizuális referencialap, újraalkotott mintákkal.
+
+**Fontos határ:** a minták nem eredeti chatképek vagy implementált képernyők, hanem a korábbi koncepciók alapján készített dokumentációs referencia. Az eredeti bemutató képek/fotók ettől nem váltak a repository assetjeivé. A HTML statikus mintalap, nem működő Grapes-prototípus.
+
+A Brand Guide aktuális, kanonikus színei, logói, ikonforrásai, kontraszt- és méretszabályai továbbra is elsőbbséget élveznek. A Product Vision és a Concept UI Kit **TARGET**, nem automatikusan **APPROVED**, és nem módosítja a #42-es Food ring feladatot, a PROD/TEST adatokat vagy kiadási csatornákat.

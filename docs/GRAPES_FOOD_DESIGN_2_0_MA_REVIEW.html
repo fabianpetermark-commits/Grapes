@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Grapes Food Design 2.0 – Mai áttekintés / látványterv</title>
+<style>
+:root{color-scheme:dark;--bg:#090e14;--surface:#101821;--raised:#17222e;--line:#243343;--text:#f2f7fb;--muted:#94a5b8;--accent:#3bdcf2;--accent-2:#4d8fff;--good:#47d89b;--warning:#f2b84b}
+*{box-sizing:border-box}body{margin:0;background:#080c11;color:var(--text);font:15px/1.45 Inter,system-ui,sans-serif}button{font:inherit;cursor:pointer}
+.review{max-width:980px;margin:auto;padding:30px 16px 50px}.label{font-size:11px;font-weight:800;letter-spacing:.13em;color:var(--accent)}h1{font-size:clamp(23px,4vw,35px);letter-spacing:-.035em;line-height:1.15;margin:8px 0}p{color:var(--muted)}.review>p{max-width:700px;font-size:14px}
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:20px 0 12px}.mode{border:1px solid var(--line);color:var(--muted);background:var(--surface);border-radius:12px;min-height:44px;padding:0 15px}.mode[aria-pressed=true]{border-color:var(--accent);color:#041014;background:var(--accent);font-weight:750}.hint{font-size:12px;color:var(--muted)}
+.columns{display:grid;grid-template-columns:minmax(0,430px) minmax(250px,1fr);gap:32px;align-items:start}.phone{width:100%;max-width:400px;height:788px;border:1px solid #344557;border-radius:30px;overflow:hidden;background:var(--bg);box-shadow:0 20px 50px #0008;display:grid;grid-template-rows:20px 61px minmax(0,1fr) 72px}
+.status{font-size:10px;color:#a9b8c7;text-align:center;padding-top:4px}.appbar{border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:7px 15px}.grapes{width:36px;height:36px;border:1px solid #28576a;border-radius:11px;color:var(--accent);display:grid;place-items:center;font-size:23px;background:rgb(59 220 242 / 5%)}
+.app-name{flex:1;min-width:0}.app-name strong{font-size:16px;display:block}.app-name small{font-size:11px;color:var(--muted)}.bar-icon{color:#b7c4d3;font-size:19px;width:28px;text-align:center}
+.foodcontent{overflow:auto;padding:15px 15px 30px;scrollbar-color:#344656 transparent}.date{display:grid;grid-template-columns:44px 1fr 44px;gap:8px;margin-bottom:14px}.date>*{border:1px solid var(--line);background:var(--surface);border-radius:12px;min-height:44px;display:grid;place-items:center;color:var(--text);font-size:14px}.date button{font-size:24px}
+.daily{border:1px solid var(--line);border-radius:19px;background:var(--surface);padding:15px;display:grid;grid-template-columns:112px minmax(0,1fr);gap:12px}
+.ring{position:relative;width:112px;height:112px;display:grid;place-items:center}.ring svg{width:112px;height:112px;grid-area:1/1}.ring circle{fill:none;stroke-width:7}.ring .track{stroke:var(--line)}.ring .progress{stroke:var(--accent);stroke-linecap:round;stroke-dasharray:72 100;filter:drop-shadow(0 0 2px rgb(59 220 242 / 18%))}
+.ringcopy{grid-area:1/1;z-index:1;text-align:center;font-size:10px;color:var(--muted)}.ringcopy strong{display:block;font-size:21px;letter-spacing:-.04em;color:var(--text);line-height:1.08;font-variant-numeric:tabular-nums}.ringcopy small{font-size:10px}
+.dailytext{min-width:0}.dailytext strong{display:block;font-size:16px;line-height:1.2}.dailytext .remaining{display:block;color:var(--muted);font-size:12px;margin:4px 0 12px}
+.macro{display:grid;grid-template-columns:65px minmax(12px,1fr) 40px;gap:6px;align-items:center;margin-top:8px;font-size:11px;color:var(--muted)}.macro b{color:var(--text);font-size:11px;text-align:right;white-space:nowrap}.trackbar{height:6px;border-radius:99px;background:var(--line);overflow:hidden}.fill{height:100%;border-radius:99px}.cyan{background:var(--accent)}.blue{background:var(--accent-2)}.gold{background:var(--warning)}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;grid-column:1/-1}.actions button{border:1px solid #36535e;background:rgb(59 220 242 / 7%);color:var(--accent);min-height:48px;font-size:12px;font-weight:700;border-radius:12px}
+.water{display:flex;gap:10px;align-items:center;padding:12px;margin-top:12px;border:1px solid var(--line);border-radius:16px;background:var(--surface)}.water .ico{width:42px;height:42px;flex:none;border-radius:12px;background:rgb(77 143 255 / 12%);color:#7bc8ff;display:grid;place-items:center;font-size:21px}.watercopy{flex:1}.watercopy strong{display:block;font-size:14px}.watercopy span{display:block;color:var(--muted);font-size:12px}.water button{min-width:48px;min-height:48px;border-radius:12px;background:rgb(59 220 242 / 11%);border:1px solid rgb(59 220 242 / 25%);color:var(--accent);font-size:24px}
+.section{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:18px 1px 9px}.section strong{font-size:17px}.links{display:flex;gap:5px}.links span{font-size:12px;color:var(--accent);padding:7px 8px}.recipe{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:13px;background:var(--surface);min-height:52px;padding:10px 12px;margin-top:7px}.recipe .dish{font-size:16px;background:var(--raised);border-radius:9px;padding:6px}.recipe strong{font-size:13px;line-height:1.2;flex:1}.recipe span{font-size:12px;color:var(--accent);text-align:right}
+.meal{display:flex;gap:11px;align-items:center;padding:11px 10px;border-bottom:1px solid var(--line);min-height:70px}.meal .ico{flex:none;width:44px;height:44px;display:grid;place-items:center;background:var(--raised);color:var(--accent);border-radius:13px;font-size:20px}.meal .copy{min-width:0;flex:1}.meal strong{font-size:14px}.meal small{display:block;color:var(--muted);font-size:12px;line-height:1.28;margin-top:2px}.meal b{white-space:nowrap;font-size:12px}
+.nav{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);background:#0d141c;align-items:center;padding:6px 4px 10px}.navitem{text-align:center;color:#8193a6;font-size:10px}.navitem i{font-size:20px;font-style:normal;display:block}.navitem.active{color:var(--accent)}
+/* Target visual-only changes, preserving exactly the original screen/section ordering */
+body[data-mode=after] .daily{border-radius:20px;background:linear-gradient(145deg,rgb(59 220 242 / 5%),var(--surface) 52%);padding:16px;border-color:#2c4655}
+body[data-mode=after] .date>*{background:var(--raised);border-color:var(--line)}
+body[data-mode=after] .appbar{background:#0e161f}
+body[data-mode=after] .ringcopy{font-size:11px}body[data-mode=after] .ringcopy strong{font-size:23px}
+body[data-mode=after] .dailytext strong{font-size:17px}body[data-mode=after] .macro{font-size:12px;grid-template-columns:70px minmax(12px,1fr) 41px}body[data-mode=after] .macro b{font-size:12px}
+body[data-mode=after] .water{padding:14px;border-radius:18px}body[data-mode=after] .watercopy strong{font-size:15px}
+body[data-mode=after] .section strong{font-size:18px}
+body[data-mode=after] .recipe{min-height:58px;padding:12px;border-radius:15px}body[data-mode=after] .recipe strong{font-size:14px}
+body[data-mode=after] .meal{background:var(--surface);border:1px solid var(--line);border-radius:14px;margin-bottom:7px;min-height:74px;padding:11px}body[data-mode=after] .meal strong{font-size:15px}
+body[data-mode=after] .navitem{font-size:11px}body[data-mode=before] .daily{background:linear-gradient(145deg,rgb(59 220 242 / 11%),var(--surface));border-color:rgb(59 220 242 / 24%)}
+body[data-mode=before] .dailytext .remaining{font-size:11px}body[data-mode=before] .macro{font-size:10px;grid-template-columns:42px 1fr 34px}body[data-mode=before] .actions button{font-size:10px;min-height:44px}
+body[data-mode=before] .watercopy span{font-size:11px}body[data-mode=before] .recipe strong{font-size:12px}body[data-mode=before] .recipe{min-height:43px;padding:8px 11px;border-radius:12px}body[data-mode=before] .recipe .dish{display:none}body[data-mode=before] .meal small{font-size:11px}body[data-mode=before] .meal{background:none}
+.guidance{display:grid;gap:12px}.guidecard{background:var(--surface);border:1px solid var(--line);border-radius:15px;padding:15px}.guidecard strong{display:block;font-size:14px;margin-bottom:4px}.guidecard p{font-size:13px;line-height:1.52;margin:0}.guidecard code{color:var(--accent)}.warn{color:var(--warning);font-weight:700}footer{font-size:12px;color:var(--muted);margin-top:20px}
+@media(max-width:730px){.columns{grid-template-columns:minmax(0,1fr)}.phone{margin:0 auto}.guidance{grid-template-columns:1fr 1fr}}@media(max-width:430px){.guidance{grid-template-columns:1fr}.review{padding:22px 10px}.phone{border-radius:22px}.foodcontent{padding:13px}}
+</style>
+</head>
+<body data-mode="after">
+<div class="review">
+<div class="label">GRAPES / FOOD DESIGN 2.0 / PHASE 1</div>
+<h1>Mai áttekintés · arculati megújulás</h1>
+<p>Összehasonlító képernyőterv a TEST-forrásban ellenőrzött komponensek alapján. A „Korábbi stílus” csak szemléltető közelítés, nem eredeti alkalmazás-screenshot. Ugyanazok a funkciók, szekciók és sorrend.</p>
+<div class="toolbar" role="group" aria-label="Látványterv változat">
+<button class="mode" data-choice="before" aria-pressed="false">Korábbi stílus (közelítés)</button><button class="mode" data-choice="after" aria-pressed="true">Design 2.0</button>
+<span class="hint">Csak a megjelenés változik.</span>
+</div>
+<div class="columns"><div class="phone" aria-label="Grapes Food Mai áttekintés statikus mobil látványterv">
+<div class="status">06:11 ▰▰▰ 100%</div>
+<div class="appbar"><span class="grapes" aria-hidden="true">♧</span><span class="app-name"><strong>Grapes</strong><small>Ételnapló</small></span><span class="bar-icon" aria-hidden="true">⌕</span><span class="bar-icon" aria-hidden="true">⋮</span></div>
+<div class="foodcontent">
+<div class="date"><button type="button" aria-label="Előző nap">‹</button><span>2026. 10. 19.</span><button type="button" aria-label="Következő nap">›</button></div>
+<div class="daily">
+<div class="ring"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="43" class="track"/><circle cx="50" cy="50" r="43" pathLength="100" class="progress" transform="rotate(-90 50 50)"/></svg><div class="ringcopy">Elfogyasztva<strong>1 420</strong><small>/ 2 000 kcal</small></div></div>
+<div class="dailytext"><strong>A mai étkezéseid rögzítve</strong><span class="remaining">580 kcal maradt mára</span>
+<div class="macro"><span>Fehérje</span><span class="trackbar"><i class="fill cyan" style="display:block;width:65%"></i></span><b>86 g</b></div>
+<div class="macro"><span>Szénhidrát</span><span class="trackbar"><i class="fill blue" style="display:block;width:73%"></i></span><b>148 g</b></div>
+<div class="macro"><span>Zsír</span><span class="trackbar"><i class="fill gold" style="display:block;width:54%"></i></span><b>48 g</b></div></div>
+<div class="actions"><button type="button">Statisztika</button><button type="button">Napi célok</button></div></div>
+<div class="water"><span class="ico" aria-hidden="true">♒</span><div class="watercopy"><strong>Víz</strong><span>5 / 8 pohár · 1,25 l</span></div><button type="button" aria-label="250 milliliter víz hozzáadása">+</button></div>
+<div class="section"><strong>Receptek</strong><span class="links"><span>Megnyitás</span><span aria-label="Új recept">＋</span></span></div>
+<div class="recipe"><span class="dish" aria-hidden="true">♨</span><strong>Bolognai spagetti</strong><span>540 kcal/adag</span></div>
+<div class="recipe"><span class="dish" aria-hidden="true">♨</span><strong>Banánkenyér</strong><span>188 kcal/szelet</span></div>
+<div class="section"><strong>Étkezések</strong></div>
+<div class="meal"><span class="ico" aria-hidden="true">☀</span><span class="copy"><strong>Reggeli</strong><small>Zabkása, banán · 08:15<br>Limiten belül</small></span><b>385 kcal</b></div>
+<div class="meal"><span class="ico" aria-hidden="true">⚬</span><span class="copy"><strong>Ebéd</strong><small>Bolognai spagetti · 12:35<br>Limiten belül</small></span><b>620 kcal</b></div>
+<div class="meal"><span class="ico" aria-hidden="true">☾</span><span class="copy"><strong>Vacsora</strong><small>Csirkés saláta · 19:10</small></span><b>415 kcal</b></div>
+<div class="meal"><span class="ico" aria-hidden="true">♢</span><span class="copy"><strong>Egyéb</strong><small>Még nincs rögzített étel</small></span><b>— kcal</b></div>
+</div>
+<div class="nav"><span class="navitem"><i>⌂</i>Kezdőlap</span><span class="navitem"><i>▤</i>Projektek</span><span class="navitem"><i>↻</i>Szinkron</span><span class="navitem"><i>•••</i>Továbbiak</span></div>
+</div>
+<aside class="guidance">
+<div class="guidecard"><strong>01 / Változatlan tartalomsorrend</strong><p>Dátum → napi összesítés → víz → receptek → étkezések. A meglévő statisztika- és célgomb is a helyén marad.</p></div>
+<div class="guidecard"><strong>02 / Valódi Grapes-színek</strong><p>Fő akcentus: <code>#3BDCF2</code>. Üres ív és finom keret: <code>#243343</code>. Fény csak a teljesített gyűrűíven.</p></div>
+<div class="guidecard"><strong>03 / Olvashatóság</strong><p>A túl kicsi tápanyag-, recept- és étkezési feliratokat emeljük. A mennyiségeket és a mértékegységeket összehangoljuk.</p></div>
+<div class="guidecard"><strong>04 / Védett funkciók</strong><p>Naplózás, szinkron, Food- és vízadatok, dátumválasztás, megosztás, receptkezelés, import, célok és grafikonok működése változatlan.</p></div>
+<div class="guidecard"><strong>05 / <span class="warn">Csak látványterv</span></strong><p>A gombok és a mintaadatok nem végeznek Food-műveleteket. A két megjelenési mód közötti váltás kizárólag vizuális összehasonlítás.</p></div>
+</aside>
+</div>
+<footer>TARGET / közös review. Jelenlegi TEST HTML ellenőrzése alapján készített sematikus dizájn. Nem telepített, nem futó Android képernyő és nem tesztelt viselkedés. A logó és ikonok itt helyőrzők, a későbbi implementáció a hivatalos Grapes asseteket használja.</footer>
+</div>
+<script>
+for(const btn of document.querySelectorAll("[data-choice]")){btn.addEventListener("click",()=>{document.body.dataset.mode=btn.dataset.choice;for(const b of document.querySelectorAll("[data-choice]"))b.setAttribute("aria-pressed",String(b===btn));});}
+</script>
+</body></html>

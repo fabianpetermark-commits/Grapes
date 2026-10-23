@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Grapes Health — Final visual handoff (#115)</title>
+<style>
+/* VISUAL HANDOFF ONLY — sample values, no app state, API, auth or data writes.
+   Implementation must use existing Grapes Food/Water/profile and navigation. */
+:root{--bg:#090e14;--surface:#101821;--raised:#17222e;--line:#243343;--text:#f2f7fb;--muted:#94a5b8;--cyan:#3bdcf2;--blue:#4d8fff;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:#04080d;color:var(--text)}
+button{font:inherit;color:inherit;cursor:pointer}
+.phone{position:relative;width:min(390px,100vw);height:min(844px,100dvh);min-height:640px;overflow:hidden;border:1px solid #25333c;border-radius:34px;background:radial-gradient(ellipse 390px 250px at 22% 0%,#142e3d 0%,transparent 80%),var(--bg)}
+
+
+.appbar{height:80px;display:flex;align-items:center;gap:12px;padding:11px 18px;border-bottom:1px solid #263640;background:#0a131a}
+.logo{width:40px;height:40px;object-fit:contain}
+.appname{flex:1;min-width:0}
+.appname strong{display:block;font-size:21px;letter-spacing:-.6px}
+.appname small{font-size:11px;color:var(--muted)}
+.icon{width:22px;height:22px;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;fill:none;flex:none}
+.headeraction{display:grid;place-items:center;width:36px;height:38px;background:transparent;border:0}
+.settings{color:var(--cyan);border:1px solid #33606c;border-radius:12px;background:#10252c}
+.content{position:absolute;inset:80px 0 0;overflow:auto;padding:16px 16px 126px;scrollbar-width:none}
+.content::-webkit-scrollbar{display:none}
+.back{display:inline-flex;align-items:center;gap:5px;background:transparent;color:var(--cyan);border:0;font-size:12px;font-weight:700;padding:3px 0 13px}
+.back .icon{width:15px;height:15px}
+.daily{border:1px solid #28505b;border-radius:22px;padding:16px;background:linear-gradient(140deg,#1a333c,#111d26 44%,#101821);box-shadow:0 12px 25px #0002}
+.dailytop{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.dailytop strong{font-size:12px;font-weight:780}
+.dailytop span{font-size:11px;color:var(--muted)}
+.dailybody{display:grid;grid-template-columns:124px minmax(0,1fr);gap:13px;align-items:center}
+.energy{position:relative;width:124px;height:124px;display:grid;place-items:center;border:0;border-radius:50%;background:transparent;padding:0}
+.energy svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.energy .track{fill:none;stroke:#263949;stroke-width:8}
+.energy .filled{fill:none;stroke:var(--cyan);stroke-width:8;stroke-linecap:round;stroke-dasharray:69 100;filter:drop-shadow(0 0 3px #3bdcf244)}
+.energycopy{display:flex;flex-direction:column;align-items:center;gap:3px;z-index:1}
+.energycopy small{font-size:10px;color:var(--muted)}
+.energycopy strong{font-size:24px;letter-spacing:-1px;line-height:1.1}
+.energycopy em{font-size:10px;color:var(--muted);font-style:normal}
+.energycopy span{font-size:10px;color:#bbcbd6;margin-top:4px}
+.macro-list{display:grid;gap:12px}
+.macro-label{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;font-size:10px}
+.macro-label span{color:var(--muted)}
+.macro-label b{font-size:10px}
+.progress{height:5px;border-radius:99px;background:#253747;overflow:hidden}
+.progress i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--cyan),var(--blue))}
+.dailybottom{display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:11px;border-top:1px solid #293f4d;font-size:10px}
+.dailybottom span{color:var(--muted)}
+.dailybottom button{padding:0;border:0;background:transparent;color:var(--cyan);font-size:10px;font-weight:760}
+.recipe{margin-top:14px;width:100%;min-height:101px;display:flex;align-items:center;gap:12px;padding:12px;text-align:left;background:#14212b;border:1px solid #293e4b;border-radius:19px}
+.recipeimage{display:grid;place-items:center;width:73px;height:75px;flex:none;background:#1b3441;border:1px solid #31525b;border-radius:13px;color:var(--cyan)}
+.recipeimage .icon{width:34px;height:34px;stroke-width:1.5}
+.recipecopy{min-width:0;flex:1}
+.recipecopy small{display:block;color:var(--cyan);font-size:10px;font-weight:760;margin-bottom:8px}
+.recipecopy strong{display:block;font-size:14px;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+.recipecopy span{display:block;font-size:11px;color:var(--muted);margin-top:7px}
+.arrow{width:16px;height:16px;color:#a2b5c3}
+.modules{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}
+.module{display:flex;align-items:center;gap:10px;min-height:76px;padding:12px;min-width:0;background:#111b25;border:1px solid #2a3d4e;border-radius:16px;text-align:left}
+.moduleicon{display:grid;place-items:center;width:40px;height:42px;flex:none;border:1px solid #286071;background:#17313d;border-radius:12px;color:var(--cyan)}
+.moduleicon .icon{width:22px;height:22px}
+.module strong{font-size:12px;white-space:nowrap}
+.module .arrow{width:13px;height:13px;margin-left:auto}
+.bottomfade{position:absolute;bottom:0;left:0;right:0;height:126px;background:linear-gradient(transparent,#090e14 77%);pointer-events:none}
+.quickrow{position:absolute;z-index:3;left:16px;right:16px;bottom:23px;height:70px;display:flex;gap:9px;align-items:center}
+.quickpill{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:center;flex:1;height:68px;min-width:0;padding:5px;border-radius:34px;border:1px solid #3b5060;background:#19252e;box-shadow:0 11px 25px #0006}
+.quick{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;height:54px;min-width:0;background:transparent;border:0;border-radius:25px;color:#c2ced8;font-size:10px;font-weight:700}
+.quick .icon{width:22px;height:22px}
+.quick:active{background:#3bdcf219}
+.scan{display:grid;place-items:center;flex:none;width:68px;height:68px;border-radius:50%;border:1px solid #4d8190;background:#1c3440;color:var(--cyan);box-shadow:0 10px 20px #0006}
+.scan .icon{width:29px;height:29px}
+button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.indicator{position:absolute;z-index:4;bottom:7px;left:50%;transform:translateX(-50%);width:105px;height:3px;border-radius:99px;background:#8497a5}
+.empty .energy .filled{stroke-dasharray:0 100;filter:none}
+.empty .progress i{width:0!important}
+@media(max-width:390px){.phone{height:100dvh;min-height:0;border:0;border-radius:0}}
+@media(max-height:690px){.quickrow{bottom:15px}}
+</style>
+</head>
+<body>
+<div class="phone" id="phone" aria-label="Grapes Health kész UI-referencia">
+  
+  <header class="appbar">
+    <img class="logo" src="../public/grapes-mark.svg" alt="Grapes">
+    <div class="appname"><strong>Health</strong><small>Ételnapló és receptek</small></div>
+    <button class="headeraction" aria-label="Keresés"><svg class="icon" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="7"/><path d="m16 16 5 5"/></svg></button>
+    <button class="headeraction settings" aria-label="Beállítások"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 1v3M12 20v3M1 12h3M20 12h3"/></svg></button>
+  </header>
+  <main class="content">
+    <button class="back"><svg class="icon" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></svg>Főmenü</button>
+    <section class="daily" aria-label="Mai Food-statisztika">
+      <div class="dailytop"><strong>Mai összesítő</strong><span>Ma, október 23.</span></div>
+      <div class="dailybody">
+        <button class="energy" aria-label="Részletes statisztika">
+          <svg viewBox="0 0 124 124" aria-hidden="true"><circle class="track" cx="62" cy="62" r="54" pathLength="100"/><circle class="filled" cx="62" cy="62" r="54" pathLength="100"/></svg>
+          <span class="energycopy"><small>Elfogyasztva</small><strong id="kcal">1 380</strong><em id="kcal-unit">kcal</em><span id="target">/ 2 000 kcal</span></span>
+        </button>
+        <div class="macro-list">
+          <div><div class="macro-label"><span>Fehérje</span><b id="p">68 g</b></div><div class="progress"><i style="width:68%"></i></div></div>
+          <div><div class="macro-label"><span>Szénhidrát</span><b id="c">122 g</b></div><div class="progress"><i style="width:61%"></i></div></div>
+          <div><div class="macro-label"><span>Zsír</span><b id="f">47 g</b></div><div class="progress"><i style="width:67%"></i></div></div>
+        </div>
+      </div>
+      <div class="dailybottom"><span id="summary">ⓘ Napi cél: 2 000 kcal</span><button>Részletek →</button></div>
+    </section>
+    <button class="recipe" aria-label="Saját recept megnyitása">
+      <span class="recipeimage"><svg class="icon" viewBox="0 0 24 24"><path d="M4 12h16M5 12c0 5 2.8 7 7 7s7-2 7-7M8 8c-2-2 2-3 0-5M13 8c-2-2 2-3 0-5M18 8c-2-2 2-3 0-5"/></svg></span>
+      <span class="recipecopy"><small id="recipe-kind">EBÉDÖTLET · SAJÁT RECEPT</small><strong id="recipe-name">Quarkos palacsinta</strong><span id="recipe-desc">Recept megnyitása</span></span>
+      <svg class="icon arrow" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg>
+    </button>
+    <nav class="modules" aria-label="Health modulok">
+      <button class="module"><span class="moduleicon"><svg class="icon" viewBox="0 0 24 24"><path d="M4 2v8M7 2v8M10 2v8M7 10v12M17 2v20M17 2c-4 3-5 7 0 9"/></svg></span><strong>Ételnapló</strong><svg class="icon arrow" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg></button>
+      <button class="module"><span class="moduleicon"><svg class="icon" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></span><strong>Receptek</strong><svg class="icon arrow" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg></button>
+    </nav>
+  </main>
+  <div class="bottomfade" aria-hidden="true"></div>
+  <nav class="quickrow" aria-label="Gyorsműveletek">
+    <div class="quickpill">
+      <button class="quick" aria-label="Vonalkód felismerése fotóról"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="8" cy="9" r="1.3"/><path d="m4 17 6-6 3 3 2-2 5 5"/></svg>Fotó</button>
+      <button class="quick" aria-label="Étel keresése és felvétele"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M7 12h10"/></svg>Étel</button>
+      <button class="quick" aria-label="Víz gyorsrögzítése"><svg class="icon" viewBox="0 0 24 24"><path d="M12 3C9 8 6 11 6 14.5a6 6 0 0 0 12 0C18 11 15 8 12 3Z"/></svg>Víz</button>
+    </div>
+    <button class="scan" aria-label="Vonalkódolvasó megnyitása"><svg class="icon" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3M21 16v3a2 2 0 0 1-2 2h-3M8 12h8M12 8v8"/></svg></button>
+  </nav>
+  <div class="indicator" aria-hidden="true"></div>
+</div>
+<script>
+// Visual state validation only: ?state=empty. No demo action writes any Grapes data.
+if(new URLSearchParams(location.search).get('state')==='empty'){
+ document.getElementById('phone').classList.add('empty');
+ document.getElementById('kcal').textContent='—';
+ document.getElementById('kcal-unit').textContent='';
+ document.getElementById('target').textContent='Nincs cél';
+ for(const id of ['p','c','f'])document.getElementById(id).textContent='—';
+ document.getElementById('summary').textContent='ⓘ Néhány tápérték nem ismert';
+ document.getElementById('recipe-kind').textContent='SAJÁT RECEPTEK';
+ document.getElementById('recipe-name').textContent='Még nincs saját recept';
+ document.getElementById('recipe-desc').textContent='Receptek megnyitása';
+}
+// Buttons are intentionally inert: Codex must bind existing real operations.
+</script>
+</body></html>

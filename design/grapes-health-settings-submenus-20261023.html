@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Grapes • Health beállítások — öt almenü</title>
+<style>
+:root{color-scheme:dark;--bg:#090e14;--surface:#101821;--raised:#17222e;--line:#243343;--cyan:#3bdcf2;--blue:#4d8fff;--text:#f2f7fb;--muted:#94a5b8;--success:#47d89b;--warning:#f2b84b;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#05080c;color:var(--text)}
+button,input,select{font:inherit}button{cursor:pointer;color:inherit}input,select{color:var(--text)}
+.phone{width:min(390px,100vw);height:min(844px,100dvh);min-height:560px;position:relative;background:radial-gradient(ellipse 390px 220px at 20% 0%,#142c36 0%,transparent 78%),var(--bg);border:1px solid #2c4350;border-radius:31px;overflow:hidden;box-shadow:0 20px 60px #0009}
+.appbar{height:74px;padding:12px 16px;display:flex;align-items:center;gap:12px;background:#0c1820;border-bottom:1px solid #263b47}
+.go-back{display:grid;place-items:center;width:40px;height:44px;background:#162630;border:1px solid #2e4753;border-radius:13px;flex:none}
+.go-back svg{width:19px;height:19px;fill:none;stroke:var(--cyan);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.app-title{flex:1;min-width:0}.app-title strong{font-size:18px;letter-spacing:-.3px;display:block}.app-title small{font-size:11px;color:var(--muted)}
+.appbar .gear{color:var(--cyan);font-size:22px}
+.viewport{position:absolute;inset:74px 0 0;overflow:auto;padding:16px 16px 110px;scrollbar-width:thin;scrollbar-color:#344b58 transparent}
+.view{display:none}.view.active{display:block;animation:fadein .16s ease-out}
+@keyframes fadein{from{opacity:.5;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.profile{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#122530;border:1px solid #2b5664;border-radius:16px;padding:13px;margin-bottom:14px}
+.profile b{display:block;font-size:13px}.profile small{display:block;font-size:10px;color:var(--muted);margin-top:4px}.profile .bubble{width:35px;height:35px;border-radius:11px;display:grid;place-items:center;background:#1f4551;color:var(--cyan);font-size:20px;flex:none}
+.section-title{font-size:11px;color:var(--muted);margin:16px 3px 8px;font-weight:700;letter-spacing:.09em;text-transform:uppercase}
+.nav-list{display:grid;gap:8px}
+.nav-row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:#111d27;border:1px solid #2c404d;border-radius:16px;padding:12px;min-height:72px}
+.nav-row:focus-visible,.go-back:focus-visible,.tab:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.symbol{width:43px;height:43px;border-radius:13px;background:#17313c;border:1px solid #2d5e6b;display:grid;place-items:center;color:var(--cyan);flex:none;font-size:20px}
+.nav-row .copy{flex:1;min-width:0}.nav-row strong{display:block;font-size:13px}.nav-row small{display:block;color:var(--muted);font-size:10px;line-height:1.35;margin-top:5px}
+.chev{font-size:21px;color:#8ca8b7}
+.caption{color:var(--muted);font-size:11px;line-height:1.55;margin:10px 2px 15px}
+.card{border:1px solid #2e4551;border-radius:17px;background:linear-gradient(145deg,#152631,#101821 70%);padding:14px;margin:11px 0}
+.card h3{font-size:14px;letter-spacing:-.2px;margin:0 0 11px}
+.card small{font-size:10px;color:var(--muted)}
+.field{display:block;margin:12px 0}
+.field span{font-size:11px;color:#cad8e3;display:block;margin:0 0 6px}
+.field input,.field select{width:100%;height:42px;background:#0c1821;border:1px solid #365263;border-radius:11px;padding:0 12px;font-size:13px;outline:0}
+.field input:focus,.field select:focus{border-color:var(--cyan)}
+.fieldrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tabs{display:flex;gap:5px;background:#121f29;border:1px solid #2b4250;border-radius:15px;padding:5px;margin:10px 0 14px}
+.tab{flex:1;min-width:0;background:transparent;border:0;border-radius:11px;padding:10px 2px;font-size:11px;color:var(--muted);font-weight:750}
+.tab.active{background:#1e4552;color:#d1faff}
+.subtab{display:none}.subtab.active{display:block}
+.helper{font-size:10px;color:var(--muted);line-height:1.5;margin:11px 0}
+.hint{font-size:10px;color:#b6d8e3;padding:9px 11px;border-radius:11px;border:1px solid #325564;background:#132c35;line-height:1.5;margin:10px 0}
+.planned{display:inline-block;color:var(--warning);border:1px solid #725a32;background:#352b1c;padding:4px 7px;border-radius:9px;font-size:10px}
+.action{width:100%;min-height:45px;border:1px solid #3c7280;border-radius:12px;background:#1b4552;color:#d6faff;font-size:12px;font-weight:760;margin:7px 0 3px}
+.action.secondary{background:#162632;border-color:#355360;color:#c4d7e3}
+.action:disabled{opacity:.45;cursor:not-allowed}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:54px;border-bottom:1px solid #273946;padding:9px 0}
+.toggle-row:last-child{border-bottom:0}
+.toggle-row strong{display:block;font-size:12px}.toggle-row small{display:block;color:var(--muted);font-size:10px;line-height:1.4;margin-top:4px}
+.toggle-row input{accent-color:var(--cyan);width:18px;height:18px;flex:none}
+.segment{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.segment button{border:1px solid #3a5260;border-radius:13px;background:#182b37;min-height:48px;font-size:12px}
+.segment button.active{border-color:var(--cyan);background:#18414d;color:#d7fbff}
+.example{display:flex;justify-content:space-between;gap:12px;font-size:12px;margin-top:12px;padding:11px 12px;background:#0c1821;border:1px solid #283c49;border-radius:12px}
+.example span{color:var(--muted)}
+.provider{border:1px solid #2b4553;background:#111f29;border-radius:14px;padding:12px;margin:10px 0}
+.provider .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.provider strong{font-size:12px}
+.provider p{font-size:10px;color:var(--muted);line-height:1.5;margin:8px 0}
+.state{border:1px solid #4e5960;background:#242c35;border-radius:15px;padding:5px 8px;color:#c1cfdb;font-size:10px;white-space:nowrap}
+.provider .action{margin:6px 0}
+.micro{font-size:10px;color:var(--muted);line-height:1.5}
+.bottom-note{position:absolute;bottom:0;left:0;right:0;padding:10px 16px 23px;background:linear-gradient(0deg,#090e14 75%,#090e14df);z-index:2;border-top:1px solid #1a2a33}
+.bottom-note small{font-size:10px;color:var(--muted);display:block;text-align:center}
+.toast{position:absolute;left:20px;right:20px;bottom:73px;z-index:5;display:none;padding:12px;border:1px solid #467080;background:#1a3441;border-radius:13px;font-size:11px;box-shadow:0 10px 25px #0009}
+.toast.visible{display:block}
+@media(max-width:380px){.phone{height:100dvh;min-height:0;border:0;border-radius:0}}
+@media(prefers-reduced-motion:reduce){.view.active{animation:none}}
+</style>
+</head>
+<body>
+<div class="phone" id="demo">
+  <header class="appbar">
+    <button class="go-back" id="back" aria-label="Vissza"><svg viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></svg></button>
+    <div class="app-title"><strong id="heading">Health beállítások</strong><small id="subheading">Csak a Health modulhoz</small></div>
+    <span class="gear" aria-hidden="true">⚙</span>
+  </header>
+  <main class="viewport" id="viewport">
+    <div class="view active" id="root" data-title="Health beállítások" data-subtitle="Csak a Health modulhoz">
+      <div class="profile"><div><b>Aktív profil</b><small>A beállítások ehhez a profilhoz tartoznak</small></div><div class="bubble" aria-hidden="true">♙</div></div>
+      <div class="section-title">Személyre szabás</div>
+      <div class="nav-list">
+        <button class="nav-row" data-open="goals"><span class="symbol">◎</span><span class="copy"><strong>Célok</strong><small>Kalória, makrók, testsúly, vízbevitel</small></span><span class="chev">›</span></button>
+        <button class="nav-row" data-open="units"><span class="symbol">↔</span><span class="copy"><strong>Mértékegységek</strong><small>Metrikus vagy Imperial</small></span><span class="chev">›</span></button>
+        <button class="nav-row" data-open="display"><span class="symbol">▤</span><span class="copy"><strong>Napló és megjelenítés</strong><small>Health widgetek és étkezési áttekintés</small></span><span class="chev">›</span></button>
+        <button class="nav-row" data-open="integrations"><span class="symbol">⤳</span><span class="copy"><strong>Integrációk</strong><small>Health Connect, Samsung Health, YAZIO</small></span><span class="chev">›</span></button>
+        <button class="nav-row" data-open="data"><span class="symbol">⬡</span><span class="copy"><strong>Adatok és biztonság</strong><small>Mentések, importelőzmények, visszavonás</small></span><span class="chev">›</span></button>
+      </div>
+      <p class="caption">A globális Grapes-fiók, Drive-belépés és alkalmazásbeállítások továbbra is a Grapes főmenüjében maradnak.</p>
+    </div>
+    <div class="view" id="goals" data-title="Célok" data-subtitle="Személyes napi beállítások">
+      <div class="tabs" role="tablist" aria-label="Célok alcsoportjai">
+        <button class="tab active" data-tab="nutrition" role="tab" aria-selected="true">Táplálkozás</button>
+        <button class="tab" data-tab="weight" role="tab" aria-selected="false">Testsúly</button>
+        <button class="tab" data-tab="water" role="tab" aria-selected="false">Víz</button>
+      </div>
+      <section class="subtab active" id="nutrition">
+        <div class="card"><h3>Napi kalóriacél és makrók</h3>
+          <label class="field"><span>Kalóriacél (kcal / nap)</span><input type="number" min="0" step="1" placeholder="Nincs beállítva"></label>
+          <div class="fieldrow"><label class="field"><span>Fehérje (g)</span><input type="number" min="0" placeholder="—"></label><label class="field"><span>Szénhidrát (g)</span><input type="number" min="0" placeholder="—"></label></div>
+          <label class="field"><span>Zsír (g)</span><input type="number" min="0" placeholder="—"></label>
+          <label class="field"><span>Érvényes ettől a naptól</span><input type="date" value="2026-10-23"></label>
+          <div class="hint">A meglévő Food célrendszerét használja. A korábbi időszakok célértékei és naplóbejegyzései változatlanok maradnak.</div>
+          <button class="action" data-demo-save>Változások mentése</button>
+        </div>
+        <div class="card"><h3>Étkezési kalóriakeretek <small>opcionális</small></h3>
+          <div class="fieldrow"><label class="field"><span>Reggeli</span><input type="number" min="0" placeholder="—"></label><label class="field"><span>Ebéd</span><input type="number" min="0" placeholder="—"></label><label class="field"><span>Uzsonna</span><input type="number" min="0" placeholder="—"></label><label class="field"><span>Vacsora</span><input type="number" min="0" placeholder="—"></label></div>
+          <button class="action secondary" data-demo-save>Étkezési keretek mentése</button>
+        </div>
+      </section>
+      <section class="subtab" id="weight">
+        <div class="card"><h3>Testsúlycél <span class="planned">Tervezett</span></h3>
+          <label class="field"><span>Aktuális testsúly <span class="weight-unit">kg</span></span><input type="number" min="0" step=".1" placeholder="—"></label>
+          <label class="field"><span>Célsúly <span class="weight-unit">kg</span></span><input type="number" min="0" step=".1" placeholder="—"></label>
+          <div class="hint">Később testsúlynapló és súlyváltozás-grafikon. Semmilyen kalóriadeficitet vagy fogyási célt nem számol automatikusan.</div>
+          <button class="action secondary" disabled>Mentés – fejlesztés után</button>
+        </div>
+      </section>
+      <section class="subtab" id="water">
+        <div class="card"><h3>Vízfogyasztás céljai</h3>
+          <label class="field"><span>Napi vízcél <span class="water-unit">ml</span></span><input type="number" min="0" placeholder="Nincs beállítva"></label>
+          <label class="field"><span>Gyorsgomb mennyisége <span class="water-unit">ml</span></span><input type="number" min="0" placeholder="250"></label>
+          <div class="hint">A meglévő víznaplóhoz kapcsolódik. A gyorsgomb nem hoz létre új vagy párhuzamos adattárolót.</div>
+          <button class="action" data-demo-save>Célok mentése</button>
+        </div>
+      </section>
+    </div>
+    <div class="view" id="units" data-title="Mértékegységek" data-subtitle="Mértékek megjelenítése">
+      <div class="card"><h3>Egységrendszer</h3>
+        <div class="segment"><button class="active" data-units="metric" aria-pressed="true">Metrikus</button><button data-units="imperial" aria-pressed="false">Imperial</button></div>
+        <div class="example"><span>Testsúly</span><b id="weight-example">72,5 kg</b></div>
+        <div class="example"><span>Testmagasság</span><b id="height-example">178 cm</b></div>
+        <div class="example"><span>Vízfogyasztás</span><b id="water-example">250 ml</b></div>
+        <p class="helper">Az Imperial folyadékegység US fl oz. A tápanyagok grammban, az energia kcal-ban maradnak.</p>
+        <div class="hint">A mértékegység váltása nem módosíthatja a naplóban vagy receptekben tárolt mennyiségeket; csak a megjelenítés és bevitel alakítható át megbízható konverzióval.</div>
+        <button class="action" data-demo-save>Mértékegység mentése</button>
+      </div>
+    </div>
+    <div class="view" id="display" data-title="Napló és megjelenítés" data-subtitle="Widgetek testreszabása">
+      <div class="card"><h3>Health főképernyő</h3>
+        <label class="toggle-row"><span><strong>Étkezési gyorsgombok</strong><small>Reggeli, ebéd, uzsonna, vacsora a Food widgeten</small></span><input type="checkbox" checked></label>
+        <label class="toggle-row"><span><strong>Víz widget</strong><small>Napi vízállás és gyorsrögzítés</small></span><input type="checkbox" checked></label>
+        <label class="toggle-row"><span><strong>Saját receptajánló</strong><small>Napszakhoz illő receptek, ha van megfelelő</small></span><input type="checkbox" checked></label>
+      </div>
+      <div class="card"><h3>Tápanyagok</h3>
+        <p class="helper">A három alapmakró mindig könnyen megtalálható. A további tápanyagokat később lehet kiválasztani a meglévő statisztikákból.</p>
+        <label class="toggle-row"><span><strong>Fehérje / szénhidrát / zsír</strong><small>Megjelenítés a Food kártyán</small></span><input type="checkbox" checked></label>
+        <label class="toggle-row"><span><strong>Hiányzó adatok jelzése</strong><small>Ismeretlen tápértéknél „—” jelenik meg, nem nulla</small></span><input type="checkbox" checked disabled></label>
+      </div>
+      <button class="action" data-demo-save>Megjelenítés mentése</button>
+    </div>
+    <div class="view" id="integrations" data-title="Integrációk" data-subtitle="Egészségügyi adatforrások">
+      <p class="caption">Az adatforrások állapotát mindig ellenőrizni kell. A kapcsolódás vagy import nem indulhat automatikusan ezen képernyő megnyitásakor.</p>
+      <div class="provider"><div class="top"><strong>Health Connect</strong><span class="state">Nincs ellenőrizve</span></div>
+        <p>Android jogosultságok, elérhető adattípusok, utolsó sikeres beolvasás és kézi/engedélyezett automatikus import.</p>
+        <button class="action secondary" data-demo-action="A Health Connect jogosultságellenőrzése a működő Grapesben nyílna meg.">Jogosultságok ellenőrzése</button>
+        <button class="action secondary" data-demo-action="A meglévő Health Connect import előnézetét nyitná meg.">Beolvasás előnézettel</button>
+      </div>
+      <div class="provider"><div class="top"><strong>Samsung Health</strong><span class="state">Elérhetőség ellenőrizendő</span></div>
+        <p>Elsődlegesen a Health Connecten át megosztott, támogatott adatok. Közvetlen SDK csak akkor jelenjen meg aktívként, ha a telefonon valóban működik.</p>
+        <button class="action secondary" data-demo-action="A Samsung Health és a Health Connect kapcsolatának ellenőrzése következne.">Adatforrás megnyitása</button>
+      </div>
+      <div class="provider"><div class="top"><strong>YAZIO</strong><span class="state">Nincs ellenőrizve</span></div>
+        <p>Előzmények importálása fájlból; előnézet, duplikációszűrés és visszavonási lehetőség. A közvetlen fiókimport csak ténylegesen támogatott Android-kapcsolat esetén érhető el.</p>
+        <button class="action" data-demo-action="A meglévő YAZIO CSV/JSON fájlválasztó és import-előnézet nyílna meg, automatikus mentés nélkül.">Előzményimport fájlból</button>
+        <button class="action secondary" data-demo-action="A YAZIO importelőzmények és visszavonási lehetőségek listája nyílna meg.">Importelőzmények</button>
+      </div>
+      <div class="hint">Importálás előtt előnézet és jóváhagyás; egy forrás nem írhatja felül észrevétlenül a meglévő naplóadatokat. Az automatikus import kapcsolói csak a valóban támogatott forrásoknál jelenjenek meg.</div>
+    </div>
+    <div class="view" id="data" data-title="Adatok és biztonság" data-subtitle="Mentések és visszaállítás">
+      <div class="card"><h3>Biztonsági mentés</h3>
+        <p class="helper">Az Ételnapló és a Víz napló külön mentéseket használhat; az egyes exportok ne keltsék a teljes Health-mentés látszatát.</p>
+        <button class="action secondary" data-demo-action="A meglévő Food JSON export nyílna meg.">Ételnapló mentése</button>
+        <button class="action secondary" data-demo-action="A meglévő Víz napló export nyílna meg.">Víznapló mentése</button>
+      </div>
+      <div class="card"><h3>Beolvasások és adatvédelem</h3>
+        <button class="action secondary" data-demo-action="YAZIO importok és az adott import biztonságos visszavonása.">Importok kezelése</button>
+        <button class="action secondary" data-demo-action="A meglévő Food / Drive szinkron állapota és konfliktusvédelme nyílna meg.">Szinkron állapota</button>
+        <div class="hint">Felülírás, visszaállítás vagy import visszavonása előtt egyértelmű ellenőrzés és jóváhagyás szükséges. A Grapes-fiókhoz tartozó globális Drive-kapcsolatot itt nem bontjuk.</div>
+      </div>
+    </div>
+  </main>
+  <div class="bottom-note"><small>INTERAKTÍV UI-TERV · nem ír Grapes-adatot · nincs belépés vagy szinkron</small></div>
+  <div class="toast" id="toast" role="status"></div>
+</div>
+<script>
+(()=>{'use strict';
+ const root=document.getElementById('demo');
+ const main=document.getElementById('viewport');
+ const pages=[...root.querySelectorAll('.view')];
+ let current='root', system='metric';
+ const $=s=>root.querySelector(s), $$=s=>[...root.querySelectorAll(s)];
+ function show(page){current=page;pages.forEach(p=>p.classList.toggle('active',p.id===page));const active=$('#'+page);$('#heading').textContent=active.dataset.title;$('#subheading').textContent=active.dataset.subtitle;main.scrollTop=0;history.replaceState(null,'',location.pathname+location.search+'#'+page)}
+ function toast(message){const t=$('#toast');t.textContent=message;t.classList.add('visible');clearTimeout(toast.timer);toast.timer=setTimeout(()=>t.classList.remove('visible'),3100)}
+ $$('#root [data-open]').forEach(b=>b.addEventListener('click',()=>show(b.dataset.open)));
+ $('#back').addEventListener('click',()=>{if(current!=='root')show('root');else toast('Innen a Grapes Health főoldalára lépnél vissza.')});
+ $$('#goals [data-tab]').forEach(b=>b.addEventListener('click',()=>{$$('#goals [data-tab]').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-selected',String(x===b))});$$('#goals .subtab').forEach(x=>x.classList.toggle('active',x.id===b.dataset.tab))}));
+ $$('[data-units]').forEach(b=>b.addEventListener('click',()=>{system=b.dataset.units;$$('[data-units]').forEach(x=>{const on=x===b;x.classList.toggle('active',on);x.setAttribute('aria-pressed',String(on))});$('#weight-example').textContent=system==='metric'?'72,5 kg':'159,8 lb';$('#height-example').textContent=system==='metric'?'178 cm':'5 ft 10,1 in';$('#water-example').textContent=system==='metric'?'250 ml':'8,45 US fl oz';$$('.weight-unit').forEach(x=>x.textContent=system==='metric'?'kg':'lb');$$('.water-unit').forEach(x=>x.textContent=system==='metric'?'ml':'US fl oz')}));
+ $$('[data-demo-save]').forEach(b=>b.addEventListener('click',()=>toast('Látványterv: a módosítás itt nincs mentve.')));
+ $$('[data-demo-action]').forEach(b=>b.addEventListener('click',()=>toast(b.dataset.demoAction)));
+ const h=decodeURIComponent(location.hash.slice(1));if(pages.some(x=>x.id===h))show(h);
+})();
+</script>
+</body></html>
