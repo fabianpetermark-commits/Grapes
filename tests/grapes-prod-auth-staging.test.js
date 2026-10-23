@@ -109,14 +109,14 @@ test('owner enrollment never binds implicitly and requires local acknowledgement
   assert.doesNotMatch(activity, /\.clear\(\).*Food|deleteAllFood|deleteAllFinance|remove\("grapes-water-v1"\)/)
 })
 
-test('Food backup is directly reachable on Android without opening an inaccessible menu', () => {
+test('Food backup is directly reachable on Android through existing non-destructive dispatcher', () => {
   const html = read('design/android-mobile-preview.html')
   const food = read('src/food/food-mobile.js')
   const android = read('src/android-bridge.js')
-  assert.match(html, /data-food-backup-export[^>]*>Ételnapló mentése<\/button>/)
-  assert.match(food, /\$\('\[data-food-backup-export\]'\)\.addEventListener\('click', exportBackup\)/)
+  assert.match(html, /data-food-menu="backup-export"[^>]*>Ételnapló mentése<\/button>/)
+  assert.match(food, /closest\('\[data-food-menu\]'\)/)
+  assert.match(food, /return exportBackup\(\)/)
   assert.match(food, /await saveAndroidJsonBackup\(filename, json\)/)
   assert.match(android, /beginFoodBackupExport/)
   assert.match(html, /data-water-export/)
-  assert.doesNotMatch(food, /\$\('\[data-food-backup-export\]'\)\.addEventListener\('click', importBackup\)/)
 })
