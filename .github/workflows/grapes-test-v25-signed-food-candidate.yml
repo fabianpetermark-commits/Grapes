@@ -79,11 +79,15 @@ jobs:
           if grep -q 'PGRST106' "$RUNNER_TEMP/grapes-api-probe.json"; then
             echo "::error::api schema is not in the exposed-schema list"; exit 1
           fi
+          # Probe a real (read-only) RPC route, not the REST API root: the
+          # root can return an unrelated 401 before schema negotiation.
           private_code=$(curl --max-time 15 -sS -o "$RUNNER_TEMP/grapes-private-probe.json" -w '%{http_code}' \
             -H "apikey: $VITE_GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY" \
-            -H "Accept-Profile: grapes_private" "$VITE_GRAPES_TEST_SUPABASE_URL/rest/v1/")
-          if [ "$private_code" != 406 ]; then
-            echo "::error::Cannot prove private schema is unexposed (HTTP $private_code)"; exit 1
+            -H "Content-Type: application/json" -H "Content-Profile: grapes_private" \
+            -d '{"p_operation_id":"00000000-0000-4000-8000-000000000001"}' \
+            "$VITE_GRAPES_TEST_SUPABASE_URL/rest/v1/rpc/read_attempt_internal")
+          if [ "$private_code" != 406 ] || ! grep -Fq 'PGRST106' "$RUNNER_TEMP/grapes-private-probe.json"; then
+            echo "::error::Cannot prove private schema is unexposed (HTTP $private_code; expected PGRST106)"; exit 1
           fi
           echo "PASS: anonymous denied and private schema not exposed"
       - uses: actions/setup-node@v4
