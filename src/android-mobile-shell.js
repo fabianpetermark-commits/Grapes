@@ -15,7 +15,8 @@ import { registerFoodSharing, sendMealShare, sendRecipeShare } from './food/food
 import { hydrateMobileIcons, mobileIconSvg } from './android-mobile-icons.js'
 import { createHomeMobile } from './home/home-mobile.js'
 import { getAndroidAppUpdate, getAndroidTestAuthEnabled, requestAndroidTestAccountSignOut, installAndroidAppUpdate, isGrapesAndroidApp, openAndroidHealthConnectSettings, saveAndroidJsonBackup, saveAndroidVerifiedHealthBackup } from './android-bridge.js'
-import { waterBackupToJson, waterBackupFromJson, readWaterStoreStrict, waterBackupSummary } from './water/water-backup.js'
+import { waterBackupToJson, waterBackupFromJson, readWaterStoreStrict, waterBackupSummary,
+  writeWaterStoreVerified, restoreWaterBackupVerified } from './water/water-backup.js'
 import {
   isMobileShareableBook,
   isTrustedPairingMessage,
@@ -835,32 +836,30 @@ function dateKey(date = new Date()) {
 }
 
 function loadWaterStore() {
-  try {
-    const value = JSON.parse(localStorage.getItem(WATER_STORE_KEY) || '{}')
-    return value && typeof value === 'object' ? value : {}
-  } catch { return {} }
+  return readWaterStoreStrict(localStorage)
 }
 
 function currentWaterDay() {
+  const raw = localStorage.getItem(WATER_STORE_KEY)
   const store = loadWaterStore()
   const key = dateKey()
   const saved = store[key]
-  return { store, key, day: { goal: Math.max(500, Number(saved?.goal) || 2000), entries: Array.isArray(saved?.entries) ? saved.entries : [] } }
+  return { store, key, raw, day: { goal: Math.max(500, Number(saved?.goal) || 2000), entries: Array.isArray(saved?.entries) ? saved.entries : [] } }
 }
 
-function saveWaterDay(day) {
-  const { store, key } = currentWaterDay()
-  store[key] = day
-  saveWaterStore(store)
+function saveWaterDay(snapshot) {
+  snapshot.store[snapshot.key] = snapshot.day
+  saveWaterStore(snapshot.store, snapshot.raw)
 }
 
-function saveWaterStore(store) {
+function saveWaterStore(store, expectedRaw) {
   // Historical Health Connect imports and older Water diary entries are user
   // data. Do not silently prune them when a newer day is saved.
-  localStorage.setItem(WATER_STORE_KEY, JSON.stringify(store))
+  writeWaterStoreVerified(localStorage, store, expectedRaw)
 }
 
 function importHydrationEntries(entries = []) {
+  const original = localStorage.getItem(WATER_STORE_KEY)
   const store = loadWaterStore()
   const existingKeys = new Set(Object.values(store).flatMap(day => day?.entries || []).map(entry => entry.externalKey).filter(Boolean))
   let imported = 0
@@ -876,7 +875,7 @@ function importHydrationEntries(entries = []) {
     existingKeys.add(entry.externalKey)
     imported += 1
   }
-  if (imported) { saveWaterStore(store); renderWater() }
+  if (imported) { saveWaterStore(store, original); renderWater() }
   return imported
 }
 
@@ -892,14 +891,25 @@ function formatWater(amount) {
 }
 
 function renderWater() {
-  const { day } = currentWaterDay()
+  const status = $('[data-water-storage-status]')
+  let snapshot
+  try { snapshot = currentWaterDay() } catch (error) {
+    status.textContent = `A Víz napló nem olvasható: ${error?.message || 'ismeretlen hiba'} Az eredeti adat megmaradt.`
+    status.hidden = false
+    $$('[data-water-add], [data-action="water-goal"]').forEach(button => { button.disabled = true })
+    $('[data-water-total]').textContent = '—'
+    $('[data-water-log]').replaceChildren()
+    return
+  }
+  status.textContent = ''; status.hidden = true
+  $$('[data-water-add], [data-action="water-goal"]').forEach(button => { button.disabled = false })
+  const { day, store: waterStore } = snapshot
   const total = day.entries.reduce((sum, entry) => sum + Math.max(0, Number(entry.amount) || 0), 0)
   const percent = Math.min(100, total / day.goal * 100)
   $('[data-water-date]').textContent = `${new Date().toLocaleDateString('hu-HU', { month: 'long', day: 'numeric', weekday: 'long' })} · napi cél ${(day.goal / 1000).toLocaleString('hu-HU')} liter`
   $('[data-water-total]').textContent = formatWater(total)
   $('[data-water-goal-label]').textContent = `${formatWater(day.goal)} cél`
   $('[data-water-ring]').style.setProperty('--water-progress', `${percent}%`)
-  const waterStore = loadWaterStore()
   const week = Array.from({ length: 7 }, (_, index) => {
     const date = new Date()
     date.setHours(12, 0, 0, 0)
@@ -945,20 +955,24 @@ function renderWater() {
     row.title = 'Koppints a bejegyzés törléséhez'
     row.innerHTML = `<span class="water-log__icon">${mobileIconSvg('water')}</span><span><strong>Víz</strong><span>${new Date(entry.at).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })} · mentve</span></span><b>${formatWater(entry.amount)}</b>`
     row.addEventListener('click', () => {
-      const next = currentWaterDay().day
-      next.entries = next.entries.filter(item => item.id !== entry.id)
-      saveWaterDay(next); renderWater(); showToast('A vízbejegyzés törölve.')
+      try {
+        const next = currentWaterDay()
+        next.day.entries = next.day.entries.filter(item => item.id !== entry.id)
+        saveWaterDay(next); renderWater(); showToast('A vízbejegyzés törölve.')
+      } catch (error) { renderWater(); showToast(error?.message || 'A Víz mentése nem sikerült.') }
     })
     log.append(row)
   }
 }
 
 function addWater(amount) {
-  const { day } = currentWaterDay()
-  day.entries.push({ id: crypto.randomUUID(), amount, at: new Date().toISOString() })
-  saveWaterDay(day)
-  renderWater()
-  showToast(`${formatWater(amount)} víz hozzáadva és mentve.`)
+  try {
+    const snapshot = currentWaterDay()
+    snapshot.day.entries.push({ id: crypto.randomUUID(), amount, at: new Date().toISOString() })
+    saveWaterDay(snapshot)
+    renderWater()
+    showToast(`${formatWater(amount)} víz hozzáadva és mentve.`)
+  } catch (error) { renderWater(); showToast(error?.message || 'A Víz mentése nem sikerült.') }
 }
 
 async function exportWaterBackup() {
@@ -985,38 +999,30 @@ async function inspectWaterBackup(event) {
   try {
     if (file.size > 80 * 1024 * 1024) throw new Error('A víznapló-mentés túl nagy.')
     const restored = waterBackupFromJson(await file.text())
-    const old = readWaterStoreStrict(localStorage)
+    const previousRaw = localStorage.getItem(WATER_STORE_KEY)
+    let old = {}
+    try { old = readWaterStoreStrict(localStorage) } catch { /* Damaged bytes are checkpointed below. */ }
     const stats = waterBackupSummary(restored)
     const current = waterBackupSummary(old)
     if (!window.confirm(`Víz napló visszaállítása? A fájlban ${stats.days} nap és ${stats.entries} bejegyzés, a telefonon ${current.days} nap és ${current.entries} bejegyzés van. A jelenlegi vízadatok lecserélődnek. Csak saját biztonsági mentésből folytasd.`)) return
-    // Keep a persistent recovery checkpoint and verify it before any writes.
-    const recovered = JSON.stringify(old)
-    localStorage.setItem('grapes-water-recovery-v1', recovered)
-    if (localStorage.getItem('grapes-water-recovery-v1') !== recovered) throw new Error('A régi víznapló biztonsági másolata nem ellenőrizhető.')
-    try {
-      localStorage.setItem(WATER_STORE_KEY, JSON.stringify(restored))
-      const actual = readWaterStoreStrict(localStorage)
-      if (JSON.stringify(actual) !== JSON.stringify(restored)) {
-        throw new Error('A víznapló visszaállítása nem igazolható.')
-      }
-    } catch (error) {
-      // Restore the original without losing its Health Connect import keys.
-      localStorage.setItem(WATER_STORE_KEY, recovered)
-      throw error
-    }
+    if (localStorage.getItem(WATER_STORE_KEY) !== previousRaw) throw new Error('A Víz napló időközben megváltozott.')
+    restoreWaterBackupVerified(localStorage, restored)
     renderWater()
     showToast('A víznapló visszaállítva; a korábbi állapot külön megmaradt.')
   } catch (error) { showToast(error?.message || 'A Víz napló visszaállítása nem sikerült.') }
 }
 
 function changeWaterGoal() {
-  const { day } = currentWaterDay()
+  let snapshot
+  try { snapshot = currentWaterDay() } catch (error) { renderWater(); showToast(error.message); return }
+  const { day } = snapshot
   const entered = window.prompt('Napi vízcél milliliterben:', String(day.goal))
   if (entered === null) return
   const goal = Number(entered.replace(/\s/g, ''))
   if (!Number.isFinite(goal) || goal < 500 || goal > 10000) return showToast('A cél 500 és 10 000 ml között lehet.')
   day.goal = Math.round(goal / 50) * 50
-  saveWaterDay(day); renderWater(); showToast('A napi vízcél mentve.')
+  try { saveWaterDay(snapshot); renderWater(); showToast('A napi vízcél mentve.') }
+  catch (error) { renderWater(); showToast(error?.message || 'A vízcél mentése nem sikerült.') }
 }
 
 $('[data-local]').addEventListener('click', () => { setLocalMode(true); showApp() })
