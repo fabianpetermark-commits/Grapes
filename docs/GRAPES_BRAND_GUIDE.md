@@ -255,7 +255,7 @@ A progresshez ne legyen egyedi `#91FFFF`, `#A7FFFF`, `#8EFFFF` vagy tetszőleges
 
 ## 4. Tipográfia
 
-**A navigáció 22–24 px-es oldalcíme és az ikonok feliratmentessége a **0.A** elsőbbségi szabványa; az itt következő általános tipográfiai létra nem írhatja ezt felül.**
+**A navigáció 22–24 px-es oldalcíme és az ikonok feliratmentessége a 0.A pont elsőbbségi szabványa; az itt következő általános tipográfiai létra nem írhatja ezt felül.**
 
 **A jelenlegi mobil CSS:** `font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif`. Nincs garantáltan beágyazott vagy telepített Inter, ezért rendszerenként fallback lehet; ezt figyelembe kell venni vizuális ellenőrzésnél.
 
