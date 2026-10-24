@@ -129,6 +129,7 @@
     .sync-provider-status { min-height: 18px; margin: 7px 4px 0; color: var(--muted); font-size: 11px; }
     .setting { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; gap: 12px; align-items: center; min-height: 66px; padding: 10px 6px; border-bottom: 1px solid var(--line); }
     [data-grapes-test-logout][hidden] { display: none !important; }
+    [data-grapes-test-migration-scan][hidden], [data-grapes-test-migration-backup][hidden], [data-grapes-test-migration-drive-scan][hidden] { display: none !important; }
     button.setting { width: 100%; color: inherit; text-align: left; background: transparent; border: 0; border-bottom: 1px solid var(--line); cursor: pointer; }
     .setting > .setting__icon { display: grid; place-items: center; width: 42px; height: 42px; margin-top: 0; color: var(--accent); background: var(--raised); border-radius: 13px; }
     .setting strong, .setting span { display: block; }
@@ -690,6 +691,7 @@
           <section class="sync-status" data-grapes-test-migration-results hidden aria-label="Helyi Health-adatok előnézete" aria-live="polite">
             <p data-grapes-test-migration-status></p>
             <ul data-grapes-test-migration-list></ul>
+            <button class="setting" type="button" data-grapes-test-migration-backup hidden>Helyi mentés készítése és ellenőrzése</button>
           </section>
           <!-- TEST Supabase sign-out only: never disconnect the separate Drive account. -->
           <button class="setting" type="button" data-grapes-test-logout hidden aria-label="Kijelentkezés"><span class="setting__icon" data-test-exit-icon="exit" aria-hidden="true"></span><span><strong>Kijelentkezés</strong></span><span aria-hidden="true">›</span></button>

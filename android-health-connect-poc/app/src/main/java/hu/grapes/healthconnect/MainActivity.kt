@@ -60,6 +60,7 @@ class MainActivity : ComponentActivity() {
     private var pendingHealthRequest: PendingHealthRequest? = null
     private var pendingDriveRequestId: String? = null
     private var pendingBackupPickerRequestId: String? = null
+    private var pendingBackupFilename: String? = null
     private var backupSession: BackupExportSession? = null
     private var availableUpdate: AndroidUpdateManager.Release? = null
 
@@ -67,6 +68,7 @@ class MainActivity : ComponentActivity() {
         val token: String,
         val uri: Uri,
         val temporaryFile: File,
+        val filename: String,
         var sizeBytes: Long = 0L,
     )
 
@@ -99,7 +101,9 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.CreateDocument("application/json")
     ) { uri ->
         val requestId = pendingBackupPickerRequestId ?: return@registerForActivityResult
+        val filename = pendingBackupFilename
         pendingBackupPickerRequestId = null
+        pendingBackupFilename = null
         if (uri == null) {
             sendError(requestId, "A biztonsági mentés mentését megszakítottad.")
             return@registerForActivityResult
@@ -107,7 +111,8 @@ class MainActivity : ComponentActivity() {
         runCatching {
             check(backupSession == null) { "Már folyamatban van egy másik mentés." }
             val staging = File.createTempFile("grapes-food-export-", ".json", cacheDir)
-            BackupExportSession(UUID.randomUUID().toString(), uri, staging).also { backupSession = it }
+            BackupExportSession(UUID.randomUUID().toString(), uri, staging,
+                filename ?: error("A mentés fájlneve hiányzik.")).also { backupSession = it }
         }.onSuccess { sendResult(requestId, it.token) }
             .onFailure { sendError(requestId, it.message ?: "Nem készíthető el a mentés.") }
     }
@@ -514,13 +519,21 @@ class MainActivity : ComponentActivity() {
             return
         }
         val name = message.optJSONArray("args")?.optString(0).orEmpty()
-        if (!Regex("^grapes-(?:etelnaplo-\\d{4}-\\d{2}-\\d{2}(?:-(?:helyi|drive))?|viznaplo-\\d{4}-\\d{2}-\\d{2})\\.json$").matches(name)) {
+        val migrationBackup = Regex("^grapes-health-attekintes-\\d{4}-\\d{2}-\\d{2}\\.json$").matches(name)
+        if (migrationBackup && (!isTestQa || !testGate.canDisplayApp() || webView.url != APP_URL)) {
+            sendError(requestId, "A Health előnézeti mentés csak hitelesített Grapes TEST-ben érhető el.")
+            return
+        }
+        if (!migrationBackup &&
+            !Regex("^grapes-(?:etelnaplo-\\d{4}-\\d{2}-\\d{2}(?:-(?:helyi|drive))?|viznaplo-\\d{4}-\\d{2}-\\d{2})\\.json$").matches(name)) {
             sendError(requestId, "Érvénytelen biztonsági mentés fájlnév.")
             return
         }
         pendingBackupPickerRequestId = requestId
+        pendingBackupFilename = name
         runCatching { backupFilePicker.launch(name) }.onFailure {
             pendingBackupPickerRequestId = null
+            pendingBackupFilename = null
             sendError(requestId, it.message ?: "A fájlmentő nem nyitható meg.")
         }
     }
@@ -569,11 +582,22 @@ class MainActivity : ComponentActivity() {
                             input.copyTo(out)
                         }
                     } ?: error("A kiválasztott helyre nem írható a fájl.")
+                    if (session.filename.startsWith("grapes-health-attekintes-")) {
+                        val saved = contentResolver.openInputStream(session.uri)
+                            ?: error("A mentett Health-fájl nem olvasható vissza.")
+                        session.temporaryFile.inputStream().use { staged ->
+                            saved.use { verifyBackupReadback(staged, it) }
+                        }
+                    } else null
                 }
             }
             session.temporaryFile.delete()
-            result.onSuccess { sendResult(requestId, "{}") }
-                .onFailure { sendError(requestId, it.message ?: "A fájlmentés nem sikerült.") }
+            result.onSuccess { receipt ->
+                val payload = receipt?.let {
+                    JSONObject().put("bytes", it.bytes).put("sha256", it.sha256).toString()
+                } ?: "{}"
+                sendResult(requestId, payload)
+            }.onFailure { sendError(requestId, it.message ?: "A fájlmentés nem sikerült.") }
         }
     }
 

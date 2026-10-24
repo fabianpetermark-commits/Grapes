@@ -68,6 +68,7 @@ export async function captureV24LocalHealthSources({
   const projects = await readExistingProjects(indexedDb)
   const waterRaw = storage.getItem(WATER_KEY)
   const inventories = []
+  const snapshots = []
   for (const project of projects) {
     if (!project || (project.module !== 'Ételnapló' &&
         !String(project.id || '').startsWith('food-tracker-'))) continue
@@ -75,14 +76,19 @@ export async function captureV24LocalHealthSources({
     inventories.push(inventoryV24FoodSnapshot({
       provider: 'indexeddb', sourceId: project.id, version, document: project
     }))
+    snapshots.push({ provider: 'indexeddb', sourceId: project.id,
+      version, document: project })
   }
   if (waterRaw !== null) {
+    const version = await snapshotHash(waterRaw, subtle)
     inventories.push(inventoryV24WaterSnapshot({
-      raw: waterRaw, version: await snapshotHash(waterRaw, subtle)
+      raw: waterRaw, version
     }))
+    snapshots.push({ provider: 'localStorage', sourceId: WATER_KEY,
+      version, raw: waterRaw })
   }
   return {
-    inventories,
+    inventories, snapshots,
     sourceCount: inventories.length,
     blockedCount: inventories.filter(item => !item.complete).length,
     // Never treat an empty local scan as a completed migration.

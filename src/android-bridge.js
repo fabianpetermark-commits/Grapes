@@ -95,6 +95,47 @@ export async function requestAndroidFoodApi(kind, query, page = 1, pageSize = 12
 // Android WebView does not download blob: anchors. The native Storage Access
 // Framework picker is the only successful-save signal for local Food exports.
 // Send bounded chunks so large YAZIO histories do not exceed bridge limits.
+
+/**
+ * TEST migration snapshot only. Native must reopen the selected SAF document,
+ * verify its SHA-256 and byte count, and return that receipt. A cancelled or
+ * interrupted write must never appear successful.
+ */
+export async function saveAndroidVerifiedHealthBackup(prepared) {
+  const { filename, json, bytes, sha256 } = prepared || {}
+  if (!/^grapes-health-attekintes-\d{4}-\d{2}-\d{2}\.json$/.test(filename || '') ||
+      typeof json !== 'string' || !Number.isSafeInteger(bytes) || bytes < 1 ||
+      !/^[0-9a-f]{64}$/.test(sha256 || '')) {
+    throw new Error('Érvénytelen Health-mentés.')
+  }
+  let parsed
+  try { parsed = JSON.parse(json) } catch { throw new Error('Hibás Health-mentés JSON.') }
+  if (parsed?.grapesHealthMigrationBackup !== true || parsed?.version !== 1 ||
+      parsed?.ownership !== 'unclaimed' || !Array.isArray(parsed?.sources) ||
+      parsed.sources.length === 0 || new Blob([json]).size !== bytes) {
+    throw new Error('A Health-mentés tartalma nem ellenőrizhető.')
+  }
+  let token = ''
+  try {
+    token = await nativeRequest('beginFoodBackupExport', filename)
+    let offset = 0
+    while (offset < json.length) {
+      let end = Math.min(offset + 48000, json.length)
+      if (end < json.length && /[\uD800-\uDBFF]/.test(json[end - 1])) end -= 1
+      await nativeRequest('appendFoodBackupExport', token, json.slice(offset, end))
+      offset = end
+    }
+    const receipt = JSON.parse(await nativeRequest('finishFoodBackupExport', token, bytes))
+    if (receipt?.bytes !== bytes || receipt?.sha256 !== sha256) {
+      throw new Error('A mentett Health-fájl visszaolvasása nem igazolható.')
+    }
+    return receipt
+  } catch (error) {
+    if (token) await nativeRequest('cancelFoodBackupExport', token).catch(() => {})
+    throw error
+  }
+}
+
 export async function saveAndroidJsonBackup(filename, json) {
   const safeName = String(filename || '')
   if (!/^grapes-(?:etelnaplo-\d{4}-\d{2}-\d{2}(?:-(?:helyi|drive))?|viznaplo-\d{4}-\d{2}-\d{2})\.json$/.test(safeName)) {

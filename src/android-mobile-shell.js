@@ -14,7 +14,7 @@ import { createYazioApiPanel } from './food/yazio-api-panel.js'
 import { registerFoodSharing, sendMealShare, sendRecipeShare } from './food/food-sharing-client.js'
 import { hydrateMobileIcons, mobileIconSvg } from './android-mobile-icons.js'
 import { createHomeMobile } from './home/home-mobile.js'
-import { getAndroidAppUpdate, getAndroidTestAuthEnabled, requestAndroidTestAccountSignOut, installAndroidAppUpdate, isGrapesAndroidApp, openAndroidHealthConnectSettings, saveAndroidJsonBackup } from './android-bridge.js'
+import { getAndroidAppUpdate, getAndroidTestAuthEnabled, requestAndroidTestAccountSignOut, installAndroidAppUpdate, isGrapesAndroidApp, openAndroidHealthConnectSettings, saveAndroidJsonBackup, saveAndroidVerifiedHealthBackup } from './android-bridge.js'
 import { waterBackupToJson, waterBackupFromJson, readWaterStoreStrict, waterBackupSummary } from './water/water-backup.js'
 import {
   isMobileShareableBook,
@@ -1027,6 +1027,7 @@ $('[data-account-login]').addEventListener('click', openAccountLogin)
 // Only the QA native host reveals the setting after confirming TEST Auth is ON.
 const grapesTestLogout = $('[data-grapes-test-logout]')
 const migrationPreviewButton = $('[data-grapes-test-migration-scan]')
+const migrationBackupButton = $('[data-grapes-test-migration-backup]')
 const migrationPreviewFlag =
   import.meta.env?.VITE_GRAPES_TEST_CHANNEL === '1' &&
   import.meta.env?.VITE_GRAPES_TEST_MIGRATION_PREVIEW_ENABLED === 'true'
@@ -1066,6 +1067,7 @@ if (migrationPreviewButton) migrationPreviewButton.addEventListener('click', asy
   panel.hidden = false
   status.textContent = 'Helyi adatok ellenőrzése…'
   list.replaceChildren()
+  if (migrationBackupButton) migrationBackupButton.hidden = true
   try {
     if (!(await getAndroidTestAuthEnabled())) throw new Error('TEST Auth is unavailable')
     const [{ captureV24LocalHealthSources }, { summarizeV24HealthInventory }] = await Promise.all([
@@ -1073,6 +1075,7 @@ if (migrationPreviewButton) migrationPreviewButton.addEventListener('click', asy
       import('./sync/grapes-health-v24-preview-summary.js')
     ])
     const summary = summarizeV24HealthInventory(await captureV24LocalHealthSources())
+    if (migrationBackupButton) migrationBackupButton.hidden = summary.sources === 0
     status.textContent = summary.sources
       ? 'Csak előnézet. Az adatok a készüléken maradtak; fiókhoz rendelés szükséges.'
       : 'Nem található helyi Food vagy Víz forrás. Adatátvitel nem történt.'
@@ -1091,6 +1094,34 @@ if (migrationPreviewButton) migrationPreviewButton.addEventListener('click', asy
     list.replaceChildren()
   } finally {
     migrationPreviewButton.disabled = false
+  }
+})
+if (migrationBackupButton) migrationBackupButton.addEventListener('click', async () => {
+  if (!migrationPreviewFlag || !isGrapesAndroidApp()) return
+  const status = $('[data-grapes-test-migration-status]')
+  migrationBackupButton.disabled = true
+  try {
+    if (!(await getAndroidTestAuthEnabled())) throw new Error('TEST Auth is unavailable')
+    if (!window.confirm('A mentés személyes Health-adatokat tartalmaz. Válassz biztonságos helyet a készüléken. Folytatod?')) {
+      status.textContent = 'Nem készült mentés; az eredeti adatok változatlanok.'
+      return
+    }
+    status.textContent = 'Mentés készítése és visszaellenőrzése…'
+    const [{ captureV24LocalHealthSources }, {
+      prepareV24HealthBackup, assertVerifiedV24HealthBackup
+    }] = await Promise.all([
+      import('./sync/grapes-health-v24-local-reader.js'),
+      import('./sync/grapes-health-v24-verified-backup.js')
+    ])
+    const prepared = await prepareV24HealthBackup(await captureV24LocalHealthSources())
+    const receipt = await saveAndroidVerifiedHealthBackup(prepared)
+    const verified = assertVerifiedV24HealthBackup(prepared, receipt,
+      await captureV24LocalHealthSources())
+    status.textContent = `A helyi mentés visszaolvasva és ellenőrizve (${verified.sources} forrás). Az adatokat nem rendeltük fiókhoz és nem töltöttük fel.`
+  } catch {
+    status.textContent = 'A mentés nem igazolható. Az eredeti adatok változatlanok; ne kezdd el az adatátvitelt.'
+  } finally {
+    migrationBackupButton.disabled = false
   }
 })
 $('[data-notifications]').addEventListener('click', openUpdateInbox)
