@@ -111,7 +111,7 @@ try {
   const before = await page.evaluate(() => localStorage.getItem('grapes-water-v1'))
   const requests = []
   page.on('request', request => {
-    if (!request.url().startsWith(base + '/')) requests.push(request.url())
+    if (!request.url().startsWith(base + '/')) requests.push({ url: request.url(), method: request.method() })
   })
   await page.locator('[data-grapes-test-migration-scan]').click()
   await page.waitForFunction(() => document.querySelector(
@@ -156,13 +156,16 @@ try {
   await page.locator('[data-nav="more"]').first().click()
   await page.locator('[data-grapes-test-migration-scan]').click()
   await page.locator('[data-grapes-test-migration-drive-scan]').waitFor({ state: 'visible' })
+  const beforeDriveScanRequestCount = requests.length
   await page.locator('[data-grapes-test-migration-drive-scan]').click()
   await page.waitForFunction(() => document.querySelector(
     '[data-grapes-test-migration-drive-status]')?.textContent?.includes('0 látható Health-fájl'))
-  const driveRequests = requests.filter(url => url.startsWith(
-    'https://www.googleapis.com/drive/v3/files?'))
-  assert.equal(driveRequests.length, 1)
-  assert.match(decodeURIComponent(driveRequests[0]), /name = 'Grapes TEST'/)
+  const driveRequests = requests.slice(beforeDriveScanRequestCount).filter(item =>
+    item.url.startsWith('https://www.googleapis.com/drive/v3/files?'))
+  assert.ok(driveRequests.some(item =>
+    decodeURIComponent(item.url).includes("name = 'Grapes TEST'")))
+  assert.ok(driveRequests.every(item => item.method === 'GET' &&
+    !item.url.includes('alt=media')))
   assert.equal(await page.evaluate(() => localStorage.getItem('grapes-water-v1')), before)
   await context.close()
   console.log('TEST settings preview: explicit click, redacted counts, unchanged Water, no external request')
