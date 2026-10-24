@@ -1,0 +1,35 @@
+name: Home M2 TEST read-only Food bridge checks
+
+on:
+  push:
+    branches:
+      - feature/home-m2-food-readonly-test-20261023
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
+      VITE_GOOGLE_APP_ID: 991532871119
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GOOGLE_PICKER_API_KEY: ${{ secrets.GOOGLE_PICKER_API_KEY }}
+      VITE_GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build:android-web
+      - name: Existing Food browser regression
+        run: node tests/android-recipe-ingredient.browser.mjs
+      - name: Home M1 and read-only Food bridge browser flow
+        run: node tests/android-home-mobile.browser.mjs

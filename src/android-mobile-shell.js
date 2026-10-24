@@ -14,6 +14,8 @@ import { createYazioApiPanel } from './food/yazio-api-panel.js'
 import { registerFoodSharing, sendMealShare, sendRecipeShare } from './food/food-sharing-client.js'
 import { hydrateMobileIcons, mobileIconSvg } from './android-mobile-icons.js'
 import { createHomeMobile } from './home/home-mobile.js'
+import { readLocalFoodDiary, readLocalFoodRecipes } from './home/home-food-recipes.js'
+import { readLocalFinanceReceipts, scanLocalFinanceReceipt } from './home/home-finance-receipts.js'
 import { getAndroidAppUpdate, installAndroidAppUpdate, isGrapesAndroidApp, openAndroidHealthConnectSettings } from './android-bridge.js'
 import {
   isMobileShareableBook,
@@ -54,7 +56,14 @@ let mobileReaderSaveTimer = null
 let activeTransferBookId = ''
 let activePairingNonce = ''
 let mobileFood = null
-const household = createHomeMobile($('[data-household-root]'))
+let pendingHomeRecipeId = ''
+const household = createHomeMobile($('[data-household-root]'), undefined, {
+  loadRecipes: () => readLocalFoodRecipes(getGrapesAccount()?.id || getGrapesAccount()?.email || 'local-food-profile'),
+  loadFoodDiary: () => readLocalFoodDiary(getGrapesAccount()?.id || getGrapesAccount()?.email || 'local-food-profile'),
+  loadFinanceReceipts: () => readLocalFinanceReceipts(),
+  scanFinanceReceipt: id => scanLocalFinanceReceipt(id),
+  openRecipe: id => { pendingHomeRecipeId = id; showPage('food') },
+})
 let activePage = 'home'
 let availableAppUpdate = null
 let activeSyncImport = ''
@@ -328,7 +337,15 @@ function showPage(page) {
   if (page === 'sync') renderSync()
   if (page === 'water') renderWater()
   if (page === 'household') household.load()
-  if (page === 'food') mobileFood?.load().then(async () => { await mobileFood?.autoImportHealth(); await mobileFood?.autoImportYazio() }).catch(() => {})
+  if (page === 'food') mobileFood?.load().then(async () => {
+    await mobileFood?.autoImportHealth()
+    await mobileFood?.autoImportYazio()
+    if (activePage === 'food' && pendingHomeRecipeId) {
+      const id = pendingHomeRecipeId
+      pendingHomeRecipeId = ''
+      if (!mobileFood?.openRecipe(id)) showToast('A recept már nem érhető el a Foodban.')
+    }
+  }).catch(() => { pendingHomeRecipeId = '' })
   if (page === 'ebook') renderMobileEbooks()
   if (page === 'reader') renderReaderPicker()
   if (page === 'transfer') renderTransferPicker()
