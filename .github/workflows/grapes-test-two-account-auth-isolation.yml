@@ -1,0 +1,69 @@
+name: Grapes TEST two-account Auth and RLS verification (LOCAL ONLY)
+
+on:
+  push:
+    branches:
+      - feature/grapes-test-two-account-auth-isolation-20261024
+  pull_request:
+    branches:
+      - feature/grapes-test-v25-food-qa-hardening-20261024
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-test-two-account-isolation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  two-signed-in-users-local:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.81.3
+      - name: Verify Supabase CLI before using it
+        run: |
+          supabase --version
+          supabase init --help >/dev/null
+          supabase start --help >/dev/null
+          supabase migration new --help >/dev/null
+      - name: Start disposable isolated Supabase stack with exposed api schema
+        env:
+          GRAPES_SUPABASE_LOCAL_DIR: ${{ runner.temp }}/grapes-ab-${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$GRAPES_SUPABASE_LOCAL_DIR"
+          cd "$GRAPES_SUPABASE_LOCAL_DIR"
+          supabase init
+          node "$GITHUB_WORKSPACE/poc/supabase-phase2/ci/prepare-config.mjs"
+          supabase migration new grapes_ci_api_bootstrap
+          migration=$(find supabase/migrations -name '*_grapes_ci_api_bootstrap.sql' -print -quit)
+          test -n "$migration"
+          printf 'create schema if not exists api;\n' > "$migration"
+          supabase start
+          if ! command -v psql >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y postgresql-client
+          fi
+      - name: Real Auth JWT A/B isolation, CAS conflicts, RLS, rollback and recovery
+        env:
+          GRAPES_SUPABASE_LOCAL_DIR: ${{ runner.temp }}/grapes-ab-${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          node poc/supabase-phase2/ci/verify-local.mjs
+          echo 'Two distinct real local Auth sign-ins verified, no hosted writes.'
+      - name: Security advisor against ephemeral local database
+        env:
+          GRAPES_SUPABASE_LOCAL_DIR: ${{ runner.temp }}/grapes-ab-${{ github.run_id }}
+        run: |
+          cd "$GRAPES_SUPABASE_LOCAL_DIR"
+          supabase db advisors --local
