@@ -123,7 +123,13 @@ export function createGrapesTestOutbox({ indexedDb = globalThis.indexedDB, userI
         const attempt = await gateway.readAttempt(item.operationId)
         if (!attempt || attempt.profileId !== item.profileId || attempt.kind !== item.kind ||
             attempt.recordId !== item.recordId || attempt.status !== result.status ||
+            attempt.expectedRevision !== item.expectedRevision ||
+            attempt.schemaVersion !== item.schemaVersion ||
+            attempt.revision !== result.revision ||
+            (result.status === 'committed' && attempt.revision !== item.expectedRevision + 1) ||
             stableJson(attempt.candidate) !== stableJson(candidate)) {
+          // A matching payload alone is not proof of the exact CAS attempt:
+          // stale/altered revision or schema must leave the candidate pending.
           throw new Error('A szerveroldali mentés visszaolvasása nem igazolható.')
         }
         await transaction(indexedDb, 'readwrite', (rows, _setResult, fail) => {
