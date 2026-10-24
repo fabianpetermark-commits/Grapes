@@ -42,13 +42,34 @@ try {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } })
   await context.addInitScript(() => {
     localStorage.setItem('grapes-local-mode', '1')
+    window.__backupChunks = []
+    window.__backupFailed = false
     Object.defineProperty(window, 'GrapesAndroid', {
       configurable: true, value: { postMessage(raw) {
         const request = JSON.parse(raw)
-        if (request.method !== 'getTestAuthEnabled') return
-        queueMicrotask(() => window.dispatchEvent(new CustomEvent('grapes:android-result', {
-          detail: { requestId: request.requestId, ok: true, payload: 'true' }
-        })))
+        const respond = (ok, payload = '', error = '') => queueMicrotask(() =>
+          window.dispatchEvent(new CustomEvent('grapes:android-result', {
+            detail: { requestId: request.requestId, ok, payload, error }
+          })))
+        if (request.method === 'getTestAuthEnabled') return respond(true, 'true')
+        if (request.method === 'beginFoodBackupExport') {
+          window.__backupChunks = []
+          return respond(true, 'synthetic-token')
+        }
+        if (request.method === 'appendFoodBackupExport') {
+          window.__backupChunks.push(request.args[1])
+          return respond(true, '{}')
+        }
+        if (request.method === 'cancelFoodBackupExport') return respond(true, '{}')
+        if (request.method === 'finishFoodBackupExport') {
+          if (window.__backupFailed) return respond(false, '', 'Synthetic interrupted write')
+          const json = window.__backupChunks.join('')
+          crypto.subtle.digest('SHA-256', new TextEncoder().encode(json)).then(digest => {
+            const sha256 = [...new Uint8Array(digest)]
+              .map(byte => byte.toString(16).padStart(2, '0')).join('')
+            respond(true, JSON.stringify({ bytes: new Blob([json]).size, sha256 }))
+          })
+        }
       } }
     })
   })
@@ -100,6 +121,24 @@ try {
   assert.match(visible, /Víz napi cél/)
   assert.match(visible, /fiókhoz rendelés szükséges/)
   assert.doesNotMatch(visible, /private-entry|private@example|water-1|synthetic/)
+  assert.equal(await page.evaluate(() => localStorage.getItem('grapes-water-v1')), before)
+  assert.deepEqual(requests, [])
+  assert.equal(await page.locator('[data-grapes-test-migration-backup]').isVisible(), true)
+  page.on('dialog', dialog => dialog.accept())
+  await page.evaluate(() => { window.__backupFailed = true })
+  await page.locator('[data-grapes-test-migration-backup]').click()
+  await page.waitForFunction(() => document.querySelector(
+    '[data-grapes-test-migration-status]')?.textContent?.includes('nem igazolható'))
+  assert.equal(await page.evaluate(() => localStorage.getItem('grapes-water-v1')), before)
+  await page.evaluate(() => { window.__backupFailed = false })
+  await page.locator('[data-grapes-test-migration-backup]').click()
+  await page.waitForFunction(() => document.querySelector(
+    '[data-grapes-test-migration-status]')?.textContent?.includes('visszaolvasva és ellenőrizve'))
+  const saved = await page.evaluate(() => JSON.parse(window.__backupChunks.join('')))
+  assert.equal(saved.ownership, 'unclaimed')
+  assert.equal(saved.sources.length, 2)
+  assert.equal(saved.sources[0].document.data.diaryEntries[0].id, 'private-entry')
+  assert.equal(saved.sources[1].raw, before)
   assert.equal(await page.evaluate(() => localStorage.getItem('grapes-water-v1')), before)
   assert.deepEqual(requests, [])
   await context.close()
