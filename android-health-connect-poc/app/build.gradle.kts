@@ -47,6 +47,8 @@ android {
         versionCode = grapesVersionCode
         versionName = grapesVersionName
         buildConfigField("boolean", "GRAPES_TEST_AUTH_ENABLED", "false")
+        buildConfigField("boolean", "GRAPES_TEST_DATA_ENABLED", "false")
+        buildConfigField("String", "GRAPES_TEST_PUBLISHABLE_KEY", "\"\"")
     }
     buildTypes {
         getByName("debug") {
@@ -68,6 +70,11 @@ android {
                 providers.environmentVariable("VITE_GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY").orNull
                     ?.matches(Regex("sb_publishable_[A-Za-z0-9_-]{16,}")) == true
             buildConfigField("boolean", "GRAPES_TEST_AUTH_ENABLED", authEnabled.toString())
+            val dataEnabled = authEnabled && providers.environmentVariable("VITE_GRAPES_TEST_DATA_ENABLED").orNull == "true"
+            buildConfigField("boolean", "GRAPES_TEST_DATA_ENABLED", dataEnabled.toString())
+            val publicKey = if (dataEnabled)
+                providers.environmentVariable("VITE_GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY").get() else ""
+            buildConfigField("String", "GRAPES_TEST_PUBLISHABLE_KEY", "\"$publicKey\"")
             signingConfig = if (!testKeystorePath.isNullOrBlank()) {
                 signingConfigs.getByName("qa")
             } else {

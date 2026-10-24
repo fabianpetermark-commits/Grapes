@@ -104,7 +104,7 @@ export async function startGrapesTestAuth({
     if (!user?.id || recoveryPending || suppressAutoOpen || disposed ||
       forwarded || typeof onAuthenticated !== 'function') return
     forwarded = true
-    Promise.resolve().then(() => onAuthenticated(user)).catch(() => {
+    Promise.resolve().then(() => onAuthenticated(user, client)).catch(() => {
       forwarded = false
       if (!disposed) ui.setNotice('A Grapes TEST főoldala nem nyitható meg. Próbáld újra.')
     })

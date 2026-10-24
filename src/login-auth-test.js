@@ -34,7 +34,10 @@ export async function activateGrapesAuthTest({
   const app = await startGrapesTestAuth({
     createClient: createClientFactory, root, url, publishableKey, location,
     sessionStorage: nativeOAuth ? nativeOAuth.storage : sessionStorage, nativeOAuth,
-    onAuthenticated: nativeOAuth ? user => {
+    onAuthenticated: nativeOAuth ? async (user, client) => {
+      if (import.meta.env?.VITE_GRAPES_TEST_DATA_ENABLED === 'true') {
+        await nativeOAuth.authorizeSession(client, user)
+      }
       nativeOAuth.enterApp(user)
       navigatingToApp = true
     } : null,

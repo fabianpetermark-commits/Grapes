@@ -54,6 +54,18 @@ export function createAndroidTestOAuth({ bridge = globalThis.GrapesAndroid,
     // This flag lives in Android app-private preferences; reading it does not
     // expose a token or share the separate Supabase Auth origin with Drive.
     async takeLaunchMode() { return call('takeTestAuthLaunchMode') },
+    async authorizeSession(client, user) {
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user?.id || '')) {
+        throw new Error('Érvénytelen TEST-fiókazonosító.')
+      }
+      // Only the isolated Auth origin reads the SDK session. Native verifies
+      // the bearer with the pinned TEST Auth /user endpoint before unlocking
+      // the data proxy. The app origin never receives this token.
+      const { data, error } = await client.auth.getSession()
+      const token = data?.session?.access_token
+      if (error || typeof token !== 'string' || !token) throw new Error('A TEST-munkamenet nem érhető el.')
+      await call('authorizeTestSupabaseSession', [user.id, token])
+    },
     // Native side accepts this only from the exact isolated login page.
     // Do not await a WebView reply: navigation destroys the calling page.
     enterApp(user) {
