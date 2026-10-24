@@ -44,7 +44,7 @@ export async function prepareV24HealthBackup(capture, {
   const versions = sourceVersions(capture)
   if (!versions.length) throw new Error('No local Health source to back up')
   for (const snapshot of capture.snapshots) {
-    const content = snapshot.provider === 'indexeddb'
+    const content = ['indexeddb', 'indexeddb-recovery'].includes(snapshot.provider)
       ? JSON.stringify(snapshot.document) : snapshot.raw
     if (typeof content !== 'string' ||
         'sha256:' + (await hashText(content, subtle)).sha256 !== snapshot.version) {

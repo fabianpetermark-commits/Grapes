@@ -17,7 +17,8 @@ const blockerNames = new Map([
   ['sharingContacts', 'Megosztási kapcsolatok'],
   ['processedShareIds', 'Feldolgozott megosztások'],
   ['settings', 'Ételnapló-beállítások'],
-  ['importBatches', 'Importköteg']
+  ['importBatches', 'Importköteg'],
+  ['localRecovery', 'Helyi Food-ütközés']
 ])
 
 export function summarizeV24HealthInventory(capture) {
