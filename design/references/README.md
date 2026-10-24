@@ -16,10 +16,10 @@ All **current** menu and module HTML files (three `approved/` examples, six `can
 
 | Module/screen | Exact source of truth | Status | Notes |
 | --- | --- | --- | --- |
-| Health main widget dashboard | [approved/health-minimal.html](approved/health-minimal.html) | **APPROVED VISUAL** | Exact unchanged approved HTML; Food, Water, recipe, bottom contextual actions |
-| Plants / Növények widget page | [approved/plants-widget.html](approved/plants-widget.html) | **APPROVED STYLE**, functional layout still evolving | Exact original HTML; demo plants/weather/tasks do not equal finished data integration |
-| Previous integrated top rail + contextual dock | [approved/main-shell-widgets.html](approved/main-shell-widgets.html) | **REFERENCE ARCHIVE / STRUCTURE**, not final screen sign-off | Exact original latest demo; displays old “Utility” label |
-| Integrated top rail with new Tools name | [candidates/main-shell-tools.html](candidates/main-shell-tools.html) | **PROPOSED** | Same base shell, displayed label changed to Tools; internal utility code key unchanged |
+| Health main widget dashboard | [approved/health-minimal.html](approved/health-minimal.html) | **APPROVED VISUAL** | Previously approved Health widgets, now explicitly updated with the user-approved six-icon navigation shell and in-rail settings |
+| Plants / Növények widget page | [approved/plants-widget.html](approved/plants-widget.html) | **APPROVED STYLE**, functional layout still evolving | Earlier plant design updated with the new shared six-icon rail; demo plants/weather/tasks are not finished data integration |
+| Previous integrated top rail + contextual dock | [approved/main-shell-widgets.html](approved/main-shell-widgets.html) | **REFERENCE ARCHIVE / STRUCTURE**, not final screen sign-off | Original widget dashboard content retained, rail restyled to six icon-only slots and Utility label normalized to Tools |
+| Integrated top rail with new Tools name | [candidates/main-shell-tools.html](candidates/main-shell-tools.html) | **PROPOSED** | Updated six-icon captionless shell and Tools label; internal utility key unchanged |
 | Home | [candidates/home.html](candidates/home.html) | **PROPOSED** | Shopping, inventory, plants, contextual dock |
 | Tools | [candidates/tools.html](candidates/tools.html) | **PROPOSED** | E-book & QR widgets, contextual dock |
 | Finance – **teljes Pénzügyi napló** | [candidates/finance.html](candidates/finance.html) | **PROPOSED**, user review pending | Full standalone HTML with overview, transaction ledger/editor, savings goals and movements, projection, import preview, settings and Finance bottom dock; preserves real-module feature scope at implementation |
@@ -27,7 +27,7 @@ All **current** menu and module HTML files (three `approved/` examples, six `can
 | QR Studio details | [candidates/qr.html](candidates/qr.html) | **PROPOSED** | Link, color, advanced settings; QR-looking graphic is **not scannable** |
 | Prior superseded variants | [history/](history/) | **HISTORY ONLY** | Never reuse just because filename contains “Health” or “main” |
 
-**Shared, explicit style tokens for the new candidates**: [shared/grapes-v11.css](shared/grapes-v11.css). The first three approved/legacy sources retain their **exact inline CSS and JS** as originally delivered, so later edits to shared CSS cannot silently change them.
+**Shared, explicit style tokens for the new candidates**: [shared/grapes-v11.css](shared/grapes-v11.css). The three approved reference pages keep self-contained inline CSS and JS, **now explicitly revised to the newly requested universal six-icon rail**. Earlier versions remain recoverable through Git history; these are not claims that the original unchanged HTML is still the active visual standard.
 
 ## Fidelity / parity acceptance contract
 
