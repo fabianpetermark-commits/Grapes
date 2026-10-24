@@ -27,6 +27,20 @@
 @media(max-width:355px){.widget{padding:13px 10px}.scroll-content{padding:18px 11px}.plant-grid{gap:7px}.plant-card{padding:6px}.plant-card>strong{font-size:12px}.plant-card__art{height:98px}.widget__heading h3{font-size:14.5px}.appbar{padding:0 11px}.action-dock{padding-left:11px;padding-right:11px}.weather-strip{gap:9px}.weather-strip__text>span{font-size:10px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}
 
+
+/* Grapes Brand v1.2 – unified compact six-icon navigation. */
+.grapes-six-rail{width:calc(100% - 26px);margin:10px 13px 8px;flex:0 0 auto;
+ display:grid;grid-template-columns:repeat(6,minmax(0,1fr));align-items:center;gap:3px;
+ border:1px solid #2c4a58;border-radius:23px;background:#101821;min-height:62px;
+ padding:5px;box-shadow:inset 0 1px 0 rgba(255,255,255,.025)}
+.grapes-six-rail button{display:flex;align-items:center;justify-content:center;min-width:0;min-height:50px;
+ background:transparent;border:1px solid transparent;border-radius:17px;padding:0;color:#a5b8c8;
+ cursor:pointer;box-shadow:none}
+.grapes-six-rail button .icon{width:22px;height:22px;stroke-width:1.8}
+.grapes-six-rail button.is-selected{color:#3bdcf2;border-color:#477a88;background:#1b3541;
+ box-shadow:inset 0 -2px 0 rgba(59,220,242,.68),0 0 5px rgba(59,220,242,.1)}
+.grapes-six-rail button:focus-visible{outline:2px solid #3bdcf2;outline-offset:2px}
+@media(max-width:350px){.grapes-six-rail{width:calc(100% - 18px);margin-inline:9px;padding:4px;gap:2px;min-height:56px}.grapes-six-rail button{min-height:46px;border-radius:14px}.grapes-six-rail button .icon{width:20px;height:20px}}
 </style>
 </head>
 <body>
@@ -66,27 +80,16 @@
     </aside>
     <div class="phone" aria-label="Grapes Növények mobilos prototípus">
       <div class="phone__screen">
-        <header class="appbar">
-          <div class="brandmark" aria-hidden="true">
-            <svg viewBox="0 0 36 36" width="26" height="26" fill="none">
-              <path d="M18 10c0-3 3-5 6-5M18 11c-2-4-6-5-9-3" stroke="#80dba9" stroke-width="1.8" stroke-linecap="round"/>
-              <circle cx="17" cy="14" r="4" fill="#3BDCF2" fill-opacity=".95"/><circle cx="25" cy="15" r="4" fill="#44aebf"/>
-              <circle cx="12" cy="21" r="4" fill="#5bc5ca"/><circle cx="20" cy="22" r="4" fill="#2f96ad"/><circle cx="16" cy="29" r="3.4" fill="#3bdcf2"/>
-            </svg>
-          </div>
-          <div class="appbar__text"><strong>Grapes</strong><small>Home / Növények</small></div>
-          <span class="demo-tag">TERVEZET</span>
-          <button class="icon-button" type="button" id="notification-button" aria-label="Értesítések"><svg class="icon"><use href="#ic-bell"/></svg></button>
-        </header>
+        <header class="appbar"><div class="appbar__text"><h1>Növények</h1></div></header>
+        <nav class="grapes-six-rail" aria-label="Növények modul funkciói">
+   <button type="button" class="is-selected" data-action="all-plants" aria-label="Növényeim" title="Növényeim"><svg class="icon" aria-hidden="true"><use href="#ic-leaf"/></svg></button>
+   <button type="button" data-action="catalog" aria-label="Növénykatalógus" title="Növénykatalógus"><svg class="icon" aria-hidden="true"><use href="#ic-search"/></svg></button>
+   <button type="button" data-action="tasks" aria-label="Aktuális teendők" title="Aktuális teendők"><svg class="icon" aria-hidden="true"><use href="#ic-list"/></svg></button>
+   <button type="button" data-action="journal" aria-label="Napló" title="Napló"><svg class="icon" aria-hidden="true"><use href="#ic-book"/></svg></button>
+   <button type="button" data-action="new" aria-label="Új növény" title="Új növény"><svg class="icon" aria-hidden="true"><use href="#ic-plus"/></svg></button>
+   <button type="button" class="rail-gear" id="settings-open" aria-label="Növények beállításai" title="Növények beállításai"><svg class="icon" aria-hidden="true"><use href="#ic-settings"/></svg></button>
+  </nav>
         <main class="scroll-content" id="scroll-content">
-          <div class="page-top">
-            <div>
-              <p class="overline">HOME / NÖVÉNYEK</p>
-              <h2>Növények<span class="title-period">.</span></h2>
-            </div>
-            <button type="button" class="icon-button icon-button--settings" id="settings-open" aria-label="Növények beállításai"><svg class="icon"><use href="#ic-settings"/></svg></button>
-          </div>
-
           <section class="weather-strip neon-edge" aria-label="Időjárási összefoglaló">
             <div class="weather-strip__symbol"><svg class="icon"><use href="#ic-cloud"/></svg></div>
             <div class="weather-strip__text"><strong>Szentendre <span class="muted-inline">· helyszínminta</span></strong><span>12 °C <b>·</b> Felhős <b>·</b> 3 napos előrejelzés</span></div>
@@ -261,6 +264,7 @@
     const action = button.dataset.action;
     if (action === 'catalog') { $('#widget-catalog').hidden = false; $('#widget-catalog').scrollIntoView({ behavior: 'smooth', block: 'center' }); $('#plant-search').focus({ preventScroll: true }); }
     else if (action === 'all-plants') { $('#widget-plants').scrollIntoView({ behavior: 'smooth', block: 'start' }); toast('Ez a teljes növénylista mintanézete.'); }
+    else if (action === 'tasks') { $('#widget-tasks').scrollIntoView({behavior:'smooth', block:'start'}); }
     else if (action === 'new') openModal('Új növény', '<p>A felvételi folyamat tervezés alatt áll. Ide kerül majd a katalóguskeresés, a saját név, elhelyezés és fotó.</p>');
     else if (action === 'water') openModal('Öntözés naplózása', '<p>A későbbi működésben kiválaszthatod a saját növényt, és rögzítheted a tényleges öntözést.</p>');
     else if (action === 'journal') openModal('Gondozási napló', '<p>A gondozási események növényenként és időrendben jelennek majd meg.</p>');
@@ -269,5 +273,5 @@
 })();
 
 </script>
-</body>
+<script>document.querySelectorAll('.grapes-six-rail button:not(.rail-gear)').forEach(button=>button.addEventListener('click',()=>{document.querySelectorAll('.grapes-six-rail button').forEach(b=>b.classList.toggle('is-selected',b===button));}));</script></body>
 </html>
