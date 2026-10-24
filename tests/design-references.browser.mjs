@@ -100,6 +100,7 @@ try {
         await page.locator('[data-tab="import"]').click();
         if (!(await page.locator('#panel-import').isVisible())) throw new Error('Finance import view failed');
         await page.locator('[data-tab="overview"]').click();
+        await page.evaluate(() => document.body.classList.add('show-demo-tools'));
         await page.locator('#demo-data').uncheck();
         if (!(await page.locator('#income-value').innerText()).includes('0')) throw new Error('Finance empty state failed');
       }
