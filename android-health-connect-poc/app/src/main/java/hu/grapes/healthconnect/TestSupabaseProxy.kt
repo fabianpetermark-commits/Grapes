@@ -18,7 +18,7 @@ internal class TestSupabaseProxy(
     private var generation = 0L
     private var subject: String? = null
     private var token: String? = null
-    private val uuid = Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+    private val uuid = Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
     private val jwt = Regex("^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$")
     private val allowed = setOf("create_profile", "list_profiles", "read_document",
         "list_documents", "read_revision", "list_revisions", "read_attempt", "compare_and_swap")
