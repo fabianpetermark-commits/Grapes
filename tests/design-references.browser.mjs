@@ -62,6 +62,9 @@ try {
                    width:nav.getBoundingClientRect().width,maxWidth:Math.max(...widths),labels,visibleCaptions:visibleCaptions.length,
                    radius:parseFloat(rail.borderTopLeftRadius) };
         });
+        if (info.labels.some(label => /^(?:vissza|‹\\s*főmenü|home gomb)/i.test(label))) {
+          throw new Error('Redundant Back/Home shortcut forbidden in '+item.path+': '+info.labels.join(', '));
+        }
         if (info.n !== 6 || info.grid !== 'grid' || info.columns!==6 ||
             info.visibleCaptions || info.labels.some(label=>!label) || info.radius < 19) {
           throw new Error('Bad 6-icon Grapes rail on '+item.path+': '+JSON.stringify(info));
