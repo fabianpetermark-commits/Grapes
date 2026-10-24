@@ -141,6 +141,28 @@ try {
   assert.equal(saved.sources[1].raw, before)
   assert.equal(await page.evaluate(() => localStorage.getItem('grapes-water-v1')), before)
   assert.deepEqual(requests, [])
+  assert.equal(await page.locator('[data-grapes-test-migration-drive-scan]').isHidden(), true)
+  await page.evaluate(() => sessionStorage.setItem('grapes-drive-session', JSON.stringify({
+    clientId: '', accessToken: 'synthetic-drive-token',
+    expiresAt: Date.now() + 3600000,
+    scopes: 'https://www.googleapis.com/auth/drive.file',
+    account: { id: 'synthetic-permission', email: 'drive@example.invalid' }
+  })))
+  await context.route('https://www.googleapis.com/drive/v3/files**', route =>
+    route.fulfill({ status: 200, contentType: 'application/json',
+      body: JSON.stringify({ files: [] }) }))
+  await page.reload()
+  await page.locator('[data-nav="more"]').first().click()
+  await page.locator('[data-grapes-test-migration-scan]').click()
+  await page.locator('[data-grapes-test-migration-drive-scan]').waitFor({ state: 'visible' })
+  await page.locator('[data-grapes-test-migration-drive-scan]').click()
+  await page.waitForFunction(() => document.querySelector(
+    '[data-grapes-test-migration-drive-status]')?.textContent?.includes('0 látható Health-fájl'))
+  const driveRequests = requests.filter(url => url.startsWith(
+    'https://www.googleapis.com/drive/v3/files?'))
+  assert.equal(driveRequests.length, 1)
+  assert.match(decodeURIComponent(driveRequests[0]), /name = 'Grapes TEST'/)
+  assert.equal(await page.evaluate(() => localStorage.getItem('grapes-water-v1')), before)
   await context.close()
   console.log('TEST settings preview: explicit click, redacted counts, unchanged Water, no external request')
 } finally {
