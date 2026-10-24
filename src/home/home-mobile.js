@@ -17,6 +17,8 @@ export function createHomeMobile(root, storage, { loadRecipes = null, openRecipe
   let splitId = null
   let formOperationId = null
   let splitOperationId = null
+  let cookingRecipeId = null
+  let cookingOperationId = null
   let lastEventId = null
   let message = ''
   let error = ''
@@ -26,16 +28,18 @@ export function createHomeMobile(root, storage, { loadRecipes = null, openRecipe
     <div class="household-head"><p class="eyebrow">Home / Háztartás</p><h1>Mi van otthon?</h1><p>Ezen az eszközön tárolva · nincs családi szinkron</p></div>
     <div class="household-alert" data-household-alert role="status" aria-live="polite" hidden></div>
     <div class="household-tabs" data-household-tabs role="tablist" aria-label="Háztartás nézetei"><button type="button" data-household-tab="inventory" role="tab">Készlet</button><button type="button" data-household-tab="shopping" role="tab">Bevásárlólista</button><button type="button" data-household-tab="recipes" role="tab">Receptek</button></div>
-    <section data-household-inventory><div class="household-toolbar"><input data-household-search type="search" placeholder="Élelmiszer keresése" aria-label="Élelmiszer keresése"><button type="button" data-household-add="inventory">+ Élelmiszer</button></div><div class="household-filters" aria-label="Tároló szűrő"><button type="button" data-household-filter="all">Összes</button><button type="button" data-household-filter="fridge">Hűtő</button><button type="button" data-household-filter="freezer">Fagyasztó</button><button type="button" data-household-filter="pantry">Kamra</button></div><div data-household-lots></div></section>
+    <section data-household-inventory><div class="household-toolbar"><input data-household-search type="search" placeholder="Élelmiszer keresése" aria-label="Élelmiszer keresése"><button type="button" data-household-add="inventory">+ Élelmiszer</button></div><div class="household-filters" aria-label="Tároló szűrő"><button type="button" data-household-filter="all">Összes</button><button type="button" data-household-filter="fridge">Hűtő</button><button type="button" data-household-filter="freezer">Fagyasztó</button><button type="button" data-household-filter="pantry">Kamra</button></div><div data-household-lots></div><h2 class="household-section-title">Elkészített ételek</h2><div data-household-prepared></div></section>
     <section data-household-shopping hidden><div class="household-toolbar"><p>Bevásárlási tervek. A kipipálás nem növeli a készletet.</p><button type="button" data-household-add="shopping">+ Listaelem</button></div><div data-household-items></div></section>
     <section data-household-recipes hidden><p class="household-recipe-notice">A Food saját, helyben mentett receptjei. A névegyezés nem igazolja, hogy van elég alapanyag. Recept megnyitása nem módosít készletet.</p><div data-household-recipe-items aria-live="polite"></div></section>
     <button type="button" class="household-undo" data-household-undo hidden>Utolsó művelet visszavonása</button>
     <form class="household-form" data-household-form hidden><h2 data-household-form-title>Új tétel</h2><label>Név<input name="name" required maxlength="160" autocomplete="off"></label><div class="household-fields"><label>Mennyiség<input name="quantity" type="number" min="0" step="any" inputmode="decimal" placeholder="Ismeretlen, ha üres"></label><label>Egység<select name="unit">${units}</select></label></div><label data-household-location-label>Tárolás<select name="storageLocation"><option value="fridge">Hűtő</option><option value="freezer">Fagyasztó</option><option value="pantry">Kamra</option></select></label><div data-household-expiry><label>Címkén szereplő dátum<input name="expiryDate" type="date"></label><label>Dátum típusa<select name="expiryKind"><option value="bestBefore">Minőségmegőrzési</option><option value="useBy">Fogyaszthatósági</option></select></label></div><div class="household-actions"><button type="button" data-household-cancel>Mégse</button><button type="submit">Megerősítés és mentés</button></div></form>
-    <form class="household-form" data-household-split hidden><h2>Hűtő / Fagyasztó elosztás</h2><p data-household-split-source></p><div class="household-filters"><button type="button" data-household-preset="fridge">Mind hűtő</button><button type="button" data-household-preset="half">Fele-fele</button><button type="button" data-household-preset="freezer">Mind fagyasztó</button></div><div class="household-fields"><label>Hűtőbe kerülő mennyiség<input name="fridgeQuantity" type="number" min="0" step="any" inputmode="decimal" required></label><label>Egység<select name="unit">${units}</select></label></div><p data-household-split-preview role="status"></p><div class="household-actions"><button type="button" data-household-cancel>Mégse</button><button type="submit">Elosztás megerősítése</button></div></form>`
+    <form class="household-form" data-household-split hidden><h2>Hűtő / Fagyasztó elosztás</h2><p data-household-split-source></p><div class="household-filters"><button type="button" data-household-preset="fridge">Mind hűtő</button><button type="button" data-household-preset="half">Fele-fele</button><button type="button" data-household-preset="freezer">Mind fagyasztó</button></div><div class="household-fields"><label>Hűtőbe kerülő mennyiség<input name="fridgeQuantity" type="number" min="0" step="any" inputmode="decimal" required></label><label>Egység<select name="unit">${units}</select></label></div><p data-household-split-preview role="status"></p><div class="household-actions"><button type="button" data-household-cancel>Mégse</button><button type="submit">Elosztás megerősítése</button></div></form>
+    <form class="household-form" data-household-cooking hidden><h2>Főzés megerősítése</h2><p>A ténylegesen felhasznált tételeket add meg. Az előnézet nem módosít készletet. A recept többi hozzávalóját külön ellenőrizd.</p><label>Készétel neve<input name="name" required maxlength="160" autocomplete="off"></label><div class="household-fields"><label>Elkészült adagok<input name="portions" type="number" min="1" step="1" required></label><label>Készétel tárolása<select name="storageLocation"><option value="fridge">Hűtő</option><option value="freezer">Fagyasztó</option><option value="pantry">Kamra</option></select></label></div><div data-household-cooking-rows></div><button type="button" data-household-cooking-add>+ Felhasznált tétel</button><p data-household-cooking-preview role="status"></p><div class="household-actions"><button type="button" data-household-cancel>Mégse</button><button type="submit">Elkészítettem · megerősítés</button></div></form>`
 
   const $ = selector => root.querySelector(selector)
   const form = $('[data-household-form]')
   const splitForm = $('[data-household-split]')
+  const cookingForm = $('[data-household-cooking]')
   const state = () => store.getState()
   const alert = (text, isError = false) => { message = isError ? '' : text; error = isError ? text : ''; const node = $('[data-household-alert]'); node.hidden = !text; node.textContent = text; node.classList.toggle('is-error', isError) }
   const run = (type, payload, eventId) => {
@@ -48,7 +52,7 @@ export function createHomeMobile(root, storage, { loadRecipes = null, openRecipe
       return result
     } catch (err) { alert(err.message, true); return null }
   }
-  const closeForms = () => { form.hidden = true; splitForm.hidden = true; editing = null; splitId = null; formOperationId = null; splitOperationId = null }
+  const closeForms = () => { form.hidden = true; splitForm.hidden = true; cookingForm.hidden = true; editing = null; splitId = null; cookingRecipeId = null; formOperationId = null; splitOperationId = null; cookingOperationId = null }
   async function refreshRecipes() {
     const requestId = ++recipeReadId
     foodRecipes = { status: 'loading', recipes: [], savedAt: null }
@@ -74,6 +78,7 @@ export function createHomeMobile(root, storage, { loadRecipes = null, openRecipe
     root.querySelectorAll('[data-household-filter]').forEach(node => node.classList.toggle('is-active', node.dataset.householdFilter === filter))
     const lots = current.inventory.filter(lot => (filter === 'all' || lot.storageLocation === filter) && lot.name.toLocaleLowerCase('hu-HU').includes(search))
     $('[data-household-lots]').innerHTML = lots.length ? lots.map(lot => `<article class="household-card"><div><strong>${escape(lot.name)}</strong><p>${escape(displayQuantity(lot))} · ${placeNames[lot.storageLocation]} · kézi, megerősített ${escape(lot.observedAt.slice(0, 10))}</p><small>${escape(expiryLabel(lot))}</small></div><div class="household-card-actions"><button type="button" data-household-edit="${escape(lot.id)}">Szerkesztés</button><button type="button" data-household-split-id="${escape(lot.id)}">Elosztás</button><button type="button" data-household-delete="${escape(lot.id)}">Törlés</button></div></article>`).join('') : '<div class="household-empty">Itt még nincs ismert élelmiszer. Adj hozzá egy megerősített mennyiséget.</div>'
+    $('[data-household-prepared]').innerHTML = current.prepared.length ? current.prepared.map(lot => `<article class="household-card"><strong>${escape(lot.name)}</strong><p>${lot.portionsRemaining} adag · ${placeNames[lot.storageLocation]} · elkészítve ${escape(lot.confirmedAt.slice(0, 10))}</p></article>`).join('') : '<div class="household-empty">Még nincs megerősített főzésből származó készétel.</div>'
     $('[data-household-items]').innerHTML = current.shopping.length ? current.shopping.map(item => `<article class="household-card"><div><strong>${escape(item.name)}</strong><p>${escape(displayQuantity(item))} · ${statusNames[item.status]} · tervezett, nem készlet</p></div><div class="household-card-actions"><button type="button" data-household-check="${escape(item.id)}">${item.status === 'checked' ? 'Újra listára' : 'Elintézve'}</button><button type="button" data-household-defer="${escape(item.id)}">Később</button><button type="button" data-household-edit-shopping="${escape(item.id)}">Szerkesztés</button><button type="button" data-household-delete-shopping="${escape(item.id)}">Törlés</button></div></article>`).join('') : '<div class="household-empty">A bevásárlólista üres. Itt tervezhetsz vásárlást készletváltozás nélkül.</div>'
     const recipeItems = $('[data-household-recipe-items]')
     if (foodRecipes.status === 'loading') recipeItems.innerHTML = '<div class="household-empty">A helyi Food-receptek betöltése…</div>'
@@ -83,7 +88,7 @@ export function createHomeMobile(root, storage, { loadRecipes = null, openRecipe
       const review = reviewRecipeAgainstInventory(recipe, current.inventory)
       const yieldLabel = recipe.yieldCount == null ? 'Hozam: ismeretlen' : `Hozam: ${escape(recipe.yieldCount)} ${recipe.yieldUnit === 'slice' ? 'szelet' : recipe.yieldUnit === 'piece' ? 'darab' : 'adag'}`
       const ingredients = review.ingredients.map(ingredient => `<li>${escape(ingredient.name || 'Ismeretlen hozzávaló')} · ${escape(ingredient.amount)} ${escape(ingredient.unit)} — ${ingredient.possibleNameMatch ? 'lehetséges névegyezés a készletben' : 'nincs beazonosított készlettétel'}</li>`).join('')
-      return `<article class="household-card household-recipe-card"><strong>${escape(recipe.name)}</strong><p>${escape(recipe.category)} · ${yieldLabel} · Elkészítési idő: ismeretlen</p><p><b>Ellenőrizendő</b> · Az alapanyagok megfeleltetése és mennyisége nincs igazolva.</p><details><summary>Miért ezt látom?</summary><ul>${ingredients}</ul></details><div class="household-card-actions"><button type="button" data-household-open-recipe="${escape(recipe.id)}">Recept megtekintése a Foodban</button></div></article>`
+      return `<article class="household-card household-recipe-card"><strong>${escape(recipe.name)}</strong><p>${escape(recipe.category)} · ${yieldLabel} · Elkészítési idő: ismeretlen</p><p><b>Ellenőrizendő</b> · Az alapanyagok megfeleltetése és mennyisége nincs igazolva.</p><details><summary>Miért ezt látom?</summary><ul>${ingredients}</ul></details><div class="household-card-actions"><button type="button" data-household-open-recipe="${escape(recipe.id)}">Recept megtekintése a Foodban</button><button type="button" data-household-cook-recipe="${escape(recipe.id)}">Főzés rögzítése</button></div></article>`
     }).join('')
     $('[data-household-undo]').hidden = !lastEventId
   }
@@ -115,6 +120,49 @@ export function createHomeMobile(root, storage, { loadRecipes = null, openRecipe
       $('[data-household-split-preview]').textContent = `Előnézet: ${part.fridgeBase} ${lot.dimension === 'mass' ? 'g' : lot.dimension === 'volume' ? 'ml' : lot.displayUnit} hűtő · ${part.freezerBase} ${lot.dimension === 'mass' ? 'g' : lot.dimension === 'volume' ? 'ml' : lot.displayUnit} fagyasztó. Mentés csak megerősítés után.`
     } catch (err) { $('[data-household-split-preview]').textContent = err.message }
   }
+  function addCookingRow() {
+    const rows = $('[data-household-cooking-rows]')
+    const options = state().inventory.filter(lot => lot.quantityBase > 0).map(lot => `<option value="${escape(lot.id)}">${escape(lot.name)} · ${escape(displayQuantity(lot))} · ${placeNames[lot.storageLocation]}</option>`).join('')
+    const row = document.createElement('div')
+    row.className = 'household-cooking-row'
+    row.innerHTML = `<label>Felhasznált készlettétel<select name="lotId" required>${options}</select></label><div class="household-fields"><label>Mennyiség<input name="quantity" type="number" min="0.001" step="any" inputmode="decimal" required></label><label>Egység<select name="unit">${units}</select></label></div><button type="button" data-household-cooking-remove>Tétel eltávolítása</button>`
+    rows.append(row)
+    row.querySelector('[name="lotId"]').dispatchEvent(new Event('change', { bubbles: true }))
+  }
+  function cookingPayload() {
+    return { name: cookingForm.elements.name.value, portions: cookingForm.elements.portions.value, storageLocation: cookingForm.elements.storageLocation.value, recipeRef: cookingRecipeId,
+      consumed: [...root.querySelectorAll('.household-cooking-row')].map(row => ({ id: row.querySelector('[name="lotId"]').value, quantity: row.querySelector('[name="quantity"]').value, unit: row.querySelector('[name="unit"]').value })) }
+  }
+  function previewCooking() {
+    if (cookingForm.hidden) return
+    try {
+      const payload = cookingPayload()
+      const seen = new Set()
+      const parts = payload.consumed.map(used => {
+        const lot = state().inventory.find(row => row.id === used.id)
+        if (!lot || seen.has(used.id)) throw new Error('Válassz különböző, meglévő készlettételeket.')
+        seen.add(used.id)
+        const amount = Number(used.quantity.replace(',', '.')) * UNITS[used.unit][1]
+        if (!Number.isSafeInteger(amount) || amount <= 0 || amount > lot.quantityBase || UNITS[used.unit][0] !== lot.dimension) throw new Error('A felhasznált mennyiség nem egyezik a készlettel.')
+        return `${lot.name}: ${used.quantity} ${used.unit} → ${lot.quantityBase - amount} ${lot.dimension === 'mass' ? 'g' : lot.dimension === 'volume' ? 'ml' : lot.displayUnit} marad`
+      })
+      $('[data-household-cooking-preview]').textContent = parts.length ? `Előnézet: ${parts.join('; ')}. Készétel: ${payload.portions || '?'} adag. Mentés csak megerősítés után.` : 'Adj hozzá legalább egy felhasznált készlettételt.'
+    } catch (err) { $('[data-household-cooking-preview]').textContent = err.message }
+  }
+  function openCooking(recipeId) {
+    const recipe = foodRecipes.recipes.find(row => row.id === recipeId)
+    if (!recipe || !state().inventory.some(lot => lot.quantityBase > 0)) { alert('Főzéshez hozzáférhető recept és megerősített, pozitív készlet kell.', true); return }
+    closeForms()
+    cookingRecipeId = recipe.id
+    cookingOperationId = operationId()
+    cookingForm.reset()
+    cookingForm.elements.name.value = recipe.name
+    cookingForm.elements.portions.value = Number.isSafeInteger(recipe.yieldCount) && recipe.yieldCount > 0 ? recipe.yieldCount : ''
+    $('[data-household-cooking-rows]').replaceChildren()
+    cookingForm.hidden = false
+    addCookingRow()
+    cookingForm.scrollIntoView({ block: 'nearest' })
+  }
   root.addEventListener('click', event => {
     const button = event.target.closest('button')
     if (!button || !root.contains(button)) return
@@ -128,6 +176,9 @@ export function createHomeMobile(root, storage, { loadRecipes = null, openRecipe
     else if (d.householdDelete && confirm('Eltávolítod ezt a készlettételt?')) run('LotDeleted', { id: d.householdDelete })
     else if (d.householdDeleteShopping && confirm('Eltávolítod ezt a listaelemet?')) run('ShoppingItemDeleted', { id: d.householdDeleteShopping })
     else if (d.householdOpenRecipe && openRecipe) openRecipe(d.householdOpenRecipe)
+    else if (d.householdCookRecipe) openCooking(d.householdCookRecipe)
+    else if (d.householdCookingAdd !== undefined) { addCookingRow(); previewCooking() }
+    else if (d.householdCookingRemove !== undefined) { button.closest('.household-cooking-row').remove(); previewCooking() }
     else if (d.householdCheck) { const item = state().shopping.find(row => row.id === d.householdCheck); run('ShoppingItemStatusChanged', { id: item.id, status: item.status === 'checked' ? 'planned' : 'checked' }) }
     else if (d.householdDefer) run('ShoppingItemStatusChanged', { id: d.householdDefer, status: 'deferred' })
     else if (d.householdSplitId) { closeForms(); splitId = d.householdSplitId; splitOperationId = operationId(); const lot = state().inventory.find(row => row.id === splitId); $('[data-household-split-source]').textContent = `${lot.name} · ${displayQuantity(lot)}. A megosztás tárolóváltás, nem vásárlás.`; for (const option of splitForm.elements.unit.options) option.disabled = UNITS[option.value][0] !== lot.dimension; splitForm.elements.unit.value = lot.dimension === 'mass' ? 'g' : lot.dimension === 'volume' ? 'ml' : lot.displayUnit; splitForm.elements.fridgeQuantity.value = String(lot.quantityBase / UNITS[splitForm.elements.unit.value][1]); splitForm.hidden = false; previewSplit(); splitForm.scrollIntoView({ block: 'nearest' }) }
@@ -137,6 +188,18 @@ export function createHomeMobile(root, storage, { loadRecipes = null, openRecipe
   $('[data-household-search]').addEventListener('input', event => { search = event.target.value.toLocaleLowerCase('hu-HU'); render() })
   splitForm.elements.fridgeQuantity.addEventListener('input', previewSplit)
   splitForm.elements.unit.addEventListener('change', previewSplit)
+  cookingForm.addEventListener('input', previewCooking)
+  cookingForm.addEventListener('change', event => {
+    if (event.target.name === 'lotId') {
+      const lot = state().inventory.find(row => row.id === event.target.value)
+      if (lot) {
+        const row = event.target.closest('.household-cooking-row')
+        for (const option of row.querySelector('[name="unit"]').options) option.disabled = UNITS[option.value][0] !== lot.dimension
+        row.querySelector('[name="unit"]').value = lot.displayUnit
+      }
+    }
+    previewCooking()
+  })
   form.addEventListener('submit', event => {
     event.preventDefault()
     if (form.hidden || !editing) return
@@ -156,5 +219,11 @@ export function createHomeMobile(root, storage, { loadRecipes = null, openRecipe
     const result = run('StockSplit', { id: splitId, fridgeQuantity: splitForm.elements.fridgeQuantity.value, unit: splitForm.elements.unit.value }, splitOperationId)
     if (result) closeForms()
   })
-  return { load() { try { store = createHomeStore(storage); $('[data-household-tabs]').hidden = false; alert(message || '', !!error); render(); if (tab === 'recipes') refreshRecipes() } catch (err) { store = null; closeForms(); $('[data-household-tabs]').hidden = true; $('[data-household-inventory]').hidden = true; $('[data-household-shopping]').hidden = true; $('[data-household-recipes]').hidden = true; $('[data-household-undo]').hidden = true; alert(err.message, true) } }, handleBack() { if (!form.hidden || !splitForm.hidden) { closeForms(); return true } return false } }
+  cookingForm.addEventListener('submit', event => {
+    event.preventDefault()
+    if (cookingForm.hidden || !cookingRecipeId) return
+    const result = run('CookingConfirmed', cookingPayload(), cookingOperationId)
+    if (result) closeForms()
+  })
+  return { load() { try { store = createHomeStore(storage); $('[data-household-tabs]').hidden = false; alert(message || '', !!error); render(); if (tab === 'recipes') refreshRecipes() } catch (err) { store = null; closeForms(); $('[data-household-tabs]').hidden = true; $('[data-household-inventory]').hidden = true; $('[data-household-shopping]').hidden = true; $('[data-household-recipes]').hidden = true; $('[data-household-undo]').hidden = true; alert(err.message, true) } }, handleBack() { if (!form.hidden || !splitForm.hidden || !cookingForm.hidden) { closeForms(); return true } return false } }
 }
