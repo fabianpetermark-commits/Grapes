@@ -68,6 +68,7 @@ try {
   const outcome = await a.evaluate(async ({ A, PROFILE, OP1, OP2 }) => {
     const { createGrapesTestOutbox } = await import('/Grapes/src/sync/grapes-test-outbox.js')
     let revision = 0, lost = true, missingReadback = true
+    const corruptedFields = ['revision', 'expectedRevision', 'schemaVersion']
     const attempts = new Map()
     const gateway = {
       async compareAndSwap(job) {
@@ -77,7 +78,9 @@ try {
             ? { status: 'committed', revision: ++revision }
             : { status: 'conflict', revision, snapshotId: job.operationId }
           saved = { result, attempt: { profileId: job.profileId, kind: job.kind,
-            recordId: job.recordId, status: result.status, candidate: job.candidate } }
+            recordId: job.recordId, status: result.status,
+            expectedRevision: job.expectedRevision, schemaVersion: job.schemaVersion,
+            revision: result.revision, candidate: job.candidate } }
           attempts.set(job.operationId, saved)
         }
         if (lost) { lost = false; throw new Error('connection interrupted after server commit') }
@@ -85,7 +88,12 @@ try {
       },
       async readAttempt(operationId) {
         if (missingReadback) { missingReadback = false; throw new Error('readback interrupted') }
-        return attempts.get(operationId)?.attempt ?? null
+        const proof = attempts.get(operationId)?.attempt
+        if (proof && corruptedFields.length) {
+          const field = corruptedFields.shift()
+          return { ...proof, [field]: proof[field] + 10 }
+        }
+        return proof ?? null
       },
     }
     const outbox = createGrapesTestOutbox({ userId: A, gateway })
@@ -94,18 +102,29 @@ try {
     const afterLost = (await outbox.list(PROFILE))[0].status
     try { await outbox.retry(PROFILE) } catch { readbackRejected = true }
     const afterReadback = (await outbox.list(PROFILE))[0].status
+    const rejectedFields = []
+    for (const field of ['revision', 'expectedRevision', 'schemaVersion']) {
+      let rejected = false
+      try { await outbox.retry(PROFILE) } catch { rejected = true }
+      rejectedFields.push({ field, rejected, status: (await outbox.list(PROFILE))[0].status })
+    }
     const committed = await outbox.retry(PROFILE)
     await outbox.enqueue({ profileId: PROFILE, kind: 'food_diary', recordId: 'entry-1',
       operationId: OP2, expectedRevision: 0, schemaVersion: 1, candidate: { amount: 2 } })
     const conflict = await outbox.retry(PROFILE)
     const retained = await outbox.list(PROFILE)
     return { lostRejected, afterLost, readbackRejected, afterReadback,
-      committed, conflict, retained, serverRevision: revision }
+      committed, conflict, retained, rejectedFields, serverRevision: revision }
   }, { A, PROFILE, OP1, OP2 })
   assert.equal(outcome.lostRejected, true)
   assert.equal(outcome.afterLost, 'pending')
   assert.equal(outcome.readbackRejected, true)
   assert.equal(outcome.afterReadback, 'pending')
+  assert.deepEqual(outcome.rejectedFields, [
+    { field: 'revision', rejected: true, status: 'pending' },
+    { field: 'expectedRevision', rejected: true, status: 'pending' },
+    { field: 'schemaVersion', rejected: true, status: 'pending' },
+  ])
   assert.deepEqual(outcome.committed, [{ operationId: OP1, status: 'committed', revision: 1 }])
   assert.deepEqual(outcome.conflict, [{ operationId: OP2, status: 'conflict', revision: 1, snapshotId: OP2 }])
   assert.equal(outcome.serverRevision, 1)
@@ -120,5 +139,5 @@ try {
     })
   }, { A, PROFILE, OP3, index })))
   assert.deepEqual(race.map(result => result.status).sort(), ['fulfilled', 'rejected'])
-  console.log('PASS: durable TEST outbox survives reload, isolates accounts, retries lost writes and retains conflicts')
+  console.log('PASS: durable TEST outbox survives reload, isolates accounts, rejects forged CAS attempt proofs, retries lost writes and retains conflicts')
 } finally { await browser?.close(); server.kill() }
