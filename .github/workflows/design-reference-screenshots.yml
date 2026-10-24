@@ -1,0 +1,49 @@
+name: Grapes design reference screenshots (no deploy)
+on:
+  pull_request:
+    paths:
+      - 'design/references/**'
+      - 'tests/design-references.browser.mjs'
+      - 'tests/design-review.browser.mjs'
+      - '.github/workflows/design-reference-screenshots.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  references:
+    name: Render all approved and proposed design references
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Install isolated Chromium for reference rendering
+        run: npx playwright-core install --with-deps chromium
+      - name: Start local HTTP server (no external API, no secrets)
+        run: python3 -m http.server 4177 --bind 127.0.0.1 > /tmp/grapes-ref-http.log 2>&1 &
+      - name: Smoke tests and 320/390/412 px screenshots
+        run: node tests/design-references.browser.mjs
+      - name: Test live 8-screen HTML review center
+        run: node tests/design-review.browser.mjs
+      - name: Archive complete HTML/CSS/JS reference gallery
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: grapes-design-html-references
+          path: design/references/
+          if-no-files-found: error
+          retention-days: 90
+      - name: Upload proposal screenshot gallery
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: grapes-design-v11-reference-screenshots
+          path: design/reference-screenshots/*.png
+          if-no-files-found: ignore
+          retention-days: 30
