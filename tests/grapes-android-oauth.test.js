@@ -37,6 +37,7 @@ function harness() {
     },
     async exchangeCodeForSession(code) { exchanges.push(code); return { error: null } },
     async getUser() { return { data: { user: { id: 'synthetic-user' } } } },
+    async getSession() { return { data: { session: { access_token: 'synthetic-jwt' } }, error: null } },
   } }
   const notices = []
   const users = []
@@ -126,6 +127,18 @@ test('QA navigation handoff obtains persisted logout decision without exposing O
   assert.deepEqual(h.calls.at(-1).args, [userId])
   await h.adapter.finishSignOut()
   assert.equal(h.calls.at(-1).method, 'finishTestAuthSignOut')
+})
+
+test('TEST data handoff sends bearer only from isolated Auth adapter to native', async () => {
+  const h = harness()
+  const id = '123e4567-e89b-12d3-a456-426614174000'
+  await h.adapter.authorizeSession(h.client, { id })
+  assert.equal(h.calls.at(-1).method, 'authorizeTestSupabaseSession')
+  assert.deepEqual(h.calls.at(-1).args, [id, 'synthetic-jwt'])
+  assert.equal(h.values.size, 0, 'bearer must not enter adapter storage')
+  await assert.rejects(h.adapter.authorizeSession({ auth: { async getSession() {
+    return { data: { session: null }, error: null }
+  } } }, { id }), /munkamenet/)
 })
 
 test('successful PKCE return invokes optional app-unlock callback only after getUser verification', async () => {

@@ -79,6 +79,15 @@ export async function getAndroidTestAuthSubject() {
   return subject.toLowerCase()
 }
 
+// TEST-only native data transport. It returns RPC JSON, never the bearer.
+// The native side allows only fixed Supabase RPC names and the exact app asset.
+export function requestAndroidTestSupabase(method, ...args) {
+  if (!['supabaseTestWhoAmI', 'supabaseTestRpc'].includes(method)) {
+    throw new Error('Nem engedélyezett TEST Supabase-művelet.')
+  }
+  return nativeRequest(method, ...args)
+}
+
 export function requestAndroidTestAccountSignOut() {
   if (!isGrapesAndroidApp()) throw new Error('A Grapes TEST alkalmazás nem érhető el.')
   // The native Activity immediately navigates to the isolated Auth origin;

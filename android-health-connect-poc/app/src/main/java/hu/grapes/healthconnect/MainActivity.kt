@@ -46,6 +46,10 @@ class MainActivity : ComponentActivity() {
     private val testAuth by lazy { TestAuthCallback(this) }
     private val isTestQa get() = BuildConfig.APPLICATION_ID == "hu.grapes.healthconnect.test" && BuildConfig.GRAPES_TEST_AUTH_ENABLED
     private val testGate by lazy { TestAuthGate(isTestQa) }
+    private val testSupabaseProxy by lazy {
+        TestSupabaseProxy(isTestQa && BuildConfig.GRAPES_TEST_DATA_ENABLED,
+            BuildConfig.GRAPES_TEST_PUBLISHABLE_KEY)
+    }
     private val testGatePreferences by lazy { getSharedPreferences("grapes-test-auth-gate-v1", MODE_PRIVATE) }
     private val yazioApi by lazy { YazioApi(this) }
     private val foodApi by lazy { FoodApiBridge() }
@@ -191,6 +195,7 @@ class MainActivity : ComponentActivity() {
         val authReturn = isTestQa && testAuth.accept(intent?.data)
         if (authReturn) setIntent(Intent(intent).setData(null))
         if (authReturn) testGate.lock()
+        if (authReturn) testSupabaseProxy.clear()
         webView.loadUrl(testGate.initialUrl(APP_URL, TEST_AUTH_URL))
         // A foreground launch must always see a release published since the previous
         // background check. The six-hour throttle only belongs to WorkManager.
@@ -215,6 +220,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         if (isTestQa && testAuth.accept(intent.data)) {
             testGate.lock()
+            testSupabaseProxy.clear()
             setIntent(Intent(intent).setData(null))
             webView.loadUrl(TEST_AUTH_URL)
             return
@@ -367,7 +373,8 @@ class MainActivity : ComponentActivity() {
         if (isTrustedTestAuthPage() && message.optString("method") !in
             setOf(
                 "beginTestAuthOAuth", "takeTestAuthCallback", "cancelTestAuthOAuth",
-                "takeTestAuthLaunchMode", "finishTestAuthSignOut", "completeTestAuthLogin"
+                "takeTestAuthLaunchMode", "finishTestAuthSignOut", "completeTestAuthLogin",
+                "authorizeTestSupabaseSession"
             )) {
             return sendError(requestId, "Nem engedélyezett TEST Auth-művelet.")
         }
@@ -398,12 +405,29 @@ class MainActivity : ComponentActivity() {
                 if (!isTrustedTestAuthPage()) sendError(requestId, "A TEST Auth oldal nem aktív.")
                 else if (!testGatePreferences.edit().remove("logout-pending").commit())
                     sendError(requestId, "A kijelentkezés állapota nem menthető.")
-                else { testGate.lock(); sendResult(requestId, "{}") }
+                else { testGate.lock(); testSupabaseProxy.clear(); sendResult(requestId, "{}") }
+            }
+            "authorizeTestSupabaseSession" -> {
+                if (!isTrustedTestAuthPage() || !BuildConfig.GRAPES_TEST_DATA_ENABLED) {
+                    sendError(requestId, "A TEST adatkapu nem érhető el.")
+                } else {
+                    val args = message.optJSONArray("args")
+                    lifecycleScope.launch {
+                        runCatching { testSupabaseProxy.authorize(
+                            args?.optString(0).orEmpty(), args?.optString(1).orEmpty()) }
+                            .onSuccess {
+                                if (isTrustedTestAuthPage()) sendResult(requestId, "{}")
+                                else testSupabaseProxy.clear()
+                            }
+                            .onFailure { sendError(requestId, it.message ?: "A TEST-munkamenet nem ellenőrizhető.") }
+                    }
+                }
             }
             "completeTestAuthLogin" -> {
+                val subject = message.optJSONArray("args")?.optString(0) ?: ""
                 if (testGatePreferences.getBoolean("logout-pending", false) ||
-                    !testGate.allowApp(isTrustedTestAuthPage(),
-                        message.optJSONArray("args")?.optString(0) ?: "")) {
+                    (BuildConfig.GRAPES_TEST_DATA_ENABLED && testSupabaseProxy.currentSubject() != subject.lowercase()) ||
+                    !testGate.allowApp(isTrustedTestAuthPage(), subject)) {
                     sendError(requestId, "A TEST-fiók nincs hitelesítve.")
                 } else webView.loadUrl(APP_URL)
             }
@@ -415,13 +439,36 @@ class MainActivity : ComponentActivity() {
                 if (subject == null) sendError(requestId, "A TEST-fiók nincs hitelesítve.")
                 else sendResult(requestId, subject)
             }
+            "supabaseTestWhoAmI" -> {
+                val subject = testGate.subject(isTrustedTestAppPage())
+                if (!BuildConfig.GRAPES_TEST_DATA_ENABLED || subject == null) {
+                    sendError(requestId, "A TEST adatkapu nem érhető el.")
+                } else lifecycleScope.launch {
+                    runCatching { testSupabaseProxy.whoAmI(subject) }
+                        .onSuccess { sendResult(requestId, it) }
+                        .onFailure { sendError(requestId, it.message ?: "A TEST-fiók nem ellenőrizhető.") }
+                }
+            }
+            "supabaseTestRpc" -> {
+                val subject = testGate.subject(isTrustedTestAppPage())
+                val args = message.optJSONArray("args")
+                if (!BuildConfig.GRAPES_TEST_DATA_ENABLED || subject == null ||
+                    args?.optJSONObject(1) == null) {
+                    sendError(requestId, "A TEST-adatművelet nem engedélyezett.")
+                } else lifecycleScope.launch {
+                    runCatching { testSupabaseProxy.rpc(subject, args.optString(0), args.getJSONObject(1)) }
+                        .onSuccess { sendResult(requestId, it) }
+                        .onFailure { sendError(requestId, it.message ?: "A TEST-adatművelet sikertelen.") }
+                }
+            }
             "openTestAuthSignOut" -> {
                 if (!testGate.startLogout(isTrustedTestAppPage())) {
                     sendError(requestId, "A Grapes TEST-fiók nem aktív.")
-                } else if (!testGatePreferences.edit().putBoolean("logout-pending", true).commit()) {
-                    sendError(requestId, "A kijelentkezés nem készíthető elő.")
                 } else {
-                    webView.loadUrl(TEST_AUTH_URL)
+                    testSupabaseProxy.clear()
+                    if (!testGatePreferences.edit().putBoolean("logout-pending", true).commit())
+                        sendError(requestId, "A kijelentkezés nem készíthető elő.")
+                    else webView.loadUrl(TEST_AUTH_URL)
                 }
             }
             "takeTestAuthCallback" -> {
@@ -761,6 +808,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        testSupabaseProxy.clear()
         backupSession?.temporaryFile?.delete()
         backupSession = null
         fileChooserCallback?.onReceiveValue(null)
