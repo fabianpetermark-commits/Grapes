@@ -174,6 +174,7 @@ try {
   const beforeLink = JSON.parse(await page.evaluate(() => localStorage.getItem('grapes-home-household-v1')))
   assert.equal(beforeLink.prepared[0].portionsRemaining, 4)
   await page.locator('[data-household-link] button[type="submit"]').click()
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem('grapes-home-household-v1') || '{}').prepared?.[0]?.portionsRemaining === 3)
   const afterLink = JSON.parse(await page.evaluate(() => localStorage.getItem('grapes-home-household-v1')))
   assert.equal(afterLink.prepared[0].portionsRemaining, 3)
   assert.deepEqual(afterLink.inventory, beforeLink.inventory, 'A Food-napló hozzárendelése nem vonhat nyers készletet.')
