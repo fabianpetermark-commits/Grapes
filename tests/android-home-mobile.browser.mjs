@@ -56,6 +56,29 @@ try {
   const page = await context.newPage()
   await page.goto(url, { waitUntil: 'networkidle' })
   await page.locator('[data-page="home"]').waitFor({ state: 'visible' })
+  await page.evaluate(async () => {
+    const db = await new Promise((resolveDb, reject) => {
+      const request = indexedDB.open('grapes-projects', 1)
+      request.onupgradeneeded = () => request.result.createObjectStore('projects', { keyPath: 'id' })
+      request.onsuccess = () => resolveDb(request.result)
+      request.onerror = () => reject(request.error)
+    })
+    const project = {
+      id: 'food-tracker-local-food-profile', module: 'Ételnapló', name: 'Ételnapló',
+      data: {
+        version: 2, profile: { id: 'local-food-profile', name: 'Helyi profil', email: '', photo: '' },
+        customFoods: [{ id: 'm2-chicken', name: 'Csirkemell', baseUnit: 'g' }],
+        recipes: [{ id: 'm2-recipe', foodId: 'm2-prepared', ownerProfileId: 'local-food-profile', name: 'Csirkés étel', category: 'Ebéd', ingredients: [{ id: 'm2-ingredient', foodId: 'm2-chicken', amount: 500, unit: 'g' }], yieldCount: 4, yieldUnit: 'serving', revision: 1, createdAt: '2026-10-19T10:00:00.000Z', updatedAt: '2026-10-19T10:00:00.000Z' }],
+      },
+    }
+    await new Promise((resolveWrite, reject) => {
+      const tx = db.transaction('projects', 'readwrite')
+      tx.objectStore('projects').put(project)
+      tx.oncomplete = resolveWrite
+      tx.onerror = () => reject(tx.error)
+    })
+    db.close()
+  })
   assert.equal(await page.locator('[data-nav="home"]').count(), 1)
   assert.equal(await page.locator('[data-module="food"]').count(), 1)
   assert.equal(await page.locator('[data-module="finance"]').count(), 1)
@@ -118,7 +141,19 @@ try {
   await page.locator('[data-page="home"]').waitFor({ state: 'visible' })
   assert.equal(await page.locator('[data-page="household"]').isVisible(), false)
   assert.ok((await page.evaluate(() => localStorage.getItem('grapes-home-household-v1')))?.includes('Csirkemell'))
+  const homeBeforeRecipe = await page.evaluate(() => localStorage.getItem('grapes-home-household-v1'))
+  await page.locator('[data-page="home"] [data-module="household"]').click()
+  await page.locator('[data-household-tab="recipes"]').click()
+  await page.locator('[data-household-recipe-items] .household-recipe-card').waitFor()
+  assert.match(await page.locator('[data-household-recipe-items]').textContent(), /Csirkés étel/)
+  assert.match(await page.locator('[data-household-recipe-items]').textContent(), /Ellenőrizendő/)
+  assert.match(await page.locator('[data-household-recipe-items]').textContent(), /lehetséges névegyezés/)
+  await page.locator('[data-household-open-recipe="m2-recipe"]').click()
+  await page.locator('[data-food-recipe-detail]').waitFor({ state: 'visible' })
+  assert.equal(await page.locator('[data-food-recipe-title]').textContent(), 'Csirkés étel')
+  assert.equal(await page.evaluate(() => localStorage.getItem('grapes-home-household-v1')), homeBeforeRecipe, 'Recept megnyitása nem módosíthat Home-készletet.')
   console.log('Home TEST browser flow: készlet, 600/400, lista, mentés, undo, visszalépés, 320–412 px rendben.')
+  console.log('Home M2 Food bridge: helyi recept, ellenőrizendő készlet és írás nélküli Food-megnyitás rendben.')
 } finally {
   await browser?.close()
   server.kill()

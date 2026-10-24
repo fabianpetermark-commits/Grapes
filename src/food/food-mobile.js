@@ -2047,6 +2047,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
 
   bind()
   return { load, render, closeMeal, handleBack, isDetailOpen: () => Boolean(selectedMeal), flush, openHealthImport, openSamsungImport, importYazioCsv, importYazio, undoYazio,
+    openRecipe: id => { if (!project?.recipes.some(recipe => recipe.id === id)) return false; openRecipe(id); return true },
     syncFood, autoImportHealth, autoImportYazio, refreshInbox, openInbox, inboxSummary: () => ({ pending: inbox.length, unread: inbox.filter(item => !inboxSeen().has(item.id)).length }) }
 }
 
