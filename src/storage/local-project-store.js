@@ -17,10 +17,52 @@ function openDb() {
 export async function saveLocalProject(project) {
   const db = await openDb()
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readwrite')
-    tx.objectStore(STORE).put({ ...project, updatedAt: new Date().toISOString() })
+    let tx
+    try {
+      tx = db.transaction(STORE, 'readwrite')
+      tx.objectStore(STORE).put({ ...project, updatedAt: new Date().toISOString() })
+    } catch (error) { db.close(); reject(error); return }
     tx.oncomplete = () => { db.close(); resolve(project.id) }
-    tx.onerror = () => { const error = tx.error; db.close(); reject(error) }
+    tx.onabort = () => { const error = tx.error || new Error('A helyi tranzakció megszakadt.'); db.close(); reject(error) }
+    tx.onerror = () => { /* Transaction abort owns the rejection. */ }
+  })
+}
+
+// The current Food row and a stale writer's recovery copy are decided in
+// one readwrite transaction, so two tabs cannot accept the same token.
+export async function saveLocalFoodProject(project) {
+  if (!project?.id?.startsWith('food-tracker-') ||
+      project.data?.profile?.id !== project.id.slice('food-tracker-'.length) ||
+      typeof project.saveToken !== 'string' || !project.saveToken) {
+    throw new Error('Érvénytelen Food helyi mentés.')
+  }
+  const db = await openDb()
+  return new Promise((resolve, reject) => {
+    let tx, conflict = null
+    try {
+      tx = db.transaction(STORE, 'readwrite')
+      const store = tx.objectStore(STORE)
+      const request = store.get(project.id)
+      request.onsuccess = () => {
+        const current = request.result
+        const actualToken = current?.saveToken || null
+        if (actualToken !== (project.expectedSaveToken || null)) {
+          const recoveryId = `food-conflict-${encodeURIComponent(project.data.profile.id)}-${encodeURIComponent(project.saveToken)}`
+          conflict = new Error('Egy másik lap újabb Food-adatot mentett. A saját változat külön helyreállító példányban megmaradt.')
+          conflict.code = 'FOOD_LOCAL_SAVE_CONFLICT'
+          conflict.recoveryId = recoveryId
+          store.add({ ...project, id: recoveryId, originalId: project.id,
+            conflictWithToken: actualToken, updatedAt: new Date().toISOString() })
+        } else {
+          const { expectedSaveToken, ...record } = project
+          store.put({ ...record, updatedAt: new Date().toISOString() })
+        }
+      }
+      request.onerror = () => { /* Transaction abort owns the rejection. */ }
+    } catch (error) { db.close(); reject(error); return }
+    tx.oncomplete = () => { db.close(); conflict ? reject(conflict) : resolve(project.id) }
+    tx.onabort = () => { const error = tx.error || new Error('A helyi tranzakció megszakadt.'); db.close(); reject(error) }
+    tx.onerror = () => { /* Transaction abort owns the rejection. */ }
   })
 }
 
