@@ -15,6 +15,7 @@ import { registerFoodSharing, sendMealShare, sendRecipeShare } from './food/food
 import { hydrateMobileIcons, mobileIconSvg } from './android-mobile-icons.js'
 import { createHomeMobile } from './home/home-mobile.js'
 import { readLocalFoodDiary, readLocalFoodRecipes } from './home/home-food-recipes.js'
+import { readLocalFinanceReceipts, scanLocalFinanceReceipt } from './home/home-finance-receipts.js'
 import { getAndroidAppUpdate, installAndroidAppUpdate, isGrapesAndroidApp, openAndroidHealthConnectSettings } from './android-bridge.js'
 import {
   isMobileShareableBook,
@@ -59,6 +60,8 @@ let pendingHomeRecipeId = ''
 const household = createHomeMobile($('[data-household-root]'), undefined, {
   loadRecipes: () => readLocalFoodRecipes(getGrapesAccount()?.id || getGrapesAccount()?.email || 'local-food-profile'),
   loadFoodDiary: () => readLocalFoodDiary(getGrapesAccount()?.id || getGrapesAccount()?.email || 'local-food-profile'),
+  loadFinanceReceipts: () => readLocalFinanceReceipts(),
+  scanFinanceReceipt: id => scanLocalFinanceReceipt(id),
   openRecipe: id => { pendingHomeRecipeId = id; showPage('food') },
 })
 let activePage = 'home'

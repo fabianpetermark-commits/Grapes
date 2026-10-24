@@ -90,7 +90,8 @@ export function applyHomeCommand(current, command) {
   let reversalOf = null
   const lot = payload.id && record(state, 'inventory', payload.id)
   const item = payload.id && record(state, 'shopping', payload.id)
-  if (type === 'StockCountConfirmed') {
+  if (type === 'StockCountConfirmed' || type === 'StockReceived') {
+    if (type === 'StockReceived' && (command.sourceType !== 'finance-receipt' || !payload.receiptId || !/^ocr-[0-9a-f]{16}-\d+$/.test(payload.lineId || '') || command.sourceId !== `${payload.receiptId}:${payload.lineId}`)) fail('A bizonylatsor stabil forrásazonosítója hiányzik.')
     const q = quantity(payload.quantity, payload.unit)
     const id = payload.id || uuid()
     if (record(state, 'inventory', id)) fail('A készlettétel már létezik.')

@@ -7,7 +7,8 @@
 .household-alert.is-error { color: #ffd7de; background: #3b1a24; border-color: #894050; }
 .household-tabs, .household-filters, .household-card-actions, .household-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .household-tabs { margin: 8px 0 15px; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
-.household-tabs button { flex: 1; }
+.household-tabs { flex-wrap: wrap; }
+.household-tabs button { flex: 1 1 calc(50% - 8px); min-width: 0; font-size: 13px; }
 [data-household-root] button { min-height: 44px; padding: 9px 12px; color: var(--text); background: var(--raised); border: 1px solid var(--line); border-radius: 11px; cursor: pointer; font-weight: 650; }
 [data-household-root] button:focus-visible, [data-household-root] input:focus-visible, [data-household-root] select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 [data-household-root] button.is-active, [data-household-root] button[type="submit"], [data-household-add] { color: #041014; background: var(--accent); border-color: var(--accent); }

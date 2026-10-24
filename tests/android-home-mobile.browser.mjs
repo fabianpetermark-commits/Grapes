@@ -53,6 +53,7 @@ try {
   browser = await chromium.launch({ executablePath, headless: true })
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, hasTouch: true, isMobile: true })
   await context.addInitScript(() => localStorage.setItem('grapes-local-mode', '1'))
+  await context.addInitScript(() => { window.__GRAPES_RECEIPT_OCR_TEST__ = async image => image.includes('Yg==') ? 'Tej 2 x 1 l 998 Ft\nVégösszeg 998 Ft' : 'Végösszeg 5990 Ft' })
   const page = await context.newPage()
   await page.goto(url, { waitUntil: 'networkidle' })
   await page.locator('[data-page="home"]').waitFor({ state: 'visible' })
@@ -75,6 +76,10 @@ try {
     await new Promise((resolveWrite, reject) => {
       const tx = db.transaction('projects', 'readwrite')
       tx.objectStore('projects').put(project)
+      tx.objectStore('projects').put({ id: 'finance-tracker-current', module: 'Pénzügyi Napló', name: 'Pénzügyi napló', data: { version: 2, currency: 'HUF', transactions: [
+        { id: 'receipt-total', type: 'expense', amount: 5990, date: '2026-10-19', category: 'Élelmiszer', receipt: { name: 'osszeg.png', type: 'image/png', size: 1, data: 'data:image/png;base64,YQ==' } },
+        { id: 'receipt-lines', type: 'expense', amount: 998, date: '2026-10-19', category: 'Élelmiszer', receipt: { name: 'tetelek.png', type: 'image/png', size: 1, data: 'data:image/png;base64,Yg==' } },
+      ] } })
       tx.oncomplete = resolveWrite
       tx.onerror = () => reject(tx.error)
     })
@@ -182,6 +187,26 @@ try {
   const afterUndoLink = JSON.parse(await page.evaluate(() => localStorage.getItem('grapes-home-household-v1')))
   assert.equal(afterUndoLink.prepared[0].portionsRemaining, 4)
   assert.deepEqual(afterUndoLink.inventory, beforeLink.inventory)
+  await page.locator('[data-household-tab="receipts"]').click()
+  await page.locator('[data-household-receipt-items] .household-card').first().waitFor()
+  const beforeReceipt = await page.evaluate(() => localStorage.getItem('grapes-home-household-v1'))
+  await page.locator('[data-household-scan-receipt="receipt-total"]').click()
+  await page.locator('[data-household-alert]').getByText(/Végösszegből nem lesz készlet/).waitFor()
+  assert.equal(await page.locator('[data-household-receipt-candidates] .household-card').count(), 0)
+  assert.equal(await page.evaluate(() => localStorage.getItem('grapes-home-household-v1')), beforeReceipt)
+  await page.locator('[data-household-scan-receipt="receipt-lines"]').click()
+  await page.locator('[data-household-review-line]').waitFor()
+  assert.match(await page.locator('[data-household-receipt-candidates]').textContent(), /Ellenőrizendő/)
+  assert.equal(await page.evaluate(() => localStorage.getItem('grapes-home-household-v1')), beforeReceipt)
+  await page.locator('[data-household-review-line]').click()
+  assert.equal(await page.locator('[data-household-receipt-form] [name="quantity"]').inputValue(), '2')
+  await page.locator('[data-household-receipt-form] button[type="submit"]').click()
+  const afterReceipt = JSON.parse(await page.evaluate(() => localStorage.getItem('grapes-home-household-v1')))
+  assert.equal(afterReceipt.inventory.find(lot => lot.sourceType === 'finance-receipt' && lot.sourceId.startsWith('receipt-lines:ocr-'))?.quantityBase, 2000)
+  assert.equal(await page.locator('[data-household-review-line]').isDisabled(), true)
+  await page.locator('[data-household-scan-receipt="receipt-lines"]').click()
+  await page.locator('[data-household-review-line]').waitFor()
+  assert.equal(await page.locator('[data-household-review-line]').isDisabled(), true, 'Azonos bizonylatsor nem vehető fel kétszer.')
   const homeAfterUndo = await page.evaluate(() => localStorage.getItem('grapes-home-household-v1'))
   await page.locator('[data-household-tab="recipes"]').click()
   await page.locator('[data-household-open-recipe="m2-recipe"]').click()
@@ -192,6 +217,7 @@ try {
   console.log('Home M2 Food bridge: helyi recept, ellenőrizendő készlet és írás nélküli Food-megnyitás rendben.')
   console.log('Home M2 főzés: előnézet, megerősített nyers levonás, készétel és visszavonás rendben.')
   console.log('Home M2 H-17: mentett Food-bejegyzés explicit kapcsolása, 4→3 adag és visszavonás rendben; nyers készlet változatlan.')
+  console.log('Home M2 H-13/H-14: végösszegből nincs készlet; tételes OCR-sor csak megerősítve, egyszer kerül készletbe.')
 } finally {
   await browser?.close()
   server.kill()
