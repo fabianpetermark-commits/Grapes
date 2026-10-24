@@ -1110,6 +1110,11 @@ const migrationDriveScanButton = $('[data-grapes-test-migration-drive-scan]')
 const migrationPreviewFlag =
   import.meta.env?.VITE_GRAPES_TEST_CHANNEL === '1' &&
   import.meta.env?.VITE_GRAPES_TEST_MIGRATION_PREVIEW_ENABLED === 'true'
+const foodSyntheticQaPanel = $('[data-grapes-test-food-qa]')
+const foodSyntheticQaFlag =
+  import.meta.env?.VITE_GRAPES_TEST_CHANNEL === '1' &&
+  import.meta.env?.VITE_GRAPES_TEST_DATA_ENABLED === 'true' &&
+  import.meta.env?.VITE_GRAPES_TEST_FOOD_SYNTHETIC_ENABLED === 'true'
 if (grapesTestLogout) {
   grapesTestLogout.addEventListener('click', () => {
     grapesTestLogout.disabled = true
@@ -1131,12 +1136,48 @@ if (grapesTestLogout) {
       }
       grapesTestLogout.hidden = !enabled
       if (migrationPreviewButton) migrationPreviewButton.hidden = !(enabled && migrationPreviewFlag)
+      if (foodSyntheticQaPanel) foodSyntheticQaPanel.hidden = !(enabled && foodSyntheticQaFlag)
     }).catch(() => {
       grapesTestLogout.hidden = true
       if (migrationPreviewButton) migrationPreviewButton.hidden = true
+      if (foodSyntheticQaPanel) foodSyntheticQaPanel.hidden = true
     })
   }
 } 
+
+if (foodSyntheticQaPanel) {
+  const qaActions = [
+    ['prepare', '[data-grapes-test-food-prepare]'],
+    ['save', '[data-grapes-test-food-save]'],
+    ['readBack', '[data-grapes-test-food-read]'],
+  ]
+  const qaStatus = $('[data-grapes-test-food-status]')
+  for (const [method, selector] of qaActions) {
+    const button = $(selector)
+    if (!button) continue
+    button.addEventListener('click', async () => {
+      if (!foodSyntheticQaFlag || !isGrapesAndroidApp()) return
+      for (const [, key] of qaActions) { const b = $(key); if (b) b.disabled = true }
+      qaStatus.textContent = 'Szintetikus TEST-próba ellenőrzése…'
+      try {
+        if (!(await getAndroidTestAuthEnabled())) throw new Error('A natív Grapes TEST kapu nem aktív.')
+        const { createGrapesTestSyntheticFoodTrial } =
+          await import('./sync/grapes-test-synthetic-food-trial.js')
+        const trial = createGrapesTestSyntheticFoodTrial({ enabled: true })
+        const result = await trial[method]()
+        qaStatus.textContent = method === 'prepare'
+          ? 'A próba tartós offline sorba került (' + result.status + '). A mentés még nincs igazolva.'
+          : method === 'save'
+            ? 'A mentési kísérlet szerveroldali előzménye igazolt (rev. ' + result.revision + '). Visszaolvasás még szükséges.'
+            : 'PASS: a külön szerveroldali Food-visszaolvasás egyezik (rev. ' + result.revision + ').'
+      } catch (error) {
+        qaStatus.textContent = 'NEM IGAZOLT: ' + (error?.message || 'A TEST-próba megszakadt.')
+      } finally {
+        for (const [, key] of qaActions) { const b = $(key); if (b) b.disabled = false }
+      }
+    })
+  }
+}
 if (migrationPreviewButton) migrationPreviewButton.addEventListener('click', async () => {
   if (!migrationPreviewFlag || !isGrapesAndroidApp()) return
   const panel = $('[data-grapes-test-migration-results]')
