@@ -58,6 +58,7 @@ try {
   })
   const page = await context.newPage()
   await page.goto(base + '/Grapes/design/android-mobile-preview.html')
+  await page.locator('[data-nav="more"]').first().click()
   await page.locator('[data-grapes-test-migration-scan]').waitFor({ state: 'visible' })
   await page.evaluate(async () => {
     const open = indexedDB.open('grapes-projects', 1)
@@ -86,7 +87,6 @@ try {
     }))
   })
   const before = await page.evaluate(() => localStorage.getItem('grapes-water-v1'))
-  await page.locator('[data-nav="more"]').first().click()
   const requests = []
   page.on('request', request => {
     if (!request.url().startsWith(base + '/')) requests.push(request.url())
