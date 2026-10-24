@@ -70,6 +70,22 @@ compare the original bytes. This function makes no Drive request and cannot
 discover Drive files. Drive enumeration needs a separately reviewed read-only
 API path because the existing folder helper creates folders.
 
+## TEST-only settings preview
+
+The TEST settings page contains an `Helyi adatok áttekintése` action hidden
+by default. It is exposed only when all three are true: TEST channel build,
+`VITE_GRAPES_TEST_MIGRATION_PREVIEW_ENABLED=true`, and the QA Android host
+reports TEST Auth enabled. The button rechecks that native gate on click,
+then dynamically imports the reader. Ordinary app startup performs no new
+Health scan. The UI shows counts and known blockers only, with no source IDs,
+record IDs, YAZIO payloads or profile details. It never labels the data as
+transferred or owned by the Supabase account.
+
+The setting is an inspection aid, not an account-claim or import control.
+It remains OFF in `.env.example` and all existing release workflows.
+Even in an opted-in QA build, the native Auth gate is required; the E-book
+Drive connection and scopes are unchanged.
+
 ## Verification and next gate
 
 Thirteen focused Node tests cover separate record IDs, legacy claim, two-user
@@ -81,6 +97,8 @@ Local result on Node 24.19.0: 13 PASS, 0 FAIL.
 The Chromium regression `tests/grapes-health-v24-local-reader.browser.mjs`
 checks an absent IndexedDB remains absent, synthetic Food and Water capture,
 unchanged stored bytes, no external requests, and the E-book/Finance boundary.
+The settings browser regression checks the hidden web state, a synthetic QA
+native gate, explicit click, redacted counts and no external request.
 
 This is **not** end-to-end migration or fiókonkénti isolation of existing
 local data. The released v24 app does not call this module. The #94/#95 Health
