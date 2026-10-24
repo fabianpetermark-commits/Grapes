@@ -16,7 +16,7 @@ test('Simple Food rollout keeps backup and separate Water history export/restore
   assert.match(food,/foodBackupFromJson\(await file\.text\(\), profile\.id\)/)
   assert.match(shell,/waterBackupToJson\(localStorage\)/)
   assert.match(shell,/waterBackupFromJson\(await file\.text\(\)\)/)
-  assert.match(shell,/restoreWaterBackupVerified\(localStorage, restored\)/)
+  assert.match(shell,/restoreWaterBackupVerified\(localStorage, restored, crypto\.randomUUID\(\), storageKey\)/)
   assert.match(native,/viznaplo-/)
 })
 

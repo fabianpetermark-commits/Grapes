@@ -29,7 +29,7 @@ test('a fotó és az élő olvasó csak az első érvényes kódot választja', 
 })
 
 test('a víznapló mentése a 60 napnál régebbi Health előzményeket sem törli', () => {
-  assert.match(shell, /writeWaterStoreVerified\(localStorage, store, expectedRaw\)/)
+  assert.match(shell, /writeWaterStoreVerified\(localStorage, store, expectedRaw, waterStorageKey\(\)\)/)
   const store = {
     '2025-02-18': { goal: 2000, entries: [{ id: 'historical', amount: 250, at: '2025-02-18T08:00:00.000Z', externalKey: 'healthconnect:old' }] },
     '2026-10-17': { goal: 2000, entries: [{ id: 'new', amount: 500, at: '2026-10-17T08:00:00.000Z' }] },

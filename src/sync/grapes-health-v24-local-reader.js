@@ -65,6 +65,13 @@ export async function captureV24LocalHealthSources({
   subtle = globalThis.crypto?.subtle
 } = {}) {
   if (!storage?.getItem) throw new Error('Local storage is unavailable')
+  if (typeof storage.key === 'function') {
+    for (let index = 0; index < storage.length; index++) {
+      if (storage.key(index)?.startsWith('grapes-water-v2:')) {
+        throw new Error('Profile-scoped Water requires a profile-bound Health backup reader')
+      }
+    }
+  }
   const projects = await readExistingProjects(indexedDb)
   const waterRaw = storage.getItem(WATER_KEY)
   const inventories = []
