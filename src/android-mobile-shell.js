@@ -1000,11 +1000,15 @@ async function inspectWaterBackup(event) {
     if (file.size > 80 * 1024 * 1024) throw new Error('A víznapló-mentés túl nagy.')
     const restored = waterBackupFromJson(await file.text())
     const previousRaw = localStorage.getItem(WATER_STORE_KEY)
-    let old = {}
-    try { old = readWaterStoreStrict(localStorage) } catch { /* Damaged bytes are checkpointed below. */ }
+    let old = {}, oldDamaged = false
+    try { old = readWaterStoreStrict(localStorage) }
+    catch { oldDamaged = true /* Damaged bytes are checkpointed below. */ }
     const stats = waterBackupSummary(restored)
     const current = waterBackupSummary(old)
-    if (!window.confirm(`Víz napló visszaállítása? A fájlban ${stats.days} nap és ${stats.entries} bejegyzés, a telefonon ${current.days} nap és ${current.entries} bejegyzés van. A jelenlegi vízadatok lecserélődnek. Csak saját biztonsági mentésből folytasd.`)) return
+    const currentDescription = oldDamaged
+      ? 'a telefonon sérült, nem olvasható Víz napló van; a bejegyzéseinek száma ismeretlen'
+      : `a telefonon ${current.days} nap és ${current.entries} bejegyzés van`
+    if (!window.confirm(`Víz napló visszaállítása? A fájlban ${stats.days} nap és ${stats.entries} bejegyzés, ${currentDescription}. A jelenlegi vízadatok pontos bájtjai külön megmaradnak. Csak saját biztonsági mentésből folytasd.`)) return
     if (localStorage.getItem(WATER_STORE_KEY) !== previousRaw) throw new Error('A Víz napló időközben megváltozott.')
     restoreWaterBackupVerified(localStorage, restored)
     renderWater()

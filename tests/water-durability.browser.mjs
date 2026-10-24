@@ -41,7 +41,10 @@ try {
   assert.equal(await page.evaluate(() => localStorage.getItem('grapes-water-v1')), '{damaged legacy bytes')
   const restored = { '2026-10-24': { goal: 2000, entries: [
     { id: 'synthetic', amount: 250, at: '2026-10-24T08:00:00.000Z' }] } }
-  await page.evaluate(() => { window.confirm = () => true })
+  await page.evaluate(() => { window.confirm = message => {
+    window.__waterRestoreConfirmation = message
+    return true
+  } })
   await page.locator('[data-water-backup-input]').setInputFiles({
     name: 'synthetic-water.json', mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify({ grapesWaterBackup: true, version: 1,
@@ -54,6 +57,7 @@ try {
     current: JSON.parse(localStorage.getItem('grapes-water-v1'))
   }))
   assert.ok(evidence.original.includes('{damaged legacy bytes'))
+  assert.match(await page.evaluate(() => window.__waterRestoreConfirmation), /sérült, nem olvasható/)
   assert.deepEqual(evidence.current, restored)
   assert.equal(await page.locator('[data-page="water"] [data-water-add="250"]').isDisabled(), false)
   await page.evaluate(() => {
