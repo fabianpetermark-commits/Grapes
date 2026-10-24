@@ -7,6 +7,21 @@
 
 > **HTML referencia-források:** [Grapes Design Reference Gallery](../design/references/index.html) és a [referencia- és pixelparitás-szerződés](../design/references/README.md). A valódi, korábban jóváhagyott HTML-ek pontos forrása itt verziózott; az új Home, Tools, E-book, QR és Finance képernyők a `candidates/` mappában **PROPOSED**, még jóváhagyandók. **Implementáció előtt mindig ezt az indexet kell használni, nem a régi history/minta HTML-eket.**
 
+## 0.A. Közös ikon-navigáció v1.2 – ténylegesen bevezetve a referencia-HTML-ekbe (2026-10-24)
+
+**Jóváhagyott mintakép:** a felhasználó által elfogadott Samsung-szerű, sötét Grapes ikonsor-változat. Nem a Samsung színeit vagy márkajegyeit használjuk, hanem a Grapes `#090E14` / `#101821` / `#3BDCF2` palettáját.
+
+- **Egyetlen kerekített, hat egyforma oszlopra osztott kapszula** a menü-/modulfüleknek. Egy sorban hat kényelmesen elférjen **320 px-től**, ne váltson feleslegesen függőleges görgetésre; 44+ px érintési méret. Ha később több főmodul lesz hatnál, *a főmenüben* vízszintes görgetés legyen, ne rejtőzzön el új főmodul. Kisebb részmoduloknál azonos ikonkapszula, szükség szerint kontextuális akciók a fennmaradó helyeken.
+- **Ikonok alatt nincs látható felirat**. A navigációs elemek minden esetben `aria-label` / `title` szöveget kapnak, billentyűzettel fókuszálhatók. A kiválasztott ikon háttere `#1B3541`, rövid finom cián aláhúzás/keret, nem teljes neon-aura.
+- **22 px-es ikonok**, 320 px-es kis kijelzőn kb. 20 px; egységes vektoros line icon, azonos vonalvastagság, lekerekített sarkok. Nem random Unicode emoji/egyedi világító dobozok a navigációban.
+- **Egyetlen, ikonrendszerrel egyező fogaskerék** a navigációs sávon belül, rendszerint a hatodik helyen. Nincs mellette állapot-pötty, második lebegő fogaskerék vagy ismétlődő gomb.
+- **Címsor kizárólag a sáv ALATT**, ha az adott modulnézetnek szüksége van rá. Finance: `Áttekintés`, `Tranzakciók`, `Megtakarítások`, `Előrejelzés`, `Importálás` — nincs `PÉNZÜGYI NAPLÓ`, `CÉLOK ÉS TARTALÉK` stb. ismétlődő overline közvetlenül a címsor fölött. Az átfogó Grapes főmenü `Grapes` brandfejléce önálló eset.
+- **Az alsó kontextuális gyorsműveleti sáv megmarad**, a hatikonos felső navigáció nem váltja ki.
+- **Megvalósított HTML referenciák:** `design/references/approved/{main-shell-widgets,health-minimal,plants-widget}.html`, `design/references/candidates/{main-shell-tools,home,tools,finance,ebook,qr}.html`, továbbá a közös `design/references/shared/grapes-v11.css`. Ezek most közvetlenül módosított HTML/CSS fájlok; a korábbi változatok a Git előzményben visszakereshetők.
+- **Kódátvezetés:** a referencia HTML-ek jóváhagyott megjelenési szabványt adnak; az éles Android shellből ezekre történő tényleges átvezetés külön, regresszióval védett TEST implementáció. Nem szabad összekeverni az önálló design HTML-eket az app jelenleg futó DOM-jával.
+
+---
+
 ## 0. Jóváhagyott Grapes mobil megjelenés (2026-10-23) – ez az elsődleges szabvány
 
 **Referencia:** a felhasználó által képernyőképes iterációkban véglegesített **Grapes Health minimal** önálló HTML/CSS/JS-tervezet. A mintában a fejléc bal oldalán kizárólag **Health** látható, a jobb oldalán kizárólag az adott modul **beállítás-fogaskereke**; a widgetkártyák rövid, halvány ciánfényes peremszegélyekkel jelennek meg. Az interaktív prototípus mintaadatokat használ, nem az éles Food/Víz napló tartalma.
