@@ -4,6 +4,14 @@
 
 Start with [the interactive reference gallery](./index.html). **Never pick a design from `history/` as a current implementation target.**
 
+## Visual navigation update – v1.2 (2026-10-24)
+
+All **current** menu and module HTML files (three `approved/` examples, six `candidates/` examples) now contain the user-requested navigation geometry, **not just prose in this document**: a single six-slot rounded dark capsule; 22px / 20px line icons, no visible icon captions, always accessible `aria-label` and `title`, integrated sixth-slot cog and clearly framed active state. The full Finance internal module removes the second module heading, duplicate eyebrow labels and status dot. The global main shell still retains its user-visible `Grapes` branding as appropriate. Contextual lower quick-action docks continue to exist.
+
+**Important:** this is the latest visual rule for the current HTML references. `history/` files deliberately retain their old appearance, solely as archival records. Actual `codex/android-app` runtime is not automatically changed by #41; Finance is still a proposal pending visual review of its full content. Browser test `tests/design-references.browser.mjs` verifies the six-icon contract at 320/390/412px for each current prototype.
+
+---
+
 ## What is approved?
 
 | Module/screen | Exact source of truth | Status | Notes |
