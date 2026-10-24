@@ -73,6 +73,21 @@ export async function captureV24LocalHealthSources({
     if (!project || (project.module !== 'Ételnapló' &&
         !String(project.id || '').startsWith('food-tracker-'))) continue
     const version = await snapshotHash(JSON.stringify(project), subtle)
+    if (String(project.id || '').startsWith('food-conflict-')) {
+      const profileId = project.data?.profile?.id
+      if (!profileId || project.originalId !== `food-tracker-${profileId}`) {
+        throw new Error('Invalid Food recovery snapshot')
+      }
+      inventories.push({
+        source: { provider: 'indexeddb-recovery', sourceId: project.id,
+          version, ownerId: null, profileId, records: [] },
+        unmapped: [{ field: 'localRecovery', reason: 'unresolved local Food conflict' }],
+        complete: false, counts: {}
+      })
+      snapshots.push({ provider: 'indexeddb-recovery', sourceId: project.id,
+        version, document: project })
+      continue
+    }
     inventories.push(inventoryV24FoodSnapshot({
       provider: 'indexeddb', sourceId: project.id, version, document: project
     }))
