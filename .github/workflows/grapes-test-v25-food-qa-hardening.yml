@@ -53,6 +53,7 @@ jobs:
         run: |
           node tests/grapes-test-outbox.browser.mjs
           node tests/grapes-test-synthetic-food-trial.browser.mjs
+          node tests/grapes-test-food-qa-layout.browser.mjs
           node tests/grapes-test-auth.browser.mjs
           node tests/android-ebook-shelf.browser.mjs
           node tests/water-durability.browser.mjs
