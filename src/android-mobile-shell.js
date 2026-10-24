@@ -1028,6 +1028,7 @@ $('[data-account-login]').addEventListener('click', openAccountLogin)
 const grapesTestLogout = $('[data-grapes-test-logout]')
 const migrationPreviewButton = $('[data-grapes-test-migration-scan]')
 const migrationBackupButton = $('[data-grapes-test-migration-backup]')
+const migrationDriveScanButton = $('[data-grapes-test-migration-drive-scan]')
 const migrationPreviewFlag =
   import.meta.env?.VITE_GRAPES_TEST_CHANNEL === '1' &&
   import.meta.env?.VITE_GRAPES_TEST_MIGRATION_PREVIEW_ENABLED === 'true'
@@ -1068,6 +1069,8 @@ if (migrationPreviewButton) migrationPreviewButton.addEventListener('click', asy
   status.textContent = 'Helyi adatok ellenőrzése…'
   list.replaceChildren()
   if (migrationBackupButton) migrationBackupButton.hidden = true
+  if (migrationDriveScanButton) migrationDriveScanButton.hidden = true
+  $('[data-grapes-test-migration-drive-status]').textContent = ''
   try {
     if (!(await getAndroidTestAuthEnabled())) throw new Error('TEST Auth is unavailable')
     const [{ captureV24LocalHealthSources }, { summarizeV24HealthInventory }] = await Promise.all([
@@ -1076,6 +1079,7 @@ if (migrationPreviewButton) migrationPreviewButton.addEventListener('click', asy
     ])
     const summary = summarizeV24HealthInventory(await captureV24LocalHealthSources())
     if (migrationBackupButton) migrationBackupButton.hidden = summary.sources === 0
+    if (migrationDriveScanButton) migrationDriveScanButton.hidden = !isGrapesDriveConnected()
     status.textContent = summary.sources
       ? 'Csak előnézet. Az adatok a készüléken maradtak; fiókhoz rendelés szükséges.'
       : 'Nem található helyi Food vagy Víz forrás. Adatátvitel nem történt.'
@@ -1122,6 +1126,25 @@ if (migrationBackupButton) migrationBackupButton.addEventListener('click', async
     status.textContent = 'A mentés nem igazolható. Az eredeti adatok változatlanok; ne kezdd el az adatátvitelt.'
   } finally {
     migrationBackupButton.disabled = false
+  }
+})
+if (migrationDriveScanButton) migrationDriveScanButton.addEventListener('click', async () => {
+  if (!migrationPreviewFlag || !isGrapesAndroidApp()) return
+  const status = $('[data-grapes-test-migration-drive-status]')
+  migrationDriveScanButton.disabled = true
+  status.textContent = 'Drive Health-fájlok metaadatainak ellenőrzése…'
+  try {
+    if (!(await getAndroidTestAuthEnabled()) || !isGrapesDriveConnected()) {
+      throw new Error('TEST Auth or Drive session is unavailable')
+    }
+    const { discoverConnectedTestDriveFoodFiles } = await import(
+      './sync/grapes-health-v24-drive-client.js')
+    const result = await discoverConnectedTestDriveFoodFiles()
+    status.textContent = `Drive: ${result.files.length} látható Health-fájl. Csak metaadat; a tartalom és a fiókhoz tartozás nincs ellenőrizve.`
+  } catch {
+    status.textContent = 'A Drive-áttekintés nem készíthető el. Drive- vagy helyi adat nem változott.'
+  } finally {
+    migrationDriveScanButton.disabled = false
   }
 })
 $('[data-notifications]').addEventListener('click', openUpdateInbox)
