@@ -6,7 +6,7 @@ import {
   listGrapesProjects,
   onGrapesDriveChange,
 } from './storage/grapes-drive.js'
-import { listLocalProjects } from './storage/local-project-store.js'
+import { listLocalProjects, claimLocalWaterOwner, getLocalWaterOwner } from './storage/local-project-store.js'
 import { listMobileEbooks, saveMobileReadingProgress, uploadMobileEbook } from './ebook-mobile-library.js'
 import { isMobileReadableEpub, normalizedReadingProgress, openMobileEpub } from './ebook-mobile-reader.js'
 import { createMobileFoodController } from './food/food-mobile.js'
@@ -14,9 +14,11 @@ import { createYazioApiPanel } from './food/yazio-api-panel.js'
 import { registerFoodSharing, sendMealShare, sendRecipeShare } from './food/food-sharing-client.js'
 import { hydrateMobileIcons, mobileIconSvg } from './android-mobile-icons.js'
 import { createHomeMobile } from './home/home-mobile.js'
-import { getAndroidAppUpdate, getAndroidTestAuthEnabled, requestAndroidTestAccountSignOut, installAndroidAppUpdate, isGrapesAndroidApp, openAndroidHealthConnectSettings, saveAndroidJsonBackup, saveAndroidVerifiedHealthBackup } from './android-bridge.js'
+import { getAndroidAppUpdate, getAndroidTestAuthEnabled, getAndroidTestAuthSubject, requestAndroidTestAccountSignOut, installAndroidAppUpdate, isGrapesAndroidApp, openAndroidHealthConnectSettings, saveAndroidJsonBackup, saveAndroidVerifiedHealthBackup } from './android-bridge.js'
 import { waterBackupToJson, waterBackupFromJson, readWaterStoreStrict, waterBackupSummary,
   writeWaterStoreVerified, restoreWaterBackupVerified } from './water/water-backup.js'
+import { waterProfileKey, readProfileWater, inspectLegacyWater, claimLegacyWater,
+  profileWaterBackupToJson, profileWaterBackupFromJson } from './water/water-profile-store.js'
 import {
   isMobileShareableBook,
   isTrustedPairingMessage,
@@ -37,6 +39,14 @@ const sheet = $('[data-food-add-sheet]')
 const sheetBackdrop = $('.sheet-backdrop')
 const LOCAL_MODE_KEY = 'grapes-local-mode'
 const WATER_STORE_KEY = 'grapes-water-v1'
+const WATER_PROFILE_QA = import.meta.env?.VITE_GRAPES_TEST_CHANNEL === '1' &&
+  import.meta.env?.VITE_GRAPES_TEST_WATER_PROFILE_ENABLED === 'true'
+const SYNTHETIC_WATER_PROFILE = '00000000-0000-4000-8000-000000000001'
+let activeWaterProfileId = null
+let waterProfileLoading = null
+let legacyWaterOwner = null
+const waterStorageKey = () => WATER_PROFILE_QA
+  ? waterProfileKey(activeWaterProfileId) : WATER_STORE_KEY
 const SYNC_CHECK_KEY = 'grapes-sync-last-check-v1'
 const UPDATE_READ_KEY = 'grapes-update-read-v1'
 const moduleFolders = [
@@ -835,12 +845,30 @@ function dateKey(date = new Date()) {
   return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-')
 }
 
+function ensureWaterProfile() {
+  if (!WATER_PROFILE_QA || activeWaterProfileId) return Promise.resolve()
+  if (!waterProfileLoading) waterProfileLoading = (async () => {
+    const profileId = isGrapesAndroidApp()
+      ? await getAndroidTestAuthSubject() : SYNTHETIC_WATER_PROFILE
+    const ownerId = await getLocalWaterOwner()
+    activeWaterProfileId = profileId
+    legacyWaterOwner = ownerId
+  })().then(() => { renderWater() }).catch(error => {
+    const status = $('[data-water-storage-status]')
+    status.textContent = `A TEST Water-profil nem ellenőrizhető: ${error?.message || 'ismeretlen hiba'}`
+    status.hidden = false
+  })
+  return waterProfileLoading
+}
+
 function loadWaterStore() {
-  return readWaterStoreStrict(localStorage)
+  return WATER_PROFILE_QA
+    ? readProfileWater(localStorage, activeWaterProfileId)
+    : readWaterStoreStrict(localStorage)
 }
 
 function currentWaterDay() {
-  const raw = localStorage.getItem(WATER_STORE_KEY)
+  const raw = localStorage.getItem(waterStorageKey())
   const store = loadWaterStore()
   const key = dateKey()
   const saved = store[key]
@@ -855,11 +883,11 @@ function saveWaterDay(snapshot) {
 function saveWaterStore(store, expectedRaw) {
   // Historical Health Connect imports and older Water diary entries are user
   // data. Do not silently prune them when a newer day is saved.
-  writeWaterStoreVerified(localStorage, store, expectedRaw)
+  writeWaterStoreVerified(localStorage, store, expectedRaw, waterStorageKey())
 }
 
 function importHydrationEntries(entries = []) {
-  const original = localStorage.getItem(WATER_STORE_KEY)
+  const original = localStorage.getItem(waterStorageKey())
   const store = loadWaterStore()
   const existingKeys = new Set(Object.values(store).flatMap(day => day?.entries || []).map(entry => entry.externalKey).filter(Boolean))
   let imported = 0
@@ -892,6 +920,15 @@ function formatWater(amount) {
 
 function renderWater() {
   const status = $('[data-water-storage-status]')
+  if (WATER_PROFILE_QA && !activeWaterProfileId) {
+    $$('[data-water-add], [data-action="water-goal"]').forEach(button => { button.disabled = true })
+    if (!waterProfileLoading) ensureWaterProfile()
+    if (status.hidden) {
+      status.textContent = 'A TEST Water-profil ellenőrzése…'
+      status.hidden = false
+    }
+    return
+  }
   let snapshot
   try { snapshot = currentWaterDay() } catch (error) {
     status.textContent = `A Víz napló nem olvasható: ${error?.message || 'ismeretlen hiba'} Az eredeti adat megmaradt.`
@@ -903,6 +940,25 @@ function renderWater() {
   }
   status.textContent = ''; status.hidden = true
   $$('[data-water-add], [data-action="water-goal"]').forEach(button => { button.disabled = false })
+  const claim = $('[data-water-legacy-claim]')
+  if (claim) {
+    claim.hidden = true
+    if (WATER_PROFILE_QA) {
+      const legacy = inspectLegacyWater(localStorage, legacyWaterOwner, activeWaterProfileId)
+      const currentHasData = Object.keys(snapshot.store).length > 0
+      if (legacy.status === 'available' || (legacy.status === 'claimed' && !currentHasData)) {
+        claim.hidden = false
+        $('[data-water-legacy-summary]').textContent =
+          `Régi, még nem átvitt Víz napló: ${legacy.days} nap, ${legacy.entries} bejegyzés. Az eredeti helyi adat megmarad.`
+        $('[data-water-legacy-claim-button]').disabled = currentHasData
+      } else if (legacy.status === 'damaged') {
+        claim.hidden = false
+        $('[data-water-legacy-summary]').textContent =
+          'A régi Víz napló sérült. Az eredeti adat megmaradt; az átvétel leállítva.'
+        $('[data-water-legacy-claim-button]').disabled = true
+      }
+    }
+  }
   const { day, store: waterStore } = snapshot
   const total = day.entries.reduce((sum, entry) => sum + Math.max(0, Number(entry.amount) || 0), 0)
   const percent = Math.min(100, total / day.goal * 100)
@@ -977,7 +1033,11 @@ function addWater(amount) {
 
 async function exportWaterBackup() {
   try {
-    const json = waterBackupToJson(localStorage)
+    if (WATER_PROFILE_QA) await ensureWaterProfile()
+    if (WATER_PROFILE_QA && !activeWaterProfileId) throw new Error('A TEST Water-profil nem ellenőrizhető.')
+    const json = WATER_PROFILE_QA
+      ? profileWaterBackupToJson(localStorage, activeWaterProfileId)
+      : waterBackupToJson(localStorage)
     const filename = `grapes-viznaplo-${dateKey()}.json`
     if (isGrapesAndroidApp()) {
       await saveAndroidJsonBackup(filename, json)
@@ -998,19 +1058,27 @@ async function inspectWaterBackup(event) {
   if (!file) return
   try {
     if (file.size > 80 * 1024 * 1024) throw new Error('A víznapló-mentés túl nagy.')
-    const restored = waterBackupFromJson(await file.text())
-    const previousRaw = localStorage.getItem(WATER_STORE_KEY)
+    if (WATER_PROFILE_QA) await ensureWaterProfile()
+    if (WATER_PROFILE_QA && !activeWaterProfileId) throw new Error('A TEST Water-profil nem ellenőrizhető.')
+    const incoming = WATER_PROFILE_QA
+      ? profileWaterBackupFromJson(await file.text(), activeWaterProfileId, { allowLegacy: true })
+      : { days: waterBackupFromJson(await file.text()), legacy: false }
+    const restored = incoming.days
+    const storageKey = waterStorageKey()
+    const previousRaw = localStorage.getItem(storageKey)
     let old = {}, oldDamaged = false
-    try { old = readWaterStoreStrict(localStorage) }
+    try { old = readWaterStoreStrict(localStorage, storageKey) }
     catch { oldDamaged = true /* Damaged bytes are checkpointed below. */ }
     const stats = waterBackupSummary(restored)
     const current = waterBackupSummary(old)
     const currentDescription = oldDamaged
       ? 'a telefonon sérült, nem olvasható Víz napló van; a bejegyzéseinek száma ismeretlen'
       : `a telefonon ${current.days} nap és ${current.entries} bejegyzés van`
-    if (!window.confirm(`Víz napló visszaállítása? A fájlban ${stats.days} nap és ${stats.entries} bejegyzés, ${currentDescription}. A jelenlegi vízadatok pontos bájtjai külön megmaradnak. Csak saját biztonsági mentésből folytasd.`)) return
-    if (localStorage.getItem(WATER_STORE_KEY) !== previousRaw) throw new Error('A Víz napló időközben megváltozott.')
-    restoreWaterBackupVerified(localStorage, restored)
+    const legacyWarning = incoming.legacy
+      ? ' Ez a régi mentés nem tartalmaz profilazonosítót; csak akkor rendeld ehhez a TEST-fiókhoz, ha bizonyosan a sajátod.' : ''
+    if (!window.confirm(`Víz napló visszaállítása? A fájlban ${stats.days} nap és ${stats.entries} bejegyzés, ${currentDescription}. A jelenlegi vízadatok pontos bájtjai külön megmaradnak.${legacyWarning} Csak saját biztonsági mentésből folytasd.`)) return
+    if (localStorage.getItem(storageKey) !== previousRaw) throw new Error('A Víz napló időközben megváltozott.')
+    restoreWaterBackupVerified(localStorage, restored, crypto.randomUUID(), storageKey)
     renderWater()
     showToast('A víznapló visszaállítva; a korábbi állapot külön megmaradt.')
   } catch (error) { showToast(error?.message || 'A Víz napló visszaállítása nem sikerült.') }
@@ -1311,6 +1379,21 @@ $('[data-action="water-goal"]').addEventListener('click', changeWaterGoal)
 $('[data-water-export]')?.addEventListener('click', exportWaterBackup)
 $('[data-water-restore]')?.addEventListener('click', () => $('[data-water-backup-input]')?.click())
 $('[data-water-backup-input]')?.addEventListener('change', inspectWaterBackup)
+$('[data-water-legacy-claim-button]')?.addEventListener('click', async event => {
+  if (!WATER_PROFILE_QA || !activeWaterProfileId) return
+  const button = event.currentTarget
+  button.disabled = true
+  try {
+    const legacy = inspectLegacyWater(localStorage, await getLocalWaterOwner(), activeWaterProfileId)
+    if (!['available', 'claimed'].includes(legacy.status)) throw new Error('A régi Víz napló nem vehető át.')
+    if (!window.confirm(`A régi, profil nélküli Víz napló ${legacy.days} napját és ${legacy.entries} bejegyzését ehhez a TEST-fiókhoz rendeled? Az eredeti adat megmarad; másik fiókhoz később nem rendelhető.`)) return
+    await claimLegacyWater(localStorage, activeWaterProfileId, claimLocalWaterOwner)
+    legacyWaterOwner = activeWaterProfileId
+    renderWater()
+    showToast('A régi Víz napló ehhez a TEST-fiókhoz másolva; az eredeti megmaradt.')
+  } catch (error) { showToast(error?.message || 'A régi Víz napló átvétele nem sikerült.') }
+  finally { button.disabled = false }
+})
 
 $('[data-health-sync]').addEventListener('click', () => openSyncImport('health'))
 $$('[data-samsung-sync-action]').forEach(button => button.addEventListener('click', () => openSyncImport('samsung')))

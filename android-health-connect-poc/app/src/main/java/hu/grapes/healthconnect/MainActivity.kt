@@ -402,13 +402,19 @@ class MainActivity : ComponentActivity() {
             }
             "completeTestAuthLogin" -> {
                 if (testGatePreferences.getBoolean("logout-pending", false) ||
-                    !testGate.allowApp(isTrustedTestAuthPage())) {
+                    !testGate.allowApp(isTrustedTestAuthPage(),
+                        message.optJSONArray("args")?.optString(0) ?: "")) {
                     sendError(requestId, "A TEST-fiók nincs hitelesítve.")
                 } else webView.loadUrl(APP_URL)
             }
             "getTestAuthEnabled" -> sendResult(
                 requestId, (isTestQa && isTrustedTestAppPage()).toString()
             )
+            "getTestAuthSubject" -> {
+                val subject = testGate.subject(isTrustedTestAppPage())
+                if (subject == null) sendError(requestId, "A TEST-fiók nincs hitelesítve.")
+                else sendResult(requestId, subject)
+            }
             "openTestAuthSignOut" -> {
                 if (!testGate.startLogout(isTrustedTestAppPage())) {
                     sendError(requestId, "A Grapes TEST-fiók nem aktív.")

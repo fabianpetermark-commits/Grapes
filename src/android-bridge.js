@@ -69,6 +69,16 @@ export async function getAndroidTestAuthEnabled() {
   return (await nativeRequest('getTestAuthEnabled')) === 'true'
 }
 
+// QA native gate retains only the user ID verified at Auth login in memory.
+// It never exposes an access token or the separate Auth page's storage.
+export async function getAndroidTestAuthSubject() {
+  const subject = await nativeRequest('getTestAuthSubject')
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(subject)) {
+    throw new Error('A TEST-fiókazonosító nem ellenőrizhető.')
+  }
+  return subject.toLowerCase()
+}
+
 export function requestAndroidTestAccountSignOut() {
   if (!isGrapesAndroidApp()) throw new Error('A Grapes TEST alkalmazás nem érhető el.')
   // The native Activity immediately navigates to the isolated Auth origin;
