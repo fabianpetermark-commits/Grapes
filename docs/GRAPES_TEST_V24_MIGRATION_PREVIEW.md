@@ -51,6 +51,25 @@ display these items and block transfer until each has an approved mapping or
 an explicit retain-local decision. Current provider sync metadata is retained
 in the untouched source and is not part of the proposed Health records.
 
+## Explicit local capture
+
+`captureV24LocalHealthSources()` is an isolated app-origin function, currently
+called by no application route. A future TEST preview button may invoke it
+after an explicit user action. It opens the existing `grapes-projects`
+IndexedDB database in read-only mode, aborts the open if the database is absent
+so that a scan cannot create it, and reads `grapes-water-v1` once without
+writing. It filters to the actual `Ételnapló` module, ignoring Finance and
+E-book project rows. SHA-256 source versions are calculated from the captured
+JSON content (the raw bytes for Water). It returns full local payloads inside
+the app origin; a future UI must
+display counts only and must not log or transmit those payloads.
+
+Every captured source remains `ownerId: null`. The hashes are snapshot
+markers, not proof of Supabase ownership; a later write must re-read and
+compare the original bytes. This function makes no Drive request and cannot
+discover Drive files. Drive enumeration needs a separately reviewed read-only
+API path because the existing folder helper creates folders.
+
 ## Verification and next gate
 
 Thirteen focused Node tests cover separate record IDs, legacy claim, two-user
@@ -59,6 +78,9 @@ Health Connect identity, v24 Food/Water extraction and damaged-source denial.
 Run `node tests/grapes-health-migration-preview.test.js` and
 `node tests/grapes-health-v24-inventory.test.js`.
 Local result on Node 24.19.0: 13 PASS, 0 FAIL.
+The Chromium regression `tests/grapes-health-v24-local-reader.browser.mjs`
+checks an absent IndexedDB remains absent, synthetic Food and Water capture,
+unchanged stored bytes, no external requests, and the E-book/Finance boundary.
 
 This is **not** end-to-end migration or fiókonkénti isolation of existing
 local data. The released v24 app does not call this module. The #94/#95 Health
