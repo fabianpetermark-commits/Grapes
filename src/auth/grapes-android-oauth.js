@@ -56,9 +56,12 @@ export function createAndroidTestOAuth({ bridge = globalThis.GrapesAndroid,
     async takeLaunchMode() { return call('takeTestAuthLaunchMode') },
     // Native side accepts this only from the exact isolated login page.
     // Do not await a WebView reply: navigation destroys the calling page.
-    enterApp() {
+    enterApp(user) {
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user?.id || '')) {
+        throw new Error('Érvénytelen TEST-fiókazonosító.')
+      }
       bridge.postMessage(JSON.stringify({
-        method: 'completeTestAuthLogin', requestId: crypto.randomUUID(), args: [],
+        method: 'completeTestAuthLogin', requestId: crypto.randomUUID(), args: [user.id],
       }))
     },
     async finishSignOut() { await call('finishTestAuthSignOut') },

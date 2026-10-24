@@ -119,9 +119,11 @@ test('QA navigation handoff obtains persisted logout decision without exposing O
   h.setResponse({ logout: true })
   assert.deepEqual(await h.adapter.takeLaunchMode(), { logout: true })
   assert.equal(h.calls.at(-1).method, 'takeTestAuthLaunchMode')
-  h.adapter.enterApp()
+  const userId = '123e4567-e89b-12d3-a456-426614174000'
+  assert.throws(() => h.adapter.enterApp({ id: 'not-a-user-id' }), /azonosító/)
+  h.adapter.enterApp({ id: userId })
   assert.equal(h.calls.at(-1).method, 'completeTestAuthLogin')
-  assert.deepEqual(h.calls.at(-1).args, [])
+  assert.deepEqual(h.calls.at(-1).args, [userId])
   await h.adapter.finishSignOut()
   assert.equal(h.calls.at(-1).method, 'finishTestAuthSignOut')
 })

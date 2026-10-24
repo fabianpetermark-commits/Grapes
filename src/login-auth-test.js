@@ -34,9 +34,9 @@ export async function activateGrapesAuthTest({
   const app = await startGrapesTestAuth({
     createClient: createClientFactory, root, url, publishableKey, location,
     sessionStorage: nativeOAuth ? nativeOAuth.storage : sessionStorage, nativeOAuth,
-    onAuthenticated: nativeOAuth ? () => {
+    onAuthenticated: nativeOAuth ? user => {
+      nativeOAuth.enterApp(user)
       navigatingToApp = true
-      nativeOAuth.enterApp()
     } : null,
     suppressAutoOpen: logoutRequested,
   })

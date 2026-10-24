@@ -24,9 +24,10 @@ test('QA no longer displays navigation strip and starts isolated Auth first', ()
 
 test('native QA app cannot be opened from an unverified browser navigation', () => {
   assert.match(native, /!testGate\.canDisplayApp\(\)/)
-  assert.match(native, /testGate\.allowApp\(isTrustedTestAuthPage\(\)\)/)
+  assert.match(native, /testGate\.allowApp\(isTrustedTestAuthPage\(\),/)
   assert.match(native, /"completeTestAuthLogin"/)
-  assert.match(gate, /if \(!enabled \|\| !fromTrustedAuthPage\) return false/)
+  assert.match(gate, /if \(!enabled \|\| !fromTrustedAuthPage \|\| !subjectPattern\.matches\(subject\)\) return false/)
+  assert.match(native, /testGate\.subject\(isTrustedTestAppPage\(\)\)/)
 })
 
 test('logout is QA-only, separate from Drive, pending across process restart and clears after signout', () => {
