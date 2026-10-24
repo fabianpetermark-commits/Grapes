@@ -163,7 +163,7 @@ try {
   const driveRequests = requests.slice(beforeDriveScanRequestCount).filter(item =>
     item.url.startsWith('https://www.googleapis.com/drive/v3/files?'))
   assert.ok(driveRequests.some(item =>
-    decodeURIComponent(item.url).includes("name = 'Grapes TEST'")))
+    new URL(item.url).searchParams.get('q')?.includes("name = 'Grapes TEST'")))
   assert.ok(driveRequests.every(item => item.method === 'GET' &&
     !item.url.includes('alt=media')))
   assert.equal(await page.evaluate(() => localStorage.getItem('grapes-water-v1')), before)
