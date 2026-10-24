@@ -379,4 +379,3 @@ create or replace function api.list_revisions(
 as $$ select grapes_private.list_revisions_internal($1,$2,$3,$4,$5) $$;
 revoke all on function api.list_revisions(text,text,text,bigint,integer) from public, anon;
 grant execute on function api.list_revisions(text,text,text,bigint,integer) to authenticated;
-
