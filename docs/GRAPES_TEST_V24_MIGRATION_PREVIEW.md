@@ -53,16 +53,16 @@ in the untouched source and is not part of the proposed Health records.
 
 ## Explicit local capture
 
-`captureV24LocalHealthSources()` is an isolated app-origin function, currently
-called by no application route. A future TEST preview button may invoke it
-after an explicit user action. It opens the existing `grapes-projects`
+`captureV24LocalHealthSources()` is an isolated app-origin function invoked
+only by the opt-in TEST settings button after an explicit user action. It opens
+the existing `grapes-projects`
 IndexedDB database in read-only mode, aborts the open if the database is absent
 so that a scan cannot create it, and reads `grapes-water-v1` once without
 writing. It filters to the actual `Ételnapló` module, ignoring Finance and
 E-book project rows. SHA-256 source versions are calculated from the captured
 JSON content (the raw bytes for Water). It returns full local payloads inside
-the app origin; a future UI must
-display counts only and must not log or transmit those payloads.
+the app origin; the settings UI displays counts only and does not log or
+transmit those payloads.
 
 Every captured source remains `ownerId: null`. The hashes are snapshot
 markers, not proof of Supabase ownership; a later write must re-read and
@@ -88,12 +88,14 @@ Drive connection and scopes are unchanged.
 
 ## Verification and next gate
 
-Thirteen focused Node tests cover separate record IDs, legacy claim, two-user
+Sixteen focused Node tests cover separate record IDs, legacy claim, two-user
 isolation, foreign target rejection, provenance conflict, E-book exclusion,
-Health Connect identity, v24 Food/Water extraction and damaged-source denial.
+Health Connect identity, v24 Food/Water extraction, damaged-source denial and
+redacted UI summaries.
 Run `node tests/grapes-health-migration-preview.test.js` and
-`node tests/grapes-health-v24-inventory.test.js`.
-Local result on Node 24.19.0: 13 PASS, 0 FAIL.
+`node tests/grapes-health-v24-inventory.test.js` and
+`node tests/grapes-health-v24-preview-summary.test.js`.
+Local result on Node 24.19.0: 16 PASS, 0 FAIL.
 The Chromium regression `tests/grapes-health-v24-local-reader.browser.mjs`
 checks an absent IndexedDB remains absent, synthetic Food and Water capture,
 unchanged stored bytes, no external requests, and the E-book/Finance boundary.
@@ -101,13 +103,12 @@ The settings browser regression checks the hidden web state, a synthetic QA
 native gate, explicit click, redacted counts and no external request.
 
 This is **not** end-to-end migration or fiókonkénti isolation of existing
-local data. The released v24 app does not call this module. The #94/#95 Health
+local data. The released v24 app predates this Draft PR. The #94/#95 Health
 durability and Drive conflict work remains open; the Phase 2 SQL remains
-unapplied. The latest #108 full browser run has 18 PASS / 6 FAIL files, with
-separately noted baseline failures. Do not enable Health sync, copy user data,
+unapplied. The #108 full browser baseline has six known failing files.
+Do not enable Health sync, copy user data,
 apply remote SQL, release an APK or claim migration complete from this PR.
 
-Next: build a read-only inventory adapter against the actual v24 local/Drive
-formats, show owner/profile/source counts and a verified backup, then add an
-explicit legacy claim flow. Only after #95 data-safety integration and hosted
+Next: add a read-only Drive enumerator, a verified backup and an explicit
+legacy claim flow. Only after #95 data-safety integration and hosted
 TEST RLS/CAS verification should an opt-in synthetic record be written.
