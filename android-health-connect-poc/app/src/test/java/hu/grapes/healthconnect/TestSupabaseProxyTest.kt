@@ -14,7 +14,7 @@ class TestSupabaseProxyTest {
     private val tokenA = "a".repeat(30) + "." + "b".repeat(30) + "." + "c".repeat(30)
     private val key = "sb_publishable_synthetic_ci_only_000000000000"
 
-    @Test fun disabledProxyRejectsCredentialsWithoutNetwork() = runBlocking {
+    @Test fun disabledProxyRejectsCredentialsWithoutNetwork(): Unit = runBlocking {
         val proxy = TestSupabaseProxy(false, key) { _, _, _, _ -> error("network called") }
         assertThrows(IllegalStateException::class.java) {
             runBlocking { proxy.authorize(a, tokenA) }
@@ -22,7 +22,7 @@ class TestSupabaseProxyTest {
         assertNull(proxy.currentSubject())
     }
 
-    @Test fun verifiedIdentityKeepsBearerNativeAndAllowsOnlyNamedRpc() = runBlocking {
+    @Test fun verifiedIdentityKeepsBearerNativeAndAllowsOnlyNamedRpc(): Unit = runBlocking {
         val paths = mutableListOf<String>()
         val proxy = TestSupabaseProxy(true, key) { path, bearer, body, suppliedKey ->
             assertEquals(tokenA, bearer)
@@ -58,7 +58,7 @@ class TestSupabaseProxyTest {
         }
     }
 
-    @Test fun foreignAndAnonymousAuthResponsesNeverUnlockProxy() = runBlocking {
+    @Test fun foreignAndAnonymousAuthResponsesNeverUnlockProxy(): Unit = runBlocking {
         for (response in listOf(200 to "{\"id\":\"$b\"}",
                 200 to "{\"id\":\"$a\",\"is_anonymous\":true}",
                 401 to "{}")) {
