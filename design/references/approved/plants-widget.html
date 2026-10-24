@@ -269,7 +269,7 @@
     else if (action === 'water') openModal('Öntözés naplózása', '<p>A későbbi működésben kiválaszthatod a saját növényt, és rögzítheted a tényleges öntözést.</p>');
     else if (action === 'journal') openModal('Gondozási napló', '<p>A gondozási események növényenként és időrendben jelennek majd meg.</p>');
   }));
-  $('#notification-button').addEventListener('click', () => toast('Bemutató: még nincsenek valódi növényértesítések.'));
+  // The obsolete standalone notification button was removed; all actions live on the shared icon rail.
 })();
 
 </script>
