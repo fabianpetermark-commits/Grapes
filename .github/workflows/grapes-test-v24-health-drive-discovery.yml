@@ -1,0 +1,140 @@
+name: Grapes TEST v24 Health Drive discovery (NO RELEASE)
+
+on:
+  pull_request:
+    branches:
+      - feature/grapes-test-v24-verified-health-backup-20261024
+    paths:
+      - .github/workflows/grapes-test-v24-health-drive-discovery.yml
+      - src/sync/**
+      - src/android-bridge.js
+      - src/android-mobile-shell.js
+      - design/android-mobile-preview.html
+      - docs/GRAPES_TEST_V24_DRIVE_DISCOVERY.md
+      - android-health-connect-poc/app/**
+      - src/auth/**
+      - src/login-auth-test.js
+      - login-auth-test.html
+      - tests/**
+      - package.json
+      - package-lock.json
+      - vite.config.js
+
+permissions:
+  contents: read
+
+jobs:
+  auth-and-regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Clean install
+        run: npm ci
+      - name: Full unit suite and Drive boundary
+        run: npm test
+      - name: Auth callback and session tests
+        run: node --test tests/grapes-android-oauth.test.js tests/grapes-auth-flow.test.js tests/grapes-login-controller.test.js tests/grapes-test-runtime.test.js tests/ebook-drive-boundary.test.js
+      - name: Web build with Auth OFF
+        run: npm run build
+      - name: Find Chromium
+        run: |
+          if command -v google-chrome >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            npx playwright-core install --with-deps chromium
+            browser=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path '*chrome-linux*' | head -1)
+            test -n "$browser"
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$browser" >> "$GITHUB_ENV"
+          fi
+      - name: Focused Auth, Food, Finance and E-book browser regressions
+        run: |
+          node tests/grapes-test-auth.browser.mjs
+          node tests/grapes-health-v24-settings-preview.browser.mjs
+          node tests/grapes-health-v24-local-reader.browser.mjs
+          node tests/android-ebook-reader.browser.mjs
+          node tests/android-ebook-shelf.browser.mjs
+          node tests/food-app.browser.mjs
+          node tests/finance-import.browser.mjs
+
+  full-browser-baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Find Chromium
+        run: |
+          if command -v google-chrome >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            npx playwright-core install --with-deps chromium
+            browser=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path '*chrome-linux*' | head -1)
+            test -n "$browser"
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$browser" >> "$GITHUB_ENV"
+          fi
+      - name: Complete local browser suite, report all failures
+        run: |
+          passed=0
+          failed=0
+          for file in tests/*.browser.mjs; do
+            if [ "$file" = tests/food-live-api.browser.mjs ]; then
+              echo "NOT TESTED (external service): $file"
+              continue
+            fi
+            echo "Running $file"
+            if [[ "$file" == tests/android-* ]]; then
+              VITE_GRAPES_TEST_CHANNEL=1 node "$file" && passed=$((passed + 1)) || { failed=$((failed + 1)); echo "FAIL $file"; }
+            else
+              node "$file" && passed=$((passed + 1)) || { failed=$((failed + 1)); echo "FAIL $file"; }
+            fi
+          done
+          echo "Browser files: $passed PASS / $failed FAIL"
+          test "$failed" -eq 0
+
+  android-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GRAPES_TEST_AUTH_ENABLED: 'true'
+      VITE_GRAPES_TEST_SUPABASE_URL: https://aighqtqjlzirlokxwupt.supabase.co
+      VITE_GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY: sb_publishable_synthetic_ci_only_000000000000
+      VITE_GRAPES_TEST_HEALTH_SYNC_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Build isolated TEST Auth assets with fake public key
+        run: npm run build:android-web
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK 36
+        run: |
+          sdkmanager=$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | sort -V | tail -1)
+          test -n "$sdkmanager"
+          "$sdkmanager" "platforms;android-36" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.11.1
+      - name: Native callback unit tests and QA compile, no artifact upload
+        run: |
+          gradle --project-dir android-health-connect-poc :app:testQaUnitTest :app:assembleQa
+          test -s android-health-connect-poc/app/build/outputs/apk/qa/app-qa.apk
