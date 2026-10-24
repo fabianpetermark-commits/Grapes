@@ -43,7 +43,7 @@ export function validateHomeState(state) {
     if (!item.id || item.householdId !== state.householdId || !item.name || !['planned', 'checked', 'deferred'].includes(item.status) || !item.updatedAt || (item.quantityBase == null && item.displayUnit != null) || (item.quantityBase != null && (!Number.isSafeInteger(item.quantityBase) || item.quantityBase < 0 || !UNITS[item.displayUnit] || item.dimension !== UNITS[item.displayUnit][0]))) fail('Sérült bevásárlólista-tétel.')
   }
   for (const lot of state.prepared) {
-    if (!lot.id || lot.householdId !== state.householdId || !lot.name || !lot.cookingEventId || !LOCATIONS.includes(lot.storageLocation) || !Number.isSafeInteger(lot.portionsRemaining) || lot.portionsRemaining <= 0 || !lot.confirmedAt || (lot.recipeRef != null && typeof lot.recipeRef !== 'string')) fail('Sérült készétel-tétel.')
+    if (!lot.id || lot.householdId !== state.householdId || !lot.name || !lot.cookingEventId || !LOCATIONS.includes(lot.storageLocation) || !Number.isSafeInteger(lot.portionsRemaining) || lot.portionsRemaining < 0 || !lot.confirmedAt || (lot.portionUnit && !['serving', 'slice', 'piece'].includes(lot.portionUnit)) || (lot.recipeRef != null && typeof lot.recipeRef !== 'string')) fail('Sérült készétel-tétel.')
   }
   state.events.forEach((event, index) => {
     if (!event.eventId || event.householdId !== state.householdId || !event.type || !event.timestamp || event.confirmation !== true || event.resultingRevision !== index + 1 || !Array.isArray(event.changes)) fail('Sérült Home eseménynapló.')
@@ -136,7 +136,17 @@ export function applyHomeCommand(current, command) {
     }
     const id = payload.preparedLotId || uuid()
     if (record(state, 'prepared', id)) fail('A készétel-tétel már létezik.')
-    changes.push(change('prepared', null, { id, householdId: state.householdId, name: cleanName(payload.name), cookingEventId: eventId, recipeRef: payload.recipeRef == null ? null : cleanName(payload.recipeRef), portionsRemaining: portions, storageLocation: payload.storageLocation, confirmedAt: stamp, updatedAt: stamp }))
+    if (payload.portionUnit != null && !['serving', 'slice', 'piece'].includes(payload.portionUnit)) fail('Ismeretlen készétel-egység.')
+    changes.push(change('prepared', null, { id, householdId: state.householdId, name: cleanName(payload.name), cookingEventId: eventId, recipeRef: payload.recipeRef == null ? null : cleanName(payload.recipeRef), portionsRemaining: portions, portionUnit: payload.portionUnit || 'serving', storageLocation: payload.storageLocation, confirmedAt: stamp, updatedAt: stamp }))
+  } else if (type === 'PreparedConsumptionLinked') {
+    const prepared = record(state, 'prepared', payload.preparedLotId)
+    if (!prepared) fail('A készétel-tétel nem található.')
+    if (!prepared.recipeRef || prepared.recipeRef !== payload.recipeRef || (prepared.portionUnit || 'serving') !== payload.unit) fail('A Food-bejegyzés és a készétel nem ugyanahhoz a recepthez és egységhez tartozik.')
+    if (typeof payload.profileId !== 'string' || !payload.profileId.trim() || typeof payload.foodEntryId !== 'string' || !payload.foodEntryId.trim()) fail('Hiányzó Food-profil vagy naplóazonosító.')
+    if (command.sourceType !== 'food-diary' || command.sourceId !== `${payload.profileId}:${payload.foodEntryId}`) fail('A Food-bejegyzés tartós forrásazonosítója hiányzik.')
+    const portions = Number(payload.portions)
+    if (!Number.isSafeInteger(portions) || portions <= 0 || portions > prepared.portionsRemaining) fail('Az összekapcsolt adag meghaladja a készétel ismert mennyiségét.')
+    changes = [change('prepared', prepared, { ...prepared, portionsRemaining: prepared.portionsRemaining - portions, updatedAt: stamp, lastConfirmationEventId: eventId })]
   } else if (type === 'ShoppingItemAdded') {
     const id = payload.id || uuid()
     if (record(state, 'shopping', id)) fail('A listaelem már létezik.')

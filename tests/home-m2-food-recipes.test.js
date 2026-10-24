@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createEmptyFoodProject } from '../src/food/food-data.js'
 import { createHomeState, applyHomeCommand } from '../src/home/home-data.js'
-import { readLocalFoodRecipes, reviewRecipeAgainstInventory } from '../src/home/home-food-recipes.js'
+import { readLocalFoodDiary, readLocalFoodRecipes, reviewRecipeAgainstInventory } from '../src/home/home-food-recipes.js'
 
 const profile = { id: 'local-food-profile', name: 'Helyi profil', email: '', photo: '' }
 function savedFoodProject() {
@@ -48,4 +48,20 @@ test('H-18/H-19: recept megtekintése és névegyezés nem mozgat készletet és
   assert.equal(JSON.stringify(home), before)
   assert.equal(home.events.length, 1)
   assert.equal(reviewRecipeAgainstInventory(recipes[0], []).ingredients[0].possibleNameMatch, false)
+})
+
+test('H-17 Food napló olvasása: csak mentett, saját, egész adagú receptbejegyzés kapcsolható', async () => {
+  const saved = savedFoodProject()
+  const entry = (id, profileId, unit, amount, recipeId = 'recipe-1') => ({
+    id, profileId, unit, amount, mealType: 'lunch', occurredAt: '2026-10-19T12:00:00.000Z',
+    snapshot: { foodId: 'prepared-chicken', name: 'Csirkés étel', category: 'Ebéd', source: { type: 'recipe', id: recipeId }, baseAmount: 100, baseUnit: 'g', nutrients: { energyKcal: 100 } },
+  })
+  saved.data.diaryEntries = [entry('valid', profile.id, 'serving', 1), entry('wrong-profile', 'another', 'serving', 1), entry('fraction', profile.id, 'serving', 0.5), entry('grams', profile.id, 'g', 100), entry('unknown-recipe', profile.id, 'serving', 1, 'other')]
+  const original = JSON.stringify(saved)
+  const result = await readLocalFoodDiary(profile.id, async () => saved)
+  assert.deepEqual(result.map(item => item.id), ['valid'])
+  assert.equal(result[0].recipeRef, 'recipe-1')
+  assert.equal(result[0].portions, 1)
+  assert.equal(JSON.stringify(saved), original)
+  await assert.rejects(readLocalFoodDiary('other-profile', async () => saved), /másik Google-fiókhoz/)
 })

@@ -29,6 +29,20 @@ export async function readLocalFoodRecipes(profileId, loadProject = loadLocalPro
   return { status: 'ready', recipes, savedAt: saved.updatedAt || null }
 }
 
+// Read only already persisted personal diary entries. Linking one to a Home
+// prepared lot is a separate, explicitly confirmed Home event.
+export async function readLocalFoodDiary(profileId, loadProject = loadLocalProject) {
+  const id = normalizedName(profileId)
+  if (!id) throw new Error('A Food-profil nem azonosítható.')
+  const saved = await loadProject(`food-tracker-${id}`)
+  if (!saved?.data) return []
+  const project = normalizeFoodProject(saved.data, id)
+  const ownRecipes = new Set(project.recipes.filter(recipe => recipe.ownerProfileId === id).map(recipe => recipe.id))
+  return project.diaryEntries.filter(entry => entry.profileId === id && entry.snapshot?.source?.type === 'recipe' && ownRecipes.has(entry.snapshot.source.id) && ['serving', 'slice', 'piece'].includes(entry.unit) && Number.isSafeInteger(entry.amount) && entry.amount > 0)
+    .map(entry => ({ id: entry.id, profileId: id, recipeRef: entry.snapshot.source.id, recipeName: entry.snapshot.name, portions: entry.amount, unit: entry.unit, occurredAt: entry.occurredAt }))
+    .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
+}
+
 // A name match is merely a candidate. M1 lots do not carry a verified Food
 // ingredient mapping, so this function must never assert that a recipe is ready.
 export function reviewRecipeAgainstInventory(recipe, inventory) {

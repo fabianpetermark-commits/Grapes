@@ -75,3 +75,23 @@ test('M1 mentés megőrzése: v1 eseménynapló v2-ként olvasható, első írá
   assert.equal(storage.getItem('grapes-home-household-v1-previous'), oldRaw)
   assert.equal(validateHomeState(JSON.parse(storage.getItem(HOME_KEY))).schemaVersion, 2)
 })
+
+test('H-17: egy saját Food-adag csak megerősített kapcsolattal csökkenti a készételt, a nyers készletet nem', () => {
+  const cooked = cook(dividedStock()).state
+  const beforeRaw = structuredClone(cooked.inventory)
+  const source = { sourceType: 'food-diary', sourceId: 'profile-1:entry-1' }
+  const payload = { preparedLotId: cooked.prepared[0].id, profileId: 'profile-1', foodEntryId: 'entry-1', recipeRef: 'recipe-1', portions: 1, unit: 'serving' }
+  const first = applyHomeCommand(cooked, { type: 'PreparedConsumptionLinked', eventId: 'link-1', payload, ...source })
+  assert.equal(first.state.prepared[0].portionsRemaining, 3)
+  assert.deepEqual(first.state.inventory, beforeRaw)
+  assert.equal(applyHomeCommand(first.state, { type: 'PreparedConsumptionLinked', eventId: 'link-2', payload, ...source }).duplicate, true)
+  assert.throws(() => applyHomeCommand(cooked, { type: 'PreparedConsumptionLinked', eventId: 'bad', payload: { ...payload, portions: 5 }, ...source }))
+  assert.throws(() => applyHomeCommand(cooked, { type: 'PreparedConsumptionLinked', eventId: 'wrong-recipe', payload: { ...payload, recipeRef: 'other' }, ...source }))
+  assert.throws(() => applyHomeCommand(cooked, { type: 'PreparedConsumptionLinked', eventId: 'wrong-unit', payload: { ...payload, unit: 'piece' }, ...source }))
+  assert.throws(() => applyHomeCommand(cooked, { type: 'PreparedConsumptionLinked', eventId: 'missing-source', payload }))
+  const reversed = run(first.state, 'Reversed', { eventId: first.event.eventId }, 'undo-link')
+  assert.equal(reversed.state.prepared[0].portionsRemaining, 4)
+  assert.deepEqual(reversed.state.inventory, beforeRaw)
+  const relinked = applyHomeCommand(reversed.state, { type: 'PreparedConsumptionLinked', eventId: 'link-again', payload, ...source })
+  assert.equal(relinked.duplicate, true, 'A forrásazonosító visszavonás után is tartósan foglalt.')
+})

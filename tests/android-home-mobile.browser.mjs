@@ -69,6 +69,7 @@ try {
         version: 2, profile: { id: 'local-food-profile', name: 'Helyi profil', email: '', photo: '' },
         customFoods: [{ id: 'm2-chicken', name: 'Csirkemell', baseUnit: 'g' }],
         recipes: [{ id: 'm2-recipe', foodId: 'm2-prepared', ownerProfileId: 'local-food-profile', name: 'Csirkés étel', category: 'Ebéd', ingredients: [{ id: 'm2-ingredient', foodId: 'm2-chicken', amount: 500, unit: 'g' }], yieldCount: 4, yieldUnit: 'serving', revision: 1, createdAt: '2026-10-19T10:00:00.000Z', updatedAt: '2026-10-19T10:00:00.000Z' }],
+        diaryEntries: [{ id: 'm2-entry', profileId: 'local-food-profile', mealType: 'lunch', occurredAt: '2026-10-19T12:00:00.000Z', amount: 1, unit: 'serving', snapshot: { foodId: 'm2-prepared', name: 'Csirkés étel', category: 'Ebéd', source: { type: 'recipe', id: 'm2-recipe' }, baseAmount: 100, baseUnit: 'g', nutrients: { energyKcal: 100 } } }],
       },
     }
     await new Promise((resolveWrite, reject) => {
@@ -162,7 +163,26 @@ try {
   const afterUndoCooking = JSON.parse(await page.evaluate(() => localStorage.getItem('grapes-home-household-v1')))
   assert.equal(afterUndoCooking.prepared.length, 0)
   assert.equal(afterUndoCooking.inventory.reduce((sum, lot) => sum + lot.quantityBase, 0), 1000)
+  await page.locator('[data-household-cook-recipe="m2-recipe"]').click()
+  await page.locator('[data-household-cooking] [name="unit"]').selectOption('g')
+  await page.locator('[data-household-cooking] [name="quantity"]').fill('300')
+  await page.locator('[data-household-cooking] button[type="submit"]').click()
+  await page.locator('[data-household-tab="inventory"]').click()
+  await page.locator('[data-household-link-prepared]').click()
+  await page.locator('[data-household-link] [name="foodEntryId"]').waitFor({ state: 'visible' })
+  assert.match(await page.locator('[data-household-link-preview]').textContent(), /4 → 3 adag/)
+  const beforeLink = JSON.parse(await page.evaluate(() => localStorage.getItem('grapes-home-household-v1')))
+  assert.equal(beforeLink.prepared[0].portionsRemaining, 4)
+  await page.locator('[data-household-link] button[type="submit"]').click()
+  const afterLink = JSON.parse(await page.evaluate(() => localStorage.getItem('grapes-home-household-v1')))
+  assert.equal(afterLink.prepared[0].portionsRemaining, 3)
+  assert.deepEqual(afterLink.inventory, beforeLink.inventory, 'A Food-napló hozzárendelése nem vonhat nyers készletet.')
+  await page.locator('[data-household-undo]').click()
+  const afterUndoLink = JSON.parse(await page.evaluate(() => localStorage.getItem('grapes-home-household-v1')))
+  assert.equal(afterUndoLink.prepared[0].portionsRemaining, 4)
+  assert.deepEqual(afterUndoLink.inventory, beforeLink.inventory)
   const homeAfterUndo = await page.evaluate(() => localStorage.getItem('grapes-home-household-v1'))
+  await page.locator('[data-household-tab="recipes"]').click()
   await page.locator('[data-household-open-recipe="m2-recipe"]').click()
   await page.locator('[data-food-recipe-detail]').waitFor({ state: 'visible' })
   assert.equal(await page.locator('[data-food-recipe-title]').textContent(), 'Csirkés étel')
@@ -170,6 +190,7 @@ try {
   console.log('Home TEST browser flow: készlet, 600/400, lista, mentés, undo, visszalépés, 320–412 px rendben.')
   console.log('Home M2 Food bridge: helyi recept, ellenőrizendő készlet és írás nélküli Food-megnyitás rendben.')
   console.log('Home M2 főzés: előnézet, megerősített nyers levonás, készétel és visszavonás rendben.')
+  console.log('Home M2 H-17: mentett Food-bejegyzés explicit kapcsolása, 4→3 adag és visszavonás rendben; nyers készlet változatlan.')
 } finally {
   await browser?.close()
   server.kill()

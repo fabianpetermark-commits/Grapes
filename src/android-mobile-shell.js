@@ -14,7 +14,7 @@ import { createYazioApiPanel } from './food/yazio-api-panel.js'
 import { registerFoodSharing, sendMealShare, sendRecipeShare } from './food/food-sharing-client.js'
 import { hydrateMobileIcons, mobileIconSvg } from './android-mobile-icons.js'
 import { createHomeMobile } from './home/home-mobile.js'
-import { readLocalFoodRecipes } from './home/home-food-recipes.js'
+import { readLocalFoodDiary, readLocalFoodRecipes } from './home/home-food-recipes.js'
 import { getAndroidAppUpdate, installAndroidAppUpdate, isGrapesAndroidApp, openAndroidHealthConnectSettings } from './android-bridge.js'
 import {
   isMobileShareableBook,
@@ -58,6 +58,7 @@ let mobileFood = null
 let pendingHomeRecipeId = ''
 const household = createHomeMobile($('[data-household-root]'), undefined, {
   loadRecipes: () => readLocalFoodRecipes(getGrapesAccount()?.id || getGrapesAccount()?.email || 'local-food-profile'),
+  loadFoodDiary: () => readLocalFoodDiary(getGrapesAccount()?.id || getGrapesAccount()?.email || 'local-food-profile'),
   openRecipe: id => { pendingHomeRecipeId = id; showPage('food') },
 })
 let activePage = 'home'
