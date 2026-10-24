@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   readWaterStoreStrict,waterBackupToJson,waterBackupFromJson,waterBackupSummary,verifyWaterPreserved,
+  writeWaterStoreVerified,restoreWaterBackupVerified,
 } from '../src/water/water-backup.js'
 
 function memoryStore(initial) {
@@ -41,4 +42,32 @@ test('Water save and restore supports a byte-for-byte round trip through a local
   const restored=waterBackupFromJson(backup)
   store.setItem('grapes-water-v1',JSON.stringify(restored))
   assert.deepEqual(readWaterStoreStrict(store),waterHistory)
+})
+
+test('damaged Water bytes and stale edits cannot be silently overwritten',()=>{
+  const store=memoryStore(waterHistory)
+  const before=store.getItem('grapes-water-v1')
+  store.setItem('grapes-water-v1','{damaged')
+  assert.throws(()=>writeWaterStoreVerified(store,{},before),/nem érvényes JSON/)
+  assert.equal(store.getItem('grapes-water-v1'),'{damaged')
+  store.setItem('grapes-water-v1',before)
+  assert.throws(()=>writeWaterStoreVerified(store,{},'{stale'),/időközben megváltozott/)
+  assert.equal(store.getItem('grapes-water-v1'),before)
+  store.setItem('grapes-water-v1','')
+  assert.throws(()=>writeWaterStoreVerified(store,{},''),/üres/)
+  assert.equal(store.getItem('grapes-water-v1'),'')
+})
+
+test('interrupted Water writes do not report success and restore checkpoints never overwrite',()=>{
+  const store=memoryStore(waterHistory)
+  const before=store.getItem('grapes-water-v1')
+  const failed={...store,setItem(key,value){if(key==='grapes-water-v1')throw new Error('QuotaExceededError');store.setItem(key,value)}}
+  assert.throws(()=>writeWaterStoreVerified(failed,{},before),/QuotaExceededError/)
+  assert.equal(store.getItem('grapes-water-v1'),before)
+  store.setItem('grapes-water-v1','{damaged')
+  const key=restoreWaterBackupVerified(store,waterHistory,'synthetic-1')
+  assert.equal(store.getItem(key),'{damaged')
+  assert.deepEqual(readWaterStoreStrict(store),waterHistory)
+  assert.throws(()=>restoreWaterBackupVerified(store,{},'synthetic-1'),/már létezik/)
+  assert.equal(store.getItem(key),'{damaged')
 })

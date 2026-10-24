@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import vm from 'node:vm'
 import { firstProductBarcode } from '../src/food/food-barcode.js'
+import { writeWaterStoreVerified } from '../src/water/water-backup.js'
 
 const mobile = readFileSync(new URL('../src/food/food-mobile.js', import.meta.url), 'utf8')
 const shell = readFileSync(new URL('../src/android-mobile-shell.js', import.meta.url), 'utf8')
@@ -29,19 +29,18 @@ test('a fotó és az élő olvasó csak az első érvényes kódot választja', 
 })
 
 test('a víznapló mentése a 60 napnál régebbi Health előzményeket sem törli', () => {
-  const match = shell.match(/function saveWaterStore\(store\) \{[\s\S]*?\n\}/)
-  assert.ok(match, 'Hiányzik a tényleges víznapló-mentő függvény')
+  assert.match(shell, /writeWaterStoreVerified\(localStorage, store, expectedRaw\)/)
   const store = {
-    '2025-02-18': { goal: 2000, entries: [{ id: 'historical', amount: 250, externalKey: 'healthconnect:old' }] },
-    '2026-10-17': { goal: 2000, entries: [{ id: 'new', amount: 500 }] },
+    '2025-02-18': { goal: 2000, entries: [{ id: 'historical', amount: 250, at: '2025-02-18T08:00:00.000Z', externalKey: 'healthconnect:old' }] },
+    '2026-10-17': { goal: 2000, entries: [{ id: 'new', amount: 500, at: '2026-10-17T08:00:00.000Z' }] },
   }
-  let saved = null
-  const sandbox = {
-    store,
-    WATER_STORE_KEY: 'water-test',
-    localStorage: { setItem(key, value) { assert.equal(key, 'water-test'); saved = JSON.parse(value) } },
+  const values = new Map()
+  const storage = {
+    getItem: key => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value),
   }
-  vm.runInNewContext(match[0] + '\nsaveWaterStore(store)', sandbox)
+  writeWaterStoreVerified(storage, store, null)
+  const saved = JSON.parse(values.get('grapes-water-v1'))
   assert.equal(saved['2025-02-18'].entries[0].externalKey, 'healthconnect:old')
   assert.equal(saved['2026-10-17'].entries[0].amount, 500)
   assert.equal(Object.keys(store).length, 2, 'Az eredeti tárolót sem módosíthatja a mentés')
