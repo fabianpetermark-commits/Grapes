@@ -4,6 +4,8 @@
 
 Start with [the interactive reference gallery](./index.html). **Never pick a design from `history/` as a current implementation target.**
 
+> **2026-10-24 pontos méret- és tisztasági követelmény:** [Brand Guide v1.2, 0.A.1–0.A.4](../../docs/GRAPES_BRAND_GUIDE.md) – 6 oszlop, 22/20px glyph, 23px külső radius, 22–24px egyszeri cím az ikonsor alatt, ikonfelirat és dekoratív alcím nélkül, egységes in-rail beállítások. **Külön látható Back/Home gomb tilos** minden modulban. A Home *főmodul* és a Kezdő *főfül* marad; az Android natív Back gesztus működése marad. Az E-book és QR történetileg külön Back-fülét valódi modulművelet váltotta fel. A részletes címsor- és funkcióparitást TEST-app ellenőrzéskor is igazolni kell.
+
 ## Visual navigation update – v1.2 (2026-10-24)
 
 All **current** menu and module HTML files (three `approved/` examples, six `candidates/` examples) now contain the user-requested navigation geometry, **not just prose in this document**: a single six-slot rounded dark capsule; 22px / 20px line icons, no visible icon captions, always accessible `aria-label` and `title`, integrated sixth-slot cog and clearly framed active state. The full Finance internal module removes the second module heading, duplicate eyebrow labels and status dot. The global main shell still retains its user-visible `Grapes` branding as appropriate. Contextual lower quick-action docks continue to exist.
