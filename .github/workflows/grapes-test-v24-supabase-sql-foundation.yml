@@ -1,0 +1,84 @@
+name: Grapes TEST v24 Supabase SQL foundation (NO RELEASE)
+
+on:
+  pull_request:
+    branches:
+      - feature/grapes-test-v24-drive-health-discovery-20261024
+    paths:
+      - .github/workflows/grapes-test-v24-supabase-sql-foundation.yml
+      - poc/supabase-phase2/**
+      - src/auth/**
+      - src/login-auth-test.js
+      - src/login-preview.js
+      - login-auth-test.html
+      - login-preview.html
+      - tests/**
+      - package.json
+      - package-lock.json
+      - vite.config.js
+
+permissions:
+  contents: read
+
+jobs:
+  local-supabase-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.81.3
+      - name: Confirm CLI commands and runner identity
+        run: |
+          supabase --version
+          supabase init --help >/dev/null
+          supabase start --help >/dev/null
+          supabase migration new --help >/dev/null
+          supabase db advisors --help >/dev/null
+          supabase status --help >/dev/null
+          echo "Tested commit: $GITHUB_SHA"
+      - name: Prepare isolated local Supabase stack
+        env:
+          GRAPES_SUPABASE_LOCAL_DIR: ${{ runner.temp }}/grapes-supabase-${{ github.run_id }}
+        run: |
+          mkdir -p "$GRAPES_SUPABASE_LOCAL_DIR"
+          cd "$GRAPES_SUPABASE_LOCAL_DIR"
+          supabase init
+          node "$GITHUB_WORKSPACE/poc/supabase-phase2/ci/prepare-config.mjs"
+          supabase migration new grapes_ci_api_bootstrap
+          migration=$(find supabase/migrations -name '*_grapes_ci_api_bootstrap.sql' -print -quit)
+          test -n "$migration"
+          printf 'create schema if not exists api;\n' > "$migration"
+          supabase start
+          if ! command -v psql >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y postgresql-client
+          fi
+      - name: Verify SQL, local Auth, RLS boundaries and independent CAS sessions
+        env:
+          GRAPES_SUPABASE_LOCAL_DIR: ${{ runner.temp }}/grapes-supabase-${{ github.run_id }}
+        run: node poc/supabase-phase2/ci/verify-local.mjs
+      - name: Inspect local database security advisors
+        env:
+          GRAPES_SUPABASE_LOCAL_DIR: ${{ runner.temp }}/grapes-supabase-${{ github.run_id }}
+        run: |
+          cd "$GRAPES_SUPABASE_LOCAL_DIR"
+          supabase db advisors --local
+
+  web-regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: node --test tests/ebook-drive-boundary.test.js
+      - run: npm run build
