@@ -1026,6 +1026,10 @@ $('[data-account-login]').addEventListener('click', openAccountLogin)
 // This is a different account from the Google Drive/E-book connection above.
 // Only the QA native host reveals the setting after confirming TEST Auth is ON.
 const grapesTestLogout = $('[data-grapes-test-logout]')
+const migrationPreviewButton = $('[data-grapes-test-migration-scan]')
+const migrationPreviewFlag =
+  import.meta.env?.VITE_GRAPES_TEST_CHANNEL === '1' &&
+  import.meta.env?.VITE_GRAPES_TEST_MIGRATION_PREVIEW_ENABLED === 'true'
 if (grapesTestLogout) {
   grapesTestLogout.addEventListener('click', () => {
     grapesTestLogout.disabled = true
@@ -1046,9 +1050,49 @@ if (grapesTestLogout) {
         if (icon) icon.innerHTML = mobileIconSvg('exit')
       }
       grapesTestLogout.hidden = !enabled
-    }).catch(() => { grapesTestLogout.hidden = true })
+      if (migrationPreviewButton) migrationPreviewButton.hidden = !(enabled && migrationPreviewFlag)
+    }).catch(() => {
+      grapesTestLogout.hidden = true
+      if (migrationPreviewButton) migrationPreviewButton.hidden = true
+    })
   }
-}
+} 
+if (migrationPreviewButton) migrationPreviewButton.addEventListener('click', async () => {
+  if (!migrationPreviewFlag || !isGrapesAndroidApp()) return
+  const panel = $('[data-grapes-test-migration-results]')
+  const status = $('[data-grapes-test-migration-status]')
+  const list = $('[data-grapes-test-migration-list]')
+  migrationPreviewButton.disabled = true
+  panel.hidden = false
+  status.textContent = 'Helyi adatok ellenőrzése…'
+  list.replaceChildren()
+  try {
+    if (!(await getAndroidTestAuthEnabled())) throw new Error('TEST Auth is unavailable')
+    const [{ captureV24LocalHealthSources }, { summarizeV24HealthInventory }] = await Promise.all([
+      import('./sync/grapes-health-v24-local-reader.js'),
+      import('./sync/grapes-health-v24-preview-summary.js')
+    ])
+    const summary = summarizeV24HealthInventory(await captureV24LocalHealthSources())
+    status.textContent = summary.sources
+      ? 'Csak előnézet. Az adatok a készüléken maradtak; fiókhoz rendelés szükséges.'
+      : 'Nem található helyi Food vagy Víz forrás. Adatátvitel nem történt.'
+    const lines = [
+      `${summary.sources} helyi forrás · ${summary.records} rekord`,
+      ...summary.counts.map(item => `${item.label}: ${item.count}`),
+      ...summary.blockers.map(item => `Még nem vihető át – ${item.label}: ${item.count}`)
+    ]
+    list.replaceChildren(...lines.map(line => {
+      const row = document.createElement('li')
+      row.textContent = line
+      return row
+    }))
+  } catch {
+    status.textContent = 'Az előnézet nem készíthető el. Az eredeti adatok változatlanok.'
+    list.replaceChildren()
+  } finally {
+    migrationPreviewButton.disabled = false
+  }
+})
 $('[data-notifications]').addEventListener('click', openUpdateInbox)
 $('[data-food-share-open]').addEventListener('click', async () => {
   closeSheet()

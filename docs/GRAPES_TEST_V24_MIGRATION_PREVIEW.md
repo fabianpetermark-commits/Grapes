@@ -1,0 +1,114 @@
+# Grapes TEST v24: owner-scoped Health migration preview
+
+Baseline: released `android-test-v24`, commit
+`f14127b72267db1c77c1751bded5027352837202`. This is a focused
+forward-port of the read-only preview idea from draft #102, with an explicit
+Supabase owner boundary. It does not import #102's SQL, outbox or application
+integration. `AGENTS.md` and `docs/GRAPES_PROJECT_CONTEXT.md` are absent
+from the v24 repository tree.
+
+## Contract
+
+- The caller must obtain `verifiedOwnerId` from a fresh Supabase `getUser()`
+  result. A locally cached user ID is insufficient. This pure function cannot
+  authenticate its caller.
+- Every inventoried source and target head must belong to that exact user.
+  Foreign sources are blocked and foreign target inventories fail closed.
+- Legacy sources without an owner produce `claimsRequired` and no import
+  entries. A future explicit claim flow must show a backup and preview before
+  binding any old data. This proposal never claims them automatically.
+- Identity is `profileId/kind/recordId`. Only exact repeats from the same
+  source, version and provider are duplicates. Equal-looking records with
+  different provenance are conflicts.
+- Existing target heads, malformed records and E-book kinds stop import.
+  YAZIO and Health Connect payload fields are carried through without
+  synthesis. E-book remains on Google Drive.
+- The function has no storage, network, Drive or Supabase write path. Its
+  `canImport` result is an advisory preview, never permission to write.
+
+## v24 source inventory
+
+`grapes-health-v24-inventory.js` accepts caller-supplied copies of the actual
+v24 IndexedDB Food project envelope, Drive Food project envelope or raw
+`grapes-water-v1` JSON. It performs no reads or writes. In particular it
+does not call `listGrapesProjects()`, which creates Drive folders while
+locating the module folder and is unsuitable for a read-only migration scan.
+The v24 Food envelope's actual module value is `Ételnapló`; other modules,
+including E-book, are rejected.
+
+Food diary, custom food, recipe, ingredient, nutrient goal and YAZIO batch
+identifiers remain distinct; imported YAZIO provenance stays in the raw
+payload. The Water adapter retains Health Connect external keys and timestamps.
+Both adapters return `ownerId: null`, because existing Drive/local profile
+IDs do not establish ownership by the newly signed-in Supabase user.
+The caller must supply a stable snapshot version and must recheck source bytes
+before any eventual write.
+
+The adapter reports data without a reviewed target mapping as `unmapped`
+and `complete: false`. This includes Water daily goals, nonempty Food profile
+metadata, recipe libraries and other Food settings. The migration UI must
+display these items and block transfer until each has an approved mapping or
+an explicit retain-local decision. Current provider sync metadata is retained
+in the untouched source and is not part of the proposed Health records.
+
+## Explicit local capture
+
+`captureV24LocalHealthSources()` is an isolated app-origin function invoked
+only by the opt-in TEST settings button after an explicit user action. It opens
+the existing `grapes-projects`
+IndexedDB database in read-only mode, aborts the open if the database is absent
+so that a scan cannot create it, and reads `grapes-water-v1` once without
+writing. It filters to the actual `Ételnapló` module, ignoring Finance and
+E-book project rows. SHA-256 source versions are calculated from the captured
+JSON content (the raw bytes for Water). It returns full local payloads inside
+the app origin; the settings UI displays counts only and does not log or
+transmit those payloads.
+
+Every captured source remains `ownerId: null`. The hashes are snapshot
+markers, not proof of Supabase ownership; a later write must re-read and
+compare the original bytes. This function makes no Drive request and cannot
+discover Drive files. Drive enumeration needs a separately reviewed read-only
+API path because the existing folder helper creates folders.
+
+## TEST-only settings preview
+
+The TEST settings page contains an `Helyi adatok áttekintése` action hidden
+by default. It is exposed only when all three are true: TEST channel build,
+`VITE_GRAPES_TEST_MIGRATION_PREVIEW_ENABLED=true`, and the QA Android host
+reports TEST Auth enabled. The button rechecks that native gate on click,
+then dynamically imports the reader. Ordinary app startup performs no new
+Health scan. The UI shows counts and known blockers only, with no source IDs,
+record IDs, YAZIO payloads or profile details. It never labels the data as
+transferred or owned by the Supabase account.
+
+The setting is an inspection aid, not an account-claim or import control.
+It remains OFF in `.env.example` and all existing release workflows.
+Even in an opted-in QA build, the native Auth gate is required; the E-book
+Drive connection and scopes are unchanged.
+
+## Verification and next gate
+
+Sixteen focused Node tests cover separate record IDs, legacy claim, two-user
+isolation, foreign target rejection, provenance conflict, E-book exclusion,
+Health Connect identity, v24 Food/Water extraction, damaged-source denial and
+redacted UI summaries.
+Run `node tests/grapes-health-migration-preview.test.js` and
+`node tests/grapes-health-v24-inventory.test.js` and
+`node tests/grapes-health-v24-preview-summary.test.js`.
+Local result on Node 24.19.0: 16 PASS, 0 FAIL.
+The Chromium regression `tests/grapes-health-v24-local-reader.browser.mjs`
+checks an absent IndexedDB remains absent, synthetic Food and Water capture,
+unchanged stored bytes, no external requests, and the E-book/Finance boundary.
+The settings browser regression checks the hidden web state, a synthetic QA
+native gate, explicit click, redacted counts and no external request.
+
+This is **not** end-to-end migration or fiókonkénti isolation of existing
+local data. The released v24 app predates this Draft PR. The #94/#95 Health
+durability and Drive conflict work remains open; the Phase 2 SQL remains
+unapplied. The #108 full browser baseline has six known failing files.
+Do not enable Health sync, copy user data,
+apply remote SQL, release an APK or claim migration complete from this PR.
+
+Next: add a read-only Drive enumerator, a verified backup and an explicit
+legacy claim flow. Only after #95 data-safety integration and hosted
+TEST RLS/CAS verification should an opt-in synthetic record be written.
