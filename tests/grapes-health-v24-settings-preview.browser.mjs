@@ -35,6 +35,7 @@ try {
   await denied.addInitScript(() => localStorage.setItem('grapes-local-mode', '1'))
   const deniedPage = await denied.newPage()
   await deniedPage.goto(base + '/Grapes/design/android-mobile-preview.html')
+  await deniedPage.locator('[data-nav="more"]').first().click()
   assert.equal(await deniedPage.locator('[data-grapes-test-migration-scan]').isHidden(), true,
     'web preview must keep TEST local scan hidden')
   await denied.close()
