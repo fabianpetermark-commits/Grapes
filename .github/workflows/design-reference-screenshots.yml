@@ -4,6 +4,7 @@ on:
     paths:
       - 'design/references/**'
       - 'tests/design-references.browser.mjs'
+      - 'tests/design-review.browser.mjs'
       - '.github/workflows/design-reference-screenshots.yml'
   workflow_dispatch:
 
@@ -28,6 +29,8 @@ jobs:
         run: python3 -m http.server 4177 --bind 127.0.0.1 > /tmp/grapes-ref-http.log 2>&1 &
       - name: Smoke tests and 320/390/412 px screenshots
         run: node tests/design-references.browser.mjs
+      - name: Test live 8-screen HTML review center
+        run: node tests/design-review.browser.mjs
       - name: Archive complete HTML/CSS/JS reference gallery
         if: always()
         uses: actions/upload-artifact@v4
