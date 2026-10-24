@@ -4,7 +4,10 @@ import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
+@RunWith(RobolectricTestRunner::class)
 class TestSupabaseProxyTest {
     private val a = "123e4567-e89b-12d3-a456-426614174000"
     private val b = "123e4567-e89b-12d3-a456-426614174001"
