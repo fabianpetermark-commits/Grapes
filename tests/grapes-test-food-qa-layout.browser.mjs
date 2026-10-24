@@ -31,7 +31,7 @@ try {
       })
       return { width: panelRect.width, buttons }
     })
-    assert.equal(result.buttons.length, 3, 'Exactly three explicit QA buttons')
+    assert.equal(result.buttons.length, 4, 'Three Food steps plus one read-only isolation button')
     assert.ok(result.width > 220, 'QA panel is visible at phone width')
     for (const button of result.buttons) {
       assert.equal(button.display, 'block', 'No 42px settings icon grid')

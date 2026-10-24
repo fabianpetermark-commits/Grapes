@@ -1150,6 +1150,7 @@ if (foodSyntheticQaPanel) {
     ['prepare', '[data-grapes-test-food-prepare]'],
     ['save', '[data-grapes-test-food-save]'],
     ['readBack', '[data-grapes-test-food-read]'],
+    ['isolation', '[data-grapes-test-food-isolation]'],
   ]
   const qaStatus = $('[data-grapes-test-food-status]')
   for (const [method, selector] of qaActions) {
@@ -1162,16 +1163,24 @@ if (foodSyntheticQaPanel) {
       qaStatus.textContent = 'Szintetikus TEST-próba ellenőrzése…'
       try {
         if (!(await getAndroidTestAuthEnabled())) throw new Error('A natív Grapes TEST kapu nem aktív.')
-        const { createGrapesTestSyntheticFoodTrial } =
-          await import('./sync/grapes-test-synthetic-food-trial.js')
-        const trial = createGrapesTestSyntheticFoodTrial({ enabled: true })
-        const result = await trial[method]()
-        qaStatus.dataset.state = method === 'readBack' ? 'success' : 'pending'
+        let result
+        if (method === 'isolation') {
+          const { createGrapesTestOnePhoneIsolationProbe } =
+            await import('./sync/grapes-test-one-phone-isolation.js')
+          result = await createGrapesTestOnePhoneIsolationProbe({ enabled: true }).verify()
+        } else {
+          const { createGrapesTestSyntheticFoodTrial } =
+            await import('./sync/grapes-test-synthetic-food-trial.js')
+          result = await createGrapesTestSyntheticFoodTrial({ enabled: true })[method]()
+        }
+        qaStatus.dataset.state = method === 'readBack' || method === 'isolation' ? 'success' : 'pending'
         qaStatus.textContent = method === 'prepare'
           ? 'A próba tartós offline sorba került (' + result.status + '). A mentés még nincs igazolva.'
           : method === 'save'
             ? 'A mentési kísérlet szerveroldali előzménye igazolt (rev. ' + result.revision + '). Visszaolvasás még szükséges.'
-            : 'PASS: a külön szerveroldali Food-visszaolvasás egyezik (rev. ' + result.revision + ').'
+            : method === 'isolation'
+              ? 'PASS: a másik TEST-fiók szintetikus szerveradatai nem olvashatók. A helyi Food-adatok elkülönítése NEM igazolt.'
+              : 'PASS: a külön szerveroldali Food-visszaolvasás egyezik (rev. ' + result.revision + ').'
       } catch (error) {
         qaStatus.dataset.state = 'error'
         qaStatus.textContent = 'NEM IGAZOLT: ' + (error?.message || 'A TEST-próba megszakadt.')

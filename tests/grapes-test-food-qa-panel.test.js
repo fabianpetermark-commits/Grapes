@@ -14,7 +14,7 @@ test('Food QA panel remains hidden and requires explicit TEST-only native gates'
 })
 
 test('Food QA action buttons use the full panel width instead of the 42px settings icon grid', () => {
-  for (const action of ['prepare', 'save', 'read']) {
+  for (const action of ['prepare', 'save', 'read', 'isolation']) {
     assert.match(html, new RegExp('class="grapes-test-food-action" type="button" data-grapes-test-food-' + action))
     assert.doesNotMatch(html, new RegExp('class="setting" type="button" data-grapes-test-food-' + action))
   }
@@ -27,7 +27,8 @@ test('Proof output distinguishes pending, failed and independently verified remo
   assert.match(html, /data-grapes-test-food-status>Nem indult próba\./)
   assert.match(html, /\[data-grapes-test-food-status\]\[data-state="success"\]/)
   assert.match(html, /\[data-grapes-test-food-status\]\[data-state="error"\]/)
-  assert.match(shell, /qaStatus\.dataset\.state = method === 'readBack' \? 'success' : 'pending'/)
+  assert.match(shell, /qaStatus\.dataset\.state = method === 'readBack' \|\| method === 'isolation' \? 'success' : 'pending'/)
   assert.match(shell, /qaStatus\.dataset\.state = 'error'/)
   assert.match(shell, /PASS: a külön szerveroldali Food-visszaolvasás egyezik/)
+  assert.match(shell, /a másik TEST-fiók szintetikus szerveradatai nem olvashatók/)
 })
