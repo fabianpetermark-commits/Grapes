@@ -62,6 +62,30 @@ jobs:
           test -s src/sync/grapes-test-synthetic-food-trial.js
           grep -Fq 'VITE_GRAPES_TEST_FOOD_SYNTHETIC_ENABLED' src/android-mobile-shell.js
           grep -Fq 'data-grapes-test-food-qa hidden' design/android-mobile-preview.html
+      - name: Live TEST Data API preflight (anon must be denied; private schema not exposed)
+        run: |
+          set -euo pipefail
+          endpoint="$VITE_GRAPES_TEST_SUPABASE_URL/rest/v1/rpc/list_profiles"
+          code=$(curl --max-time 15 -sS -o "$RUNNER_TEMP/grapes-api-probe.json" -w '%{http_code}' \
+            -H "apikey: $VITE_GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY" \
+            -H "Content-Profile: api" -H "Accept-Profile: api" \
+            -H "Content-Type: application/json" -d '{}' "$endpoint")
+          case "$code" in
+            401|403|404) echo "TEST API rejects unauthenticated RPC (HTTP $code)" ;;
+            406) echo "::error::api schema is not exposed in Supabase TEST Data API settings"; exit 1 ;;
+            2*) echo "::error::Anonymous caller was allowed to list profiles"; exit 1 ;;
+            *) echo "::error::TEST Data API preflight failed: HTTP $code"; exit 1 ;;
+          esac
+          if grep -q 'PGRST106' "$RUNNER_TEMP/grapes-api-probe.json"; then
+            echo "::error::api schema is not in the exposed-schema list"; exit 1
+          fi
+          private_code=$(curl --max-time 15 -sS -o "$RUNNER_TEMP/grapes-private-probe.json" -w '%{http_code}' \
+            -H "apikey: $VITE_GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY" \
+            -H "Accept-Profile: grapes_private" "$VITE_GRAPES_TEST_SUPABASE_URL/rest/v1/")
+          if [ "$private_code" != 406 ]; then
+            echo "::error::Cannot prove private schema is unexposed (HTTP $private_code)"; exit 1
+          fi
+          echo "PASS: anonymous denied and private schema not exposed"
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
