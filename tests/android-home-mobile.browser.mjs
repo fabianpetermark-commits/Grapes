@@ -149,6 +149,7 @@ try {
   assert.match(await page.locator('[data-household-recipe-items]').textContent(), /Ellenőrizendő/)
   assert.match(await page.locator('[data-household-recipe-items]').textContent(), /lehetséges névegyezés/)
   await page.locator('[data-household-cook-recipe="m2-recipe"]').click()
+  await page.locator('[data-household-cooking] [name="unit"]').selectOption('g')
   await page.locator('[data-household-cooking] [name="quantity"]').fill('300')
   assert.match(await page.locator('[data-household-cooking-preview]').textContent(), /Mentés csak megerősítés után/)
   assert.equal(await page.evaluate(() => localStorage.getItem('grapes-home-household-v1')), homeBeforeRecipe, 'A főzési előnézet nem írhat készletet.')
