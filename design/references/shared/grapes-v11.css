@@ -67,3 +67,26 @@ label{display:grid;gap:7px;font-size:12px;color:var(--muted);font-weight:650}
 @media(max-width:350px){.tabs{padding-inline:7px}.tab{min-width:61px;font-size:10px}.main{padding-inline:12px}.widget{padding:13px}.dock{padding-inline:10px}.action{font-size:10px}.header h1{font-size:22px}}
 @media(min-width:720px){body{background:#060a0e}.shell{border-left:1px solid #243343;border-right:1px solid #243343}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+
+/* Brand v1.2 – universal six-slot icon rail. NO icon captions: aria-label remains. */
+:root { --rail-bg:#101821; --rail-border:#2a4352; --rail-active:#1b3541; }
+.tabs,.detailNav.icon-rail { display:grid;grid-template-columns:repeat(6,minmax(0,1fr));align-items:center;gap:3px;
+ padding:5px;margin:10px 13px 4px;border:1px solid var(--rail-border);
+ border-radius:23px;background:var(--rail-bg);box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
+ overflow:visible;min-height:63px }
+.tabs .tab,.detailNav.icon-rail button,.detailNav.icon-rail a{
+ display:flex;align-items:center;justify-content:center;min-width:0;min-height:51px;padding:0;
+ border:1px solid transparent;border-radius:18px;background:transparent;color:#9bb2c0;
+ font-size:0;line-height:0;box-shadow:none;text-decoration:none;
+}
+.tabs .tab i{width:22px;height:22px;display:grid;place-items:center;font-size:0;color:inherit}
+.tabs .tab i svg,.detailNav.icon-rail svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tabs .tab.is-active,.detailNav.icon-rail .active{
+ background:var(--rail-active);border-color:#3f7585;color:#3bdcf2;
+ box-shadow:inset 0 -2px 0 #3bdcf2b0,0 0 5px rgba(59,220,242,.1);
+}
+.tabs .tab:focus-visible,.detailNav.icon-rail :is(a,button):focus-visible{outline:2px solid var(--cyan);outline-offset:1px}
+.header .head-icon{display:none!important}
+.header{min-height:63px;padding:10px 17px}
+.header h1{font-size:22px}
+@media(max-width:350px){.tabs,.detailNav.icon-rail{margin-inline:9px;padding:4px;gap:2px;min-height:58px}.tabs .tab,.detailNav.icon-rail :is(button,a){min-height:47px;border-radius:14px}.tabs .tab i svg,.detailNav.icon-rail svg{width:20px;height:20px}}
