@@ -53,6 +53,7 @@ jobs:
       - name: Focused Auth, Food, Finance and E-book browser regressions
         run: |
           node tests/grapes-test-auth.browser.mjs
+          node tests/grapes-health-v24-settings-preview.browser.mjs
           node tests/android-ebook-reader.browser.mjs
           node tests/android-ebook-shelf.browser.mjs
           node tests/food-app.browser.mjs
