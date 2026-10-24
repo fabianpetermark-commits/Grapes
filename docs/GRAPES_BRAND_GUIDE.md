@@ -1,4 +1,4 @@
-# Grapes – Brand Guide / Design System v1.1 (elfogadott mobil vizuális irány)
+# Grapes – Brand Guide / Design System v1.2 (elfogadott mobil vizuális irány)
 
 > **2026-10-23-i felhasználói döntés:** a Health minimal widgetes HTML-tervezet vizuális iránya elfogadva (APPROVED), és ettől kezdve ez a Grapes mobil arculati mintája. **Ez nem jelenti azt, hogy a már kiadott APK-k és valamennyi modul átálltak.** A 2026-10-18-i korábbi audit megállapításai történeti referenciák; ütközésnél az új 0. fejezet az elsődleges. Fizikai készülékes regresszió és külön implementáció továbbra is szükséges. Lásd: [`GRAPES_BRAND_AUDIT.md`](./GRAPES_BRAND_AUDIT.md). Kiindulás: a repó valódi logója, Android mobilfelülete és meglévő design tokenjei (2026-10-18). A dokumentum önmagában nem módosít sem UI-t, sem adatkezelést. Ahol a régi webes UI és az Android eltér, ott ezt nyíltan jelöli; a változtatásokat külön PR-ben kell átvezetni.
 >
@@ -7,18 +7,75 @@
 
 > **HTML referencia-források:** [Grapes Design Reference Gallery](../design/references/index.html) és a [referencia- és pixelparitás-szerződés](../design/references/README.md). A valódi, korábban jóváhagyott HTML-ek pontos forrása itt verziózott; az új Home, Tools, E-book, QR és Finance képernyők a `candidates/` mappában **PROPOSED**, még jóváhagyandók. **Implementáció előtt mindig ezt az indexet kell használni, nem a régi history/minta HTML-eket.**
 
-## 0.A. Közös ikon-navigáció v1.2 – ténylegesen bevezetve a referencia-HTML-ekbe (2026-10-24)
+## 0.A. Közös Grapes ikonsor és minimál tipográfia – v1.2 (jóváhagyott, 2026-10-24)
 
-**Jóváhagyott mintakép:** a felhasználó által elfogadott Samsung-szerű, sötét Grapes ikonsor-változat. Nem a Samsung színeit vagy márkajegyeit használjuk, hanem a Grapes `#090E14` / `#101821` / `#3BDCF2` palettáját.
+**Kötelező és elsődleges szabvány az összes főmenüre, almodulra és nézetválasztóra.** A jóváhagyott megjelenés Samsung Health-szerű *elrendezési ötlet*, de a Grapes saját sötét / visszafogott cián színrendszere, nem Samsung márkaelemek másolata. Az itt leírt v1.2 szabályok **felülírnak minden 2026-10-23-i és korábbi eltérő fejléc-, ikoncímke- és visszalépési szabályt**.
 
-- **Egyetlen kerekített, hat egyforma oszlopra osztott kapszula** a menü-/modulfüleknek. Egy sorban hat kényelmesen elférjen **320 px-től**, ne váltson feleslegesen függőleges görgetésre; 44+ px érintési méret. Ha később több főmodul lesz hatnál, *a főmenüben* vízszintes görgetés legyen, ne rejtőzzön el új főmodul. Kisebb részmoduloknál azonos ikonkapszula, szükség szerint kontextuális akciók a fennmaradó helyeken.
-- **Ikonok alatt nincs látható felirat**. A navigációs elemek minden esetben `aria-label` / `title` szöveget kapnak, billentyűzettel fókuszálhatók. A kiválasztott ikon háttere `#1B3541`, rövid finom cián aláhúzás/keret, nem teljes neon-aura.
-- **22 px-es ikonok**, 320 px-es kis kijelzőn kb. 20 px; egységes vektoros line icon, azonos vonalvastagság, lekerekített sarkok. Nem random Unicode emoji/egyedi világító dobozok a navigációban.
-- **Egyetlen, ikonrendszerrel egyező fogaskerék** a navigációs sávon belül, rendszerint a hatodik helyen. Nincs mellette állapot-pötty, második lebegő fogaskerék vagy ismétlődő gomb.
-- **Címsor kizárólag a sáv ALATT**, ha az adott modulnézetnek szüksége van rá. Finance: `Áttekintés`, `Tranzakciók`, `Megtakarítások`, `Előrejelzés`, `Importálás` — nincs `PÉNZÜGYI NAPLÓ`, `CÉLOK ÉS TARTALÉK` stb. ismétlődő overline közvetlenül a címsor fölött. Az átfogó Grapes főmenü `Grapes` brandfejléce önálló eset.
-- **Az alsó kontextuális gyorsműveleti sáv megmarad**, a hatikonos felső navigáció nem váltja ki.
-- **Megvalósított HTML referenciák:** `design/references/approved/{main-shell-widgets,health-minimal,plants-widget}.html`, `design/references/candidates/{main-shell-tools,home,tools,finance,ebook,qr}.html`, továbbá a közös `design/references/shared/grapes-v11.css`. Ezek most közvetlenül módosított HTML/CSS fájlok; a korábbi változatok a Git előzményben visszakereshetők.
-- **Kódátvezetés:** a referencia HTML-ek jóváhagyott megjelenési szabványt adnak; az éles Android shellből ezekre történő tényleges átvezetés külön, regresszióval védett TEST implementáció. Nem szabad összekeverni az önálló design HTML-eket az app jelenleg futó DOM-jával.
+### 0.A.1. Pontos ikon- és kapszulaméretek
+
+| Elem | 360–412 px viewport | 320 px viewport | Felhasználás |
+| --- | --- | --- | --- |
+| Ikonsor | **6 egyforma oszlop egyetlen sorban**, `display:grid;grid-template-columns:repeat(6,minmax(0,1fr))` | Ugyanez | Egyetlen közös, jól elkülönülő sötét kapszulában |
+| Kapszula külső margó | **12–13 px** kétoldalt | **9 px** | A lap szélességét követő komponens, vízszintes túllógás nélkül |
+| Kapszula belső padding / ikongap | **5 px / 3 px** | **4 px / 2 px** | Egyforma távolság minden modulnál |
+| Kapszula teljes magassága | **legalább 63 px** | **legalább 58 px** | **23 px** lekerekítés, háttér **`#101821`**, **1 px `#2C4A58`** keret |
+| Ikongomb / kijelölt mini-doboz | **min. 50–51 px** magas, **17–18 px** radius | **min. 46 px** magas, **14 px** radius | Teljes gomb legyen kattintható, kb. 44×44 px minimális cél; nem csak a glyph |
+| Ikon látható mérete | **22×22 px** | **20×20 px** | 24×24-es SVG viewBox, `stroke-width:1.8`, round cap/join, `currentColor` |
+| Inaktív ikon | `#9BB2C0` | Ugyanez | Vékony, egységes line icon, nincs saját kiabáló hátlapja |
+| Aktív ikon mini-doboza | háttér **`#1B3541`**, szegély **`#477A88`**, ikon **`#3BDCF2`** | Ugyanez | Alul **2 px halk cián peremfény**, legfeljebb ~5 px finom highlight; nincs teljes kártyát világító glow |
+| Fogaskerék | Ugyanakkora ikon és ikongomb | Ugyanakkora | A **hatodik ikonhely**, nem önálló felső nagy négyzet, jelzőpötty vagy duplázott beállításgomb |
+
+A referencia CSS-szabványt az aktuális HTML-ek megjelenítő osztályaira kell leképezni: `.rail`, `.module-tabs`, `.grapes-six-rail`, `.tabs`, `.detailNav.icon-rail`. A már elkészült egységesített jelölt-készlet közös alapja: `design/references/shared/grapes-v11.css`. **Ne használjon minden fejlesztő saját ikonméretet és paddinget.**
+
+```css
+/* Grapes v1.2 vizuális komponensszerződés – a tényleges osztályhoz scope-olva */
+.grapes-icon-rail {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 3px; align-items: center;
+  margin: 10px 13px 8px; padding: 5px;
+  min-height: 63px; border: 1px solid #2C4A58;
+  border-radius: 23px; background: #101821;
+}
+.grapes-icon-rail > :is(button,a) {
+  display: grid; place-items: center; min-width: 0; min-height: 50px;
+  padding: 0; border: 1px solid transparent; border-radius: 17px;
+  background: transparent; color: #9BB2C0;
+}
+.grapes-icon-rail svg { width: 22px; height: 22px; fill: none;
+  stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.grapes-icon-rail :is([aria-current="page"],[aria-selected="true"],.is-selected) {
+  color: #3BDCF2; background: #1B3541; border-color: #477A88;
+  box-shadow: inset 0 -2px 0 rgba(59,220,242,.68);
+}
+@media(max-width:350px) {
+  .grapes-icon-rail { margin-inline:9px; padding:4px; gap:2px; min-height:58px; }
+  .grapes-icon-rail > :is(button,a) { min-height:46px; border-radius:14px; }
+  .grapes-icon-rail svg { width:20px; height:20px; }
+}
+```
+
+### 0.A.2. Feliratok és tipográfiai hierarchia
+
+- **Ikonok alatt NINCS látható szöveg.** Ez a főmodulokra, Finance öt belső lapjára, E-book/QR/Növények és további modulokra is érvényes. **`aria-label`, `title` és jól látható billentyűzetfókusz kötelező** – az ikon továbbra is megnevezett, képernyőolvasóval használható gomb.
+- **Nézetcím pontosan egyszer, a felső ikonsor ALATT**: méret **22–24 px**, szükség esetén 24–26 px, betűsúly **700–800**, sortáv **1.15–1.2**, jellemző bal margó **15–16 px** (320 px-en 12 px). Például `Tranzakciók`, `Megtakarítások`, `Előrejelzés`, `Importálás`, `Food`, `Növényeim`.
+- **Widgetcím: 16–19 px / 600–750**. Normál tartalom: **14–16 px**; valóban szükséges kiegészítő szöveg: **12–14 px**; kiemelt statisztikai szám: **24–32 px**, `tabular-nums`. Ezek szövegméretek, **nem ikonfeliratok**.
+- **TILOS az ismétlés és a dekoratív körítés:** a nézetcím elé nem kerül `PÉNZÜGYI NAPLÓ`, `HOME / NÖVÉNYEK`, `Grapes / Áttekintés`, `CÉLOK ÉS TARTALÉK`, `MODULOK`, `TERVEZET`, `Mintanézet` vagy más fölösleges alcím/eyebrow/hero. A cím ne jelenjen meg egyszerre fejlécben, ikon alatt és nagy címsorban. **Az adat megértéséhez szükséges valós státusz, mértékegység, dátum, szűrő vagy hibaüzenet természetesen marad.**
+- A **gyökérfőmenü** megjelenítheti **egyszer** a `Grapes` márkanevet. Belső modulban nem kell újabb Grapes-logó, útvonal-alcím vagy duplázott modulfőcím. Finance-ben például a `Tranzakciók` megnevezés önmagában elég.
+- Az ikonsor **kizárólag navigációs ikonokat és egy beállításikont** tartalmazzon; az alsó **kontextuális gyorsműveleti dock külön megmarad** az adott modulhoz tartozó műveletekkel.
+
+### 0.A.3. Vissza- és Home-gombok – nincs külön látható navigáció
+
+- **Sehol ne legyen külön, látható `Vissza` nyíl, `‹ Főmenü`, `Home` ugrógomb, lebegő házikó, vagy ezek ismétlése** – sem a modul fejlécében, sem az ikonrailsávban, sem az alsó gyorssávban. Ne kerüljön vissza a régi globális alsó Főmenü / Projektek / Szinkron / Továbbiak navigáció.
+- **Kivételnek nem számító két valódi főmodul-fül:** az első `Kezdő / Gyakran használt` házikós ikon és a külön `Home` **főmodul** ikonja a felső menüben **megmarad** a korábbi jóváhagyott navigációs struktúra alapján. Ezek **modulválasztók**, nem fölösleges külön Home-gombok.
+- Az **Android natív Back gomb/gesztus továbbra is működik**, helyesen zár modalt, kilép szerkesztőből és visszalép az előzményekben; csak a **külön alkalmazáson belüli Vissza/Home vezérlő jelenléte tiltott**. Mentés nélkül ne veszítsünk adatot.
+- Az egyes funkciók a felső modul-/nézetfüleken, widgeten belüli valódi műveleteken, illetve a modul saját alsó gyorssávján keresztül érhetők el. A navigáció átépítése **nem tüntetheti el** a QR, E-book, Finance, Home, Auth/PIN és Drive korábbi működő funkcióit.
+- **Hat látható ikonhely a mostani nézetekben**, a beállításikonnal együtt. Ha hatnál több **főmodul** készül, a gyökérikonsor a modulregiszter alapján vízszintesen bővíthető/görgethető, nem zárható le mesterségesen. Üres modulikonhelyet **tilos csak Home/Vissza pótlására használni**.
+
+### 0.A.4. Megfelelőségi teszt és bevezetési kapu
+
+Minden referencia-HTML és tényleges TEST-képernyő ellenőrzendő **320 / 360 / 390 / 412 px-en**: hat azonos oszlop, ikon 22/20 px, keret/sugár/focus/aktív állapot, feliratmentes ikonsor, **pontosan egy nézetcím**, fölösleges alcím és külön Vissza/Home hiánya; nincs vízszintes túllógás, alsó gyorssáv nem takar ki tartalmat. Visszalépési gesztus, TalkBack, billentyűzet, PIN/Drive/mentés regresszió kötelező. A `design/references/` HTML-ek a dizájn célállapotát adják; a valódi Android/PROD átvezetés külön, tesztelt feladat, **nem automatikus merge vagy APK-kiadás**.
+
 
 ---
 
@@ -80,19 +137,9 @@
 }
 ~~~
 
-### 0.3. Modulfejléc: a minimal Health terv az alap
+### 0.3. Modulfejléc: a v1.2 ikon-kapszula az alap
 
-~~~text
-┌────────────────────────────────┐
-│ Health                   [ ⚙ ] │
-└────────────────────────────────┘
-~~~
-
-- Balra **csak** a modul neve, kb. 20–24 px, félkövér.
-- Jobbra **csak a modulbeállítás** fogaskereke (tap target 44–48 px), amely az aktuális modul céljaihoz, megjelenítéséhez és integrációihoz visz.
-- A modulfejlécben **NINCS** Grapes-logó, második alcímsor, „Grapes / Áttekintés”, újabb óriási Health H1, „TERVEZET” badge, dekoratív magyarázó szöveg vagy duplázott értesítési harang.
-- Közvetlenül utána indulhat az első adatwidget; nincs külön hero-kártya vagy fölösleges felvezető.
-- **Gyökérfőmenü/bejelentkezés**: lehet külön Grapes márkajelzés, mert ez nem egy adott modul aloldala. Ne töröljünk natív Back, globális értesítés, fiók vagy navigáció funkciót CSS-sel; a minimál UI funkcionálisan is legyen teljes.
+A korábbi, jobb oldalon külön beállítás-fogaskereket tartalmazó Health fejléc **történeti minta**. A jelenlegi kötelező célnézet a **0.A. pont szerinti, 6 egyforma helyű közös ikonsor**, amelyben az egységes fogaskerék belül van. Az aktív részmodul neve egyszer, az ikonsor **alatt**, 22–24 px-es címsorként szerepel. Nincs második dekoratív főcím, alcím, útvonal, státuszpötty vagy külön felső Vissza/Home gomb. A gyökérfőmenüben a Grapes név egyszer megjelenhet; Android Back gesztust továbbra is támogatni kell.
 
 ### 0.4. Widgetes oldalszerkezet és gyorsműveletek
 
@@ -114,22 +161,10 @@
 
 **Felhasználói UI-követelmény (elfogadott irány):** a régi alsó „Főmenü / Projektek / Szinkron / Továbbiak” sáv **már nem része a Grapes kívánt főmenüjének**, ezért NEM szabad a későbbi UI-tervekbe visszahozni. A „Modulok” felirat, a 2×2-es nagy főmenücsempék és a „2×2 / Lista” kapcsoló szintén megszűnnek. Az alábbi, felső vízszintes főmodul-ikonsor lesz az alkalmazás gyökérnavigációja:
 
-```text
-┌──────────────────────────────────────────┐
-│ Grapes                              [⚙] │
-├──────────────────────────────────────────┤
-│ [⌂★]     [⌂]      [♡]      [▦]      [$] │
-│ Kezdő    Home    Health    Tools    Finance│
-├──────────────────────────────────────────┤
-│ Gyakran használt             [+ Hozzáadás]│
-│ [ Ételnapló ]  [ Víznapló ]               │
-│ [ Növények ]  [ Receptek ]               │
-│ ...                                       │
-└──────────────────────────────────────────┘
-```
+**Vizuális főmenüstruktúra:** egyszeri `Grapes` márkanév; alatta egy kapszulában, felirat nélkül **[Kezdő] [Home modul] [Health] [Tools] [Finance] [Beállítások]** ikon, ezt követik az élő widgetek és a modul saját alsó gyorsműveletei. Nincs külön Vissza/Home gomb vagy második menüsor.
 
-- **Felső fej:** a gyökérfőmenüben balra csak `Grapes`, jobbra a **globális** fogaskerék. Az egyes modulok saját képernyőjén továbbra is modulnév + modulbeállítás fogaskerék az elfogadott fejléc. Nincs ismételt dekoráció/alcím.
-- **Közvetlenül alatta egyetlen vízszintes főmenü-ikonsor**, ikon és rövid egyértelmű felirat, legalább 44–48 px működő érintési területtel. Fókusz- és aktív állapot legyen jól megkülönböztethető, ne csak színnel.
+- **Felső elrendezés:** a gyökérfőmenüben egyszer szerepelhet `Grapes`; a beállításfogaskerék a **felső ikon-kapszula része**, modulonként egységes stílusban, nem külön fejlécgombként. A modulok aktív oldalcíme egyszer, a sáv **alatt** látszik. Nincs második dekoráció/alcím; elsőbbség: 0.A.
+- **Egyetlen hathelyes ikonsor egy kerekített kapszulában**, az ikonok alatt **látható felirat nélkül**. A gombokon kötelező az `aria-label` és a fókusz, minimum 44 px-es érintési cél; a pontos méreteket a **0.A** pont rögzíti.
 - **Az első ikon egy házikó/kedvenc-ház**, amely az **„Gyakran használt” kezdőoldal**. Az app ezt nyissa meg induláskor, és a felső sávból ide bármikor vissza lehessen térni. Ez nem egyenlő a külön `Home` főmodullal.
 - **A további ikonok:** Home, Health, **Tools** (korábban Utility), Finance, az alkalmazás ténylegesen elérhető gyökérmoduljainak regiszterében szereplő sorrendben. **Ha új főmodul készül, automatikusan ebbe a felső ikonsorba kerül**, ikon+név azonosítóval; nincs hardcoded maximum 4 vagy 5 modul. Szűk képernyőn a sor **vízszintesen görgethető**, swipe-tal és billentyűzetes/fókuszos eléréssel, úgy, hogy az ikonok nem zsugorodnak olvashatatlanra. A telepített modulok és sorrendjük ugyanabból a modulregiszterből származzanak, ne UI-ban kézzel duplikált listából.
 - **Nincs alsó főmenü-navigáció**, nincs második főmenüsor. Viszont **minden fő területnek megmarad a saját, kontextuális alsó gyorsműveleti sávja**. Ez a felhasználó által a Health képernyőn külön bekarikázott, jóváhagyott minta: Health = **Fotó / Étel / Víz + külön Vonalkód**. Nem navigációs tabok, hanem műveletek; főmodulváltáskor a sáv tartalma az aktív főmodul műveleteire vált. A Kezdőn a kedvencek kezelését szolgáló műveletek jelenhetnek meg; Home / Tools / Finance konkrét gyorsgombjai külön véglegesítendők. A modul gyorssávját a globális felső ikonsor nem helyettesíti.
@@ -220,6 +255,8 @@ A progresshez ne legyen egyedi `#91FFFF`, `#A7FFFF`, `#8EFFFF` vagy tetszőleges
 
 ## 4. Tipográfia
 
+**A navigáció 22–24 px-es oldalcíme és az ikonok feliratmentessége a **0.A** elsőbbségi szabványa; az itt következő általános tipográfiai létra nem írhatja ezt felül.**
+
 **A jelenlegi mobil CSS:** `font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif`. Nincs garantáltan beágyazott vagy telepített Inter, ezért rendszerenként fallback lehet; ezt figyelembe kell venni vizuális ellenőrzésnél.
 
 **v1.0-rc1 mobil céltípuslétra**, amely az `ANDROID_UI_DESIGN_PLAN.md` szándékával és a meglévő UI-val összhangban van:
@@ -252,7 +289,7 @@ Betűskála szűk képernyőn is olvasható, nagyobb rendszerbetűnél se legyen
 - Elsődleges érintési cél: **min. 48×48 px**; másodlagos is min. 44×44 px.
 - Kártyák alapja sötét surface; keret finom. Komoly árnyékot csak modálnál vagy overlay-nél.
 - Táblázatok és listák: mobilon egyoszlopos; a szám és mértékegység nem futhat össze.
-- Fontos: 320 / 360 / 390 / 412 px-es viewport és Android safe-area, visszalépés, billentyűzet.
+- Fontos: 320 / 360 / 390 / 412 px-es viewport és Android safe-area, **natív Android visszalépési gesztus** és billentyűzet. **A rendszer Back gesztusa nem indokol látható, külön Vissza/Home gombot.**
 
 ## 6. Komponensek és ikonok
 
@@ -316,7 +353,7 @@ Betűskála szűk képernyőn is olvasható, nagyobb rendszerbetűnél se legyen
 
 | Elem | Tervezési szabály | Kötelező ellenőrzés |
 | --- | --- | --- |
-| Appbar és fő navigáció | A modul saját fejlécében **csak modulnév balra és modulspecifikus beállítás-fogaskerék jobbra**; nincs ismétlődő Grapes-logó és alcím. A globális főmenü/bejelentkezés ettől eltérhet és továbbra is használhat Grapes-logót. | 320px-től helyes tördelés; safe-area, visszalépés, érthető hozzáférhető gombnév. |
+| Felső ikon-navigáció | **6 egyenlő ikonhely egyetlen 23 px radiusú kapszulában**, 22/20 px SVG-ikonnal és a sávon belüli beállításfogaskerékkel. Nincs látható ikonfelirat, duplikált cím/alcím, külön Home/Vissza vagy státuszpötty. Aktív oldal címe egyszer a sáv alatt. | 320/360/390/412 px, olvasható 22–24 px oldalnév, `aria-label` és fókusz, Android Back gesztus és safe-area. |
 | Elsődleges CTA | `#3BDCF2` kitöltés, **sötét** szöveg, nincs fölösleges külső glow. | 48×48px használható érintési terület; fókusz, disabled, loading és hibaállapot. |
 | Másodlagos/destruktív gomb | Raised háttér + halk border; törlés csak szemantikus pirossal és megfelelő megerősítéssel. | Minimum 44×44px célzott másodlagos hitbox; aktív/fókusz állapot nem csak színnel. |
 | Kereső, input, select, űrlapcímke | Raised háttér, következetes 12–14px sarok; olvasható normál szöveg 15–16px. | Képernyőbillentyűzet, input focus, nagy rendszerfont, hosszú magyar szöveg, hibajelzés. |
@@ -324,7 +361,7 @@ Betűskála szűk képernyőn is olvasható, nagyobb rendszerbetűnél se legyen
 | Progress bar / ring | Sötét, **teljesen fénytelen track**; csak az aktív ív/bar kap brand- vagy szemantikus színt; glow csak indokolt aktív ívön. | 0/50/100%, nincs cél, ismeretlen érték; reduced motion; gomb és `aria-label` megtartása. |
 | Bottom sheet és modal | Sötét felület, diszkrét overlay, konzisztens 24px körüli sheet-sarok. | `role=dialog`, `aria-modal`/inert, billentyűzet és safe-area, mentés elérhető, fókusz és bezárás. |
 | Státusz / toast | Siker zöld, figyelmeztetés borostyán, hiba piros, folyamatban cián; minden színnek szöveges jelentése van. | Látható hiba és betöltés, megfelelő `role=status`/élő régió, nincs pusztán szín alapú közlés. |
-| Modulikonok | A meglévő `src/android-mobile-icons.js` 24×24 SVG, 1.8 stroke, round és `currentColor` a mobil minta. | Dekoratív SVG `aria-hidden`; az interaktív gomb kap megfelelő megnevezést. |
+| Modulikonok | **24×24 SVG viewBox**, látható **22×22 px ikon** (320 px-en 20×20), 1.8 stroke, round és `currentColor`; azonos sötét kapszulakeret és aktív cián jelölés. | SVG `aria-hidden`, vezérlő `aria-label/title`; nincs extra Back/Home vagy ikon alatti felirat. |
 
 Az **érintési terület** (látható ikon + tappolható gombterület) számít: 24px ikon lehet 48px-es gombban. A 44px-es kivétel nem menti fel a fő műveleteket a 48px alól; két szomszédos hitbox nem fedheti egymást.
 
