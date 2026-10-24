@@ -12,6 +12,11 @@ on:
 permissions:
   contents: read
 
+# Only the newest revision needs a full check; superseded draft pushes may stop.
+concurrency:
+  group: grapes-test-v25-food-hardening-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   food-proof-browser:
     runs-on: ubuntu-latest
