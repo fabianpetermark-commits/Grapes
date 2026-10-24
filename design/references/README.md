@@ -1,4 +1,23 @@
-# Grapes – design reference pack (Brand Guide v1.1)
+# Grapes – design reference pack (Brand Guide v1.2)
+
+## Teljes, interaktív képernyőellenőrzés
+
+**[8-képernyős élő HTML review: review.html](review.html)** — Kezdő, Home, Health, Növények, Tools, E-book, QR és Finance, a **tényleges verziózott HTML-fájlok beágyazásával**, nem újragenerált illusztrációval. A képernyőméret egy kattintással váltható **320 / 360 / 390 / 412 px** között. A Finance öt lapja, az E-book három és a QR három belső nézete is kipróbálható. [Klasszikus galéria](index.html).
+
+**Státusz:** az egységes navigáció, ikonok, kártyastílus és minimál címsor a v1.2 célállapot. A Home/Tools/Finance/E-book/QR modulok további részletei **még vizuális jóváhagyásra váró jelöltek**. A HTML-ek szimulációk; a demo gombok és tranzakciók nem kerülnek a valódi Grapes-adatbázisba.
+
+### Külön folyó fejlesztések védelme
+
+- **Supabase:** a #120–#124 Health-adatfelderítési, helyi mentési és tulajdonoshoz kötési TEST-lépésektől a vizuális referencia **teljesen független**. Nem változik adatbázis-séma, RLS, owner claim, Auth, OAuth, PIN, Drive API, mig­ráció vagy kiadási csatorna. Valós Supabase-írást semmilyen demo nem indít.
+- **Étrendtervező:** az új családi menütervező később a közös widgeteket használhatja, de a minta nem definiál új Food-adatmodellt, automatikus tényleges naplózást vagy felhős tárolást.
+- **Készletfigyelő:** a #122 Home M2 készlet- és megerősítéses készletmozgás-logikája változatlan; egy meglévő UI-widget megjelenítése önmagában nem vonhat le készletet, nem írhat tranzakciót vagy OCR-felismerés alapján tételt.
+- **Bevezetési kapu:** a HTML review következő lépése a vizuális jóváhagyás. Csak azután következhet külön **TEST-kód-PR**, amelynek valós adatforrásra, funkciókra és Android navigációra vonatkozó regressziós bizonyítéka van. **Sem merge, sem APK release nincs ebben a dokumentációs ágban.**
+
+A CI a [`tests/design-references.browser.mjs`](../../tests/design-references.browser.mjs) mellett a [`tests/design-review.browser.mjs`](../../tests/design-review.browser.mjs) tesztet is futtatja. Ezzel **egyszerre ellenőrizzük a 8 élesnek szánt HTML-forrás felnyitását, a címek/ikonsáv sorrendjét és a többnézetes Finance/E-book/QR navigációt**, majd mobilos képeket készítünk. Ezek HTML-referencia-tesztek, nem teljes Android TEST → PROD pixeldiff.
+
+---
+
+
 
 **Purpose:** keep the exact reviewable HTML behind every Grapes redesign screen, so the finished TEST/PROD UI can be reviewed against a clear visual contract. These files **do not replace** actual application code, authorization, stored data, or existing modules.
 
