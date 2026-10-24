@@ -49,7 +49,9 @@ try {
       stored = { recordId: args.p_record_id, payload: args.p_candidate, schemaVersion: args.p_schema_version }
       attempts.set(args.p_operation_id, { result: answer, attempt: {
         profileId: PROFILE, kind: 'food_diary', recordId: stored.recordId,
-        status: 'committed', candidate: stored.payload,
+        status: 'committed', expectedRevision: args.p_expected_revision,
+        schemaVersion: args.p_schema_version, revision: serverRevision,
+        candidate: stored.payload,
       } })
       return JSON.stringify(answer)
     }
