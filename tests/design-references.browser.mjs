@@ -38,11 +38,34 @@ try {
         bodyText: document.body?.innerText?.trim() || ''
       }));
       if (!dimensions.title || !dimensions.bodyText) throw new Error(item.path + ': empty title/body');
-      if (item.path.startsWith('candidates/') && errors.length) {
+      if (item.path !== 'index.html' && errors.length) {
         throw new Error(item.path + ': JavaScript pageerror: ' + errors.join('; '));
       }
-      if (item.path.startsWith('candidates/') && dimensions.width > dimensions.viewport + 3) {
+      if (item.path !== 'index.html' && dimensions.width > dimensions.viewport + 3) {
         throw new Error(item.path + ': horizontal overflow at ' + width + 'px: scrollWidth=' + dimensions.width);
+      }
+      // Unified Grapes icon-rail contract: all current module/menu HTML references,
+      // six captionless, individually accessible icons in a single rounded capsule.
+      if (item.path !== 'index.html') {
+        const selector = item.path.includes('main-shell')
+          ? '#rail' : item.path.includes('finance.html')
+          ? '.module-tabs' : ['approved/health-minimal.html','approved/plants-widget.html'].includes(item.path)
+          ? '.grapes-six-rail' : item.path.includes('ebook.html') || item.path.includes('qr.html')
+          ? '.detailNav.icon-rail' : '.tabs';
+        const info = await page.locator(selector).evaluate(nav => {
+          const controls = [...nav.querySelectorAll('button,a')];
+          const rail = getComputedStyle(nav);
+          const widths = controls.map(el=>el.getBoundingClientRect().width);
+          const labels = controls.map(el=>(el.getAttribute('aria-label')||'').trim());
+          const visibleCaptions = controls.filter(el=>[...el.childNodes].some(n=>n.nodeType===Node.TEXT_NODE&&n.textContent.trim()));
+          return { n:controls.length,grid:rail.display,columns:rail.gridTemplateColumns.split(' ').length,
+                   width:nav.getBoundingClientRect().width,maxWidth:Math.max(...widths),labels,visibleCaptions:visibleCaptions.length,
+                   radius:parseFloat(rail.borderTopLeftRadius) };
+        });
+        if (info.n !== 6 || info.grid !== 'grid' || info.columns!==6 ||
+            info.visibleCaptions || info.labels.some(label=>!label) || info.radius < 19) {
+          throw new Error('Bad 6-icon Grapes rail on '+item.path+': '+JSON.stringify(info));
+        }
       }
       if (item.path === 'candidates/home.html' && width === 390) {
         await page.locator('[data-check]').first().check();
