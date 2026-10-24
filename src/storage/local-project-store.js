@@ -66,6 +66,44 @@ export async function saveLocalFoodProject(project) {
   })
 }
 
+const WATER_LEGACY_OWNER_ID = 'water-legacy-owner-v1'
+
+// One IndexedDB readwrite transaction assigns the unscoped legacy Water
+// source to at most one profile. A failed later copy can be retried by that
+// same profile; the original localStorage bytes are never deleted.
+export async function claimLocalWaterOwner(profileId) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(profileId)) {
+    throw new Error('Érvénytelen TEST Water-profil.')
+  }
+  const db = await openDb()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite')
+    const rows = tx.objectStore(STORE)
+    let owner = null
+    const request = rows.get(WATER_LEGACY_OWNER_ID)
+    request.onsuccess = () => {
+      owner = request.result?.profileId || null
+      if (owner && owner !== profileId) {
+        tx.abort()
+        return
+      }
+      if (!owner) rows.add({ id: WATER_LEGACY_OWNER_ID, profileId, claimedAt: new Date().toISOString() })
+    }
+    request.onerror = () => { /* Transaction abort owns the rejection. */ }
+    tx.oncomplete = () => { db.close(); resolve(profileId) }
+    tx.onabort = () => {
+      db.close()
+      reject(owner && owner !== profileId
+        ? new Error('A régi Víz napló már másik TEST-profilhoz tartozik.')
+        : tx.error || new Error('A Víz profilhoz rendelése megszakadt.'))
+    }
+  })
+}
+
+export async function getLocalWaterOwner() {
+  return (await loadLocalProject(WATER_LEGACY_OWNER_ID))?.profileId || null
+}
+
 export async function loadLocalProject(id) {
   const db = await openDb()
   return new Promise((resolve, reject) => {
@@ -84,6 +122,7 @@ export async function listLocalProjects(limit = 5) {
     request.onsuccess = () => {
       db.close()
       const projects = (request.result || [])
+        .filter(project => project.id !== WATER_LEGACY_OWNER_ID)
         .sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')))
         .slice(0, limit)
       resolve(projects)
