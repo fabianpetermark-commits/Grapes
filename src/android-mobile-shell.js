@@ -1158,6 +1158,7 @@ if (foodSyntheticQaPanel) {
     button.addEventListener('click', async () => {
       if (!foodSyntheticQaFlag || !isGrapesAndroidApp()) return
       for (const [, key] of qaActions) { const b = $(key); if (b) b.disabled = true }
+      qaStatus.dataset.state = 'pending'
       qaStatus.textContent = 'Szintetikus TEST-próba ellenőrzése…'
       try {
         if (!(await getAndroidTestAuthEnabled())) throw new Error('A natív Grapes TEST kapu nem aktív.')
@@ -1165,12 +1166,14 @@ if (foodSyntheticQaPanel) {
           await import('./sync/grapes-test-synthetic-food-trial.js')
         const trial = createGrapesTestSyntheticFoodTrial({ enabled: true })
         const result = await trial[method]()
+        qaStatus.dataset.state = method === 'readBack' ? 'success' : 'pending'
         qaStatus.textContent = method === 'prepare'
           ? 'A próba tartós offline sorba került (' + result.status + '). A mentés még nincs igazolva.'
           : method === 'save'
             ? 'A mentési kísérlet szerveroldali előzménye igazolt (rev. ' + result.revision + '). Visszaolvasás még szükséges.'
             : 'PASS: a külön szerveroldali Food-visszaolvasás egyezik (rev. ' + result.revision + ').'
       } catch (error) {
+        qaStatus.dataset.state = 'error'
         qaStatus.textContent = 'NEM IGAZOLT: ' + (error?.message || 'A TEST-próba megszakadt.')
       } finally {
         for (const [, key] of qaActions) { const b = $(key); if (b) b.disabled = false }
