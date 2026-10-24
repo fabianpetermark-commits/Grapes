@@ -18,6 +18,29 @@
 @media(max-width:360px){.appbar{height:78px}.appbar h1{font-size:22px}.module-tabs{padding:8px 7px}.module-tab{min-width:77px;font-size:10px}.content{padding:14px 12px 20px}.widget{padding:13px}.widget-title strong{font-size:15px}.summary-sub{padding:10px 8px}.summary-sub strong{font-size:16px}.balance{font-size:35px}.dock{padding-inline:9px}.dock-action{font-size:11px}.chart-stack{gap:3px}.chart-bar{width:8px}}
 @media(min-width:720px){body{background:#050a0d}.app{border-left:1px solid #263746;border-right:1px solid #263746}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* Grapes Brand v1.2 — Samsung-inspired six icon nav, Grapes dark cyan.
+   Exactly 6 compact icons per rail, always accessible with aria-label/title. */
+.appbar{display:none!important}
+.module-tabs{display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr));align-items:center;
+ gap:3px;margin:12px 13px 0;padding:5px;background:#101821;
+ border:1px solid #2c4a58;border-radius:23px;overflow:visible;min-height:64px;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}
+.module-tabs .module-tab,.module-tabs .rail-settings{display:flex;align-items:center;justify-content:center;
+ min-width:0;min-height:51px;padding:0;margin:0;flex:none;white-space:normal;
+ border:1px solid transparent;border-radius:18px;background:transparent;
+ color:#9aafbe;font-size:0;line-height:0;box-shadow:none;cursor:pointer}
+.module-tabs .module-tab>span svg,.module-tabs .rail-settings svg{width:22px!important;height:22px!important;stroke-width:1.8}
+.module-tabs .module-tab.active{background:#1b3441;border-color:#477a88;color:#3bdcf2;
+ box-shadow:inset 0 -2px 0 rgba(59,220,242,.68),0 0 5px rgba(59,220,242,.1)}
+.module-tabs :is(button):focus-visible{outline:2px solid #3bdcf2;outline-offset:2px}
+.finance-view-title{font-size:24px;line-height:1.2;letter-spacing:-.035em;margin:6px 0 4px;font-weight:780;color:#f2f7fb}
+.view-heading .overline{display:none!important}
+.period-bar{margin-top:6px}.period-bar h3{font-size:19px;margin:3px 0 0;letter-spacing:-.02em}
+@media(max-width:350px){.module-tabs{margin-inline:9px;padding:4px;gap:2px;min-height:58px}
+ .module-tabs .module-tab,.module-tabs .rail-settings{min-height:46px;border-radius:14px}
+ .module-tabs .module-tab>span svg,.module-tabs .rail-settings svg{width:20px!important;height:20px!important}}
+
 </style>
 </head>
 <body>
@@ -26,24 +49,16 @@
     <label class="demo-toggle" for="demo-data"><input type="checkbox" id="demo-data" checked><span>Mintadatok</span></label>
   </div>
   <div class="app" id="app">
-    <header class="appbar">
-      <h1>Finance</h1>
-      <div class="header-actions">
-        <span class="save-dot" id="save-indicator" title="Az előnézet nem ment éles adatot"></span>
-        <button class="icon-button" type="button" id="settings-open" aria-label="Finance beállítások" title="Finance beállítások" data-icon="settings"></button>
-      </div>
-    </header>
     <nav class="module-tabs" role="tablist" aria-label="Pénzügyi napló nézetei">
-      <button class="module-tab active" role="tab" aria-selected="true" data-tab="overview"><span data-icon="layout-dashboard"></span>Áttekintés</button>
-      <button class="module-tab" role="tab" aria-selected="false" data-tab="ledger"><span data-icon="list"></span>Napló</button>
-      <button class="module-tab" role="tab" aria-selected="false" data-tab="savings"><span data-icon="target"></span>Megtakarítás</button>
-      <button class="module-tab" role="tab" aria-selected="false" data-tab="forecast"><span data-icon="chart"></span>Előrejelzés</button>
-      <button class="module-tab" role="tab" aria-selected="false" data-tab="import"><span data-icon="upload"></span>Import</button>
-    </nav>
+      <button class="module-tab active" role="tab" aria-selected="true" data-tab="overview" aria-label="Áttekintés" title="Áttekintés"><span data-icon="layout-dashboard"></span></button>
+      <button class="module-tab" role="tab" aria-selected="false" data-tab="ledger" aria-label="Tranzakciók" title="Tranzakciók"><span data-icon="list"></span></button>
+      <button class="module-tab" role="tab" aria-selected="false" data-tab="savings" aria-label="Megtakarítások" title="Megtakarítások"><span data-icon="target"></span></button>
+      <button class="module-tab" role="tab" aria-selected="false" data-tab="forecast" aria-label="Előrejelzés" title="Előrejelzés"><span data-icon="chart"></span></button>
+      <button class="module-tab" role="tab" aria-selected="false" data-tab="import" aria-label="Importálás" title="Importálás"><span data-icon="upload"></span></button>
+    <button type="button" id="settings-open" class="rail-settings" aria-label="Finance beállítások" title="Finance beállítások" data-icon="settings"></button></nav>
     <main id="main" class="content">
       <section class="screen active" id="panel-overview" data-panel="overview" aria-label="Áttekintés">
-        <div class="period-bar">
-          <div><span class="overline">HAVI ÁTTEKINTÉS</span><h2 id="period-title">2026. október</h2></div>
+        <h2 class="finance-view-title">Áttekintés</h2><div class="period-bar"><div><span class="overline">IDŐSZAK</span><h3 id="period-title">2026. október</h3></div>
           <div class="period-actions"><button class="mini-button" type="button" id="month-prev" aria-label="Előző hónap" data-icon="chevron-left"></button><button class="mini-button" type="button" id="month-next" aria-label="Következő hónap" data-icon="chevron-right"></button></div>
         </div>
         <section class="widget summary" aria-label="Pénzügyi összesítés">
@@ -73,7 +88,7 @@
         </section>
       </section>
       <section class="screen" id="panel-ledger" data-panel="ledger" aria-label="Tranzakciók">
-        <div class="view-heading"><div><span class="overline">PÉNZÜGYI NAPLÓ</span><h2>Tranzakciók</h2></div><button type="button" class="outline-button small-action" id="ledger-new">+ Új tétel</button></div>
+        <div class="view-heading"><div><h2>Tranzakciók</h2></div><button type="button" class="outline-button small-action" id="ledger-new">+ Új tétel</button></div>
         <section class="filter-widget widget compact">
           <label class="search-wrap"><span data-icon="search"></span><input id="filter-search" type="search" placeholder="Keresés a tételek között…" aria-label="Keresés"></label>
           <div class="filter-grid"><label>Időszak<input id="filter-month" type="month" value="2026-10"></label><label>Típus<select id="filter-type"><option value="all">Minden típus</option><option value="expense">Kiadás</option><option value="income">Bevétel</option><option value="planned">Tervezett kiadás</option></select></label></div>
@@ -83,18 +98,18 @@
         <button class="text-link restore-link" id="undo-delete" type="button" hidden>↶ Utolsó törlés visszaállítása</button>
       </section>
       <section class="screen" id="panel-savings" data-panel="savings" aria-label="Megtakarítások">
-        <div class="view-heading"><div><span class="overline">CÉLOK ÉS TARTALÉK</span><h2>Megtakarítások</h2></div><button type="button" class="outline-button small-action" id="new-goal">+ Új cél</button></div>
+        <div class="view-heading"><div><h2>Megtakarítások</h2></div><button type="button" class="outline-button small-action" id="new-goal">+ Új cél</button></div>
         <section class="widget savings-hero"><div class="widget-title"><strong><span data-icon="piggy"></span>Teljes félretett összeg</strong></div><div class="balance" id="savings-total">—</div><p class="muted small">Félretételek mínusz kivétek, az összes célban</p><div class="row-2"><button type="button" class="outline-button" id="savings-deposit">+ Félretétel</button><button type="button" class="outline-button" id="savings-withdraw">− Kivét</button></div></section>
         <section class="widget"><div class="widget-title"><strong><span data-icon="target"></span>Megtakarítási célok</strong></div><div id="goal-list"></div></section>
         <section class="widget"><div class="widget-title"><strong><span data-icon="clock"></span>Legutóbbi mozgások</strong></div><div id="saving-entries"></div></section>
       </section>
       <section class="screen" id="panel-forecast" data-panel="forecast" aria-label="Előrejelzés">
-        <div class="view-heading"><div><span class="overline">VÁRHATÓ ALAKULÁS</span><h2>Előrejelzés</h2></div></div>
+        <div class="view-heading"><div><h2>Előrejelzés</h2></div></div>
         <section class="widget forecast-lead"><div class="widget-title"><strong><span data-icon="chart"></span>Várható nettó változás</strong></div><div class="balance" id="forecast-net">—</div><p class="muted small" id="forecast-confidence">Becslés a rögzített havi adatokból.</p><div class="filter-grid forecast-filters"><label>Vizsgált múlt<select id="forecast-history"><option value="3">3 hónap</option><option value="6" selected>6 hónap</option><option value="12">12 hónap</option><option value="24">24 hónap</option></select></label><label>Előrejelzés<select id="forecast-future"><option value="1">1 hónap</option><option value="3" selected>3 hónap</option><option value="6">6 hónap</option><option value="12">12 hónap</option></select></label></div></section>
         <section class="widget"><div class="widget-title"><strong><span data-icon="bar-chart"></span>Becsült összegek</strong></div><div class="forecast-metrics"><div><span>Várható bevétel</span><strong id="forecast-income">—</strong></div><div><span>Várható kiadás</span><strong id="forecast-expense">—</strong></div><div><span>Időszak végi tartalék*</span><strong id="forecast-reserve">—</strong></div></div><div id="forecast-bars" class="forecast-bars"></div><p class="note">* A tartalék a mostani megtakarításból és a becsült nettó pénzmozgásból számolt szemléltetés. A tényleges Grapes pénzügyi előrejelző algoritmusa az éles modulban marad.</p></section>
       </section>
       <section class="screen" id="panel-import" data-panel="import" aria-label="Importálás">
-        <div class="view-heading"><div><span class="overline">ADATOK BETÖLTÉSE</span><h2>Importálás</h2></div></div>
+        <div class="view-heading"><div><h2>Importálás</h2></div></div>
         <section class="widget"><div class="widget-title"><strong><span data-icon="upload"></span>Táblázat importálása</strong></div><p class="muted small info-text">Excel, XLSM vagy CSV fájl feldolgozása. A működő Grapes-ben a fájltérképezés és a jóváhagyás megmarad.</p><div class="stepper"><span class="step active">1. Fájl</span><span class="step">2. Felismerés</span><span class="step">3. Jóváhagyás</span></div><label class="upload-zone" for="import-file"><span data-icon="file-up"></span><strong>Fájl kiválasztása</strong><span class="muted small">CSV próbálható ki · XLS/XLSX/XLSM teljes importja a Grapes-ben</span><input id="import-file" type="file" accept=".csv,.xls,.xlsx,.xlsm,text/csv"></label><div id="import-result"></div></section>
         <section class="widget"><div class="widget-title"><strong><span data-icon="shield"></span>Biztonságos import</strong></div><div class="assurance"><span data-icon="check"></span><p>Az eredeti fájl érintetlen marad. Nincs automatikus éles import.</p></div><div class="assurance"><span data-icon="check"></span><p>Az oszlopok és adatsorok ellenőrizhetők az importálás előtt.</p></div><div class="assurance"><span data-icon="check"></span><p>Az ismétlődő vagy hiányos tételek kiszűrése a tényleges modul feladata.</p></div></section>
       </section>
