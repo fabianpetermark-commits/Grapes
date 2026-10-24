@@ -1,0 +1,190 @@
+name: Grapes TEST v24 durable Supabase outbox (NO RELEASE)
+
+on:
+  pull_request:
+    branches:
+      - feature/grapes-test-v24-supabase-direct-foundation-20261024
+    paths:
+      - .github/workflows/grapes-test-v24-supabase-durable-outbox.yml
+      - poc/supabase-phase2/**
+      - src/auth/**
+      - src/sync/**
+      - src/android-bridge.js
+      - android-health-connect-poc/app/**
+      - src/login-auth-test.js
+      - src/login-preview.js
+      - login-auth-test.html
+      - login-preview.html
+      - tests/**
+      - package.json
+      - package-lock.json
+      - vite.config.js
+
+permissions:
+  contents: read
+
+jobs:
+  local-supabase-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.81.3
+      - name: Confirm CLI commands and runner identity
+        run: |
+          supabase --version
+          supabase init --help >/dev/null
+          supabase start --help >/dev/null
+          supabase migration new --help >/dev/null
+          supabase db advisors --help >/dev/null
+          supabase status --help >/dev/null
+          echo "Tested commit: $GITHUB_SHA"
+      - name: Prepare isolated local Supabase stack
+        env:
+          GRAPES_SUPABASE_LOCAL_DIR: ${{ runner.temp }}/grapes-supabase-${{ github.run_id }}
+        run: |
+          mkdir -p "$GRAPES_SUPABASE_LOCAL_DIR"
+          cd "$GRAPES_SUPABASE_LOCAL_DIR"
+          supabase init
+          node "$GITHUB_WORKSPACE/poc/supabase-phase2/ci/prepare-config.mjs"
+          supabase migration new grapes_ci_api_bootstrap
+          migration=$(find supabase/migrations -name '*_grapes_ci_api_bootstrap.sql' -print -quit)
+          test -n "$migration"
+          printf 'create schema if not exists api;\n' > "$migration"
+          supabase start
+          if ! command -v psql >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y postgresql-client
+          fi
+      - name: Verify SQL, local Auth, RLS boundaries and independent CAS sessions
+        env:
+          GRAPES_SUPABASE_LOCAL_DIR: ${{ runner.temp }}/grapes-supabase-${{ github.run_id }}
+        run: node poc/supabase-phase2/ci/verify-local.mjs
+      - name: Inspect local database security advisors
+        env:
+          GRAPES_SUPABASE_LOCAL_DIR: ${{ runner.temp }}/grapes-supabase-${{ github.run_id }}
+        run: |
+          cd "$GRAPES_SUPABASE_LOCAL_DIR"
+          supabase db advisors --local
+
+  web-regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: node --test tests/ebook-drive-boundary.test.js
+      - run: npm run build
+      - run: npm run build:android-web
+      - name: Auth and E-book Drive boundary regressions
+        run: node --test tests/grapes-auth-flow.test.js tests/grapes-android-oauth.test.js tests/ebook-drive-boundary.test.js tests/grapes-supabase-test-gateway.test.js tests/grapes-test-native-client.test.js
+      - name: Find Chromium
+        run: |
+          if command -v google-chrome >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            npx playwright-core install --with-deps chromium
+            browser=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path '*chrome-linux*' | head -1)
+            test -n "$browser"
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$browser" >> "$GITHUB_ENV"
+          fi
+      - name: Focused TEST Auth, Health, Food, Water, Finance and E-book regressions
+        run: |
+          node tests/grapes-test-outbox.browser.mjs
+          node tests/grapes-test-auth.browser.mjs
+          node tests/water-durability.browser.mjs
+          node tests/water-profile-claim.browser.mjs
+          node tests/food-local-concurrency.browser.mjs
+          node tests/food-v24-local-cas-ui.browser.mjs
+          node tests/android-ebook-reader.browser.mjs
+          node tests/android-ebook-shelf.browser.mjs
+          node tests/food-app.browser.mjs
+          node tests/finance-import.browser.mjs
+  full-browser-baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Find Chromium
+        run: |
+          if command -v google-chrome >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            npx playwright-core install --with-deps chromium
+            browser=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path '*chrome-linux*' | head -1)
+            test -n "$browser"
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$browser" >> "$GITHUB_ENV"
+          fi
+      - name: Complete local browser suite, report all failures
+        run: |
+          passed=0
+          failed=0
+          for file in tests/*.browser.mjs; do
+            if [ "$file" = tests/food-live-api.browser.mjs ]; then
+              echo "NOT TESTED (external service): $file"
+              continue
+            fi
+            echo "Running $file"
+            if [[ "$file" == tests/android-* ]]; then
+              VITE_GRAPES_TEST_CHANNEL=1 node "$file" && passed=$((passed + 1)) || { failed=$((failed + 1)); echo "FAIL $file"; }
+            else
+              node "$file" && passed=$((passed + 1)) || { failed=$((failed + 1)); echo "FAIL $file"; }
+            fi
+          done
+          echo "Browser files: $passed PASS / $failed FAIL"
+          test "$failed" -eq 0
+
+  android-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GRAPES_TEST_AUTH_ENABLED: 'true'
+      VITE_GRAPES_TEST_DATA_ENABLED: 'true'
+      VITE_GRAPES_TEST_SUPABASE_URL: https://aighqtqjlzirlokxwupt.supabase.co
+      VITE_GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY: sb_publishable_synthetic_ci_only_000000000000
+      VITE_GRAPES_TEST_HEALTH_SYNC_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Build isolated TEST Auth assets with fake public key
+        run: npm run build:android-web
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK 36
+        run: |
+          sdkmanager=$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | sort -V | tail -1)
+          test -n "$sdkmanager"
+          "$sdkmanager" "platforms;android-36" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.11.1
+      - name: Native callback unit tests and QA compile, no artifact upload
+        run: |
+          gradle --project-dir android-health-connect-poc :app:testQaUnitTest :app:assembleQa
+          test -s android-health-connect-poc/app/build/outputs/apk/qa/app-qa.apk
