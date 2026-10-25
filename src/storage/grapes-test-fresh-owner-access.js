@@ -29,6 +29,10 @@ export function createGrapesTestFreshOwnerAccess({
       enabled: true, indexedDb, getVerifiedSubject: verifiedSubject,
     })
   }
+  const belongsToOwnerModule = row =>
+    (row.id === 'finance-current' && row.data?.module === 'Pénzügyi Napló') ||
+    (row.id === 'food-current' && row.data?.module === 'Ételnapló' &&
+      row.data?.data?.profile?.id === row.ownerId)
   return Object.freeze({
     verifiedSubject,
     async listOwnedProjects() {
@@ -36,18 +40,21 @@ export function createGrapesTestFreshOwnerAccess({
       // and after querying IndexedDB. Unknown and QA records are NOT
       // presented as ordinary user projects.
       const rows = await store().list()
-      return rows.filter(row =>
-        row.id === 'finance-current' && row.data?.module === 'Pénzügyi Napló')
-        .map(row => ({
-          id: row.id, module: 'finance', folder: 'Pénzügyi Napló',
-          name: row.data.name || 'Pénzügyi napló', icon: 'finance',
-          updatedAt: row.data.updatedAt || '', ownerId: row.ownerId,
-        }))
+      return rows.filter(belongsToOwnerModule)
+        .map(row => {
+          const food = row.id === 'food-current'
+          return {
+            id: row.id, module: food ? 'food' : 'finance',
+            folder: food ? 'Ételnapló' : 'Pénzügyi Napló',
+            name: row.data.name || (food ? 'Ételnapló' : 'Pénzügyi napló'),
+            icon: food ? 'food' : 'finance',
+            updatedAt: row.data.updatedAt || '', ownerId: row.ownerId,
+          }
+        })
     },
     async ownedUsage() {
       const rows = await store().list()
-      const projects = rows.filter(row => !row.id.startsWith('qa-') &&
-        row.id === 'finance-current' && row.data?.module === 'Pénzügyi Napló')
+      const projects = rows.filter(belongsToOwnerModule)
       return {
         projects: projects.length,
         // Estimate only this owner's partition. navigator.storage.estimate()
