@@ -77,10 +77,10 @@ class TestSupabaseProxyTest {
             assertEquals(key, suppliedKey)
             remoteCalls++
             when (path) {
-                "/auth/v1/user" -> 200 to "{\\"id\\":\\"$a\\",\\"is_anonymous\\":false}"
+                "/auth/v1/user" -> 200 to "{\"id\":\"$a\",\"is_anonymous\":false}"
                 "/rest/v1/rpc/$route" -> {
                     assertEquals("family-a", JSONObject(body!!).getString("p_household_id"))
-                    200 to "{\\"status\\":\\"committed\\",\\"revision\\":1}"
+                    200 to "{\"status\":\"committed\",\"revision\":1}"
                 }
                 else -> error("Unexpected native route: $path")
             }
