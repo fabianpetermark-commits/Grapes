@@ -5,7 +5,7 @@ import { createGrapesTestLocalOwnerStore } from './grapes-test-local-owner-store
 
 // TEST-only opt-in routing gate for NEW empty owner partitions. This never
 // imports legacy project rows, never claims ownership, never touches PROD.
-const SUBJECT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const SUBJECT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export function createGrapesTestFreshOwnerAccess({
   enabled = false,
