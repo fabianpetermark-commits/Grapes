@@ -7,6 +7,13 @@ import { openModal, showGrapesAlert, showGrapesConfirm, showGrapesPrompt } from 
 import { initFinanceImport } from './finance-import-ui.js'
 import { extractReceiptAmountCandidates, recognizeReceiptImage } from './receipt-ocr.js'
 import { loadLocalProject, saveLocalProject } from './storage/local-project-store.js'
+import { isGrapesAndroidApp } from './android-bridge.js'
+// Deliberately OFF outside the verified Android TEST fresh-owner build.
+// Never load global finance-tracker-current or Drive when enabled.
+const FRESH_OWNER_FINANCE = isGrapesAndroidApp() &&
+  import.meta.env?.VITE_GRAPES_TEST_CHANNEL === '1' &&
+  import.meta.env?.VITE_GRAPES_TEST_AUTH_ENABLED === 'true' &&
+  import.meta.env?.VITE_GRAPES_TEST_FRESH_OWNER_MODULES_ENABLED === 'true'
 import { isGrapesDriveConnected, loadGrapesProject, saveGrapesProject } from './storage/grapes-drive.js'
 import {
   DEFAULT_CATEGORIES, calculateSavings, calculateSummary, categorySummary, filterTransactions,
@@ -23,6 +30,8 @@ const PROJECT_RECEIPT_LIMIT = 15 * 1024 * 1024
 const BACKUP_FILE_LIMIT = 30 * 1024 * 1024
 
 let initialized = false
+let financeOwnerSession = null
+let financeReady = false
 let activeFinanceTab = 'overview'
 let transactions = []
 let people = []
@@ -147,12 +156,23 @@ function applyProject(data = {}) {
 }
 
 async function persistLocal() {
+  if (FRESH_OWNER_FINANCE) {
+    if (!financeReady || !financeOwnerSession) {
+      throw new Error('A Grapes TEST Finance-fiók még nem ellenőrizhető.')
+    }
+    await financeOwnerSession.save(serializeProject())
+    return
+  }
   await saveLocalProject({
     id: STORAGE_ID, module: MODULE_NAME, name: 'Pénzügyi napló', data: serializeProject(), driveFileId: driveProjectFileId,
   })
 }
 
 function scheduleSave() {
+  if (FRESH_OWNER_FINANCE && (!financeReady || !financeOwnerSession)) {
+    setUxState('#finance-save-status', 'error', 'A Finance TEST-fiók nincs ellenőrizve')
+    return
+  }
   clearTimeout(localSaveTimer)
   clearTimeout(driveSaveTimer)
   setUxState('#finance-save-status', 'saving', 'Mentés…')
@@ -165,12 +185,16 @@ function scheduleSave() {
       setUxState('#finance-save-status', 'error', 'A helyi mentés sikertelen')
     }
   }, 350)
-  if (isGrapesDriveConnected()) {
+  if (!FRESH_OWNER_FINANCE && isGrapesDriveConnected()) {
     driveSaveTimer = setTimeout(() => saveToDrive(false), 2600)
   }
 }
 
 async function saveToDrive(showToast = true) {
+  if (FRESH_OWNER_FINANCE) {
+    if (showToast) notifyError('A Google Drive külön fiók; Finance TEST alatt a Drive-mentés letiltva.')
+    return false
+  }
   if (!isGrapesDriveConnected()) {
     notifyError('Előbb csatlakoztasd a Google Drive-ot a főmenüben.')
     return false
@@ -464,6 +488,13 @@ function render() {
 }
 
 async function saveSafetySnapshot(id, name, data) {
+  if (FRESH_OWNER_FINANCE) {
+    if (!financeReady || !financeOwnerSession) throw new Error('Nincs hitelesített Finance TEST-fiók.')
+    const kind = id === DELETE_BACKUP_ID ? 'last-delete'
+      : id === RESTORE_BACKUP_ID ? 'before-restore' : null
+    if (!kind) throw new Error('Érvénytelen Finance-visszaállítási pont.')
+    return financeOwnerSession.saveSafety(kind, data)
+  }
   await saveLocalProject({ id, module: MODULE_NAME, name, data })
 }
 
@@ -480,7 +511,12 @@ async function restoreFinanceBackup(data) {
   clearTimeout(driveSaveTimer)
   await persistLocal()
   await saveSafetySnapshot(RESTORE_BACKUP_ID, 'Pénzügyi napló – visszaállítás előtti mentés', serializeProject())
-  await saveLocalProject({ id: STORAGE_ID, module: MODULE_NAME, name: 'Pénzügyi napló', data, driveFileId: null })
+  if (FRESH_OWNER_FINANCE) {
+    await financeOwnerSession.assertOwner()
+    await financeOwnerSession.save(data)
+  } else {
+    await saveLocalProject({ id: STORAGE_ID, module: MODULE_NAME, name: 'Pénzügyi napló', data, driveFileId: null })
+  }
   applyProject(data)
   driveProjectFileId = null
   el('#finance-filter-month').value = ''
@@ -612,6 +648,27 @@ async function scanPendingReceipt() {
 }
 
 async function loadInitialProject() {
+  if (FRESH_OWNER_FINANCE) {
+    financeReady = false
+    financeOwnerSession = null
+    clearTimeout(localSaveTimer); clearTimeout(driveSaveTimer)
+    // Clear all old screen state BEFORE loading a new owner. NEVER display
+    // A's values while waiting for B's native Auth.
+    transactions = []; people = []; savingsGoals = []; savingsEntries = []
+    categories = { income: [], expense: [] }
+    pendingReceipt = null; editingTransactionId = null; editingSavingsEntryId = null
+    driveProjectFileId = null
+    applyProject({})
+    sessionStorage.removeItem('grapes-open-project')
+    const { openGrapesTestLiveFinance } =
+      await import('./storage/grapes-test-finance-live.js')
+    const session = await openGrapesTestLiveFinance({ enabled: true })
+    const data = await session.read()
+    financeOwnerSession = session
+    if (data) applyProject(data)
+    financeReady = true
+    return
+  }
   let project = null
   try {
     const target = JSON.parse(sessionStorage.getItem('grapes-open-project') || 'null')
@@ -845,7 +902,8 @@ function bindControls() {
       render()
       try { await persistLocal() }
       catch (error) { transactions = snapshot.transactions; render(); throw error }
-      const driveSynced = driveProjectFileId && isGrapesDriveConnected() ? await saveToDrive(false) : false
+      const driveSynced = !FRESH_OWNER_FINANCE && driveProjectFileId && isGrapesDriveConnected()
+        ? await saveToDrive(false) : false
       setUxState('#finance-save-status', 'saved', driveSynced ? 'Drive-ra törölve' : 'Helyben törölve')
       notifySuccess(`A tételeket ${driveSynced ? 'a Drive-on is' : 'helyben'} töröltük. A teljes mentés fájlból vagy az „Utolsó törlés visszaállítása” gombbal visszaállítható.`)
     } catch (error) {
@@ -857,7 +915,11 @@ function bindControls() {
     if (transactions.length || savingsEntries.length || savingsGoals.length) { event.target.value = currency; notifyError('A meglévő összegeket nem váltjuk át automatikusan. A pénznem csak teljesen üres naplónál módosítható.'); return }
     currency = event.target.value; render(); scheduleSave()
   })
-  el('#finance-backup-export-btn').addEventListener('click', () => {
+  el('#finance-backup-export-btn').addEventListener('click', async () => {
+    if (FRESH_OWNER_FINANCE) {
+      try { await financeOwnerSession?.assertOwner() }
+      catch (error) { notifyError(error.message); return }
+    }
     download(financeBackupToJson(serializeProject()), 'application/json;charset=utf-8', `penzugyi-naplo-teljes-mentes-${backupTimestamp()}.json`)
     notifySuccess('A teljes, bizonylatokat is tartalmazó mentés letöltése elindult.')
   })
@@ -873,12 +935,18 @@ function bindControls() {
   })
   el('#finance-restore-last').addEventListener('click', async () => {
     try {
-      const backup = await loadLocalProject(DELETE_BACKUP_ID)
-      if (!backup?.data) throw new Error('Nincs helyi törlés előtti mentés. A letöltött JSON-fájlt is importálhatod.')
-      await restoreFinanceBackup(financeBackupFromJson(financeBackupToJson(backup.data)))
+      const backupData = FRESH_OWNER_FINANCE
+        ? await financeOwnerSession?.loadSafety('last-delete')
+        : (await loadLocalProject(DELETE_BACKUP_ID))?.data
+      if (!backupData) throw new Error('Nincs helyi törlés előtti mentés. A letöltött JSON-fájlt is importálhatod.')
+      await restoreFinanceBackup(financeBackupFromJson(financeBackupToJson(backupData)))
     } catch (error) { notifyError(error.message || 'A helyi mentés nem állítható vissza.') }
   })
-  el('#finance-export-btn').addEventListener('click', () => {
+  el('#finance-export-btn').addEventListener('click', async () => {
+    if (FRESH_OWNER_FINANCE) {
+      try { await financeOwnerSession?.assertOwner() }
+      catch (error) { notifyError(error.message); return }
+    }
     download(transactionsToCsv(transactions, currency), 'text/csv;charset=utf-8', `penzugyi-naplo-${today()}.csv`)
     notifySuccess('A CSV-export elkészült. A bizonylatfájlokhoz használd a Teljes mentést.')
   })
@@ -893,7 +961,14 @@ function bindControls() {
 }
 
 export async function initFinanceTracker() {
+  if (FRESH_OWNER_FINANCE) el('#finance-app').style.visibility = 'hidden'
   if (initialized) {
+    if (FRESH_OWNER_FINANCE) {
+      await loadInitialProject()
+      render()
+      el('#finance-app').style.removeProperty('visibility')
+      return
+    }
     const target = JSON.parse(sessionStorage.getItem('grapes-open-project') || 'null')
     if (target?.module === MODULE_NAME) {
       clearTimeout(localSaveTimer); clearTimeout(driveSaveTimer)
@@ -909,10 +984,19 @@ export async function initFinanceTracker() {
   })
   bindControls()
   await loadInitialProject()
-  el('#finance-drive-status').textContent = driveProjectFileId
+  if (FRESH_OWNER_FINANCE) {
+    el('#finance-drive-save').disabled = true
+    el('#finance-drive-save').textContent = 'Drive nem aktív a fiókozott TEST-ben'
+  }
+  el('#finance-drive-status').textContent = FRESH_OWNER_FINANCE
+    ? 'Helyi Grapes TEST-fióktárhely; Drive mentés kikapcsolva.'
+    : driveProjectFileId
     ? 'Google Drive-szinkronizálás aktív.'
     : 'A változtatások helyben automatikusan mentődnek.'
-  el('#finance-drive-save').textContent = driveProjectFileId ? 'Drive mentve' : 'Mentés Drive-ra'
+  if (!FRESH_OWNER_FINANCE) {
+    el('#finance-drive-save').textContent = driveProjectFileId ? 'Drive mentve' : 'Mentés Drive-ra'
+  }
   setUxState('#finance-save-status', 'saved', 'Kész')
   render()
+  if (FRESH_OWNER_FINANCE) el('#finance-app').style.removeProperty('visibility')
 }
