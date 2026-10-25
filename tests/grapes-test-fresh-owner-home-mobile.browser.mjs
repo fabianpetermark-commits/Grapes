@@ -172,6 +172,69 @@ try {
     return JSON.stringify(await (await openGrapesTestFreshFood({enabled:true})).load())
   })
   assert.equal(foodAfterCook, foodBeforeCook, 'Cooking must not rewrite the personal Food project.')
+  // Attach an already saved Food recipe diary entry; Home must never create it.
+  await page.evaluate(async () => {
+    const { openGrapesTestFreshFood } = await import('/Grapes/src/food/grapes-test-fresh-food.js')
+    const { normalizeDiaryEntry } = await import('/Grapes/src/food/food-data.js')
+    const food = await openGrapesTestFreshFood({enabled:true})
+    const data = await food.load()
+    data.diaryEntries.push(normalizeDiaryEntry({
+      id:'home-linked-entry-1',profileId:data.profile.id,mealType:'lunch',
+      amount:1,unit:'serving',occurredAt:'2026-10-25T12:00:00Z',
+      snapshot:{foodId:'f-home-m3a-recipe',name:'A saját tejitalom',category:'Saját recept',
+        source:{type:'recipe',id:'r-home-m3a-milk',revision:'1',attribution:data.profile.id},
+        baseAmount:200,baseUnit:'g',nutrients:{}}
+    }))
+    await food.save(data)
+    await food.assertOwner()
+  })
+  const beforeLinkFood = await page.evaluate(async () => {
+    const { openGrapesTestFreshFood } = await import('/Grapes/src/food/grapes-test-fresh-food.js')
+    return JSON.stringify(await (await openGrapesTestFreshFood({enabled:true})).load())
+  })
+  await home.locator('[data-household-link-prepared]').click()
+  const linkForm = home.locator('[data-household-diary-link]')
+  await linkForm.locator('[name="foodEntryId"]').waitFor()
+  await linkForm.locator('[name="foodEntryId"]').selectOption('home-linked-entry-1')
+  assert.match(await linkForm.locator('[data-household-diary-preview]').textContent(), /2 → 1 adag/)
+  const beforeLink = await page.evaluate(async () => {
+    const { openGrapesTestFreshHome } = await import('/Grapes/src/home/grapes-test-fresh-home.js')
+    return (await openGrapesTestFreshHome({enabled:true})).getState()
+  })
+  assert.equal(beforeLink.prepared[0].portionsRemaining,2)
+  await linkForm.locator('button[type="submit"]').click()
+  await page.waitForFunction(async () => {
+    const { openGrapesTestFreshHome } = await import('/Grapes/src/home/grapes-test-fresh-home.js')
+    const state = (await openGrapesTestFreshHome({enabled:true})).getState()
+    return state.prepared[0]?.portionsRemaining === 1
+  })
+  const linked = await page.evaluate(async () => {
+    const { openGrapesTestFreshHome } = await import('/Grapes/src/home/grapes-test-fresh-home.js')
+    const session = await openGrapesTestFreshHome({enabled:true})
+    const state = session.getState()
+    const event = state.events.find(event => event.type === 'PreparedConsumptionLinked')
+    const duplicate = await session.dispatch({type:'PreparedConsumptionLinked',eventId:'another-link',
+      sourceType:'food-diary',sourceId:event.sourceId,payload:{}})
+    let wrongSourceBlocked=false, wrongAmountBlocked=false
+    try { await session.dispatch({type:'PreparedConsumptionLinked',eventId:'foreign-link',sourceType:'food-diary',
+      sourceId:'another-owner:home-linked-entry-1',payload:{profileId:state.householdId,foodEntryId:'home-linked-entry-1'}}) }
+    catch { wrongSourceBlocked=true }
+    try { await session.dispatch({type:'PreparedConsumptionLinked',eventId:'forged-link',sourceType:'food-diary',
+      sourceId:state.householdId+':invented-entry',payload:{profileId:state.householdId,foodEntryId:'invented-entry',
+        preparedLotId:state.prepared[0].id,recipeRef:'r-home-m3a-milk',unit:'serving',portions:1}}) }
+    catch { wrongAmountBlocked=true }
+    return {remaining:state.prepared[0].portionsRemaining,raw:state.inventory[0].quantityBase,
+      duplicate:duplicate.duplicate,wrongSourceBlocked,wrongAmountBlocked}
+  })
+  assert.deepEqual(linked,{remaining:1,raw:800,duplicate:true,wrongSourceBlocked:true,wrongAmountBlocked:true})
+  const afterLinkFood = await page.evaluate(async () => {
+    const { openGrapesTestFreshFood } = await import('/Grapes/src/food/grapes-test-fresh-food.js')
+    return JSON.stringify(await (await openGrapesTestFreshFood({enabled:true})).load())
+  })
+  assert.equal(afterLinkFood,beforeLinkFood,'The Food diary record is never rewritten by Home linking.')
+  await home.locator('[data-household-link-prepared]').click()
+  await page.waitForFunction(() => document.querySelector('[data-household-alert]')?.textContent?.includes('Nincs megfelelő'))
+  assert.ok(!(await home.locator('[data-household-diary-link]').isVisible()))
   await page.evaluate(B => localStorage.setItem('__home_qa_subject', B), B)
   await page.reload()
   await openHome('shopping')
@@ -214,7 +277,7 @@ try {
       events:data.events.length, legacy:localStorage.getItem('grapes-home-household-v1'),
       oldPrevious:localStorage.getItem('grapes-home-household-v1-previous') }
   })
-  assert.deepEqual(aFinal,{ inventory:1, shopping:1, prepared:1, events:4,
+  assert.deepEqual(aFinal,{ inventory:1, shopping:1, prepared:1, events:5,
     legacy:'{"legacy":"PRIVATE-UNOWNED"}',oldPrevious:'previous-legacy' })
   // Simulate a native account change in a foregrounded WebView. Previous
   // account data must disappear synchronously, before the new Auth read.
@@ -239,7 +302,8 @@ try {
   await ctx.close()
   console.log('PASS: actual Home buttons save inventory, shopping/status independently A→B→A.')
   console.log('PASS: owner-only read-only Home M3A Food recipe suggestions A→B→A, no stock writes.')
-  console.log('PASS: owner-bound CookingConfirmed, prepared portions, durable idempotency, Finance/diary ingress blocked.')
+  console.log('PASS: owner-bound CookingConfirmed, prepared portions, durable idempotency, Finance ingress blocked.')
+  console.log('PASS: verified saved own Food diary linked once to prepared portions, no Food or raw stock writes; A→B→A.')
   console.log('PASS: on foreground account switch/logout old DOM clears, old localStorage untouched.')
 } finally {
   await browser?.close()
