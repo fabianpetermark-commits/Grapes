@@ -42,8 +42,8 @@ try{
    await page.locator('[data-width="390"]').click();
    if(['home','tools','health','plants','ebook','qr','finance','food','water','recipes'].includes(name)){
      const measured=await iframe.locator('body').evaluate((body,id)=>{
-        const nav=body.querySelector(id==='finance'?'.module-tabs':id==='ebook'||id==='qr'?'.detailNav.icon-rail':id==='health'||id==='plants'?'.grapes-six-rail':['food','water','recipes'].includes(id)?'.hi-rail':'.tabs');
-        const title=body.querySelector(id==='health'||id==='plants'?'.phone__screen>.appbar h1':id==='finance'?'.finance-view-title':id==='ebook'||id==='qr'?'.module-view-title':['food','water','recipes'].includes(id)?'.hi-title':'.header h1');
+        const nav=body.querySelector(id==='finance'?'.module-tabs':id==='ebook'?'.rail':id==='qr'?'.detailNav.icon-rail':id==='health'||id==='plants'?'.grapes-six-rail':['food','water','recipes'].includes(id)?'.hi-rail':'.tabs');
+        const title=body.querySelector(id==='health'||id==='plants'?'.phone__screen>.appbar h1':id==='finance'?'.finance-view-title':id==='ebook'?'.page-title':id==='qr'?'.module-view-title':['food','water','recipes'].includes(id)?'.hi-title':'.header h1');
         if(!nav||!title)return {error:'missing nav/title'};
         return {navTop:nav.getBoundingClientRect().top,titleTop:title.getBoundingClientRect().top,title:title.textContent.trim()};
      },name);
@@ -60,7 +60,7 @@ try{
    }
    if(name==='ebook'){
       await page.locator('[data-state="reader"]').click();
-      if(await iframe.locator('.module-view-title').innerText()!=='Olvasó')throw Error('E-book title was not updated on tab change');
+      if(await iframe.locator('.page-title').innerText()!=='Olvasó')throw Error('E-book title was not updated on tab change');
    }
    if(name==='qr'){
       await page.locator('[data-state="colors"]').click();
