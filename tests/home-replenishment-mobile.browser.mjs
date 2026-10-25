@@ -53,6 +53,14 @@ try {
   await openHome()
   const home=page.locator('[data-household-root]')
   const form=home.locator('[data-household-form]')
+  // UX freeze: only three daily actions visible; secondary tools are reachable.
+  assert.deepEqual(await home.locator('[role="tablist"] [data-household-tab]').allTextContents(),
+    ['Készlet', 'Bevásárlás', 'Javaslatok'])
+  const extra=home.locator('[data-household-extra-nav]')
+  assert.equal(await extra.evaluate(el=>el.open),false)
+  await extra.locator('summary').click()
+  assert.equal(await extra.evaluate(el=>el.open),true)
+  await extra.locator('summary').click()
   await home.locator('[data-household-add="inventory"]').click()
   await form.locator('[name="name"]').fill('Tej')
   await form.locator('[name="quantity"]').fill('2')
@@ -122,6 +130,15 @@ try {
   })
   assert.equal(stock.inventory.reduce((n,x)=>n+x.quantityBase,0),2000)
   assert.equal(stock.shopping.at(-1).listId,created)
+  const done=home.locator('[data-household-completed]')
+  await done.waitFor()
+  assert.equal(await done.evaluate(el=>el.open),false)
+  assert.ok((await done.locator('summary').textContent()).includes('Megvett tételek (1)'))
+  await done.locator('summary').click()
+  assert.equal(await done.locator('[data-household-check]').isVisible(),true)
+  await home.locator('[data-household-tab="replenishment"]').click()
+  await home.locator('[data-household-tab="shopping"]').click()
+  assert.equal(await done.evaluate(el=>el.open),true,'Keep completed section open across rerender')
   // Purchases of non-diary goods: four real checkout records at a regular
   // interval, WITHOUT any recorded consumption. No artificial stock-out.
   await page.evaluate(async () => {
