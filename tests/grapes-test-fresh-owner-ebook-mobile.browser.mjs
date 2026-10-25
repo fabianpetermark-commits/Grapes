@@ -96,7 +96,20 @@ try {
   assert.ok(aSnapshot.bytes > 100)
 
   await shelf.locator('[data-ebook-featured] .continue-btn').click()
-  await page.getByText('Saját, helyi EPUB tartalom a Grapes olvasóban.').first().waitFor()
+  try {
+    await page.getByText('Saját, helyi EPUB tartalom a Grapes olvasóban.').first().waitFor({ timeout: 8000 })
+  } catch (error) {
+    const diagnostic = await page.evaluate(() => ({
+      readerStatus: document.querySelector('[data-reader-status]')?.textContent,
+      readerHidden: document.querySelector('[data-page="reader"]')?.hidden,
+      readerVisibility: document.querySelector('[data-page="reader"]')?.style.visibility,
+      pickerHidden: document.querySelector('[data-reader-picker]')?.hidden,
+      shellHidden: document.querySelector('[data-reader-shell]')?.hidden,
+      chapter: document.querySelector('[data-reader-page]')?.textContent?.slice(0, 180),
+    }))
+    console.error('EBOOK_DIAGNOSTIC', JSON.stringify({ diagnostic, errors }))
+    throw error
+  }
   assert.equal(await page.locator('[data-page="reader"]').isVisible(), true)
   await page.locator('[data-reader-page]').evaluate(node => {
     node.scrollTop = Math.max(1, (node.scrollHeight - node.clientHeight) * .7)
