@@ -94,9 +94,8 @@ export async function openGrapesTestFreshHome({
   }
 
   function dispatch(command) {
-    // Keep Finance OCR and personal Food diary linkage closed in the owner-CAS rollout.
-    // Only explicit, user-confirmed cooking may add a prepared lot.
-    if (command?.type === 'StockReceived' || command?.type === 'PreparedConsumptionLinked') {
+    // Finance OCR remains closed until the Finance owner/read boundary is proven.
+    if (command?.type === 'StockReceived') {
       return Promise.reject(new Error('Ez a Home integráció még nincs jóváhagyva a saját fiókhoz.'))
     }
     if (command?.type === 'CookingConfirmed' &&
@@ -104,6 +103,13 @@ export async function openGrapesTestFreshHome({
          command.sourceId !== `${ownerId}:${command.payload?.recipeRef}:${command.eventId}` ||
          typeof command.payload?.recipeRef !== 'string' || !command.payload.recipeRef)) {
       return Promise.reject(new Error('A főzés saját Food-forrásának stabil azonosítója hiányzik.'))
+    }
+    if (command?.type === 'PreparedConsumptionLinked' &&
+        (command.sourceType !== 'food-diary' ||
+         command.payload?.profileId !== ownerId ||
+         !command.payload?.foodEntryId ||
+         command.sourceId !== `${ownerId}:${command.payload.foodEntryId}`)) {
+      return Promise.reject(new Error('A Food-napló forrása nem a saját Grapes-fiókhoz tartozik.'))
     }
     if (poisoned) return Promise.reject(poisoned)
     const operation = queue.then(async () => {
@@ -123,6 +129,26 @@ export async function openGrapesTestFreshHome({
         if (project.profile?.id !== ownerId || !project.recipes.some(recipe =>
             recipe.id === command.payload.recipeRef && recipe.ownerProfileId === ownerId)) {
           throw new Error('A saját Food-recept nem található; a Home készlete változatlan.')
+        }
+        await food.assertOwner()
+        await verify()
+      }
+      if (command.type === 'PreparedConsumptionLinked' && !state.events.some(event =>
+          event.eventId === command.eventId ||
+          (event.sourceType === command.sourceType && event.sourceId === command.sourceId))) {
+        const prepared = state.prepared.find(lot => lot.id === command.payload.preparedLotId)
+        if (!prepared) throw new Error('A készétel már nem létezik.')
+        const { openGrapesTestFreshFood } = await import('../food/grapes-test-fresh-food.js')
+        const { reviewSavedFoodDiaryEntry } = await import('./home-food-diary-link.js')
+        const food = await openGrapesTestFreshFood({
+          enabled: true, isAndroid, authEnabled, getSubject, indexedDb,
+        })
+        if (food.ownerId !== ownerId) throw new Error('A Food és a Home tulajdonosa eltér.')
+        const project = await food.load()
+        const entry = project.diaryEntries.find(entry => entry.id === command.payload.foodEntryId)
+        const expected = reviewSavedFoodDiaryEntry(project, ownerId, prepared, entry)
+        if (!expected || Object.keys(expected).some(key => command.payload[key] !== expected[key])) {
+          throw new Error('A mentett Food-étkezés nem kapcsolható biztonságosan ehhez a készételhez.')
         }
         await food.assertOwner()
         await verify()
