@@ -575,7 +575,8 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       const count = Number.isFinite(Number(state?.imported)) ? `${Number(state.imported)} új` : 'nincs adat'
       status.textContent = `${date} · ${count}${state?.lastError ? ` · Hiba: ${state.lastError}` : ''}`
     }
-    if (FOOD_LOCAL_CAS_QA) showSyncStatus('QA helyi CAS ellenőrzés · Drive-írás szünetel')
+    if (freshOwnerMode) showSyncStatus('Saját Food TEST-tárhely · Drive, YAZIO, Health és megosztás kikapcsolva')
+    else if (FOOD_LOCAL_CAS_QA) showSyncStatus('QA helyi CAS ellenőrzés · Drive-írás szünetel')
     else if (!isGrapesDriveConnected()) showSyncStatus('Csak helyi mentés · Drive nincs csatlakoztatva')
     else if (project?.syncState?.reconciliation?.status === 'pending') showSyncStatus('Egyesítve helyben · a Drive még nincs frissítve')
     else if (driveConflict) showSyncStatus(driveConflict)
@@ -1860,6 +1861,14 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   async function exportBackup() {
+    if (freshOwnerMode) {
+      try {
+        await freshOwnerSession?.flush()
+        if (!freshOwnerReady || !freshOwnerSession || profile?.id !== freshOwnerSession.ownerId) {
+          throw new Error('A Food TEST-fiók nem ellenőrizhető.')
+        }
+      } catch (error) { showToast(error?.message || 'A mentés nem engedélyezett.'); return }
+    }
     const json = foodBackupToJson(project)
     const filename = `grapes-etelnaplo-${selectedDate}.json`
     closeSheets()
