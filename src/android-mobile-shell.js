@@ -213,8 +213,8 @@ function setSyncProviderStatus(message, state = '') {
 }
 
 function openSyncImport(provider) {
-  if (FRESH_OWNER_MODULES) {
-    showToast('A Food/Health import a fiókhoz kötés befejezéséig nem érhető el.')
+  if (FRESH_OWNER_MODULES && provider !== 'health') {
+    showToast('Ez az importkapcsolat még nincs Grapes-fiókhoz kötve.')
     return
   }
   activeSyncImport = provider
@@ -244,6 +244,12 @@ function openSyncImport(provider) {
     },
   }
   const config = configs[provider]
+  if (FRESH_OWNER_MODULES && provider === 'health') {
+    config.copy = 'Csak a saját Grapes-fiókba, külön jóváhagyás után importálhatók a Health Connect étkezései. A vízadatok, a régi naplók és a Drive továbbra sem kerülnek át.'
+    config.details = ['Csak az engedélyezett Health Connect-adatokat olvassuk, amikor ezt a gombot megnyomod.',
+      'Az étkezések előnézetét átnézheted, kijelölheted; a vízadatok zároltak.',
+      'A Health Connect engedélyei az Androidban külön kezelhetők.']
+  }
   title.textContent = config.title; copy.textContent = config.copy; confirm.textContent = config.action
   details.replaceChildren(...config.details.map(text => { const row = document.createElement('div'); row.className = 'sheet-result'; row.textContent = text; return row }))
   $('[data-sync-import-status]').textContent = ''
@@ -260,8 +266,8 @@ function openSyncImport(provider) {
 }
 
 async function runSyncImport() {
-  if (FRESH_OWNER_MODULES) {
-    showToast('Az importálás a fiókhoz kötés befejezéséig tiltva.')
+  if (FRESH_OWNER_MODULES && activeSyncImport !== 'health') {
+    showToast('Ez az import még nincs fiókhoz kötve.')
     return
   }
   const provider = activeSyncImport
@@ -275,7 +281,8 @@ async function runSyncImport() {
     const needsHealthDate = ['health', 'samsung'].includes(provider)
     const fromDate = needsHealthDate ? $('[data-sync-health-from]').value : ''
     if (needsHealthDate && !fromDate) throw new Error('Válassz kezdődátumot.')
-    closeSheet(); await mobileFood.load()
+    closeSheet()
+    await mobileFood.load()
     const preview = provider === 'samsung'
       ? await mobileFood.openSamsungImport({ fromDate })
       : await mobileFood.openHealthImport({ fromDate })
