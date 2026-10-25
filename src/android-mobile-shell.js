@@ -15,7 +15,7 @@ import { createYazioApiPanel } from './food/yazio-api-panel.js'
 import { registerFoodSharing, sendMealShare, sendRecipeShare } from './food/food-sharing-client.js'
 import { hydrateMobileIcons, mobileIconSvg } from './android-mobile-icons.js'
 import { createHomeMobile } from './home/home-mobile.js'
-import { getAndroidAppUpdate, getAndroidTestAuthEnabled, getAndroidTestAuthSubject, requestAndroidTestAccountSignOut, installAndroidAppUpdate, isGrapesAndroidApp, openAndroidHealthConnectSettings, saveAndroidJsonBackup, saveAndroidVerifiedHealthBackup } from './android-bridge.js'
+import { getAndroidAppUpdate, getAndroidTestAuthEnabled, getAndroidTestAuthSubject, requestAndroidTestAccountSignOut, installAndroidAppUpdate, isGrapesAndroidApp, openAndroidHealthConnectSettings, readAndroidHealthExport, saveAndroidJsonBackup, saveAndroidVerifiedHealthBackup } from './android-bridge.js'
 import { waterBackupToJson, waterBackupFromJson, readWaterStoreStrict, waterBackupSummary,
   writeWaterStoreVerified, restoreWaterBackupVerified } from './water/water-backup.js'
 import { waterProfileKey, readProfileWater, inspectLegacyWater, claimLegacyWater,
@@ -85,6 +85,37 @@ let menuReturnPage = ''
 let menuEntry = ''
 let availableAppUpdate = null
 let activeSyncImport = ''
+let waterHealthEpoch = 0
+let waterHealthPreview = null
+let waterHealthSession = null
+const waterHealthSheet = FRESH_OWNER_MODULES ? document.createElement('section') : null
+if (waterHealthSheet) {
+  waterHealthSheet.className = 'bottom-sheet'
+  waterHealthSheet.dataset.waterHealthSheet = ''
+  waterHealthSheet.setAttribute('role', 'dialog')
+  waterHealthSheet.setAttribute('aria-modal', 'true')
+  waterHealthSheet.setAttribute('aria-label', 'Health Connect vízimport')
+  waterHealthSheet.setAttribute('aria-hidden', 'true')
+  waterHealthSheet.inert = true
+  waterHealthSheet.innerHTML = `<div class="sheet-handle"></div>
+    <h2>Health Connect · Víznapló</h2>
+    <p>Csak a saját Water-naplódba mentünk, külön jóváhagyás után.
+       Az étkezési adatok nem kerülnek ide, az automatikus import kikapcsolva.</p>
+    <div class="sheet-form"><label>Vízadatok ettől a naptól
+      <input class="search" type="date" data-water-health-from></label></div>
+    <button class="primary module-cta" type="button" data-water-health-read>Vízadatok előnézete</button>
+    <p data-water-health-summary role="status"></p>
+    <div class="sheet-results" data-water-health-records></div>
+    <button class="primary module-cta" type="button" data-water-health-confirm hidden>Kijelölt vízbejegyzések mentése</button>
+    <p data-water-health-status role="status"></p>`
+  document.querySelector('.phone').append(waterHealthSheet)
+  const waterButton = document.createElement('button')
+  waterButton.type = 'button'
+  waterButton.dataset.waterHealthOpen = ''
+  waterButton.textContent = 'Vízimport'
+  waterButton.title = 'Health Connect vízbejegyzések kézi importálása saját Water-naplóba'
+  $('[data-health-sync]').closest('.sync-provider').append(waterButton)
+}
 document.addEventListener('grapes:food-subtitle', event => {
   if (activePage === 'food') subtitle.textContent = event.detail?.subtitle || 'Mai áttekintés'
 })
@@ -129,7 +160,12 @@ function showToast(message) {
 }
 
 function closeSheet() {
-  $$('.bottom-sheet').forEach(node => {
+  // Any closing/opening of a sheet invalidates the old Health preview,
+  // including pending Android permission requests and account changes.
+  waterHealthEpoch++
+  waterHealthPreview = null
+  waterHealthSession = null
+  $('.bottom-sheet').forEach(node => {
     node.classList.remove('is-open')
     node.setAttribute('aria-hidden', 'true')
     node.inert = true
@@ -299,6 +335,131 @@ function openSheet(node) {
   node.setAttribute('aria-hidden', 'false')
   node.classList.add('is-open')
   sheetBackdrop.classList.add('is-open')
+}
+
+function openWaterHealthSheet() {
+  if (!FRESH_OWNER_MODULES || !waterHealthSheet) return
+  openSheet(waterHealthSheet)
+  const now = new Date()
+  const from = new Date(now)
+  from.setFullYear(from.getFullYear() - 1)
+  const fmt = d => [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'),
+    String(d.getDate()).padStart(2, '0')].join('-')
+  $('[data-water-health-from]').max = fmt(now)
+  $('[data-water-health-from]').value = fmt(from)
+  $('[data-water-health-records]').replaceChildren()
+  $('[data-water-health-summary]').textContent = ''
+  $('[data-water-health-status]').textContent = ''
+  $('[data-water-health-confirm]').hidden = true
+}
+
+async function readWaterHealthPreview() {
+  if (!FRESH_OWNER_MODULES || !waterHealthSheet?.classList.contains('is-open')) return
+  // A new user request invalidates the prior preview before opening Android.
+  waterHealthPreview = null
+  waterHealthSession = null
+  const epoch = ++waterHealthEpoch
+  const button = $('[data-water-health-read]')
+  button.disabled = true
+  $('[data-water-health-confirm]').hidden = true
+  $('[data-water-health-records]').replaceChildren()
+  $('[data-water-health-summary]').textContent = ''
+  const status = $('[data-water-health-status]')
+  status.textContent = 'A saját Water-fiók ellenőrzése…'
+  try {
+    const fromDate = $('[data-water-health-from]').value
+    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(fromDate)) {
+      throw new Error('Válassz kezdődátumot.')
+    }
+    const [{ openGrapesTestFreshWater }, { prepareFreshOwnerWaterHydration }] =
+      await Promise.all([
+        import('./water/grapes-test-fresh-water.js'),
+        import('./water/grapes-test-fresh-water-health.js'),
+      ])
+    const session = await openGrapesTestFreshWater({ enabled: true })
+    await session.assertOwner()
+    status.textContent = 'Health Connect engedélyek és vízadatok beolvasása…'
+    const source = await readAndroidHealthExport(fromDate)
+    await session.assertOwner()
+    const own = await session.read()
+    const preview = prepareFreshOwnerWaterHydration(source, {
+      ownerId: session.ownerId, existingDays: own.data,
+    })
+    await session.assertOwner()
+    if (epoch !== waterHealthEpoch || !waterHealthSheet.classList.contains('is-open')) return
+    waterHealthSession = session
+    waterHealthPreview = preview
+    const rows = $('[data-water-health-records]')
+    for (const item of preview.records) {
+      const label = document.createElement('label')
+      label.className = 'sheet-result'
+      const input = document.createElement('input')
+      input.type = 'checkbox'
+      input.dataset.waterHealthRecord = ''
+      input.value = String(item.index)
+      input.disabled = item.status !== 'ready'
+      input.checked = item.status === 'ready'
+      const description = document.createElement('span')
+      const name = item.record?.type === 'nutrition' ? 'Étkezés · Food'
+        : item.entry?.occurredAt
+          ? new Date(item.entry.occurredAt).toLocaleString('hu-HU') +
+            ' · ' + Number(item.entry.amount).toLocaleString('hu-HU') + ' ml'
+          : 'Hibás Health vízadat'
+      description.textContent = name + ' · ' +
+        ({ ready: 'új', duplicate: 'korábban importálva',
+          blocked: 'Food modulhoz tartozik', invalid: 'hibás' }[item.status] || '') +
+        (item.error ? ' · ' + item.error : '')
+      label.append(input, description)
+      rows.append(label)
+    }
+    $('[data-water-health-summary]').textContent =
+      `${preview.counts.ready} új vízbejegyzés · ${preview.counts.duplicate} már importálva · ${preview.counts.invalid} hibás · ${preview.counts.blocked} étkezés kihagyva`
+    $('[data-water-health-confirm]').hidden = preview.counts.ready === 0
+    status.textContent = 'Ellenőrizd a kijelölést. Mentés csak a jóváhagyás után.'
+  } catch (error) {
+    if (epoch === waterHealthEpoch) {
+      status.textContent = 'A vízimport előnézete leállt: ' + (error?.message || 'ismeretlen hiba')
+    }
+  } finally {
+    if (epoch === waterHealthEpoch) button.disabled = false
+  }
+}
+
+async function confirmWaterHealthPreview() {
+  if (!FRESH_OWNER_MODULES || !waterHealthPreview || !waterHealthSession ||
+      !waterHealthSheet?.classList.contains('is-open')) return
+  const epoch = waterHealthEpoch
+  const session = waterHealthSession
+  const preview = waterHealthPreview
+  const button = $('[data-water-health-confirm]')
+  button.disabled = true
+  try {
+    const { confirmFreshOwnerWaterHydration } =
+      await import('./water/grapes-test-fresh-water-health.js')
+    const selectedIndexes = [...$('[data-water-health-records] [data-water-health-record]:checked')]
+      .map(input => Number(input.value))
+    const result = await confirmFreshOwnerWaterHydration({
+      session, preview, selectedIndexes,
+    })
+    if (epoch !== waterHealthEpoch) return
+    closeSheet()
+    renderWater()
+    showToast(result.imported
+      ? `${result.imported} vízbejegyzés a saját Water-naplóba mentve.`
+      : 'Nincs új kijelölt vízbejegyzés.')
+  } catch (error) {
+    if (epoch === waterHealthEpoch) {
+      // On failed identity/CAS, never leave a preview active for a new login.
+      waterHealthSession = null
+      waterHealthPreview = null
+      $('[data-water-health-records]').replaceChildren()
+      button.hidden = true
+      $('[data-water-health-status]').textContent =
+        'A vízimport nem történt meg: ' + (error?.message || 'ismeretlen hiba')
+    }
+  } finally {
+    button.disabled = false
+  }
 }
 
 function normalizeAppUpdate(value) {
@@ -1821,6 +1982,9 @@ $('[data-water-legacy-claim-button]')?.addEventListener('click', async event => 
 })
 
 $('[data-health-sync]').addEventListener('click', () => openSyncImport('health'))
+$('[data-water-health-open]')?.addEventListener('click', openWaterHealthSheet)
+$('[data-water-health-read]')?.addEventListener('click', () => readWaterHealthPreview().catch(() => {}))
+$('[data-water-health-confirm]')?.addEventListener('click', () => confirmWaterHealthPreview().catch(() => {}))
 $$('[data-samsung-sync-action]').forEach(button => button.addEventListener('click', () => openSyncImport('samsung')))
 const yazioApiPanel = createYazioApiPanel({ openSheet, closeSheet,
   importBundle: source => mobileFood.importYazio(source), openFileImport: () => openSyncImport('yazio'),
@@ -1879,6 +2043,9 @@ onGrapesDriveChange(() => {
 })
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
+    if (FRESH_OWNER_MODULES && waterHealthSheet?.classList.contains('is-open')) {
+      closeSheet() // An Android permission dialog may have changed Grapes Auth.
+    }
     updateHomeGreeting()
     refreshUpdateInbox().catch(() => {})
     if (FRESH_OWNER_MODULES && activePage === 'household') {
@@ -1900,6 +2067,7 @@ document.addEventListener('visibilitychange', () => {
     }
   }
   if (document.visibilityState === 'hidden') {
+    if (FRESH_OWNER_MODULES && waterHealthSheet?.classList.contains('is-open')) closeSheet()
     if (FRESH_OWNER_MODULES) household.clear()
     persistReaderProgress().catch(() => {})
     mobileFood?.flush().catch(() => {})
