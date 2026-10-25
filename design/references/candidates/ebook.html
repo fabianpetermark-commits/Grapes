@@ -1,98 +1,157 @@
-<!doctype html><html lang="hu"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#090e14"><title>Grapes – E-book | Quick Action + Könyvtár terv v1.2</title><link rel="stylesheet" href="../shared/grapes-v11.css">
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#090e14">
+<title>Grapes – E-book | Interaktív HTML előnézet v1.2</title>
 <style>
-/* E-book v1.2 visual draft: matches the approved Health contextual quick-action dock. */
-.shell.detail.ebook-shell{padding-bottom:calc(116px + env(safe-area-inset-bottom));}
-.ebook-shell .main{padding-bottom:24px;}
-.ebook-shell .module-view-title{margin:5px 0 3px;letter-spacing:-.035em;font-size:24px;}
-.ebook-shell .ebook-feature{padding:15px;}
-.ebook-feature-layout{display:grid;grid-template-columns:minmax(96px,39%) minmax(0,1fr);gap:14px;align-items:stretch;}
-.ebook-feature-cover{position:relative;min-height:187px;border-radius:12px;overflow:hidden;background:linear-gradient(180deg,#80a5bf 0%,#b6c9d7 34%,#546a73 66%,#1c3a38 100%);box-shadow:0 4px 12px rgba(0,0,0,.24)}
-.ebook-feature-cover svg{position:absolute;inset:0;width:100%;height:100%;display:block}
-.ebook-feature-info{display:flex;flex-direction:column;min-width:0;gap:5px}
-.ebook-feature-info h2{font-size:19px;line-height:1.17;letter-spacing:-.03em;margin:2px 0 3px;font-weight:760;overflow-wrap:anywhere}
-.ebook-feature-author{font-size:12px;color:#9cb4c2;line-height:1.4;margin:0}
-.ebook-feature-progress{display:flex;align-items:center;gap:7px;margin-top:auto;margin-bottom:5px;}
-.ebook-feature-progress .bar{flex:1;min-width:0;margin:0}
-.ebook-feature-progress strong{font-size:12px;color:#aee8ef;font-variant-numeric:tabular-nums;}
-.ebook-feature-info .pill{min-height:46px;display:flex;align-items:center;justify-content:center;width:100%;font-size:12px;text-align:center;padding:8px 7px;line-height:1.25}
-.ebook-section-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.ebook-section-head h2{font-size:17px;line-height:1.25;letter-spacing:-.015em;margin:0}
-.ebook-small-link{border:0;background:transparent;color:#3bdcf2;font-size:12px;font-weight:750;min-height:44px;padding:0 1px}
-.ebook-recent-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;margin-top:10px}
-.ebook-recent-book{border:0;background:transparent;color:#e8f1f7;text-align:left;padding:0;min-width:0;display:flex;flex-direction:column;gap:6px}
-.ebook-mini-cover{border-radius:9px;aspect-ratio:3/4;display:flex;align-items:flex-end;overflow:hidden;padding:9px 7px;color:white;font-weight:750;font-size:11px;line-height:1.15;box-shadow:inset 0 0 0 1px rgba(255,255,255,.15)}
-.ebook-mini-cover.forest{background:linear-gradient(160deg,#7baa85 0%,#386f51 45%,#183a31 100%)}
-.ebook-mini-cover.sky{background:linear-gradient(160deg,#8ba7c7 0%,#4c6c9d 48%,#203755 100%)}
-.ebook-mini-cover.night{background:linear-gradient(160deg,#916fbd 0%,#454a92 52%,#202d4b 100%)}
-.ebook-recent-book small{color:#99b2be;font-size:11px;line-height:1.3}
-.ebook-search{display:flex;align-items:center;gap:8px;min-height:45px;padding:0 12px;background:#152531;border:1px solid #365363;border-radius:13px}
-.ebook-search svg{width:19px;height:19px;color:#8baeba;stroke:currentColor;stroke-width:1.8;fill:none}
-.ebook-search input{width:100%;background:transparent;border:0;min-height:43px;color:#eef8fb;font-size:14px;outline:none}
-.ebook-search input::placeholder{color:#809cab}
-.ebook-booklist{display:grid;gap:8px;margin-top:10px}
-.ebook-booklist button{width:100%;display:flex;align-items:center;text-align:left;gap:12px;padding:11px;min-height:55px;border-radius:13px;background:#172833;color:#ebf4f7;border:1px solid #2c4755}
-.ebook-booklist .grow{min-width:0}.ebook-booklist strong{font-size:13px}.ebook-booklist p{margin:3px 0 0;font-size:12px;color:#9ab0bd}
-.ebook-library-bullet{width:31px;height:40px;border-radius:6px;display:grid;place-items:center;background:linear-gradient(160deg,#467e88,#233f54);color:#b1ecf3;font-size:19px;flex-shrink:0}
-.ebook-shell .dock.ebook-quick-action{position:fixed;z-index:60;bottom:0;left:50%;transform:translateX(-50%);width:min(480px,100%);padding:8px 15px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(180deg,transparent 0%,#0b141d 21%,#0b141d 100%);border-top:1px solid #283a48;}
-.ebook-quick-action .dockInner{display:flex;align-items:stretch;gap:9px}
-.ebook-quick-action .dockGroup{display:flex;flex:1;justify-content:space-around;min-height:67px;border:1px solid #3b5b68;background:#172d38;border-radius:26px}
-.ebook-quick-action .action{border:0;display:flex;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-width:0;min-height:66px;background:transparent;color:#bdd2dc;font-size:11px;line-height:1.1;padding:5px 3px}
-.ebook-quick-action .action svg{width:23px;height:23px;fill:none;stroke:#9dd3da;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.ebook-quick-action .dockMain{display:grid;place-items:center;min-width:66px;width:66px;min-height:66px;background:#173843;border:1px solid #468995;border-radius:50%;color:#3bdcf2}
-.ebook-quick-action .dockMain svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.ebook-quick-action button:focus-visible{outline:2px solid #3bdcf2;outline-offset:2px}
-.ebook-quick-action button:active{background:#21414d}
-.ebook-shell .status:not(:empty){background:#16313d;border:1px solid #346a7b;border-radius:12px;padding:10px 12px;font-size:13px;color:#b7e8f0}
-@media(max-width:350px){.ebook-feature-layout{grid-template-columns:minmax(88px,38%) minmax(0,1fr);gap:10px}.ebook-feature-info h2{font-size:17px}.ebook-feature-info .pill{font-size:11px}.ebook-quick-action .action{font-size:10px}.ebook-quick-action .dockMain{width:61px;min-width:61px}.ebook-shell .dock.ebook-quick-action{padding-inline:9px}}
-</style></head><body><div class="shell detail ebook-shell"><main class="main" id="content">
-<nav class="detailNav icon-rail" aria-label="E-book funkciók">
- <button class="active" type="button" data-view="library" aria-label="Könyvtár" title="Könyvtár"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5a8 8 0 0 0-9-1v15a8 8 0 0 1 9 1 8 8 0 0 1 9-1V4a8 8 0 0 0-9 1z"/><path d="M12 5v15"/></svg></button>
- <button type="button" data-view="reader" aria-label="Olvasó" title="Olvasó"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2.5" width="14" height="19" rx="2"/><path d="M8.5 7h7M8.5 11h7M8.5 15h4"/></svg></button>
- <button type="button" data-view="transfer" aria-label="Átvitel" title="Átvitel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16M16 4l4 4-4 4M20 16H4m4-4-4 4 4 4"/></svg></button>
- <button type="button" data-demo-action="Könyv importálása" aria-label="Könyv hozzáadása" title="Könyv hozzáadása"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v16M4 12h16"/></svg></button>
- <button type="button" data-demo-action="Könyvtár rendezése" aria-label="Könyvek rendezése" title="Könyvek rendezése"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h12M4 18h8"/><path d="m15 16 3 3 3-3"/></svg></button>
- <button type="button" data-settings aria-label="E-book beállításai" title="E-book beállításai"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 2h4l.7 2.4 2.1.9 2.2-1.2 2.8 2.8-1.2 2.2.9 2.1L24 12v4l-2.4.7-.9 2.1 1.2 2.2-2.8 2.8-2.2-1.2-2.1.9L14 26h-4l-.7-2.4-2.1-.9-2.2 1.2-2.8-2.8 1.2-2.2-.9-2.1L0 16v-4l2.4-.7.9-2.1-1.2-2.2 2.8-2.8 2.2 1.2 2.1-.9z" transform="translate(1.8 0) scale(.84)"/><circle cx="12" cy="12" r="3"/></svg></button></nav>
-<h1 class="module-view-title" id="module-view-title">Könyvtár</h1>
-<section class="pageSection" data-pane="library">
-<section class="widget ebook-feature" aria-label="Legutóbb olvasott könyv – mintatartalom">
- <div class="ebook-feature-layout">
- <div class="ebook-feature-cover" role="img" aria-label="Mintaborító: napsütötte hegy és fenyőerdő"><svg viewBox="0 0 130 188" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><linearGradient id="ebookSky" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#7c9fba"/><stop offset=".63" stop-color="#c4ccd0"/><stop offset="1" stop-color="#678a9b"/></linearGradient></defs><rect width="130" height="188" fill="url(#ebookSky)"/><path d="M0 120L33 60l20 26 36-48 41 70v80H0" fill="#6d7881"/><path d="M0 135 33 70l9 13 11 3 36-44 26 42 15 20v84H0" fill="#9b9991"/><path d="m61 76 28-34 15 24-12-7-10 10-8-2-13 9ZM22 91l11-21 7 14-6-4-5 8z" fill="#e4e0d6"/><path d="M0 148 27 134 58 150 86 131 130 150v38H0" fill="#305149"/><path d="m8 180 13-48 13 48zm30 0 12-58 14 58zm47 0 13-49 13 49zm28 0 9-47 9 47z" fill="#17392e"/><text x="10" y="18" fill="#eef4f8" font-size="8" font-family="sans-serif" font-weight="bold" letter-spacing=".8">A TERMÉSZET</text><text x="10" y="28" fill="#eef4f8" font-size="8" font-family="sans-serif" font-weight="bold" letter-spacing=".8">CSODÁI</text></svg></div>
- <div class="ebook-feature-info"><h2>A természet csodái</h2><p class="ebook-feature-author">Minta szerző · EPUB</p><div class="ebook-feature-progress" aria-label="68 százalékos olvasási haladás"><div class="bar" style="--progress:68%"><i></i></div><strong>68%</strong></div><button class="pill primary" data-go-view="reader" type="button">Olvasás folytatása →</button></div>
- </div>
+:root{color-scheme:dark;--bg:#090e14;--card:#101821;--raised:#17222e;--line:#2c4857;--muted:#96abba;--text:#f2f7fb;--cyan:#3bdcf2;--cyan2:#79d9e7;--soft:#1b3541; font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif}
+*,*::before,*::after{box-sizing:border-box}
+html{background:var(--bg)} body{margin:0;background:var(--bg);color:var(--text);min-height:100vh;min-height:100dvh;font-size:14px;line-height:1.4}
+button,input,select{font:inherit}button{cursor:pointer;-webkit-tap-highlight-color:transparent}button:disabled{opacity:.55;cursor:not-allowed}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+[hidden]{display:none!important} .visually-hidden{position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden;white-space:nowrap}
+.icon{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.screen{width:100%;max-width:480px;margin:0 auto;min-height:100dvh;position:relative;padding:16px 15px calc(118px + env(safe-area-inset-bottom));background:var(--bg)}
+.rail{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));align-items:center;gap:3px;padding:5px;margin:0 -2px 16px;border:1px solid #2c4a58;border-radius:23px;background:var(--card);min-height:63px;box-shadow:inset 0 1px 0 rgba(255,255,255,.025)}
+.rail button{border:1px solid transparent;background:transparent;color:#9bb2c0;border-radius:17px;min-height:51px;display:grid;place-items:center;padding:0;min-width:0}
+.rail button[aria-selected=true]{background:var(--soft);border-color:#477a88;color:var(--cyan);box-shadow:inset 0 -2px 0 rgba(59,220,242,.68),0 0 5px rgba(59,220,242,.09)}
+.rail button .icon{width:22px;height:22px}.rail .settings .icon{width:23px;height:23px}
+.page-title{font-size:25px;font-weight:790;letter-spacing:-.04em;line-height:1.18;margin:3px 0 20px}
+.stack{display:grid;gap:13px}.widget{border-radius:20px;border:1px solid #2a4555;background:var(--card);padding:15px;min-width:0;position:relative;isolation:isolate;overflow:hidden;box-shadow:0 5px 18px rgba(0,0,0,.06)}
+.widget.neon::after{content:"";position:absolute;pointer-events:none;inset:auto 22% -1px 9%;height:2px;border-radius:4px;background:linear-gradient(90deg,rgba(59,220,242,.7),rgba(59,220,242,0));opacity:.72}
+.feature{display:grid;grid-template-columns:39% minmax(0,1fr);gap:14px;align-items:stretch}
+.cover{position:relative;overflow:hidden;border-radius:12px;isolation:isolate;background:linear-gradient(180deg,#6993ab,#a2b5bf 44%,#224c46);box-shadow:0 3px 12px #0006;min-height:183px}
+.cover svg{position:absolute;inset:0;width:100%;height:100%}
+.book-info{min-width:0;display:flex;flex-direction:column;gap:7px}
+.book-info h2{font-size:19px;line-height:1.2;letter-spacing:-.027em;overflow-wrap:anywhere;margin:1px 0 0;font-weight:770}
+.author{font-size:12px;color:var(--muted);margin:0;line-height:1.38}
+.progress-row{display:flex;align-items:center;gap:8px;margin-top:auto}.progress{height:7px;flex:1;min-width:0;border-radius:8px;background:#2a4554;overflow:hidden}.progress span{display:block;height:100%;width:var(--p,68%);background:linear-gradient(90deg,#4fbacd,#80dce5);border-radius:8px}
+.percent{color:#b7e8ee;font-size:12px;font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
+.primary{min-height:44px;background:#1b3f4a;border:1px solid #45808c;color:#b4edf4;border-radius:12px;font-weight:740;padding:9px 12px}
+.primary:active,.ghost:active{transform:translateY(1px)}.book-info .primary{font-size:12px;margin-top:3px;padding:7px 5px;line-height:1.25}
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.section-head h2{font-size:17px;letter-spacing:-.025em;margin:0;font-weight:740}
+.text-link{border:0;background:transparent;color:var(--cyan);font-size:12px;font-weight:750;padding:7px 1px}
+.recent{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
+.recent-book{display:flex;flex-direction:column;gap:6px;min-width:0;border:0;padding:0;background:transparent;text-align:left;color:var(--text)}
+.mini-cover{width:100%;aspect-ratio:3/4;border:1px solid rgba(200,237,245,.16);border-radius:10px;display:flex;align-items:flex-end;overflow:hidden;padding:8px;background:linear-gradient(160deg,#6c99a6,#243d50);font-size:11px;font-weight:800;line-height:1.15;text-shadow:0 2px 5px #0009}
+.mini-cover.forest{background:linear-gradient(175deg,#84bb89 0%,#467d58 39%,#17443f 100%)}.mini-cover.purple{background:linear-gradient(175deg,#9483be,#42417e 55%,#212b46)}.mini-cover.gold{background:linear-gradient(160deg,#c6ac77,#74694c 52%,#264c54)}.mini-cover.sky{background:linear-gradient(160deg,#8ea6cc,#547d98 50%,#153b50)}
+.recent-book strong{font-size:12px;line-height:1.25;font-weight:650;overflow-wrap:anywhere}.recent-book small{font-size:11px;color:var(--muted)}
+.searchbox{min-height:46px;display:flex;gap:8px;align-items:center;background:#172833;border:1px solid #345466;border-radius:12px;padding:0 11px}
+.searchbox .icon{width:19px;height:19px;color:#9db7c6}.searchbox input{outline:0;min-height:44px;min-width:0;flex:1;border:0;background:transparent;color:var(--text);font-size:14px}.searchbox input::placeholder{color:#8da5b3}
+.books{display:grid;gap:8px;margin-top:12px}.book-item{display:flex;align-items:center;gap:10px;width:100%;min-height:63px;background:#172732;border:1px solid #2b4656;color:#f1f6f8;text-align:left;border-radius:13px;padding:9px}
+.book-item>span:nth-child(2){min-width:0;flex:1}.book-item strong{display:block;font-size:13px}.book-item small{display:block;color:var(--muted);font-size:11px;margin-top:3px}.book-item>.icon{color:#9dbbc9;width:18px}
+.book-badge{width:35px;height:45px;border-radius:6px;background:linear-gradient(150deg,#315a61,#1d364a);display:grid;place-items:center;color:#aae5ed;border:1px solid #477080;flex:none}
+.book-badge .icon{width:18px}.subtle-note{margin:12px 2px 0;font-size:11px;color:#7e96a5;line-height:1.5}
+.reader-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}.reader-head h2{font-size:17px;margin:0}.reader-utilities{display:flex;gap:6px}
+.small-button{min-height:38px;min-width:37px;display:grid;place-items:center;background:#1a303c;border:1px solid #385c68;border-radius:10px;color:#cae6ee;font-weight:740;padding:4px 9px}
+.reading{background:#e9e4d7;color:#263039;border-radius:14px;padding:23px 20px;font-family:Georgia,serif;font-size:var(--read-size,17px);line-height:1.68;min-height:280px}
+.reading h3{font-size:1.35em;line-height:1.3;margin:0 0 17px;color:#223139}.reading p{margin:0 0 15px}.read-status{font-size:12px;color:var(--muted);text-align:center}
+.reader-footer{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:13px}
+.field{display:grid;gap:7px;margin:0 0 13px;color:#b7cdd7;font-size:13px;font-weight:660}
+.field select{width:100%;min-height:46px;background:#172833;border:1px solid #395968;border-radius:12px;padding:0 10px;color:var(--text)}
+.transfer-buttons{display:grid;grid-template-columns:1fr 1fr;gap:10px}.transfer-buttons button{min-width:0;min-height:47px}
+.transfer-icon{width:48px;height:48px;border:1px solid #365d69;border-radius:14px;display:grid;place-items:center;background:#19303b;color:var(--cyan);margin-bottom:12px}
+.transfer-icon .icon{width:24px;height:24px}
+.quick{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(480px,100%);z-index:20;padding:8px 15px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(180deg,transparent 0%,#0b141d 18%,#0b141d 100%);border-top:1px solid #253c4b;display:flex;gap:9px;align-items:stretch}
+.quick-group{flex:1;min-width:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch;border:1px solid #3b5b68;border-radius:27px;background:#172c38;overflow:hidden}
+.quick-group button{min-width:0;min-height:68px;padding:8px 2px;border:0;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#b9d0db;font-size:11px}
+.quick .icon{width:23px;height:23px;color:#9bdae4}.quick button:active{background:#234553}
+.quick .pair{width:68px;height:68px;flex:none;display:grid;place-items:center;border:1px solid #468b99;border-radius:50%;background:#173642;color:var(--cyan)}.quick .pair .icon{width:28px;height:28px;color:var(--cyan)}
+.toast{position:fixed;bottom:calc(99px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:44;width:min(calc(100% - 32px),450px);background:#1b3a46;border:1px solid #398294;border-radius:14px;color:#d4f6f9;padding:12px 14px;font-size:13px;box-shadow:0 8px 30px #0009}
+.modal-backdrop{position:fixed;inset:0;z-index:30;background:#000a;display:grid;place-items:center;padding:16px}
+.modal{width:min(100%,430px);padding:20px;border:1px solid #3a6875;border-radius:23px;background:#101d28;box-shadow:0 15px 60px #000b}.modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}.modal h2{font-size:21px;margin:0}.modal p{color:#a9c1cb;font-size:13px;line-height:1.55}.modal .row{display:flex;gap:10px;margin-top:16px}.modal .row button{flex:1}
+.count-line{color:#8ea8b7;font-size:12px;margin:12px 0 4px}.empty{padding:13px;border:1px dashed #45616c;border-radius:12px;color:#9cb5c2;text-align:center;font-size:12px}
+@media(max-width:350px){.screen{padding-inline:11px}.rail{padding:4px;gap:2px;min-height:58px}.rail button{min-height:46px;border-radius:14px}.rail .icon{width:20px!important;height:20px!important}.feature{grid-template-columns:38% minmax(0,1fr);gap:10px}.book-info h2{font-size:17px}.cover{min-height:178px}.quick{padding-left:9px;padding-right:9px}.quick .pair{width:61px;height:61px}.quick-group button{min-height:61px}.quick-group button span{font-size:10px}}
+@media(min-width:620px){body{background:#060b10}.screen{border-inline:1px solid #263d4b}.quick{border-inline:1px solid #263d4b}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}
+</style>
+</head>
+<body>
+<svg class="visually-hidden" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><symbol id="i-book" viewBox="0 0 24 24"><path d="M12 5a8 8 0 0 0-9-1v15a8 8 0 0 1 9 1 8 8 0 0 1 9-1V4a8 8 0 0 0-9 1z"/><path d="M12 5v15"/></symbol><symbol id="i-reader" viewBox="0 0 24 24"><rect x="5" y="2.5" width="14" height="19" rx="2"/><path d="M8.5 7h7M8.5 11h7M8.5 15h4"/></symbol><symbol id="i-transfer" viewBox="0 0 24 24"><path d="M4 8h16M16 4l4 4-4 4M20 16H4m4-4-4 4 4 4"/></symbol><symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 4v16M4 12h16"/></symbol><symbol id="i-sort" viewBox="0 0 24 24"><path d="M4 6h16M4 12h12M4 18h8"/><path d="m15 16 3 3 3-3"/></symbol><symbol id="i-settings" viewBox="0 0 24 24"><path d="M10 2.5h4l.6 2.4 1.6.9 2.4-.7 2 3.5-1.8 1.7v1.9l1.8 1.7-2 3.5-2.4-.7-1.6.9-.6 2.4h-4l-.6-2.4-1.6-.9-2.4.7-2-3.5 1.8-1.7v-1.9L3.4 8.6l2-3.5 2.4.7 1.6-.9z"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></symbol><symbol id="i-right" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol><symbol id="i-qr" viewBox="0 0 24 24"><path d="M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5M7 7h3v3H7zM14 7h3v3h-3zM7 14h3v3H7zM14 14h3M17 15v2M14 18h3"/></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/></symbol></svg>
+<div class="screen">
+<nav class="rail" aria-label="E-book nézetek és funkciók">
+<button type="button" data-view="library" aria-label="Könyvtár" aria-selected="true" title="Könyvtár"><svg class="icon"><use href="#i-book"/></svg></button>
+<button type="button" data-view="reader" aria-label="Olvasó" aria-selected="false" title="Olvasó"><svg class="icon"><use href="#i-reader"/></svg></button>
+<button type="button" data-view="transfer" aria-label="Átvitel" aria-selected="false" title="Átvitel"><svg class="icon"><use href="#i-transfer"/></svg></button>
+<button type="button" data-command="add" aria-label="Könyv hozzáadása" title="Könyv hozzáadása"><svg class="icon"><use href="#i-plus"/></svg></button>
+<button type="button" data-command="sort" aria-label="Könyvek rendezése" title="Könyvek rendezése"><svg class="icon"><use href="#i-sort"/></svg></button>
+<button type="button" data-command="settings" aria-label="Beállítások" title="Beállítások"><svg class="icon"><use href="#i-settings"/></svg></button>
+</nav>
+<h1 class="page-title" id="view-title">Könyvtár</h1>
+<main id="main">
+<section data-panel="library" class="stack">
+<div class="widget neon feature" aria-label="Legutóbb olvasott könyv">
+<div class="cover" role="img" aria-label="Illusztrált hegyvidéki könyvborító">
+<svg viewBox="0 0 130 188" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#6f96b4"/><stop offset=".55" stop-color="#c1c9ce"/><stop offset="1" stop-color="#64889a"/></linearGradient></defs><rect width="130" height="188" fill="url(#sky)"/><path d="M0 123 34 67l19 24 34-50 43 65v82H0" fill="#566d79"/><path d="M0 144 34 74l11 14 10 3 32-46 25 36 18 30v77H0" fill="#9e9d99"/><path d="m63 75 24-30 14 20-12-7-8 11-10-1-8 7M24 93l10-19 8 13-9-6-9 12" fill="#f5f0e6"/><path d="M0 150 22 133l32 16 37-18 39 20v37H0" fill="#31574c"/><path d="m1 188 17-54 17 54zm29 0 20-64 21 64zm42 0 20-56 20 56zm37 0 14-51 14 51z" fill="#17392f"/><text x="9" y="17" font-size="8.3" fill="#fff" font-family="Arial,sans-serif" font-weight="bold" letter-spacing=".5">A TERMÉSZET</text><text x="9" y="27" font-size="8.3" fill="#fff" font-family="Arial,sans-serif" font-weight="bold" letter-spacing=".5">CSODÁI</text></svg>
+</div>
+<div class="book-info"><h2 id="featured-name">A természet csodái</h2><p class="author" id="featured-author">Mintakönyv · EPUB</p><div class="progress-row" aria-label="Olvasási haladás"><div class="progress"><span id="featured-progress" style="--p:68%"></span></div><strong class="percent" id="featured-percent">68%</strong></div><button type="button" class="primary" data-command="continue">Olvasás folytatása <span aria-hidden="true">→</span></button></div>
+</div>
+<section class="widget"><div class="section-head"><h2>Nemrég olvasott</h2><button type="button" class="text-link" data-command="browse">Mind <span aria-hidden="true">→</span></button></div><div class="recent" id="recent-list"></div></section>
+<section class="widget"><div class="section-head"><h2>Saját könyvtár</h2><button type="button" class="text-link" data-command="sort">Rendezés <span aria-hidden="true">↕</span></button></div><label class="searchbox"><svg class="icon"><use href="#i-search"/></svg><input type="search" id="search" aria-label="Könyv keresése" placeholder="Keresés a saját könyvek között…" autocomplete="off"></label><div class="count-line" id="book-count"></div><div class="books" id="book-list"></div><p class="subtle-note">Kizárólag mintaadatok. Az élő Grapes-könyvtár továbbra is a meglévő Google Drive-kapcsolatot használja.</p></section>
 </section>
-<section class="widget" aria-label="Nemrég olvasott könyvek">
- <div class="ebook-section-head"><h2>Nemrég olvasott</h2><button type="button" class="ebook-small-link" data-demo-action="Összes korábban olvasott könyv">Mind →</button></div>
- <div class="ebook-recent-row">
- <button class="ebook-recent-book" type="button" data-go-view="reader"><span class="ebook-mini-cover forest">Kert a ház körül</span><small>42% · EPUB</small></button>
- <button class="ebook-recent-book" type="button" data-go-view="reader"><span class="ebook-mini-cover sky">Úton</span><small>16% · EPUB</small></button>
- <button class="ebook-recent-book" type="button" data-go-view="reader"><span class="ebook-mini-cover night">Esti történetek</span><small>75% · EPUB</small></button>
- </div>
+<section data-panel="reader" class="stack" hidden>
+<section class="widget"><div class="reader-head"><h2 id="reader-title">A természet csodái</h2><div class="reader-utilities"><button class="small-button" data-command="fontminus" aria-label="Betűméret csökkentése">A−</button><button class="small-button" data-command="fontplus" aria-label="Betűméret növelése">A+</button><button class="small-button" data-command="theme" aria-label="Olvasási téma váltása"><svg class="icon" style="width:17px"><use href="#i-moon"/></svg></button></div></div><article class="reading" id="reading-content"><h3>Hegyek és erdők</h3><p>Ahogy a napfény elérte a völgyet, a fák lombjai között lassan megjelentek a színek. A természet minden hangja egy új történetet mesélt.</p><p>A távoli hegygerincek mögött felhők úsztak, az ösvény mentén pedig halk szél mozgatta az ágakat.</p><p>Ez az olvasó mintaoldala. A tényleges könyvek szövegét itt nem töltjük be a Google Drive-ból.</p></article><div class="reader-footer"><button type="button" class="small-button" data-command="prevpage" aria-label="Előző oldal">‹ Előző</button><span class="read-status" id="reader-status">68% · 1. oldal</span><button type="button" class="small-button" data-command="nextpage" aria-label="Következő oldal">Következő ›</button></div></section>
 </section>
-<section class="widget" aria-label="Saját könyvtár">
- <div class="ebook-section-head"><h2>Saját könyvtár</h2><button class="ebook-small-link" type="button" data-demo-action="Könyvek rendezése">Rendezés</button></div>
- <label class="ebook-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input id="ebook-find" type="search" placeholder="Keresés a könyvek között…" aria-label="Könyvek keresése"></label>
- <div class="ebook-booklist" id="ebook-booklist">
- <button type="button" data-go-view="reader" data-book-title="A természet csodái"><span class="ebook-library-bullet">▣</span><span class="grow"><strong>A természet csodái</strong><p>EPUB · 68% olvasva</p></span></button>
- <button type="button" data-go-view="reader" data-book-title="Kert a ház körül"><span class="ebook-library-bullet">▣</span><span class="grow"><strong>Kert a ház körül</strong><p>EPUB · 42% olvasva</p></span></button>
- <button type="button" data-go-view="reader" data-book-title="Úton"><span class="ebook-library-bullet">▣</span><span class="grow"><strong>Úton</strong><p>PDF · 16% olvasva</p></span></button>
- </div>
- <p class="note">Mintaadatok a dizájnellenőrzéshez. A valódi könyvlista továbbra is a meglévő Drive-könyvtárból érkezik.</p>
+<section data-panel="transfer" class="stack" hidden>
+<section class="widget"><div class="transfer-icon"><svg class="icon"><use href="#i-transfer"/></svg></div><div class="section-head"><h2>Könyvátvitel</h2></div><label class="field">Átküldendő könyv<select id="transfer-select" aria-label="Átküldendő könyv"></select></label><p class="author" style="margin-bottom:13px">A meglévő, jogosultsághoz kötött könyvátviteli folyamat helye. Az előnézet nem hoz létre valódi megosztást.</p><button type="button" class="primary" data-command="preparetransfer" style="width:100%">Átvitel előkészítése</button></section>
+<section class="widget"><div class="transfer-icon"><svg class="icon"><use href="#i-qr"/></svg></div><div class="section-head"><h2>E-olvasó párosítása</h2></div><p class="author" style="margin:0 0 13px">QR-kódos vagy rövid kódos párosítás az éles alkalmazás meglévő biztonsági szabályai szerint.</p><button type="button" class="primary" data-command="pair" style="width:100%">Párosítás indítása</button></section>
 </section>
-</section>
-<section class="pageSection" data-pane="reader" hidden>
-<section class="widget"><div class="widgetHeader"><h2><span class="glyph" aria-hidden="true">▤</span>Olvasó</h2></div><p class="sub">Teljes képernyős EPUB olvasó saját betűméret- és megjelenítési beállításokkal.</p><div class="split" style="margin-bottom:10px"><strong>Fejezet – minta</strong><div class="row"><button class="pill" type="button" data-font="-1">A−</button><button class="pill" type="button" data-font="1">A＋</button></div></div><article data-reading-content style="background:#eee9d9;color:#17202a;border-radius:12px;padding:22px 18px;font-size:17px;line-height:1.6">Az olvasó felülete eltérhet a Grapes sötét widgetjeitől: a felhasználó által választott olvasási téma és betűméret elsőbbséget élvez. Ez kizárólag bemutatószöveg.</article><div class="split" style="margin-top:15px"><button class="pill" data-demo-action="Előző oldal" type="button">‹</button><span class="muted small">46% · minta</span><button class="pill" data-demo-action="Következő oldal" type="button">›</button></div></section>
-</section>
-<section class="pageSection" data-pane="transfer" hidden>
-<section class="widget"><div class="widgetHeader"><h2><span class="glyph" aria-hidden="true">⇄</span>Egy könyv átvitele</h2></div><p class="sub">Megosztási QR-kód és párosítás, a meglévő jogosultsági és visszavonási szabályokkal.</p><label>Könyv kiválasztása<select><option>Válassz mentett könyvet…</option></select></label><button class="pill primary" data-demo-action="Könyvátvitel előkészítése" type="button" style="margin-top:12px">Átvitel előkészítése</button></section>
-<section class="widget"><div class="widgetHeader"><h2><span class="glyph" aria-hidden="true">▣</span>Könyvtár párosítása</h2></div><p class="sub">Az e-olvasó párosítása QR vagy rövid kód segítségével.</p><button class="pill" data-demo-action="E-olvasó párosítása" type="button">Párosítás indítása</button></section>
-</section>
-<p class="status" role="status" aria-live="polite" data-status></p><p class="note">Dizájn-előnézet, kizárólag mintaadatokkal. A valódi Grapes alkalmazás adatait és mentését nem érinti.</p></main><footer class="dock ebook-quick-action" aria-label="E-book Quick Action – gyorsműveletek">
- <div class="dockInner">
-  <div class="dockGroup">
-   <button type="button" class="action" data-quick="continue" aria-label="Olvasás folytatása"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5a8 8 0 0 0-9-1v15a8 8 0 0 1 9 1 8 8 0 0 1 9-1V4a8 8 0 0 0-9 1z"/><path d="M12 5v15"/></svg><span>Folytatás</span></button>
-   <button type="button" class="action" data-quick="add" aria-label="Könyv hozzáadása"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v16M4 12h16"/></svg><span>Könyv</span></button>
-   <button type="button" class="action" data-quick="transfer" aria-label="Könyvátvitel megnyitása"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16m-4-4 4 4-4 4M20 16H4m4-4-4 4 4 4"/></svg><span>Átvitel</span></button>
-  </div>
-  <button type="button" class="dockMain" data-quick="pair" aria-label="E-olvasó párosítása" title="E-olvasó párosítása"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5M7 7h3v3H7zM14 7h3v3h-3zM7 14h3v3H7zM14 14h3M17 15v2M14 18h3"/></svg></button>
- </div>
-</footer></div><script>const message=(t)=>{const n=document.querySelector('[data-status]');if(n)n.textContent=t;};document.querySelectorAll('[data-demo-action]').forEach(b=>b.addEventListener('click',()=>message('Tervezett művelet: '+b.dataset.demoAction+' — nem módosít adatot.')));document.querySelector('[data-settings]')?.addEventListener('click',()=>message('Beállítások: globális és az aktív modul saját beállításai — még tervezés alatt.'));const switchView=v=>{document.querySelector('#module-view-title').textContent=({library:'Könyvtár',reader:'Olvasó',transfer:'Átvitel'})[v]||'E-book';document.querySelectorAll('[data-pane]').forEach(n=>n.hidden=n.dataset.pane!==v);document.querySelectorAll('[data-view]').forEach(n=>n.classList.toggle('active',n.dataset.view===v));};document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>switchView(b.dataset.view)));document.querySelectorAll('[data-go-view]').forEach(b=>b.addEventListener('click',()=>switchView(b.dataset.goView)));let sz=17;document.querySelectorAll('[data-font]').forEach(b=>b.addEventListener('click',()=>{sz=Math.max(13,Math.min(26,sz+Number(b.dataset.font)));document.querySelector('[data-reading-content]').style.fontSize=sz+'px';}));const quickHandlers={continue:()=>switchView('reader'),add:()=>message('Könyv hozzáadása – mintaművelet; a Drive-könyvtárhoz nem nyúlunk.'),transfer:()=>switchView('transfer'),pair:()=>{switchView('transfer');message('E-olvasó párosítás – a valódi, jogosultságkezelt folyamat itt nyílna meg.');}};document.querySelectorAll('[data-quick]').forEach(btn=>btn.addEventListener('click',()=>quickHandlers[btn.dataset.quick]?.()));document.querySelector('#ebook-find')?.addEventListener('input',event=>{const q=event.target.value.trim().toLocaleLowerCase('hu-HU');document.querySelectorAll('[data-book-title]').forEach(btn=>btn.hidden=!btn.dataset.bookTitle.toLocaleLowerCase('hu-HU').includes(q));});</script></body></html>
+</main>
+</div>
+<footer class="quick" aria-label="E-book Quick Action">
+<div class="quick-group"><button type="button" data-quick="continue" aria-label="Olvasás folytatása"><svg class="icon"><use href="#i-book"/></svg><span>Folytatás</span></button><button type="button" data-quick="add" aria-label="Könyv hozzáadása"><svg class="icon"><use href="#i-plus"/></svg><span>Könyv</span></button><button type="button" data-quick="transfer" aria-label="Könyvátvitel megnyitása"><svg class="icon"><use href="#i-transfer"/></svg><span>Átvitel</span></button></div><button type="button" class="pair" data-quick="pair" aria-label="E-olvasó párosítása" title="Párosítás"><svg class="icon"><use href="#i-qr"/></svg></button>
+</footer>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<div class="modal-backdrop" id="dialog-backdrop" hidden><div class="modal" role="dialog" aria-modal="true" aria-labelledby="dialog-title"><div class="modal-head"><h2 id="dialog-title"></h2><button type="button" class="small-button" id="dialog-close" aria-label="Bezárás">✕</button></div><div id="dialog-body"></div><div class="row"><button type="button" class="primary" id="dialog-ok">Rendben</button></div></div></div>
+<script>
+(()=>{
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const books=[
+{id:'nature',name:'A természet csodái',author:'Mintakönyv',type:'EPUB',percent:68,cover:'sky',last:'Ma'},
+{id:'garden',name:'Kertészkedés otthon',author:'Zöld Könyvtár',type:'EPUB',percent:24,cover:'forest',last:'Tegnap'},
+{id:'night',name:'Éjszakai történetek',author:'Esti Mesék',type:'EPUB',percent:10,cover:'purple',last:'Tegnap'},
+{id:'travel',name:'Utazás a hegyekben',author:'Útleírások',type:'PDF',percent:41,cover:'gold',last:'Okt. 21.'},
+{id:'forest',name:'Az erdő titkai',author:'Természetjárás',type:'EPUB',percent:0,cover:'forest',last:'Okt. 18.'}
+];
+let current='nature',view='library',descending=false,readerPage=1,readSize=17,sepia=true,toastTimer;
+function book(id){return books.find(b=>b.id===id)||books[0]}
+function text(x){return String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function toast(s){const el=$('#toast');clearTimeout(toastTimer);el.textContent=s;el.hidden=false;toastTimer=setTimeout(()=>el.hidden=true,3600)}
+function showModal(title,content){$('#dialog-title').textContent=title;$('#dialog-body').innerHTML=content;$('#dialog-backdrop').hidden=false;$('#dialog-close').focus()}
+function closeModal(){$('#dialog-backdrop').hidden=true}
+function setView(name){view=name;$$('[data-panel]').forEach(el=>el.hidden=el.dataset.panel!==name);$$('.rail [data-view]').forEach(el=>el.setAttribute('aria-selected',String(el.dataset.view===name)));$('#view-title').textContent={library:'Könyvtár',reader:'Olvasó',transfer:'Átvitel'}[name];window.scrollTo({top:0,behavior:'instant'});if(name==='reader')renderReader()}
+function coverLabel(b){return b.name.replaceAll(' ','<wbr> ')}
+function renderBooks(){const b=book(current);$('#featured-name').textContent=b.name;$('#featured-author').textContent=b.author+' · '+b.type;$('#featured-percent').textContent=b.percent+'%';$('#featured-progress').style.setProperty('--p',b.percent+'%');
+$('#recent-list').innerHTML=books.filter(x=>x.percent>0).slice(0,3).map(b=>`<button type="button" class="recent-book" data-open-book="${b.id}" aria-label="${text(b.name)} folytatása"><span class="mini-cover ${b.cover}">${text(b.name)}</span><strong>${text(b.name)}</strong><small>${b.percent}% olvasva</small></button>`).join('');renderList();
+$('#transfer-select').innerHTML=books.map(b=>`<option value="${b.id}">${text(b.name)}</option>`).join('');$('#transfer-select').value=current;
+}
+function renderList(){const q=$('#search').value.trim().toLocaleLowerCase('hu-HU');const filtered=books.filter(b=>(b.name+' '+b.author).toLocaleLowerCase('hu-HU').includes(q));if(descending)filtered.reverse();$('#book-count').textContent=`${filtered.length} könyv ${descending?'· fordított sorrend':''}`;
+$('#book-list').innerHTML=filtered.length?filtered.map(b=>`<button type="button" class="book-item" data-open-book="${b.id}"><span class="book-badge"><svg class="icon"><use href="#i-book"/></svg></span><span><strong>${text(b.name)}</strong><small>${text(b.author)} · ${b.type} · ${b.percent}%</small></span><svg class="icon"><use href="#i-right"/></svg></button>`).join(''):'<div class="empty">Nem található ilyen könyv a mintakönyvtárban.</div>';
+}
+function renderReader(){const b=book(current);$('#reader-title').textContent=b.name;$('#reader-status').textContent=b.percent+'% · '+readerPage+'. oldal';$('#reading-content').style.setProperty('--read-size',readSize+'px');$('#reading-content').style.background=sepia?'#e9e4d7':'#182c37';$('#reading-content').style.color=sepia?'#263039':'#edf5f9'}
+function chooseBook(id){current=id;readerPage=1;renderBooks();setView('reader')}
+function command(action){if(action==='continue'){setView('reader');return}if(action==='browse'){setView('library');$('#search').focus();$('#search').scrollIntoView({block:'center'});return}
+if(action==='add'){showModal('Könyv hozzáadása','<p>A végleges változatban itt választhatsz helyi EPUB/PDF fájlt, vagy megnyithatod a meglévő Drive-könyvtárat.</p><p><strong>Ez csak dizájn-előnézet:</strong> nem kér fájl- vagy Drive-hozzáférést.</p>');return}
+if(action==='sort'){descending=!descending;renderList();toast(descending?'Fordított sorrend a mintakönyvtárban.':'Alap sorrend visszaállítva.');return}
+if(action==='settings'){showModal('E-book beállítások','<p>Az olvasó témája, betűméret, könyvtár és az E-olvasó párosítás beállításai kerülnek ide. A korábbi Google Drive-kapcsolat nem változik.</p>');return}
+if(action==='pair'){setView('transfer');showModal('E-olvasó párosítása','<p>A végleges alkalmazás a meglévő, jogosultságkezelt QR- vagy kódalapú párosítási folyamatot használja.</p><p>Ez a minta nem nyit valódi párosítási munkamenetet.</p>');return}
+if(action==='preparetransfer'){toast('Könyvátvitel előkészítése – csak bemutató, nincs valódi átküldés.');return}
+if(action==='transfer'){setView('transfer');return}
+if(action==='fontplus'||action==='fontminus'){readSize=Math.max(13,Math.min(26,readSize+(action==='fontplus'?1:-1)));renderReader();return}
+if(action==='theme'){sepia=!sepia;renderReader();return}
+if(action==='nextpage'||action==='prevpage'){readerPage=Math.max(1,readerPage+(action==='nextpage'?1:-1));renderReader();return}
+}
+$$('[data-view]').forEach(btn=>btn.addEventListener('click',()=>setView(btn.dataset.view)));
+$$('[data-command]').forEach(btn=>btn.addEventListener('click',()=>command(btn.dataset.command)));
+$$('[data-quick]').forEach(btn=>btn.addEventListener('click',()=>command(btn.dataset.quick)));
+$('#main').addEventListener('click',e=>{const btn=e.target.closest('[data-open-book]');if(btn)chooseBook(btn.dataset.openBook)});
+$('#search').addEventListener('input',renderList);
+$('#dialog-close').addEventListener('click',closeModal);$('#dialog-ok').addEventListener('click',closeModal);
+$('#dialog-backdrop').addEventListener('click',e=>{if(e.target.id==='dialog-backdrop')closeModal()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#dialog-backdrop').hidden)closeModal()});
+renderBooks();renderReader();
+})();
+</script>
+</body></html>
