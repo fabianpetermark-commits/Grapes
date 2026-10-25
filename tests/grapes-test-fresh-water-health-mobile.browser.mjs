@@ -70,7 +70,7 @@ try {
         trace:window.__waterHealthTrace||[]}
     })
     assert.ok(geometry.button.y>=0 && geometry.button.y<geometry.innerHeight,
-      'Water Health sheet button outside phone viewport: '+JSON.stringify(geometry))
+      'Water Health sheet button outside phone viewport: '+JSON.stringify({geometry,errors}))
     await sheet.locator('[data-water-health-read]').click()
     await page.waitForFunction(()=>{
       const s=document.querySelector('[data-water-health-summary]')
