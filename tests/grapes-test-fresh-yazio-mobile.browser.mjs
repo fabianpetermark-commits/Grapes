@@ -132,8 +132,9 @@ try {
   assert.match(repeated.summary,/0 új/)
   assert.match(repeated.summary,/1 duplikált/)
   assert.equal(await page.locator('[data-fresh-yazio-confirm]').isHidden(),true)
-  await page.locator('[data-nav="more"]').last().click()
-  await page.locator('[data-page="more"] [data-nav="sync"]').click()
+  // Dismiss duplicate preview; the Sync menu is already the active page.
+  await page.keyboard.press('Escape')
+  await page.locator('[data-fresh-yazio-sheet].is-open').waitFor({state:'hidden'})
   await page.locator('[data-yazio-import]').click()
   await page.locator('[data-yazio-undo]').click()
   await page.waitForFunction(()=>(
