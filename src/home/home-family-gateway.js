@@ -111,6 +111,20 @@ export function createFamilyHomeGateway(client, expectedUserId) {
         p_candidate:staged.candidate})
       return inspectFamilyConflict(staged,data)
     },
+    async readAttempt(operationId) {
+      const id = uuid(operationId, 'műveletazonosító')
+      const data = await rpc('home_m3b_read_attempt', { p_operation_id: id })
+      if (data == null) return null
+      if (!data || !UUID.test(data.householdId || '') ||
+          !['committed','conflict'].includes(data.status) ||
+          !Number.isSafeInteger(data.revision) || data.revision < 0 ||
+          !Number.isSafeInteger(data.expectedRevision) || data.expectedRevision < 0 ||
+          !data.candidate || typeof data.candidate !== 'object') {
+        throw new Error('A családi szinkron visszaolvasása nem igazolható.')
+      }
+      validateFamilyHome(data.candidate, data.householdId)
+      return data
+    },
     async removeMember(householdId, memberId) {
       return rpc('home_m3b_remove_member',{p_household_id:expectedHousehold(householdId),
         p_user_id:uuid(memberId,'családtagazonosító')})
