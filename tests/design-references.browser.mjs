@@ -96,7 +96,7 @@ try {
         await page.getByRole('button',{name:'Hozzáadás'}).last().click();
         if(!(await page.locator('#food-items').innerText()).includes('Teszt zabkása'))
           throw Error('Food in-memory meal add failed');
-        if(!(await page.locator('#food-total').innerText()).includes('1 620')&&!(await page.locator('#food-total').innerText()).includes('1620'))
+        if(!(await page.locator('#food-total').innerText()).replace(/\s/g,'').includes('1620'))
           throw Error('Food progress not updated');
         await page.locator('[data-scan]').last().click();
         if(!(await page.locator('#hi-dialog-title').innerText()).includes('Vonalkód'))
@@ -111,7 +111,7 @@ try {
         await page.locator('#water-goal-edit').click();
         await page.locator('#hi-new-goal').fill('2400');
         await page.getByRole('button',{name:'Mentés'}).click();
-        if(!(await page.locator('#water-goal-value').innerText()).includes('2 400'))
+        if(!(await page.locator('#water-goal-value').innerText()).replace(/\s/g,'').includes('2400'))
           throw Error('Water goal demo update failed');
       }
       if (item.path === 'candidates/recipes.html' && width === 390) {
