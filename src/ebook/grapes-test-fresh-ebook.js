@@ -11,7 +11,7 @@ const LIBRARY_ID = 'ebook-library-current'
 const MODULE = 'E-book'
 const SCHEMA = 1
 const MAX_FILE_BYTES = 80 * 1024 * 1024
-const SUPPORTED_BOOK = /\\.(?:epub|pdf|txt|fb2|mobi|azw|azw3|cbz|cbr)$/i
+const SUPPORTED_BOOK = /\.(?:epub|pdf|txt|fb2|mobi|azw|azw3|cbz|cbr)$/i
 
 function failure(message) { return new Error(message) }
 function freshCatalog(ownerId) {
@@ -171,7 +171,7 @@ export async function openGrapesTestFreshEbook({
       const name = file.name.trim()
       const id = 'ebook-file-' + crypto.randomUUID()
       const book = {
-        id, ownerId, name, title: name.replace(/\\.[^.]+$/, ''),
+        id, ownerId, name, title: name.replace(/\.[^.]+$/, ''),
         author: '', size: blob.size, modifiedTime: new Date(file.lastModified || Date.now()).toISOString(),
         createdAt: new Date().toISOString(), reading: {
           chapterId: '', chapterIndex: 0, chapterProgress: 0,
