@@ -1,5 +1,5 @@
 export const SCHEMA_VERSION = 2
-export const LOCATIONS = ['fridge', 'freezer', 'pantry']
+export const LOCATIONS = ['untracked', 'fridge', 'freezer', 'pantry'] // Optional storage location: older lots remain compatible.
 export const UNITS = Object.freeze({
   g: ['mass', 1], dkg: ['mass', 10], kg: ['mass', 1000],
   ml: ['volume', 1], dl: ['volume', 100], l: ['volume', 1000],
@@ -78,6 +78,21 @@ export function splitPreset(lot, preset) {
   if (preset === 'half') return { fridgeBase: Math.floor(lot.quantityBase / 2), freezerBase: Math.ceil(lot.quantityBase / 2), dimension: lot.dimension }
   fail('Ismeretlen elosztási gyorsválasztó.')
 }
+// A checked list row is the provenance of this inventory lot. Do not
+// silently merge with unrelated lots: consumption, undo and replay remain auditable.
+function shoppingPurchaseLot(state, item, eventId, stamp) {
+  if (!Number.isSafeInteger(item.quantityBase) || item.quantityBase <= 0 ||
+      !UNITS[item.displayUnit] || item.dimension !== UNITS[item.displayUnit][0])
+    fail('Készletre csak ismert pozitív mennyiség kerülhet.')
+  return {
+    id: uuid(), householdId: state.householdId, name: cleanName(item.name),
+    quantityBase: item.quantityBase, dimension: item.dimension, displayUnit: item.displayUnit,
+    storageLocation: 'untracked', evidenceStatus: 'confirmed', sourceType: 'manual',
+    sourceId: null, shoppingItemId: item.id, originEventId: eventId,
+    lastConfirmationEventId: eventId, observedAt: stamp, confirmedAt: stamp,
+    createdAt: stamp, updatedAt: stamp, expiryDate: null, expiryKind: null,
+  }
+}
 export function applyHomeCommand(current, command) {
   current = validateHomeState(current)
   const { type, payload = {}, eventId = uuid(), actorId = current.actorId } = command
@@ -95,19 +110,19 @@ export function applyHomeCommand(current, command) {
     const q = quantity(payload.quantity, payload.unit)
     const id = payload.id || uuid()
     if (record(state, 'inventory', id)) fail('A készlettétel már létezik.')
-    if (!LOCATIONS.includes(payload.storageLocation)) fail('Válassz tárolási helyet.')
+    if (!LOCATIONS.includes(payload.storageLocation || 'untracked')) fail('Érvénytelen opcionális tárolóhely.')
     const expiryDate = validDate(payload.expiryDate)
     const expiryKind = expiryDate ? payload.expiryKind : null
     if (expiryDate && !['bestBefore', 'useBy'].includes(expiryKind)) fail('Válassz dátumtípust.')
-    changes = [change('inventory', null, { id, householdId: state.householdId, name: cleanName(payload.name), ...q, storageLocation: payload.storageLocation, evidenceStatus: 'confirmed', sourceType: command.sourceType || 'manual', sourceId: command.sourceId || null, originEventId: eventId, lastConfirmationEventId: eventId, observedAt: stamp, confirmedAt: stamp, createdAt: stamp, updatedAt: stamp, expiryDate, expiryKind })]
+    changes = [change('inventory', null, { id, householdId: state.householdId, name: cleanName(payload.name), ...q, storageLocation: payload.storageLocation || 'untracked', evidenceStatus: 'confirmed', sourceType: command.sourceType || 'manual', sourceId: command.sourceId || null, originEventId: eventId, lastConfirmationEventId: eventId, observedAt: stamp, confirmedAt: stamp, createdAt: stamp, updatedAt: stamp, expiryDate, expiryKind })]
   } else if (type === 'LotEdited') {
     if (!lot) fail('A készlettétel nem található.')
     const q = quantity(payload.quantity, payload.unit)
     const expiryDate = validDate(payload.expiryDate)
     const expiryKind = expiryDate ? payload.expiryKind : null
     if (expiryDate && !['bestBefore', 'useBy'].includes(expiryKind)) fail('Válassz dátumtípust.')
-    if (!LOCATIONS.includes(payload.storageLocation)) fail('Válassz tárolási helyet.')
-    changes = [change('inventory', lot, { ...lot, name: cleanName(payload.name), ...q, storageLocation: payload.storageLocation, observedAt: stamp, updatedAt: stamp, confirmedAt: stamp, lastConfirmationEventId: eventId, frozenAt: payload.storageLocation === 'freezer' && lot.storageLocation !== 'freezer' ? stamp : lot.frozenAt || null, thawedAt: lot.storageLocation === 'freezer' && payload.storageLocation !== 'freezer' ? stamp : lot.thawedAt || null, expiryDate, expiryKind })]
+    if (!LOCATIONS.includes(payload.storageLocation || lot.storageLocation)) fail('Érvénytelen opcionális tárolóhely.')
+    changes = [change('inventory', lot, { ...lot, name: cleanName(payload.name), ...q, storageLocation: payload.storageLocation || lot.storageLocation, observedAt: stamp, updatedAt: stamp, confirmedAt: stamp, lastConfirmationEventId: eventId, frozenAt: (payload.storageLocation || lot.storageLocation) === 'freezer' && lot.storageLocation !== 'freezer' ? stamp : lot.frozenAt || null, thawedAt: lot.storageLocation === 'freezer' && (payload.storageLocation || lot.storageLocation) !== 'freezer' ? stamp : lot.thawedAt || null, expiryDate, expiryKind })]
   } else if (type === 'LotDeleted') {
     if (!lot) fail('A készlettétel nem található.')
     changes = [change('inventory', lot, null)]
@@ -122,7 +137,7 @@ export function applyHomeCommand(current, command) {
     if (second) changes.push(change('inventory', null, { ...firstLot, id: uuid(), quantityBase: second[1], storageLocation: second[0], originEventId: eventId, frozenAt: second[0] === 'freezer' && lot.storageLocation !== 'freezer' ? stamp : lot.frozenAt || null, thawedAt: lot.storageLocation === 'freezer' && second[0] !== 'freezer' ? stamp : lot.thawedAt || null }))
   } else if (type === 'CookingConfirmed') {
     if (!Array.isArray(payload.consumed) || !payload.consumed.length) fail('Válassz legalább egy felhasznált készlettételt.')
-    if (!LOCATIONS.includes(payload.storageLocation)) fail('Válassz tárolási helyet a készételnek.')
+    if (!LOCATIONS.includes(payload.storageLocation || 'untracked')) fail('Érvénytelen opcionális készétel-tárolóhely.')
     const portions = Number(payload.portions)
     if (!Number.isSafeInteger(portions) || portions <= 0) fail('A készétel adagjainak száma legyen pozitív egész szám.')
     const seen = new Set()
@@ -138,7 +153,7 @@ export function applyHomeCommand(current, command) {
     const id = payload.preparedLotId || uuid()
     if (record(state, 'prepared', id)) fail('A készétel-tétel már létezik.')
     if (payload.portionUnit != null && !['serving', 'slice', 'piece'].includes(payload.portionUnit)) fail('Ismeretlen készétel-egység.')
-    changes.push(change('prepared', null, { id, householdId: state.householdId, name: cleanName(payload.name), cookingEventId: eventId, recipeRef: payload.recipeRef == null ? null : cleanName(payload.recipeRef), portionsRemaining: portions, portionUnit: payload.portionUnit || 'serving', storageLocation: payload.storageLocation, confirmedAt: stamp, updatedAt: stamp }))
+    changes.push(change('prepared', null, { id, householdId: state.householdId, name: cleanName(payload.name), cookingEventId: eventId, recipeRef: payload.recipeRef == null ? null : cleanName(payload.recipeRef), portionsRemaining: portions, portionUnit: payload.portionUnit || 'serving', storageLocation: payload.storageLocation || 'untracked', confirmedAt: stamp, updatedAt: stamp }))
   } else if (type === 'PreparedConsumptionLinked') {
     const prepared = record(state, 'prepared', payload.preparedLotId)
     if (!prepared) fail('A készétel-tétel nem található.')
@@ -156,11 +171,45 @@ export function applyHomeCommand(current, command) {
   } else if (type === 'ShoppingItemEdited') {
     if (!item) fail('A listaelem nem található.')
     const q = payload.quantity === '' || payload.quantity == null ? { quantityBase: null, dimension: null, displayUnit: null } : quantity(payload.quantity, payload.unit)
-    changes = [change('shopping', item, { ...item, name: cleanName(payload.name), ...q, updatedAt: stamp })]
+    const name = cleanName(payload.name)
+    if (item.status === 'checked' && item.stockIntakeEventId &&
+        (name !== item.name || q.quantityBase !== item.quantityBase || q.dimension !== item.dimension)) {
+      fail('A megvett tétel mennyisége már készletre került. Előbb vond vissza a pipálást, ha még nem használtad fel.')
+    }
+    const updated = { ...item, name, ...q, updatedAt: stamp }
+    // Previously checked items with missing quantities can be reconciled later;
+    // they must never create a fictitious zero-quantity stock lot.
+    if (item.status === 'checked' && !item.stockIntakeEventId && q.quantityBase > 0) {
+      const purchased = shoppingPurchaseLot(state, updated, eventId, stamp)
+      updated.stockIntakeEventId = eventId
+      changes.push(change('inventory', null, purchased))
+    }
+    changes.unshift(change('shopping', item, updated))
   } else if (type === 'ShoppingItemStatusChanged') {
     if (!item) fail('A listaelem nem található.')
     if (!['planned', 'checked', 'deferred'].includes(payload.status)) fail('Ismeretlen listaállapot.')
-    changes = [change('shopping', item, { ...item, status: payload.status, updatedAt: stamp })]
+    if (payload.status === item.status) fail('A listaelem már ebben az állapotban van.')
+    const updated = { ...item, status: payload.status, updatedAt: stamp }
+    if (payload.status === 'checked' && item.status !== 'checked') {
+      // One atomic event: checked shopping item AND inventory lot. No modal,
+      // no storage classification, and no hidden food/receipt synchronization.
+      if (item.quantityBase > 0) {
+        changes.push(change('inventory', null, shoppingPurchaseLot(state, item, eventId, stamp)))
+        updated.stockIntakeEventId = eventId
+      } else {
+        updated.stockIntakeEventId = null // Prompt for quantity later, not in the shop.
+      }
+    } else if (item.status === 'checked' && item.stockIntakeEventId) {
+      const purchased = state.inventory.find(lot =>
+        lot.originEventId === item.stockIntakeEventId && lot.shoppingItemId === item.id)
+      if (!purchased || purchased.lastConfirmationEventId !== item.stockIntakeEventId ||
+          purchased.quantityBase !== item.quantityBase) {
+        fail('A vásárlás készlete már változott vagy fogyott. A pipálás csak kézi készletellenőrzés után vonható vissza.')
+      }
+      changes.push(change('inventory', purchased, null))
+      updated.stockIntakeEventId = null
+    }
+    changes.unshift(change('shopping', item, updated))
   } else if (type === 'ShoppingItemDeleted') {
     if (!item) fail('A listaelem nem található.')
     changes = [change('shopping', item, null)]

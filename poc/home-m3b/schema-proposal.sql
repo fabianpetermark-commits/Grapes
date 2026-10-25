@@ -303,7 +303,7 @@ begin
             (v_after->>'sourceType' is distinct from 'manual' or
              (v_after ? 'sourceId' and v_after->'sourceId'<>'null'::jsonb) or
              v_after->>'evidenceStatus' is distinct from 'confirmed' or
-             v_after->>'storageLocation' not in ('fridge','freezer','pantry'))) or
+             v_after->>'storageLocation' not in ('untracked','fridge','freezer','pantry'))) or
            (v_collection='shopping' and
             (v_after->>'sourceType' is distinct from 'manual' or
              v_after->>'status' not in ('planned','checked','deferred')))) then

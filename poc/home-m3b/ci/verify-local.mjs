@@ -151,6 +151,25 @@ const forgery=await rpc(c,'home_m3b_compare_and_swap',{
 assert.ok([400,409].includes(forgery.status),JSON.stringify(forgery))
 console.log('PASS: explicit conflict review, append-only event history and snapshot replay')
 
+// One real authenticated editor checkout must atomically update the shared
+// shopping row and a non-categorized inventory lot, then replay intact.
+const checkedItem=after.data.state.shopping.find(item=>item.name==='Kenyér')
+const checked=stageFamilyHomeCommand({state:after.data.state,householdId:h,
+  actorId:c.id,role:'editor',command:{type:'ShoppingItemStatusChanged',
+    eventId:randomUUID(),payload:{id:checkedItem.id,status:'checked'}}})
+const bought=await rpc(c,'home_m3b_compare_and_swap',args(checked))
+assert.deepEqual(bought.data,{status:'committed',revision:3},JSON.stringify(bought))
+const boughtAgain=await rpc(c,'home_m3b_compare_and_swap',args(checked))
+assert.deepEqual(boughtAgain,bought)
+const stocked=await rpc(a,'home_m3b_read_household',{p_household_id:h})
+assert.equal(stocked.status,200)
+assert.equal(stocked.data.state.inventory.length,1)
+assert.equal(stocked.data.state.inventory[0].name,'Kenyér')
+assert.equal(stocked.data.state.inventory[0].storageLocation,'untracked')
+assert.equal(stocked.data.state.inventory[0].shoppingItemId,checkedItem.id)
+assert.equal(stocked.data.state.shopping.find(x=>x.id===checkedItem.id).stockIntakeEventId,checked.operationId)
+console.log('PASS: real local Supabase family checkout -> one untracked inventory lot, no duplicated stock on retry')
+
 const removed=await rpc(a,'home_m3b_remove_member',{p_household_id:h,p_user_id:c.id})
 assert.equal(removed.status,200,JSON.stringify(removed))
 assert.equal(removed.data,true)
