@@ -2,6 +2,7 @@ import { createHomeStore } from './home-store.js'
 import { displayQuantity, expiryLabel, splitPreset, splitPreview, quantity, UNITS } from './home-data.js'
 import { homeDateHints, homeRecipeHints } from './home-advisor.js'
 import { deriveHomeReplenishment, DEFAULT_SHOPPING_LIST_ID } from './home-replenishment.js'
+import { derivePurchaseCadenceForecasts } from './home-purchase-forecast.js'
 
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char])
 const placeNames = { untracked: '', fridge: 'Hűtő', freezer: 'Fagyasztó', pantry: 'Kamra' }
@@ -37,6 +38,7 @@ export function createHomeMobile(root, storage, { freshOwnerMode = false, openFo
   let replenishmentError = ''
   let selectedList = DEFAULT_SHOPPING_LIST_ID
   let selectedSuggestions = new Set()
+  let forecastAmounts = new Map()
   let suggestionsBusy = false
   let message = ''
   let error = ''
@@ -121,6 +123,7 @@ export function createHomeMobile(root, storage, { freshOwnerMode = false, openFo
     replenishmentError = ''
     selectedList = DEFAULT_SHOPPING_LIST_ID
     selectedSuggestions.clear()
+    forecastAmounts.clear()
     suggestionsBusy = false
     $('[data-household-prepared]')?.replaceChildren()
     $('[data-household-cooking-rows]')?.replaceChildren()
@@ -134,6 +137,10 @@ export function createHomeMobile(root, storage, { freshOwnerMode = false, openFo
     root.style.visibility = 'hidden'
   }
 
+  const allSuggestions = (home, prefs) => [
+    ...deriveHomeReplenishment(home, prefs),
+    ...derivePurchaseCadenceForecasts(home, prefs),
+  ]
   function renderReplenishment(current) {
     const metas = replenishment?.getState()
     const lists = metas?.lists || [{ id: DEFAULT_SHOPPING_LIST_ID, name: 'Bevásárlólista' }]
@@ -151,25 +158,35 @@ export function createHomeMobile(root, storage, { freshOwnerMode = false, openFo
       $('[data-household-move-selected]').disabled = true
       return
     }
-    const proposals = deriveHomeReplenishment(current, metas)
+    const proposals = allSuggestions(current, metas)
     const active = proposals.filter(row => row.status === 'active')
     const historyRows = proposals.filter(row => row.status !== 'active')
     const currently = new Set(active.map(row => JSON.stringify([row.key, row.cycleId])))
     selectedSuggestions = new Set([...selectedSuggestions].filter(id => currently.has(id)))
-    place.innerHTML = active.length ? active.map(row => {
+    for (const id of forecastAmounts.keys()) if (!currently.has(id)) forecastAmounts.delete(id)
+    const proposalRow = row => {
       const id = JSON.stringify([row.key, row.cycleId])
-      return `<article class="household-proposal">
+      const forecast = row.kind === 'forecast'
+      const date = forecast ? new Intl.DateTimeFormat('hu-HU', {month:'short',day:'numeric'}).format(new Date(row.predictedAt)) : ''
+      return `<article class="household-proposal ${forecast ? 'household-proposal-forecast' : ''}">
         <label class="household-proposal-check">
           <input type="checkbox" data-household-suggestion-pick="${escape(id)}" ${selectedSuggestions.has(id) ? 'checked' : ''} aria-label="${escape(row.name)} kijelölése">
-          <span class="household-proposal-copy"><strong>${escape(row.name)} · ${escape(String(row.quantity))} ${escape(row.unit)}</strong>
-            <small>Igazoltan elfogyott · javasolt pótlás, szabadon módosítható</small></span>
+          <span class="household-proposal-copy"><strong>${escape(row.name)}${forecast ? '' : ` · ${escape(String(row.quantity))} ${escape(row.unit)}`}</strong>
+            <small>${forecast ? `Várható újravásárlás: kb. ${escape(date)} · ${escape(String(row.observations))} korábbi vásárlás alapján. NEM igazolt hiány.` : 'Igazoltan elfogyott · javasolt pótlás'}</small>
+          </span>
         </label>
+        ${forecast ? `<label class="household-forecast-amount">Mennyiség (opcionális, nem becsüljük)<input type="number" min="0.001" step="any" inputmode="decimal" data-household-forecast-amount="${escape(id)}" value="${escape(forecastAmounts.get(id) || '')}" placeholder="Mennyiség, ${escape(row.unit)}" aria-label="${escape(row.name)} vásárolandó mennyisége"></label>` : ''}
         <button type="button" class="household-proposal-dismiss" data-household-dismiss-key="${escape(row.key)}" data-household-dismiss-cycle="${escape(row.cycleId)}" aria-label="${escape(row.name)} javaslat elvetése" title="Most nem">✕</button>
       </article>`
-    }).join('') : '<div class="household-empty">Nincs igazoltan elfogyott termék, amelyhez most pótlást javasolnánk. Nem következtetünk bizonytalan készletből.</div>'
+    }
+    const confirmed = active.filter(row => row.kind !== 'forecast')
+    const forecasted = active.filter(row => row.kind === 'forecast')
+    place.innerHTML = (confirmed.length ? `<h2 class="household-proposal-section-title">Igazolt készlethiány</h2>${confirmed.map(proposalRow).join('')}` : '') +
+      (forecasted.length ? `<h2 class="household-proposal-section-title">Várható újravásárlás · becslés</h2><p class="household-replenishment-muted">Csak vásárlási gyakoriság. Nem bizonyítja a kifogyást, és mennyiséget sem választ helyetted.</p>${forecasted.map(proposalRow).join('')}` : '') ||
+      '<div class="household-empty">Most nincs aktív pótlási javaslat. Bizonytalan készletből nem számítunk biztos hiányt, rendszertelen vásárlásból pedig nem készítünk előrejelzést.</div>'
     history.innerHTML = historyRows.length ? historyRows.map(row =>
       `<article class="household-proposal-history"><span><strong>${escape(row.name)}</strong>
-        <small>${row.status === 'dismissed' ? 'Elvetve az X-szel' : row.status === 'archived' ? '30 nap után archiválva' : 'Már szerepel egy bevásárlólistán'}</small></span>
+        <small>${row.kind === 'forecast' ? 'Becsült újravásárlás · ' : ''}${row.status === 'dismissed' ? 'Elvetve az X-szel' : row.status === 'archived' ? '30 nap után archiválva' : 'Már szerepel egy bevásárlólistán'}</small></span>
         ${row.status === 'dismissed' && !row.archived ?
           `<button type="button" data-household-restore-key="${escape(row.key)}" data-household-restore-cycle="${escape(row.cycleId)}">Visszaállítás</button>` : ''}
       </article>`).join('') : '<p class="household-replenishment-muted">Még nincs korábbi javaslat.</p>'
@@ -186,7 +203,7 @@ export function createHomeMobile(root, storage, { freshOwnerMode = false, openFo
       if (epoch === loadEpoch && store) {
         selectedSuggestions.delete(JSON.stringify([key,cycleId]))
         render()
-        alert(restore ? 'Javaslat visszaállítva.' : 'Javaslat elvetve. Új fogyási ciklusig nem tér vissza.')
+        alert(restore ? 'Javaslat visszaállítva.' : 'Javaslat elvetve. Új igazolt vásárlási vagy fogyási ciklusig nem tér vissza.')
       }
     } catch (err) { if(epoch===loadEpoch) alert(err.message,true) }
   }
@@ -202,20 +219,27 @@ export function createHomeMobile(root, storage, { freshOwnerMode = false, openFo
       await replenishment.assertOwner()
       for (const id of [...selectedSuggestions]) {
         if (epoch !== loadEpoch || store !== owner) break
-        const proposal = deriveHomeReplenishment(owner.getState(), replenishment.getState())
+        const proposal = allSuggestions(owner.getState(), replenishment.getState())
           .find(row => JSON.stringify([row.key,row.cycleId]) === id && row.status === 'active')
         if (!proposal) { selectedSuggestions.delete(id); continue }
         const exists = owner.getState().shopping.some(row => row.status !== 'checked' &&
           row.name.trim().toLocaleLowerCase('hu-HU') === proposal.name.trim().toLocaleLowerCase('hu-HU') &&
-          row.dimension === proposal.dimension)
+          (proposal.kind === 'forecast' || row.dimension === proposal.dimension))
         if (exists) { selectedSuggestions.delete(id); continue }
+        const isForecast = proposal.kind === 'forecast'
+        const entered = isForecast ? (forecastAmounts.get(id) || '').trim() : String(proposal.quantity)
+        if (entered && (!Number.isFinite(Number(entered.replace(',', '.'))) || Number(entered.replace(',', '.')) <= 0)) {
+          alert('A megadott mennyiség legyen pozitív, vagy hagyd üresen.', true)
+          break
+        }
         const result = await run('ShoppingItemAdded', {
-          name: proposal.name, quantity: proposal.quantity,
+          name: proposal.name, quantity: entered ? entered.replace(',', '.') : '',
           unit: proposal.unit, listId: target,
         }, operationId())
         if (!result) break
         moved++
         selectedSuggestions.delete(id)
+        forecastAmounts.delete(id)
       }
       if (epoch === loadEpoch && store === owner) {
         selectedList = target
@@ -499,6 +523,10 @@ export function createHomeMobile(root, storage, { freshOwnerMode = false, openFo
   })
   $('[data-household-search]').addEventListener('input', event => { search = event.target.value.toLocaleLowerCase('hu-HU'); render() })
   if (freshOwnerMode) {
+    root.addEventListener('input', event => {
+      if (event.target.matches('[data-household-forecast-amount]'))
+        forecastAmounts.set(event.target.dataset.householdForecastAmount, event.target.value)
+    })
     root.addEventListener('change', event => {
       if (event.target.matches('[data-household-list-select]')) {
         selectedList = event.target.value; closeForms(); render()

@@ -122,6 +122,64 @@ try {
   })
   assert.equal(stock.inventory.reduce((n,x)=>n+x.quantityBase,0),2000)
   assert.equal(stock.shopping.at(-1).listId,created)
+  // Purchases of non-diary goods: four real checkout records at a regular
+  // interval, WITHOUT any recorded consumption. No artificial stock-out.
+  await page.evaluate(async () => {
+    const {openGrapesTestFreshHome}=await import('/Grapes/src/home/grapes-test-fresh-home.js')
+    const session=await openGrapesTestFreshHome({enabled:true})
+    const RealDate=globalThis.Date
+    const reference=RealDate.now()
+    for (const daysAgo of [27,20,13,6]) {
+      const stamp=reference-daysAgo*86400000
+      globalThis.Date=class extends RealDate {
+        constructor(...args) { if(args.length) super(...args); else super(stamp) }
+        static now() { return stamp }
+      }
+      try {
+        await session.dispatch({type:'ShoppingItemAdded',eventId:crypto.randomUUID(),
+          payload:{name:'Élesztő',quantity:1,unit:'csomag',listId:'main'}})
+        const id=session.getState().shopping.at(-1).id
+        await session.dispatch({type:'ShoppingItemStatusChanged',eventId:crypto.randomUUID(),
+          payload:{id,status:'checked'}})
+      } finally { globalThis.Date=RealDate }
+    }
+  })
+  await page.reload()
+  await openHome()
+  await home.locator('[data-household-tab="replenishment"]').click()
+  await home.locator('[data-household-forecast-amount]').waitFor()
+  const forecast=home.locator('.household-proposal-forecast')
+  assert.ok((await forecast.textContent()).includes('Élesztő'))
+  assert.ok((await forecast.textContent()).includes('NEM igazolt hiány'))
+  assert.equal(await forecast.locator('[data-household-forecast-amount]').inputValue(),'')
+  await forecast.locator('[data-household-dismiss-key]').click()
+  await forecast.locator('[data-household-dismiss-key]').waitFor({state:'detached'})
+  await page.reload(); await openHome()
+  await home.locator('[data-household-tab="replenishment"]').click()
+  assert.equal(await home.locator('.household-proposal-forecast').count(),0)
+  await home.locator('.household-replenishment-history summary').click()
+  await home.locator('[data-household-restore-key]').click()
+  await home.locator('[data-household-forecast-amount]').waitFor()
+  await home.locator('.household-proposal-forecast [data-household-suggestion-pick]').check()
+  await home.locator('[data-household-suggestion-list]').selectOption(created)
+  const stockBefore=await page.evaluate(async()=>{
+    const {openGrapesTestFreshHome}=await import('/Grapes/src/home/grapes-test-fresh-home.js')
+    return (await openGrapesTestFreshHome({enabled:true})).getState().inventory.map(x=>x.quantityBase)
+  })
+  await home.locator('[data-household-move-selected]').click()
+  await home.locator('[data-household-tab="shopping"]').click()
+  const yeast=home.locator('[data-household-items] .household-card').filter({hasText:'Élesztő'})
+  await yeast.waitFor()
+  assert.ok((await yeast.textContent()).includes('Mennyiség ismeretlen'))
+  await yeast.locator('[data-household-check]').click()
+  const stockAfter=await page.evaluate(async()=>{
+    const {openGrapesTestFreshHome}=await import('/Grapes/src/home/grapes-test-fresh-home.js')
+    return (await openGrapesTestFreshHome({enabled:true})).getState().inventory.map(x=>x.quantityBase)
+  })
+  assert.deepEqual(stockAfter,stockBefore,'A forecast quantity must not silently increase stock')
+  await home.locator('[data-household-tab="replenishment"]').click()
+  assert.equal(await home.locator('.household-proposal-forecast').count(),0)
+  console.log('PASS: real mobile estimated yeast repurchase (not proof of shortage), red X reload and no-quantity purchase safety.')
   for (const w of [320,360,390,412]) {
     await page.setViewportSize({width:w,height:900})
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,
