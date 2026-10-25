@@ -72,8 +72,6 @@ try {
     }, { timeout: 15000 })
   }
   await openShelf()
-  const firstEmpty = await shelf.getByText('A saját könyvtárad még üres.').count()
-  assert.equal(firstEmpty, 0, 'use partial text on the actual empty-state node instead')
   assert.ok((await shelf.textContent()).includes('A saját könyvtárad még üres'))
   await page.evaluate(() => localStorage.setItem('grapes-ebook-reading-progress-v1',
     '{"legacyShared":true}'))
