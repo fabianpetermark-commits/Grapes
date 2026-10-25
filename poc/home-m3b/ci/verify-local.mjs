@@ -28,7 +28,15 @@ async function call(path,key,token,body,schema){
   const data=await r.json().catch(()=>null)
   return {status:r.status,data}
 }
-const rpc=(identity,name,args)=>call('/rest/v1/rpc/'+name,anon,identity?.token,args,'api')
+async function rpc(identity,name,args) {
+  for(let i=0;i<40;i++) {
+    const response=await call('/rest/v1/rpc/'+name,anon,identity?.token,args,'api')
+    if(response.data?.code!=='PGRST202')return response
+    // PostgREST schema cache may briefly lag SQL creation on a fresh stack.
+    if(i===39)throw Error('PostgREST RPC missing: '+name)
+    await new Promise(done=>setTimeout(done,150))
+  }
+}
 async function who(name) {
   const email='grapes-m3b-'+name+'-'+randomUUID().slice(0,8)+'@example.invalid'
   const password='Synthetic-'+randomUUID()+'-A1!'
