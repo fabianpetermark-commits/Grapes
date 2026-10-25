@@ -117,6 +117,13 @@ function resetSavingsEditor() {
 }
 
 function setFinanceTab(tab) {
+  // Import callbacks can outlive their originating account. Keep this one
+  // path blocked in the first fresh-owner Finance rollout until its async
+  // file-processing work receives its own pinned owner session.
+  if (FRESH_OWNER_FINANCE && tab === 'import') {
+    notifyError('A pénzügyi tömeges import a fiókváltási védelem véglegesítéséig nem érhető el.')
+    return
+  }
   const allowed = new Set(['overview', 'transaction', 'savings', 'forecast', 'import'])
   activeFinanceTab = allowed.has(tab) ? tab : 'overview'
   document.querySelectorAll('[data-finance-tab]').forEach((button) => {
@@ -617,6 +624,11 @@ function pickReceiptAmount(candidates, currentAmount) {
 
 async function scanPendingReceipt() {
   if (receiptOcrRunning || !pendingReceipt?.type?.startsWith('image/')) return
+  const ownerSession = financeOwnerSession
+  if (FRESH_OWNER_FINANCE) {
+    try { await assertFinanceActionOwner(ownerSession) }
+    catch (error) { notifyError(error.message); return }
+  }
   const scannedReceipt = pendingReceipt
   receiptOcrRunning = true
   updateReceiptOcrControls()
@@ -624,8 +636,11 @@ async function scanPendingReceipt() {
   status.textContent = 'OCR előkészítése…'
   try {
     const text = await recognizeReceiptImage(scannedReceipt.data, (progress) => {
-      status.textContent = `Szövegfelismerés… ${Math.round(progress * 100)}%`
+      if (!FRESH_OWNER_FINANCE || ownerSession === financeOwnerSession) {
+        status.textContent = `Szövegfelismerés… ${Math.round(progress * 100)}%`
+      }
     })
+    await assertFinanceActionOwner(ownerSession)
     if (pendingReceipt !== scannedReceipt) {
       status.textContent = 'A csatolmány közben megváltozott, ezért az eredményt nem használtam fel.'
       return
@@ -643,6 +658,7 @@ async function scanPendingReceipt() {
     }
     status.textContent = `${candidates.length} lehetséges összeg találva.`
     const amount = await pickReceiptAmount(candidates, el('#finance-amount').value)
+    await assertFinanceActionOwner(ownerSession)
     if (amount != null) {
       el('#finance-amount').value = formatMoneyInput(amount)
       el('#finance-amount').dispatchEvent(new Event('input', { bubbles: true }))
@@ -675,6 +691,7 @@ async function loadInitialProject() {
     receiptRequest += 1
     receiptLoading = false; receiptOcrRunning = false
     pendingReceipt = null; editingTransactionId = null; editingSavingsEntryId = null
+    financeImportController?.close?.()
     driveProjectFileId = null
     applyProject({})
     sessionStorage.removeItem('grapes-open-project')
@@ -739,6 +756,9 @@ function bindControls() {
     },
     getCurrency: () => currency,
     onCommit: async (rows) => {
+      if (FRESH_OWNER_FINANCE) {
+        throw new Error('A tömeges Finance-import a saját fiókhoz kötés ellenőrzéséig zárolva van.')
+      }
       const importedTransactions = []
       const importedSavings = []
       for (const row of rows) {
@@ -1016,6 +1036,8 @@ export async function initFinanceTracker() {
   if (FRESH_OWNER_FINANCE) {
     el('#finance-drive-save').disabled = true
     el('#finance-drive-save').textContent = 'Drive nem aktív a fiókozott TEST-ben'
+    el('#finance-import-btn').disabled = true
+    document.querySelector('[data-finance-tab="import"]').disabled = true
   }
   el('#finance-drive-status').textContent = FRESH_OWNER_FINANCE
     ? 'Helyi Grapes TEST-fióktárhely; Drive mentés kikapcsolva.'
