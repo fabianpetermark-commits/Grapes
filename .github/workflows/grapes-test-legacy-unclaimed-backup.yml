@@ -1,0 +1,61 @@
+name: Grapes TEST unclaimed legacy backup foundation (NO RELEASE)
+
+on:
+  push:
+    branches:
+      - feature/grapes-test-legacy-unclaimed-backup-foundation-20261025
+  pull_request:
+    branches:
+      - feature/grapes-test-v27-native-owner-signed-candidate-20261025
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-test-unclaimed-backup-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  original-legacy-no-loss-backup-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GRAPES_TEST_AUTH_ENABLED: 'false'
+      VITE_GRAPES_TEST_LOCAL_OWNER_QA_ENABLED: 'false'
+      VITE_GRAPES_TEST_DATA_ENABLED: 'false'
+      VITE_GRAPES_TEST_HEALTH_SYNC_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Existing unit tests including fail-closed unclaimed backup
+        run: npm test
+      - name: Ordinary production web build regression
+        run: npm run build
+      - name: Locate Chromium
+        run: |
+          if command -v google-chrome >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            npx playwright-core install --with-deps chromium
+            browser=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path '*chrome-linux*' | head -1)
+            test -n "$browser"
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$browser" >> "$GITHUB_ENV"
+          fi
+      - name: Real IndexedDB read-only source capture with artificial Food Finance Water E-book
+        run: node tests/grapes-test-legacy-unclaimed-backup.browser.mjs
+      - name: Previously tested account-scoped synthetic storage stays functional
+        run: node tests/grapes-test-local-owner-store.browser.mjs
+      - name: Verify legacy account-isolation exposure remains documented
+        run: |
+          node tests/grapes-local-account-legacy-audit.browser.mjs
+          echo 'Legacy local multi-user security remains NO-GO. Only the backup foundation was tested.'
