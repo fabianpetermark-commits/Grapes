@@ -134,6 +134,7 @@ try {
   await home.locator('[data-household-cook="r-home-m3a-milk"]').click()
   const cookForm = home.locator('[data-household-cooking]')
   assert.equal(await cookForm.locator('[name="portions"]').inputValue(), '2')
+  await cookForm.locator('.household-cooking-row [name="unit"]').selectOption('ml')
   await cookForm.locator('.household-cooking-row [name="quantity"]').fill('200')
   assert.match(await cookForm.locator('[data-household-cooking-preview]').textContent(), /1000 → 800 ml/)
   const homeBeforeCook = await page.evaluate(async () => {
