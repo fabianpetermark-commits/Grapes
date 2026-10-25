@@ -48,7 +48,8 @@ class MainActivity : ComponentActivity() {
     private val testGate by lazy { TestAuthGate(isTestQa) }
     private val testSupabaseProxy by lazy {
         TestSupabaseProxy(isTestQa && BuildConfig.GRAPES_TEST_DATA_ENABLED,
-            BuildConfig.GRAPES_TEST_PUBLISHABLE_KEY)
+            BuildConfig.GRAPES_TEST_PUBLISHABLE_KEY,
+            familyEnabled = isTestQa && BuildConfig.GRAPES_TEST_HOME_FAMILY_ENABLED)
     }
     private val testGatePreferences by lazy { getSharedPreferences("grapes-test-auth-gate-v1", MODE_PRIVATE) }
     private val yazioApi by lazy { YazioApi(this) }
