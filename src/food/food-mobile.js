@@ -304,7 +304,8 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
         freshOwnerSession = session
         freshOwnerReady = true
         showSyncStatus('Saját Food TEST-tárhely · Drive, YAZIO, Health és megosztás kikapcsolva')
-        render()
+        showOverview()
+        updateInboxIndicator()
         if (foodPage) { foodPage.style.removeProperty('visibility'); foodPage.inert = false }
         return
       } catch (error) {
