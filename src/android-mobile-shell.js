@@ -39,10 +39,18 @@ const sheet = $('[data-food-add-sheet]')
 const sheetBackdrop = $('.sheet-backdrop')
 const LOCAL_MODE_KEY = 'grapes-local-mode'
 const WATER_STORE_KEY = 'grapes-water-v1'
-const WATER_PROFILE_QA = import.meta.env?.VITE_GRAPES_TEST_CHANNEL === '1' &&
-  import.meta.env?.VITE_GRAPES_TEST_WATER_PROFILE_ENABLED === 'true'
+// Fresh-owner rollout deliberately skips ALL unclaimed legacy Water and
+// project storage. Default OFF until Food/Finance/E-book boundaries also pass.
+const FRESH_OWNER_MODULES = isGrapesAndroidApp() &&
+  import.meta.env?.VITE_GRAPES_TEST_CHANNEL === '1' &&
+  import.meta.env?.VITE_GRAPES_TEST_AUTH_ENABLED === 'true' &&
+  import.meta.env?.VITE_GRAPES_TEST_FRESH_OWNER_MODULES_ENABLED === 'true'
+const WATER_PROFILE_QA = FRESH_OWNER_MODULES ||
+  (import.meta.env?.VITE_GRAPES_TEST_CHANNEL === '1' &&
+  import.meta.env?.VITE_GRAPES_TEST_WATER_PROFILE_ENABLED === 'true')
 const SYNTHETIC_WATER_PROFILE = '00000000-0000-4000-8000-000000000001'
 let activeWaterProfileId = null
+let freshWaterSession = null
 let waterProfileLoading = null
 let legacyWaterOwner = null
 const waterStorageKey = () => WATER_PROFILE_QA
@@ -200,6 +208,10 @@ function setSyncProviderStatus(message, state = '') {
 }
 
 function openSyncImport(provider) {
+  if (FRESH_OWNER_MODULES) {
+    showToast('A Food/Health import a fiókhoz kötés befejezéséig nem érhető el.')
+    return
+  }
   activeSyncImport = provider
   const title = $('[data-sync-import-title]')
   const copy = $('[data-sync-import-copy]')
@@ -243,6 +255,10 @@ function openSyncImport(provider) {
 }
 
 async function runSyncImport() {
+  if (FRESH_OWNER_MODULES) {
+    showToast('Az importálás a fiókhoz kötés befejezéséig tiltva.')
+    return
+  }
   const provider = activeSyncImport
   const status = $('[data-sync-import-status]')
   if (!provider) return
@@ -289,7 +305,8 @@ function renderUpdateInbox() {
   const card = $('[data-update-notification]')
   const update = availableAppUpdate
   const readVersion = Number(localStorage.getItem(UPDATE_READ_KEY) || 0)
-  const food = mobileFood?.inboxSummary() || { pending: 0, unread: 0 }
+  const food = FRESH_OWNER_MODULES ? { pending: 0, unread: 0 }
+    : mobileFood?.inboxSummary() || { pending: 0, unread: 0 }
   const foodCard = $('[data-food-share-notification]')
   foodCard.hidden = food.pending === 0
   $('[data-food-share-notes]').textContent = `${food.pending} függőben lévő megosztás · ${food.unread} olvasatlan`
@@ -316,7 +333,7 @@ async function refreshUpdateInbox() {
     try { setAvailableAppUpdate(await getAndroidAppUpdate()) }
     catch { renderUpdateInbox() }
   }
-  if (mobileFood) {
+  if (mobileFood && !FRESH_OWNER_MODULES) {
     try { await mobileFood.refreshInbox() } catch { /* A postaláda hálózati hibája nem akadályozhatja a verziófrissítést. */ }
   }
   renderUpdateInbox()
@@ -332,6 +349,13 @@ async function openUpdateInbox() {
 }
 
 function showPage(page, { parent = '', entry = '', skipFoodLoad = false } = {}) {
+  // With the opt-in fresh owner gate ON, legacy modules MUST NOT be opened:
+  // their local/Drive data paths are not yet bound to native Grapes Auth.
+  if (FRESH_OWNER_MODULES &&
+      ['food', 'ebook', 'reader', 'transfer', 'household'].includes(page)) {
+    showToast('Ez a modul a fiókonkénti TEST-átállításig zárolva van.')
+    return
+  }
   // Remember only the menu origin. Reader/transfer views inherit E-book's origin.
   if (!['reader', 'transfer'].includes(page) || parent) {
     menuReturnPage = parent
@@ -370,6 +394,10 @@ function showPage(page, { parent = '', entry = '', skipFoodLoad = false } = {}) 
 }
 
 async function openModule(module, project = null, view = '', itemId = '', action = '') {
+  if (FRESH_OWNER_MODULES) {
+    showToast('A régi moduloldalak fiókhoz kötése még folyamatban van; a TEST nem nyitja meg őket.')
+    return
+  }
   await mobileFood?.flush({ drive: false }).catch(() => {})
   if (project) {
     try { sessionStorage.setItem('grapes-open-project', JSON.stringify({ module: project.folder, source: 'Drive', id: project.id })) } catch {}
@@ -661,6 +689,16 @@ async function pairMobileLibrary() {
 }
 
 function renderAccount() {
+  if (FRESH_OWNER_MODULES) {
+    $('[data-account-mode]').textContent = 'Grapes TEST – fiókonkénti mód'
+    $('[data-sync-title]').textContent = 'Grapes TEST – helyi fióktárhely'
+    $('[data-sync-detail]').textContent = 'A Water külön saját tárhelye aktív; Food, Finance, E-book és Drive még zárolva van.'
+    $('[data-connect-drive]').textContent = 'Drive-kapcsolat ebben a tesztben nem használható'
+    $('[data-account-action]').textContent = 'Drive külön zárolva'
+    const badge = $('[data-sync-badge]')
+    if (badge) { badge.textContent = 'Fiókhoz kötve'; badge.dataset.state = 'local' }
+    return
+  }
   const connected = isGrapesDriveConnected()
   const account = getGrapesAccount()
   $('[data-account-mode]').textContent = connected ? (account?.email || 'Drive csatlakoztatva') : 'Helyi mód'
@@ -689,6 +727,10 @@ function showLogin(message = '') {
 }
 
 async function openAccountLogin() {
+  if (FRESH_OWNER_MODULES) {
+    showToast('A Drive-kapcsolat a fiókonkénti TEST alatt zárolva van.')
+    return
+  }
   if (!isGrapesDriveConnected()) {
     setLocalMode(false)
     showLogin()
@@ -731,24 +773,38 @@ async function renderSync({ refreshed = false } = {}) {
   status.textContent = 'Állapot ellenőrzése…'
   status.dataset.state = 'working'
   try {
-    const [projects, estimate, driveCount] = await Promise.all([
-      listLocalProjects(1000).catch(() => []),
-      navigator.storage?.estimate ? navigator.storage.estimate().catch(() => null) : Promise.resolve(null),
-      driveProjectCount(),
+    const ownerAccess = FRESH_OWNER_MODULES
+      ? (await import('./storage/grapes-test-fresh-owner-access.js'))
+        .createGrapesTestFreshOwnerAccess({ enabled: true })
+      : null
+    const [projects, estimate, driveCount, scopedUsage] = await Promise.all([
+      ownerAccess ? Promise.resolve([]) : listLocalProjects(1000).catch(() => []),
+      ownerAccess ? Promise.resolve(null) : navigator.storage?.estimate
+        ? navigator.storage.estimate().catch(() => null) : Promise.resolve(null),
+      ownerAccess ? Promise.resolve(0) : driveProjectCount(),
+      ownerAccess ? ownerAccess.ownedUsage() : Promise.resolve(null),
     ])
-    const dirtyCount = projects.filter(project => project?.data?.syncState?.localDirty).length
-    const localBytes = estimate?.usage || new Blob(projects.map(project => JSON.stringify(project))).size
+    const dirtyCount = ownerAccess ? scopedUsage.pending
+      : projects.filter(project => project?.data?.syncState?.localDirty).length
+    const localBytes = ownerAccess ? scopedUsage.bytes
+      : estimate?.usage || new Blob(projects.map(project => JSON.stringify(project))).size
     const now = refreshed ? new Date().toISOString() : localStorage.getItem(SYNC_CHECK_KEY)
     if (refreshed) localStorage.setItem(SYNC_CHECK_KEY, now)
-    $('[data-sync-local-count]').textContent = `${projects.length} projekt`
+    $('[data-sync-local-count]').textContent = `${ownerAccess ? scopedUsage.projects : projects.length} projekt`
     $('[data-sync-local-size]').textContent = formatStorage(localBytes)
-    $('[data-sync-drive-count]').textContent = isGrapesDriveConnected() ? `${driveCount} projekt` : 'Nincs csatlakoztatva'
-    $('[data-sync-pending-count]').textContent = dirtyCount ? `${dirtyCount} mentés várakozik` : 'Minden helyi adat mentve'
+    $('[data-sync-drive-count]').textContent = ownerAccess
+      ? 'Külön Drive-fiók; nem része ennek a próbakörnek'
+      : isGrapesDriveConnected() ? `${driveCount} projekt` : 'Nincs csatlakoztatva'
+    $('[data-sync-pending-count]').textContent = ownerAccess
+      ? 'Csak a fiókhoz kötött TEST-nyilvántartás'
+      : dirtyCount ? `${dirtyCount} mentés várakozik` : 'Minden helyi adat mentve'
     const lastCheck = $('[data-sync-last-check]')
     if (lastCheck) lastCheck.textContent = formatSyncTime(now)
-    status.textContent = isGrapesDriveConnected()
-      ? (dirtyCount ? 'Van helyben módosított projekt.' : 'A Drive-kapcsolat elérhető.')
-      : 'A helyi mentések internet nélkül is használhatók.'
+    status.textContent = ownerAccess
+      ? 'Fiókozott TEST-projektlista; a normál Food/Finance/E-book még NEM lett átállítva.'
+      : isGrapesDriveConnected()
+        ? (dirtyCount ? 'Van helyben módosított projekt.' : 'A Drive-kapcsolat elérhető.')
+        : 'A helyi mentések internet nélkül is használhatók.'
     status.dataset.state = dirtyCount ? 'pending' : 'ready'
   } catch (error) {
     status.textContent = `Az állapot most nem ellenőrizhető. ${error?.message || ''}`
@@ -766,6 +822,10 @@ function showApp() {
 }
 
 async function connectDrive() {
+  if (FRESH_OWNER_MODULES) {
+    showToast('A külön Drive-kapcsolat nem része a fiókozott TEST-nek.')
+    return
+  }
   const status = $('[data-login-status]')
   if (isGrapesDriveConnected()) {
     await disconnectGrapesDrive({ forgetAccount: false })
@@ -818,6 +878,15 @@ async function collectProjects() {
     { name: 'Víznapló', folder: 'Egészség', module: 'food', icon: 'water', water: true },
     { name: 'E-book könyvtár', folder: 'E-book', module: 'ebook', icon: 'ebook' },
   ]
+  if (FRESH_OWNER_MODULES) {
+    // Do not expose global legacy or Drive projects under a TEST Auth login.
+    // The normal Finance/Food project navigation is not owner-scoped yet;
+    // only static, non-data shortcuts may be listed until those gates land.
+    const { createGrapesTestFreshOwnerAccess } =
+      await import('./storage/grapes-test-fresh-owner-access.js')
+    await createGrapesTestFreshOwnerAccess({ enabled: true }).verifiedSubject()
+    return local
+  }
   if (!isGrapesDriveConnected()) return local
   const groups = await Promise.all(moduleFolders.map(async ([folder, module, icon]) => {
     const projects = await listGrapesProjects(folder).catch(() => [])
@@ -848,6 +917,15 @@ function dateKey(date = new Date()) {
 function ensureWaterProfile() {
   if (!WATER_PROFILE_QA || activeWaterProfileId) return Promise.resolve()
   if (!waterProfileLoading) waterProfileLoading = (async () => {
+    if (FRESH_OWNER_MODULES) {
+      const { openGrapesTestFreshWater } =
+        await import('./water/grapes-test-fresh-water.js')
+      const session = await openGrapesTestFreshWater({ enabled: true })
+      freshWaterSession = session
+      activeWaterProfileId = session.ownerId
+      legacyWaterOwner = null
+      return
+    }
     const profileId = isGrapesAndroidApp()
       ? await getAndroidTestAuthSubject() : SYNTHETIC_WATER_PROFILE
     const ownerId = await getLocalWaterOwner()
@@ -887,6 +965,9 @@ function saveWaterStore(store, expectedRaw) {
 }
 
 function importHydrationEntries(entries = []) {
+  if (FRESH_OWNER_MODULES) {
+    throw new Error('Automatikus Food/Health → Water adatátvitel letiltva a fiókelkülönítési teszt alatt.')
+  }
   const original = localStorage.getItem(waterStorageKey())
   const store = loadWaterStore()
   const existingKeys = new Set(Object.values(store).flatMap(day => day?.entries || []).map(entry => entry.externalKey).filter(Boolean))
@@ -908,6 +989,7 @@ function importHydrationEntries(entries = []) {
 }
 
 function hydrationExternalKeys() {
+  if (FRESH_OWNER_MODULES) return []
   return Object.values(loadWaterStore())
     .flatMap(day => Array.isArray(day?.entries) ? day.entries : [])
     .map(entry => entry.externalKey)
@@ -943,7 +1025,7 @@ function renderWater() {
   const claim = $('[data-water-legacy-claim]')
   if (claim) {
     claim.hidden = true
-    if (WATER_PROFILE_QA) {
+    if (WATER_PROFILE_QA && !FRESH_OWNER_MODULES) {
       const legacy = inspectLegacyWater(localStorage, legacyWaterOwner, activeWaterProfileId)
       const currentHasData = Object.keys(snapshot.store).length > 0
       if (legacy.status === 'available' || (legacy.status === 'claimed' && !currentHasData)) {
@@ -1010,10 +1092,13 @@ function renderWater() {
     row.type = 'button'; row.className = 'water-log project-row--button'
     row.title = 'Koppints a bejegyzés törléséhez'
     row.innerHTML = `<span class="water-log__icon">${mobileIconSvg('water')}</span><span><strong>Víz</strong><span>${new Date(entry.at).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })} · mentve</span></span><b>${formatWater(entry.amount)}</b>`
-    row.addEventListener('click', () => {
+    row.addEventListener('click', async () => {
       try {
+        if (FRESH_OWNER_MODULES && !freshWaterSession) throw new Error('A Water-fiók nem ellenőrizhető.')
+        if (FRESH_OWNER_MODULES) await freshWaterSession.assertOwner()
         const next = currentWaterDay()
         next.day.entries = next.day.entries.filter(item => item.id !== entry.id)
+        if (FRESH_OWNER_MODULES) await freshWaterSession.assertOwner()
         saveWaterDay(next); renderWater(); showToast('A vízbejegyzés törölve.')
       } catch (error) { renderWater(); showToast(error?.message || 'A Víz mentése nem sikerült.') }
     })
@@ -1021,10 +1106,13 @@ function renderWater() {
   }
 }
 
-function addWater(amount) {
+async function addWater(amount) {
   try {
+    if (FRESH_OWNER_MODULES) await freshWaterSession?.assertOwner()
+    if (FRESH_OWNER_MODULES && !freshWaterSession) throw new Error('A fiók Water-tárhelye még nem nyílt meg.')
     const snapshot = currentWaterDay()
     snapshot.day.entries.push({ id: crypto.randomUUID(), amount, at: new Date().toISOString() })
+    if (FRESH_OWNER_MODULES) await freshWaterSession.assertOwner()
     saveWaterDay(snapshot)
     renderWater()
     showToast(`${formatWater(amount)} víz hozzáadva és mentve.`)
@@ -1035,6 +1123,7 @@ async function exportWaterBackup() {
   try {
     if (WATER_PROFILE_QA) await ensureWaterProfile()
     if (WATER_PROFILE_QA && !activeWaterProfileId) throw new Error('A TEST Water-profil nem ellenőrizhető.')
+    if (FRESH_OWNER_MODULES) await freshWaterSession.assertOwner()
     const json = WATER_PROFILE_QA
       ? profileWaterBackupToJson(localStorage, activeWaterProfileId)
       : waterBackupToJson(localStorage)
@@ -1060,8 +1149,11 @@ async function inspectWaterBackup(event) {
     if (file.size > 80 * 1024 * 1024) throw new Error('A víznapló-mentés túl nagy.')
     if (WATER_PROFILE_QA) await ensureWaterProfile()
     if (WATER_PROFILE_QA && !activeWaterProfileId) throw new Error('A TEST Water-profil nem ellenőrizhető.')
+    if (FRESH_OWNER_MODULES && !freshWaterSession) throw new Error('A Water-fiók nem ellenőrizhető.')
+    if (FRESH_OWNER_MODULES) await freshWaterSession.assertOwner()
     const incoming = WATER_PROFILE_QA
-      ? profileWaterBackupFromJson(await file.text(), activeWaterProfileId, { allowLegacy: true })
+      ? profileWaterBackupFromJson(await file.text(), activeWaterProfileId,
+        { allowLegacy: !FRESH_OWNER_MODULES })
       : { days: waterBackupFromJson(await file.text()), legacy: false }
     const restored = incoming.days
     const storageKey = waterStorageKey()
@@ -1077,6 +1169,7 @@ async function inspectWaterBackup(event) {
     const legacyWarning = incoming.legacy
       ? ' Ez a régi mentés nem tartalmaz profilazonosítót; csak akkor rendeld ehhez a TEST-fiókhoz, ha bizonyosan a sajátod.' : ''
     if (!window.confirm(`Víz napló visszaállítása? A fájlban ${stats.days} nap és ${stats.entries} bejegyzés, ${currentDescription}. A jelenlegi vízadatok pontos bájtjai külön megmaradnak.${legacyWarning} Csak saját biztonsági mentésből folytasd.`)) return
+    if (FRESH_OWNER_MODULES) await freshWaterSession.assertOwner()
     if (localStorage.getItem(storageKey) !== previousRaw) throw new Error('A Víz napló időközben megváltozott.')
     restoreWaterBackupVerified(localStorage, restored, crypto.randomUUID(), storageKey)
     renderWater()
@@ -1084,16 +1177,23 @@ async function inspectWaterBackup(event) {
   } catch (error) { showToast(error?.message || 'A Víz napló visszaállítása nem sikerült.') }
 }
 
-function changeWaterGoal() {
+async function changeWaterGoal() {
   let snapshot
-  try { snapshot = currentWaterDay() } catch (error) { renderWater(); showToast(error.message); return }
+  try {
+    if (FRESH_OWNER_MODULES && !freshWaterSession) throw new Error('A Water-fiók nem ellenőrizhető.')
+    if (FRESH_OWNER_MODULES) await freshWaterSession.assertOwner()
+    snapshot = currentWaterDay()
+  } catch (error) { renderWater(); showToast(error.message); return }
   const { day } = snapshot
   const entered = window.prompt('Napi vízcél milliliterben:', String(day.goal))
   if (entered === null) return
   const goal = Number(entered.replace(/\s/g, ''))
   if (!Number.isFinite(goal) || goal < 500 || goal > 10000) return showToast('A cél 500 és 10 000 ml között lehet.')
   day.goal = Math.round(goal / 50) * 50
-  try { saveWaterDay(snapshot); renderWater(); showToast('A napi vízcél mentve.') }
+  try {
+    if (FRESH_OWNER_MODULES) await freshWaterSession.assertOwner()
+    saveWaterDay(snapshot); renderWater(); showToast('A napi vízcél mentve.')
+  }
   catch (error) { renderWater(); showToast(error?.message || 'A vízcél mentése nem sikerült.') }
 }
 
@@ -1417,6 +1517,10 @@ $$('[data-menu-back]').forEach(button => button.addEventListener('click', () => 
 // Keep the Health menu visible until Statistics is loaded; prevent a Food flash.
 let statsOpenGeneration = 0
 async function openHealthStats(button) {
+  if (FRESH_OWNER_MODULES) {
+    showToast('A Food-statisztika az elkülönítés befejezéséig zárolva van.')
+    return
+  }
   const generation = ++statsOpenGeneration
   button.disabled = true
   button.setAttribute('aria-busy', 'true')
@@ -1540,7 +1644,7 @@ $('[data-water-export]')?.addEventListener('click', exportWaterBackup)
 $('[data-water-restore]')?.addEventListener('click', () => $('[data-water-backup-input]')?.click())
 $('[data-water-backup-input]')?.addEventListener('change', inspectWaterBackup)
 $('[data-water-legacy-claim-button]')?.addEventListener('click', async event => {
-  if (!WATER_PROFILE_QA || !activeWaterProfileId) return
+  if (!WATER_PROFILE_QA || !activeWaterProfileId || FRESH_OWNER_MODULES) return
   const button = event.currentTarget
   button.disabled = true
   try {
@@ -1560,13 +1664,17 @@ $$('[data-samsung-sync-action]').forEach(button => button.addEventListener('clic
 const yazioApiPanel = createYazioApiPanel({ openSheet, closeSheet,
   importBundle: source => mobileFood.importYazio(source), openFileImport: () => openSyncImport('yazio'),
   getProfileKey: () => { const account = getGrapesAccount(); return account?.id || account?.email || 'local-food-profile' } })
-$('[data-yazio-import]').addEventListener('click', () => yazioApiPanel.open())
+$('[data-yazio-import]').addEventListener('click', () => {
+  if (FRESH_OWNER_MODULES) return showToast('A YAZIO-import a Food elkülönítéséig zárolva van.')
+  yazioApiPanel.open()
+})
 $('[data-sync-import-confirm]').addEventListener('click', () => runSyncImport())
 $('[data-sync-health-settings]').addEventListener('click', async () => {
   try { await openAndroidHealthConnectSettings(); $('[data-sync-import-status]').textContent = 'A Health Connect beállításai megnyíltak.' }
   catch (error) { $('[data-sync-import-status]').textContent = error?.message || 'A Health Connect beállításai nem nyithatók meg.' }
 })
 $('[data-yazio-undo]').addEventListener('click', async () => {
+  if (FRESH_OWNER_MODULES) return showToast('A YAZIO-adatok a Food elkülönítéséig zárolva vannak.')
   try {
     await mobileFood.undoYazio()
     closeSheet()
@@ -1575,6 +1683,7 @@ $('[data-yazio-undo]').addEventListener('click', async () => {
 })
 $('[data-yazio-input]').addEventListener('change', async event => {
   const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''
+  if (FRESH_OWNER_MODULES) return showToast('A YAZIO-import a Food elkülönítéséig zárolva van.')
   if (!file) return
   if (file.size > 40 * 1024 * 1024) { $('[data-yazio-status]').textContent = 'A YAZIO-export legfeljebb 40 MB lehet.'; return }
   const status = $('[data-yazio-status]'); status.textContent = 'Yazio-adatok ellenőrzése…'
@@ -1603,8 +1712,8 @@ window.addEventListener('grapes:food-inbox-changed', renderUpdateInbox)
 onGrapesDriveChange(() => {
   mobileEbooks = []
   if (!isGrapesDriveConnected()) { mobileReader = null; mobileReaderBook = null }
-  else registerFoodSharing().catch(() => {})
-  mobileFood?.load({ force: true }).catch(() => {})
+  else if (!FRESH_OWNER_MODULES) registerFoodSharing().catch(() => {})
+  if (!FRESH_OWNER_MODULES) mobileFood?.load({ force: true }).catch(() => {})
   renderAccount(); renderProjects(); renderSync()
 })
 document.addEventListener('visibilitychange', () => {
@@ -1650,7 +1759,9 @@ window.grapesHandleAndroidBack = () => {
   return false
 }
 renderWater()
-if (isGrapesDriveConnected()) registerFoodSharing().catch(() => {})
+if (!FRESH_OWNER_MODULES) {
+  if (isGrapesDriveConnected()) registerFoodSharing().catch(() => {})
+}
 // A verified Grapes TEST account is the main-app entry gate. Do not route
 // such users through the old, unrelated Google Drive welcome screen first.
 // This is QA-only and does NOT change the Drive account or localMode flag.
