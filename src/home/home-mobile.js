@@ -242,6 +242,7 @@ export function createHomeMobile(root, storage, { loadRecipes = null, openRecipe
     const requestId = ++financeReadId
     closeForms()
     financeCandidates = []
+    render() // Clear the previous receipt's suggestions before the asynchronous OCR finishes.
     alert('A bizonylat helyi OCR-beolvasása folyamatban…')
     try {
       const result = await scanFinanceReceipt(receiptId)
