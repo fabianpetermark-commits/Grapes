@@ -349,10 +349,15 @@ async function openUpdateInbox() {
 }
 
 function showPage(page, { parent = '', entry = '', skipFoodLoad = false } = {}) {
+  if (FRESH_OWNER_MODULES && page === 'food') {
+    // Hide the previous user's DOM before the asynchronous native Auth check.
+    const foodPage = $('[data-page="food"]')
+    if (foodPage) { foodPage.inert = true; foodPage.style.visibility = 'hidden' }
+  }
   // With the opt-in fresh owner gate ON, legacy modules MUST NOT be opened:
   // their local/Drive data paths are not yet bound to native Grapes Auth.
   if (FRESH_OWNER_MODULES &&
-      ['food', 'ebook', 'reader', 'transfer', 'household'].includes(page)) {
+      ['ebook', 'reader', 'transfer', 'household'].includes(page)) {
     showToast('Ez a modul a fiókonkénti TEST-átállításig zárolva van.')
     return
   }
@@ -382,8 +387,10 @@ function showPage(page, { parent = '', entry = '', skipFoodLoad = false } = {}) 
     // A delayed load must not open a sheet on a different screen.
     if (activePage !== 'food' || (entry && menuEntry !== entry)) return
     if (entry) mobileFood?.openNavigationView(entry)
-    await mobileFood?.autoImportHealth()
-    await mobileFood?.autoImportYazio()
+    if (!FRESH_OWNER_MODULES) {
+      await mobileFood?.autoImportHealth()
+      await mobileFood?.autoImportYazio()
+    }
   }).catch(() => {})
   if (page === 'ebook') renderMobileEbooks()
   if (page === 'reader') renderReaderPicker()
@@ -1505,6 +1512,7 @@ if (migrationDriveScanButton) migrationDriveScanButton.addEventListener('click',
 })
 $('[data-notifications]').addEventListener('click', openUpdateInbox)
 $('[data-food-share-open]').addEventListener('click', async () => {
+  if (FRESH_OWNER_MODULES) return showToast('A Food-megosztások még nincsenek fiókhoz kötve.')
   closeSheet()
   showPage('food')
   await mobileFood?.load()
@@ -1536,7 +1544,14 @@ $$('[data-menu-back]').forEach(button => button.addEventListener('click', () => 
 let statsOpenGeneration = 0
 async function openHealthStats(button) {
   if (FRESH_OWNER_MODULES) {
-    showToast('A Food-statisztika az elkülönítés befejezéséig zárolva van.')
+    // Statistics uses the Food controller's already scoped local records.
+    // No Health read, import, or Drive call is made in this branch.
+    try {
+      await mobileFood.load()
+      if (activePage !== 'hub-health') return
+      showPage('food', { parent: 'hub-health', entry: 'stats', skipFoodLoad: true })
+      mobileFood.openNavigationView('stats')
+    } catch (error) { showToast(error?.message || 'A Food nem ellenőrizhető.') }
     return
   }
   const generation = ++statsOpenGeneration
@@ -1755,6 +1770,7 @@ mobileFood = createMobileFoodController({
   sendRecipe: sendRecipeShare,
   onHydrationImport: importHydrationEntries,
   getHydrationExternalKeys: hydrationExternalKeys,
+  freshOwnerMode: FRESH_OWNER_MODULES,
 })
 hydrateMobileIcons()
 installSheetGestures()
