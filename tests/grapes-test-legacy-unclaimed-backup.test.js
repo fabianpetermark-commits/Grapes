@@ -102,3 +102,20 @@ test('refuse empty capture, duplicate keys or tampered hash manifest', async () 
     sha256: prepared.sha256, bytes: prepared.bytes,
   }, capture), /tartalma/)
 })
+
+
+test('saved backup raw bytes must independently match per-source manifest even with matching outer SHA', async () => {
+  const capture = sample()
+  const prepared = await prepareUnclaimedLegacyBackup(capture)
+  const envelope = JSON.parse(prepared.json)
+  envelope.sources[0].raw = envelope.sources[0].raw.replace('Őrzött', 'Módosított')
+  const json = JSON.stringify(envelope)
+  const hash = new Uint8Array(await crypto.subtle.digest(
+    'SHA-256', new TextEncoder().encode(json)))
+  const sha256 = [...hash].map(x => x.toString(16).padStart(2, '0')).join('')
+  const forged = { ...prepared, json, sha256, bytes: new TextEncoder().encode(json).length }
+  await assert.rejects(
+    verifyUnclaimedLegacyBackup(forged, {
+      bytes: forged.bytes, sha256: forged.sha256,
+    }, capture), /mentett helyi források/)
+})
