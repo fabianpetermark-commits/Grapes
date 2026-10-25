@@ -21,7 +21,7 @@ const moduleScreens = ['brochure', 'studio', 'qr', 'ebook', 'email', 'finance', 
 const requestedScreen = moduleScreens.includes(requestedModule) ? requestedModule : null
 const androidApp = isGrapesAndroidApp()
 const androidModuleShell = params.get('android-shell') === '1'
-const FRESH_FINANCE_TEST = androidApp && androidModuleShell &&
+const FRESH_FINANCE_TEST = androidApp &&
   import.meta.env?.VITE_GRAPES_TEST_CHANNEL === '1' &&
   import.meta.env?.VITE_GRAPES_TEST_AUTH_ENABLED === 'true' &&
   import.meta.env?.VITE_GRAPES_TEST_FRESH_OWNER_MODULES_ENABLED === 'true'
