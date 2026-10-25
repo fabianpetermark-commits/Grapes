@@ -340,6 +340,13 @@ async function openUpdateInbox() {
 }
 
 function showPage(page, { parent = '', entry = '', skipFoodLoad = false } = {}) {
+  // With the opt-in fresh owner gate ON, legacy modules MUST NOT be opened:
+  // their local/Drive data paths are not yet bound to native Grapes Auth.
+  if (FRESH_OWNER_MODULES &&
+      ['food', 'ebook', 'reader', 'transfer', 'household'].includes(page)) {
+    showToast('Ez a modul a fiókonkénti TEST-átállításig zárolva van.')
+    return
+  }
   // Remember only the menu origin. Reader/transfer views inherit E-book's origin.
   if (!['reader', 'transfer'].includes(page) || parent) {
     menuReturnPage = parent
@@ -378,6 +385,10 @@ function showPage(page, { parent = '', entry = '', skipFoodLoad = false } = {}) 
 }
 
 async function openModule(module, project = null, view = '', itemId = '', action = '') {
+  if (FRESH_OWNER_MODULES) {
+    showToast('A régi moduloldalak fiókhoz kötése még folyamatban van; a TEST nem nyitja meg őket.')
+    return
+  }
   await mobileFood?.flush({ drive: false }).catch(() => {})
   if (project) {
     try { sessionStorage.setItem('grapes-open-project', JSON.stringify({ module: project.folder, source: 'Drive', id: project.id })) } catch {}
@@ -1479,6 +1490,10 @@ $$('[data-menu-back]').forEach(button => button.addEventListener('click', () => 
 // Keep the Health menu visible until Statistics is loaded; prevent a Food flash.
 let statsOpenGeneration = 0
 async function openHealthStats(button) {
+  if (FRESH_OWNER_MODULES) {
+    showToast('A Food-statisztika az elkülönítés befejezéséig zárolva van.')
+    return
+  }
   const generation = ++statsOpenGeneration
   button.disabled = true
   button.setAttribute('aria-busy', 'true')
@@ -1666,7 +1681,7 @@ onGrapesDriveChange(() => {
   mobileEbooks = []
   if (!isGrapesDriveConnected()) { mobileReader = null; mobileReaderBook = null }
   else registerFoodSharing().catch(() => {})
-  mobileFood?.load({ force: true }).catch(() => {})
+  if (!FRESH_OWNER_MODULES) mobileFood?.load({ force: true }).catch(() => {})
   renderAccount(); renderProjects(); renderSync()
 })
 document.addEventListener('visibilitychange', () => {
@@ -1712,7 +1727,7 @@ window.grapesHandleAndroidBack = () => {
   return false
 }
 renderWater()
-if (isGrapesDriveConnected()) registerFoodSharing().catch(() => {})
+if (isGrapesDriveConnected() && !FRESH_OWNER_MODULES) registerFoodSharing().catch(() => {})
 // A verified Grapes TEST account is the main-app entry gate. Do not route
 // such users through the old, unrelated Google Drive welcome screen first.
 // This is QA-only and does NOT change the Drive account or localMode flag.
