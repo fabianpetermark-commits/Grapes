@@ -154,7 +154,7 @@ try {
     const session = await openGrapesTestFreshHome({enabled:true})
     const state = session.getState()
     const entry = state.events.find(event => event.type === 'CookingConfirmed')
-    const repeated = await session.dispatch({type:'CookingConfirmed',eventId:entry.eventId,sourceType:entry.sourceType,sourceId:entry.sourceId,payload:{}})
+    const repeated = await session.dispatch({type:'CookingConfirmed',eventId:entry.eventId,sourceType:entry.sourceType,sourceId:entry.sourceId,payload:{recipeRef:'r-home-m3a-milk'}})
     let financeBlocked = false, diaryBlocked = false
     try { await session.dispatch({type:'StockReceived',payload:{}}) } catch {financeBlocked=true}
     try { await session.dispatch({type:'PreparedConsumptionLinked',payload:{}}) } catch {diaryBlocked=true}
