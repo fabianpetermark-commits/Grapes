@@ -155,12 +155,21 @@ function applyProject(data = {}) {
   el('#finance-currency').value = currency
 }
 
-async function persistLocal() {
+async function assertFinanceActionOwner(expectedSession = financeOwnerSession) {
+  if (!FRESH_OWNER_FINANCE) return
+  if (!financeReady || !expectedSession || expectedSession !== financeOwnerSession) {
+    throw new Error('A Finance TEST-fiók időközben megváltozott.')
+  }
+  await expectedSession.assertOwner()
+  if (expectedSession !== financeOwnerSession) {
+    throw new Error('A Finance TEST-munkamenet időközben megváltozott.')
+  }
+}
+
+async function persistLocal(expectedSession = financeOwnerSession) {
   if (FRESH_OWNER_FINANCE) {
-    if (!financeReady || !financeOwnerSession) {
-      throw new Error('A Grapes TEST Finance-fiók még nem ellenőrizhető.')
-    }
-    await financeOwnerSession.save(serializeProject())
+    await assertFinanceActionOwner(expectedSession)
+    await expectedSession.save(serializeProject())
     return
   }
   await saveLocalProject({
@@ -175,10 +184,11 @@ function scheduleSave() {
   }
   clearTimeout(localSaveTimer)
   clearTimeout(driveSaveTimer)
+  const scheduledSession = financeOwnerSession
   setUxState('#finance-save-status', 'saving', 'Mentés…')
   localSaveTimer = setTimeout(async () => {
     try {
-      await persistLocal()
+      await persistLocal(scheduledSession)
       setUxState('#finance-save-status', 'saved', 'Helyben mentve')
     } catch (error) {
       console.error(error)
@@ -487,18 +497,19 @@ function render() {
   renderForecast()
 }
 
-async function saveSafetySnapshot(id, name, data) {
+async function saveSafetySnapshot(id, name, data, expectedSession = financeOwnerSession) {
   if (FRESH_OWNER_FINANCE) {
-    if (!financeReady || !financeOwnerSession) throw new Error('Nincs hitelesített Finance TEST-fiók.')
+    await assertFinanceActionOwner(expectedSession)
     const kind = id === DELETE_BACKUP_ID ? 'last-delete'
       : id === RESTORE_BACKUP_ID ? 'before-restore' : null
     if (!kind) throw new Error('Érvénytelen Finance-visszaállítási pont.')
-    return financeOwnerSession.saveSafety(kind, data)
+    return expectedSession.saveSafety(kind, data)
   }
   await saveLocalProject({ id, module: MODULE_NAME, name, data })
 }
 
-async function restoreFinanceBackup(data) {
+async function restoreFinanceBackup(data, expectedSession = financeOwnerSession) {
+  await assertFinanceActionOwner(expectedSession)
   if (transactions.length && !await showGrapesConfirm({
     title: 'Időutazás a pénzügyekben?',
     message: 'A visszaállítás lecseréli a jelenlegi tételeket, megtakarításokat és beállításokat. A mostani állapotról előtte készül biztonsági mentés.',
@@ -507,23 +518,28 @@ async function restoreFinanceBackup(data) {
     danger: true,
     icon: '⏳',
   })) return
+  await assertFinanceActionOwner(expectedSession)
   clearTimeout(localSaveTimer)
   clearTimeout(driveSaveTimer)
-  await persistLocal()
-  await saveSafetySnapshot(RESTORE_BACKUP_ID, 'Pénzügyi napló – visszaállítás előtti mentés', serializeProject())
+  await persistLocal(expectedSession)
+  await assertFinanceActionOwner(expectedSession)
+  await saveSafetySnapshot(RESTORE_BACKUP_ID, 'Pénzügyi napló – visszaállítás előtti mentés', serializeProject(), expectedSession)
   if (FRESH_OWNER_FINANCE) {
-    await financeOwnerSession.assertOwner()
-    await financeOwnerSession.save(data)
+    await assertFinanceActionOwner(expectedSession)
+    await expectedSession.save(data)
   } else {
     await saveLocalProject({ id: STORAGE_ID, module: MODULE_NAME, name: 'Pénzügyi napló', data, driveFileId: null })
   }
+  await assertFinanceActionOwner(expectedSession)
   applyProject(data)
   driveProjectFileId = null
   el('#finance-filter-month').value = ''
   el('#finance-filter-type').value = 'all'
   el('#finance-filter-search').value = ''
-  el('#finance-drive-status').textContent = 'Helyben visszaállítva. A Drive-ra külön mentsd el.'
-  el('#finance-drive-save').textContent = 'Mentés Drive-ra'
+  el('#finance-drive-status').textContent = FRESH_OWNER_FINANCE
+    ? 'Helyben visszaállítva a saját Grapes TEST-fiókban.'
+    : 'Helyben visszaállítva. A Drive-ra külön mentsd el.'
+  if (!FRESH_OWNER_FINANCE) el('#finance-drive-save').textContent = 'Mentés Drive-ra'
   render()
   setUxState('#finance-save-status', 'saved', 'Helyben visszaállítva')
   notifySuccess(`${transactions.length} tétel, a megtakarítások és a beállítások visszaállítva.`)
@@ -656,6 +672,8 @@ async function loadInitialProject() {
     // A's values while waiting for B's native Auth.
     transactions = []; people = []; savingsGoals = []; savingsEntries = []
     categories = { income: [], expense: [] }
+    receiptRequest += 1
+    receiptLoading = false; receiptOcrRunning = false
     pendingReceipt = null; editingTransactionId = null; editingSavingsEntryId = null
     driveProjectFileId = null
     applyProject({})
@@ -871,6 +889,9 @@ function bindControls() {
   })
   el('#finance-delete-all').addEventListener('click', async () => {
     if (!transactions.length) return
+    const expectedSession = financeOwnerSession
+    try { await assertFinanceActionOwner(expectedSession) }
+    catch (error) { notifyError(error.message); return }
     const count = transactions.length
     if (!await showGrapesConfirm({
       title: 'Nagy piros gomb következik…',
@@ -879,6 +900,8 @@ function bindControls() {
       cancelLabel: 'Nem, visszavonulok',
       icon: '🚨',
     })) return
+    try { await assertFinanceActionOwner(expectedSession) }
+    catch (error) { notifyError(error.message); return }
     const button = el('#finance-delete-all')
     button.disabled = true
     try {
@@ -886,8 +909,10 @@ function bindControls() {
       const filename = `penzugyi-naplo-teljes-mentes-${backupTimestamp()}.json`
       clearTimeout(localSaveTimer)
       clearTimeout(driveSaveTimer)
-      await persistLocal()
-      await saveSafetySnapshot(DELETE_BACKUP_ID, 'Pénzügyi napló – utolsó törlés előtti mentés', snapshot)
+      await persistLocal(expectedSession)
+      await assertFinanceActionOwner(expectedSession)
+      await saveSafetySnapshot(DELETE_BACKUP_ID, 'Pénzügyi napló – utolsó törlés előtti mentés', snapshot, expectedSession)
+      await assertFinanceActionOwner(expectedSession)
       download(financeBackupToJson(snapshot), 'application/json;charset=utf-8', filename)
       const confirmed = await showGrapesConfirm({
         title: 'Utolsó kérdés. Becsületszó.',
@@ -898,9 +923,10 @@ function bindControls() {
         icon: '🧨',
       })
       if (!confirmed) return
+      await assertFinanceActionOwner(expectedSession)
       transactions = []
       render()
-      try { await persistLocal() }
+      try { await persistLocal(expectedSession) }
       catch (error) { transactions = snapshot.transactions; render(); throw error }
       const driveSynced = !FRESH_OWNER_FINANCE && driveProjectFileId && isGrapesDriveConnected()
         ? await saveToDrive(false) : false
@@ -917,7 +943,7 @@ function bindControls() {
   })
   el('#finance-backup-export-btn').addEventListener('click', async () => {
     if (FRESH_OWNER_FINANCE) {
-      try { await financeOwnerSession?.assertOwner() }
+      try { await assertFinanceActionOwner() }
       catch (error) { notifyError(error.message); return }
     }
     download(financeBackupToJson(serializeProject()), 'application/json;charset=utf-8', `penzugyi-naplo-teljes-mentes-${backupTimestamp()}.json`)
@@ -925,26 +951,29 @@ function bindControls() {
   })
   el('#finance-backup-import-btn').addEventListener('click', () => el('#finance-backup-input').click())
   el('#finance-backup-input').addEventListener('change', async (event) => {
+    const originalSession = financeOwnerSession
     const file = event.target.files?.[0]
     if (!file) return
     try {
       if (file.size > BACKUP_FILE_LIMIT) throw new Error('A mentésfájl legfeljebb 30 MiB lehet.')
-      await restoreFinanceBackup(financeBackupFromJson(await file.text()))
+      await restoreFinanceBackup(financeBackupFromJson(await file.text()), originalSession)
     } catch (error) { notifyError(error.message || 'A teljes mentés nem állítható vissza.') }
     finally { event.target.value = '' }
   })
   el('#finance-restore-last').addEventListener('click', async () => {
+    const originalSession = financeOwnerSession
     try {
+      await assertFinanceActionOwner(originalSession)
       const backupData = FRESH_OWNER_FINANCE
-        ? await financeOwnerSession?.loadSafety('last-delete')
+        ? await originalSession.loadSafety('last-delete')
         : (await loadLocalProject(DELETE_BACKUP_ID))?.data
       if (!backupData) throw new Error('Nincs helyi törlés előtti mentés. A letöltött JSON-fájlt is importálhatod.')
-      await restoreFinanceBackup(financeBackupFromJson(financeBackupToJson(backupData)))
+      await restoreFinanceBackup(financeBackupFromJson(financeBackupToJson(backupData)), originalSession)
     } catch (error) { notifyError(error.message || 'A helyi mentés nem állítható vissza.') }
   })
   el('#finance-export-btn').addEventListener('click', async () => {
     if (FRESH_OWNER_FINANCE) {
-      try { await financeOwnerSession?.assertOwner() }
+      try { await assertFinanceActionOwner() }
       catch (error) { notifyError(error.message); return }
     }
     download(transactionsToCsv(transactions, currency), 'text/csv;charset=utf-8', `penzugyi-naplo-${today()}.csv`)
