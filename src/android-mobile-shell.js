@@ -39,10 +39,18 @@ const sheet = $('[data-food-add-sheet]')
 const sheetBackdrop = $('.sheet-backdrop')
 const LOCAL_MODE_KEY = 'grapes-local-mode'
 const WATER_STORE_KEY = 'grapes-water-v1'
-const WATER_PROFILE_QA = import.meta.env?.VITE_GRAPES_TEST_CHANNEL === '1' &&
-  import.meta.env?.VITE_GRAPES_TEST_WATER_PROFILE_ENABLED === 'true'
+// Fresh-owner rollout deliberately skips ALL unclaimed legacy Water and
+// project storage. Default OFF until Food/Finance/E-book boundaries also pass.
+const FRESH_OWNER_MODULES = isGrapesAndroidApp() &&
+  import.meta.env?.VITE_GRAPES_TEST_CHANNEL === '1' &&
+  import.meta.env?.VITE_GRAPES_TEST_AUTH_ENABLED === 'true' &&
+  import.meta.env?.VITE_GRAPES_TEST_FRESH_OWNER_MODULES_ENABLED === 'true'
+const WATER_PROFILE_QA = FRESH_OWNER_MODULES ||
+  (import.meta.env?.VITE_GRAPES_TEST_CHANNEL === '1' &&
+  import.meta.env?.VITE_GRAPES_TEST_WATER_PROFILE_ENABLED === 'true')
 const SYNTHETIC_WATER_PROFILE = '00000000-0000-4000-8000-000000000001'
 let activeWaterProfileId = null
+let freshWaterSession = null
 let waterProfileLoading = null
 let legacyWaterOwner = null
 const waterStorageKey = () => WATER_PROFILE_QA
@@ -731,24 +739,38 @@ async function renderSync({ refreshed = false } = {}) {
   status.textContent = 'Állapot ellenőrzése…'
   status.dataset.state = 'working'
   try {
-    const [projects, estimate, driveCount] = await Promise.all([
-      listLocalProjects(1000).catch(() => []),
-      navigator.storage?.estimate ? navigator.storage.estimate().catch(() => null) : Promise.resolve(null),
-      driveProjectCount(),
+    const ownerAccess = FRESH_OWNER_MODULES
+      ? (await import('./storage/grapes-test-fresh-owner-access.js'))
+        .createGrapesTestFreshOwnerAccess({ enabled: true })
+      : null
+    const [projects, estimate, driveCount, scopedUsage] = await Promise.all([
+      ownerAccess ? Promise.resolve([]) : listLocalProjects(1000).catch(() => []),
+      ownerAccess ? Promise.resolve(null) : navigator.storage?.estimate
+        ? navigator.storage.estimate().catch(() => null) : Promise.resolve(null),
+      ownerAccess ? Promise.resolve(0) : driveProjectCount(),
+      ownerAccess ? ownerAccess.ownedUsage() : Promise.resolve(null),
     ])
-    const dirtyCount = projects.filter(project => project?.data?.syncState?.localDirty).length
-    const localBytes = estimate?.usage || new Blob(projects.map(project => JSON.stringify(project))).size
+    const dirtyCount = ownerAccess ? scopedUsage.pending
+      : projects.filter(project => project?.data?.syncState?.localDirty).length
+    const localBytes = ownerAccess ? scopedUsage.bytes
+      : estimate?.usage || new Blob(projects.map(project => JSON.stringify(project))).size
     const now = refreshed ? new Date().toISOString() : localStorage.getItem(SYNC_CHECK_KEY)
     if (refreshed) localStorage.setItem(SYNC_CHECK_KEY, now)
-    $('[data-sync-local-count]').textContent = `${projects.length} projekt`
+    $('[data-sync-local-count]').textContent = `${ownerAccess ? scopedUsage.projects : projects.length} projekt`
     $('[data-sync-local-size]').textContent = formatStorage(localBytes)
-    $('[data-sync-drive-count]').textContent = isGrapesDriveConnected() ? `${driveCount} projekt` : 'Nincs csatlakoztatva'
-    $('[data-sync-pending-count]').textContent = dirtyCount ? `${dirtyCount} mentés várakozik` : 'Minden helyi adat mentve'
+    $('[data-sync-drive-count]').textContent = ownerAccess
+      ? 'Külön Drive-fiók; nem része ennek a próbakörnek'
+      : isGrapesDriveConnected() ? `${driveCount} projekt` : 'Nincs csatlakoztatva'
+    $('[data-sync-pending-count]').textContent = ownerAccess
+      ? 'Csak a fiókhoz kötött TEST-nyilvántartás'
+      : dirtyCount ? `${dirtyCount} mentés várakozik` : 'Minden helyi adat mentve'
     const lastCheck = $('[data-sync-last-check]')
     if (lastCheck) lastCheck.textContent = formatSyncTime(now)
-    status.textContent = isGrapesDriveConnected()
-      ? (dirtyCount ? 'Van helyben módosított projekt.' : 'A Drive-kapcsolat elérhető.')
-      : 'A helyi mentések internet nélkül is használhatók.'
+    status.textContent = ownerAccess
+      ? 'Fiókozott TEST-projektlista; a normál Food/Finance/E-book még NEM lett átállítva.'
+      : isGrapesDriveConnected()
+        ? (dirtyCount ? 'Van helyben módosított projekt.' : 'A Drive-kapcsolat elérhető.')
+        : 'A helyi mentések internet nélkül is használhatók.'
     status.dataset.state = dirtyCount ? 'pending' : 'ready'
   } catch (error) {
     status.textContent = `Az állapot most nem ellenőrizhető. ${error?.message || ''}`
@@ -818,6 +840,15 @@ async function collectProjects() {
     { name: 'Víznapló', folder: 'Egészség', module: 'food', icon: 'water', water: true },
     { name: 'E-book könyvtár', folder: 'E-book', module: 'ebook', icon: 'ebook' },
   ]
+  if (FRESH_OWNER_MODULES) {
+    // Do not expose global legacy or Drive projects under a TEST Auth login.
+    // The normal Finance/Food project navigation is not owner-scoped yet;
+    // only static, non-data shortcuts may be listed until those gates land.
+    const { createGrapesTestFreshOwnerAccess } =
+      await import('./storage/grapes-test-fresh-owner-access.js')
+    await createGrapesTestFreshOwnerAccess({ enabled: true }).verifiedSubject()
+    return local
+  }
   if (!isGrapesDriveConnected()) return local
   const groups = await Promise.all(moduleFolders.map(async ([folder, module, icon]) => {
     const projects = await listGrapesProjects(folder).catch(() => [])
@@ -848,6 +879,15 @@ function dateKey(date = new Date()) {
 function ensureWaterProfile() {
   if (!WATER_PROFILE_QA || activeWaterProfileId) return Promise.resolve()
   if (!waterProfileLoading) waterProfileLoading = (async () => {
+    if (FRESH_OWNER_MODULES) {
+      const { openGrapesTestFreshWater } =
+        await import('./water/grapes-test-fresh-water.js')
+      const session = await openGrapesTestFreshWater({ enabled: true })
+      freshWaterSession = session
+      activeWaterProfileId = session.ownerId
+      legacyWaterOwner = null
+      return
+    }
     const profileId = isGrapesAndroidApp()
       ? await getAndroidTestAuthSubject() : SYNTHETIC_WATER_PROFILE
     const ownerId = await getLocalWaterOwner()
@@ -887,6 +927,9 @@ function saveWaterStore(store, expectedRaw) {
 }
 
 function importHydrationEntries(entries = []) {
+  if (FRESH_OWNER_MODULES) {
+    throw new Error('Automatikus Food/Health → Water adatátvitel letiltva a fiókelkülönítési teszt alatt.')
+  }
   const original = localStorage.getItem(waterStorageKey())
   const store = loadWaterStore()
   const existingKeys = new Set(Object.values(store).flatMap(day => day?.entries || []).map(entry => entry.externalKey).filter(Boolean))
@@ -908,6 +951,7 @@ function importHydrationEntries(entries = []) {
 }
 
 function hydrationExternalKeys() {
+  if (FRESH_OWNER_MODULES) return []
   return Object.values(loadWaterStore())
     .flatMap(day => Array.isArray(day?.entries) ? day.entries : [])
     .map(entry => entry.externalKey)
@@ -943,7 +987,7 @@ function renderWater() {
   const claim = $('[data-water-legacy-claim]')
   if (claim) {
     claim.hidden = true
-    if (WATER_PROFILE_QA) {
+    if (WATER_PROFILE_QA && !FRESH_OWNER_MODULES) {
       const legacy = inspectLegacyWater(localStorage, legacyWaterOwner, activeWaterProfileId)
       const currentHasData = Object.keys(snapshot.store).length > 0
       if (legacy.status === 'available' || (legacy.status === 'claimed' && !currentHasData)) {
@@ -1010,10 +1054,13 @@ function renderWater() {
     row.type = 'button'; row.className = 'water-log project-row--button'
     row.title = 'Koppints a bejegyzés törléséhez'
     row.innerHTML = `<span class="water-log__icon">${mobileIconSvg('water')}</span><span><strong>Víz</strong><span>${new Date(entry.at).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })} · mentve</span></span><b>${formatWater(entry.amount)}</b>`
-    row.addEventListener('click', () => {
+    row.addEventListener('click', async () => {
       try {
+        if (FRESH_OWNER_MODULES && !freshWaterSession) throw new Error('A Water-fiók nem ellenőrizhető.')
+        if (FRESH_OWNER_MODULES) await freshWaterSession.assertOwner()
         const next = currentWaterDay()
         next.day.entries = next.day.entries.filter(item => item.id !== entry.id)
+        if (FRESH_OWNER_MODULES) await freshWaterSession.assertOwner()
         saveWaterDay(next); renderWater(); showToast('A vízbejegyzés törölve.')
       } catch (error) { renderWater(); showToast(error?.message || 'A Víz mentése nem sikerült.') }
     })
@@ -1021,10 +1068,13 @@ function renderWater() {
   }
 }
 
-function addWater(amount) {
+async function addWater(amount) {
   try {
+    if (FRESH_OWNER_MODULES) await freshWaterSession?.assertOwner()
+    if (FRESH_OWNER_MODULES && !freshWaterSession) throw new Error('A fiók Water-tárhelye még nem nyílt meg.')
     const snapshot = currentWaterDay()
     snapshot.day.entries.push({ id: crypto.randomUUID(), amount, at: new Date().toISOString() })
+    if (FRESH_OWNER_MODULES) await freshWaterSession.assertOwner()
     saveWaterDay(snapshot)
     renderWater()
     showToast(`${formatWater(amount)} víz hozzáadva és mentve.`)
@@ -1035,6 +1085,7 @@ async function exportWaterBackup() {
   try {
     if (WATER_PROFILE_QA) await ensureWaterProfile()
     if (WATER_PROFILE_QA && !activeWaterProfileId) throw new Error('A TEST Water-profil nem ellenőrizhető.')
+    if (FRESH_OWNER_MODULES) await freshWaterSession.assertOwner()
     const json = WATER_PROFILE_QA
       ? profileWaterBackupToJson(localStorage, activeWaterProfileId)
       : waterBackupToJson(localStorage)
@@ -1060,8 +1111,11 @@ async function inspectWaterBackup(event) {
     if (file.size > 80 * 1024 * 1024) throw new Error('A víznapló-mentés túl nagy.')
     if (WATER_PROFILE_QA) await ensureWaterProfile()
     if (WATER_PROFILE_QA && !activeWaterProfileId) throw new Error('A TEST Water-profil nem ellenőrizhető.')
+    if (FRESH_OWNER_MODULES && !freshWaterSession) throw new Error('A Water-fiók nem ellenőrizhető.')
+    if (FRESH_OWNER_MODULES) await freshWaterSession.assertOwner()
     const incoming = WATER_PROFILE_QA
-      ? profileWaterBackupFromJson(await file.text(), activeWaterProfileId, { allowLegacy: true })
+      ? profileWaterBackupFromJson(await file.text(), activeWaterProfileId,
+        { allowLegacy: !FRESH_OWNER_MODULES })
       : { days: waterBackupFromJson(await file.text()), legacy: false }
     const restored = incoming.days
     const storageKey = waterStorageKey()
@@ -1077,6 +1131,7 @@ async function inspectWaterBackup(event) {
     const legacyWarning = incoming.legacy
       ? ' Ez a régi mentés nem tartalmaz profilazonosítót; csak akkor rendeld ehhez a TEST-fiókhoz, ha bizonyosan a sajátod.' : ''
     if (!window.confirm(`Víz napló visszaállítása? A fájlban ${stats.days} nap és ${stats.entries} bejegyzés, ${currentDescription}. A jelenlegi vízadatok pontos bájtjai külön megmaradnak.${legacyWarning} Csak saját biztonsági mentésből folytasd.`)) return
+    if (FRESH_OWNER_MODULES) await freshWaterSession.assertOwner()
     if (localStorage.getItem(storageKey) !== previousRaw) throw new Error('A Víz napló időközben megváltozott.')
     restoreWaterBackupVerified(localStorage, restored, crypto.randomUUID(), storageKey)
     renderWater()
@@ -1084,16 +1139,23 @@ async function inspectWaterBackup(event) {
   } catch (error) { showToast(error?.message || 'A Víz napló visszaállítása nem sikerült.') }
 }
 
-function changeWaterGoal() {
+async function changeWaterGoal() {
   let snapshot
-  try { snapshot = currentWaterDay() } catch (error) { renderWater(); showToast(error.message); return }
+  try {
+    if (FRESH_OWNER_MODULES && !freshWaterSession) throw new Error('A Water-fiók nem ellenőrizhető.')
+    if (FRESH_OWNER_MODULES) await freshWaterSession.assertOwner()
+    snapshot = currentWaterDay()
+  } catch (error) { renderWater(); showToast(error.message); return }
   const { day } = snapshot
   const entered = window.prompt('Napi vízcél milliliterben:', String(day.goal))
   if (entered === null) return
   const goal = Number(entered.replace(/\s/g, ''))
   if (!Number.isFinite(goal) || goal < 500 || goal > 10000) return showToast('A cél 500 és 10 000 ml között lehet.')
   day.goal = Math.round(goal / 50) * 50
-  try { saveWaterDay(snapshot); renderWater(); showToast('A napi vízcél mentve.') }
+  try {
+    if (FRESH_OWNER_MODULES) await freshWaterSession.assertOwner()
+    saveWaterDay(snapshot); renderWater(); showToast('A napi vízcél mentve.')
+  }
   catch (error) { renderWater(); showToast(error?.message || 'A vízcél mentése nem sikerült.') }
 }
 
@@ -1540,7 +1602,7 @@ $('[data-water-export]')?.addEventListener('click', exportWaterBackup)
 $('[data-water-restore]')?.addEventListener('click', () => $('[data-water-backup-input]')?.click())
 $('[data-water-backup-input]')?.addEventListener('change', inspectWaterBackup)
 $('[data-water-legacy-claim-button]')?.addEventListener('click', async event => {
-  if (!WATER_PROFILE_QA || !activeWaterProfileId) return
+  if (!WATER_PROFILE_QA || !activeWaterProfileId || FRESH_OWNER_MODULES) return
   const button = event.currentTarget
   button.disabled = true
   try {
