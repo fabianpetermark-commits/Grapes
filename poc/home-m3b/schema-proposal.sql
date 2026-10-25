@@ -260,7 +260,7 @@ begin
        jsonb_array_length(p_candidate->'events')<>p_expected_revision+1 then
       raise exception 'invalid shared Home snapshot' using errcode='22023';
     end if;
-    if (p_candidate->'events' - (p_expected_revision::integer)) <>
+    if ((p_candidate->'events') - (p_expected_revision::integer)) <>
        (v_house.state->'events') then
       raise exception 'cannot change past shared Home events' using errcode='42501';
     end if;
