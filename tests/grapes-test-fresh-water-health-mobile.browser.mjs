@@ -61,6 +61,15 @@ try {
     await page.locator('[data-nav="more"]').last().click()
     await page.locator('[data-page="more"] [data-nav="sync"]').click()
     await page.locator('[data-water-health-open]').click()
+    const geometry=await page.evaluate(()=>{
+      const sh=document.querySelector('[data-water-health-sheet]')
+      const btn=sh.querySelector('[data-water-health-read]')
+      const rect=el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height}}
+      return {sheet:rect(sh),button:rect(btn),className:sh.className,
+        transform:getComputedStyle(sh).transform,innerWidth,innerHeight}
+    })
+    assert.ok(geometry.button.y>=0 && geometry.button.y<geometry.innerHeight,
+      'Water Health sheet button outside phone viewport: '+JSON.stringify(geometry))
     await sheet.locator('[data-water-health-read]').click()
     await page.waitForFunction(()=>{
       const s=document.querySelector('[data-water-health-summary]')
