@@ -9,15 +9,15 @@ import { applyHomeCommand, createHomeState, validateHomeState } from './home-dat
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const RECORD_ID = 'home-current'
 const MODULE = 'Home'
-const SCHEMA = 1
+const SCHEMA = 2
 
 function ownedState(candidate, ownerId) {
   const state = structuredClone(candidate)
-  validateHomeState(state) // Includes complete replay of confirmed event history.
-  if (state.householdId !== ownerId || state.actorId !== ownerId) {
+  const migrated = validateHomeState(state) // Includes complete replay of confirmed event history.
+  if (migrated.householdId !== ownerId || migrated.actorId !== ownerId) {
     throw new Error('A Home készlete vagy eseménynaplója másik Grapes-fiókhoz tartozik.')
   }
-  return state
+  return migrated
 }
 
 /**
@@ -69,7 +69,7 @@ export async function openGrapesTestFreshHome({
     await verify()
     const row = await store.read(RECORD_ID)
     if (row && (row.data?.module !== MODULE ||
-        row.data?.ownerId !== ownerId || row.data?.schemaVersion !== SCHEMA ||
+        row.data?.ownerId !== ownerId || ![1, SCHEMA].includes(row.data?.schemaVersion) ||
         !row.data?.state)) {
       throw new Error('A Home fióktárhelyének formátuma sérült.')
     }
@@ -94,6 +94,17 @@ export async function openGrapesTestFreshHome({
   }
 
   function dispatch(command) {
+    // Keep Finance OCR and personal Food diary linkage closed in the owner-CAS rollout.
+    // Only explicit, user-confirmed cooking may add a prepared lot.
+    if (command?.type === 'StockReceived' || command?.type === 'PreparedConsumptionLinked') {
+      return Promise.reject(new Error('Ez a Home integráció még nincs jóváhagyva a saját fiókhoz.'))
+    }
+    if (command?.type === 'CookingConfirmed' &&
+        (command.sourceType !== 'food-recipe' ||
+         command.sourceId !== `${ownerId}:${command.payload?.recipeRef}:${command.eventId}` ||
+         typeof command.payload?.recipeRef !== 'string' || !command.payload.recipeRef)) {
+      return Promise.reject(new Error('A főzés saját Food-forrásának stabil azonosítója hiányzik.'))
+    }
     if (poisoned) return Promise.reject(poisoned)
     const operation = queue.then(async () => {
       if (poisoned) throw poisoned
