@@ -62,10 +62,17 @@ try {
     await page.locator('[data-page="more"] [data-nav="sync"]').click()
     await page.locator('[data-water-health-open]').click()
     await sheet.locator('[data-water-health-read]').click()
-    await page.waitForFunction(()=>{
-      const s=document.querySelector('[data-water-health-summary]')
-      return s?.textContent?.includes('vízbejegyzés')
-    },{timeout:20000})
+    for (let attempt=0; attempt<110; attempt++) {
+      const result=await page.evaluate(()=>{
+        const summary=document.querySelector('[data-water-health-summary]')?.textContent||''
+        const status=document.querySelector('[data-water-health-status]')?.textContent||''
+        return {summary,status}
+      })
+      if(result.summary.includes('vízbejegyzés'))return
+      if(result.status.includes('leállt'))throw Error('Native Water Health read: '+JSON.stringify(result))
+      await page.waitForTimeout(120)
+    }
+    throw Error('Water Health preview timed out: '+await sheet.locator('[data-water-health-status]').textContent())
   }
   await page.evaluate(()=>{
     localStorage.setItem('grapes-water-v1','LEGACY-WATER-MUST-STAY')
