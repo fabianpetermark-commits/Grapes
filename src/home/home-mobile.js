@@ -173,9 +173,9 @@ export function createHomeMobile(root, storage, { freshOwnerMode = false, openFo
           <input type="checkbox" data-household-suggestion-pick="${escape(id)}" ${selectedSuggestions.has(id) ? 'checked' : ''} aria-label="${escape(row.name)} kijelölése">
           <span class="household-proposal-copy"><strong>${escape(row.name)}${forecast ? '' : ` · ${escape(String(row.quantity))} ${escape(row.unit)}`}</strong>
             <small>${forecast ? `Várható újravásárlás: kb. ${escape(date)} · ${escape(String(row.observations))} korábbi vásárlás alapján. NEM igazolt hiány.` : 'Igazoltan elfogyott · javasolt pótlás'}</small>
-            ${forecast ? `<span class="household-forecast-amount"><span>Mennyiség (opcionális, nem becsüljük)</span><input type="number" min="0.001" step="any" inputmode="decimal" data-household-forecast-amount="${escape(id)}" value="${escape(forecastAmounts.get(id) || '')}" placeholder="Mennyiség, ${escape(row.unit)}" aria-label="${escape(row.name)} vásárolandó mennyisége"></span>` : ''}
           </span>
         </label>
+        ${forecast ? `<label class="household-forecast-amount">Mennyiség (opcionális, nem becsüljük)<input type="number" min="0.001" step="any" inputmode="decimal" data-household-forecast-amount="${escape(id)}" value="${escape(forecastAmounts.get(id) || '')}" placeholder="Mennyiség, ${escape(row.unit)}" aria-label="${escape(row.name)} vásárolandó mennyisége"></label>` : ''}
         <button type="button" class="household-proposal-dismiss" data-household-dismiss-key="${escape(row.key)}" data-household-dismiss-cycle="${escape(row.cycleId)}" aria-label="${escape(row.name)} javaslat elvetése" title="Most nem">✕</button>
       </article>`
     }
