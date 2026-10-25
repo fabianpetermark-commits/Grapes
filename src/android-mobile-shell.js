@@ -395,10 +395,21 @@ function showPage(page, { parent = '', entry = '', skipFoodLoad = false } = {}) 
 
 async function openModule(module, project = null, view = '', itemId = '', action = '') {
   if (FRESH_OWNER_MODULES) {
-    showToast('A régi moduloldalak fiókhoz kötése még folyamatban van; a TEST nem nyitja meg őket.')
-    return
+    if (module !== 'finance' || project || view || itemId || action) {
+      showToast('A modul fiókhoz kötése még folyamatban van; a TEST nem nyitja meg.')
+      return
+    }
+    try {
+      const { createGrapesTestFreshOwnerAccess } =
+        await import('./storage/grapes-test-fresh-owner-access.js')
+      await createGrapesTestFreshOwnerAccess({ enabled: true }).verifiedSubject()
+    } catch (error) {
+      showToast(error?.message || 'A Grapes-fiók nem ellenőrizhető.')
+      return
+    }
+  } else {
+    await mobileFood?.flush({ drive: false }).catch(() => {})
   }
-  await mobileFood?.flush({ drive: false }).catch(() => {})
   if (project) {
     try { sessionStorage.setItem('grapes-open-project', JSON.stringify({ module: project.folder, source: 'Drive', id: project.id })) } catch {}
   }
@@ -692,7 +703,7 @@ function renderAccount() {
   if (FRESH_OWNER_MODULES) {
     $('[data-account-mode]').textContent = 'Grapes TEST – fiókonkénti mód'
     $('[data-sync-title]').textContent = 'Grapes TEST – helyi fióktárhely'
-    $('[data-sync-detail]').textContent = 'A Water külön saját tárhelye aktív; Food, Finance, E-book és Drive még zárolva van.'
+    $('[data-sync-detail]').textContent = 'A Water és Finance saját fióktárhelye aktív; Food, E-book és Drive még zárolva van.'
     $('[data-connect-drive]').textContent = 'Drive-kapcsolat ebben a tesztben nem használható'
     $('[data-account-action]').textContent = 'Drive külön zárolva'
     const badge = $('[data-sync-badge]')
@@ -801,7 +812,7 @@ async function renderSync({ refreshed = false } = {}) {
     const lastCheck = $('[data-sync-last-check]')
     if (lastCheck) lastCheck.textContent = formatSyncTime(now)
     status.textContent = ownerAccess
-      ? 'Fiókozott TEST-projektlista; a normál Food/Finance/E-book még NEM lett átállítva.'
+      ? 'Fiókozott TEST-projektlista; Food és E-book még nem lett átállítva.'
       : isGrapesDriveConnected()
         ? (dirtyCount ? 'Van helyben módosított projekt.' : 'A Drive-kapcsolat elérhető.')
         : 'A helyi mentések internet nélkül is használhatók.'
