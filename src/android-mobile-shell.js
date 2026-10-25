@@ -349,7 +349,7 @@ async function openUpdateInbox() {
 }
 
 function showPage(page, { parent = '', entry = '', skipFoodLoad = false } = {}) {
-  if (FRESH_OWNER_MODULES && page === 'food') {
+  if (FRESH_OWNER_MODULES && page === 'food' && !skipFoodLoad) {
     // Hide the previous user's DOM before the asynchronous native Auth check.
     const foodPage = $('[data-page="food"]')
     if (foodPage) { foodPage.inert = true; foodPage.style.visibility = 'hidden' }
