@@ -248,7 +248,7 @@ try {
     ]})
     await finance.assertOwner()
     window.__GRAPES_RECEIPT_OCR_TEST__ = image =>
-      image.includes('Yg==') ? 'Kenyér 499 Ft\\nVégösszeg 499 Ft' : 'Végösszeg 5990 Ft'
+      image.includes('Yg==') ? 'Kenyér 499 Ft\nVégösszeg 499 Ft' : 'Végösszeg 5990 Ft'
   })
   await home.locator('[data-household-tab="receipts"]').click()
   await home.locator('[data-household-scan-receipt="owner-total-only"]').waitFor()
