@@ -1,0 +1,56 @@
+name: Grapes TEST local account storage risk audit (NO RELEASE)
+
+on:
+  push:
+    branches:
+      - feature/grapes-test-local-account-storage-audit-20261025
+  pull_request:
+    branches:
+      - feature/grapes-test-v26-single-phone-signed-candidate-20261024
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-test-local-owner-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  reproduce-legacy-local-storage-risk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    env:
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GRAPES_TEST_AUTH_ENABLED: 'false'
+      VITE_GRAPES_TEST_DATA_ENABLED: 'false'
+      VITE_GRAPES_TEST_FOOD_SYNTHETIC_ENABLED: 'false'
+      VITE_GRAPES_TEST_HEALTH_SYNC_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Existing unit regression suite (no changed application behavior)
+        run: npm test
+      - name: Locate isolated Chromium
+        run: |
+          if command -v google-chrome >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            npx playwright-core install --with-deps chromium
+            browser=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path '*chrome-linux*' | head -1)
+            test -n "$browser"
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$browser" >> "$GITHUB_ENV"
+          fi
+      - name: REPRODUCE risk only; NOT a security-isolation PASS
+        run: |
+          node tests/grapes-local-account-legacy-audit.browser.mjs
+          echo 'EXPECTED EXPOSURE reproduced in a disposable Chromium context.'
+          echo 'NO GO for shared-device per-user local privacy; no actual user files read.'
