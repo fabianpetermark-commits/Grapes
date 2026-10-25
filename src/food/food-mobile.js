@@ -44,9 +44,11 @@ const localDate = (date = new Date()) => new Date(date.getTime() - date.getTimez
 const number = (value, digits = 0) => new Intl.NumberFormat('hu-HU', { maximumFractionDigits: digits }).format(Number(value) || 0)
 const nutrient = (value, digits = 0, suffix = '') => value === null || value === undefined ? '—' : `${number(value, digits)}${suffix}`
 
-export function createMobileFoodController({ root = document, fab, addSheet, backdrop, showToast, openLegacy, sendMeal = null, sendRecipe = null, onHydrationImport = null, getHydrationExternalKeys = null }) {
+export function createMobileFoodController({ root = document, fab, addSheet, backdrop, showToast, openLegacy, sendMeal = null, sendRecipe = null, onHydrationImport = null, getHydrationExternalKeys = null, freshOwnerMode = false }) {
   let project = null
   let profile = null
+  let freshOwnerSession = null
+  let freshOwnerReady = false
   let driveFileId = null
   let driveBaseline = ''
   let selectedDate = localDate()
@@ -68,10 +70,10 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   const AUTO_YAZIO_PREFIX = 'grapes-food-yazio-auto-v1:'
   let yazioAutoBusy = false
   let lastYazioAutoAttempt = 0
-  const autoYazioEnabled = () => { try { return Boolean(profile?.id) && localStorage.getItem(AUTO_YAZIO_PREFIX + profile.id) === '1' } catch { return false } }
+  const autoYazioEnabled = () => { if (freshOwnerMode) return false; try { return Boolean(profile?.id) && localStorage.getItem(AUTO_YAZIO_PREFIX + profile.id) === '1' } catch { return false } }
   let healthAutoBusy = false
   let lastHealthAutoAttempt = 0
-  const autoHealthEnabled = () => { try { return localStorage.getItem(AUTO_HEALTH_KEY) === '1' } catch { return false } }
+  const autoHealthEnabled = () => { if (freshOwnerMode) return false; try { return localStorage.getItem(AUTO_HEALTH_KEY) === '1' } catch { return false } }
   let inbox = []
   let activeInboxItem = null
   let activeInboxShare = null
@@ -152,11 +154,17 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       status.textContent = FOOD_LOCAL_CAS_QA && localConflicts.has(profile?.id)
         ? 'Helyi Food-mentés leállítva: ütközés történt; a külön helyreállító példányt exportáld.'
         : message
-      status.hidden = !FOOD_LOCAL_CAS_QA
+      status.hidden = !(FOOD_LOCAL_CAS_QA || freshOwnerMode)
     }
   }
 
   async function syncFood({ force = false } = {}) {
+    if (freshOwnerMode) {
+      if (!freshOwnerReady || !freshOwnerSession) throw new Error('A Food TEST-fiók nincs ellenőrizve.')
+      await freshOwnerSession.flush()
+      showSyncStatus('Csak saját Food-tárhely · Drive letiltva')
+      return
+    }
     if (FOOD_LOCAL_CAS_QA) {
       await localSaves.flush(profile?.id)
       showSyncStatus('QA helyi CAS ellenőrzés · Drive-írás szünetel')
@@ -186,6 +194,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   async function autoImportHealth() {
+    if (freshOwnerMode) return
     if (project?.syncState?.reconciliation?.status === 'pending') return
     if (!project || !profile || !isGrapesAndroidApp() || !autoHealthEnabled() || healthAutoBusy || document.visibilityState !== 'visible') return
     if (Date.now() - lastHealthAutoAttempt < FOOD_SYNC_INTERVAL_MS) return
@@ -218,6 +227,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   async function autoImportYazio() {
+    if (freshOwnerMode) return
     if (project?.syncState?.reconciliation?.status === 'pending') return
     if (!project || !profile || !isGrapesAndroidApp() || !autoYazioEnabled() || yazioAutoBusy || document.visibilityState !== 'visible') return
     if (Date.now() - lastYazioAutoAttempt < FOOD_SYNC_INTERVAL_MS) return
@@ -267,6 +277,42 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   async function load({ force = false } = {}) {
+    if (freshOwnerMode) {
+      const generation = ++loadGeneration
+      const foodPage = root.querySelector('[data-page="food"]')
+      if (foodPage) { foodPage.inert = true; foodPage.style.visibility = 'hidden' }
+      // Erase previous owner's memory AND previous rendered UI before Auth.
+      project = null; profile = null; loadedProfileId = ''
+      freshOwnerReady = false; freshOwnerSession = null
+      driveFileId = null; driveBaseline = ''; driveConflict = ''
+      inbox = []; activeInboxItem = null; activeInboxShare = null
+      pendingHealthImport = null; selectedMeal = ''; selectedRecipeId = ''
+      pendingAddFood = null; activeEditId = ''; selectedDate = localDate()
+      recipeIngredients = []; recipeDraftFoods = []; editingRecipeId = ''
+      clearTimeout(saveTimer); clearTimeout(driveTimer)
+      closeSheets()
+      try {
+        const { openGrapesTestFreshFood } = await import('./grapes-test-fresh-food.js')
+        const session = await openGrapesTestFreshFood({ enabled: true })
+        const data = await session.load()
+        if (generation !== loadGeneration) return
+        profile = structuredClone(data.profile)
+        project = data
+        loadedProfileId = profile.id
+        changeRevision = 0
+        freshOwnerSession = session
+        freshOwnerReady = true
+        showSyncStatus('Saját Food TEST-tárhely · Drive, YAZIO, Health és megosztás kikapcsolva')
+        render()
+        if (foodPage) { foodPage.style.removeProperty('visibility'); foodPage.inert = false }
+        return
+      } catch (error) {
+        if (generation === loadGeneration) {
+          showToast('A Food TEST-fiók nem nyitható meg: ' + (error?.message || 'ismeretlen hiba'))
+        }
+        throw error
+      }
+    }
     const nextProfile = accountProfile()
     if (!force && project && loadedProfileId === nextProfile.id) {
       render()
@@ -359,6 +405,13 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   async function persistLocal(projectValue = project, fileId = driveFileId) {
+    if (freshOwnerMode) {
+      if (!freshOwnerReady || !freshOwnerSession || !projectValue ||
+          projectValue.profile?.id !== freshOwnerSession.ownerId) {
+        throw new Error('A Food TEST-fiók vagy tulajdonos nincs ellenőrizve.')
+      }
+      return freshOwnerSession.save(structuredClone(projectValue))
+    }
     if (!projectValue) return
     const data = structuredClone(projectValue)
     if (FOOD_LOCAL_CAS_QA) {
@@ -372,6 +425,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   async function persistDrive() {
+    if (freshOwnerMode) return // Drive user is NOT native Grapes Auth.
     if (!project || !isGrapesDriveConnected()) return
     if (FOOD_LOCAL_CAS_QA) {
       showSyncStatus('QA helyi CAS ellenőrzés · Drive-írás szünetel')
@@ -431,12 +485,25 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   function scheduleSave() {
+    if (freshOwnerMode && (!freshOwnerReady || !freshOwnerSession || !project)) {
+      return Promise.reject(new Error('A Food TEST-fiók nincs ellenőrizve.'))
+    }
     changeRevision += 1
     if (project?.syncState?.reconciliation?.status === 'pending') {
       project.syncState.reconciliation.changedAfterApproval = true
     }
     project.syncState = { ...project.syncState, localDirty: true }
     clearTimeout(saveTimer); clearTimeout(driveTimer)
+    if (freshOwnerMode) {
+      const saved = persistLocal()
+      saved.catch(error => {
+        freshOwnerReady = false
+        const foodPage = root.querySelector('[data-page="food"]')
+        if (foodPage) { foodPage.inert = true; foodPage.style.visibility = 'hidden' }
+        showToast('A Food-mentés leállt: ' + (error?.message || 'ismeretlen hiba'))
+      })
+      return saved
+    }
     if (FOOD_LOCAL_CAS_QA) {
       // enqueue writes a synchronous recovery journal before IndexedDB work.
       const saved = persistLocal()
@@ -452,12 +519,18 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   function confirmFoodSave(task, message) {
-    if (FOOD_LOCAL_CAS_QA) task.then(() => showToast(message)).catch(() => {})
+    if (FOOD_LOCAL_CAS_QA || freshOwnerMode) task.then(() => showToast(message)).catch(() => {})
     else showToast(message)
   }
 
   async function flush({ drive = true } = {}) {
     clearTimeout(saveTimer); clearTimeout(driveTimer)
+    if (freshOwnerMode) {
+      if (!freshOwnerReady || !freshOwnerSession) {
+        throw new Error('A Food TEST-fiók nincs ellenőrizve.')
+      }
+      return freshOwnerSession.flush()
+    }
     if (FOOD_LOCAL_CAS_QA) {
       await localSaves.flush(project?.profile?.id)
       if (project && localConflicts.has(project.profile.id)) {
