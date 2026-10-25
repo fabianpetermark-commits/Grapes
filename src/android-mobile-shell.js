@@ -86,6 +86,7 @@ let menuReturnPage = ''
 let menuEntry = ''
 let availableAppUpdate = null
 let activeSyncImport = ''
+let yazioDirectEpoch = 0
 let yazioPreviewEpoch = 0
 let freshYazioPreview = null
 let freshYazioSession = null
@@ -109,6 +110,38 @@ if (freshYazioSheet) {
       data-fresh-yazio-confirm hidden>Megjelölt étkezések importálása</button>
     <p data-fresh-yazio-status role="status"></p>`
   document.querySelector('.phone').append(freshYazioSheet)
+}
+const freshYazioDirectSheet = FRESH_OWNER_MODULES ? document.createElement('section') : null
+if (freshYazioDirectSheet) {
+  freshYazioDirectSheet.className = 'bottom-sheet'
+  freshYazioDirectSheet.dataset.freshYazioDirectSheet = ''
+  freshYazioDirectSheet.setAttribute('role', 'dialog')
+  freshYazioDirectSheet.setAttribute('aria-modal', 'true')
+  freshYazioDirectSheet.setAttribute('aria-label', 'YAZIO egyszeri bejelentkezés')
+  freshYazioDirectSheet.setAttribute('aria-hidden', 'true')
+  freshYazioDirectSheet.inert = true
+  freshYazioDirectSheet.innerHTML = `<div class="sheet-handle"></div>
+    <h2>YAZIO · Egyszeri beolvasás</h2>
+    <p>A bejelentkezés kizárólag ehhez a kézi importhoz használható.
+       A YAZIO-jelszót és a munkamenetet nem mentjük el.</p>
+    <form data-fresh-yazio-direct-form class="sheet-form">
+      <label>YAZIO e-mail
+        <input class="search" type="email" name="email" autocomplete="off" required></label>
+      <label>YAZIO jelszó
+        <input class="search" type="password" name="password" autocomplete="off" required></label>
+      <label>Ettől
+        <input class="search" type="date" name="from" required></label>
+      <label>Eddig
+        <input class="search" type="date" name="to" required></label>
+      <button class="primary module-cta" type="submit">Adatok beolvasása</button>
+    </form>
+    <p data-fresh-yazio-direct-status role="status"></p>`
+  document.querySelector('.phone').append(freshYazioDirectSheet)
+  const directButton = document.createElement('button')
+  directButton.type = 'button'
+  directButton.dataset.freshYazioDirectOpen = ''
+  directButton.textContent = 'Egyszeri fiókbeolvasás'
+  $('[data-yazio-import]').closest('.sync-provider').append(directButton)
 }
 let waterHealthEpoch = 0
 let waterHealthPreview = null
@@ -185,6 +218,12 @@ function showToast(message) {
 }
 
 function closeSheet() {
+  if (freshYazioDirectSheet?.classList.contains('is-open')) {
+    ++yazioDirectEpoch
+    const form = $('[data-fresh-yazio-direct-form]')
+    form.elements.email.value = ''
+    form.elements.password.value = ''
+  }
   if (freshYazioSheet?.classList.contains('is-open')) {
     yazioPreviewEpoch++
     freshYazioPreview = null
@@ -501,6 +540,71 @@ async function confirmWaterHealthPreview() {
   } finally {
     button.disabled = false
   }
+}
+
+function openFreshYazioDirect() {
+  if (!FRESH_OWNER_MODULES || !freshYazioDirectSheet) return
+  openSheet(freshYazioDirectSheet)
+  const form = $('[data-fresh-yazio-direct-form]')
+  const now = new Date(), from = new Date(now)
+  from.setDate(from.getDate() - 6)
+  const date = day => [day.getFullYear(),
+    String(day.getMonth() + 1).padStart(2,'0'),
+    String(day.getDate()).padStart(2,'0')].join('-')
+  form.elements.from.value = date(from)
+  form.elements.to.value = date(now)
+  form.elements.from.max = date(now)
+  form.elements.to.max = date(now)
+  form.elements.email.value = ''
+  form.elements.password.value = ''
+  $('[data-fresh-yazio-direct-status]').textContent = ''
+}
+async function submitFreshYazioDirect(event) {
+  event.preventDefault()
+  if (!FRESH_OWNER_MODULES || !freshYazioDirectSheet?.classList.contains('is-open')) return
+  const epoch = ++yazioDirectEpoch
+  const form = $('[data-fresh-yazio-direct-form]')
+  const button = form.querySelector('[type="submit"]')
+  const status = $('[data-fresh-yazio-direct-status]')
+  const email = form.elements.email.value.trim()
+  const password = form.elements.password.value
+  const from = form.elements.from.value, to = form.elements.to.value
+  form.elements.password.value = ''
+  button.disabled = true
+  try {
+    const [{ openGrapesTestFreshFood }, { readFreshOwnerYazioDirect }] =
+      await Promise.all([
+        import('./food/grapes-test-fresh-food.js'),
+        import('./food/grapes-test-fresh-yazio-direct.js'),
+      ])
+    const session = await openGrapesTestFreshFood({ enabled: true })
+    await session.load()
+    const result = await readFreshOwnerYazioDirect({
+      session, email, password, from, to,
+      checkCancelled: () => {
+        if (epoch !== yazioDirectEpoch ||
+            !freshYazioDirectSheet.classList.contains('is-open')) {
+          throw new Error('A YAZIO-beolvasás megszakadt.')
+        }
+      },
+      onProgress: message => {
+        if (epoch === yazioDirectEpoch) status.textContent = message
+      },
+    })
+    await session.assertOwner()
+    if (epoch !== yazioDirectEpoch ||
+        !freshYazioDirectSheet.classList.contains('is-open')) return
+    status.textContent = `${result.bundle.nutrition_log.length} étkezés beolvasva. Előnézet készül…`
+    // Session was logged out in readFreshOwnerYazioDirect finally.
+    // A new explicit own Food preview is required before ANY CAS save.
+    const file = new File([JSON.stringify(result.bundle)], 'yazio-direct.json',
+      {type:'application/json'})
+    closeSheet()
+    await prepareFreshYazioFile(file)
+  } catch (error) {
+    if (epoch === yazioDirectEpoch) status.textContent =
+      error?.message || 'A YAZIO-beolvasás megszakadt. Nem mentettünk étkezést.'
+  } finally { button.disabled = false; form.elements.password.value = '' }
 }
 
 async function prepareFreshYazioFile(file) {
@@ -2206,6 +2310,9 @@ $('[data-yazio-import]').addEventListener('click', () => {
 })
 $('[data-fresh-yazio-confirm]')?.addEventListener('click',
   () => confirmFreshYazioPreview().catch(() => {}))
+$('[data-fresh-yazio-direct-open]')?.addEventListener('click', openFreshYazioDirect)
+$('[data-fresh-yazio-direct-form]')?.addEventListener('submit',
+  event => submitFreshYazioDirect(event).catch(() => {}))
 $('[data-sync-import-confirm]').addEventListener('click', () => runSyncImport())
 $('[data-sync-health-settings]').addEventListener('click', async () => {
   try { await openAndroidHealthConnectSettings(); $('[data-sync-import-status]').textContent = 'A Health Connect beállításai megnyíltak.' }
@@ -2256,6 +2363,7 @@ onGrapesDriveChange(() => {
 })
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
+    if (FRESH_OWNER_MODULES && freshYazioDirectSheet?.classList.contains('is-open')) closeSheet()
     if (FRESH_OWNER_MODULES && freshYazioSheet?.classList.contains('is-open')) {
       closeSheet() // old native Auth may have changed while Android file chooser was open
     }
@@ -2287,6 +2395,7 @@ document.addEventListener('visibilitychange', () => {
     }
   }
   if (document.visibilityState === 'hidden') {
+    if (FRESH_OWNER_MODULES && freshYazioDirectSheet?.classList.contains('is-open')) closeSheet()
     if (FRESH_OWNER_MODULES && freshYazioSheet?.classList.contains('is-open')) closeSheet()
     if (FRESH_OWNER_MODULES) resetFreshWaterUi()
     if (FRESH_OWNER_MODULES && waterHealthSheet?.classList.contains('is-open')) closeSheet()
