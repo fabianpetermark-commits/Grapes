@@ -74,11 +74,39 @@ try {
         await page.locator('[data-check]').first().check();
         if (!(await page.locator('[data-check]').first().isChecked())) throw new Error('Home checkbox failed');
       }
+      if (item.path === 'candidates/ebook.html') {
+        const dock = page.locator('.ebook-quick-action');
+        const dockInfo = await dock.evaluate(el => {
+          const box=el.getBoundingClientRect();
+          const buttons=[...el.querySelectorAll('button')];
+          return {position:getComputedStyle(el).position,
+                  bottom:Math.round(box.bottom),
+                  viewport:innerHeight,
+                  count:buttons.length,
+                  visible:buttons.every(b=>b.getBoundingClientRect().height>=44),
+                  labels:buttons.map(b=>b.getAttribute('aria-label'))};
+        });
+        if (dockInfo.position!=='fixed'||dockInfo.count!==4||!dockInfo.visible||
+            dockInfo.bottom>dockInfo.viewport+3||dockInfo.labels.some(x=>!x)) {
+          throw new Error('E-book Quick Action contract failed at '+width+'px: '+JSON.stringify(dockInfo));
+        }
+      }
       if (item.path === 'candidates/ebook.html' && width === 390) {
-        await page.locator('[data-view="reader"]').click();
-        if (!(await page.locator('[data-pane="reader"]').isVisible())) throw new Error('E-book reader tab failed');
+        if (!(await page.locator('.ebook-feature-info h2').innerText()).includes('A természet csodái')) throw Error('E-book featured book absent');
+        await page.locator('[data-quick="transfer"]').click();
+        if (!(await page.locator('[data-pane="transfer"]').isVisible())) throw Error('E-book quick transfer failed');
+        await page.locator('[data-quick="pair"]').click();
+        if (!(await page.locator('[data-status]').innerText()).includes('párosítás')) throw Error('E-book pairing preview failed');
+        await page.locator('[data-quick="continue"]').click();
+        if (!(await page.locator('[data-pane="reader"]').isVisible())) throw new Error('E-book Quick Action continuation failed');
         await page.locator('[data-font="1"]').click();
         if (!(await page.locator('[data-reading-content]').evaluate(e => parseInt(getComputedStyle(e).fontSize, 10) > 17))) throw new Error('E-book font control failed');
+        await page.locator('[data-quick="add"]').click();
+        if (!(await page.locator('[data-status]').innerText()).includes('Könyv hozzáadása')) throw Error('E-book quick import preview failed');
+        await page.locator('[data-view="library"]').click();
+        await page.locator('#ebook-find').fill('Kert');
+        if (await page.locator('[data-book-title]:visible').count()!==1) throw Error('E-book library filter failed');
+        await page.locator('#ebook-find').fill('');
       }
       if (item.path === 'candidates/qr.html' && width === 390) {
         await page.locator('[data-qr-tab="colors"]').click();
