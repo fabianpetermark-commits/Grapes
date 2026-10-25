@@ -278,7 +278,7 @@ export function createHomeMobile(root, storage, { freshOwnerMode = false, openFo
     const completedWasOpen = shoppingRoot.querySelector('[data-household-completed]')?.open || false
     const pendingItems = visibleShopping.filter(item => item.status !== 'checked')
     const completedItems = visibleShopping.filter(item => item.status === 'checked')
-    shoppingRoot.innerHTML = (pendingItems.length ? pendingItems.map(shoppingRow).join('') : '<div class="household-empty">Nincs hátralévő tétel ezen a listán.</div>') +
+    shoppingRoot.innerHTML = (pendingItems.length ? pendingItems.map(shoppingRow).join('') : completedItems.length ? '<div class="household-empty">Nincs hátralévő tétel ezen a listán.</div>' : '<div class="household-empty">A bevásárlólista üres. Új listaelemet a fenti gombbal vehetsz fel.</div>') +
       (completedItems.length ? `<details class="household-completed" data-household-completed ${completedWasOpen ? 'open' : ''}><summary>Megvett tételek (${completedItems.length})</summary><div class="household-completed-rows">${completedItems.map(shoppingRow).join('')}</div></details>` : '')
     if (freshOwnerMode) {
       const dateHints = homeDateHints(current.inventory)
