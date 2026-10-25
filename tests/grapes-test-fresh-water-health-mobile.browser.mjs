@@ -66,7 +66,8 @@ try {
       const btn=sh.querySelector('[data-water-health-read]')
       const rect=el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height}}
       return {sheet:rect(sh),button:rect(btn),className:sh.className,
-        transform:getComputedStyle(sh).transform,innerWidth,innerHeight}
+        transform:getComputedStyle(sh).transform,innerWidth,innerHeight,
+        trace:window.__waterHealthTrace||[]}
     })
     assert.ok(geometry.button.y>=0 && geometry.button.y<geometry.innerHeight,
       'Water Health sheet button outside phone viewport: '+JSON.stringify(geometry))
