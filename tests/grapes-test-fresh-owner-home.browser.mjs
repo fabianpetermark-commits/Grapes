@@ -31,7 +31,7 @@ try {
       await import('/Grapes/src/home/grapes-test-fresh-home.js')
     const { createGrapesTestLocalOwnerStore } =
       await import('/Grapes/src/storage/grapes-test-local-owner-store.js')
-    const { createHomeState } = await import('/Grapes/src/home/home-data.js')
+    const { createHomeState, applyHomeCommand } = await import('/Grapes/src/home/home-data.js')
     const A = '00000000-0000-4000-8000-000000000001'
     const B = '00000000-0000-4000-8000-000000000002'
     let current = A
@@ -91,6 +91,28 @@ try {
     try { await actor2.dispatch({ type: 'ShoppingItemAdded',
       payload: { name: 'Retry should fail' } }) } catch { poisonedDenied = true }
 
+    // Existing owner-bound v1 snapshots upgrade with the next atomic CAS write.
+    const D = '00000000-0000-4000-8000-000000000004'
+    current = D
+    const oldOwnerStore = createGrapesTestLocalOwnerStore({enabled:true,getVerifiedSubject:async()=>current})
+    const previousV2 = applyHomeCommand(createHomeState({householdId:D,actorId:D}),{
+      type:'StockCountConfirmed',eventId:'old-stock',payload:{name:'Régi tej',quantity:1,unit:'l',storageLocation:'fridge'}
+    }).state
+    const v1 = {...previousV2,schemaVersion:1}
+    delete v1.prepared
+    await oldOwnerStore.save({id:'home-current',data:{module:'Home',ownerId:D,schemaVersion:1,state:v1,previousState:v1}})
+    const rawBefore = JSON.stringify((await oldOwnerStore.read('home-current')).data)
+    const recovered = await openGrapesTestFreshHome(args)
+    const recoveredState = recovered.getState()
+    const preservedBeforeWrite = JSON.stringify((await oldOwnerStore.read('home-current')).data) === rawBefore
+    await recovered.dispatch({type:'ShoppingItemAdded',eventId:'post-migration',payload:{name:'Régi lista'}})
+    const upgraded = (await oldOwnerStore.read('home-current')).data
+    const ownerV1Pass = preservedBeforeWrite && recoveredState.schemaVersion===2 &&
+      recoveredState.revision===1 && recoveredState.prepared.length===0 &&
+      recoveredState.inventory[0].quantityBase===1000 && upgraded.schemaVersion===2 &&
+      upgraded.state.schemaVersion===2 && upgraded.previousState.schemaVersion===2 &&
+      upgraded.state.revision===2 && upgraded.state.inventory[0].quantityBase===1000
+
     // Synthetically inject a FOREIGN household into a new owner-partitioned
     // Home document. The verifier must reject it without claiming/removing it.
     current = '00000000-0000-4000-8000-000000000003'
@@ -126,6 +148,7 @@ try {
       bOwner: bInitial.householdId, aReturnItems: aReturned.inventory.map(x=>x.name),
       aReturnShopping: aReturned.shopping.map(x=>x.name), staleA, staleB, staleARead,
       casDenied, poisonedDenied, foreignHomeDenied, logoutDenied, newOpenDenied, disabledDenied,
+      ownerV1Pass,
       legacyRaw: localStorage.getItem('grapes-home-household-v1'),
       legacyPrevious: localStorage.getItem('grapes-home-household-v1-previous'),
     }
@@ -139,6 +162,7 @@ try {
     aReturnItems: ['A tej'], aReturnShopping: ['A kenyér'],
     staleA: true, staleB: true, staleARead: true,
     casDenied: true, poisonedDenied: true, foreignHomeDenied: true,
+    ownerV1Pass: true,
     logoutDenied: true, newOpenDenied: true, disabledDenied: true,
     legacyRaw: '{"privateLegacy":"NEVER-COPY"}',
     legacyPrevious: 'OLD-PREVIOUS-DO-NOT-TOUCH',

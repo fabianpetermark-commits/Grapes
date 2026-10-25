@@ -126,6 +126,52 @@ try {
     return (await openGrapesTestFreshHome({ enabled: true })).getState().revision
   })
   assert.equal(afterAdvice, beforeAdvice, 'Reading M3A advice never writes inventory.')
+  // Confirmed cooking: manually choose the actual lot; do not write to Food.
+  const foodBeforeCook = await page.evaluate(async () => {
+    const { openGrapesTestFreshFood } = await import('/Grapes/src/food/grapes-test-fresh-food.js')
+    return JSON.stringify(await (await openGrapesTestFreshFood({enabled:true})).load())
+  })
+  await home.locator('[data-household-cook="r-home-m3a-milk"]').click()
+  const cookForm = home.locator('[data-household-cooking]')
+  assert.equal(await cookForm.locator('[name="portions"]').inputValue(), '2')
+  await cookForm.locator('.household-cooking-row [name="unit"]').selectOption('ml')
+  await cookForm.locator('.household-cooking-row [name="quantity"]').fill('200')
+  assert.match(await cookForm.locator('[data-household-cooking-preview]').textContent(), /1000 → 800 ml/)
+  const homeBeforeCook = await page.evaluate(async () => {
+    const { openGrapesTestFreshHome } = await import('/Grapes/src/home/grapes-test-fresh-home.js')
+    return (await openGrapesTestFreshHome({enabled:true})).getState()
+  })
+  assert.equal(homeBeforeCook.inventory[0].quantityBase, 1000)
+  assert.equal(homeBeforeCook.prepared.length, 0)
+  await cookForm.locator('button[type="submit"]').click()
+  try {
+    await home.locator('[data-household-prepared]').getByText('A saját tejitalom', { exact: true }).waitFor({ timeout: 15000 })
+  } catch (error) {
+    throw new Error('A főzés nem került készletbe: ' +
+      await home.locator('[data-household-alert]').textContent() +
+      ' | előnézet: ' + await home.locator('[data-household-cooking-preview]').textContent() +
+      ' | ' + error.message)
+  }
+  const cooked = await page.evaluate(async () => {
+    const { openGrapesTestFreshHome } = await import('/Grapes/src/home/grapes-test-fresh-home.js')
+    const session = await openGrapesTestFreshHome({enabled:true})
+    const state = session.getState()
+    const entry = state.events.find(event => event.type === 'CookingConfirmed')
+    const repeated = await session.dispatch({type:'CookingConfirmed',eventId:entry.eventId,sourceType:entry.sourceType,sourceId:entry.sourceId,payload:{recipeRef:'r-home-m3a-milk'}})
+    let financeBlocked = false, diaryBlocked = false, unknownRecipeBlocked = false
+    try { await session.dispatch({type:'StockReceived',payload:{}}) } catch {financeBlocked=true}
+    try { await session.dispatch({type:'PreparedConsumptionLinked',payload:{}}) } catch {diaryBlocked=true}
+    try { await session.dispatch({type:'CookingConfirmed',eventId:'invented-cook',sourceType:'food-recipe',
+      sourceId:state.householdId+':invented-recipe:invented-cook',payload:{recipeRef:'invented-recipe',name:'X',portions:1,storageLocation:'fridge',consumed:[{id:state.inventory[0].id,quantity:1,unit:'ml'}]}}) } catch {unknownRecipeBlocked=true}
+    return {revision:state.revision,duplicate:repeated.duplicate,quantity:state.inventory[0].quantityBase,
+      portions:state.prepared[0].portionsRemaining,source:entry.sourceType,financeBlocked,diaryBlocked,unknownRecipeBlocked}
+  })
+  assert.deepEqual(cooked,{revision:4,duplicate:true,quantity:800,portions:2,source:'food-recipe',financeBlocked:true,diaryBlocked:true,unknownRecipeBlocked:true})
+  const foodAfterCook = await page.evaluate(async () => {
+    const { openGrapesTestFreshFood } = await import('/Grapes/src/food/grapes-test-fresh-food.js')
+    return JSON.stringify(await (await openGrapesTestFreshFood({enabled:true})).load())
+  })
+  assert.equal(foodAfterCook, foodBeforeCook, 'Cooking must not rewrite the personal Food project.')
   await page.evaluate(B => localStorage.setItem('__home_qa_subject', B), B)
   await page.reload()
   await openHome('shopping')
@@ -136,9 +182,9 @@ try {
     const { openGrapesTestFreshHome } =
       await import('/Grapes/src/home/grapes-test-fresh-home.js')
     const v = (await openGrapesTestFreshHome({enabled:true})).getState()
-    return {inventory:v.inventory.length,shopping:v.shopping.length,owner:v.householdId}
+    return {inventory:v.inventory.length,shopping:v.shopping.length,prepared:v.prepared.length,owner:v.householdId}
   })
-  assert.deepEqual(bEmpty,{inventory:0,shopping:0,owner:B})
+  assert.deepEqual(bEmpty,{inventory:0,shopping:0,prepared:0,owner:B})
   await home.locator('[data-household-tab="advice"]').click()
   await home.locator('[data-household-recipe-hints]').getByText('Nincs elérhető saját Food-recept ebben a fiókban.').waitFor()
   assert.ok(!(await rootNode.textContent()).includes('A saját tejitalom'))
@@ -164,11 +210,11 @@ try {
     const { openGrapesTestFreshHome } =
       await import('/Grapes/src/home/grapes-test-fresh-home.js')
     const data = (await openGrapesTestFreshHome({enabled:true})).getState()
-    return { inventory:data.inventory.length, shopping:data.shopping.length,
+    return { inventory:data.inventory.length, shopping:data.shopping.length, prepared:data.prepared.length,
       events:data.events.length, legacy:localStorage.getItem('grapes-home-household-v1'),
       oldPrevious:localStorage.getItem('grapes-home-household-v1-previous') }
   })
-  assert.deepEqual(aFinal,{ inventory:1, shopping:1, events:3,
+  assert.deepEqual(aFinal,{ inventory:1, shopping:1, prepared:1, events:4,
     legacy:'{"legacy":"PRIVATE-UNOWNED"}',oldPrevious:'previous-legacy' })
   // Simulate a native account change in a foregrounded WebView. Previous
   // account data must disappear synchronously, before the new Auth read.
@@ -193,6 +239,7 @@ try {
   await ctx.close()
   console.log('PASS: actual Home buttons save inventory, shopping/status independently A→B→A.')
   console.log('PASS: owner-only read-only Home M3A Food recipe suggestions A→B→A, no stock writes.')
+  console.log('PASS: owner-bound CookingConfirmed, prepared portions, durable idempotency, Finance/diary ingress blocked.')
   console.log('PASS: on foreground account switch/logout old DOM clears, old localStorage untouched.')
 } finally {
   await browser?.close()

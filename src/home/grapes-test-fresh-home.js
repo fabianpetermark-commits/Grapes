@@ -9,15 +9,15 @@ import { applyHomeCommand, createHomeState, validateHomeState } from './home-dat
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const RECORD_ID = 'home-current'
 const MODULE = 'Home'
-const SCHEMA = 1
+const SCHEMA = 2
 
 function ownedState(candidate, ownerId) {
   const state = structuredClone(candidate)
-  validateHomeState(state) // Includes complete replay of confirmed event history.
-  if (state.householdId !== ownerId || state.actorId !== ownerId) {
+  const migrated = validateHomeState(state) // Includes complete replay of confirmed event history.
+  if (migrated.householdId !== ownerId || migrated.actorId !== ownerId) {
     throw new Error('A Home készlete vagy eseménynaplója másik Grapes-fiókhoz tartozik.')
   }
-  return state
+  return migrated
 }
 
 /**
@@ -69,7 +69,7 @@ export async function openGrapesTestFreshHome({
     await verify()
     const row = await store.read(RECORD_ID)
     if (row && (row.data?.module !== MODULE ||
-        row.data?.ownerId !== ownerId || row.data?.schemaVersion !== SCHEMA ||
+        row.data?.ownerId !== ownerId || ![1, SCHEMA].includes(row.data?.schemaVersion) ||
         !row.data?.state)) {
       throw new Error('A Home fióktárhelyének formátuma sérült.')
     }
@@ -94,10 +94,39 @@ export async function openGrapesTestFreshHome({
   }
 
   function dispatch(command) {
+    // Keep Finance OCR and personal Food diary linkage closed in the owner-CAS rollout.
+    // Only explicit, user-confirmed cooking may add a prepared lot.
+    if (command?.type === 'StockReceived' || command?.type === 'PreparedConsumptionLinked') {
+      return Promise.reject(new Error('Ez a Home integráció még nincs jóváhagyva a saját fiókhoz.'))
+    }
+    if (command?.type === 'CookingConfirmed' &&
+        (command.sourceType !== 'food-recipe' ||
+         command.sourceId !== `${ownerId}:${command.payload?.recipeRef}:${command.eventId}` ||
+         typeof command.payload?.recipeRef !== 'string' || !command.payload.recipeRef)) {
+      return Promise.reject(new Error('A főzés saját Food-forrásának stabil azonosítója hiányzik.'))
+    }
     if (poisoned) return Promise.reject(poisoned)
     const operation = queue.then(async () => {
       if (poisoned) throw poisoned
       await verify()
+      if (command.type === 'CookingConfirmed' && !state.events.some(event =>
+          event.eventId === command.eventId ||
+          (event.sourceType === command.sourceType && event.sourceId === command.sourceId))) {
+        // An authenticated owner identifier alone does not prove the recipe exists.
+        // The personal Food store stays read-only; there is no Drive or cross-owner fallback.
+        const { openGrapesTestFreshFood } = await import('../food/grapes-test-fresh-food.js')
+        const food = await openGrapesTestFreshFood({
+          enabled: true, isAndroid, authEnabled, getSubject, indexedDb,
+        })
+        if (food.ownerId !== ownerId) throw new Error('A Food és Home fiók nem egyezik.')
+        const project = await food.load()
+        if (project.profile?.id !== ownerId || !project.recipes.some(recipe =>
+            recipe.id === command.payload.recipeRef && recipe.ownerProfileId === ownerId)) {
+          throw new Error('A saját Food-recept nem található; a Home készlete változatlan.')
+        }
+        await food.assertOwner()
+        await verify()
+      }
       // Invalid user commands do not invalidate the whole session; only an
       // identity/storage/conflict error poisons it.
       const result = applyHomeCommand(state, { ...command, actorId: ownerId })
