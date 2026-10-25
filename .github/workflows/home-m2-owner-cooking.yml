@@ -29,4 +29,5 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build:android-web
+      - run: node tests/grapes-test-fresh-owner-home.browser.mjs
       - run: node tests/grapes-test-fresh-owner-home-mobile.browser.mjs
