@@ -72,6 +72,19 @@ A referencia CSS-szabványt az aktuális HTML-ek megjelenítő osztályaira kell
 - Az egyes funkciók a felső modul-/nézetfüleken, widgeten belüli valódi műveleteken, illetve a modul saját alsó gyorssávján keresztül érhetők el. A navigáció átépítése **nem tüntetheti el** a QR, E-book, Finance, Home, Auth/PIN és Drive korábbi működő funkcióit.
 - **Hat látható ikonhely a mostani nézetekben**, a beállításikonnal együtt. Ha hatnál több **főmodul** készül, a gyökérikonsor a modulregiszter alapján vízszintesen bővíthető/görgethető, nem zárható le mesterségesen. Üres modulikonhelyet **tilos csak Home/Vissza pótlására használni**.
 
+### 0.A.3/B. Quick Action sáv – hivatalos elnevezés és Health-minta
+
+**Quick Action sáv** a Grapes modulok alsó, kontextuális **gyorsműveleti sávjának** hivatalos UX neve. Ez **nem** a felső, felirat nélküli hatikonos modulnavigáció; a két elem nem vonható össze.
+
+- **Elrendezés:** a Healthnél elfogadott minta a kiindulás: **három kisebb, feliratos ikon+szöveg gomb egy közös, sötét, lekerekített kapszulában**, jobb oldalt **külön, jól megkülönböztethető, kerek elsődleges akciógomb**. Ha az adott modul más számú akciót igényel, a kivétel legyen külön indokolva/jóváhagyva.
+- **Méretezés:** legalább 44–48 px érintési terület; a közös kapszula magassága kb. **66–67 px**, saját kerekítés **25–26 px**, a külön kerek gomb **kb. 66–70 px átmérő**. Az ikon körülbelül **22–24 px**; az alatta lévő **funkciófelirat a Quick Action-ben megengedett és szükséges**, mert itt nem modulválasztásról, hanem egyértelmű műveletről van szó.
+- **Színek és fény:** sötét `#172D38` Quick Action-kapszula, 1 px finom `#3B5B68` keret; az elsődleges külön gomb `#173843` háttérrel, `#468995` szegéllyel és `#3BDCF2` ikonakcentussal. Nincs harsány teljes neonkeret.
+- **Pozíció:** mindig a tartalomtól elkülönülő, **alul rögzített** sáv az Android safe-area fölött; a görgethető tartalom alja kapjon akkora paddinget, hogy az utolsó funkció és a mentés/űrlapgombok se legyenek letakarva.
+- **Szemantika:** a gomb csak releváns, az aktív modulhoz tartozó műveletet indítson. **Külön Home, Főmenü, Vissza gomb soha ne kerüljön ide.** A valódi operációk előtt szükséges megerősítések és jogosultságok maradjanak.
+- **Health referencia:** Fotó / Étel / Víz a közös kapszulában; Vonalkód az elkülönült elsődleges akció.
+- **E-book jelölt, további vizuális jóváhagyásig:** **Folytatás / Könyv hozzáadása / Átvitel** a közös kapszulában; **Olvasó párosítása** a külön kerek gombon. Az utóbbi a már meglévő jogosultsági és párosítási folyamatra kell, hogy mutasson, nem új felhős mentést definiál. Referencia: `design/references/candidates/ebook.html`.
+- **Fontos:** a Quick Action sáv vizuális egységesítése **nem alakíthatja át** a valódi Drive/E-book adatkapcsolatot, Supabase migrációt, Food-készletműveleteket vagy bármely tároló/backup implementációt.
+
 ### 0.A.4. Megfelelőségi teszt és bevezetési kapu
 
 Minden referencia-HTML és tényleges TEST-képernyő ellenőrzendő **320 / 360 / 390 / 412 px-en**: hat azonos oszlop, ikon 22/20 px, keret/sugár/focus/aktív állapot, feliratmentes ikonsor, **pontosan egy nézetcím**, fölösleges alcím és külön Vissza/Home hiánya; nincs vízszintes túllógás, alsó gyorssáv nem takar ki tartalmat. Visszalépési gesztus, TalkBack, billentyűzet, PIN/Drive/mentés regresszió kötelező. A `design/references/` HTML-ek a dizájn célállapotát adják; a valódi Android/PROD átvezetés külön, tesztelt feladat, **nem automatikus merge vagy APK-kiadás**.
