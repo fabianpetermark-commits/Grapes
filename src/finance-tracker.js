@@ -313,6 +313,9 @@ function renderSavings() {
     })
     const remove = create('button', { class: 'btn btn--icon btn--ghost', type: 'button', textContent: '×', title: 'Megtakarítási mozgás törlése' })
     remove.addEventListener('click', async () => {
+      const ownerSession = financeOwnerSession
+      try { await assertFinanceActionOwner(ownerSession) }
+      catch (error) { notifyError(error.message); return }
       if (!await showGrapesConfirm({
         title: 'Most tényleg… komolyan?',
         message: 'Ez a megtakarítási mozgás eltűnik a tartalék történetéből. A malacpersely nem sértődik meg, de a számok változni fognak.',
@@ -321,6 +324,8 @@ function renderSavings() {
         danger: true,
         icon: '🐷',
       })) return
+      try { await assertFinanceActionOwner(ownerSession) }
+      catch (error) { notifyError(error.message); return }
       savingsEntries = savingsEntries.filter((item) => item.id !== entry.id); render(); scheduleSave()
     })
     list.append(create('div', { class: 'finance__saving-row' }, [
@@ -451,6 +456,9 @@ function renderRows(visible) {
     })
     const remove = create('button', { class: 'btn btn--icon btn--ghost', type: 'button', textContent: '×', title: 'Tétel törlése', 'aria-label': 'Tétel törlése' })
     remove.addEventListener('click', async () => {
+      const ownerSession = financeOwnerSession
+      try { await assertFinanceActionOwner(ownerSession) }
+      catch (error) { notifyError(error.message); return }
       if (!await showGrapesConfirm({
         title: 'Most tényleg… komolyan?',
         message: 'Ez a pénzügyi tétel búcsút int a listának. Ha csak elírás történt, a ceruza kevésbé drámai megoldás.',
@@ -459,6 +467,8 @@ function renderRows(visible) {
         danger: true,
         icon: '🧾',
       })) return
+      try { await assertFinanceActionOwner(ownerSession) }
+      catch (error) { notifyError(error.message); return }
       transactions = transactions.filter((item) => item.id !== transaction.id)
       render(); scheduleSave()
     })
@@ -666,6 +676,7 @@ async function scanPendingReceipt() {
     } else status.textContent = 'Az összeg nem változott.'
   } catch (error) {
     console.error(error)
+    if (FRESH_OWNER_FINANCE && ownerSession !== financeOwnerSession) return
     status.textContent = 'A beolvasás nem sikerült.'
     await showGrapesAlert({
       title: 'A blokk és az OCR most összeveszett.',
@@ -674,8 +685,10 @@ async function scanPendingReceipt() {
       icon: '🫠',
     })
   } finally {
-    receiptOcrRunning = false
-    updateReceiptOcrControls()
+    if (!FRESH_OWNER_FINANCE || ownerSession === financeOwnerSession) {
+      receiptOcrRunning = false
+      updateReceiptOcrControls()
+    }
   }
 }
 
@@ -788,6 +801,9 @@ function bindControls() {
     el('#finance-category').value = ''
   }))
   el('#finance-add-category').addEventListener('click', async () => {
+    const ownerSession = financeOwnerSession
+    try { await assertFinanceActionOwner(ownerSession) }
+    catch (error) { notifyError(error.message); return }
     const name = (await showGrapesPrompt({
       title: 'Még egy rekesz a pénznek?',
       message: 'Adj nevet az új kategóriának. Valami beszédeset — a „Vegyes izék” később bosszút áll.',
@@ -797,12 +813,17 @@ function bindControls() {
       icon: '🏷️',
     }))?.trim()
     if (!name) return
+    try { await assertFinanceActionOwner(ownerSession) }
+    catch (error) { notifyError(error.message); return }
     const type = el('#finance-type').value
     if (![...DEFAULT_CATEGORIES[type], ...categories[type]].some((item) => item.toLocaleLowerCase('hu-HU') === name.toLocaleLowerCase('hu-HU'))) categories[type].push(name)
     el('#finance-category').value = name
     renderCategories(); scheduleSave()
   })
   el('#finance-add-person').addEventListener('click', async () => {
+    const ownerSession = financeOwnerSession
+    try { await assertFinanceActionOwner(ownerSession) }
+    catch (error) { notifyError(error.message); return }
     const name = (await showGrapesPrompt({
       title: 'Ki legyen a következő gyanúsított?',
       message: 'Add meg, kihez tartozzanak a tételek. Csak egy név kell, ujjlenyomatot nem kérünk.',
@@ -812,6 +833,8 @@ function bindControls() {
       icon: '🕵️',
     }))?.trim()
     if (!name) return
+    try { await assertFinanceActionOwner(ownerSession) }
+    catch (error) { notifyError(error.message); return }
     const existing = people.find((person) => person.name.toLocaleLowerCase('hu-HU') === name.toLocaleLowerCase('hu-HU'))
     const person = existing || normalizePerson({ name })
     if (!existing) people.push(person)
