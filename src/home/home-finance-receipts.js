@@ -39,7 +39,7 @@ export function receiptLineCandidates(text, receiptId) {
     const rawLine = original.trim().replace(/\s+/g, ' ')
     if (!rawLine || totalLine.test(rawLine)) return []
     // Non-product headers can be visible for manual review, but no data is trusted.
-    if (!/\p{L}{2,}/u.test(rawLine)) return []
+    if (/^[\d\s.,-]+(?:Ft|HUF|EUR|€)?\s*$/i.test(rawLine) || !/\p{L}{2,}/u.test(rawLine)) return []
     const match = rawLine.match(itemLine)
     let name = ''
     let amount = null
