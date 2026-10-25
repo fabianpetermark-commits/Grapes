@@ -369,7 +369,7 @@ async function readWaterHealthPreview() {
   status.textContent = 'A saját Water-fiók ellenőrzése…'
   try {
     const fromDate = $('[data-water-health-from]').value
-    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(fromDate)) {
+    if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(fromDate)) {
       throw new Error('Válassz kezdődátumot.')
     }
     const [{ openGrapesTestFreshWater }, { prepareFreshOwnerWaterHydration }] =
