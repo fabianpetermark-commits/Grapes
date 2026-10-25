@@ -97,6 +97,35 @@ try {
   assert.deepEqual(aSnapshot,{ owner:A,actor:A,
     lot:'A saját tej',amount:1000,shopping:'A saját kenyér',status:'checked' })
 
+  // A's owner-verified Food recipe must be read-only visible only in A's Home.
+  await page.evaluate(async () => {
+    const { openGrapesTestFreshFood } = await import('/Grapes/src/food/grapes-test-fresh-food.js')
+    const session = await openGrapesTestFreshFood({ enabled: true })
+    const data = await session.load()
+    data.customFoods.push({ id: 'f-home-m3a-milk', name: 'A saját tej', kind: 'manual', baseUnit: 'ml', nutrients: {} })
+    data.recipes.push({ id: 'r-home-m3a-milk', foodId: 'f-home-m3a-recipe', ownerProfileId: data.profile.id,
+      name: 'A saját tejitalom', ingredients: [{ id: 'i-milk', foodId: 'f-home-m3a-milk', amount: 200, unit: 'ml' }],
+      yieldCount: 2, yieldUnit: 'serving' })
+    await session.save(data)
+    await session.assertOwner()
+  })
+  await page.reload()
+  await openHome()
+  await home.locator('[data-household-tab="advice"]').click()
+  await home.locator('[data-household-recipe-hints]').getByText('A saját tejitalom', { exact: true }).waitFor()
+  assert.match(await home.locator('[data-household-recipe-hints]').textContent(), /Ellenőrizendő/)
+  assert.match(await home.locator('[data-household-recipe-hints]').textContent(), /1 lehetséges névegyezés/)
+  const beforeAdvice = await page.evaluate(async () => {
+    const { openGrapesTestFreshHome } = await import('/Grapes/src/home/grapes-test-fresh-home.js')
+    return (await openGrapesTestFreshHome({ enabled: true })).getState().revision
+  })
+  await home.locator('[data-household-recipe-hints] details summary').click()
+  assert.match(await home.locator('[data-household-recipe-hints] details').textContent(), /A saját tej/)
+  const afterAdvice = await page.evaluate(async () => {
+    const { openGrapesTestFreshHome } = await import('/Grapes/src/home/grapes-test-fresh-home.js')
+    return (await openGrapesTestFreshHome({ enabled: true })).getState().revision
+  })
+  assert.equal(afterAdvice, beforeAdvice, 'Reading M3A advice never writes inventory.')
   await page.evaluate(B => localStorage.setItem('__home_qa_subject', B), B)
   await page.reload()
   await openHome('shopping')
@@ -110,6 +139,10 @@ try {
     return {inventory:v.inventory.length,shopping:v.shopping.length,owner:v.householdId}
   })
   assert.deepEqual(bEmpty,{inventory:0,shopping:0,owner:B})
+  await home.locator('[data-household-tab="advice"]').click()
+  await home.locator('[data-household-recipe-hints]').getByText('Nincs elérhető saját Food-recept ebben a fiókban.').waitFor()
+  assert.ok(!(await rootNode.textContent()).includes('A saját tejitalom'))
+  await home.locator('[data-household-tab="shopping"]').click()
   await home.locator('[data-household-add="shopping"]').click()
   await form.locator('[name="name"]').fill('B saját sajt')
   await form.locator('button[type="submit"]').click()
@@ -124,6 +157,9 @@ try {
   assert.ok(!(await rootNode.textContent()).includes('B saját sajt'))
   await home.locator('[data-household-tab="inventory"]').click()
   assert.ok((await rootNode.textContent()).includes('A saját tej'))
+  await home.locator('[data-household-tab="advice"]').click()
+  await home.locator('[data-household-recipe-hints]').getByText('A saját tejitalom', { exact: true }).waitFor()
+  assert.ok((await rootNode.textContent()).includes('A saját tejitalom'))
   const aFinal = await page.evaluate(async () => {
     const { openGrapesTestFreshHome } =
       await import('/Grapes/src/home/grapes-test-fresh-home.js')
@@ -156,6 +192,7 @@ try {
   assert.deepEqual(errors,[])
   await ctx.close()
   console.log('PASS: actual Home buttons save inventory, shopping/status independently A→B→A.')
+  console.log('PASS: owner-only read-only Home M3A Food recipe suggestions A→B→A, no stock writes.')
   console.log('PASS: on foreground account switch/logout old DOM clears, old localStorage untouched.')
 } finally {
   await browser?.close()
