@@ -11,6 +11,7 @@ import org.json.JSONObject
 internal class TestSupabaseProxy(
     private val enabled: Boolean,
     private val publishableKey: String,
+    private val familyEnabled: Boolean = false,
     private val transport: suspend (String, String, String?, String) -> Pair<Int, String> =
         { path, token, body, key -> http(path, token, body, key) },
 ) {
@@ -22,6 +23,10 @@ internal class TestSupabaseProxy(
     private val jwt = Regex("^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$")
     private val allowed = setOf("create_profile", "list_profiles", "read_document",
         "list_documents", "read_revision", "list_revisions", "read_attempt", "compare_and_swap")
+    private val familyAllowed = setOf("home_m3b_create_household", "home_m3b_list_households",
+        "home_m3b_read_household", "home_m3b_create_invite", "home_m3b_accept_invite",
+        "home_m3b_revoke_invite", "home_m3b_remove_member", "home_m3b_leave_household",
+        "home_m3b_compare_and_swap", "home_m3b_read_attempt")
 
     fun currentSubject(): String? = synchronized(lock) { subject }
 
@@ -57,7 +62,9 @@ internal class TestSupabaseProxy(
     }
 
     suspend fun rpc(expectedUserId: String, function: String, arguments: JSONObject): String {
-        require(function in allowed) { "Nem engedélyezett TEST-adatművelet." }
+        require(function in allowed || (familyEnabled && function in familyAllowed)) {
+            "Nem engedélyezett TEST-adatművelet."
+        }
         val body = arguments.toString()
         require(body.toByteArray(Charsets.UTF_8).size <= 1048576) { "Túl nagy TEST-adatművelet." }
         val (current, bearer, version) = capture(expectedUserId)
