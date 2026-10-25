@@ -115,6 +115,13 @@ try {
     throw error
   }
   assert.equal(await page.locator('[data-page="reader"]').isVisible(), true)
+  // EPUB content becomes visible before the double requestAnimationFrame that
+  // restores scroll position. Wait for reader initialization to finish.
+  await page.waitForFunction(() => {
+    const status = document.querySelector('[data-reader-status]')
+    const shell = document.querySelector('[data-reader-shell]')
+    return status?.textContent === '' && shell?.hidden === false
+  }, {timeout:10000})
   await page.locator('[data-reader-page]').evaluate(node => {
     node.scrollTop = Math.max(1, (node.scrollHeight - node.clientHeight) * .7)
     node.dispatchEvent(new Event('scroll'))
