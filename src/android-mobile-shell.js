@@ -1753,6 +1753,13 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
     updateHomeGreeting()
     refreshUpdateInbox().catch(() => {})
+    if (FRESH_OWNER_MODULES && activePage === 'food') {
+      // Native login may have changed while this WebView was backgrounded:
+      // hide old UI first, then revalidate Grapes Auth and reload only own Food.
+      const foodPage = $('[data-page="food"]')
+      if (foodPage) { foodPage.inert = true; foodPage.style.visibility = 'hidden' }
+      mobileFood?.load({ force: true }).catch(() => {})
+    }
   }
   if (document.visibilityState === 'hidden') {
     persistReaderProgress().catch(() => {})
