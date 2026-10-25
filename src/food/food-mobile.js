@@ -131,6 +131,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   const yazio = createMobileYazio({ root, getProject: () => project, showToast,
     openSheet: sheet => { closeSheets(); setSheetOpen(sheet, true) }, closeSheet: () => closeSheets(),
     commit: async next => {
+      if (freshOwnerMode) throw new Error('YAZIO-import a fiókozott TEST-ben zárolva van.')
       if (next.profile.id !== profile.id) throw new Error('Az aktív profil megváltozott.')
       next.syncState = { ...next.syncState, localDirty: true }
       await persistLocal(next)
@@ -1686,6 +1687,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   function openShareSheet() {
+    if (freshOwnerMode) return showToast('A Food-megosztás a fiókozott TEST-ben zárolva van.')
     if (!profile.email) return showToast('A megosztáshoz csatlakoztasd a Google-fiókodat.')
     closeSheets()
     const shareSheet = $('[data-food-share-sheet]')
@@ -1884,6 +1886,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
 
   async function importBackup(event) {
     const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''
+    if (freshOwnerMode) return showToast('A régi Food-mentés importja zárolva van.')
     if (project?.syncState?.reconciliation?.status === 'pending') {
       showToast('Előbb hagyd jóvá vagy állítsd vissza az összevezetést, mert a backup importálása felülírná a helyi biztonsági folyamatot.')
       return
@@ -1919,6 +1922,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   async function prepareHealthImport(source) {
+    if (freshOwnerMode) throw new Error('A Health-import zárolva van.')
     try {
       const hydrationKeys = typeof getHydrationExternalKeys === 'function' ? getHydrationExternalKeys() : []
       const existingEntries = [
@@ -1933,6 +1937,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   async function openHealthImport({ provider = 'Health Connect', samsung = false, fromDate = selectedDate } = {}) {
+    if (freshOwnerMode) throw new Error('A Health-import nincs fiókhoz kötve.')
     closeSheets()
     if (!isGrapesAndroidApp()) return $('[data-food-health-input]').click()
     showToast(`${provider}-adatok olvasása…`)
@@ -1959,6 +1964,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   function applyHealthImport() {
+    if (freshOwnerMode) return showToast('A Health-import zárolva van.')
     if (!pendingHealthImport) return
     const selected = [...root.querySelectorAll('[data-food-health-record]:checked')].map(input => Number(input.value))
     const hydrationKeys = typeof getHydrationExternalKeys === 'function' ? getHydrationExternalKeys() : []
@@ -2001,6 +2007,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   async function importYazioCsv(source) {
+    if (freshOwnerMode) throw new Error('A YAZIO-import zárolva van.')
     await load()
     const preview = prepareYazioCsvImport(source, { profileId: profile.id, existingEntries: project.diaryEntries })
     const entries = yazioImportEntries(preview)
@@ -2017,15 +2024,17 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   async function importYazio(source) {
+    if (freshOwnerMode) throw new Error('A YAZIO-import zárolva van.')
     if (yazio.isBusy()) throw new Error('Az előző import még folyamatban van.')
     if (!source.trimStart().startsWith('{')) return importYazioCsv(source)
     await load(); await flush()
     return yazio.prepare(source)
   }
 
-  async function undoYazio() { if (yazio.isBusy()) return; await load(); await flush(); return yazio.undo() }
+  async function undoYazio() { if (freshOwnerMode) throw new Error('A YAZIO-import zárolva van.'); if (yazio.isBusy()) return; await load(); await flush(); return yazio.undo() }
 
   function handleMenuAction(action) {
+    if (freshOwnerMode && ['backup-import', 'health'].includes(action)) return showToast('Az import a fiókozott TEST-ben zárolva van.')
     if (action === 'stats') return openStats()
     if (action === 'targets') return openTargets()
     if (action === 'backup-export') return exportBackup()
@@ -2034,6 +2043,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   async function submitShare() {
+    if (freshOwnerMode) return showToast('A Food-megosztás zárolva van.')
     const email = $('[data-food-share-email]').value
     try {
       const result = selectedRecipeId
@@ -2048,9 +2058,11 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
 
   const INBOX_SEEN_KEY = 'grapes-food-inbox-seen-v1'
   function inboxSeen() {
+    if (freshOwnerMode) return new Set()
     try { const ids = JSON.parse(localStorage.getItem(INBOX_SEEN_KEY) || '[]'); return new Set(Array.isArray(ids) ? ids : []) } catch { return new Set() }
   }
   function markInboxSeen(id) {
+    if (freshOwnerMode) return
     const ids = inboxSeen(); ids.add(id)
     try { localStorage.setItem(INBOX_SEEN_KEY, JSON.stringify([...ids].slice(-500))) } catch {}
     updateInboxIndicator()
@@ -2066,6 +2078,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   async function refreshInbox({ open = false } = {}) {
+    if (freshOwnerMode) { if (open) showToast('A Food-megosztás zárolva van.'); return }
     if (!isGrapesDriveConnected()) {
       if (open) showToast('A beérkező megosztásokhoz csatlakoztasd a Google Drive-ot.')
       return
@@ -2134,6 +2147,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   async function acceptInboxItem() {
+    if (freshOwnerMode) return showToast('A Food-megosztás zárolva van.')
     if (!activeInboxShare || !activeInboxItem) return
     const status = $('[data-food-inbox-status]'); status.textContent = 'Átvétel és mentés…'
     try {
@@ -2151,6 +2165,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   async function rejectInboxItem() {
+    if (freshOwnerMode) return showToast('A Food-megosztás zárolva van.')
     if (!activeInboxShare) return
     const status = $('[data-food-inbox-status]')
     try {
