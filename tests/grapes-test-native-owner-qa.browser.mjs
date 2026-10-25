@@ -61,39 +61,46 @@ try {
       name: 'TEST legacy marker', data: { marker: 'LEGACY-UNCLAIMED' } })
     localStorage.setItem('grapes-water-v1', '{"legacyMarker":"water-untouched"}')
     const trial = createGrapesTestNativeOwnerTrial({ enabled: true })
-    const repo = createGrapesTestOwnerFinanceRepository({ enabled: true })
+    const repoA = await createGrapesTestOwnerFinanceRepository({ enabled: true })
     const disabled = createGrapesTestNativeOwnerTrial()
     let disabledRefused = false
     try { await disabled.prepare() } catch { disabledRefused = true }
     const preparedA = await trial.prepare()
     const repeatedA = await trial.prepare()
     const readA = await trial.readBack()
-    const financeA = await repo.save({ marker: 'A-private' }, 0)
+    const financeA = await repoA.save({ marker: 'A-private' }, 0)
 
     window.syntheticNative.active = 'B'
     let absentB = false
     try { await trial.readBack() } catch { absentB = true }
-    const financeBNotA = await repo.load()
+    let staleARejected = false
+    try { await repoA.save({ marker: 'LEAK-OF-A-INTO-B' }, 1) }
+    catch (error) { staleARejected = /megváltozott/.test(error.message) }
+    const repoB = await createGrapesTestOwnerFinanceRepository({ enabled: true })
+    const financeBNotA = await repoB.load()
     const preparedB = await trial.prepare()
     const readB = await trial.readBack()
-    const financeB = await repo.save({ marker: 'B-private' }, 0)
+    const financeB = await repoB.save({ marker: 'B-private' }, 0)
     let staleRefused = false
-    try { await repo.save({ marker: 'wrong-B' }, 0) }
+    try { await repoB.save({ marker: 'wrong-B' }, 0) }
     catch (error) { staleRefused = /ütközés/.test(error.message) }
 
     window.syntheticNative.active = 'A'
     const againA = await trial.readBack()
-    const financeARead = await repo.load()
-    const financeAUpdate = await repo.save({ marker: 'A-private-v2' }, 1)
+    let staleBRejected = false
+    try { await repoB.save({ marker: 'LEAK-OF-B-INTO-A' }, 1) }
+    catch (error) { staleBRejected = /megváltozott/.test(error.message) }
+    const financeARead = await repoA.load()
+    const financeAUpdate = await repoA.save({ marker: 'A-private-v2' }, 1)
 
     window.syntheticNative.active = 'B'
     const againB = await trial.readBack()
-    const financeBAgain = await repo.load()
+    const financeBAgain = await repoB.load()
     window.syntheticNative.enabled = false
     let loggedOutRefused = false
     try { await trial.readBack() } catch { loggedOutRefused = true }
     let financeLoggedOutRefused = false
-    try { await repo.load() } catch { financeLoggedOutRefused = true }
+    try { await repoB.load() } catch { financeLoggedOutRefused = true }
 
     const legacyFinance = await loadLocalProject('finance-tracker-current')
     const unclaimedLegacy = (await listLocalProjects(100)).filter(row =>
@@ -101,7 +108,7 @@ try {
     return {
       disabledRefused, preparedA, repeatedA, readA, financeA,
       absentB, financeBNotA, preparedB, readB, financeB,
-      staleRefused, againA, financeARead: financeARead?.data?.marker,
+      staleRefused, staleARejected, staleBRejected, againA, financeARead: financeARead?.data?.marker,
       financeAUpdate, againB, financeBAgain: financeBAgain?.data?.marker,
       loggedOutRefused, financeLoggedOutRefused,
       legacyFinance: legacyFinance?.data?.marker,
@@ -122,6 +129,8 @@ try {
   assert.deepEqual(proof.readB, proof.readA)
   assert.deepEqual(proof.financeB, proof.financeA)
   assert.equal(proof.staleRefused, true)
+  assert.equal(proof.staleARejected, true)
+  assert.equal(proof.staleBRejected, true)
   assert.deepEqual(proof.againA, proof.readA)
   assert.equal(proof.financeARead, 'A-private')
   assert.deepEqual(proof.financeAUpdate, { id: 'finance-current', revision: 2 })
