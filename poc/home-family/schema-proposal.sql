@@ -222,7 +222,8 @@ begin
        v_existing.candidate<>p_candidate then
       raise exception 'operation ID reused with different content' using errcode='23505';
     end if;
-    return jsonb_build_object('status',v_existing.status,'revision',v_existing.resulting_revision);
+    return jsonb_build_object('status',v_existing.status,'revision',v_existing.resulting_revision,
+      'conflict',v_existing.status='conflict');
   end if;
   v_status:=case when v_head.revision=p_expected then 'committed' else 'conflict' end;
   v_revision:=case when v_status='committed' then v_head.revision+1 else v_head.revision end;
