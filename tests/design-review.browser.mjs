@@ -1,4 +1,4 @@
-// Grapes HTML review: this validates actual reference pages inside the eight-screen review center.
+// Grapes HTML review: this validates actual reference pages inside the eleven-screen review center.
 // No TEST/PROD runtime, no external API calls, no account credentials.
 import { chromium } from 'playwright-core';
 import { mkdirSync } from 'node:fs';
@@ -11,6 +11,9 @@ const cases=[
   ['start','candidates/main-shell-tools.html'],
   ['home','candidates/home.html'],
   ['health','approved/health-minimal.html'],
+  ['food','candidates/food.html'],
+  ['water','candidates/water.html'],
+  ['recipes','candidates/recipes.html'],
   ['plants','approved/plants-widget.html'],
   ['tools','candidates/tools.html'],
   ['ebook','candidates/ebook.html'],
@@ -24,7 +27,7 @@ try{
  page.on('pageerror',e=>errors.push('review: '+e.message));
  const res=await page.goto(root+'review.html',{waitUntil:'networkidle'});
  if(res?.status()!==200)throw Error('Review not available');
- if(await page.locator('[data-screen]').count()!==8)throw Error('Review gallery must list eight real HTML screens');
+ if(await page.locator('[data-screen]').count()!==11)throw Error('Review gallery must list eleven real HTML screens');
  for(const [name,path] of cases){
    await page.locator('[data-screen="'+name+'"]').click();
    const iframe=page.frameLocator('#screen-iframe');
@@ -37,10 +40,10 @@ try{
    let size=await page.locator('#device-viewport').evaluate(e=>({width:e.getBoundingClientRect().width,parent:e.closest('.preview-area').getBoundingClientRect().width}));
    if(size.width>size.parent+2)throw Error(name+': 320 preview overflows '+JSON.stringify(size));
    await page.locator('[data-width="390"]').click();
-   if(['home','tools','health','plants','ebook','qr','finance'].includes(name)){
+   if(['home','tools','health','plants','ebook','qr','finance','food','water','recipes'].includes(name)){
      const measured=await iframe.locator('body').evaluate((body,id)=>{
-        const nav=body.querySelector(id==='finance'?'.module-tabs':id==='ebook'||id==='qr'?'.detailNav.icon-rail':id==='health'||id==='plants'?'.grapes-six-rail':'.tabs');
-        const title=body.querySelector(id==='health'||id==='plants'?'.phone__screen>.appbar h1':id==='finance'?'.finance-view-title':id==='ebook'||id==='qr'?'.module-view-title':'.header h1');
+        const nav=body.querySelector(id==='finance'?'.module-tabs':id==='ebook'||id==='qr'?'.detailNav.icon-rail':id==='health'||id==='plants'?'.grapes-six-rail':['food','water','recipes'].includes(id)?'.hi-rail':'.tabs');
+        const title=body.querySelector(id==='health'||id==='plants'?'.phone__screen>.appbar h1':id==='finance'?'.finance-view-title':id==='ebook'||id==='qr'?'.module-view-title':['food','water','recipes'].includes(id)?'.hi-title':'.header h1');
         if(!nav||!title)return {error:'missing nav/title'};
         return {navTop:nav.getBoundingClientRect().top,titleTop:title.getBoundingClientRect().top,title:title.textContent.trim()};
      },name);
@@ -75,5 +78,5 @@ try{
  if(await mobile.locator('html').evaluate(n=>n.scrollWidth>innerWidth+2))throw Error('review center mobile horizontal overflow');
  await mobile.screenshot({path:resolve(out,'review-center-mobile.png'),animations:'disabled',fullPage:true});
  if(errors.length)throw Error(errors.join('; '));
- console.log('All eight live HTML preview screens and navigation states passed.');
+ console.log('All eleven live HTML preview screens and navigation states passed.');
 }finally{await browser.close();}
