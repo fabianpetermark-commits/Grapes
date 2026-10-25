@@ -103,6 +103,8 @@ assert.ok([401,403].includes((await rpc(B,'home_remove_member',
 assert.equal((await rpc(A,'home_remove_member',{p_household:house,p_member:B.id})).status,200)
 assert.ok([401,403].includes((await rpc(B,'home_read_household',{p_household:house})).status))
 assert.ok([401,403].includes((await rpc(B,'home_compare_and_swap',op(bId,0,{name:'B'}))).status))
+assert.ok([401,403].includes((await rpc(B,'home_compare_and_swap',op(randomUUID(),1,{name:'B after removal'}))).status),
+  'Revoked B must also lose new write privileges')
 assert.ok([401,403].includes((await rpc(A,'home_remove_member',
   {p_household:house,p_member:A.id})).status))
 console.log('PASS: viewer cannot write, owner can revoke, removed member cannot retry')
