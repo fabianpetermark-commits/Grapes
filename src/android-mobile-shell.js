@@ -9,6 +9,7 @@ import {
 import { listLocalProjects, claimLocalWaterOwner, getLocalWaterOwner } from './storage/local-project-store.js'
 import { listMobileEbooks, saveMobileReadingProgress, uploadMobileEbook } from './ebook-mobile-library.js'
 import { isMobileReadableEpub, normalizedReadingProgress, openMobileEpub } from './ebook-mobile-reader.js'
+import { openEpubContent } from './ebook/epub-content.js'
 import { createMobileFoodController } from './food/food-mobile.js'
 import { createYazioApiPanel } from './food/yazio-api-panel.js'
 import { registerFoodSharing, sendMealShare, sendRecipeShare } from './food/food-sharing-client.js'
@@ -67,6 +68,9 @@ const moduleFolders = [
   ['E-mail Stúdió', 'email', 'email'],
 ]
 let mobileEbooks = []
+// Fresh-owner E-book never borrows the legacy Drive user or local progress.
+let freshEbookPromise = null
+let freshEbookEpoch = 0
 let mobileReader = null
 let mobileReaderBook = null
 let mobileReaderChapterIndex = 0
@@ -348,6 +352,43 @@ async function openUpdateInbox() {
   openSheet($('[data-notifications-sheet]'))
 }
 
+function resetFreshEbookUi() {
+  freshEbookEpoch++
+  freshEbookPromise = null
+  mobileEbooks = []
+  mobileReader = null
+  mobileReaderBook = null
+  clearTimeout(mobileReaderSaveTimer)
+  mobileReaderSaveTimer = null
+  for (const page of ['ebook', 'reader']) {
+    const root = $('[data-page="' + page + '"]')
+    if (root) { root.inert = true; root.style.visibility = 'hidden' }
+  }
+  $('[data-ebook-books]')?.replaceChildren()
+  $('[data-ebook-featured]').hidden = true
+  $('[data-reader-page]')?.replaceChildren()
+  $('[data-reader-book]')?.replaceChildren()
+  $('[data-reader-picker]').hidden = false
+  $('[data-reader-shell]').hidden = true
+}
+
+async function freshEbook() {
+  if (!freshEbookPromise) {
+    freshEbookPromise = import('./ebook/grapes-test-fresh-ebook.js')
+      .then(module => module.openGrapesTestFreshEbook({ enabled: true }))
+  }
+  const session = await freshEbookPromise
+  await session.assertOwner()
+  return session
+}
+
+function revealFreshEbook(page, epoch) {
+  if (epoch !== freshEbookEpoch || activePage !== page) return false
+  const root = $('[data-page="' + page + '"]')
+  if (root) { root.inert = false; root.style.visibility = '' }
+  return true
+}
+
 function showPage(page, { parent = '', entry = '', skipFoodLoad = false } = {}) {
   if (FRESH_OWNER_MODULES && page === 'food' && !skipFoodLoad) {
     // Hide the previous user's DOM before the asynchronous native Auth check.
@@ -357,9 +398,14 @@ function showPage(page, { parent = '', entry = '', skipFoodLoad = false } = {}) 
   // With the opt-in fresh owner gate ON, legacy modules MUST NOT be opened:
   // their local/Drive data paths are not yet bound to native Grapes Auth.
   if (FRESH_OWNER_MODULES &&
-      ['ebook', 'reader', 'transfer', 'household'].includes(page)) {
+      ['transfer', 'household'].includes(page)) {
     showToast('Ez a modul a fiókonkénti TEST-átállításig zárolva van.')
     return
+  }
+  if (FRESH_OWNER_MODULES && ['ebook', 'reader'].includes(page)) {
+    // Erase the previous account's book and reader DOM before native Auth.
+    if (activePage === 'reader' && page !== 'reader') persistReaderProgress().catch(() => {})
+    resetFreshEbookUi()
   }
   // Remember only the menu origin. Reader/transfer views inherit E-book's origin.
   if (!['reader', 'transfer'].includes(page) || parent) {
@@ -428,6 +474,7 @@ async function openModule(module, project = null, view = '', itemId = '', action
 }
 
 function openEbook(bookId = '', view = 'organizer') {
+  if (FRESH_OWNER_MODULES) return startReader(bookId)
   try {
     sessionStorage.setItem('grapes-ebook-view', view)
     if (bookId) sessionStorage.setItem('grapes-ebook-open-book', bookId)
@@ -456,7 +503,9 @@ function renderEbookCards(books) {
   const featured = $('[data-ebook-featured]')
   grid.replaceChildren()
   if (!books.length) {
-    grid.innerHTML = `<div class="ebook-empty">${isGrapesDriveConnected() ? 'A Grapes Drive-könyvtár még üres. Importálj egy könyvet!' : 'A könyvtárhoz csatlakoztasd a Google Drive-ot a Szinkron oldalon.'}</div>`
+    grid.innerHTML = `<div class="ebook-empty">${FRESH_OWNER_MODULES
+      ? 'A saját könyvtárad még üres. Adj hozzá egy helyi könyvet!'
+      : isGrapesDriveConnected() ? 'A Grapes Drive-könyvtár még üres. Importálj egy könyvet!' : 'A könyvtárhoz csatlakoztasd a Google Drive-ot a Szinkron oldalon.'}</div>`
     featured.hidden = true
     return
   }
@@ -489,32 +538,56 @@ function renderEbookCards(books) {
 }
 
 async function renderMobileEbooks() {
+  const epoch = freshEbookEpoch
   const status = $('[data-ebook-status]')
-  status.textContent = isGrapesDriveConnected() ? 'Drive-könyvtár frissítése…' : ''
+  status.textContent = FRESH_OWNER_MODULES ? 'Saját helyi könyvtár betöltése…'
+    : isGrapesDriveConnected() ? 'Drive-könyvtár frissítése…' : ''
   try {
-    const books = await listMobileEbooks()
+    const books = FRESH_OWNER_MODULES ? await (await freshEbook()).listBooks()
+      : await listMobileEbooks()
+    if (FRESH_OWNER_MODULES && (epoch !== freshEbookEpoch || activePage !== 'ebook')) return
+    if (FRESH_OWNER_MODULES) await (await freshEbook()).assertOwner()
+    if (FRESH_OWNER_MODULES && epoch !== freshEbookEpoch) return
     mobileEbooks = books
     renderEbookCards(books)
     status.textContent = ''
   } catch (error) {
+    if (FRESH_OWNER_MODULES && epoch !== freshEbookEpoch) return
+    mobileEbooks = []
     renderEbookCards([])
     status.textContent = `A könyvtár nem tölthető be. ${error?.message || ''}`
+  } finally {
+    if (FRESH_OWNER_MODULES) revealFreshEbook('ebook', epoch)
   }
 }
 
 async function importMobileEbook(file) {
   if (!file) return
+  const epoch = freshEbookEpoch
   const status = $('[data-ebook-status]')
-  status.textContent = `${file.name} feltöltése…`
+  status.textContent = `${file.name} ${FRESH_OWNER_MODULES ? 'helyi mentése' : 'feltöltése'}…`
   try {
-    const books = await uploadMobileEbook(file)
+    let books
+    if (FRESH_OWNER_MODULES) {
+      const session = await freshEbook()
+      await session.importLocalFile(file)
+      books = await session.listBooks()
+      await session.assertOwner()
+    } else books = await uploadMobileEbook(file)
+    if (FRESH_OWNER_MODULES && epoch !== freshEbookEpoch) return
     mobileEbooks = books
     renderEbookCards(books)
-    status.textContent = `${file.name} hozzáadva a Drive-könyvtárhoz.`
-  } catch (error) { status.textContent = `A feltöltés nem sikerült. ${error?.message || ''}` }
+    status.textContent = FRESH_OWNER_MODULES
+      ? `${file.name} mentve a saját helyi könyvtárba.`
+      : `${file.name} hozzáadva a Drive-könyvtárhoz.`
+  } catch (error) {
+    if (FRESH_OWNER_MODULES && epoch !== freshEbookEpoch) return
+    status.textContent = `A mentés nem sikerült. ${error?.message || ''}`
+  }
 }
 
 async function ensureMobileEbooks() {
+  if (FRESH_OWNER_MODULES) return (await freshEbook()).listBooks()
   if (!isGrapesDriveConnected()) return []
   if (!mobileEbooks.length) mobileEbooks = await listMobileEbooks()
   return mobileEbooks
@@ -530,11 +603,16 @@ function fillBookSelect(select, books, { readableOnly = false } = {}) {
 }
 
 async function renderReaderPicker() {
+  const epoch = freshEbookEpoch
   const status = $('[data-reader-status]')
   try {
     status.dataset.kind = ''
-    status.textContent = isGrapesDriveConnected() ? 'EPUB-könyvek betöltése…' : 'Az Olvasóhoz csatlakoztasd a Google Drive-ot a Szinkron oldalon.'
+    status.textContent = FRESH_OWNER_MODULES ? 'Saját EPUB-könyvek betöltése…'
+      : isGrapesDriveConnected() ? 'EPUB-könyvek betöltése…' : 'Az Olvasóhoz csatlakoztasd a Google Drive-ot a Szinkron oldalon.'
     const books = await ensureMobileEbooks()
+    if (FRESH_OWNER_MODULES && (epoch !== freshEbookEpoch || activePage !== 'reader')) return
+    if (FRESH_OWNER_MODULES) await (await freshEbook()).assertOwner()
+    if (FRESH_OWNER_MODULES && epoch !== freshEbookEpoch) return
     const readable = books.filter(isMobileReadableEpub)
     fillBookSelect($('[data-reader-book]'), books, { readableOnly: true })
     if (!mobileReader) {
@@ -544,7 +622,13 @@ async function renderReaderPicker() {
       if (recent) $('[data-reader-book]').value = recent.id
     }
     status.textContent = readable.length ? '' : (books.length ? 'A könyvtárban még nincs EPUB-formátumú könyv.' : status.textContent)
-  } catch (error) { status.textContent = `Az EPUB-lista nem tölthető be. ${error?.message || ''}`; status.dataset.kind = 'error' }
+  } catch (error) {
+    if (FRESH_OWNER_MODULES && epoch !== freshEbookEpoch) return
+    status.textContent = `Az EPUB-lista nem tölthető be. ${error?.message || ''}`
+    status.dataset.kind = 'error'
+  } finally {
+    if (FRESH_OWNER_MODULES) revealFreshEbook('reader', epoch)
+  }
 }
 
 function readerProgressSnapshot() {
@@ -571,7 +655,13 @@ async function persistReaderProgress() {
   mobileReaderSaveTimer = null
   if (!mobileReader || !mobileReaderBook) return
   const value = readerProgressSnapshot()
-  mobileReaderBook.reading = await saveMobileReadingProgress(mobileReaderBook, value)
+  const epoch = freshEbookEpoch
+  const book = mobileReaderBook
+  const reading = FRESH_OWNER_MODULES
+    ? await (await freshEbook()).saveReadingProgress(book.id, value)
+    : await saveMobileReadingProgress(book, value)
+  if (FRESH_OWNER_MODULES && epoch !== freshEbookEpoch) return
+  book.reading = reading
   updateReaderProgress()
 }
 
@@ -579,7 +669,9 @@ function scheduleReaderProgressSave() {
   updateReaderProgress()
   window.clearTimeout(mobileReaderSaveTimer)
   mobileReaderSaveTimer = window.setTimeout(() => persistReaderProgress().catch(error => {
-    const status = $('[data-reader-status]'); status.textContent = `A haladás helyben megmaradt, de a Drive-szinkron nem sikerült. ${error?.message || ''}`; status.dataset.kind = 'error'
+    const status = $('[data-reader-status]'); status.textContent = FRESH_OWNER_MODULES
+      ? `A helyi olvasási pozíció mentése nem sikerült. ${error?.message || ''}`
+      : `A haladás helyben megmaradt, de a Drive-szinkron nem sikerült. ${error?.message || ''}`; status.dataset.kind = 'error'
   }), 1200)
 }
 
@@ -601,14 +693,29 @@ async function showReaderChapter(index, progress = 0) {
 
 async function startReader(bookId) {
   showPage('reader')
+  const epoch = freshEbookEpoch
   const status = $('[data-reader-status]')
   try {
     const books = await ensureMobileEbooks()
+    if (FRESH_OWNER_MODULES && epoch !== freshEbookEpoch) return
     const book = books.find(item => item.id === bookId)
-    if (!book) throw new Error('A kiválasztott könyv már nem található a Drive-könyvtárban.')
+    if (!book) throw new Error('A kiválasztott könyv már nem található a saját könyvtárban.')
     if (!isMobileReadableEpub(book)) throw new Error('Az alkalmazáson belüli Olvasó jelenleg csak EPUB-könyvet támogat.')
-    status.textContent = `${book.title} letöltése és ellenőrzése…`; status.dataset.kind = ''
-    mobileReader = await openMobileEpub(book)
+    status.textContent = `${book.title} ${FRESH_OWNER_MODULES ? 'megnyitása' : 'letöltése'} és ellenőrzése…`
+    status.dataset.kind = ''
+    let reader
+    if (FRESH_OWNER_MODULES) {
+      const session = await freshEbook()
+      const blob = await session.readFile(book.id)
+      const epub = await openEpubContent(blob)
+      await session.assertOwner()
+      reader = { book, title: epub.title || book.title || book.name,
+        chapters: epub.chapters.map((chapter, index) => ({
+          id: chapter.id, title: chapter.title, index,
+        })), getChapter: id => epub.getReadingChapter(id) }
+    } else reader = await openMobileEpub(book)
+    if (FRESH_OWNER_MODULES && epoch !== freshEbookEpoch) return
+    mobileReader = reader
     mobileReaderBook = book
     $('[data-reader-title]').textContent = book.title
     $('[data-reader-author]').textContent = book.author || 'EPUB'
@@ -622,12 +729,17 @@ async function startReader(bookId) {
     const matching = mobileReader.chapters.findIndex(chapter => chapter.id === saved.chapterId)
     const index = matching >= 0 ? matching : Math.min(mobileReader.chapters.length - 1, Number(saved.chapterIndex) || 0)
     await showReaderChapter(index, saved.chapterProgress || 0)
-    status.textContent = saved.updatedAt ? 'A Drive-on mentett olvasási pozíció visszaállítva.' : (changedSinceReading ? 'A könyv megváltozott, ezért az olvasás az elejéről indul.' : '')
+    status.textContent = saved.updatedAt
+      ? (FRESH_OWNER_MODULES ? 'Saját helyi olvasási pozíció visszaállítva.' : 'A Drive-on mentett olvasási pozíció visszaállítva.')
+      : (changedSinceReading ? 'A könyv megváltozott, ezért az olvasás az elejéről indul.' : '')
     status.dataset.kind = saved.updatedAt ? 'success' : ''
   } catch (error) {
+    if (FRESH_OWNER_MODULES && epoch !== freshEbookEpoch) return
     mobileReader = null; mobileReaderBook = null
     $('[data-reader-picker]').hidden = false; $('[data-reader-shell]').hidden = true
     status.textContent = error?.message || 'Az EPUB nem nyitható meg.'; status.dataset.kind = 'error'
+  } finally {
+    if (FRESH_OWNER_MODULES) revealFreshEbook('reader', epoch)
   }
 }
 
@@ -1753,6 +1865,12 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
     updateHomeGreeting()
     refreshUpdateInbox().catch(() => {})
+    if (FRESH_OWNER_MODULES && ['ebook', 'reader'].includes(activePage)) {
+      const page = activePage
+      resetFreshEbookUi()
+      if (page === 'ebook') renderMobileEbooks().catch(() => {})
+      else renderReaderPicker().catch(() => {})
+    }
     if (FRESH_OWNER_MODULES && activePage === 'food') {
       // Native login may have changed while this WebView was backgrounded:
       // hide old UI first, then revalidate Grapes Auth and reload only own Food.
