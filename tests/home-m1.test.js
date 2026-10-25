@@ -16,11 +16,13 @@ test('H-01 listaelem tervezett, készlet változatlan', () => {
   assert.equal(state.shopping[0].status, 'planned')
   assert.equal(state.inventory.length, 0)
 })
-test('H-02 kipipálás nem ír készletet', () => {
+test('H-02 kipipálás egyszer, atomikusan növeli a készletet', () => {
   let state = command(createHomeState(), 'ShoppingItemAdded', { name: 'Csirkemell', quantity: 1, unit: 'kg' }).state
   state = command(state, 'ShoppingItemStatusChanged', { id: state.shopping[0].id, status: 'checked' }).state
   assert.equal(state.shopping[0].status, 'checked')
-  assert.equal(state.inventory.length, 0)
+  assert.equal(state.inventory.length, 1)
+  assert.equal(state.inventory[0].quantityBase, 1000)
+  assert.equal(state.inventory[0].storageLocation, 'untracked')
 })
 test('H-03 megerősített 1 kg bevételezés egy 1000 g lot és esemény', () => {
   const state = stock()
