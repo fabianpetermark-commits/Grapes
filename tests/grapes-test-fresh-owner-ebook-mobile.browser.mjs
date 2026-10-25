@@ -60,6 +60,9 @@ try {
   const page = await ctx.newPage()
   const errors = []
   page.on('pageerror', error => errors.push(error.message))
+  page.on('console', message => {
+    if (message.text().startsWith('EBOOK_TRACE_')) console.log(message.text())
+  })
   const epub = await makeEpub()
   await page.goto(base + 'design/android-mobile-preview.html')
   const shelf = page.locator('[data-page="ebook"]')
