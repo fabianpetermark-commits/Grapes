@@ -111,3 +111,31 @@
   background:#17222e; border:1px solid #314654; border-radius:12px;
   font-size:14px; font-weight:550; color:#f2f7fb; }
 .household-forecast-amount input:focus-visible { outline:2px solid #3bdcf2; outline-offset:2px; }
+
+/* UX freeze: everyday paths stay visible; rare tasks are progressive disclosure. */
+[data-household-root] nav[data-household-tabs] { margin: 8px 0 15px; }
+[data-household-root] nav[data-household-tabs] .household-tabs { margin: 0 0 4px; gap: 4px; }
+[data-household-root] nav[data-household-tabs] .household-tabs button {
+  flex: 1 1 0; min-width:0; padding:10px 5px; font-size:13px; border-radius:11px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+[data-household-root] .household-extra-nav { margin:0 3px 6px; color:#94a5b8; font-size:12px; }
+[data-household-root] .household-extra-nav summary {
+  cursor:pointer; padding:9px 8px; border-radius:10px; list-style-position:inside;
+  min-height:38px; display:list-item; }
+[data-household-root] .household-extra-nav summary:focus-visible,
+[data-household-root] .household-completed summary:focus-visible {
+  outline:2px solid #3bdcf2; outline-offset:2px; }
+[data-household-root] .household-extra-actions { display:flex; flex-wrap:wrap; gap:8px; padding:4px 0 9px; }
+[data-household-root] .household-extra-actions button {
+  flex:1 1 120px; min-height:44px; color:#dce8ef; background:#101821;
+  border-color:#314453; font-size:13px; }
+[data-household-root] .household-extra-actions button.is-active { color:#041014; background:#3bdcf2; }
+[data-household-root] .household-completed { margin:10px 0 0; padding:0 11px;
+  background:#101821; border:1px solid #293e4c; border-radius:15px; }
+[data-household-root] .household-completed summary { min-height:44px; display:list-item; cursor:pointer;
+  padding:14px 4px; color:#cbd8e3; font-size:13px; font-weight:650; }
+[data-household-root] .household-completed-rows { border-top:1px solid #243343; padding:2px 0 9px; }
+[data-household-root] .household-completed-rows .household-card { background:#17222e; margin:8px 0; }
+@media(max-width:359px) {
+  [data-household-root] nav[data-household-tabs] .household-tabs button { font-size:12px; padding:10px 3px; }
+}
