@@ -33,3 +33,67 @@
 .household-actions button { flex: 1 1 120px; }
 .household-undo { width: 100%; margin-top: 12px; }
 @media (max-width: 359px) { .household-toolbar { grid-template-columns: 1fr; } .household-card-actions button { flex-basis: 110px; } }
+
+
+/* Home replenishment v1.2 — tiny cyan edge segments only, no full-card neon glow. */
+.household-replenishment-intro { background:#101821; border:1px solid #293e4c; border-radius:19px;
+  padding:16px; position:relative; overflow:hidden; margin:9px 0 14px; }
+.household-replenishment-intro::before { content:""; position:absolute; top:-1px; left:17px;
+  width:43%; height:1px; background:linear-gradient(90deg,#3bdcf2dd,#3bdcf244,transparent);
+  box-shadow:0 0 4px #3bdcf238; pointer-events:none; }
+.household-replenishment-intro strong { font-size:17px; color:#f2f7fb; }
+.household-replenishment-intro p,.household-replenishment-muted { color:#94a5b8;
+  font-size:13px; line-height:1.55; margin:9px 0 0; }
+.household-list-nav { display:grid; grid-template-columns:minmax(0,1fr) auto;
+  gap:9px; align-items:end; margin:10px 0 15px; }
+.household-list-nav label,.household-replenishment-move label,.household-list-create label {
+  display:grid; gap:6px; min-width:0; font-size:12px; color:#94a5b8; }
+.household-list-nav select,.household-replenishment-move select,
+.household-list-create input { min-height:46px; min-width:0; width:100%; border-radius:12px;
+  padding:10px; background:#17222e; border:1px solid #314654; color:#f2f7fb; }
+.household-list-create { display:flex; flex-wrap:wrap; align-items:end; gap:8px; padding:12px;
+  margin:8px 0 14px; background:#101821; border:1px solid #293e4c; border-radius:14px; }
+.household-list-create label { flex:1 1 100%; }
+.household-proposal { display:flex; align-items:center; gap:10px;
+  margin:9px 0; padding:11px 10px 11px 14px; border-radius:17px;
+  border:1px solid #293e4c; background:#101821; min-width:0; position:relative; isolation:isolate; }
+.household-proposal::before { content:""; position:absolute; left:16px; top:-1px;
+  height:1px; width:40%; background:linear-gradient(90deg,#3bdcf2bb,#3bdcf233,transparent);
+  box-shadow:0 0 4px #3bdcf229; pointer-events:none; }
+.household-proposal-check { display:flex; align-items:center; gap:12px; flex:1;
+  min-width:0; cursor:pointer; }
+.household-proposal-check input[type="checkbox"] { flex:none; width:21px; height:21px;
+  min-height:21px; accent-color:#3bdcf2; }
+.household-proposal-copy { display:grid; gap:5px; min-width:0; }
+.household-proposal-copy strong { font-size:14px; overflow-wrap:anywhere; color:#f2f7fb; }
+.household-proposal-copy small { font-size:12px; color:#94a5b8; line-height:1.45; }
+[data-household-root] button.household-proposal-dismiss { flex:0 0 44px; width:44px;
+  height:44px; min-height:44px; padding:0; border:1px solid #7d3f4b;
+  border-radius:13px; background:#321d27; color:#f28b8b; font-size:22px;
+  line-height:1; font-weight:600; }
+[data-household-root] button.household-proposal-dismiss:hover { background:#432630; }
+.household-replenishment-move { display:grid; grid-template-columns:minmax(0,1fr) auto;
+  align-items:end; gap:8px; margin:17px 0; }
+[data-household-root] [data-household-move-selected] {
+  background:#173843; border-color:#468995; color:#aaf2fa; min-height:46px; }
+[data-household-root] [data-household-move-selected]:disabled { opacity:.55; cursor:not-allowed; }
+.household-replenishment-history { border-top:1px solid #243343; margin-top:12px;
+  padding-top:14px; color:#94a5b8; font-size:13px; }
+.household-replenishment-history summary { cursor:pointer; padding:8px 0; font-weight:650; }
+.household-proposal-history { display:flex; align-items:center;
+  justify-content:space-between; gap:9px; border-bottom:1px solid #243343;
+  padding:11px 0; }
+.household-proposal-history span { display:grid; gap:5px; min-width:0; }
+.household-proposal-history strong { font-size:13px; color:#e0eaf0; }
+.household-proposal-history small { color:#94a5b8; font-size:12px; }
+.household-proposal-history button { flex-shrink:0; font-size:12px; }
+[data-household-root] .household-advanced { color:#94a5b8; font-size:12px; margin:8px 0 14px; }
+[data-household-root] .household-advanced summary { cursor:pointer; padding:10px 0; }
+@media(max-width:360px) {
+ .household-list-nav,.household-replenishment-move { grid-template-columns:1fr; }
+ .household-list-nav button,.household-replenishment-move button { width:100%; }
+ .household-proposal { padding-left:11px; }
+}
+@media(prefers-reduced-motion:reduce) {
+ .household-proposal,.household-replenishment-intro { scroll-behavior:auto; }
+}

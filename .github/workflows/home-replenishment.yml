@@ -1,0 +1,78 @@
+name: Home TEST replenishment suggestions and named lists (NO RELEASE)
+
+on:
+  push:
+    branches:
+      - feature/grapes-test-home-replenishment-lists-20261025
+
+concurrency:
+  group: grapes-home-replenishment-20261025
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  web-domain:
+    name: Shared Home privacy and offline conflict contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
+      VITE_GOOGLE_APP_ID: 991532871119
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GRAPES_TEST_AUTH_ENABLED: 'true'
+      VITE_GRAPES_TEST_FRESH_OWNER_MODULES_ENABLED: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build:android-web
+      - run: node tests/grapes-test-fresh-owner-home.browser.mjs
+      - run: node tests/grapes-test-fresh-owner-home-mobile.browser.mjs
+      - run: node tests/home-replenishment-mobile.browser.mjs
+      - run: VITE_GRAPES_TEST_FRESH_OWNER_MODULES_ENABLED=false node tests/android-home-mobile.browser.mjs
+
+  ephemeral-supabase:
+    name: Three real LOCAL Supabase Auth users and security permissions
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.81.3
+      - name: Start isolated local Supabase with API schema
+        env:
+          GRAPES_SUPABASE_LOCAL_DIR: ${{ runner.temp }}/grapes-m3b-${{ github.run_id }}
+        run: |
+          mkdir -p "$GRAPES_SUPABASE_LOCAL_DIR"
+          cd "$GRAPES_SUPABASE_LOCAL_DIR"
+          supabase init
+          node "$GITHUB_WORKSPACE/poc/supabase-phase2/ci/prepare-config.mjs"
+          supabase migration new home_m3b_api_bootstrap
+          migration=$(find supabase/migrations -name '*_home_m3b_api_bootstrap.sql' -print -quit)
+          test -n "$migration"
+          printf 'create schema if not exists api;\n' > "$migration"
+          supabase start
+          if ! command -v psql >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y postgresql-client
+          fi
+      - name: Create synthetic accounts and verify M3B family RLS/Auth/CAS
+        env:
+          GRAPES_SUPABASE_LOCAL_DIR: ${{ runner.temp }}/grapes-m3b-${{ github.run_id }}
+        run: node poc/home-m3b/ci/verify-local.mjs
+      - name: Inspect local SQL security advisors
+        env:
+          GRAPES_SUPABASE_LOCAL_DIR: ${{ runner.temp }}/grapes-m3b-${{ github.run_id }}
+        run: |
+          cd "$GRAPES_SUPABASE_LOCAL_DIR"
+          supabase db advisors --local

@@ -40,7 +40,7 @@ export function validateHomeState(state) {
     if (!lot.id || lot.householdId !== state.householdId || !lot.name || !LOCATIONS.includes(lot.storageLocation) || lot.evidenceStatus !== 'confirmed' || !lot.originEventId || !lot.sourceType || !lot.observedAt || !lot.updatedAt || !UNITS[lot.displayUnit] || lot.dimension !== UNITS[lot.displayUnit][0] || !Number.isSafeInteger(lot.quantityBase) || lot.quantityBase < 0 || (lot.expiryDate && !lot.expiryKind) || (lot.expiryKind && !['bestBefore', 'useBy'].includes(lot.expiryKind))) fail('Sérült vagy inkompatibilis készlettétel.')
   }
   for (const item of state.shopping) {
-    if (!item.id || item.householdId !== state.householdId || !item.name || !['planned', 'checked', 'deferred'].includes(item.status) || !item.updatedAt || (item.quantityBase == null && item.displayUnit != null) || (item.quantityBase != null && (!Number.isSafeInteger(item.quantityBase) || item.quantityBase < 0 || !UNITS[item.displayUnit] || item.dimension !== UNITS[item.displayUnit][0]))) fail('Sérült bevásárlólista-tétel.')
+    if (!item.id || item.householdId !== state.householdId || !item.name || (item.listId != null && (typeof item.listId !== 'string' || !/^[a-z0-9][a-z0-9-]{0,80}$/.test(item.listId))) || !['planned', 'checked', 'deferred'].includes(item.status) || !item.updatedAt || (item.quantityBase == null && item.displayUnit != null) || (item.quantityBase != null && (!Number.isSafeInteger(item.quantityBase) || item.quantityBase < 0 || !UNITS[item.displayUnit] || item.dimension !== UNITS[item.displayUnit][0]))) fail('Sérült bevásárlólista-tétel.')
   }
   for (const lot of state.prepared) {
     if (!lot.id || lot.householdId !== state.householdId || !lot.name || !lot.cookingEventId || !LOCATIONS.includes(lot.storageLocation) || !Number.isSafeInteger(lot.portionsRemaining) || lot.portionsRemaining < 0 || !lot.confirmedAt || (lot.portionUnit && !['serving', 'slice', 'piece'].includes(lot.portionUnit)) || (lot.recipeRef != null && typeof lot.recipeRef !== 'string')) fail('Sérült készétel-tétel.')
@@ -167,7 +167,9 @@ export function applyHomeCommand(current, command) {
     const id = payload.id || uuid()
     if (record(state, 'shopping', id)) fail('A listaelem már létezik.')
     const q = payload.quantity === '' || payload.quantity == null ? { quantityBase: null, dimension: null, displayUnit: null } : quantity(payload.quantity, payload.unit)
-    changes = [change('shopping', null, { id, householdId: state.householdId, name: cleanName(payload.name), ...q, status: 'planned', sourceType: 'manual', updatedAt: stamp })]
+    const listId = payload.listId || 'main'
+    if (typeof listId !== 'string' || !/^[a-z0-9][a-z0-9-]{0,80}$/.test(listId)) fail('Érvénytelen bevásárlólista.')
+    changes = [change('shopping', null, { id, householdId: state.householdId, name: cleanName(payload.name), ...q, listId, status: 'planned', sourceType: 'manual', updatedAt: stamp })]
   } else if (type === 'ShoppingItemEdited') {
     if (!item) fail('A listaelem nem található.')
     const q = payload.quantity === '' || payload.quantity == null ? { quantityBase: null, dimension: null, displayUnit: null } : quantity(payload.quantity, payload.unit)
