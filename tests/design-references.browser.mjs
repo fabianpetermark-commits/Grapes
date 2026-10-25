@@ -12,6 +12,9 @@ const previews = [
   { path: 'candidates/main-shell-tools.html', name: 'main-shell-tools-proposed' },
   { path: 'candidates/home.html', name: 'home-proposed' },
   { path: 'candidates/tools.html', name: 'tools-proposed' },
+  { path: 'candidates/food.html', name: 'food-inner-proposed' },
+  { path: 'candidates/water.html', name: 'water-inner-proposed' },
+  { path: 'candidates/recipes.html', name: 'recipes-inner-proposed' },
   { path: 'candidates/finance.html', name: 'finance-proposed' },
   { path: 'candidates/ebook.html', name: 'ebook-proposed' },
   { path: 'candidates/qr.html', name: 'qr-proposed' },
@@ -51,7 +54,8 @@ try {
           ? '#rail' : item.path.includes('finance.html')
           ? '.module-tabs' : ['approved/health-minimal.html','approved/plants-widget.html'].includes(item.path)
           ? '.grapes-six-rail' : item.path.includes('ebook.html') || item.path.includes('qr.html')
-          ? '.detailNav.icon-rail' : '.tabs';
+          ? '.detailNav.icon-rail' : ['candidates/food.html','candidates/water.html','candidates/recipes.html'].includes(item.path)
+          ? '.hi-rail' : '.tabs';
         const info = await page.locator(selector).evaluate(nav => {
           const controls = [...nav.querySelectorAll('button,a')];
           const rail = getComputedStyle(nav);
@@ -69,6 +73,60 @@ try {
             info.visibleCaptions || info.labels.some(label=>!label) || info.radius < 19) {
           throw new Error('Bad 6-icon Grapes rail on '+item.path+': '+JSON.stringify(info));
         }
+      }
+
+      // Food/Water/Recipes share the approved Health Quick Action: 3 in pill + separate scan.
+      if (['candidates/food.html','candidates/water.html','candidates/recipes.html'].includes(item.path)) {
+        const dock=page.locator('.hi-dock');
+        const layout=await dock.evaluate(el=>{
+          const buttons=[...el.querySelectorAll('button')];
+          return {fixed:getComputedStyle(el).position==='fixed',count:buttons.length,
+                  named:buttons.every(b=>Boolean(b.getAttribute('aria-label'))),
+                  height:buttons.map(b=>Math.round(b.getBoundingClientRect().height))};
+        });
+        if(!layout.fixed||layout.count!==4||!layout.named||layout.height.some(h=>h<44))
+          throw Error(item.path+': Health Quick Action contract '+JSON.stringify(layout));
+        const extra=await page.evaluate(()=>Array.from(document.querySelectorAll('a,button')).filter(e=>/^(vissza|home|főmenü)$/i.test((e.getAttribute('aria-label')||'').trim())).length);
+        if(extra)throw Error(item.path+': forbidden redundant Back/Home control');
+      }
+      if (item.path === 'candidates/food.html' && width === 390) {
+        await page.locator('[data-meal="Reggeli"]').click();
+        await page.locator('#hi-meal-name').fill('Teszt zabkása');
+        await page.locator('#hi-meal-kcal').fill('200');
+        await page.getByRole('button',{name:'Hozzáadás'}).last().click();
+        if(!(await page.locator('#food-items').innerText()).includes('Teszt zabkása'))
+          throw Error('Food in-memory meal add failed');
+        if(!(await page.locator('#food-total').innerText()).includes('1 620')&&!(await page.locator('#food-total').innerText()).includes('1620'))
+          throw Error('Food progress not updated');
+        await page.locator('[data-scan]').last().click();
+        if(!(await page.locator('#hi-dialog-title').innerText()).includes('Vonalkód'))
+          throw Error('Food scanner preview missing');
+        await page.locator('#hi-dialog-close').click();
+      }
+      if (item.path === 'candidates/water.html' && width === 390) {
+        const before=await page.locator('#water-total').innerText();
+        await page.locator('[data-water-add="250"]').click();
+        const after=await page.locator('#water-total').innerText();
+        if(before===after)throw Error('Water quick add did not update');
+        await page.locator('#water-goal-edit').click();
+        await page.locator('#hi-new-goal').fill('2400');
+        await page.getByRole('button',{name:'Mentés'}).click();
+        if(!(await page.locator('#water-goal-value').innerText()).includes('2 400'))
+          throw Error('Water goal demo update failed');
+      }
+      if (item.path === 'candidates/recipes.html' && width === 390) {
+        await page.locator('#recipe-search').fill('quark');
+        if((await page.locator('#recipe-grid .hi-recipe').count())!==1)
+          throw Error('Recipe filtering failed');
+        await page.locator('#new-recipe').click();
+        await page.locator('[data-editor-tab="4"]').click();
+        if(!(await page.locator('[data-editor-pane="4"]').isVisible()))throw Error('Recipe import tab not visible');
+        await page.locator('[data-editor-tab="0"]').click();
+        await page.locator('#hi-recipe-name').fill('Teszt recept');
+        await page.getByRole('button',{name:'Mentés a mintába'}).click();
+        await page.locator('#recipe-search').fill('Teszt');
+        if(!(await page.locator('#recipe-grid').innerText()).includes('Teszt recept'))
+          throw Error('Recipe editor demo save failed');
       }
       if (item.path === 'candidates/home.html' && width === 390) {
         await page.locator('[data-check]').first().check();
