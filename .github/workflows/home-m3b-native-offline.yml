@@ -1,0 +1,55 @@
+name: Home M3B native bridge and durable offline queue (NO RELEASE)
+
+on:
+  push:
+    branches:
+      - feature/grapes-test-home-m3b-native-offline-20261025
+
+permissions:
+  contents: read
+
+jobs:
+  web-and-outbox:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
+      VITE_GOOGLE_APP_ID: 991532871119
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GRAPES_TEST_AUTH_ENABLED: 'true'
+      VITE_GRAPES_TEST_FRESH_OWNER_MODULES_ENABLED: 'true'
+      VITE_GRAPES_TEST_HOME_FAMILY_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build:android-web
+      - run: node tests/grapes-test-fresh-owner-home.browser.mjs
+      - run: node tests/grapes-test-fresh-owner-home-mobile.browser.mjs
+      - run: node tests/home-m3b-family-outbox.browser.mjs
+
+  android-native-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      VITE_GRAPES_TEST_HOME_FAMILY_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android platform
+        run: |
+          sdkmanager=$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | sort -V | tail -1)
+          test -n "$sdkmanager"
+          "$sdkmanager" "platforms;android-36" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.11.1
+      - name: Test native bearer whitelist and compile disabled-by-default QA
+        run: gradle --project-dir android-health-connect-poc :app:testQaUnitTest :app:assembleQa
