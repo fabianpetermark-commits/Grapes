@@ -1,0 +1,78 @@
+name: Grapes TEST native owner Health nutrition (NO RELEASE)
+
+on:
+  push:
+    branches:
+      - feature/grapes-test-fresh-owner-health-nutrition-20261025
+  pull_request:
+    branches:
+      - feature/grapes-test-fresh-owner-home-20261025
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-test-fresh-health-nutrition-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  health-owner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GRAPES_TEST_AUTH_ENABLED: 'true'
+      VITE_GRAPES_TEST_FRESH_OWNER_MODULES_ENABLED: 'true'
+      VITE_GRAPES_TEST_DATA_ENABLED: 'false'
+      VITE_GRAPES_TEST_FOOD_SYNTHETIC_ENABLED: 'false'
+      VITE_GRAPES_TEST_HEALTH_SYNC_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: All unit tests (including Health owner preview)
+        run: npm test
+      - name: Explicit Health owner unit tests
+        run: node --test tests/grapes-test-fresh-health-nutrition.test.js
+      - name: Build Android TEST WebView (NO APK)
+        run: npm run build:android-web
+      - name: Locate Chromium
+        run: |
+          if command -v google-chrome >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            npx playwright-core install --with-deps chromium
+            browser=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path '*chrome-linux*' | head -1)
+            test -n "$browser"
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$browser" >> "$GITHUB_ENV"
+          fi
+      - name: Native Health Connect Food import A-B-A UI
+        run: node tests/grapes-test-fresh-health-nutrition-mobile.browser.mjs
+      - name: Home inventory shopping A-B-A UI
+        run: node tests/grapes-test-fresh-owner-home-mobile.browser.mjs
+      - name: Home owner event log A-B-A
+        run: node tests/grapes-test-fresh-owner-home.browser.mjs
+      - name: E-book reader A-B-A
+        run: node tests/grapes-test-fresh-owner-ebook-mobile.browser.mjs
+      - name: Food owner mobile A-B-A
+        run: node tests/grapes-test-fresh-owner-food-mobile.browser.mjs
+      - name: Finance A-B-A
+        run: node tests/grapes-test-fresh-owner-finance.browser.mjs
+      - name: Water A-B-A
+        run: node tests/grapes-test-fresh-owner-water-projects.browser.mjs
+      - name: E-book owner library A-B-A
+        run: node tests/grapes-test-fresh-owner-ebook.browser.mjs
+      - name: Food owner core A-B-A
+        run: node tests/grapes-test-fresh-owner-food.browser.mjs
+      - name: Owner partition and legacy preservation
+        run: |
+          node tests/grapes-test-local-owner-store.browser.mjs
+          node tests/grapes-test-legacy-unclaimed-backup.browser.mjs
