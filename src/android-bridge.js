@@ -155,6 +155,59 @@ export async function saveAndroidVerifiedHealthBackup(prepared) {
   }
 }
 
+/**
+ * TEST-only, user-picked UNCLAIMED legacy backup. Not called by normal UI.
+ * The native Android app validates its own signed QA feature flag, trusted
+ * app origin and pinned Auth owner, then REOPENS the chosen SAF document for
+ * an independent SHA-256 / byte-for-byte verification against staging.
+ * Do not use this receipt to infer data ownership or authorize migration.
+ */
+export async function saveAndroidVerifiedUnclaimedBackup(prepared) {
+  const { filename, json, sha256, bytes, manifest } = prepared || {}
+  if (!/^grapes-helyi-adatok-\d{4}-\d{2}-\d{2}\.json$/.test(filename || '') ||
+      typeof json !== 'string' ||
+      !Number.isSafeInteger(bytes) || bytes < 1 || bytes > 80 * 1024 * 1024 ||
+      !/^[a-f0-9]{64}$/.test(sha256 || '') || !Array.isArray(manifest) ||
+      new TextEncoder().encode(json).byteLength !== bytes) {
+    throw new Error('A tulajdonos nélküli helyi adatmentés nem érvényes.')
+  }
+  let envelope
+  try { envelope = JSON.parse(json) }
+  catch { throw new Error('A helyi adatmentés nem JSON.') }
+  if (envelope?.grapesLocalMigrationBackup !== true || envelope.version !== 1 ||
+      envelope.ownership !== 'unclaimed' ||
+      !Array.isArray(envelope.sources) || !envelope.sources.length ||
+      JSON.stringify(envelope.manifest) !== JSON.stringify(manifest)) {
+    throw new Error('A helyi mentés forrásai nem igazolhatók.')
+  }
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(json))
+  const computed = [...new Uint8Array(digest)]
+    .map(byte => byte.toString(16).padStart(2, '0')).join('')
+  if (computed !== sha256) {
+    throw new Error('A helyi mentés ellenőrzőösszege eltér.')
+  }
+  let token = ''
+  try {
+    token = await nativeRequest('beginUnclaimedBackupExport', filename)
+    let offset = 0
+    while (offset < json.length) {
+      let end = Math.min(offset + 48000, json.length)
+      if (end < json.length && /[\uD800-\uDBFF]/.test(json[end - 1])) end -= 1
+      if (end <= offset) throw new Error('A helyi mentés UTF-8 felosztása sikertelen.')
+      await nativeRequest('appendFoodBackupExport', token, json.slice(offset, end))
+      offset = end
+    }
+    const receipt = JSON.parse(await nativeRequest('finishFoodBackupExport', token, bytes))
+    if (receipt?.bytes !== bytes || receipt?.sha256 !== sha256) {
+      throw new Error('A fájl független Android-visszaolvasása eltér a mentéstől.')
+    }
+    return receipt
+  } catch (error) {
+    if (token) await nativeRequest('cancelFoodBackupExport', token).catch(() => {})
+    throw error
+  }
+}
+
 export async function saveAndroidJsonBackup(filename, json) {
   const safeName = String(filename || '')
   if (!/^grapes-(?:etelnaplo-\d{4}-\d{2}-\d{2}(?:-(?:helyi|drive))?|viznaplo-\d{4}-\d{2}-\d{2})\.json$/.test(safeName)) {
