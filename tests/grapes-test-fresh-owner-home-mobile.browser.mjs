@@ -274,11 +274,12 @@ try {
   await ocrForm.locator('[name="unit"]').selectOption('db')
   await ocrForm.locator('[name="storageLocation"]').selectOption('pantry')
   await ocrForm.locator('button[type="submit"]').click()
-  await page.waitForFunction(async () => {
-    const { openGrapesTestFreshHome } = await import('/Grapes/src/home/grapes-test-fresh-home.js')
-    const state = (await openGrapesTestFreshHome({enabled:true})).getState()
-    return state.inventory.some(lot=>lot.name==='Kenyér'&&lot.quantityBase===1)
-  })
+  try {
+    await home.locator('[data-household-lots]').getByText('Kenyér',{exact:true}).waitFor({timeout:15000})
+  } catch(error) {
+    throw new Error('A blokk kézi megerősítése nem hozott készlettételt: ' +
+      await home.locator('[data-household-alert]').textContent() + ' | ' + error.message)
+  }
   const checkedOCR = await page.evaluate(async () => {
     const { openGrapesTestFreshHome } = await import('/Grapes/src/home/grapes-test-fresh-home.js')
     const session = await openGrapesTestFreshHome({enabled:true})
