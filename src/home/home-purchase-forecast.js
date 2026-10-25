@@ -92,8 +92,10 @@ export function derivePurchaseCadenceForecasts(home, preferences = {}, now = new
     const key = 'forecast:' + baseKey
     const cycleId = 'purchase:' + last.eventId
     const excluded = dismissed.some(row=>row.key===key && row.cycleId===cycleId)
+    const baseName = JSON.parse(baseKey)[0]
+    // Transferred forecast entries can have an intentionally blank quantity/unit.
     const existing = state.shopping.some(item=> item.status !== 'checked' &&
-      replenishKey(item.name,item.dimension) === baseKey)
+      JSON.parse(replenishKey(item.name,item.dimension))[0] === baseName)
     forecasts.push({ kind:'forecast', key, cycleId, name, dimension:last.dimension,
       quantity:null, quantityBase:null, unit:last.unit, predictedAt:new Date(dueMs).toISOString(),
       advanceDays:leadDays, periodDays:Math.round(typical*10)/10, observations:observations.length,
