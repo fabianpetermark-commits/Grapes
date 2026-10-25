@@ -69,7 +69,21 @@ const SCREENS = {
 const ALL_SCREEN_IDS = ['#login-screen', '#splash-screen', '#app', '#fabric-app', '#studio-app', '#qr-app', '#ebook-app', '#email-app', '#finance-app', '#billing-app', '#food-app']
 
 export function showScreen(name) {
+  // Block direct URL/deeplink navigation to unfinished unscoped modules when
+  // the native fresh-owner TEST gate is explicitly active. Only Finance has
+  // a live owner-pinned storage adapter in this branch.
+  const freshAndroidOwnerMode =
+    import.meta.env?.VITE_GRAPES_TEST_CHANNEL === '1' &&
+    import.meta.env?.VITE_GRAPES_TEST_AUTH_ENABLED === 'true' &&
+    import.meta.env?.VITE_GRAPES_TEST_FRESH_OWNER_MODULES_ENABLED === 'true' &&
+    typeof window.GrapesAndroid?.postMessage === 'function'
+  if (freshAndroidOwnerMode && !['finance', 'login'].includes(name)) {
+    return false
+  }
   if (name !== 'login' && name !== 'splash' && !isModuleEnabled(name)) name = 'splash'
+  if (freshAndroidOwnerMode && name === 'finance') {
+    el('#finance-app').style.visibility = 'hidden'
+  }
   const screen = SCREENS[name]
   if (!screen) throw new Error(`Ismeretlen képernyő: ${name}`)
 

@@ -1,0 +1,163 @@
+import assert from 'node:assert/strict'
+import { existsSync } from 'node:fs'
+import { spawn } from 'node:child_process'
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { chromium } from 'playwright-core'
+
+const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
+const chrome = [process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+  '/usr/bin/google-chrome', '/usr/bin/chromium'].find(path => path && existsSync(path))
+assert.ok(chrome, 'Chromium required for real mobile Home A-B-A')
+const port = 4236
+const url = `http://127.0.0.1:${port}/Grapes/design/android-mobile-preview.html`
+const A = '00000000-0000-4000-8000-000000000001'
+const B = '00000000-0000-4000-8000-000000000002'
+const server = spawn(process.execPath,
+  [resolve(root, 'node_modules/vite/bin/vite.js'), '--host', '127.0.0.1',
+    '--port', String(port), '--strictPort'], { cwd: root, stdio: 'ignore' })
+let browser
+try {
+  for (let attempt = 0; attempt < 120; attempt++) {
+    try { if ((await fetch(url)).ok) break } catch {}
+    if (server.exitCode !== null || attempt === 119) throw Error('Home mobile UI unavailable')
+    await new Promise(done => setTimeout(done, 100))
+  }
+  browser = await chromium.launch({ executablePath: chrome, headless: true,
+    args: ['--no-sandbox'] })
+  const ctx = await browser.newContext({ viewport: { width: 410, height: 900 } })
+  await ctx.addInitScript(() => {
+    localStorage.setItem('grapes-local-mode', '1')
+    window.GrapesAndroid = {
+      postMessage(message) {
+        const { method, requestId } = JSON.parse(message)
+        const subject = localStorage.getItem('__home_qa_subject') ||
+          '00000000-0000-4000-8000-000000000001'
+        const login = localStorage.getItem('__home_qa_auth_off') !== '1'
+        const payload = method === 'getTestAuthEnabled' ? String(login)
+          : method === 'getTestAuthSubject' && login ? subject : ''
+        queueMicrotask(() => window.dispatchEvent(new CustomEvent(
+          'grapes:android-result', { detail: { requestId, ok: true, payload } })))
+      },
+    }
+  })
+  const page = await ctx.newPage()
+  const errors = []
+  page.on('pageerror', error => errors.push(error.message))
+  await page.goto(url)
+  const home = page.locator('[data-page="household"]')
+  const rootNode = page.locator('[data-household-root]')
+  async function openHome(tab = 'inventory') {
+    await page.locator('[data-menu-group="home"]').click()
+    await page.locator(`[data-page="hub-home"] [data-menu-destination="${tab}"]`).click()
+    await page.waitForFunction(() => {
+      const node = document.querySelector('[data-household-root]')
+      return node && !node.inert && getComputedStyle(node).visibility !== 'hidden'
+        && !document.querySelector('[data-household-tabs]').hidden
+    }, { timeout: 15000 })
+  }
+  await openHome()
+  // These bytes must not be read or claimed, not even when syntactically invalid.
+  await page.evaluate(() => {
+    localStorage.setItem('grapes-home-household-v1',
+      '{"legacy":"PRIVATE-UNOWNED"}')
+    localStorage.setItem('grapes-home-household-v1-previous', 'previous-legacy')
+  })
+  assert.ok((await home.textContent()).includes('Itt még nincs ismert élelmiszer'))
+  await home.locator('[data-household-add="inventory"]').click()
+  const form = home.locator('[data-household-form]')
+  await form.locator('[name="name"]').fill('A saját tej')
+  await form.locator('[name="quantity"]').fill('1')
+  await form.locator('[name="unit"]').selectOption('l')
+  await form.locator('[name="storageLocation"]').selectOption('fridge')
+  await form.locator('button[type="submit"]').click()
+  await page.waitForFunction(() =>
+    document.querySelector('[data-household-lots]')?.textContent.includes('A saját tej'),
+    {timeout:15000})
+  await home.locator('[data-household-tab="shopping"]').click()
+  await home.locator('[data-household-add="shopping"]').click()
+  await form.locator('[name="name"]').fill('A saját kenyér')
+  await form.locator('button[type="submit"]').click()
+  await page.waitForFunction(() =>
+    document.querySelector('[data-household-items]')?.textContent.includes('A saját kenyér'),
+    {timeout:15000})
+  await home.locator('[data-household-check]').first().click()
+  await page.waitForFunction(() =>
+    document.querySelector('[data-household-items]')?.textContent.includes('Elintézve'),
+    {timeout:15000})
+  const aSnapshot = await page.evaluate(async () => {
+    const { openGrapesTestFreshHome } =
+      await import('/Grapes/src/home/grapes-test-fresh-home.js')
+    const session = await openGrapesTestFreshHome({enabled:true})
+    const s = session.getState()
+    return {owner:s.householdId, actor:s.actorId,
+      lot:s.inventory[0]?.name, amount:s.inventory[0]?.quantityBase,
+      shopping:s.shopping[0]?.name, status:s.shopping[0]?.status}
+  })
+  assert.deepEqual(aSnapshot,{ owner:A,actor:A,
+    lot:'A saját tej',amount:1000,shopping:'A saját kenyér',status:'checked' })
+
+  await page.evaluate(B => localStorage.setItem('__home_qa_subject', B), B)
+  await page.reload()
+  await openHome('shopping')
+  assert.ok(!(await rootNode.textContent()).includes('A saját tej'))
+  assert.ok(!(await rootNode.textContent()).includes('A saját kenyér'))
+  assert.ok((await rootNode.textContent()).includes('A bevásárlólista üres'))
+  const bEmpty = await page.evaluate(async () => {
+    const { openGrapesTestFreshHome } =
+      await import('/Grapes/src/home/grapes-test-fresh-home.js')
+    const v = (await openGrapesTestFreshHome({enabled:true})).getState()
+    return {inventory:v.inventory.length,shopping:v.shopping.length,owner:v.householdId}
+  })
+  assert.deepEqual(bEmpty,{inventory:0,shopping:0,owner:B})
+  await home.locator('[data-household-add="shopping"]').click()
+  await form.locator('[name="name"]').fill('B saját sajt')
+  await form.locator('button[type="submit"]').click()
+  await page.waitForFunction(() =>
+    document.querySelector('[data-household-items]')?.textContent.includes('B saját sajt'),
+    {timeout:15000})
+
+  await page.evaluate(A => localStorage.setItem('__home_qa_subject', A), A)
+  await page.reload()
+  await openHome('shopping')
+  assert.ok((await rootNode.textContent()).includes('A saját kenyér'))
+  assert.ok(!(await rootNode.textContent()).includes('B saját sajt'))
+  await home.locator('[data-household-tab="inventory"]').click()
+  assert.ok((await rootNode.textContent()).includes('A saját tej'))
+  const aFinal = await page.evaluate(async () => {
+    const { openGrapesTestFreshHome } =
+      await import('/Grapes/src/home/grapes-test-fresh-home.js')
+    const data = (await openGrapesTestFreshHome({enabled:true})).getState()
+    return { inventory:data.inventory.length, shopping:data.shopping.length,
+      events:data.events.length, legacy:localStorage.getItem('grapes-home-household-v1'),
+      oldPrevious:localStorage.getItem('grapes-home-household-v1-previous') }
+  })
+  assert.deepEqual(aFinal,{ inventory:1, shopping:1, events:3,
+    legacy:'{"legacy":"PRIVATE-UNOWNED"}',oldPrevious:'previous-legacy' })
+  // Simulate a native account change in a foregrounded WebView. Previous
+  // account data must disappear synchronously, before the new Auth read.
+  await page.evaluate(B => {
+    localStorage.setItem('__home_qa_subject', B)
+    document.dispatchEvent(new Event('visibilitychange'))
+  }, B)
+  await page.waitForFunction(() =>
+    document.querySelector('[data-household-root]')?.textContent?.includes('B saját sajt'),
+    {timeout:15000})
+  assert.ok(!(await rootNode.textContent()).includes('A saját tej'))
+  await page.evaluate(() => {
+    localStorage.setItem('__home_qa_auth_off', '1')
+    document.dispatchEvent(new Event('visibilitychange'))
+  })
+  await page.waitForFunction(() =>
+    document.querySelector('[data-household-alert]')?.textContent?.includes('nem aktív') ||
+    document.querySelector('[data-household-alert]')?.textContent?.includes('nem ellenőrizhető'),
+    {timeout:15000})
+  assert.ok(!(await rootNode.textContent()).includes('B saját sajt'))
+  assert.deepEqual(errors,[])
+  await ctx.close()
+  console.log('PASS: actual Home buttons save inventory, shopping/status independently A→B→A.')
+  console.log('PASS: on foreground account switch/logout old DOM clears, old localStorage untouched.')
+} finally {
+  await browser?.close()
+  server.kill()
+}

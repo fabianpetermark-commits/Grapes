@@ -127,5 +127,19 @@ export async function createGrapesTestOwnerFinanceRepository({
       const finance = await store.read(id)
       return finance ? [finance] : []
     },
+    // Only the normal Finance UI's two safety checkpoints. These remain in
+    // the same pinned native Auth owner partition as finance-current.
+    async loadSafety(kind) {
+      if (!['last-delete', 'before-restore'].includes(kind)) {
+        throw new Error('Ismeretlen Finance-visszaállítási pont.')
+      }
+      return store.read('finance-safety-' + kind)
+    },
+    async saveSafety(kind, data, expectedRevision = 0) {
+      if (!['last-delete', 'before-restore'].includes(kind)) {
+        throw new Error('Ismeretlen Finance-visszaállítási pont.')
+      }
+      return store.save({ id: 'finance-safety-' + kind, data, expectedRevision })
+    },
   })
 }

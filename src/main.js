@@ -21,6 +21,10 @@ const moduleScreens = ['brochure', 'studio', 'qr', 'ebook', 'email', 'finance', 
 const requestedScreen = moduleScreens.includes(requestedModule) ? requestedModule : null
 const androidApp = isGrapesAndroidApp()
 const androidModuleShell = params.get('android-shell') === '1'
+const FRESH_FINANCE_TEST = androidApp &&
+  import.meta.env?.VITE_GRAPES_TEST_CHANNEL === '1' &&
+  import.meta.env?.VITE_GRAPES_TEST_AUTH_ENABLED === 'true' &&
+  import.meta.env?.VITE_GRAPES_TEST_FRESH_OWNER_MODULES_ENABLED === 'true'
 const LOCAL_MODE_KEY = 'grapes-local-mode'
 
 if (androidModuleShell) {
@@ -236,7 +240,12 @@ function goToMainMenu() {
 
 document.addEventListener('grapes:open-main-menu', goToMainMenu)
 
-if (hasEbookPair) showScreen('ebook')
+if (FRESH_FINANCE_TEST) {
+  // Grapes native Auth is validated by the Finance owner repository itself.
+  // Do NOT enumerate the old shared Drive dashboard, regardless of its state.
+  if (requestedScreen === 'finance') showScreen('finance')
+  else showScreen('login')
+} else if (hasEbookPair) showScreen('ebook')
 else if (isGrapesDriveConnected() || isLocalMode()) showAuthenticatedStart()
 else showLogin()
 

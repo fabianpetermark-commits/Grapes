@@ -7,6 +7,13 @@ import { openModal, showGrapesAlert, showGrapesConfirm, showGrapesPrompt } from 
 import { initFinanceImport } from './finance-import-ui.js'
 import { extractReceiptAmountCandidates, recognizeReceiptImage } from './receipt-ocr.js'
 import { loadLocalProject, saveLocalProject } from './storage/local-project-store.js'
+import { isGrapesAndroidApp } from './android-bridge.js'
+// Deliberately OFF outside the verified Android TEST fresh-owner build.
+// Never load global finance-tracker-current or Drive when enabled.
+const FRESH_OWNER_FINANCE = isGrapesAndroidApp() &&
+  import.meta.env?.VITE_GRAPES_TEST_CHANNEL === '1' &&
+  import.meta.env?.VITE_GRAPES_TEST_AUTH_ENABLED === 'true' &&
+  import.meta.env?.VITE_GRAPES_TEST_FRESH_OWNER_MODULES_ENABLED === 'true'
 import { isGrapesDriveConnected, loadGrapesProject, saveGrapesProject } from './storage/grapes-drive.js'
 import {
   DEFAULT_CATEGORIES, calculateSavings, calculateSummary, categorySummary, filterTransactions,
@@ -23,6 +30,8 @@ const PROJECT_RECEIPT_LIMIT = 15 * 1024 * 1024
 const BACKUP_FILE_LIMIT = 30 * 1024 * 1024
 
 let initialized = false
+let financeOwnerSession = null
+let financeReady = false
 let activeFinanceTab = 'overview'
 let transactions = []
 let people = []
@@ -108,6 +117,13 @@ function resetSavingsEditor() {
 }
 
 function setFinanceTab(tab) {
+  // Import callbacks can outlive their originating account. Keep this one
+  // path blocked in the first fresh-owner Finance rollout until its async
+  // file-processing work receives its own pinned owner session.
+  if (FRESH_OWNER_FINANCE && tab === 'import') {
+    notifyError('A pénzügyi tömeges import a fiókváltási védelem véglegesítéséig nem érhető el.')
+    return
+  }
   const allowed = new Set(['overview', 'transaction', 'savings', 'forecast', 'import'])
   activeFinanceTab = allowed.has(tab) ? tab : 'overview'
   document.querySelectorAll('[data-finance-tab]').forEach((button) => {
@@ -146,31 +162,56 @@ function applyProject(data = {}) {
   el('#finance-currency').value = currency
 }
 
-async function persistLocal() {
+async function assertFinanceActionOwner(expectedSession = financeOwnerSession) {
+  if (!FRESH_OWNER_FINANCE) return
+  if (!financeReady || !expectedSession || expectedSession !== financeOwnerSession) {
+    throw new Error('A Finance TEST-fiók időközben megváltozott.')
+  }
+  await expectedSession.assertOwner()
+  if (expectedSession !== financeOwnerSession) {
+    throw new Error('A Finance TEST-munkamenet időközben megváltozott.')
+  }
+}
+
+async function persistLocal(expectedSession = financeOwnerSession) {
+  if (FRESH_OWNER_FINANCE) {
+    await assertFinanceActionOwner(expectedSession)
+    await expectedSession.save(serializeProject())
+    return
+  }
   await saveLocalProject({
     id: STORAGE_ID, module: MODULE_NAME, name: 'Pénzügyi napló', data: serializeProject(), driveFileId: driveProjectFileId,
   })
 }
 
 function scheduleSave() {
+  if (FRESH_OWNER_FINANCE && (!financeReady || !financeOwnerSession)) {
+    setUxState('#finance-save-status', 'error', 'A Finance TEST-fiók nincs ellenőrizve')
+    return
+  }
   clearTimeout(localSaveTimer)
   clearTimeout(driveSaveTimer)
+  const scheduledSession = financeOwnerSession
   setUxState('#finance-save-status', 'saving', 'Mentés…')
   localSaveTimer = setTimeout(async () => {
     try {
-      await persistLocal()
+      await persistLocal(scheduledSession)
       setUxState('#finance-save-status', 'saved', 'Helyben mentve')
     } catch (error) {
       console.error(error)
       setUxState('#finance-save-status', 'error', 'A helyi mentés sikertelen')
     }
   }, 350)
-  if (isGrapesDriveConnected()) {
+  if (!FRESH_OWNER_FINANCE && isGrapesDriveConnected()) {
     driveSaveTimer = setTimeout(() => saveToDrive(false), 2600)
   }
 }
 
 async function saveToDrive(showToast = true) {
+  if (FRESH_OWNER_FINANCE) {
+    if (showToast) notifyError('A Google Drive külön fiók; Finance TEST alatt a Drive-mentés letiltva.')
+    return false
+  }
   if (!isGrapesDriveConnected()) {
     notifyError('Előbb csatlakoztasd a Google Drive-ot a főmenüben.')
     return false
@@ -272,6 +313,9 @@ function renderSavings() {
     })
     const remove = create('button', { class: 'btn btn--icon btn--ghost', type: 'button', textContent: '×', title: 'Megtakarítási mozgás törlése' })
     remove.addEventListener('click', async () => {
+      const ownerSession = financeOwnerSession
+      try { await assertFinanceActionOwner(ownerSession) }
+      catch (error) { notifyError(error.message); return }
       if (!await showGrapesConfirm({
         title: 'Most tényleg… komolyan?',
         message: 'Ez a megtakarítási mozgás eltűnik a tartalék történetéből. A malacpersely nem sértődik meg, de a számok változni fognak.',
@@ -280,6 +324,8 @@ function renderSavings() {
         danger: true,
         icon: '🐷',
       })) return
+      try { await assertFinanceActionOwner(ownerSession) }
+      catch (error) { notifyError(error.message); return }
       savingsEntries = savingsEntries.filter((item) => item.id !== entry.id); render(); scheduleSave()
     })
     list.append(create('div', { class: 'finance__saving-row' }, [
@@ -410,6 +456,9 @@ function renderRows(visible) {
     })
     const remove = create('button', { class: 'btn btn--icon btn--ghost', type: 'button', textContent: '×', title: 'Tétel törlése', 'aria-label': 'Tétel törlése' })
     remove.addEventListener('click', async () => {
+      const ownerSession = financeOwnerSession
+      try { await assertFinanceActionOwner(ownerSession) }
+      catch (error) { notifyError(error.message); return }
       if (!await showGrapesConfirm({
         title: 'Most tényleg… komolyan?',
         message: 'Ez a pénzügyi tétel búcsút int a listának. Ha csak elírás történt, a ceruza kevésbé drámai megoldás.',
@@ -418,6 +467,8 @@ function renderRows(visible) {
         danger: true,
         icon: '🧾',
       })) return
+      try { await assertFinanceActionOwner(ownerSession) }
+      catch (error) { notifyError(error.message); return }
       transactions = transactions.filter((item) => item.id !== transaction.id)
       render(); scheduleSave()
     })
@@ -463,11 +514,19 @@ function render() {
   renderForecast()
 }
 
-async function saveSafetySnapshot(id, name, data) {
+async function saveSafetySnapshot(id, name, data, expectedSession = financeOwnerSession) {
+  if (FRESH_OWNER_FINANCE) {
+    await assertFinanceActionOwner(expectedSession)
+    const kind = id === DELETE_BACKUP_ID ? 'last-delete'
+      : id === RESTORE_BACKUP_ID ? 'before-restore' : null
+    if (!kind) throw new Error('Érvénytelen Finance-visszaállítási pont.')
+    return expectedSession.saveSafety(kind, data)
+  }
   await saveLocalProject({ id, module: MODULE_NAME, name, data })
 }
 
-async function restoreFinanceBackup(data) {
+async function restoreFinanceBackup(data, expectedSession = financeOwnerSession) {
+  await assertFinanceActionOwner(expectedSession)
   if (transactions.length && !await showGrapesConfirm({
     title: 'Időutazás a pénzügyekben?',
     message: 'A visszaállítás lecseréli a jelenlegi tételeket, megtakarításokat és beállításokat. A mostani állapotról előtte készül biztonsági mentés.',
@@ -476,18 +535,28 @@ async function restoreFinanceBackup(data) {
     danger: true,
     icon: '⏳',
   })) return
+  await assertFinanceActionOwner(expectedSession)
   clearTimeout(localSaveTimer)
   clearTimeout(driveSaveTimer)
-  await persistLocal()
-  await saveSafetySnapshot(RESTORE_BACKUP_ID, 'Pénzügyi napló – visszaállítás előtti mentés', serializeProject())
-  await saveLocalProject({ id: STORAGE_ID, module: MODULE_NAME, name: 'Pénzügyi napló', data, driveFileId: null })
+  await persistLocal(expectedSession)
+  await assertFinanceActionOwner(expectedSession)
+  await saveSafetySnapshot(RESTORE_BACKUP_ID, 'Pénzügyi napló – visszaállítás előtti mentés', serializeProject(), expectedSession)
+  if (FRESH_OWNER_FINANCE) {
+    await assertFinanceActionOwner(expectedSession)
+    await expectedSession.save(data)
+  } else {
+    await saveLocalProject({ id: STORAGE_ID, module: MODULE_NAME, name: 'Pénzügyi napló', data, driveFileId: null })
+  }
+  await assertFinanceActionOwner(expectedSession)
   applyProject(data)
   driveProjectFileId = null
   el('#finance-filter-month').value = ''
   el('#finance-filter-type').value = 'all'
   el('#finance-filter-search').value = ''
-  el('#finance-drive-status').textContent = 'Helyben visszaállítva. A Drive-ra külön mentsd el.'
-  el('#finance-drive-save').textContent = 'Mentés Drive-ra'
+  el('#finance-drive-status').textContent = FRESH_OWNER_FINANCE
+    ? 'Helyben visszaállítva a saját Grapes TEST-fiókban.'
+    : 'Helyben visszaállítva. A Drive-ra külön mentsd el.'
+  if (!FRESH_OWNER_FINANCE) el('#finance-drive-save').textContent = 'Mentés Drive-ra'
   render()
   setUxState('#finance-save-status', 'saved', 'Helyben visszaállítva')
   notifySuccess(`${transactions.length} tétel, a megtakarítások és a beállítások visszaállítva.`)
@@ -565,6 +634,11 @@ function pickReceiptAmount(candidates, currentAmount) {
 
 async function scanPendingReceipt() {
   if (receiptOcrRunning || !pendingReceipt?.type?.startsWith('image/')) return
+  const ownerSession = financeOwnerSession
+  if (FRESH_OWNER_FINANCE) {
+    try { await assertFinanceActionOwner(ownerSession) }
+    catch (error) { notifyError(error.message); return }
+  }
   const scannedReceipt = pendingReceipt
   receiptOcrRunning = true
   updateReceiptOcrControls()
@@ -572,8 +646,11 @@ async function scanPendingReceipt() {
   status.textContent = 'OCR előkészítése…'
   try {
     const text = await recognizeReceiptImage(scannedReceipt.data, (progress) => {
-      status.textContent = `Szövegfelismerés… ${Math.round(progress * 100)}%`
+      if (!FRESH_OWNER_FINANCE || ownerSession === financeOwnerSession) {
+        status.textContent = `Szövegfelismerés… ${Math.round(progress * 100)}%`
+      }
     })
+    await assertFinanceActionOwner(ownerSession)
     if (pendingReceipt !== scannedReceipt) {
       status.textContent = 'A csatolmány közben megváltozott, ezért az eredményt nem használtam fel.'
       return
@@ -591,6 +668,7 @@ async function scanPendingReceipt() {
     }
     status.textContent = `${candidates.length} lehetséges összeg találva.`
     const amount = await pickReceiptAmount(candidates, el('#finance-amount').value)
+    await assertFinanceActionOwner(ownerSession)
     if (amount != null) {
       el('#finance-amount').value = formatMoneyInput(amount)
       el('#finance-amount').dispatchEvent(new Event('input', { bubbles: true }))
@@ -598,6 +676,7 @@ async function scanPendingReceipt() {
     } else status.textContent = 'Az összeg nem változott.'
   } catch (error) {
     console.error(error)
+    if (FRESH_OWNER_FINANCE && ownerSession !== financeOwnerSession) return
     status.textContent = 'A beolvasás nem sikerült.'
     await showGrapesAlert({
       title: 'A blokk és az OCR most összeveszett.',
@@ -606,12 +685,38 @@ async function scanPendingReceipt() {
       icon: '🫠',
     })
   } finally {
-    receiptOcrRunning = false
-    updateReceiptOcrControls()
+    if (!FRESH_OWNER_FINANCE || ownerSession === financeOwnerSession) {
+      receiptOcrRunning = false
+      updateReceiptOcrControls()
+    }
   }
 }
 
 async function loadInitialProject() {
+  if (FRESH_OWNER_FINANCE) {
+    financeReady = false
+    financeOwnerSession = null
+    clearTimeout(localSaveTimer); clearTimeout(driveSaveTimer)
+    // Clear all old screen state BEFORE loading a new owner. NEVER display
+    // A's values while waiting for B's native Auth.
+    transactions = []; people = []; savingsGoals = []; savingsEntries = []
+    categories = { income: [], expense: [] }
+    receiptRequest += 1
+    receiptLoading = false; receiptOcrRunning = false
+    pendingReceipt = null; editingTransactionId = null; editingSavingsEntryId = null
+    financeImportController?.close?.()
+    driveProjectFileId = null
+    applyProject({})
+    sessionStorage.removeItem('grapes-open-project')
+    const { openGrapesTestLiveFinance } =
+      await import('./storage/grapes-test-finance-live.js')
+    const session = await openGrapesTestLiveFinance({ enabled: true })
+    const data = await session.read()
+    financeOwnerSession = session
+    if (data) applyProject(data)
+    financeReady = true
+    return
+  }
   let project = null
   try {
     const target = JSON.parse(sessionStorage.getItem('grapes-open-project') || 'null')
@@ -664,6 +769,9 @@ function bindControls() {
     },
     getCurrency: () => currency,
     onCommit: async (rows) => {
+      if (FRESH_OWNER_FINANCE) {
+        throw new Error('A tömeges Finance-import a saját fiókhoz kötés ellenőrzéséig zárolva van.')
+      }
       const importedTransactions = []
       const importedSavings = []
       for (const row of rows) {
@@ -693,6 +801,9 @@ function bindControls() {
     el('#finance-category').value = ''
   }))
   el('#finance-add-category').addEventListener('click', async () => {
+    const ownerSession = financeOwnerSession
+    try { await assertFinanceActionOwner(ownerSession) }
+    catch (error) { notifyError(error.message); return }
     const name = (await showGrapesPrompt({
       title: 'Még egy rekesz a pénznek?',
       message: 'Adj nevet az új kategóriának. Valami beszédeset — a „Vegyes izék” később bosszút áll.',
@@ -702,12 +813,17 @@ function bindControls() {
       icon: '🏷️',
     }))?.trim()
     if (!name) return
+    try { await assertFinanceActionOwner(ownerSession) }
+    catch (error) { notifyError(error.message); return }
     const type = el('#finance-type').value
     if (![...DEFAULT_CATEGORIES[type], ...categories[type]].some((item) => item.toLocaleLowerCase('hu-HU') === name.toLocaleLowerCase('hu-HU'))) categories[type].push(name)
     el('#finance-category').value = name
     renderCategories(); scheduleSave()
   })
   el('#finance-add-person').addEventListener('click', async () => {
+    const ownerSession = financeOwnerSession
+    try { await assertFinanceActionOwner(ownerSession) }
+    catch (error) { notifyError(error.message); return }
     const name = (await showGrapesPrompt({
       title: 'Ki legyen a következő gyanúsított?',
       message: 'Add meg, kihez tartozzanak a tételek. Csak egy név kell, ujjlenyomatot nem kérünk.',
@@ -717,6 +833,8 @@ function bindControls() {
       icon: '🕵️',
     }))?.trim()
     if (!name) return
+    try { await assertFinanceActionOwner(ownerSession) }
+    catch (error) { notifyError(error.message); return }
     const existing = people.find((person) => person.name.toLocaleLowerCase('hu-HU') === name.toLocaleLowerCase('hu-HU'))
     const person = existing || normalizePerson({ name })
     if (!existing) people.push(person)
@@ -814,6 +932,9 @@ function bindControls() {
   })
   el('#finance-delete-all').addEventListener('click', async () => {
     if (!transactions.length) return
+    const expectedSession = financeOwnerSession
+    try { await assertFinanceActionOwner(expectedSession) }
+    catch (error) { notifyError(error.message); return }
     const count = transactions.length
     if (!await showGrapesConfirm({
       title: 'Nagy piros gomb következik…',
@@ -822,6 +943,8 @@ function bindControls() {
       cancelLabel: 'Nem, visszavonulok',
       icon: '🚨',
     })) return
+    try { await assertFinanceActionOwner(expectedSession) }
+    catch (error) { notifyError(error.message); return }
     const button = el('#finance-delete-all')
     button.disabled = true
     try {
@@ -829,8 +952,10 @@ function bindControls() {
       const filename = `penzugyi-naplo-teljes-mentes-${backupTimestamp()}.json`
       clearTimeout(localSaveTimer)
       clearTimeout(driveSaveTimer)
-      await persistLocal()
-      await saveSafetySnapshot(DELETE_BACKUP_ID, 'Pénzügyi napló – utolsó törlés előtti mentés', snapshot)
+      await persistLocal(expectedSession)
+      await assertFinanceActionOwner(expectedSession)
+      await saveSafetySnapshot(DELETE_BACKUP_ID, 'Pénzügyi napló – utolsó törlés előtti mentés', snapshot, expectedSession)
+      await assertFinanceActionOwner(expectedSession)
       download(financeBackupToJson(snapshot), 'application/json;charset=utf-8', filename)
       const confirmed = await showGrapesConfirm({
         title: 'Utolsó kérdés. Becsületszó.',
@@ -841,11 +966,13 @@ function bindControls() {
         icon: '🧨',
       })
       if (!confirmed) return
+      await assertFinanceActionOwner(expectedSession)
       transactions = []
       render()
-      try { await persistLocal() }
+      try { await persistLocal(expectedSession) }
       catch (error) { transactions = snapshot.transactions; render(); throw error }
-      const driveSynced = driveProjectFileId && isGrapesDriveConnected() ? await saveToDrive(false) : false
+      const driveSynced = !FRESH_OWNER_FINANCE && driveProjectFileId && isGrapesDriveConnected()
+        ? await saveToDrive(false) : false
       setUxState('#finance-save-status', 'saved', driveSynced ? 'Drive-ra törölve' : 'Helyben törölve')
       notifySuccess(`A tételeket ${driveSynced ? 'a Drive-on is' : 'helyben'} töröltük. A teljes mentés fájlból vagy az „Utolsó törlés visszaállítása” gombbal visszaállítható.`)
     } catch (error) {
@@ -857,28 +984,41 @@ function bindControls() {
     if (transactions.length || savingsEntries.length || savingsGoals.length) { event.target.value = currency; notifyError('A meglévő összegeket nem váltjuk át automatikusan. A pénznem csak teljesen üres naplónál módosítható.'); return }
     currency = event.target.value; render(); scheduleSave()
   })
-  el('#finance-backup-export-btn').addEventListener('click', () => {
+  el('#finance-backup-export-btn').addEventListener('click', async () => {
+    if (FRESH_OWNER_FINANCE) {
+      try { await assertFinanceActionOwner() }
+      catch (error) { notifyError(error.message); return }
+    }
     download(financeBackupToJson(serializeProject()), 'application/json;charset=utf-8', `penzugyi-naplo-teljes-mentes-${backupTimestamp()}.json`)
     notifySuccess('A teljes, bizonylatokat is tartalmazó mentés letöltése elindult.')
   })
   el('#finance-backup-import-btn').addEventListener('click', () => el('#finance-backup-input').click())
   el('#finance-backup-input').addEventListener('change', async (event) => {
+    const originalSession = financeOwnerSession
     const file = event.target.files?.[0]
     if (!file) return
     try {
       if (file.size > BACKUP_FILE_LIMIT) throw new Error('A mentésfájl legfeljebb 30 MiB lehet.')
-      await restoreFinanceBackup(financeBackupFromJson(await file.text()))
+      await restoreFinanceBackup(financeBackupFromJson(await file.text()), originalSession)
     } catch (error) { notifyError(error.message || 'A teljes mentés nem állítható vissza.') }
     finally { event.target.value = '' }
   })
   el('#finance-restore-last').addEventListener('click', async () => {
+    const originalSession = financeOwnerSession
     try {
-      const backup = await loadLocalProject(DELETE_BACKUP_ID)
-      if (!backup?.data) throw new Error('Nincs helyi törlés előtti mentés. A letöltött JSON-fájlt is importálhatod.')
-      await restoreFinanceBackup(financeBackupFromJson(financeBackupToJson(backup.data)))
+      await assertFinanceActionOwner(originalSession)
+      const backupData = FRESH_OWNER_FINANCE
+        ? await originalSession.loadSafety('last-delete')
+        : (await loadLocalProject(DELETE_BACKUP_ID))?.data
+      if (!backupData) throw new Error('Nincs helyi törlés előtti mentés. A letöltött JSON-fájlt is importálhatod.')
+      await restoreFinanceBackup(financeBackupFromJson(financeBackupToJson(backupData)), originalSession)
     } catch (error) { notifyError(error.message || 'A helyi mentés nem állítható vissza.') }
   })
-  el('#finance-export-btn').addEventListener('click', () => {
+  el('#finance-export-btn').addEventListener('click', async () => {
+    if (FRESH_OWNER_FINANCE) {
+      try { await assertFinanceActionOwner() }
+      catch (error) { notifyError(error.message); return }
+    }
     download(transactionsToCsv(transactions, currency), 'text/csv;charset=utf-8', `penzugyi-naplo-${today()}.csv`)
     notifySuccess('A CSV-export elkészült. A bizonylatfájlokhoz használd a Teljes mentést.')
   })
@@ -893,7 +1033,14 @@ function bindControls() {
 }
 
 export async function initFinanceTracker() {
+  if (FRESH_OWNER_FINANCE) el('#finance-app').style.visibility = 'hidden'
   if (initialized) {
+    if (FRESH_OWNER_FINANCE) {
+      await loadInitialProject()
+      render()
+      el('#finance-app').style.removeProperty('visibility')
+      return
+    }
     const target = JSON.parse(sessionStorage.getItem('grapes-open-project') || 'null')
     if (target?.module === MODULE_NAME) {
       clearTimeout(localSaveTimer); clearTimeout(driveSaveTimer)
@@ -909,10 +1056,21 @@ export async function initFinanceTracker() {
   })
   bindControls()
   await loadInitialProject()
-  el('#finance-drive-status').textContent = driveProjectFileId
+  if (FRESH_OWNER_FINANCE) {
+    el('#finance-drive-save').disabled = true
+    el('#finance-drive-save').textContent = 'Drive nem aktív a fiókozott TEST-ben'
+    el('#finance-import-btn').disabled = true
+    document.querySelector('[data-finance-tab="import"]').disabled = true
+  }
+  el('#finance-drive-status').textContent = FRESH_OWNER_FINANCE
+    ? 'Helyi Grapes TEST-fióktárhely; Drive mentés kikapcsolva.'
+    : driveProjectFileId
     ? 'Google Drive-szinkronizálás aktív.'
     : 'A változtatások helyben automatikusan mentődnek.'
-  el('#finance-drive-save').textContent = driveProjectFileId ? 'Drive mentve' : 'Mentés Drive-ra'
+  if (!FRESH_OWNER_FINANCE) {
+    el('#finance-drive-save').textContent = driveProjectFileId ? 'Drive mentve' : 'Mentés Drive-ra'
+  }
   setUxState('#finance-save-status', 'saved', 'Kész')
   render()
+  if (FRESH_OWNER_FINANCE) el('#finance-app').style.removeProperty('visibility')
 }

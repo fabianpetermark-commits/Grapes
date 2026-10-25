@@ -1,0 +1,66 @@
+name: Grapes TEST fresh account Food repository proof (NO RELEASE)
+
+on:
+  push:
+    branches:
+      - feature/grapes-test-fresh-owner-food-core-20261025
+  pull_request:
+    branches:
+      - feature/grapes-test-fresh-owner-finance-20261025
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-test-fresh-owner-food-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  new-empty-owner-modules:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GRAPES_TEST_AUTH_ENABLED: 'true'
+      VITE_GRAPES_TEST_FRESH_OWNER_MODULES_ENABLED: 'true'
+      VITE_GRAPES_TEST_DATA_ENABLED: 'false'
+      VITE_GRAPES_TEST_FOOD_SYNTHETIC_ENABLED: 'false'
+      VITE_GRAPES_TEST_HEALTH_SYNC_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: All regression unit tests
+        run: npm test
+      - name: Build opt-in TEST Android WebView assets (no APK)
+        run: npm run build:android-web
+      - name: Find Chromium
+        run: |
+          if command -v google-chrome >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            npx playwright-core install --with-deps chromium
+            browser=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path '*chrome-linux*' | head -1)
+            test -n "$browser"
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$browser" >> "$GITHUB_ENV"
+          fi
+      - name: Fresh Food project synthetic A-B-A real IndexedDB diary and recipes
+        run: node tests/grapes-test-fresh-owner-food.browser.mjs
+      - name: Real Finance UI synthetic A-B-A normal screen/account persistence
+        run: node tests/grapes-test-fresh-owner-finance.browser.mjs
+      - name: New empty Water A-B-A and scoped project index
+        run: node tests/grapes-test-fresh-owner-water-projects.browser.mjs
+      - name: Existing owner partition QA regression
+        run: node tests/grapes-test-local-owner-store.browser.mjs
+      - name: Original unclaimed legacy backup no-loss regression
+        run: node tests/grapes-test-legacy-unclaimed-backup.browser.mjs
+      - name: Historical legacy cross-account risk remains explicitly known
+        run: node tests/grapes-local-account-legacy-audit.browser.mjs
