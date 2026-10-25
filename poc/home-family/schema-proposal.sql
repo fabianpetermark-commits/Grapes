@@ -212,7 +212,7 @@ begin
   select * into v_head from grapes_family_private.households
      where id=p_household for update;
   v_role:=grapes_family_private.role_for(p_household,v_user);
-  if not found or v_role not in ('owner','editor') then
+  if v_head.id is null or v_role not in ('owner','editor') then
     raise exception 'editor role required' using errcode='42501';
   end if;
   select * into v_existing from grapes_family_private.attempts
@@ -294,6 +294,31 @@ language sql security invoker set search_path='' as $$
 $$;
 
 revoke all on all functions in schema grapes_family_private from public,anon;
-grant execute on all functions in schema grapes_family_private to authenticated;
-revoke all on all functions in schema api from public,anon;
-grant execute on all functions in schema api to authenticated;
+-- Do not alter grants of unrelated api functions used by existing modules.
+grant execute on function grapes_family_private.create_household(text),
+ grapes_family_private.list_households(),
+ grapes_family_private.invite_member(uuid,uuid,text),
+ grapes_family_private.list_my_invites(),
+ grapes_family_private.respond_invite(uuid,boolean),
+ grapes_family_private.remove_member(uuid,uuid),
+ grapes_family_private.read_household(uuid),
+ grapes_family_private.compare_and_swap(uuid,uuid,bigint,jsonb),
+ grapes_family_private.read_own_attempt(uuid,uuid) to authenticated;
+revoke execute on function api.home_create_household(text),
+ api.home_list_households(),
+ api.home_invite_member(uuid,uuid,text),
+ api.home_list_my_invites(),
+ api.home_respond_invite(uuid,boolean),
+ api.home_remove_member(uuid,uuid),
+ api.home_read_household(uuid),
+ api.home_compare_and_swap(uuid,uuid,bigint,jsonb),
+ api.home_read_own_attempt(uuid,uuid) from public,anon;
+grant execute on function api.home_create_household(text),
+ api.home_list_households(),
+ api.home_invite_member(uuid,uuid,text),
+ api.home_list_my_invites(),
+ api.home_respond_invite(uuid,boolean),
+ api.home_remove_member(uuid,uuid),
+ api.home_read_household(uuid),
+ api.home_compare_and_swap(uuid,uuid,bigint,jsonb),
+ api.home_read_own_attempt(uuid,uuid) to authenticated;
