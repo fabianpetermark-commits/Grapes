@@ -69,4 +69,42 @@ class TestSupabaseProxyTest {
             assertNull(proxy.currentSubject())
         }
     }
+    @Test fun familyRpcRequiresSeparateQaOptInAndOriginalVerifiedUser(): Unit = runBlocking {
+        val route = "home_m3b_compare_and_swap"
+        var remoteCalls = 0
+        val transport: suspend (String, String, String?, String) -> Pair<Int, String> = { path, bearer, body, suppliedKey ->
+            assertEquals(tokenA, bearer)
+            assertEquals(key, suppliedKey)
+            remoteCalls++
+            when (path) {
+                "/auth/v1/user" -> 200 to "{\"id\":\"$a\",\"is_anonymous\":false}"
+                "/rest/v1/rpc/$route" -> {
+                    assertEquals("family-a", JSONObject(body!!).getString("p_household_id"))
+                    200 to "{\"status\":\"committed\",\"revision\":1}"
+                }
+                else -> error("Unexpected native route: $path")
+            }
+        }
+        val blocked = TestSupabaseProxy(true, key, familyEnabled = false, transport = transport)
+        blocked.authorize(a, tokenA)
+        assertThrows(IllegalArgumentException::class.java) {
+            runBlocking { blocked.rpc(a, route, JSONObject().put("p_household_id", "family-a")) }
+        }
+        assertEquals(1, remoteCalls)
+        val permitted = TestSupabaseProxy(true, key, familyEnabled = true, transport = transport)
+        permitted.authorize(a, tokenA)
+        assertEquals("committed", JSONObject(permitted.rpc(a, route,
+            JSONObject().put("p_household_id", "family-a"))).getString("status"))
+        assertThrows(IllegalArgumentException::class.java) {
+            runBlocking { permitted.rpc(a, "home_m3b_not_a_real_rpc", JSONObject()) }
+        }
+        assertThrows(IllegalStateException::class.java) {
+            runBlocking { permitted.rpc(b, route, JSONObject()) }
+        }
+        permitted.clear()
+        assertThrows(IllegalStateException::class.java) {
+            runBlocking { permitted.whoAmI(a) }
+        }
+    }
+
 }
