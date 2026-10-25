@@ -53,6 +53,7 @@ const SYNTHETIC_WATER_PROFILE = '00000000-0000-4000-8000-000000000001'
 let activeWaterProfileId = null
 let freshWaterSession = null
 let waterProfileLoading = null
+let waterProfileGeneration = 0
 let legacyWaterOwner = null
 const waterStorageKey = () => WATER_PROFILE_QA
   ? waterProfileKey(activeWaterProfileId) : WATER_STORE_KEY
@@ -601,7 +602,10 @@ function showPage(page, { parent = '', entry = '', skipFoodLoad = false } = {}) 
   closeSheet()
   if (page === 'projects') renderProjects()
   if (page === 'sync') renderSync()
-  if (page === 'water') renderWater()
+  if (page === 'water') {
+    if (FRESH_OWNER_MODULES) resetFreshWaterUi()
+    renderWater()
+  }
   if (page === 'household') {
     household.load()
     if (entry === 'shopping' || entry === 'inventory') household.openTab(entry)
@@ -1228,13 +1232,36 @@ function dateKey(date = new Date()) {
   return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-')
 }
 
+function resetFreshWaterUi() {
+  if (!FRESH_OWNER_MODULES) return
+  ++waterProfileGeneration
+  activeWaterProfileId = null
+  freshWaterSession = null
+  waterProfileLoading = null
+  // The Water summary/cards are not owner-safe until native login resolves.
+  $('[data-water-total]').textContent = '—'
+  $('[data-water-log]').replaceChildren()
+  $('[data-water-summary]').textContent = ''
+  $('[data-water-week-bars]').replaceChildren()
+  $('[data-water-week-average]').textContent = '—'
+  $('[data-water-week-completed]').textContent = ''
+  $('[data-water-remaining]').textContent = ''
+  $('[data-water-ring]').style.setProperty('--water-progress', '0%')
+  $('[data-water-add], [data-action="water-goal"]').forEach(button => { button.disabled = true })
+  const status = $('[data-water-storage-status]')
+  status.textContent = 'A Water-fiók ellenőrzése…'
+  status.hidden = false
+}
 function ensureWaterProfile() {
   if (!WATER_PROFILE_QA || activeWaterProfileId) return Promise.resolve()
   if (!waterProfileLoading) waterProfileLoading = (async () => {
+    const generation = waterProfileGeneration
     if (FRESH_OWNER_MODULES) {
       const { openGrapesTestFreshWater } =
         await import('./water/grapes-test-fresh-water.js')
       const session = await openGrapesTestFreshWater({ enabled: true })
+      await session.assertOwner()
+      if (generation !== waterProfileGeneration) return
       freshWaterSession = session
       activeWaterProfileId = session.ownerId
       legacyWaterOwner = null
@@ -1246,6 +1273,7 @@ function ensureWaterProfile() {
     activeWaterProfileId = profileId
     legacyWaterOwner = ownerId
   })().then(() => { renderWater() }).catch(error => {
+    if (FRESH_OWNER_MODULES) resetFreshWaterUi()
     const status = $('[data-water-storage-status]')
     status.textContent = `A TEST Water-profil nem ellenőrizhető: ${error?.message || 'ismeretlen hiba'}`
     status.hidden = false
@@ -2043,6 +2071,10 @@ onGrapesDriveChange(() => {
 })
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
+    if (FRESH_OWNER_MODULES) {
+      resetFreshWaterUi()
+      if (activePage === 'water') renderWater()
+    }
     if (FRESH_OWNER_MODULES && waterHealthSheet?.classList.contains('is-open')) {
       closeSheet() // An Android permission dialog may have changed Grapes Auth.
     }
@@ -2067,6 +2099,7 @@ document.addEventListener('visibilitychange', () => {
     }
   }
   if (document.visibilityState === 'hidden') {
+    if (FRESH_OWNER_MODULES) resetFreshWaterUi()
     if (FRESH_OWNER_MODULES && waterHealthSheet?.classList.contains('is-open')) closeSheet()
     if (FRESH_OWNER_MODULES) household.clear()
     persistReaderProgress().catch(() => {})
