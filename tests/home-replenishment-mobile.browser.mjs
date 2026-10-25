@@ -94,8 +94,16 @@ try {
   await home.locator('[data-household-new-list]').click()
   await home.locator('[data-household-list-form] [name="name"]').fill('Heti bevásárlás')
   await home.locator('[data-household-list-form] button[type=submit]').click()
+  await page.waitForFunction(() => {
+    const select=document.querySelector('[data-household-list-select]')
+    return select?.value !== 'main' || !!document.querySelector('[data-household-alert].is-error:not([hidden])')
+  },{timeout:10000})
   const created=await home.locator('[data-household-list-select]').inputValue()
-  assert.notEqual(created,'main')
+  const debug=await page.evaluate(()=>({alert:document.querySelector('[data-household-alert]')?.textContent,
+    select:document.querySelector('[data-household-list-select]')?.value,
+    opts:[...document.querySelector('[data-household-list-select]')?.options||[]].map(o=>o.textContent),
+    formHidden:document.querySelector('[data-household-list-form]')?.hidden}))
+  assert.notEqual(created,'main','Expected created list; '+JSON.stringify(debug))
   await home.locator('[data-household-tab="replenishment"]').click()
   await home.locator('[data-household-suggestion-pick]').check()
   await home.locator('[data-household-suggestion-list]').selectOption(created)
