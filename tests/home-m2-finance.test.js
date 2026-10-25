@@ -52,6 +52,7 @@ test('bizonytalan, nem tételes OCR-sor és hibás Pénzügy-azonosító blokkol
   assert.equal(receiptLineCandidates('Tej 1 l\nÖsszesen 999 Ft\nÁFA 27 db', 'r').length, 1)
   const raw = receiptLineCandidates('Tej 1,2,3 l\n5 990 Ft\nBolt neve', 'r')
   assert.equal(raw.length, 2)
+  assert.deepEqual(receiptLineCandidates('5 990 Ft\n499 HUF', 'r'), [], 'Puszta pénzösszeg nem lehet kézi termékjelölt.')
   assert.ok(raw.every(row => row.status === 'raw' && row.name === '' && row.quantity == null && row.unit == null))
   await assert.rejects(readLocalFinanceReceipts(async () => ({ data: { transactions: [{ ...project.data.transactions[0], id: '' }] } })), /azonosítója/)
   await assert.rejects(scanLocalFinanceReceipt('planned', { loadProject: load, recognize: async () => 'Tej 1 l' }), /nem található/)
