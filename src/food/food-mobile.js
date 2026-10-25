@@ -2201,13 +2201,27 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     if (initialized) return
     initialized = true
     $('[data-food-health-auto]').checked = autoHealthEnabled()
+    if (freshOwnerMode) {
+      // Disable all global/foreign-account sources, not merely hide the links.
+      for (const selector of [
+        '[data-food-yazio-auto]', '[data-food-health-auto]',
+        '[data-food-inbox]', '[data-food-health-input]', '[data-food-health-confirm]',
+        '[data-food-share]', '[data-food-recipe-share]', '[data-food-share-send]',
+        '[data-food-backup-input]',
+      ]) {
+        const element = $(selector)
+        if (element) { element.disabled = true; element.title = 'Fiókozott TEST – még zárolva' }
+      }
+    }
     $('[data-food-yazio-auto]').checked = autoYazioEnabled()
     $('[data-food-yazio-auto]').addEventListener('change', event => {
+      if (freshOwnerMode) { event.currentTarget.checked = false; return }
       if (!profile?.id) { event.currentTarget.checked = false; return }
       try { localStorage.setItem(AUTO_YAZIO_PREFIX + profile.id, event.currentTarget.checked ? '1' : '0') } catch { event.currentTarget.checked = false }
       if (event.currentTarget.checked) { lastYazioAutoAttempt = 0; autoImportYazio().catch(() => {}) }
     })
     $('[data-food-health-auto]').addEventListener('change', event => {
+      if (freshOwnerMode) { event.currentTarget.checked = false; return }
       try { localStorage.setItem(AUTO_HEALTH_KEY, event.currentTarget.checked ? '1' : '0') } catch { event.currentTarget.checked = false }
       if (event.currentTarget.checked) autoImportHealth().catch(() => {})
     })
@@ -2322,11 +2336,11 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     })
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') { stopBarcodeCamera(); flush().catch(() => {}) }
-      else { if (isGrapesDriveConnected()) { refreshInbox().catch(() => {}); syncFood().catch(() => {}) }; autoImportHealth().catch(() => {}); autoImportYazio().catch(() => {}) }
+      else if (!freshOwnerMode) { if (isGrapesDriveConnected()) { refreshInbox().catch(() => {}); syncFood().catch(() => {}) }; autoImportHealth().catch(() => {}); autoImportYazio().catch(() => {}) }
     })
     window.setInterval(() => {
       const foodPage = root.querySelector('[data-page="food"]')
-      if (foodPage && !foodPage.hidden && document.visibilityState === 'visible') { syncFood().catch(() => {}); autoImportHealth().catch(() => {}); autoImportYazio().catch(() => {}) }
+      if (!freshOwnerMode && foodPage && !foodPage.hidden && document.visibilityState === 'visible') { syncFood().catch(() => {}); autoImportHealth().catch(() => {}); autoImportYazio().catch(() => {}) }
     }, FOOD_SYNC_INTERVAL_MS)
   }
 
