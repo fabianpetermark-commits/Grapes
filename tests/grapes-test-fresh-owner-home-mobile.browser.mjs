@@ -315,6 +315,11 @@ try {
     return {inventory:v.inventory.length,shopping:v.shopping.length,prepared:v.prepared.length,owner:v.householdId}
   })
   assert.deepEqual(bEmpty,{inventory:0,shopping:0,prepared:0,owner:B})
+  await home.locator('[data-household-tab="receipts"]').click()
+  await home.locator('[data-household-receipt-items]').getByText('Nincs saját mentett képes bizonylat. A végösszegből nem lesz készlet.').waitFor()
+  assert.ok(!(await home.locator('[data-household-receipt-items]').textContent()).includes('kenyer.png'),
+    'B cannot read A\'s owner-bound Finance receipt.')
+  await home.locator('[data-household-tab="shopping"]').click()
   await home.locator('[data-household-tab="advice"]').click()
   await home.locator('[data-household-recipe-hints]').getByText('Nincs elérhető saját Food-recept ebben a fiókban.').waitFor()
   assert.ok(!(await rootNode.textContent()).includes('A saját tejitalom'))
