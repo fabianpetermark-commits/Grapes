@@ -86,7 +86,7 @@ export async function openHomeReplenishmentStore({
     async load() { await queue; return read() },
     async assertOwner() { await queue; await verify(); return ownerId },
     createList(name) {
-      const label = String(name ?? '').trim().replace(/\\s+/g,' ')
+      const label = String(name ?? '').trim().replace(/\s+/g,' ')
       if (!label || label.length>80) throw new Error('Adj meg legfeljebb 80 karakteres listanevet.')
       return mutate(meta => {
         if(meta.lists.length>=100) throw new Error('Legfeljebb 100 lista hozható létre.')
