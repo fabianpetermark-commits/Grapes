@@ -1,8 +1,24 @@
 # Grapes – design reference pack (Brand Guide v1.2)
 
+## Health belső oldalak – Food / Víz / Receptek (2026-10-25)
+
+Az E-book külön modulnál elfogadott **Quick Action** elnevezést a Health modulnál is használjuk. A három belső oldal **tényleges, közvetlenül megnyitható HTML/CSS/JS-tervként** készült el, és mindegyik ugyanazt a Brand Guide v1.2 szerinti feliratmentes, 6 ikonos felső kapszulát, valamint a **Fotó / Étel / Víz + külön Vonalkód** fix alsó Quick Action sávot használja.
+
+| Belső modul | Önálló élő HTML | Kipróbálható minta | Mi marad az éles adatmotor feladata? |
+| --- | --- | --- | --- |
+| Food / Ételnapló | [candidates/food.html](candidates/food.html) | Napválasztó, kalória, makrók, étkezések, in-memory új tétel, törlés, szkenner-indító előnézet | Valódi OFF/USDA keresés, makró/gramm számítás, Food napló adatkezelés, célok, YAZIO-import, mentés/Drive, Statisztika |
+| Víznapló | [candidates/water.html](candidates/water.html) | +150 / +250 / +500 ml, vízcél, napi napló és heti grafikon | Helyi Water profilhoz kötött mentés, eseményazonosítók, Health Connect, Drive/backup, tényleges dátumszűrés |
+| Receptek | [candidates/recipes.html](candidates/recipes.html) | Receptkereső, Édes/Sós szűrő, megnyitás, ötfüles szerkesztő Alapadatok/Összetevők/Elkészítés/Kép/Import; in-memory mintamentés | Valódi élelmiszerhez kapcsolás, mennyiség/kalória/tápérték, képfeldolgozás, biztonságos link-/fájlimport és YAZIO-eseménykezelés |
+
+**Állapot:** `PROPOSED` belső képernyőtervek, felhasználói vizuális ellenőrzésre. A jelenlegi családi **Étrendtervező** önálló új funkció, nem része ennek az átvezetésnek; a meglévő Food napló bejegyzései továbbra is tényleges fogyasztások, a megtervezett étkezés nem könyvelhető automatikusan. A HTML-nek **nincs hálózati hívása, nem kér kamera/Drive jogosultságot, nem ment valódi adatot és nem változtatja az Android appot**. A kijelzett makrók és mintareceptek illusztrációk; demo szerkesztésük sem hoz létre éles adatot. Érintetlen: Supabase/RLS/owner claim, Google OAuth/PIN, Food/Water adatstruktúrák és e-book Drive elérés.
+
+A közös stílus: [shared/health-inner.css](shared/health-inner.css), a csak memóriabeli bemutató interakciók: [shared/health-inner.js](shared/health-inner.js). Az élő galériában mindhárom külön oldalként megnyitható. A `tests/design-references.browser.mjs` és `tests/design-review.browser.mjs` böngészős regresszióval ellenőrzi a navigációt, Quick Action-t és alap demófolyamatokat. **A későbbi valódi modulmigrációhoz külön TEST-PR, adatvesztési védelem és vizuális paritás kell.**
+
+---
+
 ## Teljes, interaktív képernyőellenőrzés
 
-**[8-képernyős élő HTML review: review.html](review.html)** — Kezdő, Home, Health, Növények, Tools, E-book, QR és Finance, a **tényleges verziózott HTML-fájlok beágyazásával**, nem újragenerált illusztrációval. A képernyőméret egy kattintással váltható **320 / 360 / 390 / 412 px** között. A Finance öt lapja, az E-book három és a QR három belső nézete is kipróbálható. [Klasszikus galéria](index.html).
+**[11-képernyős élő HTML review: review.html](review.html)** — Kezdő, Home, Health, Food, Víz, Receptek, Növények, Tools, E-book, QR és Finance, a **tényleges verziózott HTML-fájlok beágyazásával**, nem újragenerált illusztrációval. A képernyőméret egy kattintással váltható **320 / 360 / 390 / 412 px** között. A Finance öt lapja, az E-book három és a QR három belső nézete is kipróbálható. [Klasszikus galéria](index.html).
 
 **Státusz:** az egységes navigáció, ikonok, kártyastílus és minimál címsor a v1.2 célállapot. A Home/Tools/Finance/E-book/QR modulok további részletei **még vizuális jóváhagyásra váró jelöltek**. A HTML-ek szimulációk; a demo gombok és tranzakciók nem kerülnek a valódi Grapes-adatbázisba.
 
@@ -13,7 +29,7 @@
 - **Készletfigyelő:** a #122 Home M2 készlet- és megerősítéses készletmozgás-logikája változatlan; egy meglévő UI-widget megjelenítése önmagában nem vonhat le készletet, nem írhat tranzakciót vagy OCR-felismerés alapján tételt.
 - **Bevezetési kapu:** a HTML review következő lépése a vizuális jóváhagyás. Csak azután következhet külön **TEST-kód-PR**, amelynek valós adatforrásra, funkciókra és Android navigációra vonatkozó regressziós bizonyítéka van. **Sem merge, sem APK release nincs ebben a dokumentációs ágban.**
 
-A CI a [`tests/design-references.browser.mjs`](../../tests/design-references.browser.mjs) mellett a [`tests/design-review.browser.mjs`](../../tests/design-review.browser.mjs) tesztet is futtatja. Ezzel **egyszerre ellenőrizzük a 8 élesnek szánt HTML-forrás felnyitását, a címek/ikonsáv sorrendjét és a többnézetes Finance/E-book/QR navigációt**, majd mobilos képeket készítünk. Ezek HTML-referencia-tesztek, nem teljes Android TEST → PROD pixeldiff.
+A CI a [`tests/design-references.browser.mjs`](../../tests/design-references.browser.mjs) mellett a [`tests/design-review.browser.mjs`](../../tests/design-review.browser.mjs) tesztet is futtatja. Ezzel **egyszerre ellenőrizzük a 11 ellenőrzendő HTML-forrás felnyitását, a címek/ikonsáv sorrendjét és a többnézetes Finance/E-book/QR navigációt**, majd mobilos képeket készítünk. Ezek HTML-referencia-tesztek, nem teljes Android TEST → PROD pixeldiff.
 
 ---
 
