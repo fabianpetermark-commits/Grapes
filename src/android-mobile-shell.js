@@ -161,6 +161,10 @@ function showToast(message) {
 }
 
 function closeSheet() {
+  if (FRESH_OWNER_MODULES && waterHealthSheet?.classList.contains('is-open')) {
+    globalThis.__waterHealthTrace ||= []
+    globalThis.__waterHealthTrace.push('closing: ' + new Error().stack)
+  }
   // Any closing/opening of a sheet invalidates the old Health preview,
   // including pending Android permission requests and account changes.
   waterHealthEpoch++
@@ -340,7 +344,10 @@ function openSheet(node) {
 
 function openWaterHealthSheet() {
   if (!FRESH_OWNER_MODULES || !waterHealthSheet) return
+  globalThis.__waterHealthTrace ||= []
+  globalThis.__waterHealthTrace.push('opening')
   openSheet(waterHealthSheet)
+  globalThis.__waterHealthTrace.push('after: ' + waterHealthSheet.className)
   const now = new Date()
   const from = new Date(now)
   from.setFullYear(from.getFullYear() - 1)
