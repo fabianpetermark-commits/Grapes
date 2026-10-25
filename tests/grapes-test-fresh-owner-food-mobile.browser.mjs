@@ -100,6 +100,14 @@ try {
   assert.equal(a.profile.id, A)
   assert.equal(a.diaryEntries.length, 1)
   assert.equal(a.diaryEntries[0].amount, 150)
+  const indexA = await page.evaluate(async () => {
+    const { createGrapesTestFreshOwnerAccess } =
+      await import('/Grapes/src/storage/grapes-test-fresh-owner-access.js')
+    const access = createGrapesTestFreshOwnerAccess({ enabled: true })
+    return { names: (await access.listOwnedProjects()).map(x => x.name),
+      count: (await access.ownedUsage()).projects }
+  })
+  assert.deepEqual(indexA, { names: ['Ételnapló'], count: 1 })
 
   // Every foreign source remains blocked even when called directly through
   // public mobile controller handlers; no accidental Health/YAZIO/cloud write.
@@ -118,6 +126,12 @@ try {
   assert.equal(emptyB.profile.id, B)
   assert.equal(emptyB.customFoods.length, 0)
   assert.equal(emptyB.diaryEntries.length, 0)
+  const bIndexBefore = await page.evaluate(async () => {
+    const { createGrapesTestFreshOwnerAccess } =
+      await import('/Grapes/src/storage/grapes-test-fresh-owner-access.js')
+    return (await createGrapesTestFreshOwnerAccess({enabled:true}).listOwnedProjects()).length
+  })
+  assert.equal(bIndexBefore, 0, 'B must not see any project from A')
   assert.ok(!(await foodPanel.textContent()).includes('Teszt étel – A 🍇'))
 
   await foodPanel.locator('[data-food-meals] button').first().click()
