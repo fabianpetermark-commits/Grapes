@@ -7,8 +7,9 @@ const statusNames = { planned: 'Tervezett', checked: 'Elintézve', deferred: 'K�
 const units = Object.keys(UNITS).map(unit => `<option value="${unit}">${unit}</option>`).join('')
 const operationId = () => globalThis.crypto?.randomUUID?.() || `home-ui-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
-export function createHomeMobile(root, storage) {
+export function createHomeMobile(root, storage, { freshOwnerMode = false } = {}) {
   let store = null
+  let loadEpoch = 0
   let tab = 'inventory'
   let filter = 'all'
   let search = ''
@@ -20,7 +21,7 @@ export function createHomeMobile(root, storage) {
   let message = ''
   let error = ''
   root.innerHTML = `
-    <div class="household-head"><p class="eyebrow">Home / Háztartás</p><h1>Mi van otthon?</h1><p>Ezen az eszközön tárolva · nincs családi szinkron</p></div>
+    <div class="household-head"><p class="eyebrow">Home / Háztartás</p><h1>Mi van otthon?</h1><p>${freshOwnerMode ? 'Saját Grapes TEST-fiók · csak helyben' : 'Ezen az eszközön tárolva · nincs családi szinkron'}</p></div>
     <div class="household-alert" data-household-alert role="status" aria-live="polite" hidden></div>
     <div class="household-tabs" data-household-tabs role="tablist" aria-label="Háztartás nézetei"><button type="button" data-household-tab="inventory" role="tab">Készlet</button><button type="button" data-household-tab="shopping" role="tab">Bevásárlólista</button></div>
     <section data-household-inventory><div class="household-toolbar"><input data-household-search type="search" placeholder="Élelmiszer keresése" aria-label="Élelmiszer keresése"><button type="button" data-household-add="inventory">+ Élelmiszer</button></div><div class="household-filters" aria-label="Tároló szűrő"><button type="button" data-household-filter="all">Összes</button><button type="button" data-household-filter="fridge">Hűtő</button><button type="button" data-household-filter="freezer">Fagyasztó</button><button type="button" data-household-filter="pantry">Kamra</button></div><div data-household-lots></div></section>
@@ -34,17 +35,57 @@ export function createHomeMobile(root, storage) {
   const splitForm = $('[data-household-split]')
   const state = () => store.getState()
   const alert = (text, isError = false) => { message = isError ? '' : text; error = isError ? text : ''; const node = $('[data-household-alert]'); node.hidden = !text; node.textContent = text; node.classList.toggle('is-error', isError) }
-  const run = (type, payload, eventId) => {
-    if (!store) return
+  const run = async (type, payload, eventId) => {
+    if (!store) return null
+    const current = store
+    const epoch = loadEpoch
     try {
-      const result = store.dispatch({ type, payload, ...(eventId ? { eventId } : {}) })
+      const result = await current.dispatch({ type, payload,
+        ...(eventId ? { eventId } : {}) })
+      if (epoch !== loadEpoch || current !== store) return null
       if (!result.duplicate) lastEventId = result.event.eventId
-      alert(result.duplicate ? 'A művelet már végrehajtva.' : 'Mentve ezen az eszközön.')
+      alert(result.duplicate ? 'A művelet már végrehajtva.' :
+        (freshOwnerMode ? 'Mentve a saját Home-fióktárhelyre.' : 'Mentve ezen az eszközön.'))
       render()
       return result
-    } catch (err) { alert(err.message, true); return null }
+    } catch (err) {
+      if (epoch !== loadEpoch || current !== store) return null
+      if (freshOwnerMode) {
+        try { await current.assertOwner() }
+        catch {
+          clearFreshHome()
+          root.inert = false
+          root.style.visibility = ''
+          alert('A Home mentése vagy fiókellenőrzése megszakadt. Nyisd meg újra a modult.', true)
+          return null
+        }
+      }
+      alert(err.message, true)
+      return null
+    }
   }
   const closeForms = () => { form.hidden = true; splitForm.hidden = true; editing = null; splitId = null; formOperationId = null; splitOperationId = null }
+  function clearFreshHome() {
+    if (!freshOwnerMode) return
+    loadEpoch++
+    store = null
+    lastEventId = null
+    message = ''
+    error = ''
+    tab = 'inventory'
+    filter = 'all'
+    search = ''
+    $('[data-household-search]').value = ''
+    closeForms()
+    $('[data-household-lots]').replaceChildren()
+    $('[data-household-items]').replaceChildren()
+    $('[data-household-tabs]').hidden = true
+    $('[data-household-inventory]').hidden = true
+    $('[data-household-shopping]').hidden = true
+    $('[data-household-undo]').hidden = true
+    root.inert = true
+    root.style.visibility = 'hidden'
+  }
   function render() {
     if (!store) return
     const current = state()
@@ -85,7 +126,7 @@ export function createHomeMobile(root, storage) {
       $('[data-household-split-preview]').textContent = `Előnézet: ${part.fridgeBase} ${lot.dimension === 'mass' ? 'g' : lot.dimension === 'volume' ? 'ml' : lot.displayUnit} hűtő · ${part.freezerBase} ${lot.dimension === 'mass' ? 'g' : lot.dimension === 'volume' ? 'ml' : lot.displayUnit} fagyasztó. Mentés csak megerősítés után.`
     } catch (err) { $('[data-household-split-preview]').textContent = err.message }
   }
-  root.addEventListener('click', event => {
+  root.addEventListener('click', async event => {
     const button = event.target.closest('button')
     if (!button || !root.contains(button)) return
     const d = button.dataset
@@ -95,35 +136,93 @@ export function createHomeMobile(root, storage) {
     else if (d.householdEdit) openForm('inventory', d.householdEdit)
     else if (d.householdEditShopping) openForm('shopping', d.householdEditShopping)
     else if (d.householdCancel !== undefined) closeForms()
-    else if (d.householdDelete && confirm('Eltávolítod ezt a készlettételt?')) run('LotDeleted', { id: d.householdDelete })
-    else if (d.householdDeleteShopping && confirm('Eltávolítod ezt a listaelemet?')) run('ShoppingItemDeleted', { id: d.householdDeleteShopping })
-    else if (d.householdCheck) { const item = state().shopping.find(row => row.id === d.householdCheck); run('ShoppingItemStatusChanged', { id: item.id, status: item.status === 'checked' ? 'planned' : 'checked' }) }
-    else if (d.householdDefer) run('ShoppingItemStatusChanged', { id: d.householdDefer, status: 'deferred' })
+    else if (d.householdDelete && confirm('Eltávolítod ezt a készlettételt?')) await run('LotDeleted', { id: d.householdDelete })
+    else if (d.householdDeleteShopping && confirm('Eltávolítod ezt a listaelemet?')) await run('ShoppingItemDeleted', { id: d.householdDeleteShopping })
+    else if (d.householdCheck) { const item = state().shopping.find(row => row.id === d.householdCheck); await run('ShoppingItemStatusChanged', { id: item.id, status: item.status === 'checked' ? 'planned' : 'checked' }) }
+    else if (d.householdDefer) await run('ShoppingItemStatusChanged', { id: d.householdDefer, status: 'deferred' })
     else if (d.householdSplitId) { closeForms(); splitId = d.householdSplitId; splitOperationId = operationId(); const lot = state().inventory.find(row => row.id === splitId); $('[data-household-split-source]').textContent = `${lot.name} · ${displayQuantity(lot)}. A megosztás tárolóváltás, nem vásárlás.`; for (const option of splitForm.elements.unit.options) option.disabled = UNITS[option.value][0] !== lot.dimension; splitForm.elements.unit.value = lot.dimension === 'mass' ? 'g' : lot.dimension === 'volume' ? 'ml' : lot.displayUnit; splitForm.elements.fridgeQuantity.value = String(lot.quantityBase / UNITS[splitForm.elements.unit.value][1]); splitForm.hidden = false; previewSplit(); splitForm.scrollIntoView({ block: 'nearest' }) }
     else if (d.householdPreset) { const lot = state().inventory.find(row => row.id === splitId); const p = splitPreset(lot, d.householdPreset); splitForm.elements.fridgeQuantity.value = String(p.fridgeBase / UNITS[splitForm.elements.unit.value][1]); previewSplit() }
-    else if (d.householdUndo !== undefined && lastEventId) { const result = run('Reversed', { eventId: lastEventId }); if (result) { lastEventId = null; render() } }
+    else if (d.householdUndo !== undefined && lastEventId) { const result = await run('Reversed', { eventId: lastEventId }); if (result) { lastEventId = null; render() } }
   })
   $('[data-household-search]').addEventListener('input', event => { search = event.target.value.toLocaleLowerCase('hu-HU'); render() })
   splitForm.elements.fridgeQuantity.addEventListener('input', previewSplit)
   splitForm.elements.unit.addEventListener('change', previewSplit)
-  form.addEventListener('submit', event => {
+  form.addEventListener('submit', async event => {
     event.preventDefault()
     if (form.hidden || !editing) return
     const data = Object.fromEntries(new FormData(form))
     if (editing.kind === 'inventory') {
-      const result = run(editing.id ? 'LotEdited' : 'StockCountConfirmed', { ...data, id: editing.id }, formOperationId)
+      const result = await run(editing.id ? 'LotEdited' : 'StockCountConfirmed', { ...data, id: editing.id }, formOperationId)
       if (result) closeForms()
     } else {
-      const result = run(editing.id ? 'ShoppingItemEdited' : 'ShoppingItemAdded', { ...data, id: editing.id }, formOperationId)
+      const result = await run(editing.id ? 'ShoppingItemEdited' : 'ShoppingItemAdded', { ...data, id: editing.id }, formOperationId)
       if (result) closeForms()
     }
   })
-  splitForm.addEventListener('submit', event => {
+  splitForm.addEventListener('submit', async event => {
     event.preventDefault()
     if (splitForm.hidden || !splitId) return
     const lot = state().inventory.find(row => row.id === splitId)
-    const result = run('StockSplit', { id: splitId, fridgeQuantity: splitForm.elements.fridgeQuantity.value, unit: splitForm.elements.unit.value }, splitOperationId)
+    const result = await run('StockSplit', { id: splitId, fridgeQuantity: splitForm.elements.fridgeQuantity.value, unit: splitForm.elements.unit.value }, splitOperationId)
     if (result) closeForms()
   })
-  return { load() { try { store = createHomeStore(storage); $('[data-household-tabs]').hidden = false; alert(message || '', !!error); render() } catch (err) { store = null; closeForms(); $('[data-household-tabs]').hidden = true; $('[data-household-inventory]').hidden = true; $('[data-household-shopping]').hidden = true; $('[data-household-undo]').hidden = true; alert(err.message, true) } }, openTab(name) { if (name !== 'inventory' && name !== 'shopping') return; tab = name; closeForms(); render() }, handleBack() { if (!form.hidden || !splitForm.hidden) { closeForms(); return true } return false } }
+  return {
+    async load() {
+      if (freshOwnerMode) {
+        clearFreshHome()
+        const epoch = loadEpoch
+        try {
+          const { openGrapesTestFreshHome } =
+            await import('./grapes-test-fresh-home.js')
+          const session = await openGrapesTestFreshHome({ enabled: true })
+          await session.assertOwner()
+          if (epoch !== loadEpoch) return
+          store = session
+          $('[data-household-tabs]').hidden = false
+          alert('', false)
+          render()
+        } catch (err) {
+          if (epoch !== loadEpoch) return
+          store = null
+          closeForms()
+          $('[data-household-tabs]').hidden = true
+          $('[data-household-inventory]').hidden = true
+          $('[data-household-shopping]').hidden = true
+          $('[data-household-undo]').hidden = true
+          alert(err.message, true)
+        } finally {
+          if (epoch === loadEpoch) {
+            root.inert = false
+            root.style.visibility = ''
+          }
+        }
+        return
+      }
+      try {
+        store = createHomeStore(storage)
+        $('[data-household-tabs]').hidden = false
+        alert(message || '', !!error)
+        render()
+      } catch (err) {
+        store = null
+        closeForms()
+        $('[data-household-tabs]').hidden = true
+        $('[data-household-inventory]').hidden = true
+        $('[data-household-shopping]').hidden = true
+        $('[data-household-undo]').hidden = true
+        alert(err.message, true)
+      }
+    },
+    clear: clearFreshHome,
+    openTab(name) {
+      if (name !== 'inventory' && name !== 'shopping') return
+      tab = name
+      closeForms()
+      render()
+    },
+    handleBack() {
+      if (!form.hidden || !splitForm.hidden) { closeForms(); return true }
+      return false
+    },
+  }
 }
