@@ -83,3 +83,8 @@ export async function scanOwnerFinanceReceipt(receiptId, { readFinance, recogniz
   const text = await recognize(row.receipt.data, onProgress)
   return { receiptId, date: row.date, receiptData: row.receipt.data, candidates: receiptLineCandidates(text, receiptId) }
 }
+
+// Verify a candidate still belongs to an existing, non-planned own expense.
+export async function receiptFromOwnerFinance(data, receiptId) {
+  return (await financeTransactions(async () => data)).find(row => row.id === receiptId) || null
+}
