@@ -166,7 +166,7 @@ function closeSheet() {
   waterHealthEpoch++
   waterHealthPreview = null
   waterHealthSession = null
-  $('.bottom-sheet').forEach(node => {
+  $$('.bottom-sheet').forEach(node => {
     node.classList.remove('is-open')
     node.setAttribute('aria-hidden', 'true')
     node.inert = true
@@ -437,7 +437,7 @@ async function confirmWaterHealthPreview() {
   try {
     const { confirmFreshOwnerWaterHydration } =
       await import('./water/grapes-test-fresh-water-health.js')
-    const selectedIndexes = [...$('[data-water-health-records] [data-water-health-record]:checked')]
+    const selectedIndexes = [...$$('[data-water-health-records] [data-water-health-record]:checked')]
       .map(input => Number(input.value))
     const result = await confirmFreshOwnerWaterHydration({
       session, preview, selectedIndexes,
@@ -1247,7 +1247,7 @@ function resetFreshWaterUi() {
   $('[data-water-week-completed]').textContent = ''
   $('[data-water-remaining]').textContent = ''
   $('[data-water-ring]').style.setProperty('--water-progress', '0%')
-  $('[data-water-add], [data-action="water-goal"]').forEach(button => { button.disabled = true })
+  $$('[data-water-add], [data-action="water-goal"]').forEach(button => { button.disabled = true })
   const status = $('[data-water-storage-status]')
   status.textContent = 'A Water-fiók ellenőrzése…'
   status.hidden = false
