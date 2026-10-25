@@ -1,0 +1,82 @@
+name: Grapes TEST direct YAZIO owner A-B-A (NO RELEASE)
+
+on:
+  push:
+    branches:
+      - feature/grapes-test-fresh-owner-yazio-direct-20261025
+  pull_request:
+    branches:
+      - feature/grapes-test-fresh-owner-yazio-import-20261025
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-test-yazio-direct-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  yazio-direct-owner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GRAPES_TEST_AUTH_ENABLED: 'true'
+      VITE_GRAPES_TEST_FRESH_OWNER_MODULES_ENABLED: 'true'
+      VITE_GRAPES_TEST_DATA_ENABLED: 'false'
+      VITE_GRAPES_TEST_FOOD_SYNTHETIC_ENABLED: 'false'
+      VITE_GRAPES_TEST_HEALTH_SYNC_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: All unit tests
+        run: npm test
+      - name: Water Health owner confirmation unit tests
+        run: node --test tests/grapes-test-fresh-water-health.test.js
+      - name: Android WebView build (NO APK)
+        run: npm run build:android-web
+      - name: Find Chromium
+        run: |
+          if command -v google-chrome >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            npx playwright-core install --with-deps chromium
+            browser=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path '*chrome-linux*' | head -1)
+            test -n "$browser"
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$browser" >> "$GITHUB_ENV"
+          fi
+      - name: Own YAZIO JSON/CSV preview batch and undo unit
+        run: node --test tests/grapes-test-fresh-yazio.test.js
+      - name: YAZIO direct ephemeral login/logout owner unit
+        run: node --test tests/grapes-test-fresh-yazio-direct.test.js
+      - name: Direct YAZIO Android UI and account-switch rejection
+        run: node tests/grapes-test-fresh-yazio-direct-mobile.browser.mjs
+      - name: Actual mobile YAZIO JSON/CSV native owner A-B-A and undo
+        run: node tests/grapes-test-fresh-yazio-mobile.browser.mjs
+      - name: Actual mobile Health to Water consent and A-B-A
+        run: node tests/grapes-test-fresh-water-health-mobile.browser.mjs
+      - name: Health Connect nutrition remains Food-only A-B-A
+        run: node tests/grapes-test-fresh-health-nutrition-mobile.browser.mjs
+      - name: Original Water owner A-B-A regression
+        run: node tests/grapes-test-fresh-owner-water-projects.browser.mjs
+      - name: Finance owner real UI A-B-A regression
+        run: node tests/grapes-test-fresh-owner-finance.browser.mjs
+      - name: Food owner real UI A-B-A regression
+        run: node tests/grapes-test-fresh-owner-food-mobile.browser.mjs
+      - name: Home owner real UI A-B-A regression
+        run: node tests/grapes-test-fresh-owner-home-mobile.browser.mjs
+      - name: E-book owner real UI A-B-A regression
+        run: node tests/grapes-test-fresh-owner-ebook-mobile.browser.mjs
+      - name: Owner metadata and legacy preservation
+        run: |
+          node tests/grapes-test-local-owner-store.browser.mjs
+          node tests/grapes-test-legacy-unclaimed-backup.browser.mjs
