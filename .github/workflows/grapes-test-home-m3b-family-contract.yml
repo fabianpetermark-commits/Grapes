@@ -1,0 +1,77 @@
+name: Home M3B family backend TEST only
+
+on:
+  push:
+    branches:
+      - feature/grapes-test-home-m3b-family-contract-20261025
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-family-auth-rls:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.81.3
+      - name: Confirm local Supabase CLI
+        run: |
+          supabase --version
+          supabase init --help >/dev/null
+          supabase migration new --help >/dev/null
+          supabase db advisors --help >/dev/null
+      - name: Start independent ephemeral Supabase + PostgREST
+        env:
+          GRAPES_SUPABASE_LOCAL_DIR: ${{ runner.temp }}/grapes-m3b-family-${{ github.run_id }}
+        run: |
+          mkdir -p "$GRAPES_SUPABASE_LOCAL_DIR"
+          cd "$GRAPES_SUPABASE_LOCAL_DIR"
+          supabase init
+          node "$GITHUB_WORKSPACE/poc/supabase-phase2/ci/prepare-config.mjs"
+          supabase migration new grapes_home_family_ci_api_bootstrap
+          migration=$(find supabase/migrations -name '*_grapes_home_family_ci_api_bootstrap.sql' -print -quit)
+          test -n "$migration"
+          printf 'create schema if not exists api;\n' > "$migration"
+          supabase start
+          if ! command -v psql >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y postgresql-client
+          fi
+      - name: Family membership, Auth A/B/C, RLS, CAS and revoke tests
+        env:
+          GRAPES_SUPABASE_LOCAL_DIR: ${{ runner.temp }}/grapes-m3b-family-${{ github.run_id }}
+        run: node poc/home-family/ci/verify-local.mjs
+      - name: Local-only Postgres security advisors
+        env:
+          GRAPES_SUPABASE_LOCAL_DIR: ${{ runner.temp }}/grapes-m3b-family-${{ github.run_id }}
+        run: |
+          cd "$GRAPES_SUPABASE_LOCAL_DIR"
+          supabase db advisors --local
+
+  home-regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
+      VITE_GOOGLE_APP_ID: 991532871119
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GRAPES_TEST_AUTH_ENABLED: 'true'
+      VITE_GRAPES_TEST_FRESH_OWNER_MODULES_ENABLED: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build:android-web
+      - run: node tests/grapes-test-fresh-owner-home.browser.mjs
+      - run: node tests/grapes-test-fresh-owner-home-mobile.browser.mjs
