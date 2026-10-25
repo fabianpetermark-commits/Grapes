@@ -47,6 +47,11 @@ try {
   await page.goto(url)
   const home = page.locator('[data-page="household"]')
   const rootNode = page.locator('[data-household-root]')
+  async function openExtra(name) {
+    const panel = rootNode.locator('[data-household-extra-nav]')
+    if (!(await panel.evaluate(el => el.open))) await panel.locator('summary').click()
+    await panel.locator('[data-household-tab="'+name+'"]').click()
+  }
   async function openHome(tab = 'inventory') {
     await page.locator('[data-menu-group="home"]').click()
     await page.locator(`[data-page="hub-home"] [data-menu-destination="${tab}"]`).click()
@@ -110,7 +115,7 @@ try {
   })
   await page.reload()
   await openHome()
-  await home.locator('[data-household-tab="advice"]').click()
+  await openExtra('advice')
   await home.locator('[data-household-recipe-hints]').getByText('A saját tejitalom', { exact: true }).waitFor()
   assert.match(await home.locator('[data-household-recipe-hints]').textContent(), /Ellenőrizendő/)
   assert.match(await home.locator('[data-household-recipe-hints]').textContent(), /1 lehetséges névegyezés/)
@@ -249,7 +254,7 @@ try {
     window.__GRAPES_RECEIPT_OCR_TEST__ = image =>
       image.includes('Yg==') ? 'Kenyér 499 Ft\nVégösszeg 499 Ft' : 'Végösszeg 5990 Ft'
   })
-  await home.locator('[data-household-tab="receipts"]').click()
+  await openExtra('receipts')
   await home.locator('[data-household-scan-receipt="owner-total-only"]').waitFor()
   const beforeReceipt = await page.evaluate(async () => {
     const { openGrapesTestFreshHome } = await import('/Grapes/src/home/grapes-test-fresh-home.js')
@@ -295,7 +300,7 @@ try {
   assert.equal(checkedOCR.receiptCount,1)
   assert.equal(checkedOCR.forgedBlocked,true)
   assert.match(checkedOCR.source,/^owner-bread:ocr-[0-9a-f]{16}-1$/)
-  await home.locator('[data-household-tab="receipts"]').click()
+  await openExtra('receipts')
   await home.locator('[data-household-scan-receipt="owner-bread"]').waitFor()
   await home.locator('[data-household-scan-receipt="owner-bread"]').click()
   await home.locator('[data-household-receipt-candidates] [data-household-review-receipt]').waitFor()
@@ -313,12 +318,12 @@ try {
     return {inventory:v.inventory.length,shopping:v.shopping.length,prepared:v.prepared.length,owner:v.householdId}
   })
   assert.deepEqual(bEmpty,{inventory:0,shopping:0,prepared:0,owner:B})
-  await home.locator('[data-household-tab="receipts"]').click()
+  await openExtra('receipts')
   await home.locator('[data-household-receipt-items]').getByText('Nincs saját mentett képes bizonylat. A végösszegből nem lesz készlet.').waitFor()
   assert.ok(!(await home.locator('[data-household-receipt-items]').textContent()).includes('kenyer.png'),
     'B cannot read A\'s owner-bound Finance receipt.')
   await home.locator('[data-household-tab="shopping"]').click()
-  await home.locator('[data-household-tab="advice"]').click()
+  await openExtra('advice')
   await home.locator('[data-household-recipe-hints]').getByText('Nincs elérhető saját Food-recept ebben a fiókban.').waitFor()
   assert.ok(!(await rootNode.textContent()).includes('A saját tejitalom'))
   await home.locator('[data-household-tab="shopping"]').click()
@@ -336,7 +341,7 @@ try {
   assert.ok(!(await rootNode.textContent()).includes('B saját sajt'))
   await home.locator('[data-household-tab="inventory"]').click()
   assert.ok((await rootNode.textContent()).includes('A saját tej'))
-  await home.locator('[data-household-tab="advice"]').click()
+  await openExtra('advice')
   await home.locator('[data-household-recipe-hints]').getByText('A saját tejitalom', { exact: true }).waitFor()
   assert.ok((await rootNode.textContent()).includes('A saját tejitalom'))
   const aFinal = await page.evaluate(async () => {
