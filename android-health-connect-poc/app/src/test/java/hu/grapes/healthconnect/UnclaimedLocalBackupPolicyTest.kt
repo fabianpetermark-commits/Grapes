@@ -17,6 +17,7 @@ class UnclaimedLocalBackupPolicyTest {
         assertFalse(UnclaimedLocalBackupPolicy.allow(true, true, false, user, filename))
         assertFalse(UnclaimedLocalBackupPolicy.allow(true, true, true, null, filename))
         assertFalse(UnclaimedLocalBackupPolicy.allow(true, true, true, "", filename))
+        assertFalse(UnclaimedLocalBackupPolicy.allow(true, true, true, "not-a-uuid", filename))
     }
 
     @Test fun untrustedNamesCanNeverEscalateToSpecialBackupHandler() {
