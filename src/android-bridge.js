@@ -164,7 +164,7 @@ export async function saveAndroidVerifiedHealthBackup(prepared) {
  */
 export async function saveAndroidVerifiedUnclaimedBackup(prepared) {
   const { filename, json, sha256, bytes, manifest } = prepared || {}
-  if (!/^grapes-helyi-adatok-\d{4}-\d{2}-\d{2}\.json$/.test(filename || '') ||
+  if (!/^grapes-helyi-(?:adatok|teszt)-\d{4}-\d{2}-\d{2}\.json$/.test(filename || '') ||
       typeof json !== 'string' ||
       !Number.isSafeInteger(bytes) || bytes < 1 || bytes > 80 * 1024 * 1024 ||
       !/^[a-f0-9]{64}$/.test(sha256 || '') || !Array.isArray(manifest) ||

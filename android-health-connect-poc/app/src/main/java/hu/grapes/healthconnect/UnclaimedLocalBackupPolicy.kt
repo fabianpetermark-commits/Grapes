@@ -7,7 +7,7 @@ package hu.grapes.healthconnect
  * are required before opening the user-controlled Storage Access Framework.
  */
 internal object UnclaimedLocalBackupPolicy {
-    private val fileName = Regex("^grapes-helyi-adatok-\\d{4}-\\d{2}-\\d{2}\\.json$")
+    private val fileName = Regex("^grapes-helyi-(?:adatok|teszt)-\\d{4}-\\d{2}-\\d{2}\\.json$")
     private val subjectPattern = Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
     fun allow(

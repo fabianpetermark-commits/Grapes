@@ -1247,6 +1247,56 @@ if (localOwnerQaFlag && isGrapesAndroidApp() && grapesTestLogout) {
   }).catch(() => { panel.hidden = true })
 }
 
+// TEST v28: explicit user-initiated, SYNTHETIC-ONLY Android SAF rehearsal.
+// This panel must never inspect legacy projects or initiate real migration.
+const syntheticSafQaFlag =
+  import.meta.env?.VITE_GRAPES_TEST_CHANNEL === '1' &&
+  import.meta.env?.VITE_GRAPES_TEST_AUTH_ENABLED === 'true' &&
+  import.meta.env?.VITE_GRAPES_TEST_SAF_SYNTHETIC_QA_ENABLED === 'true'
+if (syntheticSafQaFlag && isGrapesAndroidApp() && grapesTestLogout) {
+  const panel = document.createElement('section')
+  panel.className = 'sync-status'
+  panel.hidden = true
+  panel.setAttribute('aria-label', 'Mesterséges Android fájlmentési próba')
+  const title = document.createElement('strong')
+  title.textContent = 'Fájlmentés TEST · csak mesterséges adatok'
+  const warning = document.createElement('p')
+  warning.textContent = 'Nem készít mentést a valódi Food, Water, Finance vagy E-book adataidról. A fájlválasztóban új grapes-helyi-teszt-... JSON-fájlt ments, ne írj felül korábbi mentést.'
+  const button = document.createElement('button')
+  button.type = 'button'
+  button.className = 'grapes-test-food-action'
+  button.textContent = '1. Mesterséges mentés fájlba és külön visszaolvasás'
+  const status = document.createElement('p')
+  status.setAttribute('role', 'status')
+  status.setAttribute('aria-live', 'polite')
+  status.textContent = 'A próba még nem indult el.'
+  button.addEventListener('click', async () => {
+    if (!syntheticSafQaFlag || !isGrapesAndroidApp()) return
+    button.disabled = true
+    status.dataset.state = 'pending'
+    status.textContent = 'Válassz mentési helyet az Androidon. A mentett fájlt a Grapes külön visszaolvassa…'
+    try {
+      const { createGrapesTestSyntheticSafTrial } =
+        await import('./sync/grapes-test-synthetic-saf-trial.js')
+      const result = await createGrapesTestSyntheticSafTrial({ enabled: true }).run()
+      status.dataset.state = 'success'
+      status.textContent = 'PASS: ' + result.sources +
+        ' mesterséges forrás Android-fájlmentése és SHA-256 visszaolvasása egyezik (' +
+        result.bytes + ' bájt). Ez NEM valódi adatmentés.'
+    } catch (error) {
+      status.dataset.state = 'error'
+      status.textContent = 'NEM IGAZOLT: ' + (error?.message || 'A mentés megszakadt.')
+    } finally {
+      button.disabled = false
+    }
+  })
+  panel.append(title, warning, button, status)
+  grapesTestLogout.before(panel)
+  getAndroidTestAuthEnabled().then(enabled => {
+    panel.hidden = !enabled
+  }).catch(() => { panel.hidden = true })
+}
+
 if (migrationPreviewButton) migrationPreviewButton.addEventListener('click', async () => {
   if (!migrationPreviewFlag || !isGrapesAndroidApp()) return
   const panel = $('[data-grapes-test-migration-results]')

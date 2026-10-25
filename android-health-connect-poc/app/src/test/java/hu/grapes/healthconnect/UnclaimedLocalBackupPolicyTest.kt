@@ -35,6 +35,10 @@ class UnclaimedLocalBackupPolicyTest {
             assertFalse(UnclaimedLocalBackupPolicy.requiresIndependentReadback(name))
         }
         assertTrue(UnclaimedLocalBackupPolicy.requiresIndependentReadback(filename))
+        assertTrue(UnclaimedLocalBackupPolicy.allow(true, true, true, user,
+            "grapes-helyi-teszt-2026-10-25.json"))
+        assertTrue(UnclaimedLocalBackupPolicy.requiresIndependentReadback(
+            "grapes-helyi-teszt-2026-10-25.json"))
     }
 
     @Test fun nativeReopenReceiptsAreByteExactEvenForUtf8OrTruncatedWrites() {
