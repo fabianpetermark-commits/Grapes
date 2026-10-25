@@ -655,10 +655,6 @@ async function persistReaderProgress() {
   mobileReaderSaveTimer = null
   if (!mobileReader || !mobileReaderBook) return
   const value = readerProgressSnapshot()
-  if (FRESH_OWNER_MODULES) console.warn('EBOOK_TRACE_SAVE_START', JSON.stringify({
-    percent: value.overallPercent, scrollTop: $('[data-reader-page]').scrollTop,
-    epoch: freshEbookEpoch, page: activePage,
-  }))
   const epoch = freshEbookEpoch
   const book = mobileReaderBook
   const reading = FRESH_OWNER_MODULES
@@ -666,13 +662,11 @@ async function persistReaderProgress() {
     : await saveMobileReadingProgress(book, value)
   if (FRESH_OWNER_MODULES && epoch !== freshEbookEpoch) return
   book.reading = reading
-  if (FRESH_OWNER_MODULES) console.warn('EBOOK_TRACE_SAVE_DONE', reading.overallPercent)
   updateReaderProgress()
 }
 
 function scheduleReaderProgressSave() {
   updateReaderProgress()
-  if (FRESH_OWNER_MODULES) console.warn('EBOOK_TRACE_SCHEDULE', Math.round($('[data-reader-page]').scrollTop))
   window.clearTimeout(mobileReaderSaveTimer)
   mobileReaderSaveTimer = window.setTimeout(() => persistReaderProgress().catch(error => {
     const status = $('[data-reader-status]'); status.textContent = FRESH_OWNER_MODULES
