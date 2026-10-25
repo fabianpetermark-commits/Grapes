@@ -46,7 +46,7 @@ export function createHomeMobile(root, storage, { loadRecipes = null, openRecipe
     <form class="household-form" data-household-split hidden><h2>Hűtő / Fagyasztó elosztás</h2><p data-household-split-source></p><div class="household-filters"><button type="button" data-household-preset="fridge">Mind hűtő</button><button type="button" data-household-preset="half">Fele-fele</button><button type="button" data-household-preset="freezer">Mind fagyasztó</button></div><div class="household-fields"><label>Hűtőbe kerülő mennyiség<input name="fridgeQuantity" type="number" min="0" step="any" inputmode="decimal" required></label><label>Egység<select name="unit">${units}</select></label></div><p data-household-split-preview role="status"></p><div class="household-actions"><button type="button" data-household-cancel>Mégse</button><button type="submit">Elosztás megerősítése</button></div></form>
     <form class="household-form" data-household-cooking hidden><h2>Főzés megerősítése</h2><p>A ténylegesen felhasznált tételeket add meg. Az előnézet nem módosít készletet. A recept többi hozzávalóját külön ellenőrizd.</p><label>Készétel neve<input name="name" required maxlength="160" autocomplete="off"></label><div class="household-fields"><label>Elkészült adagok<input name="portions" type="number" min="1" step="1" required></label><label>Készétel tárolása<select name="storageLocation"><option value="fridge">Hűtő</option><option value="freezer">Fagyasztó</option><option value="pantry">Kamra</option></select></label></div><div data-household-cooking-rows></div><button type="button" data-household-cooking-add>+ Felhasznált tétel</button><p data-household-cooking-preview role="status"></p><div class="household-actions"><button type="button" data-household-cancel>Mégse</button><button type="submit">Elkészítettem · megerősítés</button></div></form>
     <form class="household-form" data-household-link hidden><h2>Food-napló hozzárendelése</h2><p>A Foodban már elmentett saját étkezést kösd ehhez a készételhez. Ez csak a készétel adagjait csökkenti; a nyers készletet és a Food-naplót nem módosítja. A Food-bejegyzés későbbi törlése nem állítja vissza automatikusan az adagokat.</p><p data-household-link-source></p><label>Mentett Food-bejegyzés<select name="foodEntryId" required></select></label><p data-household-link-preview role="status"></p><div class="household-actions"><button type="button" data-household-cancel>Mégse</button><button type="submit">Hozzárendelés megerősítése</button></div></form>
-    <form class="household-form" data-household-receipt-form hidden><h2>Bizonylatsor ellenőrzése</h2><p data-household-receipt-source></p><p>A felismert szöveg bizonytalan. Csak a ténylegesen hazaérkezett élelmiszert erősítsd meg. A Pénzügy eredeti rekordja változatlan.</p><label>Élelmiszer neve<input name="name" required maxlength="160" autocomplete="off"></label><div class="household-fields"><label>Megerősített mennyiség<input name="quantity" type="number" min="0.001" step="any" required></label><label>Egység<select name="unit">${units}</select></label></div><label>Tárolás<select name="storageLocation"><option value="fridge">Hűtő</option><option value="freezer">Fagyasztó</option><option value="pantry">Kamra</option></select></label><div class="household-actions"><button type="button" data-household-cancel>Mégse</button><button type="submit">Bevételezés megerősítése</button></div></form>`
+    <form class="household-form" data-household-receipt-form hidden><h2>Bizonylatsor ellenőrzése</h2><p data-household-receipt-source></p><p>Az OCR-szöveg bizonytalan. Ha a mennyiség vagy a termék neve nem ismert, töltsd ki kézzel. Csak a ténylegesen hazaérkezett élelmiszert erősítsd meg. A Pénzügy eredeti rekordja változatlan.</p><label>Élelmiszer neve<input name="name" required maxlength="160" autocomplete="off"></label><div class="household-fields"><label>Megerősített mennyiség<input name="quantity" type="number" min="0.001" step="any" required></label><label>Egység<select name="unit" required><option value="" disabled selected>Válassz egységet</option>${units}</select></label></div><label>Tárolás<select name="storageLocation" required><option value="" disabled selected>Válassz tárolóhelyet</option><option value="fridge">Hűtő</option><option value="freezer">Fagyasztó</option><option value="pantry">Kamra</option></select></label><div class="household-actions"><button type="button" data-household-cancel>Mégse</button><button type="submit">Bevételezés megerősítése</button></div></form>`
 
   const $ = selector => root.querySelector(selector)
   const form = $('[data-household-form]')
@@ -110,10 +110,17 @@ export function createHomeMobile(root, storage, { loadRecipes = null, openRecipe
     else if (financeReceipts.status === 'error') receiptItems.innerHTML = `<div class="household-empty" role="alert">A Pénzügy mentése nem olvasható: ${escape(financeReceipts.error)}</div>`
     else if (!financeReceipts.rows.length) receiptItems.innerHTML = '<div class="household-empty">Nincs helyben mentett Pénzügy-bizonylat. Végösszegből nem következtetünk élelmiszerre.</div>'
     else receiptItems.innerHTML = financeReceipts.rows.map(row => `<article class="household-card"><strong>${escape(row.name)}</strong><p>${escape(row.date)} · Pénzügy · ${row.imageAvailable ? 'képes bizonylat' : 'PDF, itt nem olvasható'}</p>${row.imageAvailable ? `<div class="household-card-actions"><button type="button" data-household-scan-receipt="${escape(row.id)}">Sorok helyi beolvasása</button></div>` : ''}</article>`).join('')
-    $('[data-household-receipt-candidates]').innerHTML = financeCandidates.length ? `<h2 class="household-section-title">Ellenőrizendő sorok</h2>${financeCandidates.map(row => {
-      const used = current.events.some(event => event.sourceType === 'finance-receipt' && event.sourceId === row.sourceId)
-      return `<article class="household-card"><strong>${escape(row.name)}</strong><p>${escape(row.quantity)} ${escape(row.unit)} · OCR-sor ${row.lineNumber} · Ellenőrizendő</p><small>Felismert szöveg: ${escape(row.rawLine)}</small><div class="household-card-actions"><button type="button" data-household-review-line="${escape(row.sourceId)}" ${used ? 'disabled' : ''}>${used ? 'Már feldolgozva' : 'Ellenőrzés és bevételezés'}</button></div></article>`
-    }).join('')}` : ''
+    const receiptCard = row => {
+      const used = current.events.some(event => event.sourceType === "finance-receipt" && event.sourceId === row.sourceId)
+      const amount = row.quantity == null ? "Mennyiség nem ismert · kézi megadás szükséges" : `${escape(row.quantity)} ${escape(row.unit)}`
+      const kind = row.status === "raw" ? "Nem azonosított OCR-sor · kézi kitöltés" : "Ellenőrizendő"
+      return `<article class="household-card"><strong>${escape(row.name || "Nem azonosított sor")}</strong><p>${amount} · OCR-sor ${row.lineNumber} · ${kind}</p><small>Felismert szöveg: ${escape(row.rawLine)}</small><div class="household-card-actions"><button type="button" data-household-review-line="${escape(row.sourceId)}" ${used ? "disabled" : ""}>${used ? "Már feldolgozva" : "Ellenőrzés és bevételezés"}</button></div></article>`
+    }
+    const regularCandidates = financeCandidates.filter(row => row.status !== "raw")
+    const rawCandidates = financeCandidates.filter(row => row.status === "raw")
+    $("[data-household-receipt-candidates]").innerHTML = financeCandidates.length
+      ? `<h2 class="household-section-title">Ellenőrizendő sorok</h2>${regularCandidates.map(receiptCard).join("")}${rawCandidates.length ? `<details data-household-unmatched><summary>Nem azonosított OCR-sorok (${rawCandidates.length}) · csak kézi ellenőrzés</summary>${rawCandidates.map(receiptCard).join("")}</details>` : ""}`
+      : ""
     $('[data-household-undo]').hidden = !lastEventId
   }
   function openForm(kind, id = null) {
@@ -235,13 +242,14 @@ export function createHomeMobile(root, storage, { loadRecipes = null, openRecipe
     const requestId = ++financeReadId
     closeForms()
     financeCandidates = []
+    render() // Clear the previous receipt's suggestions before the asynchronous OCR finishes.
     alert('A bizonylat helyi OCR-beolvasása folyamatban…')
     try {
       const result = await scanFinanceReceipt(receiptId)
       if (requestId !== financeReadId) return
       financeCandidates = result.candidates
       render()
-      alert(financeCandidates.length ? 'Ellenőrizd és javítsd az OCR-sorokat, mielőtt készletbe veszed őket.' : 'Nincs felismerhető, tételes mennyiség. Végösszegből nem lesz készlet.', !financeCandidates.length)
+      alert(financeCandidates.length ? 'Ellenőrizd az OCR-sorokat; a nem ismert adatokat kézzel kell megadni. A sorok még nem készlettételek.' : 'Nincs ellenőrizhető OCR-sor. Végösszegből nem lesz készlet.', !financeCandidates.length)
     } catch (err) { if (requestId === financeReadId) alert(`A blokk beolvasása nem sikerült: ${err.message}`, true) }
   }
   function reviewReceiptLine(sourceId) {
@@ -252,8 +260,8 @@ export function createHomeMobile(root, storage, { loadRecipes = null, openRecipe
     financeOperationId = operationId()
     receiptForm.reset()
     receiptForm.elements.name.value = candidate.name
-    receiptForm.elements.quantity.value = candidate.quantity
-    receiptForm.elements.unit.value = candidate.unit
+    receiptForm.elements.quantity.value = candidate.quantity == null ? '' : String(candidate.quantity)
+    receiptForm.elements.unit.value = candidate.unit || ''
     $('[data-household-receipt-source]').textContent = `Pénzügy-bizonylat ${candidate.receiptId} · ${candidate.lineNumber}. sor · OCR: ${candidate.rawLine}`
     receiptForm.hidden = false
     receiptForm.scrollIntoView({ block: 'nearest' })

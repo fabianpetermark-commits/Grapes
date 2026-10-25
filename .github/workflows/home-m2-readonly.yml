@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/home-m2-food-readonly-test-20261023
+      - feature/home-m2-1-receipt-manual-lines-test-20261025
 
 permissions:
   contents: read

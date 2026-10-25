@@ -6,6 +6,8 @@ import { quantity } from './home-data.js'
 const FINANCE_PROJECT_ID = 'finance-tracker-current'
 const totalLine = /(?:v[eé]gösszeg|fizetend[oő]|mindösszesen|összesen|total|bankk[aá]rtya|fizetve|[aá]fa|kedvezm[eé]ny)/i
 const itemLine = /^(.{2,100}?)\s+(?:(\d{1,3})\s*[x×]\s*)?(\d+(?:[,.]\d{1,3})?)\s*(kg|dkg|g|l|dl|ml|db)\b/i
+// A price-only line may be a product, but it must never imply a stock quantity.
+const pricedLine = /^(.{2,100}?)\s+\d+(?:[\s.,]\d{3})*(?:[,.]\d{1,2})?\s*(?:Ft|HUF)\s*$/i
 function lineFingerprint(value) {
   let hash = 0xcbf29ce484222325n
   for (const char of value.normalize('NFKC').toLocaleLowerCase('hu-HU')) {
@@ -36,19 +38,37 @@ export function receiptLineCandidates(text, receiptId) {
   return String(text || '').split(/\r?\n/).flatMap((original, index) => {
     const rawLine = original.trim().replace(/\s+/g, ' ')
     if (!rawLine || totalLine.test(rawLine)) return []
+    // Non-product headers can be visible for manual review, but no data is trusted.
+    if (/^[\d\s.,-]+(?:Ft|HUF|EUR|€)?\s*$/i.test(rawLine) || !/\p{L}{2,}/u.test(rawLine)) return []
     const match = rawLine.match(itemLine)
-    if (!match) return []
-    const name = match[1].trim()
-    const amount = Number(match[3].replace(',', '.')) * Number(match[2] || 1)
-    const unit = match[4].toLowerCase()
-    try {
-      if (!name || quantity(amount, unit).quantityBase <= 0) return []
-    } catch { return [] }
+    let name = ''
+    let amount = null
+    let unit = null
+    let status = 'raw'
+    if (match) {
+      const parsedAmount = Number(match[3].replace(',', '.')) * Number(match[2] || 1)
+      const parsedUnit = match[4].toLowerCase()
+      try {
+        if (match[1].trim() && quantity(parsedAmount, parsedUnit).quantityBase > 0) {
+          name = match[1].trim()
+          amount = parsedAmount
+          unit = parsedUnit
+          status = 'review'
+        }
+      } catch { /* Keep the uncertain OCR line manual-only. */ }
+    } else {
+      const priced = rawLine.match(pricedLine)
+      if (priced && /\p{L}{2,}/u.test(priced[1])) {
+        name = priced[1].trim()
+        status = 'manual'
+      }
+    }
+    // Fingerprint remains identical to M2 for previously recognised rows.
     const fingerprint = lineFingerprint(rawLine)
     const occurrence = (occurrences.get(fingerprint) || 0) + 1
     occurrences.set(fingerprint, occurrence)
     const lineId = `ocr-${fingerprint}-${occurrence}`
-    return [{ receiptId, lineId, lineNumber: index + 1, sourceId: `${receiptId}:${lineId}`, rawLine: rawLine.slice(0, 160), name, quantity: amount, unit, status: 'review' }]
+    return [{ receiptId, lineId, lineNumber: index + 1, sourceId: `${receiptId}:${lineId}`, rawLine: rawLine.slice(0, 160), name, quantity: amount, unit, status }]
   })
 }
 
