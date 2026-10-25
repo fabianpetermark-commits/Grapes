@@ -268,7 +268,7 @@ try {
   const ocrForm = home.locator('[data-household-receipt-form]')
   assert.equal(await ocrForm.locator('[name="quantity"]').inputValue(),'')
   assert.equal(await ocrForm.locator('[name="unit"]').inputValue(),'')
-  assert.equal(await ocrForm.locator('[name="storageLocation"]').inputValue(),'')
+  assert.equal(await ocrForm.locator('[name="storageLocation"]').inputValue(),'untracked')
   assert.equal(await ocrForm.evaluate(form=>form.checkValidity()),false)
   await ocrForm.locator('[name="quantity"]').fill('1')
   await ocrForm.locator('[name="unit"]').selectOption('db')
