@@ -62,8 +62,7 @@ try {
   await form.locator('[name="quantity"]').fill('0')
   await form.locator('button[type=submit]').click()
   await home.locator('[data-household-tab="replenishment"]').click()
-  await home.locator('[data-household-proposal-check]').count().catch(()=>{})
-  await home.locator('[data-household-suggestion-pick]').waitFor()
+    await home.locator('[data-household-suggestion-pick]').waitFor()
   assert.ok((await home.locator('[data-household-replenishment-items]').textContent()).includes('Tej'))
   assert.equal(await home.locator('[data-household-dismiss-key]').count(),1)
   const colour=await home.locator('[data-household-dismiss-key]').evaluate(
@@ -82,7 +81,7 @@ try {
   await openHome()
   await home.locator('[data-household-tab="replenishment"]').click()
   assert.equal(await home.locator('[data-household-suggestion-pick]').count(),0)
-  assert.ok(!(await home.locator('[data-household-root]').textContent()).includes('Tej · 2 l'))
+  assert.ok(!(await home.textContent()).includes('Tej · 2 l'))
   await page.evaluate(owner=>localStorage.setItem('__home_qa_subject',owner),A)
   await page.reload()
   await openHome()
