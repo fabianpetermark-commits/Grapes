@@ -54,7 +54,7 @@ a{color:#81dceb;text-decoration:none}a:hover{text-decoration:underline}
 </style>
 </head>
 <body>
-<header class="top"><div class="top-inner"><div><div class="brand">Grapes <span>·</span> UI ellenőrzés</div><p class="subtitle">8 valódi HTML-felület · Brand Guide v1.2 · egységes vizuális áttekintés</p></div><span class="status">Dizájn-referencia • nincs éles adatkapcsolat</span></div></header>
+<header class="top"><div class="top-inner"><div><div class="brand">Grapes <span>·</span> UI ellenőrzés</div><p class="subtitle">11 valódi HTML-felület · Brand Guide v1.2 · egységes vizuális áttekintés</p></div><span class="status">Dizájn-referencia • nincs éles adatkapcsolat</span></div></header>
 <main class="content">
 <section class="intro" aria-label="Ellenőrzés célja"><strong>Ez nem generált látványkép: az eredeti HTML-fájlokat jelenítjük meg.</strong>
 <p>Kattints a képernyőkre, próbáld ki a funkcióikat, váltogasd a telefonméreteket. Az elfogadott stílus és a még jóváhagyandó modulrészletek külön jelölést kapnak. A mintaszámok nem Grapes-fiókadatok.</p></section>
@@ -101,6 +101,9 @@ const modules=[
 {id:'start',name:'Kezdő',caption:'Személyre szabott widgetek',status:'style',path:'candidates/main-shell-tools.html',icon:'start',desc:'A Grapes működő HTML-kezdőoldala; ezen a fájlon belül a Home/Health/Tools/Finance felső modulikonjai is kipróbálhatók.',states:[['Kezdő','start'],['Home','home'],['Health','health'],['Tools','utility'],['Finance','finance']]},
 {id:'home',name:'Home',caption:'Bevásárlás és készlet',status:'proposal',path:'candidates/home.html',icon:'home',desc:'Bevásárlólista, készletkezelő és Növények widgetek, csak mintaadatokkal.'},
 {id:'health',name:'Health',caption:'Food, Víz és receptek',status:'style',path:'approved/health-minimal.html',icon:'health',desc:'Elfogadott Health-widgetstílus: kalóriagyűrű, makrók, víz, receptajánló és alsó gyorssáv.'},
+{id:'food',name:'Ételnapló',caption:'Food belső oldal',status:'proposal',path:'candidates/food.html',icon:'health',desc:'Részletes napi Food napló: étkezések, tápanyagok, rögzített mintatételek és Health Quick Action.'},
+{id:'water',name:'Víznapló',caption:'Víz belső oldal',status:'proposal',path:'candidates/water.html',icon:'health',desc:'Napi vízcél, interaktív vízfelvétel, heti grafikon, napló és Health Quick Action.'},
+{id:'recipes',name:'Receptek',caption:'Saját receptek',status:'proposal',path:'candidates/recipes.html',icon:'ebook',desc:'Kereshető receptgyűjtemény, ötfüles szerkesztő, mintarecept és Health Quick Action.'},
 {id:'plants',name:'Növények',caption:'Gondozás és aktuális teendők',status:'style',path:'approved/plants-widget.html',icon:'plants',desc:'Elfogadott Növények-stílus, a részletes saját növényadat-kezelés még fejlesztés alatt.'},
 {id:'tools',name:'Tools',caption:'E-book és QR',status:'proposal',path:'candidates/tools.html',icon:'tools',desc:'A korábbi Utility új neve; E-book/QR widgetes főoldal.'},
 {id:'ebook',name:'E-book',caption:'Könyvtár, olvasó, átvitel',status:'proposal',path:'candidates/ebook.html',icon:'ebook',desc:'Külön nézetek a könyvtárhoz, olvasóhoz és az átvitelhez. A személyre szabott olvasási téma marad.',states:[['Könyvtár','library'],['Olvasó','reader'],['Átvitel','transfer']]},
