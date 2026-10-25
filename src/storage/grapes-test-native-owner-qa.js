@@ -88,34 +88,42 @@ export function createGrapesTestNativeOwnerTrial({
 }
 
 // Future Finance integration entrypoint; no normal Finance module imports it.
-// Never fall back to the legacy global finance-tracker-current project.
-export function createGrapesTestOwnerFinanceRepository({
+// The repository captures an authenticated owner when opened. A stale Finance
+// component MUST NOT follow a later login and save A's in-memory data into B.
+export async function createGrapesTestOwnerFinanceRepository({
   enabled = false,
   isAndroid = isGrapesAndroidApp,
   authEnabled = getAndroidTestAuthEnabled,
   getSubject = getAndroidTestAuthSubject,
   indexedDb = globalThis.indexedDB,
 } = {}) {
-  const gate = async () => {
+  async function ensureNativeSession() {
     if (enabled !== true || !isAndroid() || !(await authEnabled())) {
       throw new Error('A hitelesített Finance TEST-tárhely nincs engedélyezve.')
     }
-    return createGrapesTestLocalOwnerStore({
-      enabled: true, indexedDb, getVerifiedSubject: getSubject,
-    })
   }
+  await ensureNativeSession()
+  const pinnedUser = identity(await getSubject())
+  const verifiedPinnedOwner = async () => {
+    await ensureNativeSession()
+    const current = identity(await getSubject())
+    if (current !== pinnedUser) {
+      throw new Error('A Finance TEST-fiók megváltozott: a korábbi munkamenet nem menthet.')
+    }
+    return current
+  }
+  const store = createGrapesTestLocalOwnerStore({
+    enabled: true, indexedDb, getVerifiedSubject: verifiedPinnedOwner,
+  })
   const id = 'finance-current'
   return Object.freeze({
     async load() {
-      const store = await gate()
       return store.read(id)
     },
     async save(data, expectedRevision = 0) {
-      const store = await gate()
       return store.save({ id, data, expectedRevision })
     },
     async list() {
-      const store = await gate()
       const finance = await store.read(id)
       return finance ? [finance] : []
     },
