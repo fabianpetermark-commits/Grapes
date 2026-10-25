@@ -265,12 +265,12 @@ begin
       raise exception 'cannot change past shared Home events' using errcode='42501';
     end if;
     v_event := p_candidate->'events'->(p_expected_revision::integer);
-    if v_event->>'eventId'<>p_operation_id::text or
-       v_event->>'actorId'<>v_actor::text or
-       v_event->>'householdId'<>p_household_id::text or
-       v_event->>'sourceType'<>'manual' or
-       v_event->>'confirmation'<>'true' or
-       v_event->>'resultingRevision'<>''||(p_expected_revision+1)::text or
+    if v_event->>'eventId' is distinct from p_operation_id::text or
+       v_event->>'actorId' is distinct from v_actor::text or
+       v_event->>'householdId' is distinct from p_household_id::text or
+       v_event->>'sourceType' is distinct from 'manual' or
+       v_event->>'confirmation' is distinct from 'true' or
+       v_event->>'resultingRevision' is distinct from (p_expected_revision+1)::text or
        jsonb_typeof(v_event->'changes')<>'array' or
        v_event->>'type' not in
         ('StockCountConfirmed','LotEdited','LotDeleted','StockSplit',
@@ -297,15 +297,15 @@ begin
       end if;
       v_after := coalesce(v_change->'after','null'::jsonb);
       if v_after<>'null'::jsonb and
-          (jsonb_typeof(v_after)<>'object' or v_after->>'id'<>v_id or
-           v_after->>'householdId'<>p_household_id::text or
+          (jsonb_typeof(v_after)<>'object' or v_after->>'id' is distinct from v_id or
+           v_after->>'householdId' is distinct from p_household_id::text or
            (v_collection='inventory' and
-            (v_after->>'sourceType'<>'manual' or
+            (v_after->>'sourceType' is distinct from 'manual' or
              (v_after ? 'sourceId' and v_after->'sourceId'<>'null'::jsonb) or
-             v_after->>'evidenceStatus'<>'confirmed' or
+             v_after->>'evidenceStatus' is distinct from 'confirmed' or
              v_after->>'storageLocation' not in ('fridge','freezer','pantry'))) or
            (v_collection='shopping' and
-            (v_after->>'sourceType'<>'manual' or
+            (v_after->>'sourceType' is distinct from 'manual' or
              v_after->>'status' not in ('planned','checked','deferred')))) then
         raise exception 'private or invalid shared item' using errcode='42501';
       end if;
@@ -351,7 +351,6 @@ end $$;
 revoke all on function grapes_home_private.require_actor() from public, anon;
 grant usage on schema grapes_home_private to authenticated;
 grant execute on function grapes_home_private.require_actor() to authenticated;
-revoke all on all functions in schema api from anon;
 revoke all on function api.home_m3b_create_household(text) from public, anon;
 revoke all on function api.home_m3b_list_households() from public, anon;
 revoke all on function api.home_m3b_read_household(uuid) from public, anon;
