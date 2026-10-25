@@ -509,11 +509,11 @@ async function prepareFreshYazioFile(file) {
     showToast('A YAZIO-fájl legfeljebb 40 MB lehet.')
     return
   }
-  if (!/\\.(json|csv)$/i.test(file.name)) {
+  if (!/[.](json|csv)$/i.test(file.name)) {
     showToast('Csak JSON vagy nutrition_log.csv fájl választható.')
     return
   }
-  const epoch = ++yazioPreviewEpoch
+  ++yazioPreviewEpoch
   freshYazioPreview = null
   freshYazioSession = null
   openSheet(freshYazioSheet)
