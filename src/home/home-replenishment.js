@@ -4,7 +4,7 @@ export const REPLENISHMENT_ARCHIVE_DAYS = 30
 export const DEFAULT_SHOPPING_LIST_ID = 'main'
 const DAY_MS = 86_400_000
 const normalize = value => String(value ?? '').normalize('NFKC').trim()
-  .replace(/\\s+/g, ' ').toLocaleLowerCase('hu-HU')
+  .replace(/\s+/g, ' ').toLocaleLowerCase('hu-HU')
 
 export function replenishKey(name, dimension) {
   return JSON.stringify([normalize(name), dimension])
