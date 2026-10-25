@@ -1190,6 +1190,63 @@ if (foodSyntheticQaPanel) {
     })
   }
 }
+// QA-only native subject-bound LOCAL test, separate from Supabase Food and Drive.
+// Default OFF: old local Food/Finance/Water/Book paths are not changed.
+const localOwnerQaFlag =
+  import.meta.env?.VITE_GRAPES_TEST_CHANNEL === '1' &&
+  import.meta.env?.VITE_GRAPES_TEST_AUTH_ENABLED === 'true' &&
+  import.meta.env?.VITE_GRAPES_TEST_LOCAL_OWNER_QA_ENABLED === 'true'
+if (localOwnerQaFlag && isGrapesAndroidApp() && grapesTestLogout) {
+  const panel = document.createElement('section')
+  panel.className = 'sync-status'
+  panel.hidden = true
+  panel.setAttribute('aria-label', 'Helyi felhasználói tároló szintetikus TEST')
+  const title = document.createElement('strong')
+  title.textContent = 'Helyi fióktárhely TEST · csak mesterséges adatok'
+  const warning = document.createElement('p')
+  warning.textContent = 'Nem a normál Food/Finance-adatok tesztje. Nem olvassa, nem írja és nem költözteti át a régi adatokat. A normál modulok elkülönítése továbbra is NEM IGAZOLT.'
+  const actions = [
+    ['prepare', '1. Saját helyi próbarekordok előkészítése'],
+    ['readBack', '2. Saját helyi próbarekordok visszaolvasása'],
+  ]
+  const status = document.createElement('p')
+  status.setAttribute('role', 'status')
+  status.setAttribute('aria-live', 'polite')
+  status.textContent = 'Még nem indult helyi fiókpróba.'
+  const buttons = actions.map(([method, caption]) => {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.className = 'grapes-test-food-action'
+    button.textContent = caption
+    button.addEventListener('click', async () => {
+      if (!localOwnerQaFlag || !isGrapesAndroidApp()) return
+      buttons.forEach(item => { item.disabled = true })
+      status.dataset.state = 'pending'
+      status.textContent = 'Natív fiókazonosító és helyi próbarekordok ellenőrzése…'
+      try {
+        const { createGrapesTestNativeOwnerTrial } =
+          await import('./storage/grapes-test-native-owner-qa.js')
+        const result = await createGrapesTestNativeOwnerTrial({ enabled: true })[method]()
+        status.dataset.state = method === 'readBack' ? 'success' : 'pending'
+        status.textContent = method === 'readBack'
+          ? 'PASS: a belépett TEST-fiók mindkét saját, mesterséges helyi rekordja elkülönítve és változatlanul visszaolvasható. A normál modulok még NEM igazoltak.'
+          : 'A saját fiók ' + result.created + ' mesterséges helyi rekordja elkészült vagy korábban megvolt. Kérlek, indítsd a 2. ellenőrzést.'
+      } catch (error) {
+        status.dataset.state = 'error'
+        status.textContent = 'NEM IGAZOLT: ' + (error?.message || 'A helyi próba megszakadt.')
+      } finally {
+        buttons.forEach(item => { item.disabled = false })
+      }
+    })
+    return button
+  })
+  panel.append(title, warning, ...buttons, status)
+  grapesTestLogout.before(panel)
+  getAndroidTestAuthEnabled().then(enabled => {
+    panel.hidden = !enabled
+  }).catch(() => { panel.hidden = true })
+}
+
 if (migrationPreviewButton) migrationPreviewButton.addEventListener('click', async () => {
   if (!migrationPreviewFlag || !isGrapesAndroidApp()) return
   const panel = $('[data-grapes-test-migration-results]')
