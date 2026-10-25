@@ -133,6 +133,99 @@ export function createHomeMobile(root, storage, { freshOwnerMode = false, openFo
     root.inert = true
     root.style.visibility = 'hidden'
   }
+
+  function renderReplenishment(current) {
+    const metas = replenishment?.getState()
+    const lists = metas?.lists || [{ id: DEFAULT_SHOPPING_LIST_ID, name: 'Bevásárlólista' }]
+    if (!lists.some(row => row.id === selectedList)) selectedList = DEFAULT_SHOPPING_LIST_ID
+    const opts = lists.map(row => `<option value="${escape(row.id)}">${escape(row.name)}</option>`).join('')
+    $('[data-household-list-select]').innerHTML = opts
+    $('[data-household-list-select]').value = selectedList
+    $('[data-household-suggestion-list]').innerHTML = opts
+    $('[data-household-suggestion-list]').value = selectedList
+    const place = $('[data-household-replenishment-items]')
+    const history = $('[data-household-replenishment-history]')
+    if (!metas) {
+      place.innerHTML = `<div class="household-empty" role="alert">A javaslatok fiókhoz kötött tárolása nem elérhető. ${escape(replenishmentError)} A készlet és a listák változatlanok.</div>`
+      history.innerHTML = ''
+      $('[data-household-move-selected]').disabled = true
+      return
+    }
+    const proposals = deriveHomeReplenishment(current, metas)
+    const active = proposals.filter(row => row.status === 'active')
+    const historyRows = proposals.filter(row => row.status !== 'active')
+    const currently = new Set(active.map(row => JSON.stringify([row.key, row.cycleId])))
+    selectedSuggestions = new Set([...selectedSuggestions].filter(id => currently.has(id)))
+    place.innerHTML = active.length ? active.map(row => {
+      const id = JSON.stringify([row.key, row.cycleId])
+      return `<article class="household-proposal">
+        <label class="household-proposal-check">
+          <input type="checkbox" data-household-suggestion-pick="${escape(id)}" ${selectedSuggestions.has(id) ? 'checked' : ''} aria-label="${escape(row.name)} kijelölése">
+          <span class="household-proposal-copy"><strong>${escape(row.name)} · ${escape(String(row.quantity))} ${escape(row.unit)}</strong>
+            <small>Igazoltan elfogyott · javasolt pótlás, szabadon módosítható</small></span>
+        </label>
+        <button type="button" class="household-proposal-dismiss" data-household-dismiss-key="${escape(row.key)}" data-household-dismiss-cycle="${escape(row.cycleId)}" aria-label="${escape(row.name)} javaslat elvetése" title="Most nem">✕</button>
+      </article>`
+    }).join('') : '<div class="household-empty">Nincs igazoltan elfogyott termék, amelyhez most pótlást javasolnánk. Nem következtetünk bizonytalan készletből.</div>'
+    history.innerHTML = historyRows.length ? historyRows.map(row =>
+      `<article class="household-proposal-history"><span><strong>${escape(row.name)}</strong>
+        <small>${row.status === 'dismissed' ? 'Elvetve az X-szel' : row.status === 'archived' ? '30 nap után archiválva' : 'Már szerepel egy bevásárlólistán'}</small></span>
+        ${row.status === 'dismissed' && !row.archived ?
+          `<button type="button" data-household-restore-key="${escape(row.key)}" data-household-restore-cycle="${escape(row.cycleId)}">Visszaállítás</button>` : ''}
+      </article>`).join('') : '<p class="household-replenishment-muted">Még nincs korábbi javaslat.</p>'
+    $('[data-household-move-selected]').disabled = suggestionsBusy || selectedSuggestions.size === 0
+    $('[data-household-move-selected]').textContent = selectedSuggestions.size
+      ? `${selectedSuggestions.size} kijelölt listára` : 'Válassz egy terméket'
+  }
+  async function dismissReplenishment(key, cycleId, restore = false) {
+    if (!replenishment) return
+    const epoch = loadEpoch
+    try {
+      if (restore) await replenishment.restore({key,cycleId})
+      else await replenishment.dismiss({key,cycleId})
+      if (epoch === loadEpoch && store) {
+        selectedSuggestions.delete(JSON.stringify([key,cycleId]))
+        render()
+        alert(restore ? 'Javaslat visszaállítva.' : 'Javaslat elvetve. Új fogyási ciklusig nem tér vissza.')
+      }
+    } catch (err) { if(epoch===loadEpoch) alert(err.message,true) }
+  }
+  async function moveSelectedReplenishment() {
+    if (!replenishment || !store || suggestionsBusy) return
+    const epoch = loadEpoch
+    const owner = store
+    const target = $('[data-household-suggestion-list]').value
+    if (!replenishment.getState().lists.some(list => list.id === target)) return
+    suggestionsBusy = true
+    let moved = 0
+    try {
+      await replenishment.assertOwner()
+      for (const id of [...selectedSuggestions]) {
+        if (epoch !== loadEpoch || store !== owner) break
+        const proposal = deriveHomeReplenishment(owner.getState(), replenishment.getState())
+          .find(row => JSON.stringify([row.key,row.cycleId]) === id && row.status === 'active')
+        if (!proposal) { selectedSuggestions.delete(id); continue }
+        const exists = owner.getState().shopping.some(row => row.status !== 'checked' &&
+          row.name.trim().toLocaleLowerCase('hu-HU') === proposal.name.trim().toLocaleLowerCase('hu-HU') &&
+          row.dimension === proposal.dimension)
+        if (exists) { selectedSuggestions.delete(id); continue }
+        const result = await run('ShoppingItemAdded', {
+          name: proposal.name, quantity: proposal.quantity,
+          unit: proposal.unit, listId: target,
+        }, operationId())
+        if (!result) break
+        moved++
+        selectedSuggestions.delete(id)
+      }
+      if (epoch === loadEpoch && store === owner) {
+        selectedList = target
+        alert(moved ? `${moved} javaslat a kiválasztott bevásárlólistára került. A készlet csak akkor nő, ha megveszed.` :
+          'Nem került új tétel listára.', false)
+      }
+    } catch(err) { if(epoch===loadEpoch) alert(err.message,true) }
+    finally { suggestionsBusy = false; if (epoch===loadEpoch && store===owner) render() }
+  }
+
   function render() {
     if (!store) return
     const current = state()
@@ -380,6 +473,18 @@ export function createHomeMobile(root, storage, { freshOwnerMode = false, openFo
         openFoodRecipe(id)
       } catch { clearFreshHome() }
     }
+    else if (d.householdNewList !== undefined && freshOwnerMode) {
+      $('[data-household-list-form]').hidden = false
+      $('[data-household-list-form] [name=name]').focus()
+    }
+    else if (d.householdListCancel !== undefined && freshOwnerMode)
+      $('[data-household-list-form]').hidden = true
+    else if (d.householdDismissKey !== undefined && freshOwnerMode)
+      await dismissReplenishment(d.householdDismissKey, d.householdDismissCycle)
+    else if (d.householdRestoreKey !== undefined && freshOwnerMode)
+      await dismissReplenishment(d.householdRestoreKey, d.householdRestoreCycle, true)
+    else if (d.householdMoveSelected !== undefined && freshOwnerMode)
+      await moveSelectedReplenishment()
     else if (d.householdAdd) openForm(d.householdAdd)
     else if (d.householdEdit) openForm('inventory', d.householdEdit)
     else if (d.householdEditShopping) openForm('shopping', d.householdEditShopping)
@@ -393,6 +498,38 @@ export function createHomeMobile(root, storage, { freshOwnerMode = false, openFo
     else if (d.householdUndo !== undefined && lastEventId) { const result = await run('Reversed', { eventId: lastEventId }); if (result) { lastEventId = null; render() } }
   })
   $('[data-household-search]').addEventListener('input', event => { search = event.target.value.toLocaleLowerCase('hu-HU'); render() })
+  if (freshOwnerMode) {
+    root.addEventListener('change', event => {
+      if (event.target.matches('[data-household-list-select]')) {
+        selectedList = event.target.value; closeForms(); render()
+      } else if (event.target.matches('[data-household-suggestion-list]')) {
+        selectedList = event.target.value; render()
+      } else if (event.target.matches('[data-household-suggestion-pick]')) {
+        const id = event.target.dataset.householdSuggestionPick
+        if (event.target.checked) selectedSuggestions.add(id)
+        else selectedSuggestions.delete(id)
+        const button = $('[data-household-move-selected]')
+        button.disabled = !selectedSuggestions.size || suggestionsBusy
+        button.textContent = selectedSuggestions.size
+          ? `${selectedSuggestions.size} kijelölt listára` : 'Válassz egy terméket'
+      }
+    })
+    $('[data-household-list-form]').addEventListener('submit', async event => {
+      event.preventDefault()
+      if (!replenishment || suggestionsBusy) return
+      const label = event.currentTarget.elements.name.value
+      const epoch = loadEpoch
+      try {
+        const data = await replenishment.createList(label)
+        if (epoch !== loadEpoch || !store) return
+        selectedList = data.lists.at(-1).id
+        $('[data-household-list-form]').reset()
+        $('[data-household-list-form]').hidden = true
+        render()
+        alert('Az új bevásárlólista elkészült.')
+      } catch (err) { if(epoch===loadEpoch) alert(err.message,true) }
+    })
+  }
   splitForm.elements.fridgeQuantity.addEventListener('input', previewSplit)
   splitForm.elements.unit.addEventListener('change', previewSplit)
   form.addEventListener('submit', async event => {
