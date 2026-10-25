@@ -140,7 +140,11 @@ try {
       await import('/Grapes/src/ebook/grapes-test-fresh-ebook.js')
     const session = await openGrapesTestFreshEbook({enabled:true})
     return { percent:(await session.listBooks())[0]?.reading?.overallPercent,
+      revision:(await session.status()).revision,
       pageTop:document.querySelector('[data-reader-page]')?.scrollTop,
+      pageMax:(document.querySelector('[data-reader-page]')?.scrollHeight || 0)-
+        (document.querySelector('[data-reader-page]')?.clientHeight || 0),
+      uiLabel:document.querySelector('[data-reader-progress-label]')?.textContent,
       readerStatus:document.querySelector('[data-reader-status]')?.textContent }
   })
   console.log('EBOOK_BEFORE_SWITCH', JSON.stringify(stableBeforeSwitch))
