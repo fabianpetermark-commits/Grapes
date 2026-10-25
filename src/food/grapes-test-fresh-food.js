@@ -125,6 +125,7 @@ export async function openGrapesTestFreshFood({
   return Object.freeze({
     ownerId: owner,
     load, save, flush,
+    async assertOwner() { await flush(); return verify() },
     async status() {
       await flush()
       return { ownerId: owner, revision: revision ?? 0, migrationAuthorized: false,

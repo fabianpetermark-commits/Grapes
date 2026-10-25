@@ -303,7 +303,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
         changeRevision = 0
         freshOwnerSession = session
         freshOwnerReady = true
-        showSyncStatus('Saját Food TEST-tárhely · Drive, YAZIO, Health és megosztás kikapcsolva')
+        showSyncStatus('Saját Food TEST-tárhely · Health étkezés csak jóváhagyással · Drive, YAZIO és megosztás tiltva')
         showOverview()
         updateInboxIndicator()
         if (foodPage) { foodPage.style.removeProperty('visibility'); foodPage.inert = false }
@@ -576,7 +576,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       const count = Number.isFinite(Number(state?.imported)) ? `${Number(state.imported)} új` : 'nincs adat'
       status.textContent = `${date} · ${count}${state?.lastError ? ` · Hiba: ${state.lastError}` : ''}`
     }
-    if (freshOwnerMode) showSyncStatus('Saját Food TEST-tárhely · Drive, YAZIO, Health és megosztás kikapcsolva')
+    if (freshOwnerMode) showSyncStatus('Saját Food TEST-tárhely · Health étkezés csak jóváhagyással · Drive, YAZIO és megosztás tiltva')
     else if (FOOD_LOCAL_CAS_QA) showSyncStatus('QA helyi CAS ellenőrzés · Drive-írás szünetel')
     else if (!isGrapesDriveConnected()) showSyncStatus('Csak helyi mentés · Drive nincs csatlakoztatva')
     else if (project?.syncState?.reconciliation?.status === 'pending') showSyncStatus('Egyesítve helyben · a Drive még nincs frissítve')
@@ -1910,7 +1910,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   function healthRecordLabel(item) {
-    if (item.status === 'invalid') return `Hibás rekord #${item.index + 1}`
+    if (item.status === 'invalid' || item.status === 'blocked') return `${item.status === 'blocked' ? 'Külön Water-jóváhagyás szükséges' : 'Hibás rekord'} #${item.index + 1}`
     const date = new Date(item.entry.occurredAt).toLocaleString('hu-HU', { dateStyle: 'short', timeStyle: 'short' })
     const amount = item.record.type === 'hydration' ? `${number(item.entry.amount)} ml` : nutrient(item.entry.snapshot.nutrients.energyKcal, 1, ' kcal')
     return `${item.entry.snapshot.name} · ${date} · ${amount}`
@@ -1919,12 +1919,12 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   function renderHealthPreview() {
     const preview = pendingHealthImport
     if (!preview) return
-    $('[data-food-health-summary]').textContent = `Export: ${new Date(preview.generatedAt).toLocaleString('hu-HU')} · ${preview.counts.ready} új · ${preview.counts.duplicate} már importálva · ${preview.counts.invalid} hibás`
+    $('[data-food-health-summary]').textContent = `Export: ${new Date(preview.generatedAt).toLocaleString('hu-HU')} · ${preview.counts.ready} új · ${preview.counts.duplicate} már importálva · ${preview.counts.invalid} hibás${preview.counts.blocked ? ` · ${preview.counts.blocked} vízadat zárolva` : ''}`
     const container = $('[data-food-health-records]'); container.replaceChildren()
     for (const item of preview.records) {
       const row = document.createElement('label'); row.className = 'sheet-result'
       const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.value = String(item.index); checkbox.checked = item.status === 'ready'; checkbox.disabled = item.status !== 'ready'; checkbox.dataset.foodHealthRecord = ''
-      const content = document.createElement('span'); content.textContent = `${healthRecordLabel(item)}${item.status === 'duplicate' ? ' · már importálva' : item.status === 'invalid' ? ` · ${item.error}` : ''}`
+      const content = document.createElement('span'); content.textContent = `${healthRecordLabel(item)}${item.status === 'duplicate' ? ' · már importálva' : ['invalid', 'blocked'].includes(item.status) ? ` · ${item.error}` : ''}`
       row.append(checkbox, content); container.append(row)
     }
     $('[data-food-health-confirm]').disabled = preview.counts.ready === 0
@@ -1932,8 +1932,34 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   }
 
   async function prepareHealthImport(source) {
-    if (freshOwnerMode) throw new Error('A Health-import zárolva van.')
+    const startingGeneration = loadGeneration
+    const ownerSession = freshOwnerMode ? freshOwnerSession : null
+    if (freshOwnerMode) {
+      if (!freshOwnerReady || !ownerSession || !profile ||
+          profile.id !== ownerSession.ownerId) {
+        throw new Error('Nincs ellenőrzött Food-fiók a Health előnézetéhez.')
+      }
+      await ownerSession.assertOwner()
+    }
     try {
+      if (freshOwnerMode) {
+        const { prepareFreshOwnerHealthNutrition } =
+          await import('./grapes-test-fresh-health-nutrition.js')
+        const result = prepareFreshOwnerHealthNutrition(source, {
+          ownerId: ownerSession.ownerId,
+          existingEntries: project.diaryEntries,
+        })
+        await ownerSession.assertOwner()
+        if (startingGeneration !== loadGeneration ||
+            ownerSession !== freshOwnerSession) {
+          throw new Error('A Grapes-fiók időközben megváltozott.')
+        }
+        pendingHealthImport = result
+        if (!result.records.length) throw new Error('Nincs importálható Health-rekord.')
+        closeSheets()
+        renderHealthPreview()
+        return result
+      }
       const hydrationKeys = typeof getHydrationExternalKeys === 'function' ? getHydrationExternalKeys() : []
       const existingEntries = [
         ...project.diaryEntries.filter(entry => entry.snapshot?.category !== 'Folyadék'),
@@ -1943,16 +1969,35 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       if (!pendingHealthImport.records.length) throw new Error('Nem érkezett étel- vagy vízadat. Ellenőrizd a Health Connect engedélyeit és a Samsung Health adatmegosztását.')
       closeSheets(); renderHealthPreview()
       return pendingHealthImport
-    } catch (error) { pendingHealthImport = null; recordImportError('health', error); showToast(error.message); throw error }
+    } catch (error) {
+      pendingHealthImport = null
+      if (!freshOwnerMode) recordImportError('health', error)
+      showToast(error.message)
+      throw error
+    }
   }
 
   async function openHealthImport({ provider = 'Health Connect', samsung = false, fromDate = selectedDate } = {}) {
-    if (freshOwnerMode) throw new Error('A Health-import nincs fiókhoz kötve.')
+    if (freshOwnerMode && samsung) throw new Error('A Samsung Health közvetlen importja még zárolva van.')
+    const startingGeneration = loadGeneration
+    const ownerSession = freshOwnerMode ? freshOwnerSession : null
+    if (freshOwnerMode) {
+      if (!freshOwnerReady || !ownerSession) throw new Error('A Food-fiók nincs ellenőrizve.')
+      await ownerSession.assertOwner()
+    }
     closeSheets()
     if (!isGrapesAndroidApp()) return $('[data-food-health-input]').click()
     showToast(`${provider}-adatok olvasása…`)
     try {
-      return await prepareHealthImport(await (samsung ? readAndroidSamsungHealthExport(fromDate) : readAndroidHealthExport(fromDate)))
+      const source = await (samsung ? readAndroidSamsungHealthExport(fromDate) : readAndroidHealthExport(fromDate))
+      if (freshOwnerMode) {
+        await ownerSession.assertOwner()
+        if (startingGeneration !== loadGeneration ||
+            ownerSession !== freshOwnerSession) {
+          throw new Error('A Grapes-fiók megváltozott Health-olvasás közben.')
+        }
+      }
+      return await prepareHealthImport(source)
     } catch (error) { showToast(error.message); throw error }
   }
 
@@ -1973,8 +2018,44 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     if (file) await prepareHealthImport(await file.text())
   }
 
+  async function applyFreshHealthImport() {
+    const preview = pendingHealthImport
+    const session = freshOwnerSession
+    const generation = loadGeneration
+    if (!freshOwnerReady || !session || !preview) return
+    const button = $('[data-food-health-confirm]')
+    button.disabled = true
+    try {
+      const { confirmFreshOwnerHealthNutrition } =
+        await import('./grapes-test-fresh-health-nutrition.js')
+      const selectedIndexes = [...root.querySelectorAll('[data-food-health-record]:checked')]
+        .map(input => Number(input.value))
+      const result = await confirmFreshOwnerHealthNutrition({
+        session, project, preview, selectedIndexes,
+      })
+      if (generation !== loadGeneration || session !== freshOwnerSession) return
+      project = result.project
+      pendingHealthImport = null
+      closeSheets()
+      render()
+      showToast(result.imported
+        ? `${result.imported} Health-étkezés saját Food-naplóba mentve.`
+        : 'Nincs új, kijelölt étkezés.')
+    } catch (error) {
+      if (generation !== loadGeneration || session !== freshOwnerSession) return
+      // A failed native-account validation or CAS must never leave the
+      // previous user's nutrition/health preview actionable or visible.
+      pendingHealthImport = null
+      freshOwnerReady = false
+      closeSheets()
+      const page = root.querySelector('[data-page="food"]')
+      if (page) { page.inert = true; page.style.visibility = 'hidden' }
+      showToast('A Health-import leállt: ' + (error?.message || 'ismeretlen hiba'))
+    } finally { button.disabled = false }
+  }
+
   function applyHealthImport() {
-    if (freshOwnerMode) return showToast('A Health-import zárolva van.')
+    if (freshOwnerMode) { applyFreshHealthImport().catch(() => {}); return }
     if (!pendingHealthImport) return
     const selected = [...root.querySelectorAll('[data-food-health-record]:checked')].map(input => Number(input.value))
     const hydrationKeys = typeof getHydrationExternalKeys === 'function' ? getHydrationExternalKeys() : []
@@ -2044,7 +2125,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
   async function undoYazio() { if (freshOwnerMode) throw new Error('A YAZIO-import zárolva van.'); if (yazio.isBusy()) return; await load(); await flush(); return yazio.undo() }
 
   function handleMenuAction(action) {
-    if (freshOwnerMode && ['backup-import', 'health'].includes(action)) return showToast('Az import a fiókozott TEST-ben zárolva van.')
+    if (freshOwnerMode && ['backup-import'].includes(action)) return showToast('Az import a fiókozott TEST-ben zárolva van.')
     if (action === 'stats') return openStats()
     if (action === 'targets') return openTargets()
     if (action === 'backup-export') return exportBackup()
@@ -2215,7 +2296,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       // Disable all global/foreign-account sources, not merely hide the links.
       for (const selector of [
         '[data-food-yazio-auto]', '[data-food-health-auto]',
-        '[data-food-inbox]', '[data-food-health-input]', '[data-food-health-confirm]',
+        '[data-food-inbox]', '[data-food-health-input]',
         '[data-food-share]', '[data-food-recipe-share]', '[data-food-share-send]',
         '[data-food-backup-input]',
       ]) {
