@@ -50,7 +50,44 @@ test('H-14: ugyanazon OCR-bizonylatsor megerősítve egyszer kerül készletbe; 
 
 test('bizonytalan, nem tételes OCR-sor és hibás Pénzügy-azonosító blokkolt', async () => {
   assert.equal(receiptLineCandidates('Tej 1 l\nÖsszesen 999 Ft\nÁFA 27 db', 'r').length, 1)
-  assert.deepEqual(receiptLineCandidates('Tej 1,2,3 l\n5 990 Ft\nBolt neve', 'r'), [])
+  const raw = receiptLineCandidates('Tej 1,2,3 l\n5 990 Ft\nBolt neve', 'r')
+  assert.equal(raw.length, 2)
+  assert.ok(raw.every(row => row.status === 'raw' && row.name === '' && row.quantity == null && row.unit == null))
   await assert.rejects(readLocalFinanceReceipts(async () => ({ data: { transactions: [{ ...project.data.transactions[0], id: '' }] } })), /azonosítója/)
   await assert.rejects(scanLocalFinanceReceipt('planned', { loadProject: load, recognize: async () => 'Tej 1 l' }), /nem található/)
+})
+
+test('M2.1: ár alapú és nem azonosított OCR-sor csak teljes kézi megerősítés után hoz létre készletet', async () => {
+  const financeBefore = JSON.stringify(project)
+  const scanned = await scanLocalFinanceReceipt('receipt-lines', { loadProject: load, recognize: async () => 'ALDI Bolt\nKenyér 499 Ft\nSzendvics\nVégösszeg 499 Ft\nBankkártya 499 Ft\n5 990 Ft' })
+  assert.equal(scanned.candidates.length, 3)
+  const bread = scanned.candidates.find(row => row.name === 'Kenyér')
+  const raw = scanned.candidates.find(row => row.rawLine === 'Szendvics')
+  assert.equal(bread.status, 'manual')
+  assert.equal(bread.quantity, null)
+  assert.equal(bread.unit, null)
+  assert.equal(raw.status, 'raw')
+  assert.equal(raw.name, '')
+  assert.equal(raw.quantity, null)
+  assert.equal(raw.unit, null)
+  assert.equal(receiptLineCandidates('Másik fejléc\nKenyér 499 Ft', 'receipt-lines').find(row => row.name === 'Kenyér').sourceId, bread.sourceId)
+  let home = createHomeState()
+  assert.equal(home.inventory.length, 0)
+  assert.equal(home.events.length, 0)
+  const payload = { receiptId: bread.receiptId, lineId: bread.lineId, name: bread.name, quantity: 1, unit: 'db', storageLocation: 'pantry' }
+  const command = { type: 'StockReceived', sourceType: 'finance-receipt', sourceId: bread.sourceId, payload }
+  assert.throws(() => applyHomeCommand(home, { ...command, payload: { ...payload, quantity: '' } }))
+  assert.throws(() => applyHomeCommand(home, { ...command, payload: { ...payload, unit: '' } }))
+  assert.throws(() => applyHomeCommand(home, { ...command, payload: { ...payload, storageLocation: '' } }))
+  const first = applyHomeCommand(home, command)
+  home = first.state
+  assert.equal(home.inventory.length, 1)
+  assert.equal(home.inventory[0].quantityBase, 1)
+  assert.equal(home.inventory[0].storageLocation, 'pantry')
+  assert.equal(applyHomeCommand(home, { ...command, eventId: 'repeat-bread' }).duplicate, true)
+  assert.equal(home.inventory.length, 1)
+  const rawPayload = { receiptId: raw.receiptId, lineId: raw.lineId, name: 'Szendvics', quantity: 1, unit: 'db', storageLocation: 'fridge' }
+  home = applyHomeCommand(home, { type: 'StockReceived', sourceType: 'finance-receipt', sourceId: raw.sourceId, payload: rawPayload }).state
+  assert.equal(home.inventory.length, 2)
+  assert.equal(JSON.stringify(project), financeBefore, 'A Pénzügy eredeti mentése csak olvasható.')
 })
