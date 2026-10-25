@@ -223,6 +223,16 @@ export async function verifyUnclaimedLegacyBackup(prepared, receipt, currentCapt
       JSON.stringify(envelope.manifest) !== JSON.stringify(prepared.manifest)) {
     throw new Error('A korábbi adatmentés tartalma eltér.')
   }
+  // Verify the ACTUAL RAW SOURCES inside the saved envelope too. A receipt
+  // proves that Android reopened the file, but not that its manifest
+  // describes the bytes in it. Never accept a forged self-consistent outer
+  // SHA with changed archived records and stale per-source checksums.
+  const archived = await manifestFor({
+    ownership: 'unclaimed', sources: envelope.sources,
+  }, subtle)
+  if (JSON.stringify(archived) !== JSON.stringify(prepared.manifest)) {
+    throw new Error('A mentett helyi források tartalma eltér a mentési jegyzéktől.')
+  }
   const actual = await manifestFor(currentCapture, subtle)
   if (JSON.stringify(actual) !== JSON.stringify(prepared.manifest)) {
     throw new Error('A korábbi helyi adatok megváltoztak a mentés óta.')
