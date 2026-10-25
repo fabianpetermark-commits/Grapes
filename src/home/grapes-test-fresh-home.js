@@ -47,6 +47,7 @@ export async function openGrapesTestFreshHome({
   let state = createHomeState({ householdId: ownerId, actorId: ownerId })
   let previous = null
   let queue = Promise.resolve()
+  const receiptProofs = new Map() // Only valid in this native-owner Home session.
 
   async function verify() {
     if (invalid) throw new Error('A korábbi Home-munkamenet már nem használható.')
@@ -93,10 +94,47 @@ export async function openGrapesTestFreshHome({
     return ownerId
   }
 
+  async function openOwnFinance({insideDispatch = false} = {}) {
+    // A queued CAS writer must NOT await its own queue (deadlock).
+    if (insideDispatch) await verify()
+    else await assertOwner()
+    const { openGrapesTestLiveFinance } = await import('../storage/grapes-test-finance-live.js')
+    const finance = await openGrapesTestLiveFinance({
+      enabled:true, isAndroid, authEnabled, getSubject, indexedDb,
+    })
+    await finance.assertOwner()
+    await verify()
+    return finance
+  }
+  async function listReceipts() {
+    const finance = await openOwnFinance()
+    const { readOwnerFinanceReceipts } = await import('./home-owner-receipts.js')
+    const rows = await readOwnerFinanceReceipts(() => finance.read())
+    await finance.assertOwner()
+    await verify()
+    return rows
+  }
+  async function scanReceipt(receiptId, { recognize } = {}) {
+    const finance = await openOwnFinance()
+    const { scanOwnerFinanceReceipt } = await import('./home-owner-receipts.js')
+    const result = await scanOwnerFinanceReceipt(receiptId, {
+      readFinance: () => finance.read(), ...(recognize ? { recognize } : {}),
+    })
+    await finance.assertOwner()
+    await verify()
+    receiptProofs.clear()
+    for (const candidate of result.candidates) {
+      receiptProofs.set(candidate.sourceId, {receiptId, data:result.receiptData})
+    }
+    return {receiptId:result.receiptId,date:result.date,candidates:result.candidates}
+  }
+
   function dispatch(command) {
-    // Finance OCR remains closed until the Finance owner/read boundary is proven.
-    if (command?.type === 'StockReceived') {
-      return Promise.reject(new Error('Ez a Home integráció még nincs jóváhagyva a saját fiókhoz.'))
+    if (command?.type === 'StockReceived' &&
+        (command.sourceType !== 'finance-receipt' ||
+         command.sourceId !== `${command.payload?.receiptId}:${command.payload?.lineId}` ||
+         !receiptProofs.has(command.sourceId))) {
+      return Promise.reject(new Error('Előbb olvasd be ezt a saját Finance-bizonylatsort a Home-ban.'))
     }
     if (command?.type === 'CookingConfirmed' &&
         (command.sourceType !== 'food-recipe' ||
@@ -153,6 +191,19 @@ export async function openGrapesTestFreshHome({
         await food.assertOwner()
         await verify()
       }
+      if (command.type === 'StockReceived') {
+        const proof = receiptProofs.get(command.sourceId)
+        if (!proof || proof.receiptId !== command.payload.receiptId)
+          throw new Error('A blokk előző beolvasása nem ellenőrizhető.')
+        const finance = await openOwnFinance({insideDispatch:true})
+        const { receiptFromOwnerFinance } = await import('./home-owner-receipts.js')
+        const data = await finance.read()
+        const receipt = await receiptFromOwnerFinance(data, proof.receiptId)
+        if (!receipt || receipt.receipt.data !== proof.data)
+          throw new Error('A Finance-bizonylat időközben megváltozott. Olvasd be újra.')
+        await finance.assertOwner()
+        await verify()
+      }
       // Invalid user commands do not invalidate the whole session; only an
       // identity/storage/conflict error poisons it.
       const result = applyHomeCommand(state, { ...command, actorId: ownerId })
@@ -189,6 +240,8 @@ export async function openGrapesTestFreshHome({
 
   return Object.freeze({
     ownerId,
+    listReceipts,
+    scanReceipt,
     getState: () => structuredClone(state),
     dispatch,
     assertOwner,
@@ -202,7 +255,7 @@ export async function openGrapesTestFreshHome({
       await assertOwner()
       return { ownerId, revision, cloudSyncEnabled: false,
         sharingEnabled: false, legacyImportEnabled: false,
-        receiptImportEnabled: false }
+        receiptImportEnabled: true }
     },
   })
 }

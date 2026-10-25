@@ -235,6 +235,73 @@ try {
   await home.locator('[data-household-link-prepared]').click()
   await page.waitForFunction(() => document.querySelector('[data-household-alert]')?.textContent?.includes('Nincs megfelelő'))
   assert.ok(!(await home.locator('[data-household-diary-link]').isVisible()))
+  // Own Finance receipt bytes are read only after explicit Home scan; legacy untouched.
+  await page.evaluate(async () => {
+    const { openGrapesTestLiveFinance } = await import('/Grapes/src/storage/grapes-test-finance-live.js')
+    const finance = await openGrapesTestLiveFinance({enabled:true})
+    await finance.read()
+    await finance.save({transactions:[
+      {id:'owner-total-only',type:'expense',amount:5990,date:'2026-10-25',category:'Élelmiszer',
+        receipt:{name:'osszeg.png',type:'image/png',size:1,data:'data:image/png;base64,YQ=='}},
+      {id:'owner-bread',type:'expense',amount:499,date:'2026-10-25',category:'Élelmiszer',
+        receipt:{name:'kenyer.png',type:'image/png',size:1,data:'data:image/png;base64,Yg=='}},
+    ]})
+    await finance.assertOwner()
+    window.__GRAPES_RECEIPT_OCR_TEST__ = image =>
+      image.includes('Yg==') ? 'Kenyér 499 Ft\nVégösszeg 499 Ft' : 'Végösszeg 5990 Ft'
+  })
+  await home.locator('[data-household-tab="receipts"]').click()
+  await home.locator('[data-household-scan-receipt="owner-total-only"]').waitFor()
+  const beforeReceipt = await page.evaluate(async () => {
+    const { openGrapesTestFreshHome } = await import('/Grapes/src/home/grapes-test-fresh-home.js')
+    return (await openGrapesTestFreshHome({enabled:true})).getState().inventory.length
+  })
+  await home.locator('[data-household-scan-receipt="owner-total-only"]').click()
+  assert.equal(await home.locator('[data-household-receipt-candidates] [data-household-review-receipt]').count(),0)
+  await home.locator('[data-household-scan-receipt="owner-bread"]').click()
+  await home.locator('[data-household-receipt-candidates]').getByText('Kenyér',{exact:true}).waitFor()
+  assert.equal(await page.evaluate(async () => {
+    const { openGrapesTestFreshHome } = await import('/Grapes/src/home/grapes-test-fresh-home.js')
+    return (await openGrapesTestFreshHome({enabled:true})).getState().inventory.length
+  }),beforeReceipt)
+  await home.locator('[data-household-review-receipt]').click()
+  const ocrForm = home.locator('[data-household-receipt-form]')
+  assert.equal(await ocrForm.locator('[name="quantity"]').inputValue(),'')
+  assert.equal(await ocrForm.locator('[name="unit"]').inputValue(),'')
+  assert.equal(await ocrForm.locator('[name="storageLocation"]').inputValue(),'')
+  assert.equal(await ocrForm.evaluate(form=>form.checkValidity()),false)
+  await ocrForm.locator('[name="quantity"]').fill('1')
+  await ocrForm.locator('[name="unit"]').selectOption('db')
+  await ocrForm.locator('[name="storageLocation"]').selectOption('pantry')
+  await ocrForm.locator('button[type="submit"]').click()
+  try {
+    await home.locator('[data-household-lots]').getByText('Kenyér',{exact:true}).waitFor({timeout:15000})
+  } catch(error) {
+    throw new Error('A blokk kézi megerősítése nem hozott készlettételt: ' +
+      await home.locator('[data-household-alert]').textContent() + ' | ' + error.message)
+  }
+  const checkedOCR = await page.evaluate(async () => {
+    const { openGrapesTestFreshHome } = await import('/Grapes/src/home/grapes-test-fresh-home.js')
+    const session = await openGrapesTestFreshHome({enabled:true})
+    const state = session.getState()
+    const event = state.events.find(event=>event.type==='StockReceived')
+    let forgedBlocked=false
+    try { await session.dispatch({type:'StockReceived',eventId:'invented',sourceType:'finance-receipt',
+      sourceId:'fake:ocr-0123456789abcdef-1',payload:{receiptId:'fake',lineId:'ocr-0123456789abcdef-1',
+      name:'Hamis',quantity:1,unit:'db',storageLocation:'pantry'}}) } catch {forgedBlocked=true}
+    return {count:state.inventory.length,raw:state.inventory.find(lot=>lot.name==='A saját tej').quantityBase,
+      receiptCount:state.events.filter(event=>event.type==='StockReceived').length,forgedBlocked,source:event.sourceId}
+  })
+  assert.equal(checkedOCR.count,beforeReceipt+1)
+  assert.equal(checkedOCR.raw,800)
+  assert.equal(checkedOCR.receiptCount,1)
+  assert.equal(checkedOCR.forgedBlocked,true)
+  assert.match(checkedOCR.source,/^owner-bread:ocr-[0-9a-f]{16}-1$/)
+  await home.locator('[data-household-tab="receipts"]').click()
+  await home.locator('[data-household-scan-receipt="owner-bread"]').waitFor()
+  await home.locator('[data-household-scan-receipt="owner-bread"]').click()
+  await home.locator('[data-household-receipt-candidates] [data-household-review-receipt]').waitFor()
+  assert.equal(await home.locator('[data-household-receipt-candidates] [data-household-review-receipt]').isDisabled(),true)
   await page.evaluate(B => localStorage.setItem('__home_qa_subject', B), B)
   await page.reload()
   await openHome('shopping')
@@ -248,6 +315,11 @@ try {
     return {inventory:v.inventory.length,shopping:v.shopping.length,prepared:v.prepared.length,owner:v.householdId}
   })
   assert.deepEqual(bEmpty,{inventory:0,shopping:0,prepared:0,owner:B})
+  await home.locator('[data-household-tab="receipts"]').click()
+  await home.locator('[data-household-receipt-items]').getByText('Nincs saját mentett képes bizonylat. A végösszegből nem lesz készlet.').waitFor()
+  assert.ok(!(await home.locator('[data-household-receipt-items]').textContent()).includes('kenyer.png'),
+    'B cannot read A\'s owner-bound Finance receipt.')
+  await home.locator('[data-household-tab="shopping"]').click()
   await home.locator('[data-household-tab="advice"]').click()
   await home.locator('[data-household-recipe-hints]').getByText('Nincs elérhető saját Food-recept ebben a fiókban.').waitFor()
   assert.ok(!(await rootNode.textContent()).includes('A saját tejitalom'))
@@ -277,7 +349,7 @@ try {
       events:data.events.length, legacy:localStorage.getItem('grapes-home-household-v1'),
       oldPrevious:localStorage.getItem('grapes-home-household-v1-previous') }
   })
-  assert.deepEqual(aFinal,{ inventory:1, shopping:1, prepared:1, events:5,
+  assert.deepEqual(aFinal,{ inventory:2, shopping:1, prepared:1, events:6,
     legacy:'{"legacy":"PRIVATE-UNOWNED"}',oldPrevious:'previous-legacy' })
   // Simulate a native account change in a foregrounded WebView. Previous
   // account data must disappear synchronously, before the new Auth read.
@@ -304,6 +376,7 @@ try {
   console.log('PASS: owner-only read-only Home M3A Food recipe suggestions A→B→A, no stock writes.')
   console.log('PASS: owner-bound CookingConfirmed, prepared portions, durable idempotency, Finance ingress blocked.')
   console.log('PASS: verified saved own Food diary linked once to prepared portions, no Food or raw stock writes; A→B→A.')
+  console.log('PASS: owner Finance receipt total ignored; priced line requires confirmation; duplicate and forged ingress blocked.')
   console.log('PASS: on foreground account switch/logout old DOM clears, old localStorage untouched.')
 } finally {
   await browser?.close()
