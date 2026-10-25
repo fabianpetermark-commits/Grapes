@@ -67,7 +67,7 @@ begin
   return v_user;
 end $$;
 
-create function api.home_m3b_create_household(p_name text) returns jsonb
+create function grapes_home_private.home_m3b_create_household_internal(p_name text) returns jsonb
 language plpgsql security definer set search_path=''
 as $$
 declare v_actor uuid := grapes_home_private.require_actor(); v_id uuid := gen_random_uuid();
@@ -85,7 +85,7 @@ begin
   return jsonb_build_object('householdId',v_id,'revision',0,'role','owner','name',btrim(p_name));
 end $$;
 
-create function api.home_m3b_list_households() returns jsonb
+create function grapes_home_private.home_m3b_list_households_internal() returns jsonb
 language plpgsql security definer set search_path=''
 as $$
 declare v_actor uuid := grapes_home_private.require_actor();
@@ -97,7 +97,7 @@ begin
       on h.id=m.household_id where m.user_id=v_actor);
 end $$;
 
-create function api.home_m3b_read_household(p_household_id uuid) returns jsonb
+create function grapes_home_private.home_m3b_read_household_internal(p_household_id uuid) returns jsonb
 language plpgsql security definer set search_path=''
 as $$
 declare v_actor uuid := grapes_home_private.require_actor();
@@ -111,7 +111,7 @@ begin
     'role',v_role,'state',v_house.state);
 end $$;
 
-create function api.home_m3b_create_invite(
+create function grapes_home_private.home_m3b_create_invite_internal(
   p_household_id uuid,p_role text default 'editor',p_hours integer default 48
 ) returns jsonb language plpgsql security definer set search_path=''
 as $$
@@ -134,7 +134,7 @@ begin
   return jsonb_build_object('inviteId',v_id,'inviteCode',v_token,'expiresAt',v_expiry,'role',p_role);
 end $$;
 
-create function api.home_m3b_accept_invite(p_code text) returns jsonb
+create function grapes_home_private.home_m3b_accept_invite_internal(p_code text) returns jsonb
 language plpgsql security definer set search_path=''
 as $$
 declare v_actor uuid := grapes_home_private.require_actor();
@@ -160,7 +160,7 @@ begin
   return jsonb_build_object('householdId',v_invite.household_id,'role',v_invite.role);
 end $$;
 
-create function api.home_m3b_revoke_invite(p_household_id uuid,p_invite_id uuid)
+create function grapes_home_private.home_m3b_revoke_invite_internal(p_household_id uuid,p_invite_id uuid)
 returns boolean language plpgsql security definer set search_path=''
 as $$
 declare v_actor uuid := grapes_home_private.require_actor();
@@ -175,7 +175,7 @@ begin
   return found;
 end $$;
 
-create function api.home_m3b_remove_member(p_household_id uuid,p_user_id uuid)
+create function grapes_home_private.home_m3b_remove_member_internal(p_household_id uuid,p_user_id uuid)
 returns boolean language plpgsql security definer set search_path=''
 as $$
 declare v_actor uuid := grapes_home_private.require_actor();
@@ -192,7 +192,7 @@ begin
   return found;
 end $$;
 
-create function api.home_m3b_leave_household(p_household_id uuid)
+create function grapes_home_private.home_m3b_leave_household_internal(p_household_id uuid)
 returns boolean language plpgsql security definer set search_path=''
 as $$
 declare v_actor uuid := grapes_home_private.require_actor();
@@ -208,7 +208,7 @@ end $$;
 
 -- CAS stores rejected candidates and never last-write-wins; owner/editor only.
 -- Append-only event history is replayed against collection deltas BEFORE write.
-create function api.home_m3b_compare_and_swap(
+create function grapes_home_private.home_m3b_compare_and_swap_internal(
   p_household_id uuid,p_operation_id uuid,p_expected_revision bigint,p_candidate jsonb
 ) returns jsonb language plpgsql security definer set search_path=''
 as $$
@@ -333,7 +333,7 @@ begin
   return jsonb_build_object('status',v_result,'revision',v_revision);
 end $$;
 
-create function api.home_m3b_read_attempt(p_operation_id uuid) returns jsonb
+create function grapes_home_private.home_m3b_read_attempt_internal(p_operation_id uuid) returns jsonb
 language plpgsql security definer set search_path=''
 as $$
 declare v_actor uuid := grapes_home_private.require_actor();
@@ -347,27 +347,67 @@ begin
     'expectedRevision',v_attempt.expected_revision,'candidate',v_attempt.candidate);
 end $$;
 
--- No public/anon RPC. Direct tables inaccessible even with known UUID.
-revoke all on function grapes_home_private.require_actor() from public, anon;
+-- SECURITY INVOKER API wrappers call owner-checked privileged logic in a
+-- PRIVATE, unexposed schema. No direct private table grants.
+revoke all on all functions in schema grapes_home_private from public, anon, authenticated;
 grant usage on schema grapes_home_private to authenticated;
-grant execute on function grapes_home_private.require_actor() to authenticated;
+grant execute on function grapes_home_private.home_m3b_create_household_internal(text) to authenticated;
+grant execute on function grapes_home_private.home_m3b_list_households_internal() to authenticated;
+grant execute on function grapes_home_private.home_m3b_read_household_internal(uuid) to authenticated;
+grant execute on function grapes_home_private.home_m3b_create_invite_internal(uuid,text,integer) to authenticated;
+grant execute on function grapes_home_private.home_m3b_accept_invite_internal(text) to authenticated;
+grant execute on function grapes_home_private.home_m3b_revoke_invite_internal(uuid,uuid) to authenticated;
+grant execute on function grapes_home_private.home_m3b_remove_member_internal(uuid,uuid) to authenticated;
+grant execute on function grapes_home_private.home_m3b_leave_household_internal(uuid) to authenticated;
+grant execute on function grapes_home_private.home_m3b_compare_and_swap_internal(uuid,uuid,bigint,jsonb) to authenticated;
+grant execute on function grapes_home_private.home_m3b_read_attempt_internal(uuid) to authenticated;
+create function api.home_m3b_create_household(p_name text) returns jsonb
+language sql security invoker set search_path=''
+as $$ select grapes_home_private.home_m3b_create_household_internal($1) $$;
 revoke all on function api.home_m3b_create_household(text) from public, anon;
-revoke all on function api.home_m3b_list_households() from public, anon;
-revoke all on function api.home_m3b_read_household(uuid) from public, anon;
-revoke all on function api.home_m3b_create_invite(uuid,text,integer) from public, anon;
-revoke all on function api.home_m3b_accept_invite(text) from public, anon;
-revoke all on function api.home_m3b_revoke_invite(uuid,uuid) from public, anon;
-revoke all on function api.home_m3b_remove_member(uuid,uuid) from public, anon;
-revoke all on function api.home_m3b_leave_household(uuid) from public, anon;
-revoke all on function api.home_m3b_compare_and_swap(uuid,uuid,bigint,jsonb) from public, anon;
-revoke all on function api.home_m3b_read_attempt(uuid) from public, anon;
 grant execute on function api.home_m3b_create_household(text) to authenticated;
+create function api.home_m3b_list_households() returns jsonb
+language sql security invoker set search_path=''
+as $$ select grapes_home_private.home_m3b_list_households_internal() $$;
+revoke all on function api.home_m3b_list_households() from public, anon;
 grant execute on function api.home_m3b_list_households() to authenticated;
+create function api.home_m3b_read_household(p_household_id uuid) returns jsonb
+language sql security invoker set search_path=''
+as $$ select grapes_home_private.home_m3b_read_household_internal($1) $$;
+revoke all on function api.home_m3b_read_household(uuid) from public, anon;
 grant execute on function api.home_m3b_read_household(uuid) to authenticated;
+create function api.home_m3b_create_invite(p_household_id uuid,p_role text default 'editor',p_hours integer default 48) returns jsonb
+language sql security invoker set search_path=''
+as $$ select grapes_home_private.home_m3b_create_invite_internal($1,$2,$3) $$;
+revoke all on function api.home_m3b_create_invite(uuid,text,integer) from public, anon;
 grant execute on function api.home_m3b_create_invite(uuid,text,integer) to authenticated;
+create function api.home_m3b_accept_invite(p_code text) returns jsonb
+language sql security invoker set search_path=''
+as $$ select grapes_home_private.home_m3b_accept_invite_internal($1) $$;
+revoke all on function api.home_m3b_accept_invite(text) from public, anon;
 grant execute on function api.home_m3b_accept_invite(text) to authenticated;
+create function api.home_m3b_revoke_invite(p_household_id uuid,p_invite_id uuid) returns boolean
+language sql security invoker set search_path=''
+as $$ select grapes_home_private.home_m3b_revoke_invite_internal($1,$2) $$;
+revoke all on function api.home_m3b_revoke_invite(uuid,uuid) from public, anon;
 grant execute on function api.home_m3b_revoke_invite(uuid,uuid) to authenticated;
+create function api.home_m3b_remove_member(p_household_id uuid,p_user_id uuid) returns boolean
+language sql security invoker set search_path=''
+as $$ select grapes_home_private.home_m3b_remove_member_internal($1,$2) $$;
+revoke all on function api.home_m3b_remove_member(uuid,uuid) from public, anon;
 grant execute on function api.home_m3b_remove_member(uuid,uuid) to authenticated;
+create function api.home_m3b_leave_household(p_household_id uuid) returns boolean
+language sql security invoker set search_path=''
+as $$ select grapes_home_private.home_m3b_leave_household_internal($1) $$;
+revoke all on function api.home_m3b_leave_household(uuid) from public, anon;
 grant execute on function api.home_m3b_leave_household(uuid) to authenticated;
+create function api.home_m3b_compare_and_swap(p_household_id uuid,p_operation_id uuid,p_expected_revision bigint,p_candidate jsonb) returns jsonb
+language sql security invoker set search_path=''
+as $$ select grapes_home_private.home_m3b_compare_and_swap_internal($1,$2,$3,$4) $$;
+revoke all on function api.home_m3b_compare_and_swap(uuid,uuid,bigint,jsonb) from public, anon;
 grant execute on function api.home_m3b_compare_and_swap(uuid,uuid,bigint,jsonb) to authenticated;
+create function api.home_m3b_read_attempt(p_operation_id uuid) returns jsonb
+language sql security invoker set search_path=''
+as $$ select grapes_home_private.home_m3b_read_attempt_internal($1) $$;
+revoke all on function api.home_m3b_read_attempt(uuid) from public, anon;
 grant execute on function api.home_m3b_read_attempt(uuid) to authenticated;
