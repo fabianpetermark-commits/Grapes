@@ -15,15 +15,15 @@ test('Owner Finance OCR only reads provided fiókos source and ignores planned e
   assert.equal(JSON.stringify(receipts),before)
 })
 test('OCR amount-only cannot create a candidate; missing quantity never inferred',async()=>{
-  const total=await scanOwnerFinanceReceipt('total',{readFinance:async()=>receipts,recognize:async()=> 'Végösszeg 5990 Ft\\nBankkártya 5990 Ft'})
+  const total=await scanOwnerFinanceReceipt('total',{readFinance:async()=>receipts,recognize:async()=> 'Végösszeg 5990 Ft\nBankkártya 5990 Ft'})
   assert.deepEqual(total.candidates,[])
-  const bread=await scanOwnerFinanceReceipt('bread',{readFinance:async()=>receipts,recognize:async()=> 'Kenyér 499 Ft\\nVégösszeg 499 Ft'})
+  const bread=await scanOwnerFinanceReceipt('bread',{readFinance:async()=>receipts,recognize:async()=> 'Kenyér 499 Ft\nVégösszeg 499 Ft'})
   assert.equal(bread.candidates.length,1)
   assert.equal(bread.candidates[0].name,'Kenyér')
   assert.equal(bread.candidates[0].quantity,null)
   assert.equal(bread.candidates[0].unit,null)
   assert.match(bread.candidates[0].sourceId,/^bread:ocr-[0-9a-f]{16}-1$/)
-  assert.deepEqual(receiptLineCandidates('5990 Ft\\n499 HUF','total'),[])
+  assert.deepEqual(receiptLineCandidates('5990 Ft\n499 HUF','total'),[])
 })
 test('Finance read rejects missing or duplicate transaction IDs',async()=>{
   await assert.rejects(readOwnerFinanceReceipts(async()=>({transactions:[receipts.transactions[0],receipts.transactions[0]]})))
