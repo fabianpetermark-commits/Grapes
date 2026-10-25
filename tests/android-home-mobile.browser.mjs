@@ -91,6 +91,7 @@ try {
   await page.locator('[data-household-form] [name="name"]').fill('Csirkemell')
   await page.locator('[data-household-form] [name="quantity"]').fill('1')
   await page.locator('[data-household-form] [name="unit"]').selectOption('kg')
+  await page.locator('[data-household-location-label]').evaluate(node => { node.open = true })
   await page.locator('[data-household-form] [name="storageLocation"]').selectOption('fridge')
   await page.locator('[data-household-form] button[type="submit"]').click()
   assert.equal(await page.locator('[data-household-lots] .household-card').count(), 2)
