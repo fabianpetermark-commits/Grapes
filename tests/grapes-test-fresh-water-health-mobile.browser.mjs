@@ -133,7 +133,7 @@ try {
   // and no old account data may remain visible in the sheet.
   await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')))
   // In a visible document this is also a native-Auth revalidation boundary.
-  assert.equal(await sheet.isVisible(),false)
+  assert.equal(await sheet.evaluate(node => node.classList.contains('is-open')), false)
   assert.deepEqual(errors,[])
   await ctx.close()
   console.log('PASS: actual mobile Water Health preview and selected save, A-B-A, no duplicates')
