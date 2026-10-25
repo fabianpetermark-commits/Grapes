@@ -65,6 +65,7 @@ class MainActivity : ComponentActivity() {
     private var pendingDriveRequestId: String? = null
     private var pendingBackupPickerRequestId: String? = null
     private var pendingBackupFilename: String? = null
+    private var pendingUnclaimedBackupOwner: String? = null
     private var backupSession: BackupExportSession? = null
     private var availableUpdate: AndroidUpdateManager.Release? = null
 
@@ -73,6 +74,7 @@ class MainActivity : ComponentActivity() {
         val uri: Uri,
         val temporaryFile: File,
         val filename: String,
+        val pinnedUnclaimedOwner: String? = null,
         var sizeBytes: Long = 0L,
     )
 
@@ -106,17 +108,25 @@ class MainActivity : ComponentActivity() {
     ) { uri ->
         val requestId = pendingBackupPickerRequestId ?: return@registerForActivityResult
         val filename = pendingBackupFilename
+        val unclaimedOwner = pendingUnclaimedBackupOwner
         pendingBackupPickerRequestId = null
         pendingBackupFilename = null
+        pendingUnclaimedBackupOwner = null
         if (uri == null) {
             sendError(requestId, "A biztonsági mentés mentését megszakítottad.")
             return@registerForActivityResult
         }
         runCatching {
             check(backupSession == null) { "Már folyamatban van egy másik mentés." }
+            if (unclaimedOwner != null) {
+                check(testGate.subject(isTrustedTestAppPage()) == unclaimedOwner) {
+                    "A Grapes TEST-fiók a fájlválasztás közben megváltozott."
+                }
+            }
             val staging = File.createTempFile("grapes-food-export-", ".json", cacheDir)
             BackupExportSession(UUID.randomUUID().toString(), uri, staging,
-                filename ?: error("A mentés fájlneve hiányzik.")).also { backupSession = it }
+                filename ?: error("A mentés fájlneve hiányzik."), unclaimedOwner)
+                .also { backupSession = it }
         }.onSuccess { sendResult(requestId, it.token) }
             .onFailure { sendError(requestId, it.message ?: "Nem készíthető el a mentés.") }
     }
@@ -480,6 +490,7 @@ class MainActivity : ComponentActivity() {
                 else { testAuth.cancel(); sendResult(requestId, "{}") }
             }
             "beginFoodBackupExport" -> beginFoodBackupExport(message, requestId)
+            "beginUnclaimedBackupExport" -> beginFoodBackupExport(message, requestId, true)
             "appendFoodBackupExport" -> appendFoodBackupExport(message, requestId)
             "finishFoodBackupExport" -> finishFoodBackupExport(message, requestId)
             "cancelFoodBackupExport" -> cancelFoodBackupExport(message, requestId)
@@ -566,27 +577,42 @@ class MainActivity : ComponentActivity() {
             }
     }
 
-    private fun beginFoodBackupExport(message: JSONObject, requestId: String) {
+    private fun beginFoodBackupExport(
+        message: JSONObject, requestId: String, unclaimedRequest: Boolean = false
+    ) {
         if (pendingBackupPickerRequestId != null || backupSession != null) {
             sendError(requestId, "Egy másik biztonsági mentés már folyamatban van.")
             return
         }
         val name = message.optJSONArray("args")?.optString(0).orEmpty()
+        val unclaimed = UnclaimedLocalBackupPolicy.requiresIndependentReadback(name)
+        if (unclaimedRequest != unclaimed) {
+            sendError(requestId, "A helyi adatok mentéséhez külön TEST-kapu szükséges.")
+            return
+        }
+        if (unclaimed && !UnclaimedLocalBackupPolicy.allow(
+                isTestQa, BuildConfig.GRAPES_TEST_LEGACY_BACKUP_ENABLED,
+                isTrustedTestAppPage(), testGate.subject(isTrustedTestAppPage()), name)) {
+            sendError(requestId, "A hitelesített helyi mentési TEST-kapu nem aktív.")
+            return
+        }
         val migrationBackup = Regex("^grapes-health-attekintes-\\d{4}-\\d{2}-\\d{2}\\.json$").matches(name)
         if (migrationBackup && (!isTestQa || !testGate.canDisplayApp() || webView.url != APP_URL)) {
             sendError(requestId, "A Health előnézeti mentés csak hitelesített Grapes TEST-ben érhető el.")
             return
         }
-        if (!migrationBackup &&
+        if (!migrationBackup && !unclaimed &&
             !Regex("^grapes-(?:etelnaplo-\\d{4}-\\d{2}-\\d{2}(?:-(?:helyi|drive))?|viznaplo-\\d{4}-\\d{2}-\\d{2})\\.json$").matches(name)) {
             sendError(requestId, "Érvénytelen biztonsági mentés fájlnév.")
             return
         }
         pendingBackupPickerRequestId = requestId
         pendingBackupFilename = name
+        pendingUnclaimedBackupOwner = if (unclaimed) testGate.subject(isTrustedTestAppPage()) else null
         runCatching { backupFilePicker.launch(name) }.onFailure {
             pendingBackupPickerRequestId = null
             pendingBackupFilename = null
+            pendingUnclaimedBackupOwner = null
             sendError(requestId, it.message ?: "A fájlmentő nem nyitható meg.")
         }
     }
@@ -599,6 +625,9 @@ class MainActivity : ComponentActivity() {
             return
         }
         runCatching {
+            if (session.pinnedUnclaimedOwner != null) check(
+                testGate.subject(isTrustedTestAppPage()) == session.pinnedUnclaimedOwner
+            ) { "A Grapes TEST-fiók megváltozott a mentés alatt." }
             val piece = args.optString(1)
             require(piece.isNotEmpty()) { "Üres mentési adatrész." }
             val encoded = piece.toByteArray(Charsets.UTF_8)
@@ -623,6 +652,12 @@ class MainActivity : ComponentActivity() {
             return
         }
         backupSession = null
+        if (session.pinnedUnclaimedOwner != null &&
+            testGate.subject(isTrustedTestAppPage()) != session.pinnedUnclaimedOwner) {
+            session.temporaryFile.delete()
+            sendError(requestId, "A Grapes TEST-fiók megváltozott a mentés alatt.")
+            return
+        }
         val expectedBytes = args.optLong(1, -1)
         lifecycleScope.launch {
             val result = runCatching {
@@ -635,7 +670,8 @@ class MainActivity : ComponentActivity() {
                             input.copyTo(out)
                         }
                     } ?: error("A kiválasztott helyre nem írható a fájl.")
-                    if (session.filename.startsWith("grapes-health-attekintes-")) {
+                    if (session.filename.startsWith("grapes-health-attekintes-") ||
+                        UnclaimedLocalBackupPolicy.requiresIndependentReadback(session.filename)) {
                         val saved = contentResolver.openInputStream(session.uri)
                             ?: error("A mentett Health-fájl nem olvasható vissza.")
                         session.temporaryFile.inputStream().use { staged ->
