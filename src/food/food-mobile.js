@@ -2441,7 +2441,11 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     showOverview()
     if (view === 'stats') openStats()
   }
-  return { load, render, openNavigationView, closeMeal, handleBack, isDetailOpen: () => Boolean(selectedMeal), flush, openHealthImport, openSamsungImport, importYazioCsv, importYazio, undoYazio,
+  return { load, render, openNavigationView, openRecipeById: id => {
+    if (!freshOwnerMode || !freshOwnerReady || !project?.recipes?.some(recipe => recipe.id === id)) return false
+    openRecipe(id)
+    return true
+  }, closeMeal, handleBack, isDetailOpen: () => Boolean(selectedMeal), flush, openHealthImport, openSamsungImport, importYazioCsv, importYazio, undoYazio,
     syncFood, autoImportHealth, autoImportYazio, refreshInbox, openInbox, inboxSummary: () => ({ pending: inbox.length, unread: inbox.filter(item => !inboxSeen().has(item.id)).length }) }
 }
 
