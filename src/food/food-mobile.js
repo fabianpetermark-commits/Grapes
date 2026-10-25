@@ -303,7 +303,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
         changeRevision = 0
         freshOwnerSession = session
         freshOwnerReady = true
-        showSyncStatus('Saját Food TEST-tárhely · Health étkezés csak jóváhagyással · Drive, YAZIO és megosztás tiltva')
+        showSyncStatus('Saját Food TEST-tárhely · Health és YAZIO csak külön jóváhagyással · Drive és megosztás tiltva')
         showOverview()
         updateInboxIndicator()
         if (foodPage) { foodPage.style.removeProperty('visibility'); foodPage.inert = false }
