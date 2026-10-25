@@ -76,8 +76,7 @@ export function showScreen(name) {
     import.meta.env?.VITE_GRAPES_TEST_CHANNEL === '1' &&
     import.meta.env?.VITE_GRAPES_TEST_AUTH_ENABLED === 'true' &&
     import.meta.env?.VITE_GRAPES_TEST_FRESH_OWNER_MODULES_ENABLED === 'true' &&
-    typeof window.GrapesAndroid?.postMessage === 'function' &&
-    new URLSearchParams(window.location.search).get('android-shell') === '1'
+    typeof window.GrapesAndroid?.postMessage === 'function'
   if (freshAndroidOwnerMode && !['finance', 'login'].includes(name)) {
     return false
   }
