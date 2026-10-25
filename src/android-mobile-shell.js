@@ -86,6 +86,30 @@ let menuReturnPage = ''
 let menuEntry = ''
 let availableAppUpdate = null
 let activeSyncImport = ''
+let yazioPreviewEpoch = 0
+let freshYazioPreview = null
+let freshYazioSession = null
+const freshYazioSheet = FRESH_OWNER_MODULES ? document.createElement('section') : null
+if (freshYazioSheet) {
+  freshYazioSheet.className = 'bottom-sheet'
+  freshYazioSheet.dataset.freshYazioSheet = ''
+  freshYazioSheet.setAttribute('role', 'dialog')
+  freshYazioSheet.setAttribute('aria-modal', 'true')
+  freshYazioSheet.setAttribute('aria-label', 'Saját YAZIO import előnézete')
+  freshYazioSheet.setAttribute('aria-hidden', 'true')
+  freshYazioSheet.inert = true
+  freshYazioSheet.innerHTML = `<div class="sheet-handle"></div>
+    <h2>YAZIO · Saját Food napló</h2>
+    <p>Az import kézzel indítható. Az étkezések csak jóváhagyás után,
+       az aktuális Grapes-fiókba kerülnek.</p>
+    <p data-fresh-yazio-summary role="status"></p>
+    <p data-fresh-yazio-warning></p>
+    <div class="sheet-results" data-fresh-yazio-records></div>
+    <button class="primary module-cta" type="button"
+      data-fresh-yazio-confirm hidden>Megjelölt étkezések importálása</button>
+    <p data-fresh-yazio-status role="status"></p>`
+  document.querySelector('.phone').append(freshYazioSheet)
+}
 let waterHealthEpoch = 0
 let waterHealthPreview = null
 let waterHealthSession = null
@@ -161,6 +185,12 @@ function showToast(message) {
 }
 
 function closeSheet() {
+  if (freshYazioSheet?.classList.contains('is-open')) {
+    yazioPreviewEpoch++
+    freshYazioPreview = null
+    freshYazioSession = null
+    $('[data-fresh-yazio-records]').replaceChildren()
+  }
   // Any closing/opening of a sheet invalidates the old Health preview,
   // including pending Android permission requests and account changes.
   waterHealthEpoch++
@@ -250,7 +280,7 @@ function setSyncProviderStatus(message, state = '') {
 }
 
 function openSyncImport(provider) {
-  if (FRESH_OWNER_MODULES && provider !== 'health') {
+  if (FRESH_OWNER_MODULES && !['health', 'yazio'].includes(provider)) {
     showToast('Ez az importkapcsolat még nincs Grapes-fiókhoz kötve.')
     return
   }
@@ -281,6 +311,16 @@ function openSyncImport(provider) {
     },
   }
   const config = configs[provider]
+  if (FRESH_OWNER_MODULES && provider === 'yazio') {
+    config.title = 'YAZIO export – saját Food-fiók'
+    config.action = 'JSON vagy CSV fájl kiválasztása'
+    config.copy = 'Válassz korábban exportált YAZIO JSON- vagy nutrition_log.csv-fájlt. Előnézet, kijelölés és fiókonkénti mentés követi.'
+    config.details = [
+      'A közvetlen YAZIO belépés és automatikus import még zárolva marad.',
+      'A mentés csak a saját Grapes TEST-fiókodban, külön jóváhagyással történik.',
+      'Az utolsó import biztonságosan visszavonható; szerkesztett bejegyzéseket nem törlünk.',
+    ]
+  }
   if (FRESH_OWNER_MODULES && provider === 'health') {
     config.copy = 'Csak a saját Grapes-fiókba, külön jóváhagyás után importálhatók a Health Connect étkezései. A vízadatok, a régi naplók és a Drive továbbra sem kerülnek át.'
     config.details = ['Csak az engedélyezett Health Connect-adatokat olvassuk, amikor ezt a gombot megnyomod.',
@@ -303,7 +343,7 @@ function openSyncImport(provider) {
 }
 
 async function runSyncImport() {
-  if (FRESH_OWNER_MODULES && activeSyncImport !== 'health') {
+  if (FRESH_OWNER_MODULES && !['health', 'yazio'].includes(activeSyncImport)) {
     showToast('Ez az import még nincs fiókhoz kötve.')
     return
   }
@@ -460,6 +500,149 @@ async function confirmWaterHealthPreview() {
     }
   } finally {
     button.disabled = false
+  }
+}
+
+async function prepareFreshYazioFile(file) {
+  if (!FRESH_OWNER_MODULES || !file) return
+  if (file.size > 40 * 1024 * 1024) {
+    showToast('A YAZIO-fájl legfeljebb 40 MB lehet.')
+    return
+  }
+  if (!/[.](json|csv)$/i.test(file.name)) {
+    showToast('Csak JSON vagy nutrition_log.csv fájl választható.')
+    return
+  }
+  ++yazioPreviewEpoch
+  freshYazioPreview = null
+  freshYazioSession = null
+  openSheet(freshYazioSheet)
+  // Opening another sheet invalidates old previews, so remember the new epoch.
+  const currentEpoch = yazioPreviewEpoch
+  $('[data-fresh-yazio-summary]').textContent = 'YAZIO-export ellenőrzése…'
+  $('[data-fresh-yazio-status]').textContent = ''
+  $('[data-fresh-yazio-confirm]').hidden = true
+  $('[data-fresh-yazio-warning]').textContent = ''
+  $('[data-fresh-yazio-records]').replaceChildren()
+  try {
+    const { openGrapesTestFreshFood } =
+      await import('./food/grapes-test-fresh-food.js')
+    const { prepareFreshOwnerYazio } =
+      await import('./food/grapes-test-fresh-yazio.js')
+    const session = await openGrapesTestFreshFood({ enabled: true })
+    const project = await session.load()
+    await session.assertOwner()
+    const data = await file.text()
+    await session.assertOwner()
+    const preview = prepareFreshOwnerYazio(data, {
+      ownerId: session.ownerId, existingEntries: project.diaryEntries,
+      filename: file.name,
+    })
+    await session.assertOwner()
+    if (currentEpoch !== yazioPreviewEpoch ||
+        !freshYazioSheet?.classList.contains('is-open')) return
+    freshYazioSession = session
+    freshYazioPreview = preview
+    $('[data-fresh-yazio-summary]').textContent =
+      `${preview.counts.ready} új · ${preview.counts.duplicate} duplikált · ${preview.counts.uncertain} bizonytalan · ${preview.counts.invalid} hibás · ${preview.format.toUpperCase()}`
+    $('[data-fresh-yazio-warning]').textContent = preview.format === 'json'
+      ? `Export időszak: ${preview.from} – ${preview.to}. ${preview.warnings?.length || 0} figyelmeztetés, ${preview.discrepancies?.length || 0} napi eltérés. A bizonytalan sorok alapból nincsenek kijelölve.`
+      : 'A nutrition_log.csv rekordjai előnézetben, fiókonként külön menthetők.'
+    const rows = $('[data-fresh-yazio-records]')
+    const fragment = document.createDocumentFragment()
+    // The full data may be large; show a bounded set, but let the user
+    // explicitly choose whether to import all *ready* rows.
+    const visible = preview.records.slice(0, 250)
+    for (const item of visible) {
+      const label = document.createElement('label')
+      label.className = 'sheet-result'
+      const input = document.createElement('input')
+      input.type = 'checkbox'
+      input.dataset.freshYazioRecord = ''
+      input.value = String(item.index)
+      input.disabled = !['ready', 'uncertain'].includes(item.status)
+      input.checked = item.status === 'ready'
+      const description = document.createElement('span')
+      description.textContent = `#${item.index + 1} · ${item.entry?.snapshot?.name || 'Hibás sor'} · ${item.status}` +
+        (item.error ? ' · ' + item.error : '')
+      label.append(input, description)
+      fragment.append(label)
+    }
+    rows.replaceChildren(fragment)
+    if (preview.records.length > visible.length) {
+      const label = document.createElement('label')
+      label.className = 'sheet-result'
+      const input = document.createElement('input')
+      input.type = 'checkbox'
+      input.dataset.freshYazioRemainder = ''
+      input.checked = true
+      const span = document.createElement('span')
+      span.textContent = `A további ${preview.records.length - visible.length} sor közül az összes új, biztosan importálható étkezést is kijelölöm.`
+      label.append(input, span)
+      rows.append(label)
+    }
+    $('[data-fresh-yazio-confirm]').hidden =
+      preview.counts.ready + preview.counts.uncertain === 0
+    $('[data-fresh-yazio-status]').textContent =
+      'A mentés kizárólag a kijelölt étkezések jóváhagyásakor indul.'
+  } catch (error) {
+    if (currentEpoch === yazioPreviewEpoch) {
+      freshYazioPreview = null
+      freshYazioSession = null
+      $('[data-fresh-yazio-summary]').textContent = 'Az export nem olvasható.'
+      $('[data-fresh-yazio-status]').textContent = error?.message || 'A YAZIO-beolvasás megszakadt.'
+    }
+  }
+}
+
+async function confirmFreshYazioPreview() {
+  if (!FRESH_OWNER_MODULES || !freshYazioSession || !freshYazioPreview ||
+      !freshYazioSheet?.classList.contains('is-open')) return
+  const button = $('[data-fresh-yazio-confirm]')
+  button.disabled = true
+  const epoch = yazioPreviewEpoch
+  const session = freshYazioSession
+  const preview = freshYazioPreview
+  try {
+    const selected = $$('[data-fresh-yazio-record]:checked').map(input => Number(input.value))
+    if ($('[data-fresh-yazio-remainder]')?.checked) {
+      selected.push(...preview.records.slice(250)
+        .filter(item => item.status === 'ready').map(item => item.index))
+    }
+    const { confirmFreshOwnerYazio } = await import('./food/grapes-test-fresh-yazio.js')
+    const result = await confirmFreshOwnerYazio({ session, preview, selectedIndexes: selected })
+    if (epoch !== yazioPreviewEpoch) return
+    closeSheet()
+    showToast(result.imported
+      ? `${result.imported} YAZIO-étkezés saját Food-naplóba mentve.`
+      : 'Nincs új kijelölt YAZIO-étkezés.')
+    setSyncProviderStatus(`${result.imported} YAZIO-étkezés importálva a saját fiókba.`)
+  } catch (error) {
+    if (epoch === yazioPreviewEpoch) {
+      // No unowned/old-account preview after stale session, save failure or conflict.
+      closeSheet()
+      setSyncProviderStatus('YAZIO-mentés leállt: ' +
+        (error?.message || 'ismeretlen hiba'), 'error')
+    }
+  } finally { button.disabled = false }
+}
+
+async function undoFreshYazioLast() {
+  if (!FRESH_OWNER_MODULES) return
+  if (!window.confirm('Visszavonod az utolsó YAZIO-importot? A szerkesztett sorok megmaradnak.')) return
+  try {
+    const [{ openGrapesTestFreshFood }, { undoFreshOwnerYazio }] =
+      await Promise.all([
+        import('./food/grapes-test-fresh-food.js'),
+        import('./food/grapes-test-fresh-yazio.js'),
+      ])
+    const session = await openGrapesTestFreshFood({ enabled: true })
+    await session.load()
+    const result = await undoFreshOwnerYazio({ session })
+    closeSheet()
+    setSyncProviderStatus(`${result.removed} sor visszavonva; ${result.modified.length} szerkesztett bejegyzés megmaradt.`)
+  } catch (error) {
+    setSyncProviderStatus(error?.message || 'YAZIO-visszavonás sikertelen.', 'error')
   }
 }
 
@@ -2018,16 +2201,18 @@ const yazioApiPanel = createYazioApiPanel({ openSheet, closeSheet,
   importBundle: source => mobileFood.importYazio(source), openFileImport: () => openSyncImport('yazio'),
   getProfileKey: () => { const account = getGrapesAccount(); return account?.id || account?.email || 'local-food-profile' } })
 $('[data-yazio-import]').addEventListener('click', () => {
-  if (FRESH_OWNER_MODULES) return showToast('A YAZIO-import a Food elkülönítéséig zárolva van.')
+  if (FRESH_OWNER_MODULES) return openSyncImport('yazio')
   yazioApiPanel.open()
 })
+$('[data-fresh-yazio-confirm]')?.addEventListener('click',
+  () => confirmFreshYazioPreview().catch(() => {}))
 $('[data-sync-import-confirm]').addEventListener('click', () => runSyncImport())
 $('[data-sync-health-settings]').addEventListener('click', async () => {
   try { await openAndroidHealthConnectSettings(); $('[data-sync-import-status]').textContent = 'A Health Connect beállításai megnyíltak.' }
   catch (error) { $('[data-sync-import-status]').textContent = error?.message || 'A Health Connect beállításai nem nyithatók meg.' }
 })
 $('[data-yazio-undo]').addEventListener('click', async () => {
-  if (FRESH_OWNER_MODULES) return showToast('A YAZIO-adatok a Food elkülönítéséig zárolva vannak.')
+  if (FRESH_OWNER_MODULES) return undoFreshYazioLast()
   try {
     await mobileFood.undoYazio()
     closeSheet()
@@ -2036,7 +2221,7 @@ $('[data-yazio-undo]').addEventListener('click', async () => {
 })
 $('[data-yazio-input]').addEventListener('change', async event => {
   const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''
-  if (FRESH_OWNER_MODULES) return showToast('A YAZIO-import a Food elkülönítéséig zárolva van.')
+  if (FRESH_OWNER_MODULES) return prepareFreshYazioFile(file)
   if (!file) return
   if (file.size > 40 * 1024 * 1024) { $('[data-yazio-status]').textContent = 'A YAZIO-export legfeljebb 40 MB lehet.'; return }
   const status = $('[data-yazio-status]'); status.textContent = 'Yazio-adatok ellenőrzése…'
@@ -2071,6 +2256,9 @@ onGrapesDriveChange(() => {
 })
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
+    if (FRESH_OWNER_MODULES && freshYazioSheet?.classList.contains('is-open')) {
+      closeSheet() // old native Auth may have changed while Android file chooser was open
+    }
     if (FRESH_OWNER_MODULES) {
       resetFreshWaterUi()
       if (activePage === 'water') renderWater()
@@ -2099,6 +2287,7 @@ document.addEventListener('visibilitychange', () => {
     }
   }
   if (document.visibilityState === 'hidden') {
+    if (FRESH_OWNER_MODULES && freshYazioSheet?.classList.contains('is-open')) closeSheet()
     if (FRESH_OWNER_MODULES) resetFreshWaterUi()
     if (FRESH_OWNER_MODULES && waterHealthSheet?.classList.contains('is-open')) closeSheet()
     if (FRESH_OWNER_MODULES) household.clear()

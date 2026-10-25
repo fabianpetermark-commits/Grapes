@@ -59,10 +59,30 @@ export async function openGrapesTestFreshFood({
         safe.recipes.some(recipe => recipe.ownerProfileId && recipe.ownerProfileId !== owner)) {
       throw new Error('A Food-projekt idegen fiókbejegyzést tartalmaz.')
     }
-    // Cross-account transfers are not yet authorized in the TEST rollout.
-    if (safe.importBatches.length || safe.recipeLibraries.length ||
-        safe.sharingContacts.length || safe.processedShareIds.length) {
-      throw new Error('A Food-importok és megosztások még nem aktívak az új fióktárhelyen.')
+    // Only explicit native-owner YAZIO file import batches are permitted.
+    // Unrelated Drive shares, legacy claims and other batch sources stay blocked.
+    if (safe.recipeLibraries.length || safe.sharingContacts.length ||
+        safe.processedShareIds.length) {
+      throw new Error('A Food-megosztások továbbra is zároltak a TEST-fiókban.')
+    }
+    const batchIds = new Set()
+    for (const batch of safe.importBatches) {
+      if (!batch || batch.source !== 'yazio' || batch.profileId !== owner ||
+          typeof batch.id !== 'string' || !batch.id.startsWith('yazio-batch-') ||
+          batchIds.has(batch.id) || !['completed', 'undone', 'partial-undo'].includes(batch.status) ||
+          !Array.isArray(batch.recordIds) || !batch.entryFingerprints ||
+          typeof batch.entryFingerprints !== 'object' ||
+          Object.keys(batch.entryFingerprints).some(id => !batch.recordIds.includes(id))) {
+        throw new Error('Idegen vagy érvénytelen Food importköteg a saját fiókban.')
+      }
+      batchIds.add(batch.id)
+    }
+    if (safe.diaryEntries.some(entry =>
+      (entry.origin?.source === 'yazio' &&
+        (entry.origin.profileId !== owner ||
+         !batchIds.has(entry.origin.importBatchId))) ||
+      (entry.origin?.profileId && entry.origin.profileId !== owner))) {
+      throw new Error('A Food YAZIO-forrás vagy étkezés másik Grapes-fiókhoz tartozik.')
     }
     return safe
   }

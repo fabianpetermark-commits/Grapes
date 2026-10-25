@@ -242,3 +242,6 @@ export function undoYazioBatch(projectValue, batchId) {
   batch.status = modified.length ? 'partial-undo' : 'undone'
   return { project, removed: before - project.diaryEntries.length, modified }
 }
+
+// Stable comparison fingerprint used by verified fresh-owner CSV import batches.
+export function yazioEntryFingerprint(entry) { return hash(entry) }
