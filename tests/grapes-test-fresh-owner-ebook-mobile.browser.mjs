@@ -123,6 +123,19 @@ try {
     return (await s.listBooks())[0]?.reading?.overallPercent > 0
   }, { timeout: 15000 })
 
+  // Wait for the debounce and any competing initial reader events to settle.
+  await page.waitForTimeout(1900)
+  const stableBeforeSwitch = await page.evaluate(async () => {
+    const { openGrapesTestFreshEbook } =
+      await import('/Grapes/src/ebook/grapes-test-fresh-ebook.js')
+    const session = await openGrapesTestFreshEbook({enabled:true})
+    return { percent:(await session.listBooks())[0]?.reading?.overallPercent,
+      pageTop:document.querySelector('[data-reader-page]')?.scrollTop,
+      readerStatus:document.querySelector('[data-reader-status]')?.textContent }
+  })
+  console.log('EBOOK_BEFORE_SWITCH', JSON.stringify(stableBeforeSwitch))
+  assert.ok(stableBeforeSwitch.percent > 0, 'A own reading progress must survive debounce')
+
   await page.evaluate(B => localStorage.setItem('__ebook_qa_subject', B), B)
   await page.reload()
   await openShelf()
