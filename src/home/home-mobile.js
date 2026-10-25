@@ -298,7 +298,7 @@ export function createHomeMobile(root, storage, { freshOwnerMode = false, openFo
         await current.assertOwner()
         if (epoch !== loadEpoch || current !== store || cooking?.opId !== selected.opId) return
         const result = await run("CookingConfirmed", payload, selected.opId, { sourceType: "food-recipe", sourceId: `${current.ownerId}:${selected.recipeId}:${selected.opId}` })
-        if (result) closeForms()
+        if (result) { closeForms(); tab = 'inventory'; render() }
       } catch (err) {
         if (epoch === loadEpoch && current === store) {
           try { await current.assertOwner(); alert(err.message, true) } catch { clearFreshHome() }
