@@ -73,6 +73,12 @@ try {
   await page.locator('#finance-amount').fill('12345')
   await page.locator('#finance-note').fill('A-napló synthetic only')
   await page.locator('#finance-category').fill('Élelmiszer')
+  await page.locator('#finance-receipt').setInputFiles({
+    name: 'synthetic-a-qa.png', mimeType: 'image/png',
+    buffer: Buffer.from('synthetic-receipt-for-A-only'),
+  })
+  await page.waitForFunction(() =>
+    document.querySelector('#finance-receipt-name')?.textContent === 'synthetic-a-qa.png')
   await page.locator('#finance-form').evaluate(form => form.requestSubmit())
   await page.waitForFunction(() =>
     document.querySelector('#finance-save-status')?.textContent?.includes('Helyben mentve'), { timeout: 8000 })
@@ -89,7 +95,16 @@ try {
   assert.equal(snapshotA.revision, 1)
   assert.equal(snapshotA.transactions.length, 1)
   assert.equal(snapshotA.transactions[0].note, 'A-napló synthetic only')
+  assert.equal(snapshotA.transactions[0].receipt.name, 'synthetic-a-qa.png')
+  assert.ok(snapshotA.transactions[0].receipt.data.startsWith('data:image/png;base64,'))
   assert.equal(snapshotA.legacyUnchanged, true)
+  assert.equal(await page.locator('#finance-drive-save').isDisabled(), true)
+  const directBlock = await page.evaluate(async () => {
+    const { showScreen } = await import('/Grapes/src/screens.js')
+    return { food: showScreen('food'), ebook: showScreen('ebook'), financeVisible:
+      !document.getElementById('finance-app').classList.contains('hidden') }
+  })
+  assert.deepEqual(directBlock, { food: false, ebook: false, financeVisible: true })
 
   await page.evaluate(B => localStorage.setItem('__finance_mock_auth_subject', B), B)
   await page.reload()
@@ -148,6 +163,9 @@ try {
     // New verified subject must block stale in-memory save.
     localStorage.setItem('__finance_mock_auth_subject',
       '00000000-0000-4000-8000-000000000002')
+    const bSession = await openGrapesTestLiveFinance({ enabled: true })
+    await bSession.read()
+    const noABackup = (await bSession.loadSafety('last-delete')) === null
     let staleOwnerRejected = false
     try { await one.save(dataA) } catch { staleOwnerRejected = true }
     localStorage.setItem('__finance_mock_auth_subject', A)
@@ -155,13 +173,13 @@ try {
       backupReceipt: savedBackup.transactions[0].note,
       conflictRejected: staleRejected, poisonedRejected,
       sequential: q2.revision === q1.revision + 1,
-      staleOwnerRejected,
+      staleOwnerRejected, noABackup,
     }
   }, A)
   assert.deepEqual(directResult, {
     backupReceipt: 'A-napló synthetic only',
     conflictRejected: true, poisonedRejected: true,
-    sequential: true, staleOwnerRejected: true,
+    sequential: true, staleOwnerRejected: true, noABackup: true,
   })
   await context.close()
   console.log('PASS: real Finance UI A→B→A, normal transactions and receipts owner-scoped, legacy unchanged.')
