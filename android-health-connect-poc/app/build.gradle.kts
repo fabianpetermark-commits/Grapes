@@ -48,6 +48,7 @@ android {
         versionName = grapesVersionName
         buildConfigField("boolean", "GRAPES_TEST_AUTH_ENABLED", "false")
         buildConfigField("boolean", "GRAPES_TEST_DATA_ENABLED", "false")
+        buildConfigField("boolean", "GRAPES_TEST_LEGACY_BACKUP_ENABLED", "false")
         buildConfigField("String", "GRAPES_TEST_PUBLISHABLE_KEY", "\"\"")
     }
     buildTypes {
@@ -72,6 +73,11 @@ android {
             buildConfigField("boolean", "GRAPES_TEST_AUTH_ENABLED", authEnabled.toString())
             val dataEnabled = authEnabled && providers.environmentVariable("VITE_GRAPES_TEST_DATA_ENABLED").orNull == "true"
             buildConfigField("boolean", "GRAPES_TEST_DATA_ENABLED", dataEnabled.toString())
+            // Deliberately OFF unless a dedicated signed TEST backup QA build
+            // explicitly opts in. Never available in PROD/release/debug.
+            val legacyBackupEnabled = authEnabled &&
+                providers.environmentVariable("VITE_GRAPES_TEST_LEGACY_BACKUP_ENABLED").orNull == "true"
+            buildConfigField("boolean", "GRAPES_TEST_LEGACY_BACKUP_ENABLED", legacyBackupEnabled.toString())
             val publicKey = if (dataEnabled)
                 providers.environmentVariable("VITE_GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY").get() else ""
             buildConfigField("String", "GRAPES_TEST_PUBLISHABLE_KEY", "\"$publicKey\"")

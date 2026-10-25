@@ -1,0 +1,78 @@
+name: Grapes TEST verified local backup Android SAF gate (NO RELEASE)
+
+on:
+  push:
+    branches:
+      - feature/grapes-test-native-unclaimed-backup-saf-20261025
+  pull_request:
+    branches:
+      - feature/grapes-test-legacy-unclaimed-backup-foundation-20261025
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-test-verified-backup-native-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  no-data-android-and-web-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 42
+    env:
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GRAPES_TEST_AUTH_ENABLED: 'false'
+      VITE_GRAPES_TEST_DATA_ENABLED: 'false'
+      VITE_GRAPES_TEST_LOCAL_OWNER_QA_ENABLED: 'false'
+      VITE_GRAPES_TEST_LEGACY_BACKUP_ENABLED: 'true'
+      VITE_GRAPES_TEST_HEALTH_SYNC_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Existing regression suite and legacy backup integrity unit tests
+        run: npm test
+      - name: Ordinary web build remains compatible
+        run: npm run build
+      - name: Locate Chromium
+        run: |
+          if command -v google-chrome >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            npx playwright-core install --with-deps chromium
+            browser=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path '*chrome-linux*' | head -1)
+            test -n "$browser"
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$browser" >> "$GITHUB_ENV"
+          fi
+      - name: Native-message protocol synthetic local backup QA
+        run: node tests/grapes-test-native-unclaimed-backup.browser.mjs
+      - name: Original Food Finance Water E-book source read-only preservation
+        run: node tests/grapes-test-legacy-unclaimed-backup.browser.mjs
+      - name: Synthetic account partition regression
+        run: node tests/grapes-test-local-owner-store.browser.mjs
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android SDK setup
+        run: |
+          sdkmanager=$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | sort -V | tail -1)
+          test -n "$sdkmanager"
+          "$sdkmanager" "platforms;android-36" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.11.1
+      - name: Native QA tests including SAF independent reopen, invalid names and trust gates
+        run: gradle --project-dir android-health-connect-poc :app:testQaUnitTest
+      - name: Compile Android QA only with NO signing and NO APK artifact
+        run: gradle --project-dir android-health-connect-poc :app:compileQaKotlin
+      - name: Verify no signed APK is published
+        run: echo 'TEST-only native SAF protocol tested. No real data, APK, migration, or PROD actions.'
