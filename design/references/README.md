@@ -1,5 +1,17 @@
 # Grapes – design reference pack (Brand Guide v1.2)
 
+## E-book – önálló, offline megnyitható HTML és Quick Action (2026-10-25)
+
+- **[Teljes E-book előnézet](candidates/ebook.html)**: egyetlen `ebook.html`, minden CSS, SVG-ikon, mintaborító, mintakönyv és JavaScript **beágyazva**, nincs külső `../shared/grapes-v11.css` hivatkozás. Így a „library not found” típusú hiányzó külső fájl nem akadályozza a közvetlen megnyitást.
+- Kezdő `Könyvtár` képernyő: **utoljára olvasott könyv** (borító, cím, szerző, haladás, „Olvasás folytatása”), **nemrég olvasottak**, majd kereshető **saját könyvtár**. Egyezik a felhasználó által kért szerkezettel; mintaillusztrációk, nem valós könyvborítók.
+- Belső felső navigáció: a Brand Guide v1.2 szerinti, **hat felirat nélküli ikon** (Könyvtár, Olvasó, Átvitel, Könyv hozzáadása, Rendezés, Beállítások); nincs külön Home/Vissza.
+- **Alsó Quick Action**: Health mintájú, fix és képernyőhöz igazított pill: **Folytatás / Könyv / Átvitel** + külön kerek **E-olvasó párosítása**. Nem általános bottom nav; a további modulok saját Quick Action kiosztást használhatnak.
+- Kipróbálható: könyv választása, keresés/rendezés, olvasó és betűméret/téma/oldalváltás, átvitel- és párosításbemutató. A valódi Google Drive-könyvtár, EPUB/PDF tartalom, párosítás, eszközátvitel, biztonsági és tárolási műveletek **nincsenek rákapcsolva**; ezt csak külön TEST integráció végezheti.
+- A `tests/design-references.browser.mjs` és `tests/design-review.browser.mjs` a módosított pontos DOM-ot ellenőrzi. Állapot: **PROPOSED**, további felhasználói vizuális jóváhagyás szükséges.
+
+---
+
+
 ## Health belső oldalak – Food / Víz / Receptek (2026-10-25)
 
 Az E-book külön modulnál elfogadott **Quick Action** elnevezést a Health modulnál is használjuk. A három belső oldal **tényleges, közvetlenül megnyitható HTML/CSS/JS-tervként** készült el, és mindegyik ugyanazt a Brand Guide v1.2 szerinti feliratmentes, 6 ikonos felső kapszulát, valamint a **Fotó / Étel / Víz + külön Vonalkód** fix alsó Quick Action sávot használja.
