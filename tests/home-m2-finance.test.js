@@ -29,7 +29,7 @@ test('H-14: ugyanazon OCR-bizonylatsor megerősítve egyszer kerül készletbe; 
   const row = scanned.candidates[0]
   assert.match(row.sourceId, /^receipt-lines:ocr-[0-9a-f]{16}-1$/)
   assert.equal(row.lineNumber, 1)
-  assert.equal(receiptLineCandidates('bolt fejléce\nTej 2 x 1 l 998 Ft', 'receipt-lines')[0].sourceId, row.sourceId, 'Más sorpozíció nem duplázhat készletet.')
+  assert.equal(receiptLineCandidates('bolt fejléce\nTej 2 x 1 l 998 Ft', 'receipt-lines').find(candidate => candidate.name === 'Tej').sourceId, row.sourceId, 'Más sorpozíció nem duplázhat készletet.')
   assert.equal(row.quantity, 2)
   assert.equal(row.unit, 'l')
   let home = createHomeState()
