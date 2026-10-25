@@ -33,7 +33,7 @@ export function derivePurchaseCadenceForecasts(home, preferences = {}, now = new
       const before = delta.before, after = delta.after
       if (before?.status !== 'checked' && after?.status === 'checked') {
         const stamp = validStamp(event.timestamp)
-        if (stamp == null || stamp > nowMs || !after?.dimension || !after?.displayUnit) continue
+        if (stamp == null || stamp > nowMs) continue
         const checkout = { name: after.name, dimension: after.dimension, unit: after.displayUnit,
           eventId: event.eventId, shoppingId: delta.id, stamp, cancelled: false }
         purchases.push(checkout)
@@ -54,8 +54,14 @@ export function derivePurchaseCadenceForecasts(home, preferences = {}, now = new
     }
   }
   const byKey = new Map()
+  const unknownCheckoutByName = new Map()
   for (const checkout of purchases) {
     if (checkout.cancelled) continue
+    if (!checkout.dimension || !checkout.unit) {
+      const nameKey = JSON.parse(replenishKey(checkout.name, null))[0]
+      unknownCheckoutByName.set(nameKey, Math.max(checkout.stamp, unknownCheckoutByName.get(nameKey) || 0))
+      continue
+    }
     const k = replenishKey(checkout.name, checkout.dimension)
     if (!byKey.has(k)) byKey.set(k, [])
     byKey.get(k).push(checkout)
@@ -67,6 +73,7 @@ export function derivePurchaseCadenceForecasts(home, preferences = {}, now = new
     if (consumedKeys.has(baseKey)) continue
     // Same-name goods sold with incompatible units need manual identification.
     const name = history.at(-1).name
+    if ((unknownCheckoutByName.get(JSON.parse(baseKey)[0]) || 0) > history.at(-1).stamp) continue
     const dimensions = new Set([...byKey.keys()].filter(k => JSON.parse(k)[0] === JSON.parse(baseKey)[0]))
     if (dimensions.size !== 1) continue
     // Multiple trips on one date are not independent consumption cycles.
