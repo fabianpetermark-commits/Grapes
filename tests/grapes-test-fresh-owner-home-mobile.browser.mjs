@@ -155,13 +155,15 @@ try {
     const state = session.getState()
     const entry = state.events.find(event => event.type === 'CookingConfirmed')
     const repeated = await session.dispatch({type:'CookingConfirmed',eventId:entry.eventId,sourceType:entry.sourceType,sourceId:entry.sourceId,payload:{recipeRef:'r-home-m3a-milk'}})
-    let financeBlocked = false, diaryBlocked = false
+    let financeBlocked = false, diaryBlocked = false, unknownRecipeBlocked = false
     try { await session.dispatch({type:'StockReceived',payload:{}}) } catch {financeBlocked=true}
     try { await session.dispatch({type:'PreparedConsumptionLinked',payload:{}}) } catch {diaryBlocked=true}
+    try { await session.dispatch({type:'CookingConfirmed',eventId:'invented-cook',sourceType:'food-recipe',
+      sourceId:state.householdId+':invented-recipe:invented-cook',payload:{recipeRef:'invented-recipe',name:'X',portions:1,storageLocation:'fridge',consumed:[{id:state.inventory[0].id,quantity:1,unit:'ml'}]}}) } catch {unknownRecipeBlocked=true}
     return {revision:state.revision,duplicate:repeated.duplicate,quantity:state.inventory[0].quantityBase,
-      portions:state.prepared[0].portionsRemaining,source:entry.sourceType,financeBlocked,diaryBlocked}
+      portions:state.prepared[0].portionsRemaining,source:entry.sourceType,financeBlocked,diaryBlocked,unknownRecipeBlocked}
   })
-  assert.deepEqual(cooked,{revision:4,duplicate:true,quantity:800,portions:2,source:'food-recipe',financeBlocked:true,diaryBlocked:true})
+  assert.deepEqual(cooked,{revision:4,duplicate:true,quantity:800,portions:2,source:'food-recipe',financeBlocked:true,diaryBlocked:true,unknownRecipeBlocked:true})
   const foodAfterCook = await page.evaluate(async () => {
     const { openGrapesTestFreshFood } = await import('/Grapes/src/food/grapes-test-fresh-food.js')
     return JSON.stringify(await (await openGrapesTestFreshFood({enabled:true})).load())
