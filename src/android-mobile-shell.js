@@ -208,6 +208,10 @@ function setSyncProviderStatus(message, state = '') {
 }
 
 function openSyncImport(provider) {
+  if (FRESH_OWNER_MODULES) {
+    showToast('A Food/Health import a fiókhoz kötés befejezéséig nem érhető el.')
+    return
+  }
   activeSyncImport = provider
   const title = $('[data-sync-import-title]')
   const copy = $('[data-sync-import-copy]')
@@ -251,6 +255,10 @@ function openSyncImport(provider) {
 }
 
 async function runSyncImport() {
+  if (FRESH_OWNER_MODULES) {
+    showToast('Az importálás a fiókhoz kötés befejezéséig tiltva.')
+    return
+  }
   const provider = activeSyncImport
   const status = $('[data-sync-import-status]')
   if (!provider) return
@@ -297,7 +305,8 @@ function renderUpdateInbox() {
   const card = $('[data-update-notification]')
   const update = availableAppUpdate
   const readVersion = Number(localStorage.getItem(UPDATE_READ_KEY) || 0)
-  const food = mobileFood?.inboxSummary() || { pending: 0, unread: 0 }
+  const food = FRESH_OWNER_MODULES ? { pending: 0, unread: 0 }
+    : mobileFood?.inboxSummary() || { pending: 0, unread: 0 }
   const foodCard = $('[data-food-share-notification]')
   foodCard.hidden = food.pending === 0
   $('[data-food-share-notes]').textContent = `${food.pending} függőben lévő megosztás · ${food.unread} olvasatlan`
@@ -324,7 +333,7 @@ async function refreshUpdateInbox() {
     try { setAvailableAppUpdate(await getAndroidAppUpdate()) }
     catch { renderUpdateInbox() }
   }
-  if (mobileFood) {
+  if (mobileFood && !FRESH_OWNER_MODULES) {
     try { await mobileFood.refreshInbox() } catch { /* A postaláda hálózati hibája nem akadályozhatja a verziófrissítést. */ }
   }
   renderUpdateInbox()
@@ -680,6 +689,16 @@ async function pairMobileLibrary() {
 }
 
 function renderAccount() {
+  if (FRESH_OWNER_MODULES) {
+    $('[data-account-mode]').textContent = 'Grapes TEST – fiókonkénti mód'
+    $('[data-sync-title]').textContent = 'Grapes TEST – helyi fióktárhely'
+    $('[data-sync-detail]').textContent = 'A Water külön saját tárhelye aktív; Food, Finance, E-book és Drive még zárolva van.'
+    $('[data-connect-drive]').textContent = 'Drive-kapcsolat ebben a tesztben nem használható'
+    $('[data-account-action]').textContent = 'Drive külön zárolva'
+    const badge = $('[data-sync-badge]')
+    if (badge) { badge.textContent = 'Fiókhoz kötve'; badge.dataset.state = 'local' }
+    return
+  }
   const connected = isGrapesDriveConnected()
   const account = getGrapesAccount()
   $('[data-account-mode]').textContent = connected ? (account?.email || 'Drive csatlakoztatva') : 'Helyi mód'
@@ -708,6 +727,10 @@ function showLogin(message = '') {
 }
 
 async function openAccountLogin() {
+  if (FRESH_OWNER_MODULES) {
+    showToast('A Drive-kapcsolat a fiókonkénti TEST alatt zárolva van.')
+    return
+  }
   if (!isGrapesDriveConnected()) {
     setLocalMode(false)
     showLogin()
@@ -799,6 +822,10 @@ function showApp() {
 }
 
 async function connectDrive() {
+  if (FRESH_OWNER_MODULES) {
+    showToast('A külön Drive-kapcsolat nem része a fiókozott TEST-nek.')
+    return
+  }
   const status = $('[data-login-status]')
   if (isGrapesDriveConnected()) {
     await disconnectGrapesDrive({ forgetAccount: false })
@@ -1637,13 +1664,17 @@ $$('[data-samsung-sync-action]').forEach(button => button.addEventListener('clic
 const yazioApiPanel = createYazioApiPanel({ openSheet, closeSheet,
   importBundle: source => mobileFood.importYazio(source), openFileImport: () => openSyncImport('yazio'),
   getProfileKey: () => { const account = getGrapesAccount(); return account?.id || account?.email || 'local-food-profile' } })
-$('[data-yazio-import]').addEventListener('click', () => yazioApiPanel.open())
+$('[data-yazio-import]').addEventListener('click', () => {
+  if (FRESH_OWNER_MODULES) return showToast('A YAZIO-import a Food elkülönítéséig zárolva van.')
+  yazioApiPanel.open()
+})
 $('[data-sync-import-confirm]').addEventListener('click', () => runSyncImport())
 $('[data-sync-health-settings]').addEventListener('click', async () => {
   try { await openAndroidHealthConnectSettings(); $('[data-sync-import-status]').textContent = 'A Health Connect beállításai megnyíltak.' }
   catch (error) { $('[data-sync-import-status]').textContent = error?.message || 'A Health Connect beállításai nem nyithatók meg.' }
 })
 $('[data-yazio-undo]').addEventListener('click', async () => {
+  if (FRESH_OWNER_MODULES) return showToast('A YAZIO-adatok a Food elkülönítéséig zárolva vannak.')
   try {
     await mobileFood.undoYazio()
     closeSheet()
@@ -1652,6 +1683,7 @@ $('[data-yazio-undo]').addEventListener('click', async () => {
 })
 $('[data-yazio-input]').addEventListener('change', async event => {
   const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''
+  if (FRESH_OWNER_MODULES) return showToast('A YAZIO-import a Food elkülönítéséig zárolva van.')
   if (!file) return
   if (file.size > 40 * 1024 * 1024) { $('[data-yazio-status]').textContent = 'A YAZIO-export legfeljebb 40 MB lehet.'; return }
   const status = $('[data-yazio-status]'); status.textContent = 'Yazio-adatok ellenőrzése…'
@@ -1680,7 +1712,7 @@ window.addEventListener('grapes:food-inbox-changed', renderUpdateInbox)
 onGrapesDriveChange(() => {
   mobileEbooks = []
   if (!isGrapesDriveConnected()) { mobileReader = null; mobileReaderBook = null }
-  else registerFoodSharing().catch(() => {})
+  else if (!FRESH_OWNER_MODULES) registerFoodSharing().catch(() => {})
   if (!FRESH_OWNER_MODULES) mobileFood?.load({ force: true }).catch(() => {})
   renderAccount(); renderProjects(); renderSync()
 })
