@@ -211,7 +211,7 @@ try {
   assert.equal(await page.locator('[data-household-review-line]').isDisabled(), true, 'Azonos bizonylatsor nem vehető fel kétszer.')
   const beforeManual = await page.evaluate(() => localStorage.getItem('grapes-home-household-v1'))
   await page.locator('[data-household-scan-receipt="receipt-manual"]').click()
-  await page.locator('[data-household-receipt-candidates] > .household-card [data-household-review-line]').waitFor()
+  await page.locator('[data-household-receipt-candidates] > .household-card').getByText('Kenyér').waitFor()
   assert.match(await page.locator('[data-household-receipt-candidates]').textContent(), /Kenyér/)
   assert.equal(await page.evaluate(() => localStorage.getItem('grapes-home-household-v1')), beforeManual, 'A mennyiség nélküli OCR előnézet nem módosíthat készletet.')
   await page.locator('[data-household-receipt-candidates] > .household-card [data-household-review-line]').click()
