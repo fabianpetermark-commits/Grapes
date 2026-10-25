@@ -109,6 +109,24 @@ export async function openGrapesTestFreshHome({
     const operation = queue.then(async () => {
       if (poisoned) throw poisoned
       await verify()
+      if (command.type === 'CookingConfirmed' && !state.events.some(event =>
+          event.eventId === command.eventId ||
+          (event.sourceType === command.sourceType && event.sourceId === command.sourceId))) {
+        // An authenticated owner identifier alone does not prove the recipe exists.
+        // The personal Food store stays read-only; there is no Drive or cross-owner fallback.
+        const { openGrapesTestFreshFood } = await import('../food/grapes-test-fresh-food.js')
+        const food = await openGrapesTestFreshFood({
+          enabled: true, isAndroid, authEnabled, getSubject, indexedDb,
+        })
+        if (food.ownerId !== ownerId) throw new Error('A Food és Home fiók nem egyezik.')
+        const project = await food.load()
+        if (project.profile?.id !== ownerId || !project.recipes.some(recipe =>
+            recipe.id === command.payload.recipeRef && recipe.ownerProfileId === ownerId)) {
+          throw new Error('A saját Food-recept nem található; a Home készlete változatlan.')
+        }
+        await food.assertOwner()
+        await verify()
+      }
       // Invalid user commands do not invalidate the whole session; only an
       // identity/storage/conflict error poisons it.
       const result = applyHomeCommand(state, { ...command, actorId: ownerId })
