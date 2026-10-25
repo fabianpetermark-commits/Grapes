@@ -1,0 +1,58 @@
+name: Grapes TEST per-account local storage foundation (NO RELEASE)
+
+on:
+  push:
+    branches:
+      - feature/grapes-test-local-owner-scoped-store-20261025
+  pull_request:
+    branches:
+      - feature/grapes-test-local-account-storage-audit-20261025
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-test-owner-local-store-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  owner-scope-browser-and-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GRAPES_TEST_AUTH_ENABLED: 'false'
+      VITE_GRAPES_TEST_DATA_ENABLED: 'false'
+      VITE_GRAPES_TEST_FOOD_SYNTHETIC_ENABLED: 'false'
+      VITE_GRAPES_TEST_HEALTH_SYNC_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: All existing tests, no live data access
+        run: npm test
+      - name: Verify normal web build still works
+        run: npm run build
+      - name: Find Chromium
+        run: |
+          if command -v google-chrome >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            npx playwright-core install --with-deps chromium
+            browser=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path '*chrome-linux*' | head -1)
+            test -n "$browser"
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$browser" >> "$GITHUB_ENV"
+          fi
+      - name: True Chromium separate owner and unchanged legacy assertion
+        run: |
+          node tests/grapes-test-local-owner-store.browser.mjs
+          node tests/grapes-local-account-legacy-audit.browser.mjs
+          echo 'Owner-v1 synthetic storage PASS; old unscoped storage remains NO-GO.'
