@@ -126,15 +126,21 @@ try {
     node.scrollTop = Math.max(1, (node.scrollHeight - node.clientHeight) * .7)
     node.dispatchEvent(new Event('scroll'))
   })
-  await page.waitForFunction(async () => {
-    const { openGrapesTestFreshEbook } =
-      await import('/Grapes/src/ebook/grapes-test-fresh-ebook.js')
-    const s = await openGrapesTestFreshEbook({ enabled:true })
-    return (await s.listBooks())[0]?.reading?.overallPercent > 0
-  }, { timeout: 15000 })
-
-  // Wait for the debounce and any competing initial reader events to settle.
-  await page.waitForTimeout(1900)
+  // Playwright's waitForFunction must not treat an async Promise object as
+  // a truthy result. Poll the real database from Node, not a promise in-page.
+  let progressSaved = false
+  for (let attempt = 0; attempt < 70; attempt++) {
+    await page.waitForTimeout(200)
+    const percent = await page.evaluate(async () => {
+      const { openGrapesTestFreshEbook } =
+        await import('/Grapes/src/ebook/grapes-test-fresh-ebook.js')
+      const store = await openGrapesTestFreshEbook({enabled:true})
+      return (await store.listBooks())[0]?.reading?.overallPercent || 0
+    })
+    if (percent > 0) { progressSaved = true; break }
+  }
+  assert.equal(progressSaved, true, 'EPUB scroll must reach owner-only IndexedDB')
+  await page.waitForTimeout(1500)
   const stableBeforeSwitch = await page.evaluate(async () => {
     const { openGrapesTestFreshEbook } =
       await import('/Grapes/src/ebook/grapes-test-fresh-ebook.js')
