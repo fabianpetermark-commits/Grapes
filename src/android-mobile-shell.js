@@ -78,7 +78,8 @@ let mobileReaderSaveTimer = null
 let activeTransferBookId = ''
 let activePairingNonce = ''
 let mobileFood = null
-const household = createHomeMobile($('[data-household-root]'))
+const household = createHomeMobile($('[data-household-root]'), undefined,
+  { freshOwnerMode: FRESH_OWNER_MODULES })
 let activePage = 'home'
 let menuReturnPage = ''
 let menuEntry = ''
@@ -398,9 +399,17 @@ function showPage(page, { parent = '', entry = '', skipFoodLoad = false } = {}) 
   // With the opt-in fresh owner gate ON, legacy modules MUST NOT be opened:
   // their local/Drive data paths are not yet bound to native Grapes Auth.
   if (FRESH_OWNER_MODULES &&
-      ['transfer', 'household'].includes(page)) {
+      ['transfer'].includes(page)) {
     showToast('Ez a modul a fiókonkénti TEST-átállításig zárolva van.')
     return
+  }
+  if (FRESH_OWNER_MODULES && activePage === 'household' && page !== 'household') {
+    // Leave no previous owner's inventory/shopping in a hidden DOM.
+    household.clear()
+  }
+  if (FRESH_OWNER_MODULES && page === 'household') {
+    // Explicitly hide and blank the old account before native Auth resolves.
+    household.clear()
   }
   if (FRESH_OWNER_MODULES && ['ebook', 'reader'].includes(page)) {
     // Erase the previous account's book and reader DOM before native Auth.
@@ -1865,6 +1874,10 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
     updateHomeGreeting()
     refreshUpdateInbox().catch(() => {})
+    if (FRESH_OWNER_MODULES && activePage === 'household') {
+      household.clear()
+      household.load().catch(() => {})
+    }
     if (FRESH_OWNER_MODULES && ['ebook', 'reader'].includes(activePage)) {
       const page = activePage
       resetFreshEbookUi()
@@ -1880,6 +1893,7 @@ document.addEventListener('visibilitychange', () => {
     }
   }
   if (document.visibilityState === 'hidden') {
+    if (FRESH_OWNER_MODULES) household.clear()
     persistReaderProgress().catch(() => {})
     mobileFood?.flush().catch(() => {})
   }

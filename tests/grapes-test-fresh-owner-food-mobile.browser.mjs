@@ -59,6 +59,26 @@ try {
     }, { timeout: 15000 })
   }
   await openFood()
+  // Must await the actual IndexedDB readback; an async predicate passed to
+  // Playwright waitForFunction looks truthy as a Promise before it resolves.
+  async function waitForFoodSaved(expectedName, expectedNote) {
+    for (let attempt = 0; attempt < 110; attempt++) {
+      const result = await page.evaluate(async () => {
+        const { openGrapesTestFreshFood } =
+          await import('/Grapes/src/food/grapes-test-fresh-food.js')
+        const session = await openGrapesTestFreshFood({ enabled: true })
+        const data = await session.load()
+        return {
+          foods: data.customFoods.map(food => food.name),
+          entries: data.diaryEntries.map(entry => entry.note || ''),
+        }
+      })
+      if (result.foods.includes(expectedName) &&
+          result.entries.some(note => expectedNote ? note === expectedNote : true)) return
+      await page.waitForTimeout(120)
+    }
+    throw new Error('A Food saját adatbázis-mentés visszaolvasása nem igazolható.')
+  }
   await page.evaluate(async () => {
     const { saveLocalProject } = await import('/Grapes/src/storage/local-project-store.js')
     await saveLocalProject({ id: 'food-tracker-local-food-profile', module: 'Ételnapló',
@@ -83,14 +103,7 @@ try {
   await page.locator('[data-food-edit-note]').fill('A only')
   await page.locator('[data-food-edit-save]').click()
 
-  await page.waitForFunction(async () => {
-    const { openGrapesTestFreshFood } =
-      await import('/Grapes/src/food/grapes-test-fresh-food.js')
-    const store = await openGrapesTestFreshFood({enabled:true})
-    const data = await store.load()
-    return data.diaryEntries.some(x => x.note === 'A only') &&
-      data.customFoods.some(x => x.name === 'Teszt étel – A 🍇')
-  }, {timeout:15000})
+  await waitForFoodSaved('Teszt étel – A 🍇', 'A only')
   const a = await page.evaluate(async () => {
     const { openGrapesTestFreshFood } =
       await import('/Grapes/src/food/grapes-test-fresh-food.js')
@@ -142,12 +155,7 @@ try {
   await page.locator('[data-food-custom-save]').click()
   await page.locator('[data-food-edit-amount]').fill('100')
   await page.locator('[data-food-edit-save]').click()
-  await page.waitForFunction(async () => {
-    const { openGrapesTestFreshFood } =
-      await import('/Grapes/src/food/grapes-test-fresh-food.js')
-    const v=await (await openGrapesTestFreshFood({enabled:true})).load()
-    return v.diaryEntries.length===1 && v.customFoods[0]?.name==='B saját étel'
-  }, {timeout:15000})
+  await waitForFoodSaved('B saját étel', '')
 
   await page.evaluate(A => localStorage.setItem('__food_owner_qa', A), A)
   await page.reload()
