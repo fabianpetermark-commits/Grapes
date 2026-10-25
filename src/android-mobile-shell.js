@@ -1759,7 +1759,9 @@ window.grapesHandleAndroidBack = () => {
   return false
 }
 renderWater()
-if (isGrapesDriveConnected() && !FRESH_OWNER_MODULES) registerFoodSharing().catch(() => {})
+if (!FRESH_OWNER_MODULES) {
+  if (isGrapesDriveConnected()) registerFoodSharing().catch(() => {})
+}
 // A verified Grapes TEST account is the main-app entry gate. Do not route
 // such users through the old, unrelated Google Drive welcome screen first.
 // This is QA-only and does NOT change the Drive account or localMode flag.
