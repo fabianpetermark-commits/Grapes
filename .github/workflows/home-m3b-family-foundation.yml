@@ -5,6 +5,10 @@ on:
     branches:
       - feature/grapes-test-home-m3b-family-foundation-20261025
 
+concurrency:
+  group: grapes-home-m3b-family-local-supabase
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
