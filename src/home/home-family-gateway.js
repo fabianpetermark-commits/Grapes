@@ -3,7 +3,7 @@ import {
   validateFamilyHome, inspectFamilyConflict,
 } from './home-family-data.js'
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const uuid = (value, label = 'azonosító') => {
   if (typeof value !== 'string' || !UUID.test(value)) throw new Error(`Érvénytelen ${label}.`)
   return value.toLowerCase()
