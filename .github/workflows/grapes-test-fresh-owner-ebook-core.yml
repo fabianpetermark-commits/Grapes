@@ -1,0 +1,68 @@
+name: Grapes TEST fresh owner E-book core (NO RELEASE)
+
+on:
+  push:
+    branches:
+      - feature/grapes-test-fresh-owner-ebook-core-20261025
+  pull_request:
+    branches:
+      - feature/grapes-test-fresh-owner-food-mobile-20261025
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-test-fresh-owner-ebook-core-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ebook-owner-core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GRAPES_TEST_AUTH_ENABLED: 'true'
+      VITE_GRAPES_TEST_FRESH_OWNER_MODULES_ENABLED: 'true'
+      VITE_GRAPES_TEST_DATA_ENABLED: 'false'
+      VITE_GRAPES_TEST_FOOD_SYNTHETIC_ENABLED: 'false'
+      VITE_GRAPES_TEST_HEALTH_SYNC_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: All unit regression tests
+        run: npm test
+      - name: Build opt-in Android TEST WebView assets (no APK)
+        run: npm run build:android-web
+      - name: Find Chromium
+        run: |
+          if command -v google-chrome >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            npx playwright-core install --with-deps chromium
+            browser=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path '*chrome-linux*' | head -1)
+            test -n "$browser"
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$browser" >> "$GITHUB_ENV"
+          fi
+      - name: New E-book owner local file bytes and progress A-B-A
+        run: node tests/grapes-test-fresh-owner-ebook.browser.mjs
+      - name: Real Food normal Android screen A-B-A
+        run: node tests/grapes-test-fresh-owner-food-mobile.browser.mjs
+      - name: Fresh Food project A-B-A
+        run: node tests/grapes-test-fresh-owner-food.browser.mjs
+      - name: Real Finance normal screen A-B-A
+        run: node tests/grapes-test-fresh-owner-finance.browser.mjs
+      - name: Water new empty A-B-A
+        run: node tests/grapes-test-fresh-owner-water-projects.browser.mjs
+      - name: Owner partition and legacy no-loss regressions
+        run: |
+          node tests/grapes-test-local-owner-store.browser.mjs
+          node tests/grapes-test-legacy-unclaimed-backup.browser.mjs
