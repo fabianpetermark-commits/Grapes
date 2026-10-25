@@ -133,5 +133,6 @@
    recipeFilter=b.dataset.recipeFilter;all('[data-recipe-filter]').forEach(n=>n.classList.toggle('active',n===b));displayRecipes();
   }));
   one('#new-recipe')?.addEventListener('click',()=>openRecipeEditor());
+  one('#new-recipe-alt')?.addEventListener('click',()=>openRecipeEditor());
  }
 })();
