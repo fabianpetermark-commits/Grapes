@@ -94,8 +94,10 @@ export async function openGrapesTestFreshHome({
     return ownerId
   }
 
-  async function openOwnFinance() {
-    await assertOwner()
+  async function openOwnFinance({insideDispatch = false} = {}) {
+    // A queued CAS writer must NOT await its own queue (deadlock).
+    if (insideDispatch) await verify()
+    else await assertOwner()
     const { openGrapesTestLiveFinance } = await import('../storage/grapes-test-finance-live.js')
     const finance = await openGrapesTestLiveFinance({
       enabled:true, isAndroid, authEnabled, getSubject, indexedDb,
@@ -193,10 +195,10 @@ export async function openGrapesTestFreshHome({
         const proof = receiptProofs.get(command.sourceId)
         if (!proof || proof.receiptId !== command.payload.receiptId)
           throw new Error('A blokk előző beolvasása nem ellenőrizhető.')
-        const finance = await openOwnFinance()
+        const finance = await openOwnFinance({insideDispatch:true})
         const { receiptFromOwnerFinance } = await import('./home-owner-receipts.js')
         const data = await finance.read()
-        const receipt = receiptFromOwnerFinance(data, proof.receiptId)
+        const receipt = await receiptFromOwnerFinance(data, proof.receiptId)
         if (!receipt || receipt.receipt.data !== proof.data)
           throw new Error('A Finance-bizonylat időközben megváltozott. Olvasd be újra.')
         await finance.assertOwner()
