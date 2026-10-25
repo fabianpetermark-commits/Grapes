@@ -79,8 +79,10 @@ let mobileReaderSaveTimer = null
 let activeTransferBookId = ''
 let activePairingNonce = ''
 let mobileFood = null
+let pendingHomeRecipeId = ''
 const household = createHomeMobile($('[data-household-root]'), undefined,
-  { freshOwnerMode: FRESH_OWNER_MODULES })
+  { freshOwnerMode: FRESH_OWNER_MODULES,
+    openFoodRecipe: id => { pendingHomeRecipeId = id; showPage('food', { parent: 'hub-home', entry: 'recipes' }) } })
 let activePage = 'home'
 let menuReturnPage = ''
 let menuEntry = ''
@@ -773,6 +775,7 @@ function showPage(page, { parent = '', entry = '', skipFoodLoad = false } = {}) 
     menuReturnPage = parent
     menuEntry = entry
   }
+  if (page !== 'food') pendingHomeRecipeId = ''
   if (activePage === 'food' && page !== 'food') mobileFood?.flush().catch(() => {})
   if (mobileReader && !['reader'].includes(page)) persistReaderProgress().catch(() => {})
   if (page !== 'reader') setReaderFullscreen(false)
@@ -797,11 +800,16 @@ function showPage(page, { parent = '', entry = '', skipFoodLoad = false } = {}) 
     // A delayed load must not open a sheet on a different screen.
     if (activePage !== 'food' || (entry && menuEntry !== entry)) return
     if (entry) mobileFood?.openNavigationView(entry)
+    if (FRESH_OWNER_MODULES && pendingHomeRecipeId) {
+      const id = pendingHomeRecipeId
+      pendingHomeRecipeId = ''
+      if (!mobileFood?.openRecipeById(id)) showToast('A recept nem érhető el ebben a Food-fiókban.')
+    }
     if (!FRESH_OWNER_MODULES) {
       await mobileFood?.autoImportHealth()
       await mobileFood?.autoImportYazio()
     }
-  }).catch(() => {})
+  }).catch(() => { pendingHomeRecipeId = '' })
   if (page === 'ebook') renderMobileEbooks()
   if (page === 'reader') renderReaderPicker()
   if (page === 'transfer') renderTransferPicker()
