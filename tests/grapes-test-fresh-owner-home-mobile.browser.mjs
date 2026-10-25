@@ -144,11 +144,14 @@ try {
   assert.equal(homeBeforeCook.inventory[0].quantityBase, 1000)
   assert.equal(homeBeforeCook.prepared.length, 0)
   await cookForm.locator('button[type="submit"]').click()
-  await page.waitForFunction(async () => {
-    const { openGrapesTestFreshHome } = await import('/Grapes/src/home/grapes-test-fresh-home.js')
-    const s = (await openGrapesTestFreshHome({enabled:true})).getState()
-    return s.prepared.length === 1 && s.inventory[0].quantityBase === 800
-  }, {timeout:15000})
+  try {
+    await home.locator('[data-household-prepared]').getByText('A saját tejitalom', { exact: true }).waitFor({ timeout: 15000 })
+  } catch (error) {
+    throw new Error('A főzés nem került készletbe: ' +
+      await home.locator('[data-household-alert]').textContent() +
+      ' | előnézet: ' + await home.locator('[data-household-cooking-preview]').textContent() +
+      ' | ' + error.message)
+  }
   const cooked = await page.evaluate(async () => {
     const { openGrapesTestFreshHome } = await import('/Grapes/src/home/grapes-test-fresh-home.js')
     const session = await openGrapesTestFreshHome({enabled:true})
