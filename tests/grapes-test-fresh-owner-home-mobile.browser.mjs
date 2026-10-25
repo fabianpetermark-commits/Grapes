@@ -69,7 +69,6 @@ try {
   await form.locator('[name="name"]').fill('A saját tej')
   await form.locator('[name="quantity"]').fill('1')
   await form.locator('[name="unit"]').selectOption('l')
-  await form.locator('[name="storageLocation"]').selectOption('fridge')
   await form.locator('button[type="submit"]').click()
   await page.waitForFunction(() =>
     document.querySelector('[data-household-lots]')?.textContent.includes('A saját tej'),
@@ -272,7 +271,6 @@ try {
   assert.equal(await ocrForm.evaluate(form=>form.checkValidity()),false)
   await ocrForm.locator('[name="quantity"]').fill('1')
   await ocrForm.locator('[name="unit"]').selectOption('db')
-  await ocrForm.locator('[name="storageLocation"]').selectOption('pantry')
   await ocrForm.locator('button[type="submit"]').click()
   try {
     await home.locator('[data-household-lots]').getByText('Kenyér',{exact:true}).waitFor({timeout:15000})
