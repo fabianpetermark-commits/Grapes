@@ -212,7 +212,7 @@ begin
   select * into v_head from grapes_family_private.households
      where id=p_household for update;
   v_role:=grapes_family_private.role_for(p_household,v_user);
-  if v_head.id is null or v_role not in ('owner','editor') then
+  if v_head.id is null or v_role is null or v_role not in ('owner','editor') then
     raise exception 'editor role required' using errcode='42501';
   end if;
   select * into v_existing from grapes_family_private.attempts
