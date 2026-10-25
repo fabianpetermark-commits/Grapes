@@ -476,6 +476,17 @@ class MainActivity : ComponentActivity() {
                     sendError(requestId, "A Grapes TEST-fiók nem aktív.")
                 } else {
                     testSupabaseProxy.clear()
+                    // A user's pending owner-pinned local backup must never
+                    // survive Grapes Auth logout on a shared device.
+                    if (backupSession?.pinnedUnclaimedOwner != null) {
+                        backupSession?.temporaryFile?.delete()
+                        backupSession = null
+                    }
+                    if (pendingUnclaimedBackupOwner != null) {
+                        pendingBackupPickerRequestId = null
+                        pendingBackupFilename = null
+                        pendingUnclaimedBackupOwner = null
+                    }
                     if (!testGatePreferences.edit().putBoolean("logout-pending", true).commit())
                         sendError(requestId, "A kijelentkezés nem készíthető elő.")
                     else webView.loadUrl(TEST_AUTH_URL)
