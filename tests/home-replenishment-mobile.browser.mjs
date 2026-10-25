@@ -86,6 +86,7 @@ try {
   await page.reload()
   await openHome()
   await home.locator('[data-household-tab="replenishment"]').click()
+  await home.locator('.household-replenishment-history summary').click()
   await home.locator('[data-household-restore-key]').click()
   await home.locator('[data-household-suggestion-pick]').waitFor()
   await home.locator('[data-household-suggestion-pick]').check()
