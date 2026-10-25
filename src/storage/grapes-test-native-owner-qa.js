@@ -72,13 +72,14 @@ export function createGrapesTestNativeOwnerTrial({
         assertSynthetic(await store.read(item.id), item, user)
       }
       const all = await store.list()
-      if (all.length !== records.length) {
-        // Fail closed rather than silently mixing user records or presenting
-        // a false clean-room PASS to the real phone QA operator.
-        throw new Error('A fióktárhely nem pontosan a várt két mesterséges rekordot tartalmazza.')
+      // A user's future legitimate owner-scoped Finance records may coexist.
+      // Require exactly the two QA identifiers, without exposing other records.
+      const qaRows = all.filter(row => row.id.startsWith('qa-'))
+      if (qaRows.length !== records.length) {
+        throw new Error('A fióktárhely mesterséges próbarekordjai nem ellenőrizhetők.')
       }
       for (const item of records) {
-        const entry = all.find(row => row.id === item.id)
+        const entry = qaRows.find(row => row.id === item.id)
         assertSynthetic(entry, item, user)
       }
       return { phase: 'readback-verified', records: records.length, ownerVerified: true }
