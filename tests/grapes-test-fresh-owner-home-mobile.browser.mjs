@@ -214,7 +214,7 @@ try {
     const state = session.getState()
     const event = state.events.find(event => event.type === 'PreparedConsumptionLinked')
     const duplicate = await session.dispatch({type:'PreparedConsumptionLinked',eventId:'another-link',
-      sourceType:'food-diary',sourceId:event.sourceId,payload:{}})
+      sourceType:'food-diary',sourceId:event.sourceId,payload:{profileId:state.householdId,foodEntryId:'home-linked-entry-1'}})
     let wrongSourceBlocked=false, wrongAmountBlocked=false
     try { await session.dispatch({type:'PreparedConsumptionLinked',eventId:'foreign-link',sourceType:'food-diary',
       sourceId:'another-owner:home-linked-entry-1',payload:{profileId:state.householdId,foodEntryId:'home-linked-entry-1'}}) }
