@@ -672,6 +672,7 @@ async function persistReaderProgress() {
 
 function scheduleReaderProgressSave() {
   updateReaderProgress()
+  if (FRESH_OWNER_MODULES) console.warn('EBOOK_TRACE_SCHEDULE', Math.round($('[data-reader-page]').scrollTop))
   window.clearTimeout(mobileReaderSaveTimer)
   mobileReaderSaveTimer = window.setTimeout(() => persistReaderProgress().catch(error => {
     const status = $('[data-reader-status]'); status.textContent = FRESH_OWNER_MODULES
