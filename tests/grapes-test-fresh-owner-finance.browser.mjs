@@ -57,7 +57,7 @@ try {
     return el && getComputedStyle(el).visibility !== 'hidden' &&
       el.classList.contains('finance') && !el.classList.contains('hidden')
   }, { timeout: 12000 })
-  const originalLegacy = await page.evaluate(async () => {
+  await page.evaluate(async () => {
     const { saveLocalProject } = await import('/Grapes/src/storage/local-project-store.js')
     const old = { id: 'finance-tracker-current', module: 'Pénzügyi Napló',
       name: 'unowned legacy', data: { transactions: [{
@@ -65,8 +65,6 @@ try {
         receipt: { data: 'data:image/png;base64,T0xE' },
       }] } }
     await saveLocalProject(old)
-    return JSON.stringify((await import('/Grapes/src/storage/local-project-store.js'))
-      .then ? old : old)
   })
 
   // Real normal Finance UI writes its own transaction and receipt metadata
@@ -74,7 +72,7 @@ try {
   await page.locator('[data-finance-tab="transaction"]').click()
   await page.locator('#finance-amount').fill('12345')
   await page.locator('#finance-note').fill('A-napló synthetic only')
-  await page.locator('#finance-category').selectOption({ index: 1 })
+  await page.locator('#finance-category').fill('Élelmiszer')
   await page.locator('#finance-form').evaluate(form => form.requestSubmit())
   await page.waitForFunction(() =>
     document.querySelector('#finance-save-status')?.textContent?.includes('Helyben mentve'), { timeout: 8000 })
@@ -111,7 +109,7 @@ try {
   await page.locator('[data-finance-tab="transaction"]').click()
   await page.locator('#finance-amount').fill('765')
   await page.locator('#finance-note').fill('B-napló synthetic only')
-  await page.locator('#finance-category').selectOption({ index: 1 })
+  await page.locator('#finance-category').fill('Élelmiszer')
   await page.locator('#finance-form').evaluate(form => form.requestSubmit())
   await page.waitForFunction(() =>
     document.querySelector('#finance-save-status')?.textContent?.includes('Helyben mentve'), { timeout: 8000 })
