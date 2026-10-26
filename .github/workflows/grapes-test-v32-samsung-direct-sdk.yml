@@ -154,6 +154,15 @@ jobs:
           test -s "$dest"
           unzip -t "$dest" >/dev/null
           unzip -Z -1 "$dest" | grep -Fxq classes.jar
+          # SDK bytes independently checked against the official v1.1.0 AAR
+          # extracted from the user-provided Samsung distribution.
+          printf '%s  %s\n' \
+            'f5d3d83cf00b97d0bb1b1db4da076e861eb1c3e6e704d89a34e68909d2f38654' "$dest" \
+            | sha256sum --check --status || {
+              echo "::error::Samsung SDK 1.1.0 checksum differs from the verified AAR."
+              rm -f "$dest"
+              exit 1
+            }
           echo "SAMSUNG_DIRECT_SDK_AVAILABLE=1" >> "$GITHUB_ENV"
           echo "Licensed SDK staged on ephemeral runner; AAR is NEVER an artifact."
       - uses: actions/setup-java@v4
