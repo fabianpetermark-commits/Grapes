@@ -20,7 +20,7 @@ export function createHomeFamilyUI(root, {
   let activePane = 'shopping'
   root.innerHTML = '<div class="household-family-intro"><span class="household-family-eyebrow">HOME / CSALÁDI</span><h2>Közös háztartás</h2><p>A család közös bevásárlása és készlete. A saját Home-listáid külön maradnak.</p></div>' +
     '<div class="household-family-message" data-family-message role="status" aria-live="polite" hidden></div>' +
-    '<div class="household-family-setup"><label>Háztartás<select data-family-select aria-label="Közös háztartás"></select></label>' +
+    '<div class="household-family-setup"><label>Kiválasztott közös háztartás<select data-family-select aria-label="Közös háztartás"></select></label>' +
     '<button type="button" data-family-reload>Frissítés</button></div>' +
     '<details class="household-family-invites" data-family-manage><summary>Háztartások kezelése · létrehozás / csatlakozás</summary>' +
     '<form data-family-create><label>Háztartás neve<input name="name" maxlength="100" required placeholder="Pl. Otthon"></label><button type="submit">Új háztartás létrehozása</button></form>' +
@@ -47,8 +47,8 @@ export function createHomeFamilyUI(root, {
     const selector = $('[data-family-select]')
     const previous = selector.value
     selector.innerHTML = '<option value="">Válassz háztartást</option>' + households.map(row =>
-      '<option value="' + escape(row.householdId) + '">' + escape(row.name || row.householdId) +
-      ' · ' + escape(row.role) + '</option>').join('')
+      '<option value="' + escape(row.householdId) + '">Háztartás: ' + escape(row.name || row.householdId) +
+      ' · ' + escape(({owner:'Tulajdonos',editor:'Szerkesztő',viewer:'Megtekintő'})[row.role] || row.role) + '</option>').join('')
     selector.value = household?.householdId || previous || ''
     if (!household) {
       box.innerHTML = '<div class="household-empty">Válassz egy közös háztartást. Ha nincs még, nyisd meg a „Háztartások kezelése” részt. A saját Home-listáid változatlanok.</div>'
