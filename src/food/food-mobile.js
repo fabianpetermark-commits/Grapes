@@ -576,7 +576,7 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
       const count = Number.isFinite(Number(state?.imported)) ? `${Number(state.imported)} új` : 'nincs adat'
       status.textContent = `${date} · ${count}${state?.lastError ? ` · Hiba: ${state.lastError}` : ''}`
     }
-    if (freshOwnerMode) showSyncStatus('Saját Food TEST-tárhely · Health étkezés csak jóváhagyással · Drive, YAZIO és megosztás tiltva')
+    if (freshOwnerMode) showSyncStatus('Saját Food TEST-tárhely · Health és YAZIO csak kézi jóváhagyással · Drive és megosztás tiltva')
     else if (FOOD_LOCAL_CAS_QA) showSyncStatus('QA helyi CAS ellenőrzés · Drive-írás szünetel')
     else if (!isGrapesDriveConnected()) showSyncStatus('Csak helyi mentés · Drive nincs csatlakoztatva')
     else if (project?.syncState?.reconciliation?.status === 'pending') showSyncStatus('Egyesítve helyben · a Drive még nincs frissítve')
@@ -2293,6 +2293,22 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     initialized = true
     $('[data-food-health-auto]').checked = autoHealthEnabled()
     if (freshOwnerMode) {
+      // Native Grapes Auth and Health/YAZIO source accounts are independent.
+      // Both automatic import switches are intentionally unavailable here;
+      // never render disabled controls as if they were actionable.
+      for (const source of ['health', 'yazio']) {
+        const checkbox = $(`[data-food-${source}-auto]`)
+        const label = checkbox?.closest('label')
+        if (label) {
+          label.hidden = true
+          label.style.display = 'none'
+          const help = document.createElement('span')
+          help.className = 'sync-provider__auto'
+          help.dataset.foodManualImport = source
+          help.textContent = 'Csak kézi import · külön jóváhagyással'
+          label.after(help)
+        }
+      }
       // Disable all global/foreign-account sources, not merely hide the links.
       for (const selector of [
         '[data-food-yazio-auto]', '[data-food-health-auto]',
