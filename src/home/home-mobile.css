@@ -237,3 +237,43 @@
  [data-household-family] .household-family-panes button { font-size:12px; }
  [data-household-family] .household-family-product { padding:10px; }
 }
+
+
+/* Brand v1.2 Home: one direct, owner-safe data-scope switch, not nested navigation.
+   The global 6-icon navigation belongs to the app shell, never duplicated here. */
+.household-scope-switch {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 3px;
+  margin: 8px 0 14px;
+  padding: 5px;
+  background: #101821;
+  border: 1px solid #2c4a58;
+  border-radius: 19px;
+}
+[data-household-root] .household-scope-switch button {
+  min-height: 48px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: transparent;
+  color: #9bb2c0;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: none;
+}
+[data-household-root] .household-scope-switch button.is-active {
+  color: #3bdcf2;
+  background: #1b3541;
+  border-color: #477a88;
+  box-shadow: inset 0 -2px 0 rgba(59, 220, 242, .64);
+}
+[data-household-root] .household-scope-switch button:focus-visible {
+  outline: 2px solid #3bdcf2;
+  outline-offset: 2px;
+}
+@media (max-width:350px) {
+  .household-scope-switch { padding: 4px; gap: 2px; margin-inline: 0; }
+  [data-household-root] .household-scope-switch button { min-height: 46px; }
+}

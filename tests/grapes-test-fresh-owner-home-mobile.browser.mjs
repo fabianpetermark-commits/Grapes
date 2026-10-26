@@ -55,11 +55,15 @@ try {
   async function openHome(tab = 'inventory') {
     await page.locator('[data-menu-group="home"]').click()
     await page.locator(`[data-page="hub-home"] [data-menu-destination="${tab}"]`).click()
-    await page.waitForFunction(() => {
+    // An async Auth load must not reset the selected shortcut back to inventory.
+    await page.waitForFunction(tab => {
       const node = document.querySelector('[data-household-root]')
+      const selected = node?.querySelector(`[data-household-tab="${tab}"]`)
+      const panel = node?.querySelector(`[data-household-${tab}]`)
       return node && !node.inert && getComputedStyle(node).visibility !== 'hidden'
         && !document.querySelector('[data-household-tabs]').hidden
-    }, { timeout: 15000 })
+        && selected?.getAttribute('aria-selected') === 'true' && panel && !panel.hidden
+    }, tab, { timeout: 15000 })
   }
   await openHome()
   // These bytes must not be read or claimed, not even when syntactically invalid.
@@ -80,10 +84,15 @@ try {
     {timeout:15000})
   if (process.env.VITE_GRAPES_TEST_HOME_FAMILY_ENABLED === 'true') {
     // The JS flag alone may reveal an entry, but cannot bypass Kotlin native RPC.
-    await openExtra('family')
+    // Shared data is one tap away, not buried in the advanced extras.
+    assert.equal(await rootNode.locator('[data-household-extra-nav] [data-household-tab="family"]').count(), 0)
+    await rootNode.locator('[data-household-scope="family"]').click()
+    assert.equal(await rootNode.locator('[data-household-scope="family"]').getAttribute('aria-pressed'), 'true')
     await rootNode.locator('[data-household-family]').getByText(
       'A családi Home nem aktív. A saját Home tovább működik.').waitFor()
     assert.equal(await rootNode.locator('[data-household-family]').getByText('A saját tej').count(),0)
+    await rootNode.locator('[data-household-scope="personal"]').click()
+    assert.equal(await rootNode.locator('[data-household-scope="personal"]').getAttribute('aria-pressed'), 'true')
     await rootNode.locator('[data-household-tab="inventory"]').click()
     assert.ok((await rootNode.locator('[data-household-lots]').textContent()).includes('A saját tej'))
     assert.equal(await rootNode.locator('[data-household-alert]').evaluate(el=>el.classList.contains('is-error')),false,'Native family denial must not corrupt personal Home')

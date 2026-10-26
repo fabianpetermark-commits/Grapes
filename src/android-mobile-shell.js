@@ -793,8 +793,9 @@ function showPage(page, { parent = '', entry = '', skipFoodLoad = false } = {}) 
     renderWater()
   }
   if (page === 'household') {
-    household.load()
-    if (entry === 'shopping' || entry === 'inventory') household.openTab(entry)
+    // Preserve the selected shortcut through async Auth and Home initialization.
+    // openTab before load() is lost when owner-scoped data is cleared.
+    household.load({ entry })
   }
   if (page === 'food' && !skipFoodLoad) mobileFood?.load().then(async () => {
     // A delayed load must not open a sheet on a different screen.

@@ -18,6 +18,7 @@ export function createHomeMobile(root, storage, { freshOwnerMode = false, openFo
   let loadEpoch = 0
   let advice = { status: 'idle', project: null }
   let tab = 'inventory'
+  let lastPersonalTab = 'inventory'
   let filter = 'all'
   let search = ''
   let editing = null
@@ -49,7 +50,8 @@ export function createHomeMobile(root, storage, { freshOwnerMode = false, openFo
   root.innerHTML = `
     <div class="household-head"><p class="eyebrow">Home / Háztartás</p><h1>Mi van otthon?</h1><p>${freshOwnerMode ? 'Saját Grapes TEST-fiók · csak helyben' : 'Ezen az eszközön tárolva · nincs családi szinkron'}</p></div>
     <div class="household-alert" data-household-alert role="status" aria-live="polite" hidden></div>
-    <nav data-household-tabs aria-label="Home / Háztartás"><div class="household-tabs" role="tablist" aria-label="Fő nézetek"><button type="button" data-household-tab="inventory" role="tab">Készlet</button><button type="button" data-household-tab="shopping" role="tab">Bevásárlás</button>${freshOwnerMode ? '<button type="button" data-household-tab="replenishment" role="tab">Javaslatok</button>' : ''}</div>${freshOwnerMode ? '<details class="household-extra-nav" data-household-extra-nav><summary>Továbbiak · receptek és blokkok</summary><div class="household-extra-actions"><button type="button" data-household-tab="advice">Receptötletek</button><button type="button" data-household-tab="receipts">Blokkok</button>' + (familyEnabled ? '<button type="button" data-household-tab="family">Családi készlet</button>' : '') + '</div></details>' : ''}</nav>
+    <div class="household-scope-switch" role="group" aria-label="Home adatkör"><button type="button" data-household-scope="personal" aria-pressed="true">Saját</button>${freshOwnerMode && familyEnabled ? '<button type="button" data-household-scope="family" aria-pressed="false">Közös</button>' : ''}</div>
+    <nav data-household-tabs aria-label="Home / Háztartás"><div class="household-tabs" role="tablist" aria-label="Fő nézetek"><button type="button" data-household-tab="inventory" role="tab">Készlet</button><button type="button" data-household-tab="shopping" role="tab">Bevásárlás</button>${freshOwnerMode ? '<button type="button" data-household-tab="replenishment" role="tab">Javaslatok</button>' : ''}</div>${freshOwnerMode ? '<details class="household-extra-nav" data-household-extra-nav><summary>Továbbiak · receptek és blokkok</summary><div class="household-extra-actions"><button type="button" data-household-tab="advice">Receptötletek</button><button type="button" data-household-tab="receipts">Blokkok</button>' + '</div></details>' : ''}</nav>
     <section data-household-inventory><div class="household-toolbar"><input data-household-search type="search" placeholder="Élelmiszer keresése" aria-label="Élelmiszer keresése"><button type="button" data-household-add="inventory">+ Élelmiszer</button></div><details class="household-advanced"><summary>Haladó · tárolóhelyek (opcionális)</summary><div class="household-filters" aria-label="Tároló szűrő"><button type="button" data-household-filter="all">Összes</button><button type="button" data-household-filter="fridge">Hűtő</button><button type="button" data-household-filter="freezer">Fagyasztó</button><button type="button" data-household-filter="pantry">Kamra</button></div></details><div data-household-lots></div>${freshOwnerMode ? '<h2 class="household-section-title">Elkészített ételek</h2><div data-household-prepared></div>' : ''}</section>
     <section data-household-shopping hidden><div class="household-toolbar"><p>Csak a „Megvettem” növeli a készletet, ismert mennyiséggel.</p><button type="button" data-household-add="shopping">+ Listaelem</button></div>${freshOwnerMode ? '<div class="household-list-nav"><label>Aktív bevásárlólista<select data-household-list-select aria-label="Bevásárlólista kiválasztása"></select></label><button type="button" data-household-new-list>+ Új lista</button></div><form data-household-list-form class="household-list-create" hidden><label>Új lista neve<input name="name" required maxlength="80" placeholder="Pl. Heti bevásárlás"></label><button type="submit">Létrehozás</button><button type="button" data-household-list-cancel>Mégse</button></form>' : ''}<div data-household-items></div></section>\n    ${freshOwnerMode ? '<section data-household-replenishment hidden><div class="household-replenishment-intro"><strong>Pótlási javaslatok</strong><p>Igazolt hiányok és külön jelölt becslések. Egyik sem kerül magától bevásárlólistára.</p></div><div data-household-replenishment-items aria-live="polite"></div><div class="household-replenishment-move"><label>Cél bevásárlólista<select data-household-suggestion-list aria-label="Cél bevásárlólista"></select></label><button type="button" data-household-move-selected>Listára teszem</button></div><details class="household-replenishment-history"><summary>Korábbi javaslatok</summary><div data-household-replenishment-history></div></details></section>' : ''}
     ${freshOwnerMode ? '<section data-household-advice hidden><p class="household-recipe-notice">Csak olvasó javaslatok a saját Grapes TEST Food-receptek és Home-készlet alapján. A névegyezés nem bizonyítja, hogy egy alapanyag megfelelő, elegendő vagy biztonságos.</p><div data-household-date-hints></div><div data-household-recipe-hints aria-live="polite"></div></section>' : '' }
@@ -116,6 +118,7 @@ export function createHomeMobile(root, storage, { freshOwnerMode = false, openFo
     message = ''
     error = ''
     tab = 'inventory'
+    lastPersonalTab = 'inventory'
     filter = 'all'
     search = ''
     $('[data-household-search]').value = ''
@@ -260,6 +263,13 @@ export function createHomeMobile(root, storage, { freshOwnerMode = false, openFo
 
   function render() {
     if (!store) return
+    if (tab !== 'family') lastPersonalTab = tab
+    root.querySelectorAll('[data-household-scope]').forEach(button => {
+      const active = button.dataset.householdScope === (tab === 'family' ? 'family' : 'personal')
+      button.classList.toggle('is-active', active)
+      button.setAttribute('aria-pressed', String(active))
+    })
+    $('[data-household-tabs]').hidden = tab === 'family'
     const current = state()
     $('[data-household-inventory]').hidden = tab !== 'inventory'
     $('[data-household-shopping]').hidden = tab !== 'shopping'
@@ -500,7 +510,14 @@ export function createHomeMobile(root, storage, { freshOwnerMode = false, openFo
     const button = event.target.closest('button')
     if (!button || !root.contains(button)) return
     const d = button.dataset
-    if (d.householdTab) { tab = d.householdTab; closeForms(); render(); if (tab==='receipts') refreshReceipts().catch(()=>{}); if (tab==='family' && familyUI && store) familyUI.load(store.ownerId).catch(()=>{}) }
+    if (d.householdScope === 'family' && freshOwnerMode && familyEnabled) {
+      if (tab !== 'family') lastPersonalTab = tab
+      tab = 'family'; closeForms(); render()
+      if (familyUI && store) familyUI.load(store.ownerId).catch(()=>{})
+    } else if (d.householdScope === 'personal') {
+      tab = lastPersonalTab === 'family' ? 'inventory' : lastPersonalTab
+      closeForms(); render()
+    } else if (d.householdTab) { tab = d.householdTab; closeForms(); render(); if (tab==='receipts') refreshReceipts().catch(()=>{}); if (tab==='family' && familyUI && store) familyUI.load(store.ownerId).catch(()=>{}) }
     else if (d.householdFilter) { filter = d.householdFilter; render() }
     else if (d.householdCook && freshOwnerMode) openCooking(d.householdCook)
     else if (d.householdLinkPrepared && freshOwnerMode) await openDiaryLink(d.householdLinkPrepared)
@@ -695,9 +712,13 @@ export function createHomeMobile(root, storage, { freshOwnerMode = false, openFo
     if (epoch === loadEpoch && session === store) render()
   }
   return {
-    async load() {
+    async load({ entry = '' } = {}) {
       if (freshOwnerMode) {
         clearFreshHome()
+        if (entry === 'shopping' || entry === 'inventory') {
+          tab = entry
+          lastPersonalTab = entry
+        }
         const epoch = loadEpoch
         try {
           const { openGrapesTestFreshHome } =
@@ -743,6 +764,7 @@ export function createHomeMobile(root, storage, { freshOwnerMode = false, openFo
         return
       }
       try {
+        if (entry === 'shopping' || entry === 'inventory') tab = entry
         store = createHomeStore(storage)
         $('[data-household-tabs]').hidden = false
         alert(message || '', !!error)
