@@ -43,14 +43,19 @@ from random GitHub mirrors.
 Get Samsung Health Data SDK v1.1.0 from the official page:
 https://developer.samsung.com/health/data/overview.html
 
-If you have permission to use the SDK internally, put its **unmodified
-AAR bytes** in a *private GitHub Actions repository secret* named
-`SAMSUNG_HEALTH_DATA_SDK_AAR_BASE64` as base64 text. The v32 workflow
-decodes that secret only on the ephemeral GitHub runner into
-`android-health-connect-poc/app/libs/samsung-health-data-api-1.1.0.aar`,
-checks the AAR ZIP and `classes.jar`, builds the genuine signed QA
-TEST-only artifact and deletes it with the runner.
-The AAR must never be committed publicly or attached alone to release assets.
+If you have permission to use the SDK internally, keep its unmodified
+`samsung-health-data-api-1.1.0.aar` file in a private file store and create
+a **short-lived, private HTTPS download URL**. Put ONLY that URL into a
+GitHub Actions repository secret named `SAMSUNG_HEALTH_DATA_SDK_AAR_URL`.
+The v32 workflow fetches the AAR on its **ephemeral** runner *before
+compiling the Android native adapter*, verifies the AAR ZIP and `classes.jar`,
+and only then creates the existing-key signed TEST artifact.
+No raw AAR is committed to Grapes or uploaded by this workflow as an
+artifact. The private link should expire after this TEST build.
+
+GitHub Actions secrets have a 48-KB limit, so base64-encoding a multi-MB
+AAR into a repository secret would NOT work. The short-lived HTTPS URL
+secret is deliberate, and should point only to a file you may lawfully use.
 
 If the secret is missing, the v32 CI still runs unit/browser tests and
 Android stub-unit checks, but **does not produce a signed direct-SDK APK**.
