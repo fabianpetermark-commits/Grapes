@@ -134,23 +134,48 @@ jobs:
           node tests/grapes-test-fresh-yazio-direct-mobile.browser.mjs
           node tests/grapes-test-local-owner-store.browser.mjs
           node tests/grapes-test-legacy-unclaimed-backup.browser.mjs
-      - name: Fetch official licensed Samsung Health SDK AAR from private time-limited HTTPS link
+      - name: Fetch official Samsung SDK privately (either ZIP or AAR; never commit the library)
         env:
+          SAMSUNG_SDK_ZIP_URL: ${{ secrets.SAMSUNG_HEALTH_DATA_SDK_ZIP_URL }}
           SAMSUNG_SDK_AAR_URL: ${{ secrets.SAMSUNG_HEALTH_DATA_SDK_AAR_URL }}
         run: |
           set -euo pipefail
-          if [ -z "$SAMSUNG_SDK_AAR_URL" ]; then
-            echo "::warning::No Samsung AAR URL secret: CI tests stub and publishes NO direct APK."
+          umask 077
+          if [ -z "$SAMSUNG_SDK_ZIP_URL" ] && [ -z "$SAMSUNG_SDK_AAR_URL" ]; then
+            echo "::warning::No private Samsung SDK download URL secret: verified stub only. NO signed direct APK."
             exit 0
           fi
-          case "$SAMSUNG_SDK_AAR_URL" in
-            https://*) ;;
-            *) echo "::error::Samsung SDK download must use HTTPS"; exit 1 ;;
-          esac
           dest=android-health-connect-poc/app/libs/samsung-health-data-api-1.1.0.aar
-          curl --fail --location --silent --show-error --retry 2 --max-time 150 \
-            --proto '=https' --proto-redir '=https' \
-            "$SAMSUNG_SDK_AAR_URL" --output "$dest"
+          # Prefer the exact official ZIP the developer downloaded. Never
+          # check it into the public Grapes repo or upload it as an artifact.
+          if [ -n "$SAMSUNG_SDK_ZIP_URL" ]; then
+            case "$SAMSUNG_SDK_ZIP_URL" in
+              https://*) ;;
+              *) echo "::error::Samsung SDK ZIP URL must use HTTPS"; exit 1 ;;
+            esac
+            zipfile="$RUNNER_TEMP/samsung-sdk-private.zip"
+            trap 'rm -f "$zipfile"' EXIT
+            curl --fail --location --silent --show-error --retry 2 --max-time 150 \
+              --proto '=https' --proto-redir '=https' \
+              "$SAMSUNG_SDK_ZIP_URL" --output "$zipfile"
+            test -s "$zipfile"
+            # Official v1.1.0 archive supplied by the Grapes developer.
+            printf '%s  %s\n' \
+              '7a51440d840e099769b150c6414365bc43eecb61c01fa5bf6d0e54e09c2b663f' "$zipfile" \
+              | sha256sum --check --status || {
+                echo "::error::Samsung SDK archive checksum differs from the verified original."
+                exit 1
+              }
+            unzip -p "$zipfile" '1.1.0/libs/samsung-health-data-api-1.1.0.aar' > "$dest"
+          else
+            case "$SAMSUNG_SDK_AAR_URL" in
+              https://*) ;;
+              *) echo "::error::Samsung SDK AAR URL must use HTTPS"; exit 1 ;;
+            esac
+            curl --fail --location --silent --show-error --retry 2 --max-time 150 \
+              --proto '=https' --proto-redir '=https' \
+              "$SAMSUNG_SDK_AAR_URL" --output "$dest"
+          fi
           test -s "$dest"
           unzip -t "$dest" >/dev/null
           unzip -Z -1 "$dest" | grep -Fxq classes.jar
