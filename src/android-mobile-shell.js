@@ -503,7 +503,8 @@ async function refreshSamsungWaterUi() {
 }
 
 async function autoRefreshSamsungWater() {
-  if (!FRESH_OWNER_MODULES || samsungAutoBusy || document.visibilityState !== 'visible') return
+  if (!FRESH_OWNER_MODULES || samsungAutoBusy || samsungDirectReadInFlight ||
+      document.visibilityState !== 'visible') return
   // Automatic refresh runs on app opening/foreground and Water/Sync navigation,
   // not as an unverified always-on background worker.
   const { isSamsungAutoWaterEnabled, refreshFreshOwnerSamsungWater } =
@@ -2487,8 +2488,39 @@ $('[data-samsung-water-csv-input]')?.addEventListener('change', event => {
   }
 })
 $('[data-water-health-confirm]')?.addEventListener('click', () => confirmWaterHealthPreview().catch(() => {}))
-$$('[data-samsung-sync-action]').forEach(button => button.addEventListener('click', () =>
-  FRESH_OWNER_MODULES ? openWaterHealthSheet('samsung') : openSyncImport('samsung')))
+$('[data-samsung-sync-action]').forEach(button => button.addEventListener('click', () =>
+  FRESH_OWNER_MODULES
+    ? openWaterHealthSheet(samsungSdkStatus.available ? 'samsung-direct' : 'samsung')
+    : openSyncImport('samsung')))
+$('[data-samsung-csv-fallback]')?.addEventListener('click', () => openWaterHealthSheet('samsung'))
+$('[data-samsung-auto-water]')?.addEventListener('change', async event => {
+  const input = event.currentTarget
+  const intended = input.checked
+  input.disabled = true
+  try {
+    const owner = await getAndroidTestAuthSubject()
+    const status = await getAndroidSamsungWaterStatus()
+    if (!status.available || !status.permitted) throw new Error(
+      'Előbb engedélyezd a Samsung Health vízadat-olvasását a Közvetlen gombbal.')
+    if (intended && !window.confirm(
+      'Engedélyezed, hogy a Grapes ennek a fióknak automatikusan átmásolja a telefon Samsung Health-vízbejegyzéseit a Grapes megnyitásakor? A másik Grapes-fiókhoz ezt külön kell bekapcsolni.'
+    )) { input.checked = false; return }
+    const { setSamsungAutoWaterEnabled } =
+      await import('./water/grapes-test-samsung-water-auto.js')
+    if (await getAndroidTestAuthSubject() !== owner) throw new Error('A Grapes-fiók megváltozott.')
+    setSamsungAutoWaterEnabled(localStorage, owner, intended)
+    samsungAutoStatus.textContent = intended
+      ? 'Automatikus vízfrissítés bekapcsolva · csak a saját Grapes-fiókban'
+      : 'Automatikus vízfrissítés kikapcsolva'
+    if (intended) {
+      samsungAutoLastAttempt = 0
+      autoRefreshSamsungWater().catch(() => {})
+    }
+  } catch (error) {
+    input.checked = false
+    samsungAutoStatus.textContent = error?.message || 'A Samsung-engedély nem ellenőrizhető.'
+  } finally { input.disabled = !samsungSdkStatus.permitted }
+})
 const yazioApiPanel = createYazioApiPanel({ openSheet, closeSheet,
   importBundle: source => mobileFood.importYazio(source), openFileImport: () => openSyncImport('yazio'),
   getProfileKey: () => { const account = getGrapesAccount(); return account?.id || account?.email || 'local-food-profile' } })
