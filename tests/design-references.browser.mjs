@@ -133,14 +133,29 @@ try {
         // verify no data crossing, and only known purchased qty enters stock.
         const scope=page.locator('[data-home-scope]');
         if(await scope.count()!==2)throw Error('Home household scope switch missing');
-        if(!await page.getByText('Teszt B',{exact:true}).isVisible())
+        if(!await page.getByText('Családi otthon',{exact:true}).isVisible())
           throw Error('Shared household identity missing');
         await page.locator('[data-check]').first().check();
         if (!(await page.locator('[data-check]').first().isChecked()))
           throw new Error('Home shared checkbox failed');
+        // User must explicitly approve stock receipt; checking alone is never a stock transaction.
+        await page.locator('[data-home-tab="stock"]').click();
+        if((await page.locator('#h-panel').innerText()).includes('Tojás'))
+          throw Error('Shopping checkbox silently altered household stock');
+        await page.locator('[data-home-tab="shopping"]').click();
+        if(!(await page.locator('#h-stock-confirm').isVisible()))
+          throw Error('Explicit stock confirmation missing after shopping check');
+        await page.locator('[data-home-receive="confirm"]').click();
         await page.locator('[data-home-tab="stock"]').click();
         if(!(await page.locator('#h-panel').innerText()).includes('Tojás'))
-          throw Error('Checked shared item did not enter sample shared stock');
+          throw Error('Explicitly confirmed shopping receipt missing from family stock');
+        await page.locator('[data-home-tab="shopping"]').click();
+        await page.locator('#h-completed summary').click();
+        await page.locator('#h-completed [data-check][data-id="f1"]').uncheck();
+        await page.locator('[data-home-tab="stock"]').click();
+        if(!(await page.locator('#h-panel').innerText()).includes('Tojás'))
+          throw Error('Unchecking shopping mistakenly erased separately confirmed stock');
+        await page.locator('[data-home-tab="shopping"]').click();
         await scope.filter({hasText:'Saját'}).click();
         if((await page.locator('#h-context').innerText()).includes('Teszt B'))
           throw Error('Shared household leaked into private scope');
@@ -163,8 +178,11 @@ try {
         if(await page.locator('[data-home-tab="suggestions"]').isVisible())
           throw Error('Family scope must not present private forecasts');
         await page.locator('#h-more summary').click();
-        if(!(await page.locator('#h-tools-content').innerText()).includes('Családtag'))
+        if(!(await page.locator('#h-tools-content').innerText()).includes('Meghívás / tagok kezelése'))
           throw Error('Household management needs reachable, collapsed secondary UI');
+        await page.locator('[data-settings]').click();
+        if(!(await page.locator('#h-more').evaluate(el=>el.open)))
+          throw Error('Home settings did not open household management');
       }
       if (item.path === 'candidates/ebook.html') {
         const dock = page.locator('.quick');
