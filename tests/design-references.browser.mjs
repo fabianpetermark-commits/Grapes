@@ -128,6 +128,25 @@ try {
         if(!(await page.locator('#recipe-grid').innerText()).includes('Teszt recept'))
           throw Error('Recipe editor demo save failed');
       }
+      if (item.path === 'candidates/home.html') {
+        const q=await page.locator('footer.dock').evaluate(el=>{
+          const group=el.querySelector('.dockGroup');
+          const controls=[...group.querySelectorAll('button,a')];
+          const separate=el.querySelector('.dockMain');
+          return {fixed:getComputedStyle(el).position==='fixed',count:controls.length,
+                  standAlone:!!separate,labels:controls.map(x=>x.getAttribute('aria-label')),
+                  heights:controls.map(x=>x.getBoundingClientRect().height),
+                  separateHeight:separate?.getBoundingClientRect().height,
+                  separateLabel:separate?.getAttribute('aria-label')};
+        });
+        if(!q.fixed||q.count!==3||!q.standAlone||q.labels.some(x=>!x)||!q.separateLabel||
+           q.heights.some(x=>x<44)||q.separateHeight<44)
+          throw Error('Home Quick Action must be approved 3+1 fixed layout: '+JSON.stringify(q));
+        if(await page.locator('.h-head h2').innerText()!=='Home')
+          throw Error('Home title should appear exactly once below icon rail');
+        if(await page.locator('.header h1').count())
+          throw Error('Duplicate Home header is forbidden by Brand Guide v1.2');
+      }
       if (item.path === 'candidates/home.html' && width === 390) {
         // Home reference is one visual source for personal + shared household;
         // verify no data crossing, and only known purchased qty enters stock.
