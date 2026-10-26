@@ -197,6 +197,12 @@ label{display:grid;gap:7px;font-size:12px;color:var(--muted);font-weight:650}
 .h-home{padding-top:12px}
 .h-home .h-head h2{font-size:24px}
 @media(max-width:350px){.h-plants-main{min-width:56px}}
+.h-product-label{display:flex;align-items:center;gap:10px;flex:1;min-width:0;cursor:pointer}
+.h-product-label span{min-width:0;flex:1}
+.h-received{flex:0 0 auto!important;font-size:11px!important;color:#79d9bf!important;font-weight:750;white-space:nowrap}
+.h-receive{min-height:44px;white-space:nowrap;font-size:11px;padding-inline:10px}
+.h-receive-quantity{font-size:12px;color:#b9d4df;font-weight:700;max-width:225px}
+.h-receive-quantity input{border:1px solid #3b6575;border-radius:11px;padding:10px;min-height:44px;margin-top:5px}
 </style>
 <main class="main h-home" id="content">
   <div class="h-head"><h2>Home</h2></div>
@@ -268,14 +274,36 @@ label{display:grid;gap:7px;font-size:12px;color:var(--muted);font-weight:650}
   function renderShopping(items){
     const own=state.scope==='own';
     const subset=items.shopping.filter(x=>!own||x.listId===state.shoppingList);
-    const pending=subset.filter(x=>!x.done),done=subset.filter(x=>x.done);
-    const awaitingReceipt=state.pendingStock?.scope===state.scope?items.shopping.find(x=>x.id===state.pendingStock.id&&x.done):null;
-    const listings=own?'<label class="h-quiet">Bevásárlólista<select class="h-list-select" id="h-select-list" aria-label="Bevásárlólista">'+items.lists.map(x=>'<option value="'+esc(x.id)+'"'+(x.id===state.shoppingList?' selected':'')+'>'+esc(x.name)+'</option>').join('')+'</select></label>':'';
-    const row=(x)=>'<label class="h-product'+(x.done?' done':'')+'"><input data-check type="checkbox" data-id="'+esc(x.id)+'"'+(x.done?' checked':'')+'><span><strong>'+esc(x.name)+'</strong><small>'+esc(amount(x))+(x.done?' · Megvásárolva':' · Listán')+'</small></span></label>';
-    $('#h-panel').innerHTML='<section class="h-card"><div class="h-card-top"><h3>'+ (own?'Saját bevásárlás':'Közös bevásárlás') +'</h3><button class="h-action primary" type="button" data-home-add="shopping">+ Tétel</button></div>'+listings+
+    const pending=subset.filter(x=>!x.done), done=subset.filter(x=>x.done);
+    const awaitingReceipt=state.pendingStock?.scope===state.scope
+      ? items.shopping.find(x=>x.id===state.pendingStock.id&&x.done) : null;
+    const listings=own
+      ? '<label class="h-quiet">Bevásárlólista<select class="h-list-select" id="h-select-list" aria-label="Bevásárlólista">'+
+        items.lists.map(x=>'<option value="'+esc(x.id)+'"'+(x.id===state.shoppingList?' selected':'')+'>'+esc(x.name)+'</option>').join('')+'</select></label>'
+      : '';
+    const row=(x)=>{
+      const received=items.stock.some(z=>z.sourceShoppingId===x.id);
+      return '<div class="h-product'+(x.done?' done':'')+'"><label class="h-product-label">'+
+        '<input data-check type="checkbox" data-id="'+esc(x.id)+'"'+(x.done?' checked':'')+' aria-label="'+esc(x.name)+' megvásárlása">'+
+        '<span><strong>'+esc(x.name)+'</strong><small>'+esc(amount(x))+(x.done?' · Megvásárolva':' · Listán')+'</small></span></label>'+
+        (x.done?(received?'<span class="h-received">Készleten ✓</span>':
+          '<button type="button" class="h-action h-receive" data-home-receive="open:'+esc(x.id)+'" aria-label="'+esc(x.name)+' készletbe vétele">Készletbe</button>'):'')+
+        '</div>';
+    };
+    const confirm=awaitingReceipt
+      ? '<div class="h-stock-confirm" id="h-stock-confirm" role="group" aria-label="Készletbevétel megerősítése">'+
+        '<strong>'+esc(awaitingReceipt.name)+' · Megvásárolva</strong>'+
+        '<p>A bevásárlólista jelölése nem módosít készletet. Ellenőrizd a ténylegesen átvett mennyiséget.</p>'+
+        '<label class="h-receive-quantity">Tényleges mennyiség ('+esc(awaitingReceipt.unit)+')'+
+        '<input id="h-receive-qty" type="number" inputmode="decimal" min="0.001" step="any" required value="'+(awaitingReceipt.qty==null?'':esc(awaitingReceipt.qty))+'" placeholder="Pl. 1"></label>'+
+        '<div class="h-inline"><button type="button" class="h-action primary" data-home-receive="confirm">Készletbe vétele</button>'+
+        '<button type="button" class="h-action" data-home-receive="skip">Most nem</button></div></div>'
+      : '';
+    $('#h-panel').innerHTML='<section class="h-card"><div class="h-card-top"><h3>'+ (own?'Saját bevásárlás':'Közös bevásárlás') +
+      '</h3><button class="h-action primary" type="button" data-home-add="shopping">+ Tétel</button></div>'+listings+
       '<div class="h-products" data-home-open-items>'+(pending.length?pending.map(row).join(''):'<p class="h-empty">Nincs vásárolnivaló ezen a listán.</p>')+'</div>'+
       (done.length?'<details class="h-details" id="h-completed"><summary>Megvett tételek ('+done.length+')</summary><div>'+done.map(row).join('')+'</div></details>':'')+
-      (awaitingReceipt?'<div class="h-stock-confirm" id="h-stock-confirm" role="group" aria-label="Készletbevétel megerősítése"><strong>'+esc(awaitingReceipt.name)+' · Megvásárolva</strong><p>A kipipálás csak a bevásárlólistán jelöli késznek. A készletet kizárólag külön jóváhagyással növeljük'+(awaitingReceipt.qty==null?', az ismert mennyiség hiányában a készletbe nem vehető át.':': '+esc(amount(awaitingReceipt))+'.')+'</p><div class="h-inline"><button type="button" class="h-action primary" data-home-receive="confirm"'+(awaitingReceipt.qty==null?' disabled':'')+'>Készletbe vétele</button><button type="button" class="h-action" data-home-receive="skip">Most nem</button></div></div>':'')+'</section>';
+      confirm+'</section>';
   }
   function renderStock(items){
     $('#h-panel').innerHTML='<section class="h-card"><div class="h-card-top"><h3>'+(state.scope==='own'?'Saját készlet':'Közös készlet')+'</h3><button class="h-action primary" type="button" data-home-add="stock">+ Készlet</button></div><p class="h-quiet">A készlet és a bevásárlólista külön adat. A készlet csak ténylegesen rögzített mennyiségből változik.</p><div>'+
@@ -305,15 +333,26 @@ label{display:grid;gap:7px;font-size:12px;color:var(--muted);font-weight:650}
     }
     if(node.dataset.homeTab){state.tab=node.dataset.homeTab;render();return}
     if(node.dataset.homeReceive){
+      const action=node.dataset.homeReceive;
+      if(action.startsWith('open:')){
+        const id=action.slice(5),item=data().shopping.find(row=>row.id===id&&row.done);
+        if(!item||data().stock.some(row=>row.sourceShoppingId===id)){txt('A tétel nem vehető újra készletbe.');return}
+        state.pendingStock={scope:state.scope,id};render();
+        if($('#h-completed'))$('#h-completed').open=true;
+        $('#h-receive-qty')?.focus();return;
+      }
       const pending=state.pendingStock;
-      if(node.dataset.homeReceive==='confirm'&&pending&&pending.scope===state.scope){
+      if(action==='confirm'&&pending&&pending.scope===state.scope){
         const item=data().shopping.find(row=>row.id===pending.id&&row.done);
-        if(!item||item.qty==null||!Number.isFinite(item.qty)||item.qty<=0){txt('Csak ellenőrzött, pozitív mennyiség vehető készletbe.');return}
-        if(!data().stock.some(row=>row.sourceShoppingId===item.id)){
-          data().stock.push({id:'from-'+item.id,sourceShoppingId:item.id,name:item.name,qty:item.qty,unit:item.unit});
+        const input=$('#h-receive-qty'),qty=input&&input.value.trim()?Number(input.value):NaN;
+        if(!item||!Number.isFinite(qty)||qty<=0){
+          txt('Készletbe vételhez ellenőrzött, pozitív mennyiséget adj meg.');input?.focus();return;
         }
-        txt(item.name+' megerősítve, külön művelettel a '+(state.scope==='family'?'közös':'saját')+' készletbe került.');
-      }else txt('A tétel megvásárolva maradt, a készlet változatlan.');
+        if(!data().stock.some(row=>row.sourceShoppingId===item.id)){
+          data().stock.push({id:'from-'+item.id,sourceShoppingId:item.id,name:item.name,qty,unit:item.unit});
+        }
+        txt(item.name+' külön megerősítéssel a '+(state.scope==='family'?'közös':'saját')+' készletbe került.');
+      }else txt('A vásárlás megmaradt, a készlet változatlan.');
       state.pendingStock=null;render();return;
     }
     if(node.dataset.homeQuick){const action=node.dataset.homeQuick;if(action==='add-shopping'||action==='add-stock'){openForm(action==='add-stock'?'stock':'shopping');return}if(action==='manage'){const el=$('#h-more');el.open=true;el.scrollIntoView({behavior:'smooth',block:'center'});return}}
