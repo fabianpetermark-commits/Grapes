@@ -37,7 +37,8 @@ export function createHomeFamilyUI(root, {
   }
   const valid = async (seq, local = native) => {
     if (!local || epoch !== seq || native !== local) return false
-    await local.assertActiveOwner()
+    try { await local.assertActiveOwner() }
+    catch { if (epoch === seq) {epoch++;native=null;outbox=null;household=null;households=[];root.hidden=true;box.replaceChildren()} return false }
     return epoch === seq && native === local
   }
   function render() {
