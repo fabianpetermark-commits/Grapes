@@ -87,15 +87,6 @@ try {
   await page.evaluate(()=>localStorage.setItem('__sdk_count','2'))
   page.once('dialog',dialog=>dialog.accept())
   await page.locator('[data-samsung-auto-water]').check()
-  await page.waitForTimeout(1800)
-  console.log('SAMSUNG AUTO STATE',await page.evaluate(()=>({
-    enabled:localStorage.getItem('grapes-test-samsung-water-auto-v1:00000000-0000-4000-8000-000000000001'),
-    reads:localStorage.getItem('__sdk_silent_reads'),
-    status:document.querySelector('[data-samsung-water-status]')?.textContent,
-    checked:document.querySelector('[data-samsung-auto-water]')?.checked,
-    visible:document.visibilityState,
-    water:localStorage.getItem('grapes-water-v2:00000000-0000-4000-8000-000000000001')
-  })))
   await page.waitForFunction(()=>{
     const days=JSON.parse(localStorage.getItem('grapes-water-v2:00000000-0000-4000-8000-000000000001')||'{}')
     return days['2026-10-25']?.entries?.length===2
