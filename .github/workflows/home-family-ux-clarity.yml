@@ -64,7 +64,9 @@ jobs:
           migration=$(find supabase/migrations -name '*_home_m3b_api_bootstrap.sql' -print -quit)
           test -n "$migration"
           printf 'create schema if not exists api;\n' > "$migration"
-          supabase start
+          # Auth, PostgREST and DB are required for the M3B RLS/JWT/CAS proof.
+          # Exclude unrelated optional services: no Logflare GHCR pull needed.
+          supabase start -x logflare,vector,studio,postgres-meta,imgproxy,storage-api,edge-runtime,mailpit,supavisor,realtime
           if ! command -v psql >/dev/null; then
             sudo apt-get update
             sudo apt-get install -y postgresql-client
