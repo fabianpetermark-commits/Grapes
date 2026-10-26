@@ -461,6 +461,92 @@ function openSheet(node) {
   sheetBackdrop.classList.add('is-open')
 }
 
+// Samsung health account belongs to the phone, not automatically to a Grapes
+// Auth UUID. A user opts in independently for EACH verified Grapes account.
+async function refreshSamsungWaterUi() {
+  if (!FRESH_OWNER_MODULES || !samsungAutoToggle) return
+  const button = $('[data-samsung-sync-action]')
+  const input = $('[data-samsung-auto-water]')
+  try {
+    const owner = await getAndroidTestAuthSubject()
+    const status = await getAndroidSamsungWaterStatus()
+    if (await getAndroidTestAuthSubject() !== owner) return
+    samsungSdkStatus = status
+    const direct = status.available
+    button.textContent = direct ? 'Közvetlen' : 'CSV-import'
+    button.title = direct ? 'Samsung Health vízbejegyzések közvetlen beolvasása'
+      : 'Samsung Health víz-CSV kiválasztása (az SDK nem érhető el)'
+    samsungCsvFallback.hidden = !direct
+    const description = button.closest('.sync-provider')?.querySelector('div > span')
+    if (description) description.textContent = direct
+      ? 'Közvetlen vízbeolvasás a Samsung Healthből'
+      : 'Samsung víz-CSV import (közvetlen SDK még nincs a TEST APK-ban)'
+    samsungAutoToggle.hidden = !direct
+    samsungAutoToggle.style.display = direct ? '' : 'none'
+    input.disabled = !status.permitted
+    const { isSamsungAutoWaterEnabled } = await import('./water/grapes-test-samsung-water-auto.js')
+    if (await getAndroidTestAuthSubject() !== owner) return
+    input.checked = direct && isSamsungAutoWaterEnabled(localStorage, owner)
+    samsungAutoStatus.textContent = !direct
+      ? (status.reason || 'A Samsung Health SDK nincs ebben a TEST-verzióban.')
+      : status.permitted
+        ? 'Samsung-vízolvasás engedélyezve · automatikus frissítés külön bekapcsolható'
+        : 'Előbb engedélyezd a Közvetlen gombbal a Samsung-vízolvasást'
+  } catch (error) {
+    samsungSdkStatus = { available: false, permitted: false }
+    button.textContent = 'CSV-import'
+    samsungCsvFallback.hidden = true
+    samsungAutoToggle.hidden = true
+    samsungAutoToggle.style.display = 'none'
+    samsungAutoStatus.textContent = 'A közvetlen Samsung Health-kapcsolat nem ellenőrizhető.'
+  }
+}
+
+async function autoRefreshSamsungWater() {
+  if (!FRESH_OWNER_MODULES || samsungAutoBusy || document.visibilityState !== 'visible') return
+  // Automatic refresh runs on app opening/foreground and Water/Sync navigation,
+  // not as an unverified always-on background worker.
+  const { isSamsungAutoWaterEnabled, refreshFreshOwnerSamsungWater } =
+    await import('./water/grapes-test-samsung-water-auto.js')
+  const owner = await getAndroidTestAuthSubject()
+  if (!isSamsungAutoWaterEnabled(localStorage, owner)) return
+  const now = Date.now()
+  if (samsungAutoLastOwner === owner &&
+      now - samsungAutoLastAttempt < SAMSUNG_AUTO_MIN_INTERVAL_MS) return
+  samsungAutoBusy = true
+  samsungAutoLastOwner = owner
+  samsungAutoLastAttempt = now
+  try {
+    const status = await getAndroidSamsungWaterStatus()
+    if (!status.available || !status.permitted) {
+      throw new Error('Samsung Health-engedély nem elérhető. Az automatikus frissítés leállt.')
+    }
+    const { openGrapesTestFreshWater } =
+      await import('./water/grapes-test-fresh-water.js')
+    const session = await openGrapesTestFreshWater({ enabled: true })
+    if (session.ownerId !== owner) return
+    const from = new Date()
+    from.setDate(from.getDate() - 90)
+    const fromDate = [from.getFullYear(), String(from.getMonth() + 1).padStart(2, '0'),
+      String(from.getDate()).padStart(2, '0')].join('-')
+    const result = await refreshFreshOwnerSamsungWater({ session, fromDate })
+    await session.assertOwner()
+    if (result.imported) {
+      if (activePage === 'water') renderWater()
+      if (activePage === 'sync') samsungAutoStatus.textContent =
+        result.imported + ' új Samsung-vízbejegyzés a saját naplóba importálva.'
+      showToast(result.imported + ' új Samsung-vízbejegyzés átvéve.')
+    }
+  } catch (error) {
+    if ((await getAndroidTestAuthSubject().catch(() => '')) === owner &&
+        activePage === 'sync') {
+      samsungAutoStatus.textContent =
+        'Samsung automatikus vízfrissítés nem sikerült: ' +
+        (error?.message || 'ismeretlen hiba')
+    }
+  } finally { samsungAutoBusy = false }
+}
+
 function openWaterHealthSheet(provider = 'health') {
   if (!FRESH_OWNER_MODULES || !waterHealthSheet) return
   activeWaterImportSource = provider === 'samsung-direct' ? 'samsung-direct'
@@ -550,6 +636,7 @@ async function readWaterHealthPreview(file = null) {
     if (epoch !== waterHealthEpoch || !waterHealthSheet.classList.contains('is-open')) return
     waterHealthSession = session
     waterHealthPreview = preview
+    if (direct) refreshSamsungWaterUi().catch(() => {})
     const rows = $('[data-water-health-records]')
     for (const item of preview.records) {
       const label = document.createElement('label')
@@ -969,7 +1056,13 @@ function showPage(page, { parent = '', entry = '', skipFoodLoad = false } = {}) 
   fab.hidden = page !== 'food' || !mobileFood?.isDetailOpen()
   closeSheet()
   if (page === 'projects') renderProjects()
-  if (page === 'sync') renderSync()
+  if (page === 'sync') {
+    renderSync()
+    if (FRESH_OWNER_MODULES) refreshSamsungWaterUi().catch(() => {})
+  }
+  if (FRESH_OWNER_MODULES && ['sync','water'].includes(page)) {
+    autoRefreshSamsungWater().catch(() => {})
+  }
   if (page === 'water') {
     if (FRESH_OWNER_MODULES) resetFreshWaterUi()
     renderWater()
@@ -2466,9 +2559,11 @@ document.addEventListener('visibilitychange', () => {
       resetFreshWaterUi()
       if (activePage === 'water') renderWater()
     }
-    if (FRESH_OWNER_MODULES && waterHealthSheet?.classList.contains('is-open')) {
-      closeSheet() // An Android permission dialog may have changed Grapes Auth.
+    if (FRESH_OWNER_MODULES && waterHealthSheet?.classList.contains('is-open') &&
+        !samsungDirectReadInFlight) {
+      closeSheet() // Revalidate Grapes owner after Android foreground events.
     }
+    if (FRESH_OWNER_MODULES) autoRefreshSamsungWater().catch(() => {})
     updateHomeGreeting()
     refreshUpdateInbox().catch(() => {})
     if (FRESH_OWNER_MODULES && activePage === 'household') {
