@@ -50,6 +50,20 @@ export function readAndroidSamsungHealthExport(fromDate) {
   return nativeRequest('readSamsungHealthData', fromDate)
 }
 
+// No OS permission prompt on foreground auto-refresh; native side pins owner.
+export function readAndroidSamsungHealthExportSilent(fromDate) {
+  return nativeRequest('readSamsungHealthDataSilent', fromDate)
+}
+
+export async function getAndroidSamsungWaterStatus() {
+  const status = JSON.parse(await nativeRequest('getSamsungWaterStatus'))
+  return {
+    available: status?.available === true,
+    permitted: status?.permitted === true,
+    reason: String(status?.reason || ''),
+  }
+}
+
 export function openAndroidHealthConnectSettings() {
   return nativeRequest('openHealthConnectSettings')
 }
