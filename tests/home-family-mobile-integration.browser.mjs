@@ -72,6 +72,7 @@ try {
   },{A,H})
   const panel=page.locator('[data-household-family]')
   await panel.locator('[data-family-select]').selectOption(H)
+  await panel.locator('.household-family-invites').last().locator('summary').click()
   await panel.locator('[data-family-invite]').waitFor()
   assert.equal(await panel.locator('[data-family-invite]').count(),1)
   await panel.locator('[data-family-invite]').click()
