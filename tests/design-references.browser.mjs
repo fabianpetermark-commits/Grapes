@@ -188,13 +188,13 @@ try {
           throw Error('Explicitly confirmed shopping receipt missing from family stock');
         await page.locator('[data-home-tab="shopping"]').click();
         await page.locator('#h-completed summary').click();
-        await page.locator('#h-completed [data-check][data-id="f1"]').uncheck();
+        await page.locator('#h-completed [data-check][data-id="f1"]').click(); // render replaces checkbox; click, not uncheck(), avoids stale detached locator
         await page.locator('[data-home-tab="stock"]').click();
         if(!(await page.locator('#h-panel').innerText()).includes('Tojás'))
           throw Error('Unchecking shopping mistakenly erased separately confirmed stock');
         await page.locator('[data-home-tab="shopping"]').click();
         await scope.filter({hasText:'Saját'}).click();
-        if((await page.locator('#h-context').innerText()).includes('Teszt B'))
+        if((await page.locator('#h-context').innerText()).includes('Családi otthon'))
           throw Error('Shared household leaked into private scope');
         await page.locator('[data-home-tab="suggestions"]').click();
         if(!(await page.locator('#h-panel').innerText()).includes('BECSLÉS'))
