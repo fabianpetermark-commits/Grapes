@@ -355,7 +355,7 @@ function openSyncImport(provider) {
     config.action = 'JSON vagy CSV fájl kiválasztása'
     config.copy = 'Válassz korábban exportált YAZIO JSON- vagy nutrition_log.csv-fájlt. Előnézet, kijelölés és fiókonkénti mentés követi.'
     config.details = [
-      'A közvetlen YAZIO belépés és automatikus import még zárolva marad.',
+      'A közvetlen YAZIO-beolvasás a külön Egyszeri fiókbeolvasás gombbal érhető el. Az automatikus import még nem elérhető.',
       'A mentés csak a saját Grapes TEST-fiókodban, külön jóváhagyással történik.',
       'Az utolsó import biztonságosan visszavonható; szerkesztett bejegyzéseket nem törlünk.',
     ]
@@ -363,7 +363,7 @@ function openSyncImport(provider) {
   if (FRESH_OWNER_MODULES && provider === 'health') {
     config.copy = 'Csak a saját Grapes-fiókba, külön jóváhagyás után importálhatók a Health Connect étkezései. A vízadatok, a régi naplók és a Drive továbbra sem kerülnek át.'
     config.details = ['Csak az engedélyezett Health Connect-adatokat olvassuk, amikor ezt a gombot megnyomod.',
-      'Az étkezések előnézetét átnézheted, kijelölheted; a vízadatok zároltak.',
+      'Az étkezéseket itt jelölheted ki; a vízhez a külön Vízimport gombot használd.',
       'A Health Connect engedélyei az Androidban külön kezelhetők.']
   }
   title.textContent = config.title; copy.textContent = config.copy; confirm.textContent = config.action
