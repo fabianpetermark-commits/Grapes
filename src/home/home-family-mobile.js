@@ -17,11 +17,12 @@ export function createHomeFamilyUI(root, {
 } = {}) {
   let native = null, outbox = null, household = null, households = []
   let epoch = 0, busy = false, status = '', statusError = false, inviteCode = ''
-  root.innerHTML = '<div class="household-family-intro"><h2>Közös családi készlet</h2><p>A saját Home adatait nem osztjuk meg. Külön háztartási készlet és bevásárlólista, hitelesített családi jogosultságokkal.</p></div>' +
+  let activePane = 'shopping'
+  root.innerHTML = '<div class="household-family-intro"><span class="household-family-eyebrow">HOME / CSALÁDI</span><h2>Közös háztartás</h2><p>A család közös bevásárlása és készlete. A saját Home-listáid külön maradnak.</p></div>' +
     '<div class="household-family-message" data-family-message role="status" aria-live="polite" hidden></div>' +
     '<div class="household-family-setup"><label>Háztartás<select data-family-select aria-label="Közös háztartás"></select></label>' +
     '<button type="button" data-family-reload>Frissítés</button></div>' +
-    '<details class="household-family-invites"><summary>Családi háztartás létrehozása / csatlakozás</summary>' +
+    '<details class="household-family-invites" data-family-manage><summary>Háztartások kezelése · létrehozás / csatlakozás</summary>' +
     '<form data-family-create><label>Háztartás neve<input name="name" maxlength="100" required placeholder="Pl. Otthon"></label><button type="submit">Új háztartás létrehozása</button></form>' +
     '<form data-family-join><label>Meghívókód<input name="code" pattern="[0-9a-fA-F]{64}" minlength="64" maxlength="64" required autocomplete="off" placeholder="64 karakteres kód"></label><button type="submit">Csatlakozás meghívóval</button></form></details>' +
     '<div data-family-content></div>'
@@ -50,7 +51,7 @@ export function createHomeFamilyUI(root, {
       ' · ' + escape(row.role) + '</option>').join('')
     selector.value = household?.householdId || previous || ''
     if (!household) {
-      box.innerHTML = '<div class="household-empty">Válassz családi háztartást. Az egyéni készleted változatlan.</div>'
+      box.innerHTML = '<div class="household-empty">Válassz egy közös háztartást. Ha nincs még, nyisd meg a „Háztartások kezelése” részt. A saját Home-listáid változatlanok.</div>'
       return
     }
     const role = household.role
@@ -60,31 +61,72 @@ export function createHomeFamilyUI(root, {
     const enabled = writable && !busy && !pending.length && !conflict.length
     const stock = household.state.inventory
     const shopping = household.state.shopping
-    const stockHtml = stock.length ? stock.map(item =>
-      '<article class="household-card"><strong>' + escape(item.name) + '</strong><p>' +
-      escape(displayQuantity(item)) + ' · közös készlet</p></article>').join('') :
-      '<div class="household-empty">Még nincs közös készlet.</div>'
+    const name = households.find(x => x.householdId === household.householdId)?.name || 'Közös háztartás'
+    const roleLabel = { owner:'Tulajdonos', editor:'Szerkesztő', viewer:'Megtekintő' }[role] || role
+    const householdEnding = household.householdId.slice(-8)
+    const accountEnding = native.ownerId.slice(-8)
+    // Keep the editing and history panels open when a remote proof causes a rerender.
+    const shoppingEditorOpen = Boolean(box.querySelector('[data-family-shopping-editor]')?.open)
+    const stockEditorOpen = Boolean(box.querySelector('[data-family-stock-editor]')?.open)
+    const boughtOpen = Boolean(box.querySelector('[data-family-purchased]')?.open)
     const inviteOpen = Boolean(inviteCode) || Boolean(box.querySelector('[data-family-invite-details]')?.open)
-    const invitation = role === 'owner' ? '<details class="household-family-invites" data-family-invite-details' + (inviteOpen ? ' open' : '') + '><summary>Családtag meghívása</summary><p class="household-family-note">48 óráig érvényes szerkesztői meghívókód. Csak annak add tovább, akivel a közös készletet meg szeretnéd osztani.</p><button type="button" data-family-invite>Meghívókód létrehozása</button>' + (inviteCode ? '<label>Egyszer megjelenített meghívókód<input data-family-invite-code readonly aria-label="Másolható családi meghívókód" value="' + escape(inviteCode) + '"></label>' : '') + '</details>' : ''
-    const shoppingHtml = shopping.length ? shopping.map(item =>
-      '<article class="household-card"><strong>' + escape(item.name) + '</strong><p>' +
-      escape(displayQuantity(item)) + ' · ' +
-      (item.status === 'checked' ? 'Megvettem' : 'Tervezett') + '</p>' +
-      (enabled ? '<button type="button" data-family-check="' + escape(item.id) + '">' +
-      (item.status === 'checked' ? 'Vissza a listára' : '✓ Megvettem') + '</button>' : '') +
-      '</article>').join('') :
-      '<div class="household-empty">Nincs közös bevásárlólistás tétel.</div>'
+    const invitation = role === 'owner'
+      ? '<details class="household-family-invites" data-family-invite-details' + (inviteOpen ? ' open' : '') +
+        '><summary>Családtag meghívása</summary><p class="household-family-note">48 órás, egyszer használható szerkesztői meghívókód.</p>' +
+        '<button type="button" data-family-invite>Meghívókód létrehozása</button>' +
+        (inviteCode ? '<label>Egyszer megjelenített kód<input data-family-invite-code readonly aria-label="Másolható családi meghívókód" value="' + escape(inviteCode) + '"></label>' : '') +
+        '</details>' : ''
+    const pendingShopping = shopping.filter(x => x.status !== 'checked')
+    const purchased = shopping.filter(x => x.status === 'checked')
+    const shoppingRow = item =>
+      '<article class="household-family-product"><div class="household-family-product-copy"><strong>' +
+      escape(item.name) + '</strong><small>' + escape(displayQuantity(item)) +
+      (item.status === 'deferred' ? ' · Később' : '') + '</small></div>' +
+      (enabled ? '<button type="button" class="household-family-check" data-family-check="' + escape(item.id) + '">' +
+        (item.status === 'checked' ? 'Vissza' : '✓ Megvettem') + '</button>' : '') + '</article>'
+    const stockHtml = stock.length ? stock.map(item =>
+      '<article class="household-family-product"><div class="household-family-product-copy"><strong>' +
+      escape(item.name) + '</strong><small>' + escape(displayQuantity(item)) + '</small></div></article>').join('') :
+      '<div class="household-empty">A közös készlet még üres.</div>'
+    const shoppingForm = enabled
+      ? '<details class="household-family-editor" data-family-shopping-editor' + (shoppingEditorOpen ? ' open' : '') +
+        '><summary>+ Termék felvétele</summary><form data-family-shopping><label>Termék neve<input name="name" required maxlength="160"></label>' +
+        '<div class="household-fields"><label>Mennyiség<input name="quantity" type="number" min="0.001" step="any" required></label>' +
+        '<label>Egység<select name="unit">' + Object.keys(UNITS).map(v => '<option value="' + escape(v) + '">' + escape(v) + '</option>').join('') +
+        '</select></label></div><button type="submit">Hozzáadás a közös listához</button></form></details>' : ''
+    const stockForm = enabled
+      ? '<details class="household-family-editor" data-family-stock-editor' + (stockEditorOpen ? ' open' : '') +
+        '><summary>+ Készlet rögzítése</summary><form data-family-stock><label>Élelmiszer neve<input name="name" required maxlength="160"></label>' +
+        '<div class="household-fields"><label>Mennyiség<input name="quantity" type="number" min="0.001" step="any" required></label>' +
+        '<label>Egység<select name="unit">' + Object.keys(UNITS).map(v => '<option value="' + escape(v) + '">' + escape(v) + '</option>').join('') +
+        '</select></label></div><button type="submit">Rögzítés a közös készletben</button></form></details>' : ''
     box.innerHTML =
-      '<div class="household-family-role"><span>Jogosultság: ' + escape(role) +
+      '<header class="household-family-context"><span class="household-family-eyebrow">KIVÁLASZTOTT KÖZÖS HÁZTARTÁS</span>' +
+      '<h3>' + escape(name) + '</h3><div class="household-family-meta"><span>' + escape(roleLabel) +
       '</span><span>Szinkronrev.: ' + escape(household.revision) + '</span></div>' +
-      (pending.length ? '<div class="household-family-warning" role="status">Mentésre váró közös változtatás: előbb ellenőrizd és próbáld újra. Második módosítás most nem indítható.</div>' : '') +
-      (conflict.length ? '<div class="household-family-warning" role="alert">Ütközés másik családtag változtatásával. A saját javaslat megőrizve; automatikus felülírás nincs. Kézi egyeztetés szükséges.</div>' : '') +
+      '<p>A háztartás azonosítója: <strong>…' + escape(householdEnding) + '</strong> · Bejelentkezett fiók: <strong>…' +
+      escape(accountEnding) + '</strong></p><p>Az A és B fióknál a háztartás azonosítója legyen azonos. A személyes és a közös lista nem keveredik.</p></header>' +
+      (pending.length ? '<div class="household-family-warning" role="status">Offline mentés várakozik: előbb ellenőrizd és próbáld újra.</div>' : '') +
+      (conflict.length ? '<div class="household-family-warning" role="alert">Ütközés másik családtag változtatásával. A saját javaslat megőrizve; kézi egyeztetés szükséges.</div>' : '') +
       (pending.length ? '<button type="button" data-family-retry>Függő művelet újrapróbálása</button>' : '') +
       (role === 'viewer' ? '<p class="household-family-note">Csak megtekintési jogosultság.</p>' : '') +
-      invitation + '<h3>Közös bevásárlólista</h3>' +
-      (enabled ? '<form data-family-shopping><label>Termék neve<input name="name" required maxlength="160"></label><div class="household-fields"><label>Mennyiség<input name="quantity" type="number" min="0.001" step="any" required></label><label>Egység<select name="unit">' + Object.keys(UNITS).map(v => '<option value="' + escape(v) + '">' + escape(v) + '</option>').join('') + '</select></label></div><button type="submit">+ Közös listaelem</button></form>' : '') +
-      shoppingHtml + '<h3>Közös készlet</h3>' +
-      (enabled ? '<form data-family-stock><label>Élelmiszer<input name="name" required maxlength="160"></label><div class="household-fields"><label>Mennyiség<input name="quantity" type="number" min="0.001" step="any" required></label><label>Egység<select name="unit">' + Object.keys(UNITS).map(v => '<option value="' + escape(v) + '">' + escape(v) + '</option>').join('') + '</select></label></div><button type="submit">+ Készlet rögzítése</button></form>' : '') + stockHtml
+      '<div class="household-family-panes" role="tablist" aria-label="Közös háztartás nézetei">' +
+      '<button type="button" role="tab" data-family-pane="shopping" aria-selected="' + String(activePane === 'shopping') +
+      '" class="' + (activePane === 'shopping' ? 'is-active' : '') + '">Bevásárlás (' + pendingShopping.length + ')</button>' +
+      '<button type="button" role="tab" data-family-pane="stock" aria-selected="' + String(activePane === 'stock') +
+      '" class="' + (activePane === 'stock' ? 'is-active' : '') + '">Készlet (' + stock.length + ')</button></div>' +
+      '<section data-family-shopping-panel role="tabpanel"' + (activePane === 'shopping' ? '' : ' hidden') + '>' +
+      '<p class="household-family-pane-hint">Csak ennek a háztartásnak a közös listája. A pipálás ismert mennyiségnél a közös készletet növeli.</p>' +
+      shoppingForm +
+      (pendingShopping.length ? pendingShopping.map(shoppingRow).join('') : '<div class="household-empty">Nincs hátralévő közös bevásárlás.</div>') +
+      (purchased.length ? '<details class="household-family-purchased" data-family-purchased' + (boughtOpen ? ' open' : '') +
+        '><summary>Megvett tételek (' + purchased.length + ')</summary>' +
+        purchased.map(shoppingRow).join('') + '</details>' : '') + '</section>' +
+      '<section data-family-stock-panel role="tabpanel"' + (activePane === 'stock' ? '' : ' hidden') + '>' +
+      '<p class="household-family-pane-hint">A családi készlet, nem a saját Home készleted.</p>' +
+      stockForm + stockHtml + '</section>' +
+      (invitation ? '<details class="household-family-extra" data-family-settings><summary>Háztartás beállításai és meghívás</summary>' +
+        invitation + '</details>' : '')
   }
   async function selectHousehold(householdId) {
     const seq = epoch, session = native
@@ -104,7 +146,8 @@ export function createHomeFamilyUI(root, {
       if (!snapshot) throw networkError || Error('Nincs hitelesített családi pillanatkép.')
       const jobs = await outbox.list(householdId)
       if (!await valid(seq, session)) return
-      if (household?.householdId !== householdId) inviteCode = ''
+      if (household?.householdId !== householdId) { inviteCode = ''; activePane = 'shopping' }
+      $('[data-family-manage]').open = false
       household = { householdId, revision:snapshot.revision, role:snapshot.role, state:snapshot.state, jobs }
       show(networkError ? 'Csak a korábbi, fiókhoz kötött mentés látszik. ' + networkError.message : '')
       render()
@@ -164,7 +207,11 @@ export function createHomeFamilyUI(root, {
   root.addEventListener('click', async event=>{
     const button=event.target.closest('button')
     if(!button || !root.contains(button)) return
-    if(button.hasAttribute('data-family-reload')) {
+    if(button.dataset.familyPane) {
+      if (!['shopping','stock'].includes(button.dataset.familyPane)) return
+      activePane=button.dataset.familyPane
+      render()
+    } else if(button.hasAttribute('data-family-reload')) {
       await refreshHouseholds()
       if(household) await selectHousehold(household.householdId)
     } else if(button.hasAttribute('data-family-retry') && household && !busy) {
@@ -215,7 +262,7 @@ export function createHomeFamilyUI(root, {
   return Object.freeze({
     async load(expectedOwner) {
       const seq=++epoch
-      native=null; outbox=null; household=null; households=[];inviteCode=''
+      native=null; outbox=null; household=null; households=[];inviteCode='';activePane='shopping'
       root.hidden=false
       box.innerHTML='<div class="household-empty">Családi Home-kapcsolat ellenőrzése…</div>'
       show('')
@@ -236,7 +283,7 @@ export function createHomeFamilyUI(root, {
       }
     },
     clear() {
-      epoch++;native=null;outbox=null;household=null;households=[];inviteCode='';busy=false
+      epoch++;native=null;outbox=null;household=null;households=[];inviteCode='';activePane='shopping';busy=false
       show('')
       box.replaceChildren()
       root.hidden=true
