@@ -111,6 +111,7 @@ try {
 
   // Offline order: queued locally, no automatic speculative second operation.
   await page.evaluate(()=>{window.familyQA.QA.offline=true})
+  await panel.locator('[data-family-shopping-editor] > summary').click()
   await panel.locator('[data-family-shopping] [name=name]').fill('Só')
   await panel.locator('[data-family-shopping] [name=quantity]').fill('1')
   await panel.locator('[data-family-shopping] [name=unit]').selectOption('kg')
