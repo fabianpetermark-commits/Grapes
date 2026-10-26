@@ -76,8 +76,9 @@
 .h-stock-confirm .h-inline{justify-content:flex-start}
 .h-manage-grid{display:grid;gap:8px}
 .h-manage-grid button{border:1px solid #314c5b;background:#172631;color:#c3dee9;text-align:left;border-radius:11px;padding:12px;font-size:12px;min-height:42px}
-.h-plant-entry{border:1px solid #293d49;border-radius:13px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 13px;color:#b6c7d0;font-size:12px}
-.h-plant-entry a{color:#3bdcf2;font-weight:700}
+/* Home Quick Action uses the shared dock pill (3 actions) + one separate add button. */
+.dock .action{text-decoration:none}
+.dock .dockMain{display:grid;place-items:center;font-weight:550;font-size:27px}
 @media(max-width:359px){
  .h-home{padding-inline:11px}
  .h-card{padding:12px}
@@ -100,15 +101,14 @@
   </nav>
   <section class="h-content" id="h-panel" aria-live="polite"></section>
   <details class="h-tools" id="h-more"><summary>Háztartás kezelése és egyéb eszközök</summary><div class="h-tool-content" id="h-tools-content"></div></details>
-  <div class="h-plant-entry"><span>🌿 Növényeim és növénygondozás</span><a href="../approved/plants-widget.html">Megnyitás</a></div>
   <p class="h-status" role="status" aria-live="polite" id="h-status"></p>
   <p class="h-demo-note">Interaktív Grapes v1.2 UI-terv, kizárólag helyben módosítható mintaadatokkal. Nem azonos a jelenlegi v40 felülettel, és nem olvas/ír Grapes-fiókot vagy Supabase-adatot.</p>
 </main>
-<footer class="dock"><div class="dockInner"><div class="dockGroup" style="justify-content:center">
+<footer class="dock" aria-label="Home Quick Action"><div class="dockInner"><div class="dockGroup">
 <button class="action" type="button" data-home-quick="shopping" aria-label="Bevásárlás"><i aria-hidden="true">♧</i><span>Bevásárlás</span></button>
 <button class="action" type="button" data-home-quick="stock" aria-label="Készlet"><i aria-hidden="true">▤</i><span>Készlet</span></button>
-<button class="action" type="button" data-home-quick="add" aria-label="Új tétel"><i aria-hidden="true">＋</i><span>Új tétel</span></button>
-</div></div></footer>
+<a class="action" href="../approved/plants-widget.html" aria-label="Növények"><i aria-hidden="true">♧</i><span>Növények</span></a>
+</div><button class="dockMain" type="button" data-home-quick="add" aria-label="Új tétel hozzáadása" title="Új tétel">＋</button></div></footer>
 <dialog class="h-dialog" id="h-dialog" aria-label="Új Home tétel">
   <form method="dialog" id="h-add-form" class="form">
     <h3 id="h-dialog-title">Új tétel</h3>
@@ -144,8 +144,8 @@
     document.querySelectorAll('[data-home-scope]').forEach(el=>{const active=el.dataset.homeScope===state.scope;el.classList.toggle('active',active);el.setAttribute('aria-pressed',String(active))});
     document.querySelectorAll('[data-home-tab]').forEach(el=>{const active=el.dataset.homeTab===state.tab;el.classList.toggle('active',active);el.hidden=state.scope==='family'&&el.dataset.homeTab==='suggestions';el.setAttribute('aria-selected',String(active))});
     $('#h-context').innerHTML=state.scope==='family'?
-      '<div class="h-context-top"><strong>'+esc(state.family.name)+'</strong><span class="h-chip">KÖZÖS</span></div><p>Ezt a háztartást a meghívott családtagok is látják és a jogosultságuk szerint szerkeszthetik.</p><span class="h-note">Szerepköröd: '+esc(state.family.role)+' · Szinkron: mintaadat</span>':
-      '<div class="h-context-top"><strong>Saját készlet</strong><span class="h-chip">PRIVÁT</span></div><p>Csak a te fiókodhoz tartozik. Nem kerül automatikusan a közös háztartásba.</p>';
+      '<div class="h-context-top"><strong>'+esc(state.family.name)+'</strong><span class="h-chip">KÖZÖS</span></div><p>Megosztva a háztartás tagjaival · '+esc(state.family.role)+'</p>':
+      '<div class="h-context-top"><strong>Saját Home</strong><span class="h-chip">PRIVÁT</span></div><p>Csak a te fiókodhoz tartozik; nincs automatikus közös megosztás.</p>';
     const items=data();
     if(state.tab==='shopping')renderShopping(items);
     if(state.tab==='stock')renderStock(items);
@@ -159,7 +159,7 @@
     const subset=items.shopping.filter(x=>!own||x.listId===state.shoppingList);
     const pending=subset.filter(x=>!x.done),done=subset.filter(x=>x.done);
     const pending=state.pendingStock?.scope===state.scope?items.shopping.find(x=>x.id===state.pendingStock.id&&x.done):null;
-    const listings=own?'<label class="h-quiet">Bevásárlólista<select class="h-list-select" id="h-select-list" aria-label="Bevásárlólista">'+items.lists.map(x=>'<option value="'+esc(x.id)+'"'+(x.id===state.shoppingList?' selected':'')+'>'+esc(x.name)+'</option>').join('')+'</select></label>':'<p class="h-quiet">Minden családtag ugyanazt a közös bevásárlólistát látja.</p>';
+    const listings=own?'<label class="h-quiet">Bevásárlólista<select class="h-list-select" id="h-select-list" aria-label="Bevásárlólista">'+items.lists.map(x=>'<option value="'+esc(x.id)+'"'+(x.id===state.shoppingList?' selected':'')+'>'+esc(x.name)+'</option>').join('')+'</select></label>':'';
     const row=(x)=>'<label class="h-product'+(x.done?' done':'')+'"><input data-check type="checkbox" data-id="'+esc(x.id)+'"'+(x.done?' checked':'')+'><span><strong>'+esc(x.name)+'</strong><small>'+esc(amount(x))+(x.done?' · Megvásárolva':' · Listán')+'</small></span></label>';
     $('#h-panel').innerHTML='<section class="h-card"><div class="h-card-top"><h3>'+ (own?'Saját bevásárlás':'Közös bevásárlás') +'</h3><button class="h-action primary" type="button" data-home-add="shopping">+ Tétel</button></div>'+listings+
       '<div class="h-products" data-home-open-items>'+(pending.length?pending.map(row).join(''):'<p class="h-empty">Nincs vásárolnivaló ezen a listán.</p>')+'</div>'+
