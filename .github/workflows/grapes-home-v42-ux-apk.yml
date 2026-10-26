@@ -5,7 +5,7 @@ on:
     branches:
       - feature/grapes-home-v42-direct-scope-navigation-20261026
     paths:
-      - '.github/workflows/grapes-home-v42-family-ux-apk.yml'
+      - '.github/workflows/grapes-home-v42-ux-apk.yml'
       - 'src/home/**'
       - 'src/android-mobile-shell.js'
       - 'android-health-connect-poc/**'
@@ -23,7 +23,7 @@ concurrency:
 
 jobs:
   test-native-sign-archive-only:
-    if: github.repository == 'fabianpetermark-commits/Grapes' && github.ref == 'refs/heads/feature/grapes-test-home-direct-scope-clarity-20261026'
+    if: github.repository == 'fabianpetermark-commits/Grapes' && github.ref == 'refs/heads/feature/grapes-home-v42-direct-scope-navigation-20261026'
     runs-on: ubuntu-latest
     timeout-minutes: 65
     env:
