@@ -69,7 +69,7 @@ All **current** menu and module HTML files (three `approved/` examples, six `can
 | Plants / Növények widget page | [approved/plants-widget.html](approved/plants-widget.html) | **APPROVED STYLE**, functional layout still evolving | Earlier plant design updated with the new shared six-icon rail; demo plants/weather/tasks are not finished data integration |
 | Previous integrated top rail + contextual dock | [approved/main-shell-widgets.html](approved/main-shell-widgets.html) | **REFERENCE ARCHIVE / STRUCTURE**, not final screen sign-off | Original widget dashboard content retained, rail restyled to six icon-only slots and Utility label normalized to Tools |
 | Integrated top rail with new Tools name | [candidates/main-shell-tools.html](candidates/main-shell-tools.html) | **PROPOSED** | Updated six-icon captionless shell and Tools label; internal utility key unchanged |
-| Home | [candidates/home.html](candidates/home.html) | **PROPOSED** | Shopping, inventory, plants, contextual dock |
+| Home | [candidates/home.html](candidates/home.html) | **PROPOSED · 2026-10-26 UX egységesítve** | Saját / családi kontextus, közös lista és készlet, becslés / igazolt javaslat szétválasztása, X/archívum, ritka eszközök összecsukva, növénylink |
 | Tools | [candidates/tools.html](candidates/tools.html) | **PROPOSED** | E-book & QR widgets, contextual dock |
 | Finance – **teljes Pénzügyi napló** | [candidates/finance.html](candidates/finance.html) | **PROPOSED**, user review pending | Full standalone HTML with overview, transaction ledger/editor, savings goals and movements, projection, import preview, settings and Finance bottom dock; preserves real-module feature scope at implementation |
 | E-book details | [candidates/ebook.html](candidates/ebook.html) | **PROPOSED** | Library, reader, transfer; preserve reading font/theming |
@@ -136,3 +136,21 @@ The latest `candidates/finance.html` **replaces the previous summary-only propos
 - **Real implementation must keep existing functionality** in `src/finance-tracker.js`, `src/finance-data.js`, `src/finance-import-ui.js`: actual finance model, XLS/XLSM/XLSX file mapping and duplicate checks, receipt upload/local OCR, persons/categories, scheduled/real transactions, Drive synchronization, CSV export, JSON backup/import, currency lock, savings ledger and forecast logic. Demo CSV parsing is illustrative, **not a replacement**.
 - Preview toggle `Mintadatok` is **not a production Finance control**. All numbers are generated demo values; the HTML never calls Grapes data sources.
 - Run prototype tests on 320 / 360 / 390 / 412px; compare matching screenshots of all five Finance internal screens from real Grapes TEST **before PROD approval**.
+
+## Home: egységes UX célterv a v40 telefonos tapasztalata után (2026-10-26)
+
+**Egyetlen központi, böngészőben kattintható HTML:** [`candidates/home.html`](candidates/home.html). A [vizuális ellenőrző](review.html) és a [galéria](index.html) is közvetlenül ugyanezt a forrást mutatja.
+
+A telefonos Grapes Home v40 teszt során a közös háztartáslista és a családi kezelő egy képernyőn zsúfolódott össze. A felhasználó jelezte, hogy a képernyő így nehezen érthető, és a B fiók által hozzáadott tétel szinkronját sem könnyű megítélni. A referencia ezért:
+
+- **Világos adathatár:** felül egyetlen **Saját / Közös családi** kapcsoló. A kiválasztott háztartás neve és közös/privát jellege mindig látható; a tulajdonos szerep egyszerű magyar felirattal jelenik meg. A technikai szinkronrevízió nem uralja a napi képernyőt.
+- **Három napi nézet:** **Bevásárlás / Készlet / Javaslatok**; az egyelőre személyes adatú javaslatok a közös nézetben **nem jelennek meg megosztottként**. A két lista/készlet kezelése össze nem mosva történik.
+- **Csak szükség esetén felugró űrlap:** az élelmiszer-felvétel és a készlet rögzítése nem foglal tartós helyet a lista fölött. A megvett elemek külön kinyithatók; ellenőrzött mennyiségű „Megvettem” csak egy készlet-bevitelt jelöl.
+- **Megerősített hiány vs becslés:** jól olvasható különbség, utóbbinál **nincs tanult fix vásárlási mennyiség**. A javaslat csak kijelölés után kerül tényleges bevásárlólistára; a Grapes-piros **X** elvet, a korábbiak az összecsukható archívumba kerülnek (a valódi 30 napos szabály a TEST domain logikában van).
+- **Családi adminisztráció külön lenyitható részen:** meghívás, létrehozás, csatlakozás, jogosultságok; nem a napi bevásárlólista elején.
+- **Növények / Outdoor** link megtartva, nem törlődik a Home koncepciójából. A hatikonos felső Grapes v1.2 navigáció és a modulhoz tartozó alsó gyorssáv megmarad.
+- A HTML kizárólag szimulált, memóriában módosuló adatokkal dolgozik. A „Közös családi” demó **nem** kapcsolódik TEST vagy PROD Supabase-hez, nem jelent valódi családi szinkront, nem helyettesíti az appot.
+
+**Forráskód és bizonyíték külön, de egymáshoz rendelve:** [#172 – v40 távoli TEST / APK](https://github.com/fabianpetermark-commits/Grapes/pull/172), [#169 – natív családi Home](https://github.com/fabianpetermark-commits/Grapes/pull/169), [#168 – napi nézetek](https://github.com/fabianpetermark-commits/Grapes/pull/168), [#166 – X/archívum/listák](https://github.com/fabianpetermark-commits/Grapes/pull/166), [#167 – óvatos vásárlási előrejelzés](https://github.com/fabianpetermark-commits/Grapes/pull/167). Ezeket a **#41-be alkalmazáskódként NEM olvasztjuk**; a #41 a vizuális, interakciós elfogadási forrás. Valós Android-implementáció külön PR-ben és csak vizuális jóváhagyás után. PROD-függőség nincs.
+
+**Állapot:** Home UX **PROPOSED, review pending**. A CI HTML-screenshot/smoke ellenőrzést végez 320 / 360 / 390 / 412 px szélességen, nem pixeles egyezőséget vagy telefonos produktív viselkedést bizonyít.
