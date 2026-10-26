@@ -64,7 +64,8 @@ export function createHomeFamilyUI(root, {
       '<article class="household-card"><strong>' + escape(item.name) + '</strong><p>' +
       escape(displayQuantity(item)) + ' · közös készlet</p></article>').join('') :
       '<div class="household-empty">Még nincs közös készlet.</div>'
-    const invitation = role === 'owner' ? '<details class="household-family-invites"><summary>Családtag meghívása</summary><p class="household-family-note">48 óráig érvényes szerkesztői meghívókód. Csak annak add tovább, akivel a közös készletet meg szeretnéd osztani.</p><button type="button" data-family-invite>Meghívókód létrehozása</button>' + (inviteCode ? '<label>Egyszer megjelenített meghívókód<input data-family-invite-code readonly aria-label="Másolható családi meghívókód" value="' + escape(inviteCode) + '"></label>' : '') + '</details>' : ''
+    const inviteOpen = Boolean(inviteCode) || Boolean(box.querySelector('[data-family-invite-details]')?.open)
+    const invitation = role === 'owner' ? '<details class="household-family-invites" data-family-invite-details' + (inviteOpen ? ' open' : '') + '><summary>Családtag meghívása</summary><p class="household-family-note">48 óráig érvényes szerkesztői meghívókód. Csak annak add tovább, akivel a közös készletet meg szeretnéd osztani.</p><button type="button" data-family-invite>Meghívókód létrehozása</button>' + (inviteCode ? '<label>Egyszer megjelenített meghívókód<input data-family-invite-code readonly aria-label="Másolható családi meghívókód" value="' + escape(inviteCode) + '"></label>' : '') + '</details>' : ''
     const shoppingHtml = shopping.length ? shopping.map(item =>
       '<article class="household-card"><strong>' + escape(item.name) + '</strong><p>' +
       escape(displayQuantity(item)) + ' · ' +
