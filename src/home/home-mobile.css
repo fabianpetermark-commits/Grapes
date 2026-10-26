@@ -178,3 +178,62 @@
   .household-family-setup { grid-template-columns:1fr; }
   .household-family-setup button { width:100%; }
 }
+
+
+/* Home family UX: show daily data first; forms/settings only on request.
+   Brand: restrained #3BDCF2 accents, not full-outline neon glow. */
+[data-household-family] .household-family-intro { margin:8px 0 12px; padding:13px 14px; }
+[data-household-family] .household-family-intro h2 { margin:4px 0 5px; font-size:17px; }
+[data-household-family] .household-family-intro p { margin:0; font-size:12px; }
+[data-household-family] .household-family-eyebrow { font-size:10px; letter-spacing:.14em; font-weight:750; color:#3bdcf2; }
+[data-household-family] .household-family-context { border:1px solid #2c414f; background:#101821;
+  border-radius:17px; padding:14px; margin:13px 0 16px; }
+[data-household-family] .household-family-context h3 { margin:5px 0 10px; font-size:20px; line-height:1.28; }
+[data-household-family] .household-family-context p { margin:7px 0 0; line-height:1.45;
+  color:#96a8b8; font-size:12px; overflow-wrap:anywhere; }
+[data-household-family] .household-family-context p strong { color:#dce8ef; font-weight:600; }
+[data-household-family] .household-family-meta { display:flex; flex-wrap:wrap; align-items:center;
+  gap:7px; margin:5px 0 8px; }
+[data-household-family] .household-family-meta span { padding:5px 8px; border:1px solid #324654;
+  background:#17222e; color:#e1edf2; border-radius:9px; font-size:11px; }
+[data-household-family] .household-family-panes { display:grid; grid-template-columns:1fr 1fr;
+  gap:5px; margin:12px 0 12px; padding:4px; border:1px solid #293e4c; background:#101821; border-radius:13px; }
+[data-household-family] .household-family-panes button { min-width:0; min-height:44px;
+  border-radius:10px; padding:7px 5px; color:#9aafbb; border-color:transparent;
+  background:transparent; font-size:13px; font-weight:680; }
+[data-household-family] .household-family-panes button.is-active { background:#173943;
+  border-color:#3e8796; color:#bff4fa; }
+[data-household-family] section[role="tabpanel"][hidden] { display:none !important; }
+[data-household-family] .household-family-pane-hint { font-size:12px; color:#98aabb;
+  line-height:1.5; margin:7px 2px 11px; }
+[data-household-family] .household-family-product { display:flex; justify-content:space-between;
+  align-items:center; gap:9px; background:#101821; border:1px solid #293e4c;
+  border-radius:14px; margin:7px 0; padding:12px; min-width:0; }
+[data-household-family] .household-family-product-copy { display:grid; gap:5px; min-width:0;
+  overflow-wrap:anywhere; }
+[data-household-family] .household-family-product-copy strong { color:#edf6fa; font-size:14px; }
+[data-household-family] .household-family-product-copy small { color:#96a8b8; font-size:12px; }
+[data-household-family] .household-family-product .household-family-check { flex-shrink:0;
+  min-height:44px; padding:8px 11px; border-radius:11px; background:#173843;
+  color:#b8f4fa; border:1px solid #386875; font-size:12px; font-weight:700; }
+[data-household-family] .household-family-editor, [data-household-family] .household-family-purchased,
+[data-household-family] .household-family-extra { border:1px solid #2d4351;
+  background:#101821; border-radius:14px; padding:0 11px; margin:8px 0 12px; }
+[data-household-family] .household-family-editor summary, [data-household-family] .household-family-purchased summary,
+[data-household-family] .household-family-extra summary { display:list-item; cursor:pointer;
+  padding:13px 3px; min-height:44px; color:#cde4ec; font-size:13px; font-weight:650; }
+[data-household-family] .household-family-editor form { padding:2px 1px 13px; border-top:1px solid #293e4c; }
+[data-household-family] .household-family-purchased .household-family-product { background:#17222e; }
+[data-household-family] .household-family-extra { margin-top:18px; }
+[data-household-family] .household-family-invites form { max-width:100%; }
+[data-household-family] .household-family-invites summary { font-size:12px; }
+[data-household-family] [data-family-reload] { min-height:44px; }
+[data-household-family] .household-family-editor summary:focus-visible,
+[data-household-family] .household-family-extra summary:focus-visible,
+[data-household-family] .household-family-panes button:focus-visible,
+[data-household-family] .household-family-purchased summary:focus-visible { outline:2px solid #3bdcf2; outline-offset:2px; }
+@media(max-width:359px) {
+ [data-household-family] .household-family-context { padding:11px; }
+ [data-household-family] .household-family-panes button { font-size:12px; }
+ [data-household-family] .household-family-product { padding:10px; }
+}
