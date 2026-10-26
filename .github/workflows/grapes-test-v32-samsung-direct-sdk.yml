@@ -1,0 +1,258 @@
+name: Grapes TEST Samsung SDK direct Water (signed APK requires licensed AAR)
+
+on:
+  push:
+    branches:
+      - feature/grapes-test-samsung-direct-water-sync-20261026
+  pull_request:
+    branches:
+      - feature/grapes-test-samsung-water-csv-owner-20261026
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-test-v32-samsung-direct-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-sign-archive:
+    if: github.repository == 'fabianpetermark-commits/Grapes'
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      GRAPES_VERSION_CODE: '32'
+      GRAPES_VERSION_NAME: '0.9.23'
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GRAPES_TEST_AUTH_ENABLED: 'true'
+      VITE_GRAPES_TEST_FRESH_OWNER_MODULES_ENABLED: 'true'
+      VITE_GRAPES_TEST_DATA_ENABLED: 'true'
+      VITE_GRAPES_TEST_FOOD_SYNTHETIC_ENABLED: 'false'
+      VITE_GRAPES_TEST_LOCAL_OWNER_QA_ENABLED: 'false'
+      VITE_GRAPES_TEST_LEGACY_BACKUP_ENABLED: 'false'
+      VITE_GRAPES_TEST_SAF_SYNTHETIC_QA_ENABLED: 'false'
+      VITE_GRAPES_TEST_HEALTH_SYNC_ENABLED: 'false'
+      VITE_GRAPES_TEST_FOOD_LOCAL_CAS_ENABLED: 'false'
+      VITE_GRAPES_TEST_WATER_PROFILE_ENABLED: 'false'
+      VITE_GRAPES_TEST_SUPABASE_URL: https://aighqtqjlzirlokxwupt.supabase.co
+      VITE_GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY: ${{ vars.GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY }}
+      VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
+      VITE_GOOGLE_APP_ID: '991532871119'
+      VITE_EBOOK_EPUB_WRITE_ENABLED: 'true'
+    steps:
+      - name: Checkout exact integrated candidate, no repository write token
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify all eleven approved owner feature commits are ancestors
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          for sha in \
+            1b9790817634c819274d7eff38a165bb5a34ff37 \
+            24dc93ddfe08055b6c5e75228ce0a77b2024696b \
+            a479ad934d3e344230befc38bd006abd9aacc569 \
+            53e70a7aaceff5ea048eff197341377178d869af \
+            edf56725f731497a8a2dda4a210296879b665956 \
+            6991a2811ccd7e6527b0a17e3071b29e01852475 \
+            d020d8bdee0a3baf948e73274e9de0bd118d1a8e \
+            3cb65e9844c98be728e900a6613faf4a3b45ddef \
+            d7520f0c8db515bbf18baa9381e56f4c51fb1e39 \
+            ebbab6f5b8af94eadb9ef1ab2e48c2d31ad2a732 \
+            dad598714db1089b1f304f9cfa3da77a82a91287; do
+            git merge-base --is-ancestor "$sha" HEAD || {
+              echo "::error::Missing owner feature commit: $sha"; exit 1;
+            }
+          done
+          test "$VITE_GRAPES_TEST_FRESH_OWNER_MODULES_ENABLED" = true
+          test "$VITE_GRAPES_TEST_DATA_ENABLED" = true
+          test "$VITE_GRAPES_TEST_FOOD_SYNTHETIC_ENABLED" = false
+          test "$VITE_GRAPES_TEST_LOCAL_OWNER_QA_ENABLED" = false
+          test "$VITE_GRAPES_TEST_LEGACY_BACKUP_ENABLED" = false
+          test "$VITE_GRAPES_TEST_SAF_SYNTHETIC_QA_ENABLED" = false
+          test "$VITE_GRAPES_TEST_HEALTH_SYNC_ENABLED" = false
+          test "$VITE_GRAPES_TEST_SUPABASE_URL" = "https://aighqtqjlzirlokxwupt.supabase.co"
+          case "$VITE_GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY" in
+            sb_publishable_????????????????*) echo "Dedicated TEST public API key present";;
+            *) echo "::error::Dedicated TEST publishable key is missing"; exit 1;;
+          esac
+          echo "PASS: stacked #144–#155 tree and strict fresh-only release flags"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Complete unit suite with all owner/import checks
+        run: npm test
+      - name: Build actual Android WebView assets with owner-only flags
+        run: |
+          npm run build:android-web
+          test -s android-health-connect-poc/app/src/main/assets/design/android-mobile-preview.html
+          test -s android-health-connect-poc/app/src/main/assets/login-auth-test.html
+          if grep -R -l 'A YAZIO-import a Food elkülönítéséig zárolva van' android-health-connect-poc/app/src/main/assets/assets; then
+            echo "::error::Owner YAZIO remains unconditionally disabled"; exit 1
+          fi
+      - name: Verify owner-only UI labels are present
+        run: |
+          grep -R -Fq 'Csak kézi import · külön jóváhagyással' android-health-connect-poc/app/src/main/assets/assets
+          grep -R -Fq 'Egyszeri fiókbeolvasás gombbal érhető el' android-health-connect-poc/app/src/main/assets/assets
+          grep -R -Fq 'Samsung Health személyesadat-exportjának' android-health-connect-poc/app/src/main/assets/assets
+          grep -R -Fq 'Nem ismert Samsung Health víz-CSV' android-health-connect-poc/app/src/main/assets/assets
+      - name: Locate Chromium
+        run: |
+          if command -v google-chrome >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            npx playwright-core install --with-deps chromium
+            binary=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path '*chrome-linux*' | head -1)
+            test -n "$binary"
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$binary" >> "$GITHUB_ENV"
+          fi
+      - name: Samsung Health water CSV native owner parse contract
+        run: node --test tests/grapes-test-samsung-water-csv.test.js
+      - name: Samsung Health water CSV Android screen A-B-A
+        run: node tests/grapes-test-samsung-water-csv-mobile.browser.mjs
+      - name: Samsung direct Water opt-in and account CAS unit suite
+        run: node --test tests/grapes-test-samsung-direct-water-auto.test.js
+      - name: Samsung SDK native-mock manual and silent automatic mobile flow A-B-A
+        run: node tests/grapes-test-samsung-direct-water-mobile.browser.mjs
+      - name: One consolidated A-B-A UI regression (six features, no PROD)
+        run: |
+          node tests/grapes-test-fresh-owner-water-projects.browser.mjs
+          node tests/grapes-test-fresh-owner-finance.browser.mjs
+          node tests/grapes-test-fresh-owner-food-mobile.browser.mjs
+          node tests/grapes-test-fresh-owner-ebook-mobile.browser.mjs
+          node tests/grapes-test-fresh-owner-home-mobile.browser.mjs
+          node tests/grapes-test-fresh-health-nutrition-mobile.browser.mjs
+          node tests/grapes-test-fresh-water-health-mobile.browser.mjs
+          node tests/grapes-test-fresh-yazio-mobile.browser.mjs
+          node tests/grapes-test-fresh-yazio-direct-mobile.browser.mjs
+          node tests/grapes-test-local-owner-store.browser.mjs
+          node tests/grapes-test-legacy-unclaimed-backup.browser.mjs
+      - name: Fetch official Samsung SDK privately (either ZIP or AAR; never commit the library)
+        env:
+          SAMSUNG_SDK_ZIP_URL: ${{ secrets.SAMSUNG_HEALTH_DATA_SDK_ZIP_URL }}
+          SAMSUNG_SDK_AAR_URL: ${{ secrets.SAMSUNG_HEALTH_DATA_SDK_AAR_URL }}
+        run: |
+          set -euo pipefail
+          umask 077
+          if [ -z "$SAMSUNG_SDK_ZIP_URL" ] && [ -z "$SAMSUNG_SDK_AAR_URL" ]; then
+            echo "::warning::No private Samsung SDK download URL secret: verified stub only. NO signed direct APK."
+            exit 0
+          fi
+          dest=android-health-connect-poc/app/libs/samsung-health-data-api-1.1.0.aar
+          # Prefer the exact official ZIP the developer downloaded. Never
+          # check it into the public Grapes repo or upload it as an artifact.
+          if [ -n "$SAMSUNG_SDK_ZIP_URL" ]; then
+            case "$SAMSUNG_SDK_ZIP_URL" in
+              https://*) ;;
+              *) echo "::error::Samsung SDK ZIP URL must use HTTPS"; exit 1 ;;
+            esac
+            zipfile="$RUNNER_TEMP/samsung-sdk-private.zip"
+            trap 'rm -f "$zipfile"' EXIT
+            # Google Drive share pages are HTML, not binary ZIP downloads.
+            # The official gdown client resolves a share link and confirmation.
+            case "$SAMSUNG_SDK_ZIP_URL" in
+              https://drive.google.com/*|https://drive.usercontent.google.com/*)
+                python -m pip install --disable-pip-version-check --quiet 'gdown==5.2.2'
+                gdown --fuzzy --no-cookies --quiet \
+                  --output "$zipfile" "$SAMSUNG_SDK_ZIP_URL"
+                ;;
+              *)
+                curl --fail --location --silent --show-error --retry 2 --max-time 150 \
+                  --proto '=https' --proto-redir '=https' \
+                  "$SAMSUNG_SDK_ZIP_URL" --output "$zipfile"
+                ;;
+            esac
+            test -s "$zipfile"
+            # Official v1.1.0 archive supplied by the Grapes developer.
+            printf '%s  %s\n' \
+              '7a51440d840e099769b150c6414365bc43eecb61c01fa5bf6d0e54e09c2b663f' "$zipfile" \
+              | sha256sum --check --status || {
+                echo "::error::Samsung SDK archive checksum differs from the verified original."
+                exit 1
+              }
+            unzip -p "$zipfile" '1.1.0/libs/samsung-health-data-api-1.1.0.aar' > "$dest"
+          else
+            case "$SAMSUNG_SDK_AAR_URL" in
+              https://*) ;;
+              *) echo "::error::Samsung SDK AAR URL must use HTTPS"; exit 1 ;;
+            esac
+            curl --fail --location --silent --show-error --retry 2 --max-time 150 \
+              --proto '=https' --proto-redir '=https' \
+              "$SAMSUNG_SDK_AAR_URL" --output "$dest"
+          fi
+          test -s "$dest"
+          unzip -t "$dest" >/dev/null
+          unzip -Z -1 "$dest" | grep -Fxq classes.jar
+          # SDK bytes independently checked against the official v1.1.0 AAR
+          # extracted from the user-provided Samsung distribution.
+          printf '%s  %s\n' \
+            'f5d3d83cf00b97d0bb1b1db4da076e861eb1c3e6e704d89a34e68909d2f38654' "$dest" \
+            | sha256sum --check --status || {
+              echo "::error::Samsung SDK 1.1.0 checksum differs from the verified AAR."
+              rm -f "$dest"
+              exit 1
+            }
+          echo "SAMSUNG_DIRECT_SDK_AVAILABLE=1" >> "$GITHUB_ENV"
+          echo "Licensed SDK staged on ephemeral runner; AAR is NEVER an artifact."
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK and signing tools
+        run: |
+          sdkmanager=$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | sort -V | tail -1)
+          test -n "$sdkmanager"
+          "$sdkmanager" "platforms;android-36" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.11.1
+      - name: Android native QA unit checks
+        run: gradle --project-dir android-health-connect-poc :app:testQaUnitTest
+      - name: Build signed v32 only with genuine SDK and TEST identity
+        if: env.SAMSUNG_DIRECT_SDK_AVAILABLE == '1'
+        env:
+          ANDROID_TEST_KEYSTORE_BASE64: ${{ secrets.ANDROID_TEST_KEYSTORE_BASE64 }}
+          ANDROID_TEST_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_TEST_KEYSTORE_PASSWORD }}
+          ANDROID_TEST_KEY_ALIAS: ${{ secrets.ANDROID_TEST_KEY_ALIAS }}
+          ANDROID_TEST_KEY_PASSWORD: ${{ secrets.ANDROID_TEST_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$ANDROID_TEST_KEYSTORE_BASE64"
+          test -n "$ANDROID_TEST_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_TEST_KEY_ALIAS"
+          test -n "$ANDROID_TEST_KEY_PASSWORD"
+          export ANDROID_TEST_KEYSTORE_PATH="$RUNNER_TEMP/grapes-test-v32-samsung-direct.p12"
+          trap 'rm -f "$ANDROID_TEST_KEYSTORE_PATH"' EXIT
+          printf '%s' "$ANDROID_TEST_KEYSTORE_BASE64" | base64 --decode > "$ANDROID_TEST_KEYSTORE_PATH"
+          chmod 600 "$ANDROID_TEST_KEYSTORE_PATH"
+          gradle --project-dir android-health-connect-poc :app:assembleQa
+          src=android-health-connect-poc/app/build/outputs/apk/qa/app-qa.apk
+          test -s "$src"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$src" \
+            | grep -F "package: name='hu.grapes.healthconnect.test'"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$src" \
+            | grep -F "versionCode='32'"
+          cert=$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$src")
+          printf '%s\n' "$cert" | grep -Fi \
+            "Signer #1 certificate SHA-256 digest: cc9dc997fa4bff3845884afd2f011efe939c02806f91393a1ddb0455b6a2ff33"
+          mv "$src" grapes-test-v32-samsung-direct-signed.apk
+          sha256sum grapes-test-v32-samsung-direct-signed.apk \
+            > grapes-test-v32-samsung-direct-signed.apk.sha256
+          sha256sum -c grapes-test-v32-samsung-direct-signed.apk.sha256
+      - name: Upload signed QA artifact only (NO GitHub release or app auto-update)
+        if: env.SAMSUNG_DIRECT_SDK_AVAILABLE == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: grapes-test-v32-samsung-direct-signed-qa-only
+          path: |
+            grapes-test-v32-samsung-direct-signed.apk
+            grapes-test-v32-samsung-direct-signed.apk.sha256
+          if-no-files-found: error
+          retention-days: 14

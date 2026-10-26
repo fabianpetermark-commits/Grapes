@@ -6,6 +6,7 @@ import java.time.LocalDate
 interface SamsungWaterBridge {
     val available: Boolean
     val availabilityMessage: String
+    suspend fun hasReadPermission(): Boolean
     suspend fun requestReadPermission(activity: Activity): Boolean
     suspend fun readWater(from: LocalDate): List<BridgeRecord>
 }
