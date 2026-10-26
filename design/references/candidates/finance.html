@@ -56,7 +56,7 @@ body.show-demo-tools .demo-banner{display:flex!important}
     <nav class="module-tabs" role="tablist" aria-label="Pénzügyi napló nézetei">
       <button class="module-tab active" role="tab" aria-selected="true" data-tab="overview" aria-label="Áttekintés" title="Áttekintés"><span data-icon="layout-dashboard"></span></button>
       <button class="module-tab" role="tab" aria-selected="false" data-tab="ledger" aria-label="Tranzakciók" title="Tranzakciók"><span data-icon="list"></span></button>
-      <button class="module-tab" role="tab" aria-selected="false" data-tab="savings" aria-label="Megtakarítások" title="Megtakarítások"><span data-icon="target"></span></button>
+      <button class="module-tab" role="tab" aria-selected="false" data-tab="savings" aria-label="Megtakarítások" title="Megtakarítások"><span data-icon="piggy"></span></button>
       <button class="module-tab" role="tab" aria-selected="false" data-tab="forecast" aria-label="Előrejelzés" title="Előrejelzés"><span data-icon="chart"></span></button>
       <button class="module-tab" role="tab" aria-selected="false" data-tab="import" aria-label="Importálás" title="Importálás"><span data-icon="upload"></span></button>
     <button type="button" id="settings-open" class="rail-settings" aria-label="Finance beállítások" title="Finance beállítások" data-icon="settings"></button></nav>
@@ -83,7 +83,7 @@ body.show-demo-tools .demo-banner{display:flex!important}
           <div id="category-bars" class="category-list"></div>
         </section>
         <section class="widget">
-          <div class="widget-title"><strong><span data-icon="target"></span>Megtakarítások</strong><button class="text-link" type="button" data-go="savings">Összes cél <span data-icon="arrow-right"></span></button></div>
+          <div class="widget-title"><strong><span data-icon="piggy"></span>Megtakarítások</strong><button class="text-link" type="button" data-go="savings">Összes cél <span data-icon="arrow-right"></span></button></div>
           <div class="compact-value" id="saved-total">—</div><p class="muted small" id="saved-subtitle">Célok és általános tartalék</p><div id="overview-goals" class="mini-goals"></div>
         </section>
         <section class="widget">
@@ -104,7 +104,7 @@ body.show-demo-tools .demo-banner{display:flex!important}
       <section class="screen" id="panel-savings" data-panel="savings" aria-label="Megtakarítások">
         <div class="view-heading"><div><h2>Megtakarítások</h2></div><button type="button" class="outline-button small-action" id="new-goal">+ Új cél</button></div>
         <section class="widget savings-hero"><div class="widget-title"><strong><span data-icon="piggy"></span>Teljes félretett összeg</strong></div><div class="balance" id="savings-total">—</div><p class="muted small">Félretételek mínusz kivétek, az összes célban</p><div class="row-2"><button type="button" class="outline-button" id="savings-deposit">+ Félretétel</button><button type="button" class="outline-button" id="savings-withdraw">− Kivét</button></div></section>
-        <section class="widget"><div class="widget-title"><strong><span data-icon="target"></span>Megtakarítási célok</strong></div><div id="goal-list"></div></section>
+        <section class="widget"><div class="widget-title"><strong><span data-icon="piggy"></span>Megtakarítási célok</strong></div><div id="goal-list"></div></section>
         <section class="widget"><div class="widget-title"><strong><span data-icon="clock"></span>Legutóbbi mozgások</strong></div><div id="saving-entries"></div></section>
       </section>
       <section class="screen" id="panel-forecast" data-panel="forecast" aria-label="Előrejelzés">
@@ -118,7 +118,7 @@ body.show-demo-tools .demo-banner{display:flex!important}
         <section class="widget"><div class="widget-title"><strong><span data-icon="shield"></span>Biztonságos import</strong></div><div class="assurance"><span data-icon="check"></span><p>Az eredeti fájl érintetlen marad. Nincs automatikus éles import.</p></div><div class="assurance"><span data-icon="check"></span><p>Az oszlopok és adatsorok ellenőrizhetők az importálás előtt.</p></div><div class="assurance"><span data-icon="check"></span><p>Az ismétlődő vagy hiányos tételek kiszűrése a tényleges modul feladata.</p></div></section>
       </section>
     </main>
-    <footer class="dock" aria-label="Finance gyorsműveletek"><div class="dock-pill"><button type="button" class="dock-action" id="quick-expense"><span data-icon="minus-circle"></span><span>Kiadás</span></button><button type="button" class="dock-action" id="quick-income"><span data-icon="plus-circle"></span><span>Bevétel</span></button><button type="button" class="dock-action" id="quick-saving"><span data-icon="target"></span><span>Félretétel</span></button></div><button class="dock-round" type="button" id="quick-import" aria-label="Importálás" title="Importálás" data-icon="scan-line"></button></footer>
+    <footer class="dock" aria-label="Finance gyorsműveletek"><div class="dock-pill"><button type="button" class="dock-action" id="quick-expense"><span data-icon="minus-circle"></span><span>Kiadás</span></button><button type="button" class="dock-action" id="quick-income"><span data-icon="plus-circle"></span><span>Bevétel</span></button><button type="button" class="dock-action" id="quick-saving"><span data-icon="piggy"></span><span>Félretétel</span></button></div><button class="dock-round" type="button" id="quick-import" aria-label="Importálás" title="Importálás" data-icon="upload"></button></footer>
   </div>
   <div class="overlay" id="overlay" hidden><div class="backdrop" data-close-overlay></div><section class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title"><div class="sheet-handle"></div><div class="sheet-title-row"><h2 id="sheet-title">Új tétel</h2><button type="button" class="mini-button" data-close-overlay aria-label="Bezárás" data-icon="x"></button></div><div id="sheet-content"></div></section></div>
   <div class="toast" role="status" id="toast" aria-live="polite"></div>
@@ -130,14 +130,14 @@ body.show-demo-tools .demo-banner{display:flex!important}
 const $ = q => document.querySelector(q);
 const $$ = q => [...document.querySelectorAll(q)];
 const ICONS = {
- settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .32 1.77l.06.06-2 2-.06-.06A1.6 1.6 0 0 0 16 18.43a1.6 1.6 0 0 0-1 .97V21h-3v-.08A1.6 1.6 0 0 0 10.8 19.4a1.6 1.6 0 0 0-1.78-.32l-.08.03-2-2 .06-.06A1.6 1.6 0 0 0 6.6 15.4 1.6 1.6 0 0 0 5 14.4H4v-3h1a1.6 1.6 0 0 0 1.6-1A1.6 1.6 0 0 0 6.3 8.6l-.06-.06 2-2 .06.06A1.6 1.6 0 0 0 10 6.9a1.6 1.6 0 0 0 1-.97V4h3v1.93a1.6 1.6 0 0 0 1 .97 1.6 1.6 0 0 0 1.77-.32l.06-.06 2 2-.06.06A1.6 1.6 0 0 0 18.43 10a1.6 1.6 0 0 0 .97 1H21v3h-1.6a1.6 1.6 0 0 0-1 1Z"/>',
+ settings:'<path d="M10 2.5h4l.6 2.4 1.6.9 2.4-.7 2 3.5-1.8 1.7v1.9l1.8 1.7-2 3.5-2.4-.7-1.6.9-.6 2.4h-4l-.6-2.4-1.6-.9-2.4.7-2-3.5 1.8-1.7v-1.9L3.4 8.6l2-3.5 2.4.7 1.6-.9z"/><circle cx="12" cy="12" r="3"/>',
  wallet:'<rect x="3" y="5" width="18" height="15" rx="3"/><path d="M3 8h18M15 13h4"/>',
  'layout-dashboard':'<rect x="3" y="3" width="8" height="8" rx="1.3"/><rect x="13" y="3" width="8" height="5" rx="1.3"/><rect x="13" y="10" width="8" height="11" rx="1.3"/><rect x="3" y="13" width="8" height="8" rx="1.3"/>',
  list:'<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01" stroke-width="3"/>',
  target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
  chart:'<path d="M3 20V4m0 16h18M7 15l5-5 4 3 5-7"/>',
  'bar-chart':'<path d="M4 20h16M6 18v-7m6 7V5m6 13v-10"/>',
- upload:'<path d="M12 16V3m-5 5 5-5 5 5M4 17v3h16v-3"/>',
+ upload:'<path d="M12 3v13m-5-5 5 5 5-5M4 17v4h16v-4"/>',
  'file-up':'<path d="M6 3h8l5 5v13H6V3ZM14 3v5h5M12 19v-8m-3 3 3-3 3 3"/>',
  'chevron-left':'<path d="m15 18-6-6 6-6"/>',
  'chevron-right':'<path d="m9 18 6-6-6-6"/>',
