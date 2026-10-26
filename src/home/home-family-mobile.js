@@ -70,6 +70,7 @@ export function createHomeFamilyUI(root, {
     const stockEditorOpen = Boolean(box.querySelector('[data-family-stock-editor]')?.open)
     const boughtOpen = Boolean(box.querySelector('[data-family-purchased]')?.open)
     const inviteOpen = Boolean(inviteCode) || Boolean(box.querySelector('[data-family-invite-details]')?.open)
+    const settingsOpen = Boolean(inviteCode) || Boolean(box.querySelector('[data-family-settings]')?.open)
     const invitation = role === 'owner'
       ? '<details class="household-family-invites" data-family-invite-details' + (inviteOpen ? ' open' : '') +
         '><summary>Családtag meghívása</summary><p class="household-family-note">48 órás, egyszer használható szerkesztői meghívókód.</p>' +
@@ -125,7 +126,7 @@ export function createHomeFamilyUI(root, {
       '<section data-family-stock-panel role="tabpanel"' + (activePane === 'stock' ? '' : ' hidden') + '>' +
       '<p class="household-family-pane-hint">A családi készlet, nem a saját Home készleted.</p>' +
       stockForm + stockHtml + '</section>' +
-      (invitation ? '<details class="household-family-extra" data-family-settings><summary>Háztartás beállításai és meghívás</summary>' +
+      (invitation ? '<details class="household-family-extra" data-family-settings' + (settingsOpen ? ' open' : '') + '><summary>Háztartás beállításai és meghívás</summary>' +
         invitation + '</details>' : '')
   }
   async function selectHousehold(householdId) {
