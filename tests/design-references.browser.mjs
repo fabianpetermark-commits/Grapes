@@ -180,8 +180,11 @@ try {
         if((await page.locator('#h-panel').innerText()).includes('Tojás'))
           throw Error('Shopping checkbox silently altered household stock');
         await page.locator('[data-home-tab="shopping"]').click();
+        await page.locator('#h-completed summary').click();
+        await page.locator('[data-home-receive="open:f1"]').click();
         if(!(await page.locator('#h-stock-confirm').isVisible()))
-          throw Error('Explicit stock confirmation missing after shopping check');
+          throw Error('Explicit stock confirmation missing after requested stock transfer');
+        await page.locator('#h-receive-qty').fill('6');
         await page.locator('[data-home-receive="confirm"]').click();
         await page.locator('[data-home-tab="stock"]').click();
         if(!(await page.locator('#h-panel').innerText()).includes('Tojás'))
