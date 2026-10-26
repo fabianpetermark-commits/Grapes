@@ -54,6 +54,17 @@ try {
   const page=await context.newPage(),errors=[]
   page.on('pageerror',e=>errors.push(e.message))
   await page.goto(base+'design/android-mobile-preview.html')
+  // The authenticated owner TEST build offers manual Health/YAZIO import only:
+  // locked automatic switches must not masquerade as tappable UI.
+  for (const source of ['health', 'yazio']) {
+    const toggle = page.locator(`[data-food-${source}-auto]`)
+    assert.equal(await toggle.isDisabled(), true)
+    assert.equal(await toggle.locator('xpath=..').isVisible(), false)
+    assert.equal(await page.locator(`[data-food-manual-import="${source}"]`).count(), 1)
+    assert.match(
+      await page.locator(`[data-food-manual-import="${source}"]`).textContent(),
+      /Csak kézi import/)
+  }
   async function openSync(){
     await page.locator('[data-nav="more"]').last().click()
     await page.locator('[data-page="more"] [data-nav="sync"]').click()
