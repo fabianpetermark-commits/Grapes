@@ -1,5 +1,13 @@
 # Grapes – design reference pack (Brand Guide v1.2)
 
+## 2026-10-26 ESTE — FELHASZNÁLÓ ÁLTAL JÓVÁHAGYOTT HOME, AZONNALI IRÁNYVÁLTÁS
+
+A Home végleges vizuális koncepciója **[Egyetlen Otthon – részletes döntési szerződés](../../docs/GRAPES_HOME_ONE_HOUSE_APPROVED_20261026.md)**. A 2026-10-26-i chatben bemutatott *„Grapes Home – Egységes Otthon”* interaktív demó **APPROVED**. Nincs Saját/Közös kapcsoló, és nincs Bevásárlás/Készlet/Javaslatok belső tabválasztó. Három **egyszerre látható** tömör Home widget + egyetlen Otthon címe és létszámgombja, egységes v1.2 shell.
+
+**FIGYELEM — régi referencia:** az alább ismertetett `candidates/home.html` továbbra is a korábbi, már **ELVETETT kétadatteres** UX-et tartalmazza, és felülírandó; nem szolgálhat jóváhagyott Home implementációs forrásként. A #175 v42-es Saját/Közös felület is csak átmeneti technikai ág. A chat-prototípus még nem lett az Android-alkalmazásba integrálva. Adatmodell-váltás és készülékes validáció külön kötelező.
+
+---
+
 ## 2026-10-26 – Home v40 utódterv: biztonsági és vizuális korrekciók
 
 Az [egységes Home HTML](candidates/home.html) a személyes és családi megjelenítés **kizárólag dizájn-/interakciós demója**, nem tesztelt kétfiókos szinkronizáció. A kezdőlapon egyetlen `Home` cím jelenik meg a közös ikonsor alatt; a Saját / Közös családi kontextus mindig látható. A fölösleges leírások rövidültek.
