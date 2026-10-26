@@ -37,8 +37,11 @@ export async function refreshFreshOwnerSamsungWater({
       typeof session.read !== 'function' || typeof session.save !== 'function') {
     throw new Error('A Samsung vízfrissítéshez saját Water-fiók szükséges.')
   }
-  const owner = await session.assertOwner()
-  if (owner !== session.ownerId || !UUID.test(owner)) {
+  await session.assertOwner()
+  // Fresh Water assertOwner validates native auth but intentionally returns
+  // void. The pinned owner is the session.ownerId, never a returned value.
+  const owner = session.ownerId
+  if (!UUID.test(owner || '')) {
     throw new Error('Megváltozott a Grapes-fiók.')
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fromDate || '') ||
