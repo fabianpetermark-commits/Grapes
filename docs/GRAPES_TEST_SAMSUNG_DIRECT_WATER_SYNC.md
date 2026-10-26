@@ -102,3 +102,12 @@ https://developer.samsung.com/health/data/process.html
 
 No Drive, PROD, release, global migration, or automatic Health/YAZIO
 import changes are included.
+
+## TEST build handoff — 2026-10-26
+
+The developer confirmed that the Samsung Health SDK v1.1.0 ZIP is staged on a
+Google Drive share link and the GitHub Actions repository secret named
+`SAMSUNG_HEALTH_DATA_SDK_ZIP_URL` has been entered. This checkpoint triggers a
+fresh v32 TEST build without exposing the URL or SDK bytes in the public repo.
+The workflow must verify the SDK hashes, compile the native Samsung adapter,
+and produce a signed QA artifact before any install or device-PASS claim.
