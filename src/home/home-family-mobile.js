@@ -134,7 +134,7 @@ export function createHomeFamilyUI(root, {
       await settle(target, seq, session)
     } catch(error) {
       if (await valid(seq,session)) { show('A módosítás nem írható felül: ' + error.message,true); render() }
-    } finally { if(epoch===seq) busy=false }
+    } finally { if(epoch===seq) { busy=false; render() } }
   }
   async function settle(target,seq,session) {
     let problem=null, result=null
