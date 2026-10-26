@@ -86,7 +86,7 @@ try {
     assert.equal(await rootNode.locator('[data-household-family]').getByText('A saját tej').count(),0)
     await rootNode.locator('[data-household-tab="inventory"]').click()
     assert.ok((await rootNode.locator('[data-household-lots]').textContent()).includes('A saját tej'))
-    assert.equal((await rootNode.locator('[data-household-alert]').textContent()).includes('fióktárhely'),false)
+    assert.equal(await rootNode.locator('[data-household-alert]').evaluate(el=>el.classList.contains('is-error')),false,'Native family denial must not corrupt personal Home')
   }
   await home.locator('[data-household-tab="shopping"]').click()
   await home.locator('[data-household-add="shopping"]').click()
