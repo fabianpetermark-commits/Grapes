@@ -41,7 +41,7 @@ try {
     }}
   })
   const page=await ctx.newPage(),errors=[]
-  page.on('pageerror',e=>errors.push(e.message)
+  page.on('pageerror',e=>errors.push(e.message))
   await page.goto(url)
   async function openSamsung() {
     await page.locator('[data-nav="more"]').last().click()
