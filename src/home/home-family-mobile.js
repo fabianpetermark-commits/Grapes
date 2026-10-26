@@ -16,7 +16,7 @@ export function createHomeFamilyUI(root, {
   makeOutbox = createHomeFamilyOutbox,
 } = {}) {
   let native = null, outbox = null, household = null, households = []
-  let epoch = 0, busy = false, status = '', statusError = false
+  let epoch = 0, busy = false, status = '', statusError = false, inviteCode = ''
   root.innerHTML = '<div class="household-family-intro"><h2>Közös családi készlet</h2><p>A saját Home adatait nem osztjuk meg. Külön háztartási készlet és bevásárlólista, hitelesített családi jogosultságokkal.</p></div>' +
     '<div class="household-family-message" data-family-message role="status" aria-live="polite" hidden></div>' +
     '<div class="household-family-setup"><label>Háztartás<select data-family-select aria-label="Közös háztartás"></select></label>' +
@@ -64,6 +64,7 @@ export function createHomeFamilyUI(root, {
       '<article class="household-card"><strong>' + escape(item.name) + '</strong><p>' +
       escape(displayQuantity(item)) + ' · közös készlet</p></article>').join('') :
       '<div class="household-empty">Még nincs közös készlet.</div>'
+    const invitation = role === 'owner' ? '<details class="household-family-invites"><summary>Családtag meghívása</summary><p class="household-family-note">48 óráig érvényes szerkesztői meghívókód. Csak annak add tovább, akivel a közös készletet meg szeretnéd osztani.</p><button type="button" data-family-invite>Meghívókód létrehozása</button>' + (inviteCode ? '<label>Egyszer megjelenített meghívókód<input data-family-invite-code readonly aria-label="Másolható családi meghívókód" value="' + escape(inviteCode) + '"></label>' : '') + '</details>' : ''
     const shoppingHtml = shopping.length ? shopping.map(item =>
       '<article class="household-card"><strong>' + escape(item.name) + '</strong><p>' +
       escape(displayQuantity(item)) + ' · ' +
@@ -79,7 +80,7 @@ export function createHomeFamilyUI(root, {
       (conflict.length ? '<div class="household-family-warning" role="alert">Ütközés másik családtag változtatásával. A saját javaslat megőrizve; automatikus felülírás nincs. Kézi egyeztetés szükséges.</div>' : '') +
       (pending.length ? '<button type="button" data-family-retry>Függő művelet újrapróbálása</button>' : '') +
       (role === 'viewer' ? '<p class="household-family-note">Csak megtekintési jogosultság.</p>' : '') +
-      '<h3>Közös bevásárlólista</h3>' +
+      invitation + '<h3>Közös bevásárlólista</h3>' +
       (enabled ? '<form data-family-shopping><label>Termék neve<input name="name" required maxlength="160"></label><div class="household-fields"><label>Mennyiség<input name="quantity" type="number" min="0.001" step="any" required></label><label>Egység<select name="unit">' + Object.keys(UNITS).map(v => '<option value="' + escape(v) + '">' + escape(v) + '</option>').join('') + '</select></label></div><button type="submit">+ Közös listaelem</button></form>' : '') +
       shoppingHtml + '<h3>Közös készlet</h3>' +
       (enabled ? '<form data-family-stock><label>Élelmiszer<input name="name" required maxlength="160"></label><div class="household-fields"><label>Mennyiség<input name="quantity" type="number" min="0.001" step="any" required></label><label>Egység<select name="unit">' + Object.keys(UNITS).map(v => '<option value="' + escape(v) + '">' + escape(v) + '</option>').join('') + '</select></label></div><button type="submit">+ Készlet rögzítése</button></form>' : '') + stockHtml
@@ -89,7 +90,7 @@ export function createHomeFamilyUI(root, {
     if (!session || busy) return
     busy = true
     try {
-      if (!householdId) { household = null; render(); return }
+      if (!householdId) { household = null; inviteCode = ''; render(); return }
       if (!households.some(x => x.householdId === householdId))
         throw new Error('Ez a háztartás nem szerepel a hitelesített listádban.')
       const current = await outbox.cached(householdId)
@@ -102,6 +103,7 @@ export function createHomeFamilyUI(root, {
       if (!snapshot) throw networkError || Error('Nincs hitelesített családi pillanatkép.')
       const jobs = await outbox.list(householdId)
       if (!await valid(seq, session)) return
+      if (household?.householdId !== householdId) inviteCode = ''
       household = { householdId, revision:snapshot.revision, role:snapshot.role, state:snapshot.state, jobs }
       show(networkError ? 'Csak a korábbi, fiókhoz kötött mentés látszik. ' + networkError.message : '')
       render()
@@ -170,6 +172,19 @@ export function createHomeFamilyUI(root, {
       try { await settle(household.householdId,seq,session) }
       catch(error) { if(await valid(seq,session))show(error.message,true) }
       finally { if(epoch===seq) { busy=false; render() } }
+    } else if(button.hasAttribute('data-family-invite') && household?.role === 'owner' && !busy) {
+      busy=true
+      const seq=epoch, session=native
+      try {
+        const invite=await session.gateway.createInvite(household.householdId,'editor',48)
+        if(!await valid(seq,session))return
+        if(typeof invite.inviteCode !== 'string' || !/^[0-9a-f]{64}$/i.test(invite.inviteCode))
+          throw Error('A meghívókód nem ellenőrizhető.')
+        inviteCode=invite.inviteCode
+        render()
+        show('A meghívókód elkészült. Csak a kiválasztott családtagnak add át.')
+      } catch(error) { if(await valid(seq,session))show(error.message,true) }
+      finally {if(epoch===seq){busy=false;render()}}
     } else if(button.dataset.familyCheck && household) {
       const row=household.state.shopping.find(x=>x.id===button.dataset.familyCheck)
       if(row) await propose('ShoppingItemStatusChanged',{id:row.id,status:row.status==='checked'?'planned':'checked'})
@@ -199,7 +214,7 @@ export function createHomeFamilyUI(root, {
   return Object.freeze({
     async load(expectedOwner) {
       const seq=++epoch
-      native=null; outbox=null; household=null; households=[]
+      native=null; outbox=null; household=null; households=[];inviteCode=''
       root.hidden=false
       box.innerHTML='<div class="household-empty">Családi Home-kapcsolat ellenőrzése…</div>'
       show('')
@@ -220,7 +235,7 @@ export function createHomeFamilyUI(root, {
       }
     },
     clear() {
-      epoch++;native=null;outbox=null;household=null;households=[];busy=false
+      epoch++;native=null;outbox=null;household=null;households=[];inviteCode='';busy=false
       show('')
       box.replaceChildren()
       root.hidden=true
