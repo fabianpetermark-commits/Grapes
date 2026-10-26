@@ -174,6 +174,21 @@ if (waterHealthSheet) {
   waterButton.title = 'Health Connect vízbejegyzések kézi importálása saját Water-naplóba'
   $('[data-health-sync]').closest('.sync-provider').append(waterButton)
 }
+let activeWaterImportSource = 'health'
+const samsungWaterFileInput = FRESH_OWNER_MODULES ? document.createElement('input') : null
+if (samsungWaterFileInput) {
+  samsungWaterFileInput.type = 'file'
+  samsungWaterFileInput.accept = '.csv,text/csv'
+  samsungWaterFileInput.hidden = true
+  samsungWaterFileInput.dataset.samsungWaterCsvInput = ''
+  document.querySelector('.phone').append(samsungWaterFileInput)
+  const samsungButton = $('[data-samsung-sync-action]')
+  samsungButton.textContent = 'CSV-import'
+  samsungButton.title = 'Samsung Health személyes adatok → water_intake CSV → saját Water'
+  const description = samsungButton.closest('.sync-provider')?.querySelector('div > span')
+  if (description) description.textContent =
+    'Vízadatok a Samsung Health exportált CSV-fájljából'
+}
 document.addEventListener('grapes:food-subtitle', event => {
   if (activePage === 'food') subtitle.textContent = event.detail?.subtitle || 'Mai áttekintés'
 })
@@ -417,9 +432,20 @@ function openSheet(node) {
   sheetBackdrop.classList.add('is-open')
 }
 
-function openWaterHealthSheet() {
+function openWaterHealthSheet(provider = 'health') {
   if (!FRESH_OWNER_MODULES || !waterHealthSheet) return
+  activeWaterImportSource = provider === 'samsung' ? 'samsung' : 'health'
   openSheet(waterHealthSheet)
+  const samsung = activeWaterImportSource === 'samsung'
+  $('[data-water-health-sheet] h2').textContent = samsung
+    ? 'Samsung Health · Vízexport' : 'Health Connect · Víznapló'
+  $('[data-water-health-sheet] p').textContent = samsung
+    ? 'Válaszd a Samsung Health személyesadat-exportjának com.samsung.health.water_intake…csv fájlját. Csak a saját Water-fiókodba, külön jóváhagyással mentünk. A közvetlen Samsung SDK ebben a TEST-csomagban nincs telepítve.'
+    : 'Csak a saját Water-naplódba mentünk, külön jóváhagyás után. Az étkezési adatok nem kerülnek ide, az automatikus import kikapcsolva.'
+  $('[data-water-health-from]').closest('.sheet-form').hidden = samsung
+  $('[data-water-health-from]').closest('.sheet-form').style.display = samsung ? 'none' : ''
+  $('[data-water-health-read]').textContent = samsung
+    ? 'Samsung víz-CSV kiválasztása' : 'Vízadatok előnézete'
   const now = new Date()
   const from = new Date(now)
   from.setFullYear(from.getFullYear() - 1)
@@ -433,7 +459,7 @@ function openWaterHealthSheet() {
   $('[data-water-health-confirm]').hidden = true
 }
 
-async function readWaterHealthPreview() {
+async function readWaterHealthPreview(file = null) {
   if (!FRESH_OWNER_MODULES || !waterHealthSheet?.classList.contains('is-open')) return
   // A new user request invalidates the prior preview before opening Android.
   waterHealthPreview = null
@@ -448,8 +474,15 @@ async function readWaterHealthPreview() {
   status.textContent = 'A saját Water-fiók ellenőrzése…'
   try {
     const fromDate = $('[data-water-health-from]').value
-    if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(fromDate)) {
+    const samsung = activeWaterImportSource === 'samsung'
+    if (samsung !== Boolean(file)) {
+      throw new Error('A Samsung Health importjához víz-CSV kiválasztása szükséges.')
+    }
+    if (!samsung && !/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(fromDate)) {
       throw new Error('Válassz kezdődátumot.')
+    }
+    if (file && file.size > 15 * 1024 * 1024) {
+      throw new Error('A Samsung víz-CSV legfeljebb 15 MB lehet.')
     }
     const [{ openGrapesTestFreshWater }, { prepareFreshOwnerWaterHydration }] =
       await Promise.all([
@@ -458,8 +491,13 @@ async function readWaterHealthPreview() {
       ])
     const session = await openGrapesTestFreshWater({ enabled: true })
     await session.assertOwner()
-    status.textContent = 'Health Connect engedélyek és vízadatok beolvasása…'
-    const source = await readAndroidHealthExport(fromDate)
+    status.textContent = samsung
+      ? 'Samsung Health vízexport ellenőrzése…'
+      : 'Health Connect engedélyek és vízadatok beolvasása…'
+    const source = samsung
+      ? (await import('./water/grapes-test-samsung-water-csv.js'))
+          .parseSamsungWaterCsv(await file.text(), { filename: file.name })
+      : await readAndroidHealthExport(fromDate)
     await session.assertOwner()
     const own = await session.read()
     const preview = prepareFreshOwnerWaterHydration(source, {
@@ -2297,10 +2335,24 @@ $('[data-water-legacy-claim-button]')?.addEventListener('click', async event => 
 })
 
 $('[data-health-sync]').addEventListener('click', () => openSyncImport('health'))
-$('[data-water-health-open]')?.addEventListener('click', openWaterHealthSheet)
-$('[data-water-health-read]')?.addEventListener('click', () => readWaterHealthPreview().catch(() => {}))
+$('[data-water-health-open]')?.addEventListener('click', () => openWaterHealthSheet())
+$('[data-water-health-read]')?.addEventListener('click', () => {
+  if (FRESH_OWNER_MODULES && activeWaterImportSource === 'samsung') {
+    samsungWaterFileInput?.click()
+    return
+  }
+  readWaterHealthPreview().catch(() => {})
+})
+$('[data-samsung-water-csv-input]')?.addEventListener('change', event => {
+  const file = event.currentTarget.files?.[0]
+  event.currentTarget.value = ''
+  if (file && activeWaterImportSource === 'samsung') {
+    readWaterHealthPreview(file).catch(() => {})
+  }
+})
 $('[data-water-health-confirm]')?.addEventListener('click', () => confirmWaterHealthPreview().catch(() => {}))
-$$('[data-samsung-sync-action]').forEach(button => button.addEventListener('click', () => openSyncImport('samsung')))
+$$('[data-samsung-sync-action]').forEach(button => button.addEventListener('click', () =>
+  FRESH_OWNER_MODULES ? openWaterHealthSheet('samsung') : openSyncImport('samsung')))
 const yazioApiPanel = createYazioApiPanel({ openSheet, closeSheet,
   importBundle: source => mobileFood.importYazio(source), openFileImport: () => openSyncImport('yazio'),
   getProfileKey: () => { const account = getGrapesAccount(); return account?.id || account?.email || 'local-food-profile' } })
