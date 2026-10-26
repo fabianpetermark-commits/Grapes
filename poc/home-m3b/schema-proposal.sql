@@ -1,5 +1,6 @@
--- Home M3/B proposal, 2026-10-25. APPLY ONLY TO AN EPHEMERAL LOCAL
--- SUPABASE TEST STACK AFTER REVIEW. No hosted TEST/PROD migration.
+-- Grapes Home M3/B TEST migration, reviewed after local three-user Auth/RLS/CAS PASS.
+-- Authorized for the dedicated Grapes TEST project ONLY after remote preflight.
+-- Never apply to Grapes PROD or any unrelated Supabase project.
 -- Expose schema "api" for RPC; never expose grapes_home_private.
 create schema if not exists api;
 create schema if not exists grapes_home_private;
