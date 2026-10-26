@@ -1,0 +1,153 @@
+name: Grapes Home TEST v42 signed remote-proof candidate (NO RELEASE)
+
+on:
+  push:
+    branches:
+      - feature/grapes-home-v42-direct-scope-navigation-20261026
+    paths:
+      - '.github/workflows/grapes-home-v42-family-ux-apk.yml'
+      - 'src/home/**'
+      - 'src/android-mobile-shell.js'
+      - 'android-health-connect-poc/**'
+      - 'poc/home-m3b/**'
+      - 'tests/home-*.js'
+      - 'tests/home-*.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-home-v42-hosted-proof
+  cancel-in-progress: false
+
+jobs:
+  test-native-sign-archive-only:
+    if: github.repository == 'fabianpetermark-commits/Grapes' && github.ref == 'refs/heads/feature/grapes-test-home-direct-scope-clarity-20261026'
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    env:
+      GRAPES_VERSION_CODE: '42'
+      GRAPES_VERSION_NAME: '0.9.41-home-direct-scope'
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GRAPES_TEST_AUTH_ENABLED: 'true'
+      VITE_GRAPES_TEST_DATA_ENABLED: 'true'
+      VITE_GRAPES_TEST_FRESH_OWNER_MODULES_ENABLED: 'true'
+      VITE_GRAPES_TEST_HOME_FAMILY_ENABLED: 'true'
+      VITE_GRAPES_TEST_SUPABASE_URL: https://aighqtqjlzirlokxwupt.supabase.co
+      VITE_GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY: ${{ vars.GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY }}
+      VITE_GRAPES_TEST_HEALTH_SYNC_ENABLED: 'false'
+      VITE_GRAPES_TEST_FOOD_LOCAL_CAS_ENABLED: 'false'
+      VITE_GRAPES_TEST_WATER_PROFILE_ENABLED: 'false'
+      VITE_GRAPES_TEST_LEGACY_BACKUP_ENABLED: 'false'
+      VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
+      VITE_GOOGLE_APP_ID: '991532871119'
+      VITE_GOOGLE_PICKER_API_KEY: ${{ secrets.GOOGLE_PICKER_API_KEY }}
+      VITE_GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
+      VITE_EBOOK_EPUB_WRITE_ENABLED: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate pinned TEST source and flags
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git merge-base --is-ancestor f14127b72267db1c77c1751bded5027352837202 HEAD
+          test "$VITE_GRAPES_TEST_SUPABASE_URL" = "https://aighqtqjlzirlokxwupt.supabase.co"
+          case "$VITE_GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY" in
+            sb_publishable_????????????????*) echo 'TEST key present';;
+            *) echo '::error::TEST key missing'; exit 1;;
+          esac
+          test "$VITE_GRAPES_TEST_HOME_FAMILY_ENABLED" = true
+          test "$VITE_GRAPES_TEST_HEALTH_SYNC_ENABLED" = false
+          test "$VITE_GRAPES_TEST_LEGACY_BACKUP_ENABLED" = false
+          test -f src/home/home-family-mobile.js
+          test -f src/home/home-family-native.js
+      - name: Live TEST API boundary probe (no users/data written)
+        run: |
+          set -euo pipefail
+          url="$VITE_GRAPES_TEST_SUPABASE_URL/rest/v1/rpc/home_m3b_list_households"
+          status=$(curl --max-time 20 -sS -o "$RUNNER_TEMP/m3b-anon.json" -w '%{http_code}' \
+            -H "apikey: $VITE_GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY" \
+            -H "Content-Profile: api" -H "Accept-Profile: api" \
+            -H "Content-Type: application/json" -d '{}' "$url")
+          echo "Anon family RPC status: $status"
+          case "$status" in
+            401|403) ;;
+            *) echo "::error::Anon RPC must be rejected; got $status"; exit 1;;
+          esac
+          if grep -Eq 'PGRST106|PGRST202' "$RUNNER_TEMP/m3b-anon.json"; then
+            echo '::error::RPC schema is missing or unexposed'; exit 1
+          fi
+          private_status=$(curl --max-time 20 -sS -o "$RUNNER_TEMP/m3b-private.json" -w '%{http_code}' \
+            -H "apikey: $VITE_GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY" \
+            -H "Content-Profile: grapes_home_private" \
+            -H "Content-Type: application/json" -d '{}' "$url")
+          if [ "$private_status" != 406 ] || ! grep -Fq 'PGRST106' "$RUNNER_TEMP/m3b-private.json"; then
+            echo "::error::Private schema exposure cannot be ruled out (HTTP $private_status)"; exit 1
+          fi
+          echo 'PASS: hosted TEST family RPC exposed only through authenticated API, private schema inaccessible'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Domain + browser regression
+        run: |
+          npm test
+          npm run build:android-web
+          node tests/grapes-test-fresh-owner-home.browser.mjs
+          node tests/grapes-test-fresh-owner-home-mobile.browser.mjs
+          node tests/home-replenishment-mobile.browser.mjs
+          node tests/home-family-mobile-integration.browser.mjs
+          node tests/home-m3b-family-outbox.browser.mjs
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK 36
+        run: |
+          sdkmanager=$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | sort -V | tail -1)
+          "$sdkmanager" "platforms;android-36" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.11.1
+      - name: Compile and test native QA bridge
+        run: gradle --project-dir android-health-connect-poc :app:testQaUnitTest
+      - name: Sign genuine QA APK with the existing TEST certificate
+        env:
+          ANDROID_TEST_KEYSTORE_BASE64: ${{ secrets.ANDROID_TEST_KEYSTORE_BASE64 }}
+          ANDROID_TEST_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_TEST_KEYSTORE_PASSWORD }}
+          ANDROID_TEST_KEY_ALIAS: ${{ secrets.ANDROID_TEST_KEY_ALIAS }}
+          ANDROID_TEST_KEY_PASSWORD: ${{ secrets.ANDROID_TEST_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$ANDROID_TEST_KEYSTORE_BASE64"
+          test -n "$ANDROID_TEST_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_TEST_KEY_ALIAS"
+          test -n "$ANDROID_TEST_KEY_PASSWORD"
+          export ANDROID_TEST_KEYSTORE_PATH="$RUNNER_TEMP/grapes-home-v42-test.p12"
+          trap 'rm -f "$ANDROID_TEST_KEYSTORE_PATH"' EXIT
+          printf '%s' "$ANDROID_TEST_KEYSTORE_BASE64" | base64 --decode > "$ANDROID_TEST_KEYSTORE_PATH"
+          chmod 600 "$ANDROID_TEST_KEYSTORE_PATH"
+          gradle --project-dir android-health-connect-poc :app:assembleQa
+          src=android-health-connect-poc/app/build/outputs/apk/qa/app-qa.apk
+          test -s "$src"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$src" | grep -F "package: name='hu.grapes.healthconnect.test'"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$src" | grep -F "versionCode='42'"
+          cert=$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$src")
+          printf '%s\n' "$cert" | grep -Fi 'Signer #1 certificate SHA-256 digest: cc9dc997fa4bff3845884afd2f011efe939c02806f91393a1ddb0455b6a2ff33'
+          mv "$src" grapes-home-v42-test-signed.apk
+          sha256sum grapes-home-v42-test-signed.apk > grapes-home-v42-test-signed.apk.sha256
+          sha256sum -c grapes-home-v42-test-signed.apk.sha256
+      - name: Archive seven-day TEST APK only; NO GitHub release or in-app update
+        uses: actions/upload-artifact@v4
+        with:
+          name: grapes-home-v42-signed-test-only
+          path: |
+            grapes-home-v42-test-signed.apk
+            grapes-home-v42-test-signed.apk.sha256
+          if-no-files-found: error
+          retention-days: 7
