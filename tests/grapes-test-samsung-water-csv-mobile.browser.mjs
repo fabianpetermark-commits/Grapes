@@ -41,14 +41,8 @@ try {
     }}
   })
   const page=await ctx.newPage(),errors=[]
-  page.on('pageerror',e=>{errors.push(e.message);console.log('SAMSUNG CSV PAGEERROR',e.message)})
+  page.on('pageerror',e=>errors.push(e.message)
   await page.goto(url)
-  await page.waitForTimeout(700)
-  console.log('SAMSUNG CSV DOM',await page.evaluate(()=>({
-    loginHidden:document.querySelector('#login')?.hidden,
-    appHidden:document.querySelector('#app')?.hidden,
-    navVisible:[...document.querySelectorAll('[data-nav="more"]')].map(x=>({display:getComputedStyle(x).display,html:x.outerHTML.slice(0,90)})),
-  })))
   async function openSamsung() {
     await page.locator('[data-nav="more"]').last().click()
     await page.locator('[data-page="more"] [data-nav="sync"]').click()
