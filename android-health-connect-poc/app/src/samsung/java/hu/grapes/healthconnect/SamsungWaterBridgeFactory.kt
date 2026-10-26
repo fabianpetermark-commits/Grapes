@@ -26,6 +26,10 @@ private class SamsungSdkWaterBridge(context: Context) : SamsungWaterBridge {
     override val availabilityMessage =
         "Samsung Health Data SDK elérhető. Samsung Health 6.30.2+ és fejlesztői/partner hozzáférés szükséges."
 
+    override suspend fun hasReadPermission(): Boolean =
+        runCatching { store.getGrantedPermissions(setOf(readPermission)).contains(readPermission) }
+            .getOrDefault(false)
+
     override suspend fun requestReadPermission(activity: Activity): Boolean {
         val requested = setOf(readPermission)
         return try {
