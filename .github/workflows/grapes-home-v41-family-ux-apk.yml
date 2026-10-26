@@ -5,7 +5,7 @@ on:
     branches:
       - feature/grapes-test-home-family-ux-clarity-20261026
     paths:
-      - '.github/workflows/grapes-home-v41-hosted-qa.yml'
+      - '.github/workflows/grapes-home-v41-family-ux-apk.yml'
       - 'src/home/**'
       - 'src/android-mobile-shell.js'
       - 'android-health-connect-poc/**'
