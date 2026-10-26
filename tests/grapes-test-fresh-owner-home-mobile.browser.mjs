@@ -78,6 +78,16 @@ try {
   await page.waitForFunction(() =>
     document.querySelector('[data-household-lots]')?.textContent.includes('A saját tej'),
     {timeout:15000})
+  if (process.env.VITE_GRAPES_TEST_HOME_FAMILY_ENABLED === 'true') {
+    // The JS flag alone may reveal an entry, but cannot bypass Kotlin native RPC.
+    await openExtra('family')
+    await rootNode.locator('[data-household-family]').getByText(
+      'A családi Home nem aktív. A saját Home tovább működik.').waitFor()
+    assert.equal(await rootNode.locator('[data-household-family]').getByText('A saját tej').count(),0)
+    await rootNode.locator('[data-household-tab="inventory"]').click()
+    assert.ok((await rootNode.locator('[data-household-lots]').textContent()).includes('A saját tej'))
+    assert.equal((await rootNode.locator('[data-household-alert]').textContent()).includes('fióktárhely'),false)
+  }
   await home.locator('[data-household-tab="shopping"]').click()
   await home.locator('[data-household-add="shopping"]').click()
   await form.locator('[name="name"]').fill('A saját kenyér')
