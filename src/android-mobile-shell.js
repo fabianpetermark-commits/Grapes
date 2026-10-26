@@ -15,7 +15,7 @@ import { createYazioApiPanel } from './food/yazio-api-panel.js'
 import { registerFoodSharing, sendMealShare, sendRecipeShare } from './food/food-sharing-client.js'
 import { hydrateMobileIcons, mobileIconSvg } from './android-mobile-icons.js'
 import { createHomeMobile } from './home/home-mobile.js'
-import { getAndroidAppUpdate, getAndroidTestAuthEnabled, getAndroidTestAuthSubject, requestAndroidTestAccountSignOut, installAndroidAppUpdate, isGrapesAndroidApp, openAndroidHealthConnectSettings, readAndroidHealthExport, saveAndroidJsonBackup, saveAndroidVerifiedHealthBackup } from './android-bridge.js'
+import { getAndroidAppUpdate, getAndroidTestAuthEnabled, getAndroidTestAuthSubject, requestAndroidTestAccountSignOut, installAndroidAppUpdate, isGrapesAndroidApp, openAndroidHealthConnectSettings, readAndroidHealthExport, readAndroidSamsungHealthExport, getAndroidSamsungWaterStatus, saveAndroidJsonBackup, saveAndroidVerifiedHealthBackup } from './android-bridge.js'
 import { waterBackupToJson, waterBackupFromJson, readWaterStoreStrict, waterBackupSummary,
   writeWaterStoreVerified, restoreWaterBackupVerified } from './water/water-backup.js'
 import { waterProfileKey, readProfileWater, inspectLegacyWater, claimLegacyWater,
@@ -175,6 +175,15 @@ if (waterHealthSheet) {
   $('[data-health-sync]').closest('.sync-provider').append(waterButton)
 }
 let activeWaterImportSource = 'health'
+let samsungDirectReadInFlight = false
+let samsungAutoBusy = false
+let samsungAutoLastAttempt = 0
+let samsungAutoLastOwner = ''
+let samsungSdkStatus = { available: false, permitted: false }
+const SAMSUNG_AUTO_MIN_INTERVAL_MS = 30 * 60 * 1000
+const samsungAutoToggle = FRESH_OWNER_MODULES ? document.createElement('label') : null
+const samsungAutoStatus = FRESH_OWNER_MODULES ? document.createElement('span') : null
+const samsungCsvFallback = FRESH_OWNER_MODULES ? document.createElement('button') : null
 const samsungWaterFileInput = FRESH_OWNER_MODULES ? document.createElement('input') : null
 if (samsungWaterFileInput) {
   samsungWaterFileInput.type = 'file'
@@ -188,6 +197,26 @@ if (samsungWaterFileInput) {
   const description = samsungButton.closest('.sync-provider')?.querySelector('div > span')
   if (description) description.textContent =
     'Vízadatok a Samsung Health exportált CSV-fájljából'
+  const card = samsungButton.closest('.sync-provider')
+  const info = card.querySelector('div')
+  samsungAutoToggle.className = 'sync-provider__auto'
+  samsungAutoToggle.dataset.samsungAutoLabel = ''
+  samsungAutoToggle.hidden = true
+  samsungAutoToggle.style.display = 'none'
+  const input = document.createElement('input')
+  input.type = 'checkbox'
+  input.dataset.samsungAutoWater = ''
+  samsungAutoToggle.append(input, ' Automatikus vízfrissítés')
+  info.append(samsungAutoToggle)
+  samsungAutoStatus.className = 'sync-provider__status'
+  samsungAutoStatus.dataset.samsungWaterStatus = ''
+  samsungAutoStatus.textContent = 'Közvetlen Samsung Health SDK ellenőrzése…'
+  info.append(samsungAutoStatus)
+  samsungCsvFallback.type = 'button'
+  samsungCsvFallback.dataset.samsungCsvFallback = ''
+  samsungCsvFallback.textContent = 'CSV'
+  samsungCsvFallback.hidden = true
+  card.append(samsungCsvFallback)
 }
 document.addEventListener('grapes:food-subtitle', event => {
   if (activePage === 'food') subtitle.textContent = event.detail?.subtitle || 'Mai áttekintés'
@@ -434,18 +463,24 @@ function openSheet(node) {
 
 function openWaterHealthSheet(provider = 'health') {
   if (!FRESH_OWNER_MODULES || !waterHealthSheet) return
-  activeWaterImportSource = provider === 'samsung' ? 'samsung' : 'health'
+  activeWaterImportSource = provider === 'samsung-direct' ? 'samsung-direct'
+    : provider === 'samsung' ? 'samsung' : 'health'
   openSheet(waterHealthSheet)
-  const samsung = activeWaterImportSource === 'samsung'
-  $('[data-water-health-sheet] h2').textContent = samsung
-    ? 'Samsung Health · Vízexport' : 'Health Connect · Víznapló'
-  $('[data-water-health-sheet] p').textContent = samsung
-    ? 'Válaszd a Samsung Health személyesadat-exportjának com.samsung.health.water_intake…csv fájlját. Csak a saját Water-fiókodba, külön jóváhagyással mentünk. A közvetlen Samsung SDK ebben a TEST-csomagban nincs telepítve.'
-    : 'Csak a saját Water-naplódba mentünk, külön jóváhagyás után. Az étkezési adatok nem kerülnek ide, az automatikus import kikapcsolva.'
-  $('[data-water-health-from]').closest('.sheet-form').hidden = samsung
-  $('[data-water-health-from]').closest('.sheet-form').style.display = samsung ? 'none' : ''
-  $('[data-water-health-read]').textContent = samsung
-    ? 'Samsung víz-CSV kiválasztása' : 'Vízadatok előnézete'
+  const samsungCsv = activeWaterImportSource === 'samsung'
+  const direct = activeWaterImportSource === 'samsung-direct'
+  $('[data-water-health-sheet] h2').textContent = direct
+    ? 'Samsung Health · Közvetlen vízimport'
+    : samsungCsv ? 'Samsung Health · Vízexport' : 'Health Connect · Víznapló'
+  $('[data-water-health-sheet] p').textContent = direct
+    ? 'A Samsung Health valódi vízbejegyzéseit csak most, a jóváhagyásod után olvassuk. Mentés kizárólag a saját Grapes Water-naplóba történik.'
+    : samsungCsv
+      ? 'Válaszd a Samsung Health személyesadat-exportjának com.samsung.health.water_intake…csv fájlját. Csak a saját Water-fiókodba, külön jóváhagyással mentünk.'
+      : 'Csak a saját Water-naplódba mentünk, külön jóváhagyás után. Az étkezési adatok nem kerülnek ide, az automatikus import kikapcsolva.'
+  $('[data-water-health-from]').closest('.sheet-form').hidden = samsungCsv
+  $('[data-water-health-from]').closest('.sheet-form').style.display = samsungCsv ? 'none' : ''
+  $('[data-water-health-read]').textContent = direct
+    ? 'Samsung-vízadatok beolvasása'
+    : samsungCsv ? 'Samsung víz-CSV kiválasztása' : 'Vízadatok előnézete'
   const now = new Date()
   const from = new Date(now)
   from.setFullYear(from.getFullYear() - 1)
@@ -475,8 +510,9 @@ async function readWaterHealthPreview(file = null) {
   try {
     const fromDate = $('[data-water-health-from]').value
     const samsung = activeWaterImportSource === 'samsung'
+    const direct = activeWaterImportSource === 'samsung-direct'
     if (samsung !== Boolean(file)) {
-      throw new Error('A Samsung Health importjához víz-CSV kiválasztása szükséges.')
+      throw new Error('A Samsung Health importjához a megfelelő forrás szükséges.')
     }
     if (!samsung && !/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(fromDate)) {
       throw new Error('Válassz kezdődátumot.')
@@ -491,13 +527,20 @@ async function readWaterHealthPreview(file = null) {
       ])
     const session = await openGrapesTestFreshWater({ enabled: true })
     await session.assertOwner()
-    status.textContent = samsung
-      ? 'Samsung Health vízexport ellenőrzése…'
-      : 'Health Connect engedélyek és vízadatok beolvasása…'
-    const source = samsung
-      ? (await import('./water/grapes-test-samsung-water-csv.js'))
-          .parseSamsungWaterCsv(await file.text(), { filename: file.name })
-      : await readAndroidHealthExport(fromDate)
+    status.textContent = direct
+      ? 'Samsung Health olvasási engedély és vízadatok lekérése…'
+      : samsung ? 'Samsung Health vízexport ellenőrzése…'
+        : 'Health Connect engedélyek és vízadatok beolvasása…'
+    if (direct) samsungDirectReadInFlight = true
+    let source
+    try {
+      source = direct ? await readAndroidSamsungHealthExport(fromDate)
+        : samsung ? (await import('./water/grapes-test-samsung-water-csv.js'))
+            .parseSamsungWaterCsv(await file.text(), { filename: file.name })
+          : await readAndroidHealthExport(fromDate)
+    } finally {
+      if (direct) samsungDirectReadInFlight = false
+    }
     await session.assertOwner()
     const own = await session.read()
     const preview = prepareFreshOwnerWaterHydration(source, {
