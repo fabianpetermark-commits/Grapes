@@ -56,6 +56,7 @@ try {
         },
         readAttempt:async(op)=>QA.attempts.get(op)||null,
         create:async()=>{throw Error('unneeded')},
+        createInvite:async()=>({inviteCode:'a'.repeat(64),inviteId:'00000000-0000-4000-8000-000000000099',role:'editor'}),
         acceptInvite:async()=>{throw Error('unneeded')},
       }
       return {ownerId:owner, gateway,
@@ -71,6 +72,9 @@ try {
   },{A,H})
   const panel=page.locator('[data-household-family]')
   await panel.locator('[data-family-select]').selectOption(H)
+  await panel.locator('[data-family-invite]').count().then(n=>assert.equal(n,1))
+  await panel.locator('[data-family-invite]').click()
+  assert.equal(await panel.locator('[data-family-invite-code]').inputValue(),'a'.repeat(64))
   await panel.locator('[data-family-shopping] [name=name]').fill('Tej')
   await panel.locator('[data-family-shopping] [name=quantity]').fill('2')
   await panel.locator('[data-family-shopping] [name=unit]').selectOption('l')
@@ -120,6 +124,7 @@ try {
   await panel.locator('[data-family-select]').selectOption(H)
   await panel.getByText('Csak megtekintési jogosultság.').waitFor()
   assert.equal(await panel.locator('[data-family-shopping]').count(),0)
+  assert.equal(await panel.locator('[data-family-invite-code]').count(),0,'Never carry owner A invite token into viewer B')
   assert.equal(await panel.locator('[data-family-retry]').count(),0)
   assert.equal(await panel.getByText('Rizs',{exact:true}).count(),0)
   assert.equal(await page.evaluate(()=>window.familyQA.QA.remote.shopping.length),2)
