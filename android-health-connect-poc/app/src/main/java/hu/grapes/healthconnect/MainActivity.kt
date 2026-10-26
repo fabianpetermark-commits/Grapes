@@ -528,12 +528,32 @@ class MainActivity : ComponentActivity() {
                 if (from.isAfter(LocalDate.now())) return sendError(requestId, "Jövőbeli kezdődátum nem választható.")
                 readHealthData(from, requestId)
             }
-            "readSamsungHealthData" -> {
+            "getSamsungWaterStatus" -> {
+                if (isTestQa && testGate.subject(isTrustedTestAppPage()) == null) {
+                    sendError(requestId, "A Grapes-fiók nem ellenőrizhető.")
+                } else lifecycleScope.launch {
+                    val available = samsungWaterBridge.available
+                    val granted = if (available) samsungWaterBridge.hasReadPermission() else false
+                    sendResult(requestId, JSONObject().apply {
+                        put("available", available)
+                        put("permitted", granted)
+                        put("reason", if (available) "" else samsungWaterBridge.availabilityMessage)
+                    }.toString())
+                }
+            }
+            "readSamsungHealthData", "readSamsungHealthDataSilent" -> {
+                if (isTestQa && testGate.subject(isTrustedTestAppPage()) == null) {
+                    return sendError(requestId, "A Grapes-fiók nem ellenőrizhető.")
+                }
                 val fromDate = message.optJSONArray("args")?.optString(0).orEmpty()
                 val from = runCatching { LocalDate.parse(fromDate) }.getOrElse {
                     return sendError(requestId, "Érvénytelen kezdődátum.")
                 }
-                readSamsungHealthData(from, requestId)
+                if (from.isAfter(LocalDate.now()) || from.isBefore(LocalDate.now().minusYears(6))) {
+                    return sendError(requestId, "Érvénytelen Samsung vízadat-időszak.")
+                }
+                readSamsungHealthData(from, requestId,
+                    allowPermissionRequest = message.optString("method") == "readSamsungHealthData")
             }
             "openHealthConnectSettings" -> openHealthConnectSettings(requestId)
             "authorizeGoogleDrive" -> authorizeGoogleDrive(
@@ -810,14 +830,25 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun readSamsungHealthData(from: LocalDate, requestId: String) {
+    private fun readSamsungHealthData(
+        from: LocalDate,
+        requestId: String,
+        allowPermissionRequest: Boolean = true
+    ) {
+        val pinnedOwner = if (isTestQa) testGate.subject(isTrustedTestAppPage()) else null
         lifecycleScope.launch {
             runCatching {
                 check(samsungWaterBridge.available) { samsungWaterBridge.availabilityMessage }
-                check(samsungWaterBridge.requestReadPermission(this@MainActivity)) {
-                    "A Samsung Health olvasási engedélyét nem kaptuk meg."
+                val granted = samsungWaterBridge.hasReadPermission() ||
+                    (allowPermissionRequest &&
+                        samsungWaterBridge.requestReadPermission(this@MainActivity))
+                check(granted) { "Samsung Health-vízolvasási engedély szükséges." }
+                val records = samsungWaterBridge.readWater(from)
+                if (isTestQa) check(pinnedOwner != null &&
+                    testGate.subject(isTrustedTestAppPage()) == pinnedOwner) {
+                    "A Grapes-fiók megváltozott a Samsung Health-olvasás alatt."
                 }
-                BridgeExport(java.time.Instant.now().toString(), samsungWaterBridge.readWater(from)).toJson()
+                BridgeExport(java.time.Instant.now().toString(), records).toJson()
             }.onSuccess { sendResult(requestId, it) }
                 .onFailure { sendError(requestId, it.message ?: it.javaClass.simpleName) }
         }
