@@ -155,9 +155,20 @@ jobs:
             esac
             zipfile="$RUNNER_TEMP/samsung-sdk-private.zip"
             trap 'rm -f "$zipfile"' EXIT
-            curl --fail --location --silent --show-error --retry 2 --max-time 150 \
-              --proto '=https' --proto-redir '=https' \
-              "$SAMSUNG_SDK_ZIP_URL" --output "$zipfile"
+            # Google Drive share pages are HTML, not binary ZIP downloads.
+            # The official gdown client resolves a share link and confirmation.
+            case "$SAMSUNG_SDK_ZIP_URL" in
+              https://drive.google.com/*|https://drive.usercontent.google.com/*)
+                python -m pip install --disable-pip-version-check --quiet 'gdown==5.2.2'
+                gdown --fuzzy --no-cookies --quiet \
+                  --output "$zipfile" "$SAMSUNG_SDK_ZIP_URL"
+                ;;
+              *)
+                curl --fail --location --silent --show-error --retry 2 --max-time 150 \
+                  --proto '=https' --proto-redir '=https' \
+                  "$SAMSUNG_SDK_ZIP_URL" --output "$zipfile"
+                ;;
+            esac
             test -s "$zipfile"
             # Official v1.1.0 archive supplied by the Grapes developer.
             printf '%s  %s\n' \
