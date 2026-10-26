@@ -68,7 +68,12 @@ test('a Samsung-víz adapter opcionális, csak olvasási jogosultságot kér', a
   assert.match(build, /samsung-health-data-api-1\.1\.0\.aar/);
   assert.match(source, /Permission\.of\(DataTypes\.WATER_INTAKE, AccessType\.READ\)/);
   assert.doesNotMatch(source, /AccessType\.WRITE/);
-  assert.match(source, /externalId = "samsunghealth:\$source:\$\{point\.uid\}"/);
+  assert.match(source, /externalId = "samsunghealth:\\$source:\\$id"/);
+  // The verified 1.1.0 SDK readData() response has a pageToken: never drop
+  // pages or save a water event without a stable unique external ID.
+  assert.match(source, /setPageSize\\(500\\)/);
+  assert.match(source, /setPageToken\\(token!!\\)/);
+  assert.match(source, /seenTokens\\.add/);
   assert.match(stub, /override val available = false/);
 });
 
