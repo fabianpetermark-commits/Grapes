@@ -471,6 +471,9 @@ async function refreshSamsungWaterUi() {
     const owner = await getAndroidTestAuthSubject()
     const status = await getAndroidSamsungWaterStatus()
     if (await getAndroidTestAuthSubject() !== owner) return
+    const { isSamsungAutoWaterEnabled } =
+      await import('./water/grapes-test-samsung-water-auto.js')
+    if (await getAndroidTestAuthSubject() !== owner) return
     samsungSdkStatus = status
     const direct = status.available
     button.textContent = direct ? 'Közvetlen' : 'CSV-import'
@@ -484,8 +487,6 @@ async function refreshSamsungWaterUi() {
     samsungAutoToggle.hidden = !direct
     samsungAutoToggle.style.display = direct ? '' : 'none'
     input.disabled = !status.permitted
-    const { isSamsungAutoWaterEnabled } = await import('./water/grapes-test-samsung-water-auto.js')
-    if (await getAndroidTestAuthSubject() !== owner) return
     input.checked = direct && isSamsungAutoWaterEnabled(localStorage, owner)
     samsungAutoStatus.textContent = !direct
       ? (status.reason || 'A Samsung Health SDK nincs ebben a TEST-verzióban.')
