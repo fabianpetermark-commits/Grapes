@@ -142,6 +142,24 @@ try {
         if(!q.fixed||q.count!==3||!q.standAlone||q.labels.some(x=>!x)||!q.separateLabel||
            q.heights.some(x=>x<44)||q.separateHeight<44)
           throw Error('Home Quick Action must be approved 3+1 fixed layout: '+JSON.stringify(q));
+        // These three are real one-tap operations, never a duplicate second navigation.
+        if(await page.locator('link[rel="stylesheet"]').count())
+          throw Error('Home single-file HTML must not require an external stylesheet');
+        await page.locator('[data-home-quick="add-shopping"]').click();
+        if(!(await page.locator('#h-dialog').isVisible()) ||
+           (await page.locator('#h-add-form').getAttribute('data-kind'))!=='shopping')
+          throw Error('Home shopping Quick Action did not open add form');
+        await page.locator('#h-cancel').click();
+        await page.locator('[data-home-quick="add-stock"]').click();
+        if(!(await page.locator('#h-dialog').isVisible()) ||
+           (await page.locator('#h-add-form').getAttribute('data-kind'))!=='stock')
+          throw Error('Home inventory Quick Action did not open add form');
+        await page.locator('#h-cancel').click();
+        await page.locator('[data-home-quick="manage"]').click();
+        if(!(await page.locator('#h-more').evaluate(n=>n.open)))
+          throw Error('Home household Quick Action did not open the management area');
+        await page.locator('#h-more summary').click();
+
         if(await page.locator('.h-head h2').innerText()!=='Home')
           throw Error('Home title should appear exactly once below icon rail');
         if(await page.locator('.header h1').count())
