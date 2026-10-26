@@ -43,15 +43,29 @@ from random GitHub mirrors.
 Get Samsung Health Data SDK v1.1.0 from the official page:
 https://developer.samsung.com/health/data/overview.html
 
-If you have permission to use the SDK internally, keep its unmodified
-`samsung-health-data-api-1.1.0.aar` file in a private file store and create
-a **short-lived, private HTTPS download URL**. Put ONLY that URL into a
-GitHub Actions repository secret named `SAMSUNG_HEALTH_DATA_SDK_AAR_URL`.
-The v32 workflow fetches the AAR on its **ephemeral** runner *before
-compiling the Android native adapter*, verifies the AAR ZIP and `classes.jar`,
-and only then creates the existing-key signed TEST artifact.
-No raw AAR is committed to Grapes or uploaded by this workflow as an
-artifact. The private link should expire after this TEST build.
+The developer supplied the official v1.1.0 ZIP directly in the ChatGPT
+conversation on 2026-10-26. Its exact verified SHA256 is
+`7a51440d840e099769b150c6414365bc43eecb61c01fa5bf6d0e54e09c2b663f`.
+The embedded `1.1.0/libs/samsung-health-data-api-1.1.0.aar` SHA256 is
+`f5d3d83cf00b97d0bb1b1db4da076e861eb1c3e6e704d89a34e68909d2f38654`.
+The official AAR 1.1.0 method signatures were verified from the uploaded
+`classes.jar`; the adapter also now paginates `DataResponse.pageToken`
+rather than silently truncating large histories.
+
+**CI handoff:** A ChatGPT conversation upload is not visible to a separate
+GitHub Actions runner. Keep the original ZIP in a private file store, create a
+**short-lived authenticated/private HTTPS download link**, and set the GitHub
+Actions repository secret `SAMSUNG_HEALTH_DATA_SDK_ZIP_URL` to that link.
+Alternatively, set `SAMSUNG_HEALTH_DATA_SDK_AAR_URL` to a private temporary
+download link for the embedded AAR. The workflow accepts either, validates
+the exact ZIP hash (when using the ZIP) and the AAR hash in both cases, then
+compiles the real Samsung native adapter and signs the QA APK with the
+existing TEST key. The download never appears in GitHub checkout, in the
+uploaded artifact, or as raw content in PRs.
+
+**Never commit/upload the unencrypted AAR to this public repository**, and
+do not put a live private download URL in workflow source or PR comments.
+Delete/expire the private URL after a successful build.
 
 GitHub Actions secrets have a 48-KB limit, so base64-encoding a multi-MB
 AAR into a repository secret would NOT work. The short-lived HTTPS URL
