@@ -129,8 +129,42 @@ try {
           throw Error('Recipe editor demo save failed');
       }
       if (item.path === 'candidates/home.html' && width === 390) {
+        // Home reference is one visual source for personal + shared household;
+        // verify no data crossing, and only known purchased qty enters stock.
+        const scope=page.locator('[data-home-scope]');
+        if(await scope.count()!==2)throw Error('Home household scope switch missing');
+        if(!await page.getByText('Teszt B',{exact:true}).isVisible())
+          throw Error('Shared household identity missing');
         await page.locator('[data-check]').first().check();
-        if (!(await page.locator('[data-check]').first().isChecked())) throw new Error('Home checkbox failed');
+        if (!(await page.locator('[data-check]').first().isChecked()))
+          throw new Error('Home shared checkbox failed');
+        await page.locator('[data-home-tab="stock"]').click();
+        if(!(await page.locator('#h-panel').innerText()).includes('Tojás'))
+          throw Error('Checked shared item did not enter sample shared stock');
+        await scope.filter({hasText:'Saját'}).click();
+        if((await page.locator('#h-context').innerText()).includes('Teszt B'))
+          throw Error('Shared household leaked into private scope');
+        await page.locator('[data-home-tab="suggestions"]').click();
+        if(!(await page.locator('#h-panel').innerText()).includes('BECSLÉS'))
+          throw Error('Forecasts not clearly marked uncertain');
+        await page.locator('[data-home-dismiss="s1"]').click();
+        if((await page.locator('[data-home-dismiss="s1"]').count())!==0)
+          throw Error('Red-X ignored');
+        await page.locator('#h-archive summary').click();
+        await page.locator('[data-home-restore="s1"]').click();
+        await page.locator('[data-home-pick="s1"]').check();
+        await page.locator('#h-move').click();
+        if(!(await page.locator('#h-panel').innerText()).includes('Élesztő'))
+          throw Error('Manual suggestion transfer did not reach own shopping list');
+        await page.locator('#h-select-list').selectOption('nagy');
+        if(!(await page.locator('#h-panel').innerText()).includes('Olívaolaj'))
+          throw Error('Named shopping list switch failed');
+        await page.locator('[data-home-scope="family"]').click();
+        if(await page.locator('[data-home-tab="suggestions"]').isVisible())
+          throw Error('Family scope must not present private forecasts');
+        await page.locator('#h-more summary').click();
+        if(!(await page.locator('#h-tools-content').innerText()).includes('Családtag'))
+          throw Error('Household management needs reachable, collapsed secondary UI');
       }
       if (item.path === 'candidates/ebook.html') {
         const dock = page.locator('.quick');
