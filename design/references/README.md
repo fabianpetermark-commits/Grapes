@@ -1,5 +1,18 @@
 # Grapes – design reference pack (Brand Guide v1.2)
 
+## 2026-10-26 – Home v40 utódterv: biztonsági és vizuális korrekciók
+
+Az [egységes Home HTML](candidates/home.html) a személyes és családi megjelenítés **kizárólag dizájn-/interakciós demója**, nem tesztelt kétfiókos szinkronizáció. A kezdőlapon egyetlen `Home` cím jelenik meg a közös ikonsor alatt; a Saját / Közös családi kontextus mindig látható. A fölösleges leírások rövidültek.
+
+**Kötelező működési szerződés:** a bevásárlólista egy tételének kipipálása **nem ír készletet**. A megvett tételnél külön, kifejezett „Készletbe vétele” gomb jelenik meg; csak ismert, pozitív mennyiséggel, jóváhagyásra kerülhet a helyes saját/közös készletbe. „Most nem” változatlanul hagyja a készletet. A pipa későbbi visszavonása **nem töröl már jóváhagyott készletet**; készletcsökkentés külön készletművelet. A javaslatok a saját kontextusban látszanak, a becslések külön bizonytalan címkét kapnak; vörös X csak archivál, és a javaslatok csak kijelölés + külön felhasználói jóváhagyás után kerülnek a saját listára.
+
+**Quick Action:** három művelet egy kapszulában (Bevásárlás / Készlet / Növények), mellettük külön „Új tétel” gomb, mobil safe-area fölött. A fogaskerék megnyitja a meglévő, összecsukható háztartáskezelő blokkot a demóban; felesleges vissza-/Home-gomb nem került vissza.
+
+**Fontos valódi Home regressziós kapu:** két külön, bejelentkezett A/B fiókkal ellenőrizni kell, hogy a B által hozzáadott közös bevásárló-/készlettétel A oldalán is látható frissítés után és jogosultság szerint. A demó izolált memóriája ezt **nem bizonyítja**. Nem írható át a #122 készlet-esemény naplója, a Supabase tulajdonosi határ vagy a valódi Profile/Household/Drive logika pusztán UX-javításért. A CI a HTML viselkedést ellenőrzi, az A/B telefonos próbát nem helyettesíti.
+
+---
+
+
 ## E-book – önálló, offline megnyitható HTML és Quick Action (2026-10-25)
 
 - **[Teljes E-book előnézet](candidates/ebook.html)**: egyetlen `ebook.html`, minden CSS, SVG-ikon, mintaborító, mintakönyv és JavaScript **beágyazva**, nincs külső `../shared/grapes-v11.css` hivatkozás. Így a „library not found” típusú hiányzó külső fájl nem akadályozza a közvetlen megnyitást.
