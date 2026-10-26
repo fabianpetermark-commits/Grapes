@@ -2488,7 +2488,7 @@ $('[data-samsung-water-csv-input]')?.addEventListener('change', event => {
   }
 })
 $('[data-water-health-confirm]')?.addEventListener('click', () => confirmWaterHealthPreview().catch(() => {}))
-$('[data-samsung-sync-action]').forEach(button => button.addEventListener('click', () =>
+$$('[data-samsung-sync-action]').forEach(button => button.addEventListener('click', () =>
   FRESH_OWNER_MODULES
     ? openWaterHealthSheet(samsungSdkStatus.available ? 'samsung-direct' : 'samsung')
     : openSyncImport('samsung')))
