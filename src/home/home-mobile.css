@@ -139,3 +139,42 @@
 @media(max-width:359px) {
   [data-household-root] nav[data-household-tabs] .household-tabs button { font-size:12px; padding:10px 3px; }
 }
+
+/* Family is deliberately a separate advanced TEST-only surface, never a merge
+   of the private Home or Food/Finance stores. */
+.household-family-intro { margin:9px 0 12px; padding:15px; background:#101821;
+  border:1px solid #293e4c; border-radius:18px; }
+.household-family-intro h2 { font-size:17px; margin:0 0 7px; }
+.household-family-intro p,.household-family-note { color:#94a5b8; font-size:13px;
+  line-height:1.55; margin:0; }
+.household-family-setup { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px;
+  align-items:end; margin:11px 0; }
+.household-family-setup label,.household-family-invites label,
+[data-household-family] form label { display:grid; gap:6px; color:#a6b6c6;
+  font-size:12px; min-width:0; }
+.household-family-setup select,[data-household-family] form input,
+[data-household-family] form select { width:100%; min-width:0; min-height:44px;
+  border:1px solid #314654; background:#17222e; color:#f2f7fb;
+  border-radius:12px; padding:9px; font:inherit; }
+.household-family-invites { margin:12px 0; border:1px solid #293e4c;
+  border-radius:14px; background:#101821; padding:10px; }
+.household-family-invites summary { min-height:40px; padding:10px 3px;
+  font-size:13px; color:#cbd8e3; cursor:pointer; }
+.household-family-invites form { margin:10px 0; padding:10px 4px;
+  border-top:1px solid #243343; display:grid; gap:9px; }
+.household-family-message { margin:10px 0; background:#123128; border:1px solid #285744;
+  color:#bff7df; border-radius:12px; padding:12px; font-size:13px; overflow-wrap:anywhere; }
+.household-family-message.is-error,.household-family-warning {
+  background:#321d27; border:1px solid #7d3f4b; color:#f2c1c8;
+  border-radius:12px; padding:12px; margin:10px 0; line-height:1.5; font-size:13px; }
+.household-family-role { display:flex; justify-content:space-between;
+  color:#94a5b8; font-size:12px; gap:8px; padding:6px 2px; }
+[data-household-family] h3 { color:#f2f7fb; font-size:15px; margin:18px 0 9px; }
+[data-household-family] form[data-family-shopping],
+[data-household-family] form[data-family-stock] { padding:12px; border-radius:14px;
+  border:1px solid #293e4c; background:#101821; display:grid; gap:10px; }
+[data-household-family] .household-card button { margin-top:9px; }
+@media(max-width:359px) {
+  .household-family-setup { grid-template-columns:1fr; }
+  .household-family-setup button { width:100%; }
+}
