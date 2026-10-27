@@ -878,7 +878,7 @@
 
         <div class="content" data-page="hub-utility" hidden>
           <button type="button" class="hub-back" data-menu-back>‹ Főmenü</button>
-          <p class="eyebrow">Utility</p><h1>Eszközök</h1>
+          <p class="eyebrow">Tools</p><h1>Eszközök</h1>
           <p class="lead">Könyvtár és QR Stúdió, a meglévő funkciókkal.</p>
           <div class="hub-options" aria-label="Utility almodulok">
             <button type="button" class="hub-option" data-menu-destination="ebook"><span class="hub-option__icon" data-module-icon="ebook"></span><strong>E-book</strong></button>
@@ -1037,6 +1037,7 @@
             <button class="module-tab" data-ebook-view="reader">Olvasó</button>
             <button class="module-tab" data-ebook-view="transfer">Átvitel</button>
           </div>
+          <div class="quick-grid"><button type="button" class="quick-action" data-open-module="ebook">Könyvtárkezelő és exportok</button><button type="button" class="quick-action" data-nav="sync">Drive-kapcsolat</button></div>
           <div class="book-continue" data-ebook-featured hidden></div>
           <div class="section-head"><h2>Saját könyvek</h2><button data-ebook-import>Importálás</button></div>
           <div class="book-grid" data-ebook-books><div class="ebook-empty">A Drive-könyvtár betöltése…</div></div>
@@ -1045,14 +1046,14 @@
         </div>
 
         <div class="content module-preview" data-page="reader" hidden>
-          <p class="eyebrow">E-book</p><h1>Olvasó</h1><p class="lead">Folytasd az EPUB-könyvedet azon az oldalon, ahol abbahagytad.</p>
+          <p class="eyebrow">E-book</p><h1>Olvasó</h1><p class="lead">Folytasd a PDF- vagy EPUB-könyvedet azon az oldalon, ahol abbahagytad.</p>
           <div class="module-tabs">
             <button class="module-tab" data-ebook-view="ebook">Könyvtár</button>
             <button class="module-tab is-active" data-ebook-view="reader">Olvasó</button>
             <button class="module-tab" data-ebook-view="transfer">Átvitel</button>
           </div>
           <section class="reader-picker" data-reader-picker>
-            <label for="mobile-reader-book">EPUB kiválasztása</label>
+            <label for="mobile-reader-book">PDF/EPUB kiválasztása</label>
             <select id="mobile-reader-book" class="reader-select" data-reader-book><option value="">Válassz könyvet…</option></select>
             <button class="primary" data-reader-open>Olvasás megkezdése</button>
           </section>

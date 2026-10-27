@@ -1,0 +1,25 @@
+.is-grapes-android-module:root {
+  --color-bg-app: #090e14;
+  --color-bg-surface: #101821;
+  --color-accent: #3bdcf2;
+  --color-accent-hover: #70e9f8;
+}
+.mobile-module-nav {
+  display:flex; flex-shrink:0; justify-content:center; gap:2px;
+  margin:8px auto; padding:4px; border:1px solid var(--color-border);
+  border-radius:32px; background:var(--color-bg-surface);
+}
+.mobile-module-nav button {
+  display:grid; place-items:center; width:44px; height:44px; padding:10px;
+  border:0; border-radius:50%; background:transparent; color:var(--color-text-muted);
+}
+.mobile-module-nav button[aria-current], .mobile-module-nav button:focus-visible {color:var(--color-accent); background:var(--color-bg-active)}
+.mobile-module-nav svg {width:24px;height:24px}
+@media(max-width:640px) {
+  .is-grapes-android-module #qr-app .toolbar {flex-wrap:wrap;height:auto;min-height:56px;padding:8px}
+  .is-grapes-android-module #qr-app button, .is-grapes-android-module #qr-app select, .is-grapes-android-module #qr-app input {min-height:44px}
+  .is-grapes-android-module #qr-app .qr-studio__palette {grid-template-columns:repeat(5,minmax(0,1fr))}
+  .is-grapes-android-module #qr-app .qr-studio__color-controls {grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .is-grapes-android-module #qr-app .qr-studio__tabs {min-height:0;overflow:auto}
+  .is-grapes-android-module #qr-app .qr-studio__preview {position:static}
+}

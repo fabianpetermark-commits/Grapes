@@ -5,6 +5,9 @@ import { saveLocalProject, loadLocalProject } from './storage/local-project-stor
 import { isGrapesDriveConnected, saveGrapesProject, loadGrapesProject } from './storage/grapes-drive.js';
 import { buildVCardData, buildWifiData, contrastRatio, normaliseHex, withUtm } from './qr-data.js';
 
+let flushCurrent = async () => {}
+export async function flushQrProject() { await flushCurrent() }
+
 const QR_BACKUP_ID = 'qr-studio-current';
 
 const PALETTE = [
@@ -109,19 +112,31 @@ export function initQrStudio() {
     generateQR();
   }
 
-  function scheduleAutosave() {
+  let revision = 0;
+  let savedRevision = 0;
+  let saveQueue = Promise.resolve();
+  let restored;
+  async function saveCurrent() {
     clearTimeout(autosaveTimer);
-    autosaveTimer = setTimeout(async () => {
-      const data = serializeQrProject();
-      try {
-        await saveLocalProject({ id: QR_BACKUP_ID, module: 'QR & Barcode', name: 'QR projekt', data, driveFileId: driveProjectFileId });
-        if (isGrapesDriveConnected() && driveProjectFileId) {
-          driveProjectFileId = await saveGrapesProject({ module: 'QR & Barcode', name: 'QR projekt', data, fileId: driveProjectFileId });
-        }
-      } catch (error) {
-        console.warn('QR automatikus mentés sikertelen:', error);
-      }
-    }, 4000);
+    await restored;
+    if (revision === savedRevision) return;
+    const savingRevision = revision;
+    const data = serializeQrProject();
+    const pending = saveQueue.catch(() => {}).then(() => saveLocalProject({ id: QR_BACKUP_ID, module: 'QR & Barcode', name: 'QR projekt', data, driveFileId: driveProjectFileId }));
+    saveQueue = pending;
+    await pending;
+    savedRevision = savingRevision;
+    if (isGrapesDriveConnected() && driveProjectFileId) {
+      // Local persistence is the exit gate; remote failures retain the local backup.
+      saveGrapesProject({ module: 'QR & Barcode', name: 'QR projekt', data, fileId: driveProjectFileId })
+        .catch(() => notifyError('A QR-projekt helyben mentve; a Drive-szinkron nem sikerült.'));
+    }
+  }
+  flushCurrent = saveCurrent;
+  function scheduleAutosave() {
+    revision++;
+    clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(() => saveCurrent().catch(() => notifyError('A QR-projekt helyi mentése nem sikerült.')), 400);
   }
 
   async function restoreLastProject() {
@@ -321,7 +336,7 @@ export function initQrStudio() {
 
   copyBtn?.addEventListener('click', () => {
     if (!getQRData()) return notifyError('Előbb adj meg tartalmat a QR-kódhoz.');
-    navigator.clipboard.writeText(getQRData())
+    Promise.resolve().then(() => navigator.clipboard.writeText(getQRData()))
       .then(() => notifySuccess('A QR kód tartalma a vágólapra másolva!'))
       .catch(() => notifyError('Nem sikerült a vágólapra másolni.'));
   });
@@ -331,5 +346,5 @@ export function initQrStudio() {
   syncHexInputs();
   activateTab('link');
   renderLegacyInputs();
-  restoreLastProject();
+  restored = restoreLastProject();
 }

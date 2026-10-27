@@ -14,6 +14,7 @@ import { createYazioApiPanel } from './food/yazio-api-panel.js'
 import { registerFoodSharing, sendMealShare, sendRecipeShare } from './food/food-sharing-client.js'
 import { hydrateMobileIcons, mobileIconSvg } from './android-mobile-icons.js'
 import { mountMainShortcuts } from './main-shortcuts-v12.js'
+import { isMobileReadablePdf, openMobilePdf } from './ebook-mobile-pdf.js'
 import { createHomeMobile } from './home/home-mobile.js'
 import { openAndroidOneHomeTestSession } from './home/home-native-test-session.js'
 import { getAndroidAppUpdate, installAndroidAppUpdate, isGrapesAndroidApp, openAndroidHealthConnectSettings, saveAndroidJsonBackup } from './android-bridge.js'
@@ -27,6 +28,7 @@ import {
   revokeMobileBookTransfer,
 } from './ebook-mobile-transfer.js'
 
+const isMobileReadableBook = book => isMobileReadableEpub(book) || isMobileReadablePdf(book)
 const $ = selector => document.querySelector(selector)
 const $$ = selector => [...document.querySelectorAll(selector)]
 const login = $('#login')
@@ -183,9 +185,9 @@ const labels = {
   'hub-home': ['Home', 'Háztartás'],
   'hub-health': ['Health', 'Napi egészségügyi áttekintés'],
   'health-settings': ['Health', 'Modulbeállítások'],
-  'hub-utility': ['Utility', 'Eszközök'],
+  'hub-utility': ['Tools', 'Eszközök'],
   'hub-finance': ['Finance', 'Pénzügyek'],
-  ebook: ['E-book', 'Könyvtár'], reader: ['A csend térképe', 'Olvasó'],
+  ebook: ['E-book', 'Könyvtár'], reader: ['E-book', 'Olvasó'],
   transfer: ['E-book átvitel', 'Olvasóeszköz'],
 }
 
@@ -651,6 +653,7 @@ async function openModule(module, project = null, view = '', itemId = '', action
   if (module === 'food' && view) try { sessionStorage.setItem('grapes-food-mobile-request', JSON.stringify({ view, itemId, action })) } catch {}
   target.searchParams.set('module', module)
   target.searchParams.set('android-shell', '1')
+  target.searchParams.set('return-page', module === 'qr' ? 'hub-utility' : activePage === 'reader' ? 'ebook' : activePage)
   window.location.href = target.href
 }
 
@@ -687,7 +690,7 @@ function renderEbookCards(books) {
     featured.hidden = true
     return
   }
-  const readable = books.filter(isMobileReadableEpub)
+  const readable = books.filter(isMobileReadableBook)
   const latest = [...readable].sort((left, right) => Date.parse(right.reading?.updatedAt || '') - Date.parse(left.reading?.updatedAt || ''))[0] || readable[0]
   if (!latest) { featured.hidden = true }
   else {
@@ -710,7 +713,7 @@ function renderEbookCards(books) {
     const title = document.createElement('strong'); title.textContent = book.title
     const meta = document.createElement('small'); meta.textContent = book.reading ? `${Math.round(book.reading.overallPercent)}% elolvasva` : (book.author || book.name.split('.').pop().toUpperCase())
     button.append(ebookCover(book.title, index), title, meta)
-    button.addEventListener('click', () => openEbook(book.id))
+    button.addEventListener('click', () => isMobileReadableBook(book) ? startReader(book.id) : openEbook(book.id))
     grid.append(button)
   })
 }
@@ -750,19 +753,19 @@ async function ensureMobileEbooks() {
 function fillBookSelect(select, books, { readableOnly = false } = {}) {
   const previous = select.value
   select.replaceChildren(new Option('Válassz könyvet…', ''))
-  for (const book of books.filter(book => !readableOnly || isMobileReadableEpub(book))) {
+  for (const book of books.filter(book => !readableOnly || isMobileReadableBook(book))) {
     select.append(new Option(`${book.title}${book.author ? ` — ${book.author}` : ''}`, book.id))
   }
-  if (books.some(book => book.id === previous && (!readableOnly || isMobileReadableEpub(book)))) select.value = previous
+  if (books.some(book => book.id === previous && (!readableOnly || isMobileReadableBook(book)))) select.value = previous
 }
 
 async function renderReaderPicker() {
   const status = $('[data-reader-status]')
   try {
     status.dataset.kind = ''
-    status.textContent = isGrapesDriveConnected() ? 'EPUB-könyvek betöltése…' : 'Az Olvasóhoz csatlakoztasd a Google Drive-ot a Szinkron oldalon.'
+    status.textContent = isGrapesDriveConnected() ? 'PDF/EPUB-könyvek betöltése…' : 'Az Olvasóhoz csatlakoztasd a Google Drive-ot a Szinkron oldalon.'
     const books = await ensureMobileEbooks()
-    const readable = books.filter(isMobileReadableEpub)
+    const readable = books.filter(isMobileReadableBook)
     fillBookSelect($('[data-reader-book]'), books, { readableOnly: true })
     if (!mobileReader) {
       $('[data-reader-picker]').hidden = false
@@ -770,7 +773,7 @@ async function renderReaderPicker() {
       const recent = [...readable].sort((left, right) => Date.parse(right.reading?.updatedAt || '') - Date.parse(left.reading?.updatedAt || ''))[0]
       if (recent) $('[data-reader-book]').value = recent.id
     }
-    status.textContent = readable.length ? '' : (books.length ? 'A könyvtárban még nincs EPUB-formátumú könyv.' : status.textContent)
+    status.textContent = readable.length ? '' : (books.length ? 'A könyvtárban még nincs PDF/EPUB-formátumú könyv.' : status.textContent)
   } catch (error) { status.textContent = `Az EPUB-lista nem tölthető be. ${error?.message || ''}`; status.dataset.kind = 'error' }
 }
 
@@ -817,8 +820,11 @@ async function showReaderChapter(index, progress = 0) {
   const page = $('[data-reader-page]')
   const status = $('[data-reader-status]')
   status.textContent = 'Fejezet megnyitása…'; status.dataset.kind = ''
-  const content = await mobileReader.getChapter(chapter.id)
-  page.innerHTML = content.html || '<p>Ez a fejezet nem tartalmaz megjeleníthető szöveget.</p>'
+  if (mobileReader.renderChapter) await mobileReader.renderChapter(page, mobileReaderChapterIndex)
+  else {
+    const content = await mobileReader.getChapter(chapter.id)
+    page.innerHTML = content.html || '<p>Ez a fejezet nem tartalmaz megjeleníthető szöveget.</p>'
+  }
   $('[data-reader-chapter]').value = chapter.id
   await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
   page.scrollTop = Math.max(0, page.scrollHeight - page.clientHeight) * Math.min(1, Math.max(0, Number(progress) || 0))
@@ -833,12 +839,13 @@ async function startReader(bookId) {
     const books = await ensureMobileEbooks()
     const book = books.find(item => item.id === bookId)
     if (!book) throw new Error('A kiválasztott könyv már nem található a Drive-könyvtárban.')
-    if (!isMobileReadableEpub(book)) throw new Error('Az alkalmazáson belüli Olvasó jelenleg csak EPUB-könyvet támogat.')
+    if (!isMobileReadableBook(book)) throw new Error('Az alkalmazáson belüli Olvasó PDF- és EPUB-könyveket támogat.')
     status.textContent = `${book.title} letöltése és ellenőrzése…`; status.dataset.kind = ''
-    mobileReader = await openMobileEpub(book)
+    await mobileReader?.destroy?.()
+    mobileReader = await (isMobileReadablePdf(book) ? openMobilePdf(book) : openMobileEpub(book))
     mobileReaderBook = book
     $('[data-reader-title]').textContent = book.title
-    $('[data-reader-author]').textContent = book.author || 'EPUB'
+    $('[data-reader-author]').textContent = book.author || (isMobileReadablePdf(book) ? 'PDF' : 'EPUB')
     const chapterSelect = $('[data-reader-chapter]')
     chapterSelect.replaceChildren(...mobileReader.chapters.map(chapter => new Option(chapter.title, chapter.id)))
     $('[data-reader-picker]').hidden = true
@@ -1032,7 +1039,9 @@ function showApp() {
   app.hidden = false
   updateHomeGreeting()
   renderAccount()
-  showPage('home')
+  const route = new URLSearchParams(location.search).get('page')
+  const allowed = ['home','household','hub-health','hub-utility','hub-finance','ebook','sync','projects','more']
+  showPage(allowed.includes(route) ? route : 'home', {parent: route === 'ebook' ? 'hub-utility' : ''})
   renderProjects()
 }
 
@@ -1431,8 +1440,9 @@ $('[data-ebook-import]').addEventListener('click', () => $('[data-ebook-file]').
 $('[data-ebook-file]').addEventListener('change', event => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''; importMobileEbook(file) })
 $('[data-reader-open]').addEventListener('click', () => startReader($('[data-reader-book]').value))
 $('[data-reader-chapter]').addEventListener('change', async event => {
+  const chapterId = event.currentTarget.value
   await persistReaderProgress().catch(() => {})
-  const index = mobileReader?.chapters.findIndex(chapter => chapter.id === event.currentTarget.value) ?? -1
+  const index = mobileReader?.chapters.findIndex(chapter => chapter.id === chapterId) ?? -1
   if (index >= 0) { await showReaderChapter(index, 0); scheduleReaderProgressSave() }
 })
 $('[data-reader-page]').addEventListener('scroll', scheduleReaderProgressSave, { passive: true })
