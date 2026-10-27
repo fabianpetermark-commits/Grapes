@@ -9,6 +9,10 @@ val releaseKeystorePath = providers.environmentVariable("ANDROID_KEYSTORE_PATH")
 val releaseStorePassword = providers.environmentVariable("ANDROID_KEYSTORE_PASSWORD").orNull
 val releaseKeyAlias = providers.environmentVariable("ANDROID_KEY_ALIAS").orNull
 val releaseKeyPassword = providers.environmentVariable("ANDROID_KEY_PASSWORD").orNull
+val testKeystorePath = providers.environmentVariable("ANDROID_TEST_KEYSTORE_PATH").orNull
+val testStorePassword = providers.environmentVariable("ANDROID_TEST_KEYSTORE_PASSWORD").orNull
+val testKeyAlias = providers.environmentVariable("ANDROID_TEST_KEY_ALIAS").orNull
+val testKeyPassword = providers.environmentVariable("ANDROID_TEST_KEY_PASSWORD").orNull
 val grapesVersionCode = providers.environmentVariable("GRAPES_VERSION_CODE").orNull?.toIntOrNull() ?: 1
 val grapesVersionName = providers.environmentVariable("GRAPES_VERSION_NAME").orNull ?: "0.1.0-poc"
 
@@ -26,6 +30,16 @@ android {
             }
         }
     }
+        if (!testKeystorePath.isNullOrBlank()) {
+            create("qa") {
+                storeFile = file(testKeystorePath)
+                storePassword = testStorePassword
+                keyAlias = testKeyAlias
+                keyPassword = testKeyPassword
+                storeType = "PKCS12"
+            }
+        }
+    }
     defaultConfig {
         applicationId = "hu.grapes.healthconnect"
         minSdk = 29
@@ -35,6 +49,10 @@ android {
         // Explicit production opt-in; defaults OFF on every ordinary release.
         buildConfigField("boolean", "GRAPES_PROD_AUTH_ENABLED", "false")
         buildConfigField("boolean", "GRAPES_PROD_AUTH_CANDIDATE", "false")
+        buildConfigField("boolean", "GRAPES_TEST_AUTH_ENABLED", "false")
+        buildConfigField("boolean", "GRAPES_TEST_DATA_ENABLED", "false")
+        buildConfigField("boolean", "GRAPES_TEST_HOME_FAMILY_ENABLED", "false")
+        buildConfigField("String", "GRAPES_TEST_PUBLISHABLE_KEY", "\"\"")
     }
     buildTypes {
         getByName("release") {
@@ -48,6 +66,32 @@ android {
             val authCandidate = approvedProdAuth &&
                 providers.environmentVariable("GRAPES_PROD_AUTH_CANDIDATE").orNull == "true"
             buildConfigField("boolean", "GRAPES_PROD_AUTH_CANDIDATE", authCandidate.toString())
+        }
+    }
+
+        create("qa") {
+            // Dedicated, existing TEST package; PROD Auth and local data stay isolated.
+            initWith(getByName("release"))
+            applicationIdSuffix = ".test"
+            versionNameSuffix = "-test"
+            buildConfigField("boolean", "GRAPES_PROD_AUTH_ENABLED", "false")
+            buildConfigField("boolean", "GRAPES_PROD_AUTH_CANDIDATE", "false")
+            val authEnabled = providers.environmentVariable("VITE_GRAPES_TEST_AUTH_ENABLED").orNull == "true" &&
+                providers.environmentVariable("VITE_GRAPES_TEST_SUPABASE_URL").orNull == "https://aighqtqjlzirlokxwupt.supabase.co" &&
+                providers.environmentVariable("VITE_GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY").orNull
+                    ?.matches(Regex("sb_publishable_[A-Za-z0-9_-]{16,}")) == true
+            buildConfigField("boolean", "GRAPES_TEST_AUTH_ENABLED", authEnabled.toString())
+            val dataEnabled = authEnabled &&
+                providers.environmentVariable("VITE_GRAPES_TEST_DATA_ENABLED").orNull == "true"
+            buildConfigField("boolean", "GRAPES_TEST_DATA_ENABLED", dataEnabled.toString())
+            val homeEnabled = dataEnabled &&
+                providers.environmentVariable("VITE_GRAPES_TEST_HOME_FAMILY_ENABLED").orNull == "true"
+            buildConfigField("boolean", "GRAPES_TEST_HOME_FAMILY_ENABLED", homeEnabled.toString())
+            val publishableKey = if (dataEnabled)
+                providers.environmentVariable("VITE_GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY").get() else ""
+            buildConfigField("String", "GRAPES_TEST_PUBLISHABLE_KEY", "\"$publishableKey\"")
+            signingConfig = if (!testKeystorePath.isNullOrBlank())
+                signingConfigs.getByName("qa") else signingConfigs.getByName("debug")
         }
     }
     buildFeatures { buildConfig = true }
