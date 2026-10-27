@@ -37,11 +37,28 @@ try {
     assert.equal(await home.locator('[data-household-inventory]').isVisible(),true)
     assert.equal(await home.locator('[data-household-suggestions]').isVisible(),true)
     assert.equal((await home.locator('[data-household-shopping-count]').textContent()).trim(),'0')
-    assert.equal(await home.locator('[data-household-share]').first().isDisabled(),true)
+    // Approved top-right share affordance opens a non-mutating permission
+    // overview; it must not silently create a family or overwrite local v1.
+    await home.locator('.household-head [data-household-share]').click()
+    const sharePanel=home.locator('[data-household-share-panel]')
+    assert.equal(await sharePanel.isVisible(),true)
+    assert.match(await sharePanel.locator('[data-household-share-details]').textContent(),/ezen az eszközön/)
+    await sharePanel.locator('[data-household-cancel]').click()
+    assert.equal(await sharePanel.isVisible(),false)
     const pageWidth=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth)
     assert.ok(pageWidth<=2,'Home overflow on '+width+'px')
     await home.locator('[data-household-add="shopping"]').first().click()
     const form=home.locator('[data-household-form]')
+    assert.equal(await form.isVisible(),true)
+    const sheet=await form.evaluate(node=>({
+      position:getComputedStyle(node).position,
+      bottom:node.getBoundingClientRect().bottom,
+      viewport:window.innerHeight,
+      backdrop:!!node.closest('[data-household-root]').querySelector('[data-household-sheet-backdrop]:not([hidden])'),
+    }))
+    assert.equal(sheet.position,'fixed','New item editor must be a bottom sheet, not inline')
+    assert.ok(sheet.bottom<=sheet.viewport+2,JSON.stringify(sheet))
+    assert.equal(sheet.backdrop,true,'Modal sheet must dim the Home behind it')
     await form.locator('[name="name"]').fill('Tej')
     await form.locator('button[type="submit"]').click()
     assert.equal((await home.locator('[data-household-shopping-count]').textContent()).trim(),'1')
