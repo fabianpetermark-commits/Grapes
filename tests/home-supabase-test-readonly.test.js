@@ -8,6 +8,7 @@ const H='11111111-1111-4111-8111-111111111111'
 function rig({owner=A,switchAfterRpc=false,data,mutateClient=false}={}) {
   let subject=owner, calls=[]
   const client={
+    supabaseUrl:'https://'+HOME_SUPABASE_TEST_REF+'.supabase.co',
     auth:{ async getUser(){return {data:{user:{id:subject,is_anonymous:false}}}}},
     async rpc(name,args){
       calls.push([name,args])
@@ -32,6 +33,9 @@ test('TEST gate is OFF by default; PROD project, missing Auth and random UUID fa
   assert.throws(()=>createHomeTestReadOnlyGate({client:r.client,expectedUserId:A,
     projectRef:HOME_SUPABASE_TEST_REF}),/TEST-kapuban/)
   assert.throws(()=>gateFor(r,{projectRef:'yopabovoxyffhokhbgxl'}),/TEST-kapuban/)
+  const wrongClient=rig()
+  wrongClient.client.supabaseUrl='https://yopabovoxyffhokhbgxl.supabase.co'
+  assert.throws(()=>gateFor(wrongClient),/tényleges projektje/)
   assert.throws(()=>gateFor(r,{expectedUserId:'local-home-profile'}),/azonosító/)
   assert.throws(()=>gateFor({client:{auth:{getUser:async()=>({})}}}),/kliens/)
 })
@@ -67,7 +71,8 @@ test('the remote read never overlays unknown local v1 Home or imported personal 
 test('reject malformed family permissions and anonymous/auth-error sessions',async()=>{
   const r=rig({data:{home_m3b_list_households:[{householdId:H,name:'Otthon',role:'administrator',revision:1}]}})
   await assert.rejects(gateFor(r).list(),/hivatkozás/)
-  const client={auth:{getUser:async()=>({data:{user:{id:A,is_anonymous:true}}})},
+  const client={supabaseUrl:'https://'+HOME_SUPABASE_TEST_REF+'.supabase.co',
+    auth:{getUser:async()=>({data:{user:{id:A,is_anonymous:true}}})},
     rpc:async()=>({data:[]})}
   await assert.rejects(gateFor({client}).list(),/Fiókváltás/)
 })
