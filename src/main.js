@@ -1,4 +1,6 @@
 import './styles/index.css'
+import { mobileIconSvg } from './android-mobile-icons.js'
+import './styles/components/mobile-module-nav.css'
 import { el } from './ui/dom.js'
 import { showScreen } from './screens.js'
 import {
@@ -223,15 +225,45 @@ for (const selector of [
   el(selector).addEventListener('click', goToMainMenu)
 }
 
-function goToMainMenu() {
-  if (androidApp) {
-    window.location.href = new URL('./design/android-mobile-preview.html', window.location.href).href
+async function goToMainMenu() {
+  if (androidApp || androidModuleShell) {
+    await navigateMobile(params.get('return-page') || 'hub-utility')
     return
   }
   if (isGrapesDriveConnected() || isLocalMode()) {
     renderRecentProjects()
     showScreen('splash')
   } else showLogin()
+}
+
+
+async function navigateMobile(page) {
+  if (document.body.dataset.screen === 'qr') {
+    try { await (await import('./qr-studio.js')).flushQrProject() }
+    catch { alert('A QR-projekt helyi mentése nem sikerült. A kilépést megszakítottuk.'); return }
+  }
+  const target = new URL('./design/android-mobile-preview.html', location.href)
+  try { sessionStorage.setItem('grapes-mobile-return-page', page) } catch {}
+  location.href = target.href
+}
+if (androidModuleShell && ['qr','ebook'].includes(requestedScreen)) {
+  const nav = document.createElement('nav')
+  nav.className = 'mobile-module-nav'
+  nav.setAttribute('aria-label','Grapes főmodulok')
+  for (const [page,label,icon] of [
+    ['home','Kezdő','start'],['household','Home','household'],
+    ['hub-health','Health','health'],['hub-utility','Tools','utility'],
+    ['hub-finance','Finance','finance'],['more','Beállítások','settings'],
+  ]) {
+    const button = document.createElement('button')
+    button.type = 'button'; button.setAttribute('aria-label',label)
+    button.innerHTML = mobileIconSvg(icon)
+    if (page === 'hub-utility') button.setAttribute('aria-current','page')
+    button.addEventListener('click', () => navigateMobile(page))
+    nav.append(button)
+  }
+  document.querySelector('#'+requestedScreen+'-app .toolbar').after(nav)
+  window.grapesHandleAndroidBack = () => { goToMainMenu(); return true }
 }
 
 document.addEventListener('grapes:open-main-menu', goToMainMenu)
