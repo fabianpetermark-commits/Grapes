@@ -1,0 +1,55 @@
+name: Grapes approved Health v1.2 live-UI integration QA (NO RELEASE)
+on:
+  pull_request:
+    branches: [codex/android-app]
+  push:
+    branches: [feature/grapes-health-v12-real-ui-20261027]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-health-v12-live-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  health-v12-real-ui:
+    if: github.repository == 'fabianpetermark-commits/Grapes'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Existing domain/data invariants
+        run: npm test
+      - name: WebView compilation
+        run: npm run build:android-web
+      - name: Locate Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v google-chrome >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            npx playwright-core install --with-deps chromium
+            binary=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path '*chrome-linux*' | head -1)
+            test -n "$binary"
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$binary" >> "$GITHUB_ENV"
+          fi
+      - name: Approved Health six-icon real routes, daily goals and connections at 4 viewports
+        run: node tests/health-v12-functional.browser.mjs
+      - name: Previous full Android Food/Health/Water/Settings UI
+        run: node tests/android-mobile-preview.browser.mjs
+      - name: Previous One Home approved UI and local data unaffected
+        run: node tests/prod-home-one-house.browser.mjs
+      - name: No release / health provider writes / PROD migrations
+        run: echo "UI binding only. Never assert direct Samsung SDK sync or cloud PROD readiness."
