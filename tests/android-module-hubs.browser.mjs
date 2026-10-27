@@ -80,9 +80,16 @@ try {
   await page.locator('[data-page="hub-health"]').waitFor({ state: 'visible' })
   await page.locator('.appbar [data-nav="more"]').click()
   await page.locator('[data-page="health-settings"]').waitFor({ state: 'visible' })
-  assert.equal(await page.locator('[data-health-section]').count(), 5)
+  assert.equal(await page.locator('[data-health-section]').count(), 2,
+    'The approved Health v1.2 has exactly two settings groups')
+  assert.deepEqual(await page.locator('[data-health-section] strong').allTextContents(),
+    ['Napi célok','Adatkapcsolatok'])
   await page.locator('[data-health-section="integrations"]').click()
   assert.match(await page.locator('[data-health-settings-content]').textContent(), /Health Connect.*Samsung Health.*YAZIO/)
+  assert.equal(await page.locator('[data-health-command="water-backup"]').count(), 1,
+    'Water backup remains reachable inside Data connections')
+  assert.equal(await page.locator('[data-health-command="food-backup"]').count(), 1,
+    'Food backup remains reachable inside Data connections')
   await page.locator('[data-health-settings-back]').click()
   await page.locator('[data-page="hub-health"] [data-health-food-open]').click()
   await page.locator('[data-page="food"] [data-food-overview]').waitFor({ state: 'visible' })
