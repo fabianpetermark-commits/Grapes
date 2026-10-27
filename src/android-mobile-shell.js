@@ -619,7 +619,8 @@ function showHealthSettingsSection(section) {
       box('<strong>Samsung Health</strong><p>Health Connect vagy az elérhető Samsung-adatkapcsolat. Közvetlen SDK nélkül nem állítunk automatikus szinkront.</p><button data-health-command="samsung-import">Beolvasás</button>') +
       box('<strong>YAZIO</strong><p>CSV / JSON előzményimport, duplikációszűréssel és visszavonással.</p><button data-health-command="yazio-import">Import megnyitása</button>') +
       box('<strong>Adatok és biztonsági mentés</strong><p>A korábban működő Food/Víz/Drive mentések érintetlenek.</p><button data-health-command="food-backup">Ételnapló mentésének megnyitása</button><button data-health-command="water-backup">Víznapló exportálása</button><button data-health-command="sync">Szinkron és importelőzmények</button>')
-  }}
+  }
+}
 async function runHealthCommand(command) {
   if (command === 'food-targets') {
     showPage('food', { parent:'hub-health' })
