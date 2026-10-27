@@ -1,0 +1,56 @@
+name: Grapes TEST One Home unified family preview UI (NO RELEASE)
+on:
+  push:
+    branches:
+      - integration/grapes-one-home-family-preview-test-20261027
+  pull_request:
+    branches:
+      - codex/android-app
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-one-home-family-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  family-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: All existing app and new model unit tests
+        run: npm test
+      - name: Build unchanged Android WebView runtime
+        run: npm run build:android-web
+      - name: Locate Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v google-chrome >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            npx playwright-core install --with-deps chromium
+            binary=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path '*chrome-linux*' | head -1)
+            test -n "$binary"
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$binary" >> "$GITHUB_ENV"
+          fi
+      - name: One Home real widgets show family TEST projection and reject A/B leak
+        run: node tests/home-family-preview.browser.mjs
+      - name: Original PROD One Home local functionality unchanged
+        run: node tests/prod-home-one-house.browser.mjs
+      - name: Existing offline CAS outbox and conflict safe
+        run: node tests/home-m3b-family-outbox.browser.mjs
+      - name: Prevent accidental release
+        run: echo "Read-only TEST preview injection only. No TEST/PROD DB writes, no release, no native token exposure, no v1 migration."
