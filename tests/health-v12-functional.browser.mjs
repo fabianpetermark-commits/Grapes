@@ -42,7 +42,7 @@ try {
       ['Food', 'Víznapló', 'Receptek', 'Statisztika', 'Vonalkód', 'Health beállítások'])
     assert.equal(await rail.locator('svg').count(), 6)
     const dims = await rail.evaluate(node => ({
-      columns: getComputedStyle(node).gridTemplateColumns.trim().split(/\\s+/).length,
+      columns: getComputedStyle(node).gridTemplateColumns.trim().split(/\s+/).length,
       width: node.getBoundingClientRect().width,
       iconSizes: [...node.querySelectorAll('svg')].map(el => el.getBoundingClientRect().width),
     }))
@@ -61,7 +61,7 @@ try {
     await page.locator('[data-page="health-settings"]').waitFor({ state:'visible' })
     assert.equal(await rail.locator('[data-health-nav="settings"]').getAttribute('aria-current'), 'page')
     assert.deepEqual(await page.locator('[data-health-settings-index] [data-health-section]')
-      .evaluateAll(nodes => nodes.map(node => node.textContent.trim().replace(/\\s+/g, ' '))),
+      .evaluateAll(nodes => nodes.map(node => node.textContent.trim().replace(/\s+/g, ' '))),
       ['Napi célok Kalória, makrók, folyadék és megjelenítés',
         'Adatkapcsolatok Health Connect, Samsung Health, YAZIO és mentések'])
     await page.locator('[data-health-section="connections"]').click()
