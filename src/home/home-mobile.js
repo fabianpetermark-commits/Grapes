@@ -1,5 +1,6 @@
 import { createHomeStore } from './home-store.js'
 import { projectOneHomeFamilyPreview } from './home-family-preview-model.js'
+import { createHomeFamilyAutoSync } from './home-family-auto-sync.js'
 import { displayQuantity, expiryLabel, splitPreset, splitPreview, UNITS } from './home-data.js'
 
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char])
@@ -8,12 +9,17 @@ const statusNames = { planned: 'Tervezett', checked: 'Elintézve', deferred: 'K�
 const units = Object.keys(UNITS).map(unit => `<option value="${unit}">${unit}</option>`).join('')
 const operationId = () => globalThis.crypto?.randomUUID?.() || `home-ui-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
-export function createHomeMobile(root, storage, { familyPreview = null } = {}) {
+export function createHomeMobile(root, storage, { familyPreview = null, familySync = null } = {}) {
   let store = null
-  const familyQA = familyPreview?.enabled === true
+  const familyWritable = familySync?.enabled === true && familySync?.writesEnabled === true
+  const familyQA = familyPreview?.enabled === true || familySync?.enabled === true
   let familyState = null
   let familyLoadEpoch = 0
   let familyError = ''
+  let familyController = null
+  let familyStatus = 'unverified'
+  let familyStatusMessage = ''
+  let familyStatusCount = 0
   // Approved One Home screen: all three real widgets visible simultaneously.
   let filter = 'all'
   let search = ''
@@ -27,6 +33,7 @@ export function createHomeMobile(root, storage, { familyPreview = null } = {}) {
   root.innerHTML = `
     <div class="household-head"><div><h1>Otthonunk</h1><p data-household-source>Helyi adatok · a családi megosztás még nincs bekapcsolva</p></div><button type="button" data-household-share disabled title="A családi megosztás Supabase-integráció után kapcsolható be">1 fő</button></div>
     <div class="household-alert" data-household-alert role="status" aria-live="polite" hidden></div>
+    <div class="household-sync" data-household-sync role="status" aria-live="polite" hidden><span data-household-sync-text></span><button type="button" data-household-sync-retry hidden>Újrapróbálás</button></div>
     <div class="household-totals" aria-label="Otthon aktuális adatai"><div><strong data-household-shopping-count>0</strong><span>Bevásárolandó</span></div><div><strong data-household-inventory-count>0</strong><span>Készleten</span></div><div><strong data-household-suggestion-count>0</strong><span>Igazolt hiány</span></div></div>
     <section class="household-widget" data-household-shopping aria-labelledby="home-shopping-title"><div class="household-widget-head"><h2 id="home-shopping-title">Bevásárlás</h2><button type="button" data-household-add="shopping">+ Listaelem</button></div><div data-household-items></div></section>
     <section class="household-widget" data-household-inventory aria-labelledby="home-inventory-title"><div class="household-widget-head"><h2 id="home-inventory-title">Készlet</h2><button type="button" data-household-add="inventory">+ Készlet</button></div><div class="household-toolbar"><input data-household-search type="search" placeholder="Élelmiszer keresése" aria-label="Élelmiszer keresése"></div><div class="household-filters" aria-label="Tároló szűrő"><button type="button" data-household-filter="all">Összes</button><button type="button" data-household-filter="fridge">Hűtő</button><button type="button" data-household-filter="freezer">Fagyasztó</button><button type="button" data-household-filter="pantry">Kamra</button></div><div data-household-lots></div></section>
@@ -41,13 +48,21 @@ export function createHomeMobile(root, storage, { familyPreview = null } = {}) {
   const splitForm = $('[data-household-split]')
   // Never promote remote v2 into the local v1 store. One Home UI, two
   // physically separate stores, with only one explicitly selected for display.
-  const state = () => familyState || store.getState()
+  const state = () => familyQA ? (familyState || { inventory:[], shopping:[] }) : store.getState()
   const alert = (text, isError = false) => { message = isError ? '' : text; error = isError ? text : ''; const node = $('[data-household-alert]'); node.hidden = !text; node.textContent = text; node.classList.toggle('is-error', isError) }
   const run = (type, payload, eventId) => {
     if (!store) return
     if (familyQA) {
-      alert('A közös Otthon TEST-előnézete még csak olvasható. Nem történt mentés.', true)
-      return null
+      if (!familyWritable || !familyController || !familyState) {
+        alert('A közös Otthon most csak olvasható vagy még nincs ellenőrizve.', true)
+        return null
+      }
+      // Never dispatch a shared event into the PROD local v1 Home journal.
+      const id = eventId || globalThis.crypto?.randomUUID?.()
+      if (!id) { alert('A biztonságos műveletazonosító nem érhető el.', true); return null }
+      return familyController.queue({ type, payload, eventId:id })
+        .then(job => ({ event:{ eventId:job.operationId }, duplicate:false }))
+        .catch(err => { alert(err.message, true); return null })
     }
     try {
       const result = store.dispatch({ type, payload, ...(eventId ? { eventId } : {}) })
@@ -64,12 +79,20 @@ export function createHomeMobile(root, storage, { familyPreview = null } = {}) {
     const source = $('[data-household-source]')
     if (source) source.textContent = familyQA
       ? familyState
-        ? `TEST közös Otthon · revízió ${familyState.revision} · csak olvasás`
-        : familyError || 'TEST közös Otthon ellenőrzése · csak olvasás'
+        ? `TEST közös Otthon · revízió ${familyState.revision} · ${familyWritable ? 'családi szinkron' : 'csak olvasás'}`
+        : familyError || 'TEST közös Otthon ellenőrzése'
       : 'Helyi adatok · a családi megosztás még nincs bekapcsolva'
     root.dataset.homeSource = familyQA
-      ? (familyState ? 'family-test-readonly' : 'family-test-unverified')
+      ? (familyState ? (familyWritable ? 'family-test-outbox' : 'family-test-readonly') : 'family-test-unverified')
       : 'local'
+    const syncBar = $('[data-household-sync]')
+    syncBar.hidden = !familyWritable
+    if (familyWritable) {
+      syncBar.dataset.status = familyStatus
+      $('[data-household-sync-text]').textContent = familyStatusMessage
+      $('[data-household-sync-retry]').hidden = familyStatus !== 'pending'
+      $('[data-household-sync-retry]').disabled = familyStatus !== 'pending'
+    }
     const memberTag = root.querySelector('[data-household-share]')
     if (memberTag) memberTag.textContent = familyState ? 'TEST' : '1 fő'
     root.querySelectorAll('[data-household-filter]').forEach(node => node.classList.toggle('is-active', node.dataset.householdFilter === filter))
@@ -90,15 +113,18 @@ export function createHomeMobile(root, storage, { familyPreview = null } = {}) {
     $('[data-household-suggestion-count]').textContent = String(missing.length)
     $('[data-household-undo]').hidden = familyQA || !lastEventId
     if (familyQA) {
-      // All controls that write either local v1 or shared v2 are inert;
-      // filters, scroll and detail text still work on the SAME three widgets.
+      // TEST preview stays inert. In explicit TEST write mode, only the
+      // verified editor/owner with no pending/conflict operation may write.
+      const readOnly = !familyWritable || !familyState ||
+        !['owner','editor'].includes(familyState.role) ||
+        ['pending','conflict','unverified','checking'].includes(familyStatus)
       root.querySelectorAll(
         '[data-household-add], [data-household-check], [data-household-defer], ' +
         '[data-household-edit], [data-household-edit-shopping], ' +
         '[data-household-delete], [data-household-delete-shopping], ' +
         '[data-household-split-id], [data-household-suggestion-add], ' +
         '[data-household-undo], [data-household-preset]'
-      ).forEach(button => { button.disabled = true })
+      ).forEach(button => { button.disabled = readOnly })
     }
   }
   function openForm(kind, id = null) {
@@ -133,7 +159,11 @@ export function createHomeMobile(root, storage, { familyPreview = null } = {}) {
     const button = event.target.closest('button')
     if (!button || !root.contains(button)) return
     const d = button.dataset
-    if (familyQA && !d.householdJump && !d.householdFilter &&
+    if (d.householdSyncRetry !== undefined) {
+      void familyController?.retry()
+      return
+    }
+    if (familyQA && !familyWritable && !d.householdJump && !d.householdFilter &&
         d.householdCancel === undefined) {
       alert('A közös Otthon TEST-előnézete még csak olvasható.', true)
       return
@@ -159,23 +189,23 @@ export function createHomeMobile(root, storage, { familyPreview = null } = {}) {
   $('[data-household-search]').addEventListener('input', event => { search = event.target.value.toLocaleLowerCase('hu-HU'); render() })
   splitForm.elements.fridgeQuantity.addEventListener('input', previewSplit)
   splitForm.elements.unit.addEventListener('change', previewSplit)
-  form.addEventListener('submit', event => {
+  form.addEventListener('submit', async event => {
     event.preventDefault()
     if (form.hidden || !editing) return
     const data = Object.fromEntries(new FormData(form))
     if (editing.kind === 'inventory') {
-      const result = run(editing.id ? 'LotEdited' : 'StockCountConfirmed', { ...data, id: editing.id }, formOperationId)
+      const result = await run(editing.id ? 'LotEdited' : 'StockCountConfirmed', { ...data, id: editing.id }, formOperationId)
       if (result) closeForms()
     } else {
-      const result = run(editing.id ? 'ShoppingItemEdited' : 'ShoppingItemAdded', { ...data, id: editing.id }, formOperationId)
+      const result = await run(editing.id ? 'ShoppingItemEdited' : 'ShoppingItemAdded', { ...data, id: editing.id }, formOperationId)
       if (result) closeForms()
     }
   })
-  splitForm.addEventListener('submit', event => {
+  splitForm.addEventListener('submit', async event => {
     event.preventDefault()
     if (splitForm.hidden || !splitId) return
     const lot = state().inventory.find(row => row.id === splitId)
-    const result = run('StockSplit', { id: splitId, fridgeQuantity: splitForm.elements.fridgeQuantity.value, unit: splitForm.elements.unit.value }, splitOperationId)
+    const result = await run('StockSplit', { id: splitId, fridgeQuantity: splitForm.elements.fridgeQuantity.value, unit: splitForm.elements.unit.value }, splitOperationId)
     if (result) closeForms()
   })
   async function refreshFamilyPreview(epoch) {
@@ -207,7 +237,12 @@ export function createHomeMobile(root, storage, { familyPreview = null } = {}) {
   }
   function invalidateFamilyPreview() {
     familyLoadEpoch++
+    familyController?.dispose()
+    familyController = null
     familyState = null
+    familyStatus = 'unverified'
+    familyStatusMessage = ''
+    familyStatusCount = 0
     if (familyQA) {
       familyError = 'A korábbi családi munkamenet lezárult. Új ellenőrzés szükséges.'
       closeForms()
@@ -223,8 +258,38 @@ export function createHomeMobile(root, storage, { familyPreview = null } = {}) {
         root.querySelectorAll('.household-widget').forEach(node => { node.hidden = false })
         alert(message || '', !!error)
         render()
-        // An injected authenticated TEST-only gate activates the existing
-        // One Home widgets for read-only family data. PROD passes no gate.
+        // PROD passes NO TEST gate. The approved UI and v1 persistence remain
+        // unchanged until the native TEST owner handoff has been validated.
+        if (familySync?.enabled === true) {
+          const epoch = familyLoadEpoch
+          try {
+            familyController = createHomeFamilyAutoSync({
+              sync:familySync.sync,
+              householdId:familySync.householdId,
+              expectedUserId:familySync.expectedUserId,
+              getActiveOwner:familySync.getActiveOwner,
+              onChange(next) {
+                if (epoch !== familyLoadEpoch || !store) return
+                familyState = next.snapshot
+                familyStatus = next.status
+                familyStatusMessage = next.message
+                familyStatusCount = next.count
+                familyError = next.status === 'unverified' ? next.message : ''
+                if (next.status !== 'unverified') alert('')
+                render()
+              },
+            })
+            alert('')
+            familyController.start()
+          } catch (err) {
+            familyError = 'A családi szinkron nem indítható: ' + err.message
+            familyStatus = 'unverified'
+            familyStatusMessage = familyError
+            render()
+            alert(familyError, true)
+          }
+          return
+        }
         if (familyQA) return refreshFamilyPreview(familyLoadEpoch)
       } catch (err) {
         store = null
