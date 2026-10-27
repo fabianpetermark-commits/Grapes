@@ -741,7 +741,10 @@
   .grapes-main-rail svg, .grapes-main-rail .mobile-icon {width:20px;height:20px;}
 }
 
-  </style>
+      .samsung-water-page button:disabled {opacity:.45;cursor:not-allowed}
+    .samsung-water-page input[type=checkbox] {min-width:24px;min-height:24px}
+    .samsung-water-page [data-samsung-water-availability] {color:var(--muted);font-size:13px;line-height:1.6}
+</style>
   <link rel="stylesheet" href="../src/home/home-mobile.css">
   <link rel="stylesheet" href="../src/styles/grapes-prod-settings.css">
 </head>
@@ -924,7 +927,7 @@
           <div class="section-head"><h2>Egészség és napló</h2></div>
           <div class="sync-providers">
             <div class="sync-provider"><span class="sync-provider__icon" data-mobile-icon="health"></span><div><strong>Health Connect</strong><span>Ételek és víz beolvasása a telefon egészségadataiból</span><label class="sync-provider__auto"><input type="checkbox" data-food-health-auto> Automatikus import</label><span class="sync-provider__status" data-food-health-auto-status> még nincs rögzített import</span></div><button type="button" data-health-sync>Beolvasás</button></div>
-            <div class="sync-provider"><span class="sync-provider__icon" data-mobile-icon="samsung"></span><div><strong>Samsung Health</strong><span>Vízadatok közvetlen beolvasása vagy Health Connecten át</span></div><button type="button" data-samsung-sync-action>Beolvasás</button></div>
+            <div class="sync-provider"><span class="sync-provider__icon" data-mobile-icon="samsung"></span><div><strong>Samsung Health</strong><span>Közvetlen SDK, víz-CSV vagy Health Connect</span></div><button type="button" data-samsung-sync-action>Beolvasás</button></div>
             <div class="sync-provider"><span class="sync-provider__icon" data-mobile-icon="yazio"></span><div><strong>YAZIO</strong><span>Étkezések közvetlen beolvasása a fiókodból</span><label class="sync-provider__auto"><input type="checkbox" data-food-yazio-auto> Automatikus import</label><span class="sync-provider__status" data-food-yazio-auto-status> még nincs rögzített import</span></div><button type="button" data-yazio-import>Kapcsolódás</button></div>
           </div>
           <p class="sync-provider-status" data-yazio-status role="status" aria-live="polite"></p>
@@ -1014,6 +1017,19 @@
           </section>
         </div>
 
+        <div class="content samsung-water-page" data-page="samsung-water" hidden>
+          <p class="eyebrow">Health</p><h1>Samsung Health vízadatok</h1>
+          <p class="lead">Olvasás a meglévő Grapes Víznaplóba. A telefon Samsung Health-fiókja és a Grapes-fiók különböző: csak a saját vízadataidhoz engedélyezd.</p>
+          <label>Kezdődátum<input type="date" class="reader-select" data-samsung-water-from></label>
+          <div class="quick-grid"><button class="quick-action" type="button" data-samsung-water-read disabled>Közvetlen beolvasás</button><button class="quick-action" type="button" data-samsung-water-csv disabled>Samsung víz-CSV import</button></div>
+          <label class="settings-link"><input type="checkbox" data-samsung-water-auto disabled><span>Automatikus előtéri frissítés ehhez a Grapes-fiókhoz</span></label>
+          <p data-samsung-water-availability></p>
+          <p data-samsung-water-status role="status" aria-live="polite"></p>
+          <p>Az automatikus beolvasás csak meglévő Samsung-engedéllyel fut, legfeljebb 30 percenként, az elmúlt 90 napból. Csak új bejegyzéseket másol; nem töröl és nem ír vissza a Samsung Healthbe.</p>
+          <button class="primary" type="button" data-samsung-water-health>Health Connect alternatíva</button>
+          <input type="file" accept=".csv,text/csv" data-samsung-water-file hidden>
+        </div>
+
         <div class="content module-preview" data-page="water" hidden>
           <span data-water-date hidden aria-hidden="true"></span>
           <section class="water-hero">
@@ -1028,6 +1044,7 @@
           <div class="section-head"><h2>Heti folyadékbevitel</h2><button data-action="water-goal">Cél: 2 l</button></div>
           <section class="week-card"><div class="week-head"><strong data-water-week-average>Átlagosan 0 liter</strong><span data-water-week-completed>0 nap teljesítve</span></div><div class="week-bars" data-water-week-bars></div></section>
           <div class="section-head"><h2>Vízadatok megőrzése</h2></div>
+          <button class="primary" type="button" data-samsung-sync-action>Samsung Health vízkapcsolat</button>
           <p class="food-page-note">A Víz napló a telefonon tárolódik, nem része az Ételnapló mentésének. Frissítés vagy adatátvitel előtt készíts külön mentést.</p>
           <div class="quick-grid"><button class="quick-action" type="button" data-water-export><span>↓</span><strong>Víznapló mentése</strong></button><button class="quick-action" type="button" data-water-restore><span>↻</span><strong>Mentés visszaállítása</strong></button></div>
           <div data-water-log hidden aria-hidden="true"></div>

@@ -26,6 +26,10 @@ private class SamsungSdkWaterBridge(context: Context) : SamsungWaterBridge {
     override val availabilityMessage =
         "Samsung Health Data SDK elérhető. Samsung Health 6.30.2+ és fejlesztői/partner hozzáférés szükséges."
 
+    override suspend fun hasReadPermission(): Boolean =
+        runCatching { store.getGrantedPermissions(setOf(readPermission)).contains(readPermission) }
+            .getOrDefault(false)
+
     override suspend fun requestReadPermission(activity: Activity): Boolean {
         val requested = setOf(readPermission)
         return try {
@@ -41,30 +45,55 @@ private class SamsungSdkWaterBridge(context: Context) : SamsungWaterBridge {
     }
 
     override suspend fun readWater(from: LocalDate): List<BridgeRecord> {
-        val request = DataTypes.WATER_INTAKE.readDataRequestBuilder
-            .setLocalTimeFilter(LocalTimeFilter.of(from.atStartOfDay(), LocalDateTime.now()))
-            .setOrdering(Ordering.ASC)
-            .build()
-
-        return store.readData(request).dataList.mapNotNull { point ->
-            val amount = point.getValue(DataType.WaterIntakeType.AMOUNT)?.toDouble()
-                ?: return@mapNotNull null
-            val source = point.dataSource?.appId ?: "com.sec.android.app.shealth"
-            BridgeRecord(
-                type = "hydration",
-                externalId = "samsunghealth:$source:${point.uid}",
-                sourcePackage = source,
-                clientRecordId = point.clientDataId,
-                startTime = point.startTime.toString(),
-                endTime = (point.endTime ?: point.startTime).toString(),
-                name = "Víz",
-                mealType = null,
-                energyKcal = null,
-                proteinGrams = null,
-                carbohydrateGrams = null,
-                fatGrams = null,
-                volumeMilliliters = amount
-            )
-        }
+        // Real Samsung SDK 1.1.0 returns paginated DataResponse<T>. Reading
+        // only dataList from the first response silently truncates long logs.
+        // No partial results are returned if the page sequence is invalid.
+        val entries = mutableListOf<BridgeRecord>()
+        val seenTokens = mutableSetOf<String>()
+        var token: String? = null
+        var pages = 0
+        do {
+            check(++pages <= 250) { "A Samsung vízadatok lapozása túllépte a korlátot." }
+            val request = DataTypes.WATER_INTAKE.readDataRequestBuilder
+                .setLocalTimeFilter(LocalTimeFilter.of(from.atStartOfDay(), LocalDateTime.now()))
+                .setOrdering(Ordering.ASC)
+                .setPageSize(500)
+                .apply { if (token != null) setPageToken(token!!) }
+                .build()
+            val response = store.readData(request)
+            response.dataList.forEach { point ->
+                val amount = point.getValue(DataType.WaterIntakeType.AMOUNT)?.toDouble()
+                    ?: return@forEach
+                val id = point.uid?.takeIf { it.isNotBlank() } ?: return@forEach
+                if (!amount.isFinite() || amount <= 0.0 || amount > 100000.0) {
+                    // Fail closed: never silently copy malformed Health units.
+                    throw IllegalArgumentException("Érvénytelen Samsung-vízmennyiség.")
+                }
+                val source = point.dataSource?.appId
+                    ?.takeIf { it.matches(Regex("[a-zA-Z0-9_.-]{1,120}")) }
+                    ?: "com.sec.android.app.shealth"
+                entries += BridgeRecord(
+                    type = "hydration",
+                    externalId = "samsunghealth:$source:$id",
+                    sourcePackage = source,
+                    clientRecordId = point.clientDataId,
+                    startTime = point.startTime.toString(),
+                    endTime = (point.endTime ?: point.startTime).toString(),
+                    name = "Víz",
+                    mealType = null,
+                    energyKcal = null,
+                    proteinGrams = null,
+                    carbohydrateGrams = null,
+                    fatGrams = null,
+                    volumeMilliliters = amount
+                )
+            }
+            check(entries.size <= 100000) { "A Samsung víznapló túl sok rekordot tartalmaz." }
+            token = response.pageToken?.takeIf { it.isNotBlank() }
+            check(token == null || seenTokens.add(token!!)) {
+                "Ismétlődő Samsung lapozási azonosító."
+            }
+        } while (token != null)
+        return entries
     }
 }

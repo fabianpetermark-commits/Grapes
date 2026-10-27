@@ -1,3 +1,5 @@
+import {readWaterStoreStrict} from '../src/water/water-backup.js'
+import {mergeWaterForSamsungOwner} from '../src/water/samsung-water-sync.js'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
@@ -32,14 +34,14 @@ test('a víznapló mentése a 60 napnál régebbi Health előzményeket sem tör
   const match = shell.match(/function saveWaterStore\(store\) \{[\s\S]*?\n\}/)
   assert.ok(match, 'Hiányzik a tényleges víznapló-mentő függvény')
   const store = {
-    '2025-02-18': { goal: 2000, entries: [{ id: 'historical', amount: 250, externalKey: 'healthconnect:old' }] },
-    '2026-10-17': { goal: 2000, entries: [{ id: 'new', amount: 500 }] },
+    '2025-02-18': { goal: 2000, entries: [{ id: 'historical', amount: 250, at: '2025-02-18T12:00:00Z', externalKey: 'healthconnect:old' }] },
+    '2026-10-17': { goal: 2000, entries: [{ id: 'new', amount: 500, at: '2026-10-17T12:00:00Z' }] },
   }
   let saved = null
   const sandbox = {
-    store,
+    store, readWaterStoreStrict, mergeWaterForSamsungOwner, samsungOwner:null,
     WATER_STORE_KEY: 'water-test',
-    localStorage: { setItem(key, value) { assert.equal(key, 'water-test'); saved = JSON.parse(value) } },
+    localStorage: { getItem() { return JSON.stringify(saved || store) }, setItem(key, value) { assert.equal(key, 'water-test'); saved = JSON.parse(value) } },
   }
   vm.runInNewContext(match[0] + '\nsaveWaterStore(store)', sandbox)
   assert.equal(saved['2025-02-18'].entries[0].externalKey, 'healthconnect:old')

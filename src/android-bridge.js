@@ -40,8 +40,16 @@ export async function requestAndroidYazio(operation, ...args) {
   return JSON.parse(await nativeRequest('yazio', operation, ...args))
 }
 
-export function readAndroidSamsungHealthExport(fromDate) {
-  return nativeRequest('readSamsungHealthData', fromDate)
+export function readAndroidSamsungHealthExport(fromDate, ownerId = '') {
+  return nativeRequest('readSamsungHealthData', fromDate, ownerId)
+}
+
+export function readAndroidSamsungHealthExportSilent(fromDate, ownerId) {
+  return nativeRequest('readSamsungHealthDataSilent', fromDate, ownerId)
+}
+
+export async function getAndroidSamsungWaterStatus() {
+  return JSON.parse(await nativeRequest('getSamsungWaterStatus'))
 }
 
 export function openAndroidHealthConnectSettings() {

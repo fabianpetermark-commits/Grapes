@@ -48,5 +48,11 @@ internal class ProdAuthGate(
         return true
     }
 
+    // Read-only identity handoff; never authorizes or binds a new account.
+    fun subject(fromTrustedAppPage: Boolean): String? =
+        if (enabled && authorized && fromTrustedAppPage)
+            ownerPreferences.getString("owner-uid", null)?.takeIf { uuid.matches(it) }
+        else null
+
     fun lock() { authorized = false }
 }
