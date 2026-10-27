@@ -25,6 +25,8 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.health.connect.client.HealthConnectClient
 import androidx.lifecycle.lifecycleScope
 import androidx.webkit.WebViewAssetLoader
@@ -200,6 +202,17 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         configureWebView()
         setContentView(webView)
+        // Android 15+ enforces edge-to-edge rendering. Keep the Grapes header
+        // below the device status bar (and controls above the navigation bar)
+        // without changing earlier Android releases or any Supabase session.
+        if (Build.VERSION.SDK_INT >= 35) {
+            ViewCompat.setOnApplyWindowInsetsListener(webView) { view, insets ->
+                val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+                view.setPadding(0, bars.top, 0, bars.bottom)
+                insets
+            }
+            ViewCompat.requestApplyInsets(webView)
+        }
         UpdateNotifications.createChannel(this)
         UpdateCheckWorker.schedule(this)
         val prodReturn = isProdAuth && prodAuth.accept(intent?.data)

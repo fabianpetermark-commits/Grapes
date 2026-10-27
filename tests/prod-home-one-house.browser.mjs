@@ -33,15 +33,35 @@ try {
     const home=page.locator('[data-page="household"]')
     await home.waitFor({state:'visible'})
     assert.equal(await home.locator('[data-household-tabs]').count(),0)
+    assert.equal(await home.locator('.household-quick button svg').count(),3,
+      'Accepted quick actions must use three labeled icons')
+    const dock=await home.locator('.household-quick').evaluate(node=>({
+      position:getComputedStyle(node).position,
+      addRadius:getComputedStyle(node.querySelector('.household-quick-add')).borderRadius,
+    }))
+    assert.equal(dock.position,'fixed','Home quick rail stays in reach during scrolling')
+    assert.equal(dock.addRadius,'50%','Main add action is round')
     assert.equal(await home.locator('[data-household-shopping]').isVisible(),true)
     assert.equal(await home.locator('[data-household-inventory]').isVisible(),true)
     assert.equal(await home.locator('[data-household-suggestions]').isVisible(),true)
     assert.equal((await home.locator('[data-household-shopping-count]').textContent()).trim(),'0')
-    assert.equal(await home.locator('[data-household-share]').first().isDisabled(),true)
+    // PROD local Home must never pretend that family sharing is configured.
+    assert.equal(await home.locator('.household-head [data-household-share]').isDisabled(),true)
+    assert.equal(await home.locator('[data-household-share-panel]').isVisible(),false)
     const pageWidth=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth)
     assert.ok(pageWidth<=2,'Home overflow on '+width+'px')
     await home.locator('[data-household-add="shopping"]').first().click()
     const form=home.locator('[data-household-form]')
+    assert.equal(await form.isVisible(),true)
+    const sheet=await form.evaluate(node=>({
+      position:getComputedStyle(node).position,
+      bottom:node.getBoundingClientRect().bottom,
+      viewport:window.innerHeight,
+      backdrop:!!node.closest('[data-household-root]').querySelector('[data-household-sheet-backdrop]:not([hidden])'),
+    }))
+    assert.equal(sheet.position,'fixed','New item editor must be a bottom sheet, not inline')
+    assert.ok(sheet.bottom<=sheet.viewport+2,JSON.stringify(sheet))
+    assert.equal(sheet.backdrop,true,'Modal sheet must dim the Home behind it')
     await form.locator('[name="name"]').fill('Tej')
     await form.locator('button[type="submit"]').click()
     assert.equal((await home.locator('[data-household-shopping-count]').textContent()).trim(),'1')
