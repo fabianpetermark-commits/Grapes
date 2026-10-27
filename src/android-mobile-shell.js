@@ -360,6 +360,7 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   if (page === 'health-settings') showHealthSettingsIndex()
   if (page === 'household') {
     household.load()
+    // Legacy deep links may request a section; never hide the other widgets.
     if (entry === 'shopping' || entry === 'inventory') household.openTab(entry)
   }
   if (page === 'food') mobileFood?.load().then(async () => {
@@ -1214,7 +1215,8 @@ $$('[data-settings-provider]').forEach(button => button.addEventListener('click'
 $('[data-settings-open-home]')?.addEventListener('click', () => showPage('household'))
 $$('[data-menu-group]').forEach(button => button.addEventListener('click', () => {
   const group = button.dataset.menuGroup
-  if (['home', 'health', 'utility', 'finance'].includes(group)) showPage('hub-' + group)
+  if (group === 'home') showPage('household', { parent: 'home' })
+  else if (['health', 'utility', 'finance'].includes(group)) showPage('hub-' + group)
 }))
 $$('[data-menu-back]').forEach(button => button.addEventListener('click', () => showPage('home')))
 
