@@ -1,0 +1,63 @@
+name: Grapes Supabase TEST One Home read-only security gate (NO RELEASE)
+on:
+  push:
+    branches:
+      - integration/grapes-supabase-boundary-test-20261027
+  pull_request:
+    branches:
+      - codex/android-app
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-supabase-one-home-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  supabase-test-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GRAPES_TEST_PROJECT_URL: https://aighqtqjlzirlokxwupt.supabase.co
+      GRAPES_TEST_PUBLISHABLE_KEY: ${{ vars.GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Full app unit tests and new strict TEST Home Auth/read gate
+        run: |
+          npm test
+          node --test tests/home-supabase-test-readonly.test.js
+      - name: Android app web compilation without release or user login
+        run: npm run build:android-web
+      - name: Remote TEST anonymous denial / private-schema isolation (READ ONLY RPC)
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GRAPES_TEST_PROJECT_URL" = 'https://aighqtqjlzirlokxwupt.supabase.co'
+          test -n "$GRAPES_TEST_PUBLISHABLE_KEY"
+          url="$GRAPES_TEST_PROJECT_URL/rest/v1/rpc/home_m3b_list_households"
+          status=$(curl -sS --max-time 20 -o "$RUNNER_TEMP/anon-home.json" -w '%{http_code}' \
+            -H "apikey: $GRAPES_TEST_PUBLISHABLE_KEY" \
+            -H 'Content-Profile: api' -H 'Accept-Profile: api' \
+            -H 'Content-Type: application/json' -d '{}' "$url")
+          echo "Unauthenticated TEST Home RPC: HTTP $status"
+          case "$status" in 401|403) ;; *) echo '::error::Anonymous access unexpectedly allowed or test endpoint missing'; exit 1;; esac
+          if grep -Eq 'PGRST106|PGRST202' "$RUNNER_TEMP/anon-home.json"; then
+            echo '::error::TEST RPC is absent / API schema not exposed'; exit 1
+          fi
+          private_status=$(curl -sS --max-time 20 -o "$RUNNER_TEMP/private-home.json" -w '%{http_code}' \
+            -H "apikey: $GRAPES_TEST_PUBLISHABLE_KEY" \
+            -H 'Content-Profile: grapes_home_private' -H 'Content-Type: application/json' -d '{}' "$url")
+          test "$private_status" = 406
+          grep -Fq 'PGRST106' "$RUNNER_TEMP/private-home.json"
+          echo 'PASS: TEST Home backend is authenticated-only, private DB schema is not Data API exposed.'
+      - name: Explicit release and backend isolation
+        run: echo 'READ ONLY TEST project. No PROD backend request, SQL mutation, APK, signing, release, user account or household creation.'
