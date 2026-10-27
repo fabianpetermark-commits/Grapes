@@ -654,6 +654,34 @@
     @media(max-height:620px){[data-food-add-sheet].meal-quick-panel{bottom:84px;height:calc(100dvh - 170px);max-height:none}}
     @media(prefers-reduced-motion:reduce){.fab span,[data-food-add-sheet].meal-quick-panel{transition:none}}
 
+
+/* Approved Health v1.2 six-icon capsule. Real routes, no fake data layer. */
+#app:has(.grapes-health-rail:not([hidden])) { grid-template-rows: auto auto minmax(0, 1fr); }
+.grapes-health-rail {
+  display: grid; grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 3px; min-width: 0; min-height: 63px; padding: 5px;
+  margin: 8px 12px 3px; border: 1px solid #2c4a58;
+  border-radius: 23px; background: #101821;
+}
+.grapes-health-rail[hidden] { display: none !important; }
+.grapes-health-rail button {
+  display: grid; place-items: center; min-width: 0; min-height: 51px;
+  padding: 0; color: #9bb2c0; background: transparent;
+  border: 1px solid transparent; border-radius: 17px; cursor: pointer;
+}
+.grapes-health-rail button[aria-current="page"] {
+  background: #1b3541; border-color: #477a88; color: #3bdcf2;
+  box-shadow: inset 0 -2px 0 rgb(59 220 242 / 55%);
+}
+.grapes-health-rail button:focus-visible { outline: 2px solid #3bdcf2; outline-offset: 1px; }
+.grapes-health-rail svg, .grapes-health-rail .mobile-icon {
+  display: block; width: 22px; height: 22px;
+}
+@media(max-width: 350px) {
+  .grapes-health-rail { gap: 2px; min-height: 58px; margin-inline: 9px; padding: 4px; }
+  .grapes-health-rail button { min-height: 46px; border-radius: 14px; }
+  .grapes-health-rail svg, .grapes-health-rail .mobile-icon { width: 20px; height: 20px; }
+}
   </style>
   <link rel="stylesheet" href="../src/home/home-mobile.css">
   <link rel="stylesheet" href="../src/styles/grapes-prod-settings.css">
@@ -681,6 +709,18 @@
           <button class="icon-btn icon-btn--settings" type="button" data-nav="more" aria-label="Beállítások" title="Beállítások"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 2.5h4l.6 2.4 1.6.9 2.4-.7 2 3.5-1.8 1.7v1.9l1.8 1.7-2 3.5-2.4-.7-1.6.9-.6 2.4h-4l-.6-2.4-1.6-.9-2.4.7-2-3.5 1.8-1.7v-1.9L3.4 8.6l2-3.5 2.4.7 1.6-.9z"/><circle cx="12" cy="12" r="3"/></svg></button>
         </header>
 
+        <!-- Approved Health v1.2: actual Food, Water, Recipes, Statistics and barcode routes. -->
+        <nav class="grapes-health-rail" data-health-rail aria-label="Health nézetek" hidden>
+          <button type="button" data-health-nav="food" aria-label="Food" title="Food" aria-current="page"><span data-mobile-icon="food"></span></button>
+          <button type="button" data-health-nav="water" aria-label="Víznapló" title="Víznapló"><span data-mobile-icon="water"></span></button>
+          <button type="button" data-health-nav="recipes" aria-label="Receptek" title="Receptek"><span data-mobile-icon="recipe"></span></button>
+          <button type="button" data-health-nav="stats" aria-label="Statisztika" title="Statisztika"><span data-mobile-icon="stats"></span></button>
+          <button type="button" data-health-nav="barcode" aria-label="Vonalkód" title="Vonalkód"><span data-mobile-icon="qr"></span></button>
+          <button type="button" data-health-nav="settings" aria-label="Health beállítások" title="Beállítások">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 2.5h4l.6 2.4 1.6.9 2.4-.7 2 3.5-1.8 1.7v1.9l1.8 1.7-2 3.5-2.4-.7-1.6.9-.6 2.4h-4l-.6-2.4-1.6-.9-2.4.7-2-3.5 1.8-1.7v-1.9L3.4 8.6l2-3.5 2.4.7 1.6-.9z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </nav>
+
         <div class="content" data-page="home">
           <p class="eyebrow" data-home-greeting>Jó napot</p>
           <h1>Miben segíthetünk?</h1>
@@ -704,10 +744,8 @@
         </div>
 
         <div class="content health-dashboard" data-page="hub-health" hidden>
-          <button type="button" class="hub-back" data-menu-back>‹ Főmenü</button>
-
           <section class="health-panel health-panel--food" aria-label="Napi Food összesítő">
-            <div class="health-panel-head"><strong>♜ Food</strong><span>Mai összesítő</span></div>
+            <div class="health-panel-head"><strong>Mai tápanyagok</strong><span>Ma</span></div>
             <div class="health-food-metrics">
               <button type="button" class="health-calorie-ring" data-health-stats aria-label="Részletes Statisztika megnyitása">
                 <svg viewBox="0 0 120 120" aria-hidden="true"><circle class="health-ring-track" cx="60" cy="60" r="49" pathLength="100"/><circle class="health-ring-progress" data-health-ring-progress cx="60" cy="60" r="49" pathLength="100"/></svg>
@@ -730,7 +768,7 @@
           </section>
 
           <section class="health-panel health-panel--water" data-health-water-panel aria-label="Vízfogyasztás">
-            <div class="health-panel-head"><strong>♢ Víz</strong><span data-health-water-total>—</span></div>
+            <div class="health-panel-head"><strong>Mai folyadék</strong><span data-health-water-total>—</span></div>
             <div class="health-water-line"><div class="health-track"><i data-health-water-fill></i></div>
               <button type="button" data-health-water-add>＋ 250 ml</button></div>
             <button type="button" class="health-text-link" data-health-water-open>Víznapló megnyitása →</button>
@@ -750,14 +788,10 @@
         </div>
 
         <div class="content health-settings-page" data-page="health-settings" hidden>
-          <button type="button" class="hub-back" data-health-settings-back>‹ Health</button>
-          <h2>Health beállítások</h2><p class="health-settings-intro">Személyes célok és egészségügyi adatforrások.</p>
+          <h2>Beállítások</h2>
           <div data-health-settings-index>
-            <button class="health-settings-item" data-health-section="goals"><strong>◎ Célok</strong><small>Kalória, makrók, testsúly, víz</small></button>
-            <button class="health-settings-item" data-health-section="units"><strong>↔ Mértékegységek</strong><small>Metrikus / Imperial</small></button>
-            <button class="health-settings-item" data-health-section="display"><strong>▤ Napló és megjelenítés</strong><small>Widgetek testreszabása</small></button>
-            <button class="health-settings-item" data-health-section="integrations"><strong>⤳ Integrációk</strong><small>Health Connect, Samsung Health, YAZIO</small></button>
-            <button class="health-settings-item" data-health-section="data"><strong>⬡ Adatok és biztonság</strong><small>Mentések és importelőzmények</small></button>
+            <button class="health-settings-item" data-health-section="goals"><strong>Napi célok</strong><small>Kalória, makrók, folyadék és megjelenítés</small></button>
+            <button class="health-settings-item" data-health-section="connections"><strong>Adatkapcsolatok</strong><small>Health Connect, Samsung Health, YAZIO és mentések</small></button>
           </div>
           <section data-health-settings-detail hidden>
             <button class="health-text-link" type="button" data-health-section-back>‹ Minden Health beállítás</button>
