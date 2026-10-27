@@ -67,6 +67,22 @@ jobs:
           node --test tests/home-one-test-sync.test.js
       - name: Compile TEST Auth and One Home WebView assets
         run: npm run build:android-web
+      - name: Chromium setup for Codex real IndexedDB A/B full-chain gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v google-chrome >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            npx playwright-core install --with-deps chromium
+            binary=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path '*chrome-linux*' | head -1)
+            test -n "$binary"
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$binary" >> "$GITHUB_ENV"
+          fi
+      - name: Codex #190 full-chain browser QA – BLOCK signed APK on A/B owner leaks
+        run: node tests/home-one-family-fullchain.browser.mjs
       - name: Reject PROD credential or silent family activation in bundle
         run: |
           set -euo pipefail
