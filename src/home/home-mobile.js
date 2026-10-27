@@ -1,4 +1,5 @@
 import { createHomeStore } from './home-store.js'
+import { projectOneHomeFamilyPreview } from './home-family-preview-model.js'
 import { displayQuantity, expiryLabel, splitPreset, splitPreview, UNITS } from './home-data.js'
 
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char])
@@ -7,8 +8,12 @@ const statusNames = { planned: 'Tervezett', checked: 'Elintézve', deferred: 'K�
 const units = Object.keys(UNITS).map(unit => `<option value="${unit}">${unit}</option>`).join('')
 const operationId = () => globalThis.crypto?.randomUUID?.() || `home-ui-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
-export function createHomeMobile(root, storage) {
+export function createHomeMobile(root, storage, { familyPreview = null } = {}) {
   let store = null
+  const familyQA = familyPreview?.enabled === true
+  let familyState = null
+  let familyLoadEpoch = 0
+  let familyError = ''
   // Approved One Home screen: all three real widgets visible simultaneously.
   let filter = 'all'
   let search = ''
@@ -20,7 +25,7 @@ export function createHomeMobile(root, storage) {
   let message = ''
   let error = ''
   root.innerHTML = `
-    <div class="household-head"><div><h1>Otthonunk</h1><p>Helyi adatok · a családi megosztás még nincs bekapcsolva</p></div><button type="button" data-household-share disabled title="A családi megosztás Supabase-integráció után kapcsolható be">1 fő</button></div>
+    <div class="household-head"><div><h1>Otthonunk</h1><p data-household-source>Helyi adatok · a családi megosztás még nincs bekapcsolva</p></div><button type="button" data-household-share disabled title="A családi megosztás Supabase-integráció után kapcsolható be">1 fő</button></div>
     <div class="household-alert" data-household-alert role="status" aria-live="polite" hidden></div>
     <div class="household-totals" aria-label="Otthon aktuális adatai"><div><strong data-household-shopping-count>0</strong><span>Bevásárolandó</span></div><div><strong data-household-inventory-count>0</strong><span>Készleten</span></div><div><strong data-household-suggestion-count>0</strong><span>Igazolt hiány</span></div></div>
     <section class="household-widget" data-household-shopping aria-labelledby="home-shopping-title"><div class="household-widget-head"><h2 id="home-shopping-title">Bevásárlás</h2><button type="button" data-household-add="shopping">+ Listaelem</button></div><div data-household-items></div></section>
@@ -34,10 +39,16 @@ export function createHomeMobile(root, storage) {
   const $ = selector => root.querySelector(selector)
   const form = $('[data-household-form]')
   const splitForm = $('[data-household-split]')
-  const state = () => store.getState()
+  // Never promote remote v2 into the local v1 store. One Home UI, two
+  // physically separate stores, with only one explicitly selected for display.
+  const state = () => familyState || store.getState()
   const alert = (text, isError = false) => { message = isError ? '' : text; error = isError ? text : ''; const node = $('[data-household-alert]'); node.hidden = !text; node.textContent = text; node.classList.toggle('is-error', isError) }
   const run = (type, payload, eventId) => {
     if (!store) return
+    if (familyQA) {
+      alert('A közös Otthon TEST-előnézete még csak olvasható. Nem történt mentés.', true)
+      return null
+    }
     try {
       const result = store.dispatch({ type, payload, ...(eventId ? { eventId } : {}) })
       if (!result.duplicate) lastEventId = result.event.eventId
@@ -50,6 +61,17 @@ export function createHomeMobile(root, storage) {
   function render() {
     if (!store) return
     const current = state()
+    const source = $('[data-household-source]')
+    if (source) source.textContent = familyQA
+      ? familyState
+        ? `TEST közös Otthon · revízió ${familyState.revision} · csak olvasás`
+        : familyError || 'TEST közös Otthon ellenőrzése · csak olvasás'
+      : 'Helyi adatok · a családi megosztás még nincs bekapcsolva'
+    root.dataset.homeSource = familyQA
+      ? (familyState ? 'family-test-readonly' : 'family-test-unverified')
+      : 'local'
+    const memberTag = root.querySelector('[data-household-share]')
+    if (memberTag) memberTag.textContent = familyState ? 'TEST' : '1 fő'
     root.querySelectorAll('[data-household-filter]').forEach(node => node.classList.toggle('is-active', node.dataset.householdFilter === filter))
     const lots = current.inventory.filter(lot => (filter === 'all' || lot.storageLocation === filter) && lot.name.toLocaleLowerCase('hu-HU').includes(search))
     $('[data-household-lots]').innerHTML = lots.length ? lots.map(lot => `<article class="household-card"><div><strong>${escape(lot.name)}</strong><p>${escape(displayQuantity(lot))} · ${placeNames[lot.storageLocation]} · kézi, megerősített ${escape(lot.observedAt.slice(0, 10))}</p><small>${escape(expiryLabel(lot))}</small></div><div class="household-card-actions"><button type="button" data-household-edit="${escape(lot.id)}">Szerkesztés</button><button type="button" data-household-split-id="${escape(lot.id)}">Elosztás</button><button type="button" data-household-delete="${escape(lot.id)}">Törlés</button></div></article>`).join('') : '<div class="household-empty">Itt még nincs ismert élelmiszer. Adj hozzá egy megerősített mennyiséget.</div>'
@@ -66,7 +88,18 @@ export function createHomeMobile(root, storage) {
     $('[data-household-shopping-count]').textContent = String(current.shopping.filter(x => x.status === 'planned' || x.status === 'deferred').length)
     $('[data-household-inventory-count]').textContent = String(current.inventory.filter(x => x.quantityBase > 0).length)
     $('[data-household-suggestion-count]').textContent = String(missing.length)
-    $('[data-household-undo]').hidden = !lastEventId
+    $('[data-household-undo]').hidden = familyQA || !lastEventId
+    if (familyQA) {
+      // All controls that write either local v1 or shared v2 are inert;
+      // filters, scroll and detail text still work on the SAME three widgets.
+      root.querySelectorAll(
+        '[data-household-add], [data-household-check], [data-household-defer], ' +
+        '[data-household-edit], [data-household-edit-shopping], ' +
+        '[data-household-delete], [data-household-delete-shopping], ' +
+        '[data-household-split-id], [data-household-suggestion-add], ' +
+        '[data-household-undo], [data-household-preset]'
+      ).forEach(button => { button.disabled = true })
+    }
   }
   function openForm(kind, id = null) {
     closeForms()
@@ -100,6 +133,11 @@ export function createHomeMobile(root, storage) {
     const button = event.target.closest('button')
     if (!button || !root.contains(button)) return
     const d = button.dataset
+    if (familyQA && !d.householdJump && !d.householdFilter &&
+        d.householdCancel === undefined) {
+      alert('A közös Otthon TEST-előnézete még csak olvasható.', true)
+      return
+    }
     if (d.householdJump) { $('[data-household-' + d.householdJump + ']').scrollIntoView({ block: 'start', behavior: 'smooth' }) }
     else if (d.householdSuggestionAdd) {
       const lot = state().inventory.find(row => row.id === d.householdSuggestionAdd && row.quantityBase === 0 && row.evidenceStatus === 'confirmed')
@@ -140,5 +178,71 @@ export function createHomeMobile(root, storage) {
     const result = run('StockSplit', { id: splitId, fridgeQuantity: splitForm.elements.fridgeQuantity.value, unit: splitForm.elements.unit.value }, splitOperationId)
     if (result) closeForms()
   })
-  return { load() { try { store = createHomeStore(storage); root.querySelectorAll('.household-widget').forEach(node => { node.hidden = false }); alert(message || '', !!error); render() } catch (err) { store = null; closeForms(); root.querySelectorAll('.household-widget').forEach(node => { node.hidden = true }); $('[data-household-undo]').hidden = true; alert(err.message, true) } }, openTab(name) { if (name !== 'inventory' && name !== 'shopping') return; closeForms(); $('[data-household-' + name + ']').scrollIntoView({ block: 'start' }) }, handleBack() { if (!form.hidden || !splitForm.hidden) { closeForms(); return true } return false } }
+  async function refreshFamilyPreview(epoch) {
+    const ownerCheck = async () => {
+      const expected = String(familyPreview.expectedUserId || '').toLowerCase()
+      const active = await familyPreview.getActiveOwner()
+      if (!expected || String(active || '').toLowerCase() !== expected)
+        throw new Error('Fiókváltás: a korábbi közös Otthon nem látható.')
+    }
+    try {
+      if (typeof familyPreview.getActiveOwner !== 'function' ||
+          typeof familyPreview.gateway?.read !== 'function')
+        throw new Error('A családi TEST-kapu nem hitelesített.')
+      await ownerCheck()
+      const snapshot = await familyPreview.gateway.read(familyPreview.householdId)
+      await ownerCheck()
+      if (epoch !== familyLoadEpoch || !store) return
+      const verified = projectOneHomeFamilyPreview(snapshot, familyPreview.householdId)
+      familyState = verified
+      familyError = ''
+      alert('A közös Otthon TEST-adatainak visszaolvasása sikeres; módosítás még nem engedélyezett.')
+    } catch {
+      if (epoch !== familyLoadEpoch || !store) return
+      familyState = null
+      familyError = 'A közös TEST Otthon nem ellenőrizhető. A helyi Home megőrizve; nincs felhőszinkron.'
+      alert(familyError, true)
+    }
+    render()
+  }
+  function invalidateFamilyPreview() {
+    familyLoadEpoch++
+    familyState = null
+    if (familyQA) {
+      familyError = 'A korábbi családi munkamenet lezárult. Új ellenőrzés szükséges.'
+      closeForms()
+      if (store) render()
+      alert(familyError, true)
+    }
+  }
+  return {
+    load() {
+      invalidateFamilyPreview()
+      try {
+        store = createHomeStore(storage)
+        root.querySelectorAll('.household-widget').forEach(node => { node.hidden = false })
+        alert(message || '', !!error)
+        render()
+        // An injected authenticated TEST-only gate activates the existing
+        // One Home widgets for read-only family data. PROD passes no gate.
+        if (familyQA) return refreshFamilyPreview(familyLoadEpoch)
+      } catch (err) {
+        store = null
+        closeForms()
+        root.querySelectorAll('.household-widget').forEach(node => { node.hidden = true })
+        $('[data-household-undo]').hidden = true
+        alert(err.message, true)
+      }
+    },
+    invalidateFamilyPreview,
+    openTab(name) {
+      if (name !== 'inventory' && name !== 'shopping') return
+      closeForms()
+      $('[data-household-' + name + ']').scrollIntoView({ block: 'start' })
+    },
+    handleBack() {
+      if (!form.hidden || !splitForm.hidden) { closeForms(); return true }
+      return false
+    },
+  }
 }
