@@ -33,7 +33,11 @@ try {
   const enterHealth=async()=>{
     await page.locator('.appbar [data-nav="home"]').click()
     await home.waitFor({state:'visible'})
-    await home.locator('[data-menu-group="health"]').click()
+    // Both layouts must open the SAME live Health controller: the legacy
+    // start card and approved v1.2 persistent six-icon rail.
+    const rail=page.locator('[data-main-rail] [data-main-nav="health"]')
+    if (await rail.count()) await rail.click()
+    else await home.locator('[data-menu-group="health"]').click()
     await health.waitFor({state:'visible'})
   }
   await enterHealth()
