@@ -319,6 +319,9 @@ export function createHomeMobile(root, storage, { familyPreview = null, familySy
                 familyStatusMessage = next.message
                 familyStatusCount = next.count
                 familyError = next.status === 'unverified' ? next.message : ''
+                // A delayed A→B invalidation must close any open modal too;
+                // otherwise a stale form/share role could remain on-screen.
+                if (next.status === 'unverified' || next.status === 'conflict') closeForms()
                 if (next.status !== 'unverified') alert('')
                 render()
               },
