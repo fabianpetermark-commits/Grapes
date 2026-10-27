@@ -410,6 +410,10 @@ async function openUpdateInbox() {
 }
 
 function showPage(page, { parent = '', entry = '' } = {}) {
+  // This signed QA is intentionally Home-only: old personal Food/Finance/Water
+  // stores are not owner-scoped on this PROD-derived shell. Never expose them
+  // during A→B family tests, and never mix them into Home.
+  if (testFamilyHome && page !== 'household') page = 'household'
   // Remember only the menu origin. Reader/transfer views inherit E-book's origin.
   if (!['reader', 'transfer'].includes(page) || parent) {
     menuReturnPage = parent
@@ -1553,4 +1557,10 @@ const prodNativeAuthenticated = import.meta.env?.VITE_GRAPES_PROD_AUTH_ENABLED =
   import.meta.env?.VITE_GRAPES_PROD_LEGACY_DATA_ISOLATION_REVIEWED === 'true' &&
   globalThis.location?.href === 'https://appassets.androidplatform.net/assets/design/android-mobile-preview.html' &&
   isGrapesAndroidApp()
-if (isGrapesDriveConnected() || localMode() || prodNativeAuthenticated) showApp()
+// Native TEST Auth has already checked the signed-in Supabase subject on
+// an isolated origin. TEST opens only the owner-pinned family Home; PROD stays
+// on the existing Drive/PROD Auth routing.
+const testNativeAuthenticated = testFamilyHome &&
+  globalThis.location?.href === 'https://appassets.androidplatform.net/assets/design/android-mobile-preview.html' &&
+  isGrapesAndroidApp()
+if (isGrapesDriveConnected() || localMode() || prodNativeAuthenticated || testNativeAuthenticated) showApp()
