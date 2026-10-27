@@ -143,10 +143,12 @@ export function createHomeFamilyAutoSync({
       if (!live || busy || status === 'conflict' || status === 'pending' ||
           !snapshot || !['owner','editor'].includes(snapshot.role))
         fail('Előbb rendezd a családi Otthon függő műveletét.')
-      await pin(epoch)
+      // Claim the single writer slot synchronously: two rapid taps must not
+      // race while waiting for the native owner pin or IndexedDB transaction.
       busy = true
       let job
       try {
+        await pin(epoch)
         job = await sync.queue(homeId, command)
         await pin(epoch)
         if (job?.ownerId !== owner || job?.householdId !== homeId ||
