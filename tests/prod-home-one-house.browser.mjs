@@ -37,14 +37,9 @@ try {
     assert.equal(await home.locator('[data-household-inventory]').isVisible(),true)
     assert.equal(await home.locator('[data-household-suggestions]').isVisible(),true)
     assert.equal((await home.locator('[data-household-shopping-count]').textContent()).trim(),'0')
-    // Approved top-right share affordance opens a non-mutating permission
-    // overview; it must not silently create a family or overwrite local v1.
-    await home.locator('.household-head [data-household-share]').click()
-    const sharePanel=home.locator('[data-household-share-panel]')
-    assert.equal(await sharePanel.isVisible(),true)
-    assert.match(await sharePanel.locator('[data-household-share-details]').textContent(),/ezen az eszközön/)
-    await sharePanel.locator('[data-household-cancel]').click()
-    assert.equal(await sharePanel.isVisible(),false)
+    // PROD local Home must never pretend that family sharing is configured.
+    assert.equal(await home.locator('.household-head [data-household-share]').isDisabled(),true)
+    assert.equal(await home.locator('[data-household-share-panel]').isVisible(),false)
     const pageWidth=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth)
     assert.ok(pageWidth<=2,'Home overflow on '+width+'px')
     await home.locator('[data-household-add="shopping"]').first().click()
