@@ -552,6 +552,20 @@
       .phone { width: 100%; height: 100dvh; border: 0; border-radius: 0; box-shadow: none; }
       .phone::before { display: none; }
     }
+    /* Functional, mobile-scrollable Grapes v1.2 settings shell. Preserve legacy QA hooks below. */
+    .grapes-settings { padding-bottom: max(90px, env(safe-area-inset-bottom)); }
+    .grapes-settings > h1 { margin-top: 0; }
+    .settings-section { margin: 18px 0 20px; }
+    .settings-section > h2 { margin: 0 0 11px; color: var(--muted); font-size: 13px; font-weight: 750; letter-spacing: .02em; }
+    .settings-section .settings-links { margin-bottom: 0; }
+    .settings-section > .settings-link + .settings-static { margin-top: 10px; }
+    .settings-action { border-radius: 14px; }
+    .settings-link:focus-visible, .settings-action:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .settings-connection { display: inline-grid; place-items: center; width: 26px; height: 26px; margin: 0; color: var(--warning); }
+    .settings-connection svg { display: block; width: 22px; height: 22px; }
+    .settings-connection[data-state="connected"] { color: var(--success); font-size: 20px; font-weight: 800; }
+    .settings-connection [hidden] { display: none !important; }
+    .settings-static { grid-template-columns: 42px minmax(0, 1fr); }
     .settings-links { display: grid; gap: 10px; margin: 0 0 20px; }
     .settings-link { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 12px; align-items: center; width: 100%; min-height: 68px; padding: 10px 14px; color: var(--text); text-align: left; cursor: pointer; background: var(--surface); border: 1px solid var(--line); border-radius: 17px; }
     .settings-link__icon { display: grid; place-items: center; width: 44px; height: 44px; color: var(--accent); background: var(--accent-soft); border-radius: 13px; }
@@ -694,13 +708,29 @@
           <input type="file" accept=".json,application/json,.csv,text/csv" data-yazio-input hidden>
         </div>
 
-        <div class="content" data-page="more" hidden>
-          <p class="eyebrow">Fiók és alkalmazás</p><h1>Beállítások</h1><p class="lead">Fiók, nyelv és alkalmazásbeállítások.</p>
-<div class="settings-links" aria-label="Kapcsolódó oldalak"><button class="settings-link" type="button" data-nav="projects"><span class="settings-link__icon" data-module-icon="projects"></span><span><strong>Projektek</strong><small>Helyi és Drive munkák</small></span><span aria-hidden="true">›</span></button><button class="settings-link" type="button" data-nav="sync"><span class="settings-link__icon" data-module-icon="sync"></span><span><strong>Szinkron</strong><small>Adatok és fiók</small></span><span aria-hidden="true">›</span></button></div>
-          <button class="setting" type="button" data-account-login><span class="setting__icon" data-mobile-icon="google"></span><span><strong data-account-action>Google-fiók csatlakoztatása</strong><span data-account-mode>Helyi mód</span></span><span>›</span></button>
-          <div class="setting"><div class="setting__icon" data-mobile-icon="language"></div><div><strong>Nyelv</strong><span>Magyar</span></div><span>›</span></div>
-          <div class="setting"><div class="setting__icon" data-mobile-icon="appearance"></div><div><strong>Megjelenés</strong><span>Rendszerbeállítás</span></div><span>›</span></div>
-          <div class="setting"><div class="setting__icon" data-mobile-icon="info"></div><div><strong>A Grapes névjegye</strong><span>Android mobilalkalmazás</span></div><span>›</span></div>
+        <div class="content grapes-settings" data-page="more" hidden>
+          <h1>Beállítások</h1>
+          <section class="settings-section" aria-labelledby="settings-account-title">
+            <h2 id="settings-account-title">Fiók és Otthon</h2>
+            <button class="setting settings-action" type="button" data-account-login><span class="setting__icon" data-mobile-icon="google"></span><span><strong data-account-action>Google-fiók csatlakoztatása</strong><span data-account-mode>Helyi mód</span></span><span class="setting__arrow" aria-hidden="true">›</span></button>
+            <button class="settings-link" type="button" data-nav="household"><span class="settings-link__icon" data-mobile-icon="home"></span><span><strong>Otthon</strong><small>Bevásárlás és készlet kezelése</small></span><span aria-hidden="true">›</span></button>
+          </section>
+          <section class="settings-section" aria-labelledby="settings-connections-title">
+            <h2 id="settings-connections-title">Adatkapcsolatok</h2>
+            <div class="settings-links" aria-label="Adatkapcsolatok és működő kezelőoldalaik">
+              <button class="settings-link" type="button" data-nav="sync" aria-label="Google Drive kapcsolat kezelése, Szinkron megnyitása"><span class="settings-link__icon" data-mobile-icon="drive"></span><span><strong>Google Drive</strong><small>Kapcsolat és projektek</small></span><span class="settings-connection" data-settings-drive-status data-state="unverified" role="img" aria-label="Kapcsolat állapota nem ellenőrzött" title="Kapcsolat állapota nem ellenőrzött"><span data-settings-warning-glyph><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.7a2 2 0 0 1 3.4 0l8.1 14a2 2 0 0 1-1.7 3H3.9a2 2 0 0 1-1.7-3z"/><path d="M12 9v5M12 17h.01"/></svg></span><span data-settings-connected-glyph hidden>✓</span></span></button>
+              <button class="settings-link" type="button" data-nav="sync" aria-label="Health Connect adatimport kezelése, Szinkron megnyitása"><span class="settings-link__icon" data-mobile-icon="health"></span><span><strong>Health Connect</strong><small>Étel- és vízadatok beolvasása</small></span><span class="settings-connection" data-settings-health-status data-state="unverified" role="img" aria-label="Kapcsolat állapota nem ellenőrzött" title="Kapcsolat állapota nem ellenőrzött"><span data-settings-warning-glyph><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.7a2 2 0 0 1 3.4 0l8.1 14a2 2 0 0 1-1.7 3H3.9a2 2 0 0 1-1.7-3z"/><path d="M12 9v5M12 17h.01"/></svg></span><span data-settings-connected-glyph hidden>✓</span></span></button>
+              <button class="settings-link" type="button" data-nav="sync" aria-label="Samsung Health vízimport kezelése, Szinkron megnyitása"><span class="settings-link__icon" data-mobile-icon="samsung"></span><span><strong>Samsung Health</strong><small>Vízadatok importálása</small></span><span class="settings-connection" data-settings-samsung-status data-state="unverified" role="img" aria-label="Kapcsolat állapota nem ellenőrzött" title="Kapcsolat állapota nem ellenőrzött"><span data-settings-warning-glyph><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.7a2 2 0 0 1 3.4 0l8.1 14a2 2 0 0 1-1.7 3H3.9a2 2 0 0 1-1.7-3z"/><path d="M12 9v5M12 17h.01"/></svg></span><span data-settings-connected-glyph hidden>✓</span></span></button>
+              <button class="settings-link" type="button" data-nav="sync"><span class="settings-link__icon" data-mobile-icon="yazio"></span><span><strong>YAZIO</strong><small>Étrendimport és előnézet</small></span><span aria-hidden="true">›</span></button>
+            </div>
+          </section>
+          <section class="settings-section" aria-labelledby="settings-app-title">
+            <h2 id="settings-app-title">Alkalmazás</h2>
+            <button class="settings-link" type="button" data-nav="projects"><span class="settings-link__icon" data-module-icon="projects"></span><span><strong>Projektek</strong><small>Helyi és Drive-munkák</small></span><span aria-hidden="true">›</span></button>
+            <div class="setting settings-static"><span class="setting__icon" data-mobile-icon="language"></span><span><strong>Nyelv</strong><span>Magyar</span></span></div>
+            <div class="setting settings-static"><span class="setting__icon" data-mobile-icon="appearance"></span><span><strong>Megjelenés</strong><span>Rendszerbeállítás</span></span></div>
+            <div class="setting settings-static"><span class="setting__icon" data-mobile-icon="info"></span><span><strong>A Grapes névjegye</strong><span>Android mobilalkalmazás</span></span></div>
+          </section>
           <!-- TEST-only, read-only local inventory. Hidden unless the QA native gate and feature flag allow it. -->
           <button class="setting" type="button" data-grapes-test-migration-scan hidden aria-label="Helyi Health-adatok áttekintése"><span class="setting__icon" aria-hidden="true">▤</span><span><strong>Helyi adatok áttekintése</strong><span>Ételnapló és Víz · csak olvasás</span></span><span aria-hidden="true">›</span></button>
           <section class="sync-status" data-grapes-test-migration-results hidden aria-label="Helyi Health-adatok előnézete" aria-live="polite">
