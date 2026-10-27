@@ -96,7 +96,10 @@ try {
     },B)
     assert.equal(await home.getAttribute('data-home-source'),'family-test-unverified')
     assert.equal(await home.getByText('Közös tej').count(),0)
-    assert.equal(await home.getByText('Személyes cukor').count(),1)
+    // A→B switch must never reveal either A's shared v2 data OR A's
+    // still-preserved personal v1 record in the unverified family view.
+    assert.equal(await home.getByText('Személyes cukor').count(),0)
+    assert.equal(await home.locator('[data-household-shopping-count]').textContent(),'0')
     assert.equal(await home.locator('[data-household-add]').first().isDisabled(),true)
     assert.equal(data.before,await page.evaluate(()=>localStorage.getItem('grapes-home-household-v1')))
     assert.deepEqual(errors,[],'Unexpected JS error on '+width+'px')
