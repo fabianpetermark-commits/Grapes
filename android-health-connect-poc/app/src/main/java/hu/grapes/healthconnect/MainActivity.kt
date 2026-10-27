@@ -312,6 +312,10 @@ class MainActivity : ComponentActivity() {
             .setDomain(PROD_AUTH_HOST)
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
             .build()
+        val testAuthAssetLoader = WebViewAssetLoader.Builder()
+            .setDomain(TEST_AUTH_HOST)
+            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
+            .build()
         webView = WebView(this).apply {
             setBackgroundColor(android.graphics.Color.rgb(5, 8, 12))
             settings.javaScriptEnabled = true
@@ -321,16 +325,24 @@ class MainActivity : ComponentActivity() {
             WebViewCompat.addWebMessageListener(
                 this,
                 "GrapesAndroid",
-                if (isProdAuth) setOf(APP_ORIGIN, PROD_AUTH_ORIGIN) else setOf(APP_ORIGIN)
+                when {
+                    isProdAuth -> setOf(APP_ORIGIN, PROD_AUTH_ORIGIN)
+                    isTestQa -> setOf(APP_ORIGIN, TEST_AUTH_ORIGIN)
+                    else -> setOf(APP_ORIGIN)
+                }
             ) { _, message, _, isMainFrame, _ ->
                 if (!isMainFrame) return@addWebMessageListener
                 handleBridgeMessage(message.data ?: return@addWebMessageListener)
             }
             webViewClient = object : WebViewClient() {
                 override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest) =
-                    if (isProdAuth && request.url.host == PROD_AUTH_HOST)
-                        authAssetLoader.shouldInterceptRequest(request.url)
-                    else assetLoader.shouldInterceptRequest(request.url)
+                    when {
+                        isProdAuth && request.url.host == PROD_AUTH_HOST ->
+                            authAssetLoader.shouldInterceptRequest(request.url)
+                        isTestQa && request.url.host == TEST_AUTH_HOST ->
+                            testAuthAssetLoader.shouldInterceptRequest(request.url)
+                        else -> assetLoader.shouldInterceptRequest(request.url)
+                    }
 
                 override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                     if (request.url.scheme == "https" && request.url.host == APP_HOST) {
@@ -338,11 +350,18 @@ class MainActivity : ComponentActivity() {
                             view.loadUrl(PROD_AUTH_URL)
                             return true
                         }
+                        if (isTestQa && !testGate.canDisplayApp()) {
+                            view.loadUrl(TEST_AUTH_URL)
+                            return true
+                        }
                         return false
                     }
                     if (isProdAuth && request.url.scheme == "https" &&
                         request.url.host == PROD_AUTH_HOST &&
                         request.url.path == "/assets/login-auth-prod.html") return false
+                    if (isTestQa && request.url.scheme == "https" &&
+                        request.url.host == TEST_AUTH_HOST &&
+                        request.url.path == "/assets/login-auth-test.html") return false
                     runCatching { startActivity(Intent(Intent.ACTION_VIEW, request.url)) }
                         .onFailure {
                             Toast.makeText(
