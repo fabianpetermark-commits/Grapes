@@ -1,0 +1,63 @@
+name: Grapes TEST One Home isolated v2 CAS + offline outbox proof (NO RELEASE)
+
+on:
+  push:
+    branches:
+      - integration/grapes-one-home-m3b-cas-test-20261027
+  pull_request:
+    branches:
+      - codex/android-app
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-one-home-offline-cas-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  family-cas-test:
+    if: github.repository == 'fabianpetermark-commits/Grapes'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout read-only code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Restore locked packages
+        run: npm ci
+      - name: Existing PROD/Home/Finance + v2 unit tests (no regressions)
+        run: npm test
+      - name: Isolated owner-v2 and actual read gate unit checks
+        run: |
+          node --test tests/home-m3b-family.test.js
+          node --test tests/home-one-test-sync.test.js
+          node --test tests/home-supabase-test-readonly.test.js
+      - name: Keep Android WebView build compile-safe
+        run: npm run build:android-web
+      - name: Locate Chromium for IndexedDB offline replay
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v google-chrome >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            npx playwright-core install --with-deps chromium
+            binary=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path '*chrome-linux*' | head -1)
+            test -n "$binary"
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$binary" >> "$GITHUB_ENV"
+          fi
+      - name: Real browser offline durable outbox, fake CAS readback, account switch and manual conflict
+        run: node tests/home-m3b-family-outbox.browser.mjs
+      - name: Preserve existing One Home live UI operations
+        run: node tests/prod-home-one-house.browser.mjs
+      - name: Explicit backend and release separation
+        run: echo "No TEST/PROD DB writes, no native bearer tokens, no v1->v2 automatic data copying and NO PROD APK release"
