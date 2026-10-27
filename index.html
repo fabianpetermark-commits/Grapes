@@ -271,7 +271,7 @@
           <label class="finance__currency" data-finance-overflow>Pénznem (tételek után rögzül)
             <select id="finance-currency"><option value="HUF">HUF</option><option value="EUR">EUR</option><option value="USD">USD</option></select>
           </label>
-          <button id="finance-import-btn" class="btn" type="button" data-finance-overflow>Importálás</button>
+          <button id="finance-import-btn" class="btn" type="button" data-finance-overflow><svg class="finance__tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3v12m-4-4 4 4 4-4M4 16v4h16v-4"/></svg><span>Importálás</span></button>
           <button id="finance-export-btn" class="btn" type="button" data-finance-overflow>CSV export</button>
           <button id="finance-backup-import-btn" class="btn" type="button" data-finance-overflow>Teljes mentés import</button>
           <button id="finance-backup-export-btn" class="btn" type="button" data-finance-overflow>Teljes mentés</button>
@@ -283,11 +283,11 @@
 
       <main class="finance__main">
         <nav class="finance__tabs" role="tablist" aria-label="Pénzügyi modul nézetei">
-          <button class="is-active" type="button" role="tab" aria-selected="true" data-finance-tab="overview">Áttekintés</button>
-          <button type="button" role="tab" aria-selected="false" data-finance-tab="transaction">Új tétel</button>
-          <button type="button" role="tab" aria-selected="false" data-finance-tab="savings">Megtakarítások</button>
-          <button type="button" role="tab" aria-selected="false" data-finance-tab="forecast">Előrejelzés</button>
-          <button type="button" role="tab" aria-selected="false" data-finance-tab="import">Importálás</button>
+          <button class="is-active" type="button" role="tab" aria-selected="true" data-finance-tab="overview" aria-label="Áttekintés" title="Áttekintés"><svg class="finance__tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 12h8V3H3zM13 3h8v5h-8zM13 10h8v11h-8zM3 14h8v7H3z"/></svg><span class="finance__tab-label">Áttekintés</span></button>
+          <button type="button" role="tab" aria-selected="false" data-finance-tab="transaction" aria-label="Új tétel" title="Új tétel"><svg class="finance__tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 5h16v14H4zM7 9h10M7 13h7M7 16h5"/></svg><span class="finance__tab-label">Új tétel</span></button>
+          <button type="button" role="tab" aria-selected="false" data-finance-tab="savings" aria-label="Megtakarítások" title="Megtakarítások"><svg class="finance__tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 11c0-3 2.9-5 6.8-5 2.2 0 4 .6 5.2 2l2-1v4c1.1.7 1.5 1.7 1.5 3 0 1.3-.7 2.3-2 2.7L18 20h-3l-.5-2H9l-.5 2h-3L5 17c-1.4-1-2-2.5-2-4V9l2 1.2zM9 10h.01M11 5V3h4"/></svg><span class="finance__tab-label">Megtakarítások</span></button>
+          <button type="button" role="tab" aria-selected="false" data-finance-tab="forecast" aria-label="Előrejelzés" title="Előrejelzés"><svg class="finance__tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20V4M3 20h18M6 15l5-5 4 3 5-7M17 6h3v3"/></svg><span class="finance__tab-label">Előrejelzés</span></button>
+          <button type="button" role="tab" aria-selected="false" data-finance-tab="import" aria-label="Importálás" title="Importálás"><svg class="finance__tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3v12m-4-4 4 4 4-4M4 16v4h16v-4"/></svg><span class="finance__tab-label">Importálás</span></button>
         </nav>
 
         <section class="finance__summary" aria-label="Pénzügyi összesítés" data-finance-panel="overview">
@@ -317,7 +317,7 @@
               <label>Dátum<input id="finance-saving-date" type="date" required></label>
               <label>Cél<select id="finance-saving-goal"></select></label>
               <label>Személy<select id="finance-saving-person"></select></label>
-              <div class="finance__form-actions"><button id="finance-saving-submit" class="btn btn--primary" type="submit">Megtakarítás rögzítése</button><button id="finance-saving-cancel" class="btn btn--ghost" type="button" hidden>Mégse</button></div>
+              <div class="finance__form-actions"><button id="finance-saving-submit" class="btn btn--primary" type="submit"><svg class="finance__tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 11c0-3 2.9-5 6.8-5 2.2 0 4 .6 5.2 2l2-1v4c1.1.7 1.5 1.7 1.5 3 0 1.3-.7 2.3-2 2.7L18 20h-3l-.5-2H9l-.5 2h-3L5 17c-1.4-1-2-2.5-2-4V9l2 1.2zM9 10h.01M11 5V3h4"/></svg><span>Megtakarítás rögzítése</span></button><button id="finance-saving-cancel" class="btn btn--ghost" type="button" hidden>Mégse</button></div>
             </form>
           </article>
 
