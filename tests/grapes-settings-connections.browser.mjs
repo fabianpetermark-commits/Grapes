@@ -47,6 +47,15 @@ try {
     const errors = []
     page.on('pageerror', e => errors.push(e.message))
     await page.goto(url)
+    await page.waitForTimeout(350)
+    const startup = await page.evaluate(() => ({
+      appHidden: document.getElementById('app')?.hidden,
+      loginHidden: document.getElementById('login')?.hidden,
+      localMode: localStorage.getItem('grapes-local-mode'),
+      hasAndroid: typeof window.GrapesAndroid?.postMessage,
+      page: document.querySelector('[data-page]:not([hidden])')?.dataset.page,
+    }))
+    console.log('SETTINGS_STARTUP_DIAGNOSTIC', width, JSON.stringify(startup), JSON.stringify(errors))
     const topSettings = page.locator('.appbar [data-nav="more"]')
     await topSettings.waitFor({state:'visible',timeout:12000})
     await topSettings.click()
