@@ -2161,7 +2161,10 @@ $('[data-update-install]').addEventListener('click', async event => {
 })
 $('[data-sync-refresh]').addEventListener('click', () => renderSync({ refreshed: true }))
 $('[data-sync-projects]').addEventListener('click', () => showPage('projects'))
-$$('[data-nav]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.nav)))
+$('[data-nav]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.nav)))
+// Preserve the single legacy Sync navigation identifier for existing Health flows;
+// provider-specific Settings buttons call the same verified handler.
+$('[data-settings-sync]').forEach(button => button.addEventListener('click', () => showPage('sync')))
 $$('[data-menu-group]').forEach(button => button.addEventListener('click', () => {
   const group = button.dataset.menuGroup
   if (['home', 'health', 'utility', 'finance'].includes(group)) showPage('hub-' + group)
