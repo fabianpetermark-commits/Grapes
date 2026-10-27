@@ -47,7 +47,30 @@ test('finance and billing use responsive task-oriented layouts', async () => {
 test('finance deletes all transactions only after creating a safety export', async () => {
   const [markup, source] = await Promise.all([read('index.html'), read('src/finance-tracker.js')])
   assert.match(markup, /id="finance-delete-all"[^>]*btn--danger[^>]*disabled/)
-  assert.match(source, /#finance-delete-all[\s\S]*saveSafetySnapshot\(DELETE_BACKUP_ID[\s\S]*financeBackupToJson\(snapshot\)[\s\S]*showGrapesConfirm[\s\S]*transactions = \[\]/)
+  const begin = source.indexOf("el('#finance-delete-all').addEventListener")
+  const end = source.indexOf("el('#finance-currency').addEventListener", begin)
+  assert.ok(begin >= 0 && end > begin, 'Delete-all handler must exist')
+  const handler = source.slice(begin, end)
+  // Browser downloads must start synchronously after the first explicit user
+  // confirmation, BEFORE awaiting IndexedDB, or Chrome may reject the save.
+  // Deletion remains strictly AFTER BOTH local snapshots and a second explicit
+  // user confirmation; a failed local safety write must prevent deletion.
+  const stages = [
+    'if (!await showGrapesConfirm({',
+    'const snapshot = serializeProject()',
+    'download(financeBackupToJson(snapshot)',
+    'await persistLocal()',
+    'await saveSafetySnapshot(DELETE_BACKUP_ID',
+    'const confirmed = await showGrapesConfirm({',
+    'if (!confirmed) return',
+    'transactions = []',
+  ]
+  let previous = -1
+  for (const stage of stages) {
+    const index = handler.indexOf(stage)
+    assert.ok(index > previous, `Finance safe-delete ordering broken at ${stage}`)
+    previous = index
+  }
   assert.match(source, /penzugyi-naplo-teljes-mentes-/)
   assert.match(markup, /id="finance-backup-input"/)
   assert.match(markup, /id="finance-restore-last"/)
