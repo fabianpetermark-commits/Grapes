@@ -1,0 +1,58 @@
+name: Grapes approved Health real-controller UX gate (NO RELEASE)
+
+on:
+  push:
+    branches:
+      - feature/grapes-health-approved-live-ui-20261027
+  pull_request:
+    branches:
+      - codex/android-app
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-health-real-ui-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  health-approved-real-ux:
+    if: github.repository == 'fabianpetermark-commits/Grapes'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Existing Grapes unit functions preserved
+        run: npm test
+      - name: Android assets still compile
+        run: npm run build:android-web
+      - name: Find Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v google-chrome >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            npx playwright-core install --with-deps chromium
+            binary=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path '*chrome-linux*' | head -1)
+            test -n "$binary"
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$binary" >> "$GITHUB_ENV"
+          fi
+      - name: Approved Health rail to live Food/Water/Stats/Recipe and settings/import QA
+        run: node tests/grapes-health-approved-live-ui.browser.mjs
+      - name: Existing Android dashboard and Food/Health/Sync regression
+        run: node tests/android-mobile-preview.browser.mjs
+      - name: Previously accepted One Home unchanged
+        run: node tests/prod-home-one-house.browser.mjs
+      - name: Boundaries
+        run: echo "No Supabase writes, no PROD DB schema change, no Samsung proprietary AAR, no APK release"
