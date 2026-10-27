@@ -1,7 +1,7 @@
+import { isGrapesAndroidApp } from '../android-bridge.js'
 import {
-  getAndroidTestAuthEnabled, getAndroidTestAuthSubject,
-  isGrapesAndroidApp, requestAndroidTestSupabase,
-} from '../android-bridge.js'
+  getAndroidTestAuthEnabled, getAndroidTestAuthSubject, requestAndroidTestSupabase,
+} from './home-test-native-bridge.js'
 import { createOneHomeTestSync } from './home-one-test-sync.js'
 import { HOME_SUPABASE_TEST_REF } from './home-supabase-test-readonly.js'
 
