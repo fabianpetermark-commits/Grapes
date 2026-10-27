@@ -1,0 +1,127 @@
+/* Grapes v1.2 – production Settings rollout slice.
+   This is a navigation-only grouping over the EXISTING Auth, Drive, Health and
+   YAZIO controls. It does not create a second account or data store. */
+[data-page="more"].grapes-settings-v12 {
+  padding: 15px 15px max(28px, env(safe-area-inset-bottom));
+  scroll-padding-bottom: 24px;
+}
+.grapes-settings-v12 > h1 {
+  margin: 0 0 14px;
+  font-size: 24px;
+  letter-spacing: -.04em;
+}
+.grapes-settings-card {
+  position: relative;
+  overflow: hidden;
+  margin: 0 0 12px;
+  padding: 15px;
+  background: #101821;
+  border: 1px solid #293e4c;
+  border-radius: 19px;
+}
+.grapes-settings-card::before {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  top: -1px;
+  left: 17px;
+  width: 43%;
+  height: 1px;
+  background: linear-gradient(90deg,#3bdcf2bb,#3bdcf239,transparent);
+  box-shadow: 0 0 4px #3bdcf22a;
+}
+.grapes-settings-card h2 {
+  margin: 0 0 7px;
+  color: #f2f7fb;
+  font-size: 16px;
+  font-weight: 750;
+  letter-spacing: -.02em;
+}
+.grapes-settings-card .settings-links {
+  margin: 0;
+  gap: 0;
+}
+.grapes-settings-card .settings-link {
+  min-height: 60px;
+  padding: 9px 0;
+  gap: 11px;
+  border: 0;
+  border-bottom: 1px solid #263b48;
+  border-radius: 0;
+  background: transparent;
+}
+.grapes-settings-card .settings-link:last-child {
+  border-bottom: 0;
+}
+.grapes-settings-card .settings-link__icon {
+  width: 38px;
+  height: 38px;
+  border: 1px solid #334f5d;
+  border-radius: 11px;
+  background: #182e39;
+}
+.grapes-settings-card .settings-link__icon svg {
+  width: 19px;
+  height: 19px;
+}
+.grapes-settings-card .settings-link strong {
+  font-size: 13px;
+}
+.grapes-settings-card .settings-link small {
+  font-size: 11px;
+  line-height: 1.4;
+}
+.grapes-settings-card .setting {
+  width: 100%;
+  min-height: 61px;
+  padding: 10px 0;
+  gap: 11px;
+  border-color: #263b48;
+}
+.grapes-settings-card .setting:last-child {
+  border-bottom: 0;
+}
+.grapes-settings-card .setting__icon {
+  width: 38px;
+  height: 38px;
+  border: 1px solid #334f5d;
+  border-radius: 11px;
+  background: #182e39;
+}
+.grapes-settings-card .setting__icon svg {
+  width: 19px;
+  height: 19px;
+}
+.grapes-settings-provider-state {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 32px;
+  flex: 0 0 28px;
+  color: #dfb36d;
+}
+.grapes-settings-provider-state svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.85;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.grapes-settings-provider-state.is-connected {
+  color: #7ed4a9;
+}
+.grapes-settings-v12 .settings-privacy-note {
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #91aaba;
+}
+@media(max-width:350px) {
+  [data-page="more"].grapes-settings-v12 {padding-inline: 12px}
+  .grapes-settings-card {padding: 12px}
+  .grapes-settings-card .settings-link {gap: 8px}
+}
+
+.grapes-settings-provider-state[hidden] { display: none !important; }

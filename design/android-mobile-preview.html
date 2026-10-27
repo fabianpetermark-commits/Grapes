@@ -656,6 +656,7 @@
 
   </style>
   <link rel="stylesheet" href="../src/home/home-mobile.css">
+  <link rel="stylesheet" href="../src/styles/grapes-prod-settings.css">
 </head>
 <body>
   <main class="stage">
@@ -817,18 +818,43 @@
           <input type="file" accept=".json,application/json,.csv,text/csv" data-yazio-input hidden>
         </div>
 
-        <div class="content" data-page="more" hidden>
-          <p class="eyebrow">Beállítások</p><h1>Továbbiak</h1><p class="lead">Fiók, nyelv és alkalmazásbeállítások.</p>
-<div class="settings-links" aria-label="További oldalak"><button class="settings-link" type="button" data-nav="projects"><span class="settings-link__icon" data-module-icon="projects"></span><span><strong>Projektek</strong><small>Helyi és Drive munkák</small></span><span aria-hidden="true">›</span></button><button class="settings-link" type="button" data-nav="sync"><span class="settings-link__icon" data-module-icon="sync"></span><span><strong>Szinkron</strong><small>Adatok és fiók</small></span><span aria-hidden="true">›</span></button></div>
+        <div class="content grapes-settings-v12" data-page="more" hidden>
+          <h1>Beállítások</h1>
+          <section class="grapes-settings-card" aria-labelledby="grapes-settings-account-title">
+            <h2 id="grapes-settings-account-title">Fiók és Otthon</h2>
           <button class="setting" type="button" data-account-login><span class="setting__icon" data-mobile-icon="google"></span><span><strong data-account-action>Google-fiók csatlakoztatása</strong><span data-account-mode>Helyi mód</span></span><span>›</span></button>
-          <!-- Grapes Auth logout must not disconnect the independent Google Drive session. -->
+          <!-- The existing Grapes Auth sign-out must not disconnect the independent Drive session. -->
           <button class="setting" type="button" data-prod-auth-signout hidden style="display:none">
             <span class="setting__icon" data-mobile-icon="account"></span>
             <span><strong>Kijelentkezés a Grapes-fiókból</strong><span>A Google Drive-kapcsolat változatlan marad</span></span><span>›</span>
           </button>
+            <div class="settings-links">
+              <button class="settings-link" type="button" data-settings-open-home><span class="settings-link__icon" data-module-icon="household"></span><span><strong>Otthon</strong><small>A meglévő bevásárlás és készletkezelés</small></span><span aria-hidden="true">›</span></button>
+            </div>
+          </section>
+          <section class="grapes-settings-card" aria-labelledby="grapes-settings-connections-title">
+            <h2 id="grapes-settings-connections-title">Adatkapcsolatok</h2>
+            <div class="settings-links">
+          <button class="settings-link" type="button" data-settings-provider="drive"><span class="settings-link__icon" data-mobile-icon="drive"></span><span><strong>Google Drive</strong><small>Kapcsolódás, projektek és engedélyek</small></span><span class="grapes-settings-provider-state" data-settings-drive-unknown role="img" aria-label="Kapcsolat állapota még nem ellenőrzött" title="Kapcsolat állapota még nem ellenőrzött"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 21h20L12 3zM12 9v5m0 4h.01"/></svg></span><span class="grapes-settings-provider-state is-connected" data-settings-drive-ok role="img" aria-label="Google Drive csatlakoztatva" title="Google Drive csatlakoztatva" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></span></button>
+          <button class="settings-link" type="button" data-settings-provider="health"><span class="settings-link__icon" data-mobile-icon="health"></span><span><strong>Health Connect</strong><small>Egészségadatok kézi beolvasása</small></span><span class="grapes-settings-provider-state" role="img" aria-label="Kapcsolat állapota még nem ellenőrzött" title="Kapcsolat állapota még nem ellenőrzött"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 21h20L12 3zM12 9v5m0 4h.01"/></svg></span></button>
+          <button class="settings-link" type="button" data-settings-provider="samsung"><span class="settings-link__icon" data-mobile-icon="samsung"></span><span><strong>Samsung Health</strong><small>Vízadatok beolvasása</small></span><span class="grapes-settings-provider-state" role="img" aria-label="Kapcsolat állapota még nem ellenőrzött" title="Kapcsolat állapota még nem ellenőrzött"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 21h20L12 3zM12 9v5m0 4h.01"/></svg></span></button>
+          <button class="settings-link" type="button" data-settings-provider="yazio"><span class="settings-link__icon" data-mobile-icon="yazio"></span><span><strong>YAZIO-import</strong><small>Ételnapló-előzmények importja</small></span><span aria-hidden="true">›</span></button>
+              <button class="settings-link" type="button" data-nav="sync"><span class="settings-link__icon" data-module-icon="sync"></span><span><strong>Szinkron és adatkezelés</strong><small>Összes korábbi adatkapcsolat és importművelet</small></span><span aria-hidden="true">›</span></button>
+            </div>
+            <p class="settings-privacy-note">A háromszög ellenőrizetlen hozzáférést jelöl, nem bizonyított hibát. Az egyes szolgáltatások részletes állapota a Szinkron oldalon látható.</p>
+          </section>
+          <section class="grapes-settings-card" aria-labelledby="grapes-settings-display-title">
+            <h2 id="grapes-settings-display-title">Megjelenés</h2>
           <div class="setting"><div class="setting__icon" data-mobile-icon="language"></div><div><strong>Nyelv</strong><span>Magyar</span></div><span>›</span></div>
           <div class="setting"><div class="setting__icon" data-mobile-icon="appearance"></div><div><strong>Megjelenés</strong><span>Rendszerbeállítás</span></div><span>›</span></div>
+          </section>
+          <section class="grapes-settings-card" aria-labelledby="grapes-settings-data-title">
+            <h2 id="grapes-settings-data-title">Adatkezelés</h2>
+            <div class="settings-links">
+              <button class="settings-link" type="button" data-nav="projects"><span class="settings-link__icon" data-module-icon="projects"></span><span><strong>Projektek</strong><small>Helyi és Google Drive munkák</small></span><span aria-hidden="true">›</span></button>
+            </div>
           <div class="setting"><div class="setting__icon" data-mobile-icon="info"></div><div><strong>A Grapes névjegye</strong><span>Android mobilalkalmazás</span></div><span>›</span></div>
+          </section>
         </div>
 
         <div class="content module-preview" data-page="food" hidden>
