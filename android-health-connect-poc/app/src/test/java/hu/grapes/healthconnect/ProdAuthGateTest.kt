@@ -57,6 +57,24 @@ class ProdAuthGateTest {
     }
 
     @Test
+    fun samsungIdentityHandoffRequiresActiveBoundOwnerAndTrustedApp() {
+        val gate = ProdAuthGate(true, prefs)
+        assertEquals(null, gate.subject(true))
+        prefs.edit().putString("owner-uid", owner).commit()
+        assertTrue(gate.allowApp(true, owner))
+        assertEquals(owner, gate.subject(true))
+        assertEquals(null, gate.subject(false))
+        assertTrue(gate.startLogout(true))
+        assertEquals(null, gate.subject(true))
+        assertFalse(gate.allowApp(true, other))
+        assertEquals(null, gate.subject(true))
+        assertTrue(gate.allowApp(true, owner))
+        assertEquals(owner, gate.subject(true))
+        gate.lock()
+        assertEquals(null, gate.subject(true))
+    }
+
+    @Test
     fun authDisabledKeepsLegacyReleaseNavigationUnchanged() {
         val gate = ProdAuthGate(false, prefs)
         assertEquals("app", gate.initialUrl("app", "auth"))

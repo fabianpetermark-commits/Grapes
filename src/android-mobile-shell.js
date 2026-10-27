@@ -18,6 +18,8 @@ import { createHomeMobile } from './home/home-mobile.js'
 import { openAndroidOneHomeTestSession } from './home/home-native-test-session.js'
 import { getAndroidAppUpdate, installAndroidAppUpdate, isGrapesAndroidApp, openAndroidHealthConnectSettings, saveAndroidJsonBackup } from './android-bridge.js'
 import { requestAndroidTestAccountSignOut } from './home/home-test-native-bridge.js'
+import { createSamsungWaterSync, waterForSamsungOwner, mergeWaterForSamsungOwner } from './water/samsung-water-sync.js'
+import { parseSamsungWaterCsv } from './water/samsung-water-csv.js'
 import { waterBackupToJson, waterBackupFromJson, readWaterStoreStrict, waterBackupSummary } from './water/water-backup.js'
 import {
   isMobileShareableBook,
@@ -70,6 +72,13 @@ const HOME_NATIVE_QA = import.meta.env?.VITE_GRAPES_TEST_AUTH_ENABLED === 'true'
 // on the original local Home initialization path.
 let household = HOME_NATIVE_QA ? null : createHomeMobile($('[data-household-root]'))
 let mainShortcuts = null
+let samsungOwner = null
+let samsungUiEpoch = 0
+const samsungSync = createSamsungWaterSync({storage:localStorage,
+  onOwner(owner) { if (samsungOwner !== owner) { samsungOwner=owner; renderWater() } },
+  onChange() { renderWater(); if(activePage==='hub-health')renderHealthDashboard() },
+})
+
 
 // PROD never opens this gateway. QA must have an authenticated native subject
 // before any family v2 snapshot reaches the existing single Home UI.
@@ -173,6 +182,7 @@ document.addEventListener('grapes:food-subtitle', event => {
 })
 
 const labels = {
+  'samsung-water': ['Samsung Health','Víznapló-kapcsolat'],
   home: ['Grapes', 'Mobil munkaterület'], projects: ['Projektek', 'Helyi és Drive'],
   sync: ['Szinkron', 'Adatok és fiók'], more: ['Grapes', 'Beállítások'],
   food: ['Ételnapló', 'Mai áttekintés'], water: ['Víz', 'Napi folyadékbevitel'],
@@ -457,7 +467,7 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   const currentMain =
     page === 'home' ? 'start' :
     page === 'household' || page === 'hub-home' ? 'home' :
-    ['hub-health','health-settings','food','water'].includes(page) ? 'health' :
+    ['hub-health','health-settings','food','water','samsung-water'].includes(page) ? 'health' :
     ['hub-utility','ebook','reader','transfer'].includes(page) ? 'tools' :
     ['hub-finance','finance'].includes(page) ? 'finance' :
     ['more','sync'].includes(page) ? 'settings' : ''
@@ -480,6 +490,8 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   if (page === 'projects') renderProjects()
   if (page === 'sync') renderSync()
   if (page === 'water') renderWater()
+  if (page === 'samsung-water') renderSamsungWaterSettings()
+  if (['water','sync','hub-health'].includes(page)) autoRefreshSamsungWater()
   if (page === 'hub-health') {
     renderHealthDashboard()
     mobileFood?.load().then(() => {
@@ -638,7 +650,7 @@ async function runHealthCommand(command) {
     showToast('Ételnapló → Menü → Biztonsági mentés')
   } else if (command === 'sync') showPage('sync')
   else if (command === 'health-import') openSyncImport('health')
-  else if (command === 'samsung-import') openSyncImport('samsung')
+  else if (command === 'samsung-import') showPage('samsung-water',{parent:'health-settings'})
   else if (command === 'yazio-import') openSyncImport('yazio')
 }
 
@@ -1112,15 +1124,76 @@ async function renderProjects() {
   }
 }
 
+
+function samsungStatus(message) { $('[data-samsung-water-status]').textContent=message }
+async function renderSamsungWaterSettings() {
+  const epoch=++samsungUiEpoch
+  const direct=$('[data-samsung-water-read]'),toggle=$('[data-samsung-water-auto]')
+  direct.disabled=true;toggle.disabled=true;toggle.checked=false
+  try {
+    const status=await samsungSync.status()
+    if(epoch!==samsungUiEpoch || activePage!=='samsung-water')return
+    direct.disabled=!(status.available&&samsungOwner)
+    toggle.disabled=!(samsungOwner&&(samsungSync.enabled(samsungOwner)||(status.available&&status.permitted)))
+    toggle.checked=samsungSync.enabled(samsungOwner)
+    $('[data-samsung-water-csv]').disabled=!samsungOwner
+    $('[data-samsung-water-availability]').textContent=status.reason||''
+    samsungStatus(status.available&&samsungOwner ? (status.permitted?'Samsung-vízolvasás engedélyezve. '+status.reason:'Közvetlen beolvasáskor kérünk Samsung Health olvasási engedélyt. '+status.reason) : status.reason||'Ellenőrzött natív Grapes-fiók szükséges. A Health Connect változatlanul használható.')
+  }catch(error){samsungStatus(error.message);$('[data-samsung-water-csv]').disabled=true}
+}
+async function autoRefreshSamsungWater() {
+  if(!isGrapesAndroidApp())return
+  try {
+    const result=await samsungSync.refresh()
+    if(result.imported)showToast(`${result.imported} új Samsung-vízbejegyzés mentve a Víznaplóba.`)
+  }catch(error){if(activePage==='samsung-water')samsungStatus(error.message)}
+}
+$('[data-samsung-water-read]').addEventListener('click',async event=>{
+  const button=event.currentTarget;button.disabled=true
+  try {
+    samsungStatus('Samsung Health vízadatok olvasása…')
+    const result=await samsungSync.refresh({manual:true,fromDate:$('[data-samsung-water-from]').value})
+    samsungStatus(result.skipped?'Egy vízfrissítés már folyamatban van.':`${result.imported} új vízbejegyzés mentve; ${result.duplicates} ismétlődés kihagyva.`)
+  }catch(error){samsungStatus(error.message)}finally{button.disabled=false;void updateSamsungToggle()}
+})
+async function updateSamsungToggle(){
+  try { const status=await samsungSync.status(); const toggle=$('[data-samsung-water-auto]');$('[data-samsung-water-read]').disabled=!(status.available&&samsungOwner);toggle.disabled=!(samsungOwner&&(samsungSync.enabled(samsungOwner)||(status.available&&status.permitted)));toggle.checked=samsungSync.enabled(samsungOwner) }catch{}
+}
+$('[data-samsung-water-auto]').addEventListener('change',async event=>{
+  const toggle=event.currentTarget,intended=toggle.checked,owner=samsungOwner
+  toggle.disabled=true
+  try {
+    if(intended&&!confirm('Engedélyezed, hogy a Grapes ehhez a fiókhoz az előtérbe visszatérve automatikusan beolvassa a telefon Samsung Health-vízadatait? Másik Grapes-fióknak ezt külön kell engedélyeznie.'))return
+    await samsungSync.setEnabled(owner,intended)
+    samsungStatus(intended?'Fiókonkénti előtéri frissítés bekapcsolva (legfeljebb 30 percenként).':'Automatikus frissítés kikapcsolva.')
+    if(intended)await autoRefreshSamsungWater()
+  }catch(error){samsungStatus(error.message)}finally{await updateSamsungToggle()}
+})
+$('[data-samsung-water-csv]').addEventListener('click',()=>{$('[data-samsung-water-file]').click()})
+$('[data-samsung-water-file]').addEventListener('change',async event=>{
+  const input=event.currentTarget,file=input.files?.[0];input.value=''
+  if(!file)return
+  const owner=samsungOwner
+  try {
+    if(file.size>15*1024*1024)throw Error('A Samsung víz-CSV legfeljebb 15 MB lehet.')
+    const source=parseSamsungWaterCsv(await file.text(),{filename:file.name})
+    if(!confirm(`${source.records.length} Samsung vízrekord ellenőrizve. Beolvasod ebbe a Grapes-fiókba? Az ismétlődő azonosítókat kihagyjuk.`))return
+    const result=await samsungSync.importSource(owner,source,{requireOwner:false})
+    samsungStatus(`${result.imported} új vízbejegyzés mentve; ${result.duplicates} ismétlődés kihagyva.`)
+  }catch(error){samsungStatus(error.message)}
+})
+$('[data-samsung-water-health]').addEventListener('click',()=>openSyncImport('health'))
+const samsungFrom=new Date();samsungFrom.setDate(samsungFrom.getDate()-90)
+$('[data-samsung-water-from]').value=dateKey(samsungFrom)
+$('[data-samsung-water-from]').max=dateKey()
+
 function dateKey(date = new Date()) {
   return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-')
 }
 
 function loadWaterStore() {
-  try {
-    const value = JSON.parse(localStorage.getItem(WATER_STORE_KEY) || '{}')
-    return value && typeof value === 'object' ? value : {}
-  } catch { return {} }
+  try { return waterForSamsungOwner(readWaterStoreStrict(localStorage),samsungOwner) }
+  catch { return {} }
 }
 
 function currentWaterDay() {
@@ -1137,9 +1210,11 @@ function saveWaterDay(day) {
 }
 
 function saveWaterStore(store) {
-  // Historical Health Connect imports and older Water diary entries are user
-  // data. Do not silently prune them when a newer day is saved.
-  localStorage.setItem(WATER_STORE_KEY, JSON.stringify(store))
+  // Keep other owners' Samsung records and all historical manual/HC records.
+  const combined=mergeWaterForSamsungOwner(readWaterStoreStrict(localStorage),store,samsungOwner)
+  const encoded=JSON.stringify(combined)
+  localStorage.setItem(WATER_STORE_KEY,encoded)
+  if(localStorage.getItem(WATER_STORE_KEY)!==encoded)throw Error('A Víznapló mentése nem ellenőrizhető.')
 }
 
 function importHydrationEntries(entries = []) {
@@ -1245,7 +1320,7 @@ function addWater(amount) {
 
 async function exportWaterBackup() {
   try {
-    const json = waterBackupToJson(localStorage)
+    const json = waterBackupToJson({getItem:()=>JSON.stringify(loadWaterStore())})
     const filename = `grapes-viznaplo-${dateKey()}.json`
     if (isGrapesAndroidApp()) {
       await saveAndroidJsonBackup(filename, json)
@@ -1276,8 +1351,8 @@ async function inspectWaterBackup(event) {
     localStorage.setItem('grapes-water-recovery-v1', recovered)
     if (localStorage.getItem('grapes-water-recovery-v1') !== recovered) throw new Error('A régi víznapló biztonsági másolata nem ellenőrizhető.')
     try {
-      localStorage.setItem(WATER_STORE_KEY, JSON.stringify(restored))
-      const actual = readWaterStoreStrict(localStorage)
+      saveWaterStore(restored)
+      const actual = loadWaterStore()
       if (JSON.stringify(actual) !== JSON.stringify(restored)) {
         throw new Error('A víznapló visszaállítása nem igazolható.')
       }
@@ -1490,7 +1565,7 @@ $('[data-water-restore]')?.addEventListener('click', () => $('[data-water-backup
 $('[data-water-backup-input]')?.addEventListener('change', inspectWaterBackup)
 
 $('[data-health-sync]').addEventListener('click', () => openSyncImport('health'))
-$$('[data-samsung-sync-action]').forEach(button => button.addEventListener('click', () => openSyncImport('samsung')))
+$$('[data-samsung-sync-action]').forEach(button => button.addEventListener('click', () => showPage('samsung-water',{parent:activePage})))
 const yazioApiPanel = createYazioApiPanel({ openSheet, closeSheet,
   importBundle: source => mobileFood.importYazio(source), openFileImport: () => openSyncImport('yazio'),
   getProfileKey: () => { const account = getGrapesAccount(); return account?.id || account?.email || 'local-food-profile' } })
@@ -1543,6 +1618,9 @@ onGrapesDriveChange(() => {
 })
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
+    samsungSync.clearOwner()
+    autoRefreshSamsungWater()
+    if(activePage==='samsung-water')renderSamsungWaterSettings()
     updateHomeGreeting()
     refreshUpdateInbox().catch(() => {})
   }
@@ -1634,6 +1712,7 @@ window.grapesHandleAndroidBack = () => {
   return false
 }
 renderWater()
+autoRefreshSamsungWater()
 if (isGrapesDriveConnected()) registerFoodSharing().catch(() => {})
 // Only the native MainActivity's validated session/owner gate can load this
 // asset; a web or TEST build must not skip the Drive onboarding screen.

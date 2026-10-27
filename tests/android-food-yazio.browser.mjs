@@ -17,7 +17,8 @@ try {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 }, acceptDownloads: true })
   const errors = []; page.on('pageerror', error => errors.push(error.message))
   await page.goto(url, { waitUntil: 'networkidle' }); await page.locator('[data-local]').click()
-  await page.locator('[data-nav="sync"]').click()
+  await page.locator('.appbar [data-nav="more"]').click()
+  await page.locator('[data-page="more"] [data-nav="sync"]').click()
   const rows = Array.from({ length: 151 }, (_, index) => ({ date: '2024-01-02', logged_at: '2024-01-02 12:00:00', meal: 'lunch', entry_id: `mobile-${index}`, source_id: 'p1', product: 'YAZIO alma', type: 'product', amount: 100, energy_kcal: 88.00001, protein_g: null, carbs_g: 19, fat_g: 0 }))
   const source = JSON.stringify({ meta: [{ tool_version: '0.2.0', from: '2024-01-01', to: '2024-01-03' }], tables: [{ name: 'nutrition_log' }], nutrition_log: rows, daily_summary: [], products: [], recipes: [], warnings: [] })
   const selectFile = () => page.locator('[data-yazio-input]').setInputFiles({ name: 'export.json', mimeType: 'application/json', buffer: Buffer.from(source) })
@@ -61,7 +62,8 @@ try {
   assert.equal(project.importBatches[0].status, 'completed')
   await page.reload({ waitUntil: 'networkidle' })
   if (await page.locator('[data-local]').isVisible()) await page.locator('[data-local]').click()
-  await page.locator('[data-nav="sync"]').click(); await selectFile()
+  await page.locator('.appbar [data-nav="more"]').click()
+  await page.locator('[data-page="more"] [data-nav="sync"]').click(); await selectFile()
   await page.locator('[data-food-yazio-sheet].is-open').waitFor()
   assert.match(await page.locator('[data-yazio-summary]').textContent(), /151 korábbi/)
   assert.equal(await page.locator('[data-yazio-records] input:checked').count(), 0)
@@ -81,7 +83,7 @@ try {
   await page.evaluate(() => {
     globalThis.__GRAPES_FATSECRET_TEST__ = async () => [{ kind: 'product', name: 'FatSecret teszt', category: 'Élelmiszer', baseUnit: 'g', nutrients: { energyKcal: 200 }, source: { type: 'fatsecret', id: 'mobile-fs' } }]
   })
-  await page.locator('[data-nav="home"]').click(); await page.locator('[data-module="food"]').last().click()
+  await page.locator('.appbar [data-nav="home"]').click(); await page.locator('[data-main-shortcut="food"]').click()
   await page.locator('[data-food-meals] .meal').first().click(); await page.locator('[data-fab]').click()
   await page.locator('[data-food-search]').fill('keksz')
   await page.locator('[data-food-search-results]').getByRole('button').filter({ hasText: 'FatSecret teszt' }).click()
