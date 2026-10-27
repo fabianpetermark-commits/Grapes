@@ -93,8 +93,11 @@ jobs:
         run: |
           gradle --project-dir android-health-connect-poc :app:testDebugUnitTest :app:compileReleaseKotlin
           echo 'Licensed adapter compile: PASS. Physical Samsung permission/readback still required.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Public distribution remains blocked for the private developer candidate
+        if: github.head_ref == 'integration/grapes-prod-v35-rc-20261027' || github.ref_name == 'integration/grapes-prod-v35-rc-20261027'
+        run: echo 'Samsung PUBLIC distribution NOT approved. Private SDK compile only; developer mode and physical readback required.' >> "$GITHUB_STEP_SUMMARY"
       - name: Check Samsung-registered PROD package and signing certificate
-        if: steps.sdk.outputs.available == 'true'
+        if: steps.sdk.outputs.available == 'true' && github.head_ref != 'integration/grapes-prod-v35-rc-20261027' && github.ref_name != 'integration/grapes-prod-v35-rc-20261027' 
         env:
           REGISTERED_PACKAGE: ${{ vars.SAMSUNG_HEALTH_REGISTERED_PACKAGE }}
           REGISTERED_CERT: ${{ vars.SAMSUNG_HEALTH_REGISTERED_CERT_SHA256 }}
