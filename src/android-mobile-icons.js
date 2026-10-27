@@ -1,4 +1,6 @@
 const ICON_PATHS = {
+  start: '<path d="M3 11.5 12 4l9 7.5v9H3zM9 20.5v-7h6v7"/><path d="M12 7.3v3"/>',
+  household: '<path d="M3 11.5 12 4l9 7.5v9H3zM9 20.5v-7h6v7"/>',
   utility: '<path d="M3.5 7h8v9h-8zM14 4h7v7h-7zM14 14h7v7h-7zM7.5 3v4M16 7h3M7.5 16v4"/>',
   sync: '<path d="M20 7a8 8 0 0 0-14-1L4 8M4 4v4h4M4 17a8 8 0 0 0 14 1l2-2M20 20v-4h-4"/>',
   projects: '<path d="M3 7h7l2 2h9v11H3zM3 7V5h7l2 2M7 13h10M7 16h7"/>',
