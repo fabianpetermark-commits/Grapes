@@ -57,3 +57,22 @@ test('Storage permission denial never crashes the navigation or silently loses i
   assert.equal(nav.pin('shopping'),true)
   assert.deepEqual(nav.list().pinned.map(m=>m.id),['food','water','shopping'])
 })
+
+test('Navigating and pinning on approved main v1.2 cannot mutate existing Home/Food/Water records',()=>{
+  const mem=storage()
+  const untouched=[
+    ['grapes-home-household-v1','{"events":[{"id":"local-home-unchanged"}]}'],
+    ['grapes-water-v1','{"entries":[{"id":"water-unchanged"}]}'],
+    ['grapes.food.diary.v1','{"entries":[{"id":"food-unchanged"}]}'],
+  ]
+  for(const [key,raw] of untouched) mem.setItem(key,raw)
+  const before=[...untouched].map(([key])=>[key,mem.data.get(key)])
+  const nav=createMainShortcutStore(mem)
+  nav.pin('inventory')
+  nav.visit('food')
+  nav.visit('water')
+  nav.unpin('inventory')
+  assert.deepEqual(before.map(([key])=>[key,mem.data.get(key)]),before,
+    'Navigation may only persist its own preference key, never rewrite existing module stores')
+  assert.ok(mem.data.has('grapes-main-shortcuts-v12'))
+})
