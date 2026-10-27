@@ -11,6 +11,8 @@ export default defineConfig({
         androidMobilePreview: resolve('design/android-mobile-preview.html'),
         // Isolated PROD Auth page; inactive until explicit release gate and OAuth setup.
         loginAuthProd: resolve('login-auth-prod.html'),
+        // Strictly isolated QA Auth origin, inactive in PROD release.
+        loginAuthTest: resolve('login-auth-test.html'),
       },
     },
   },
