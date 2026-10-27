@@ -104,6 +104,7 @@ jobs:
       - name: Native test Auth, CAS allowlist and other QA unit regressions
         run: gradle --project-dir android-health-connect-poc :app:testQaUnitTest
       - name: Signed TEST APK only; no release/install/update
+        if: github.event_name != 'pull_request'
         env:
           ANDROID_TEST_KEYSTORE_BASE64: ${{ secrets.ANDROID_TEST_KEYSTORE_BASE64 }}
           ANDROID_TEST_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_TEST_KEYSTORE_PASSWORD }}
@@ -131,6 +132,7 @@ jobs:
           sha256sum grapes-one-home-v50-test-signed.apk > grapes-one-home-v50-test-signed.apk.sha256
           sha256sum -c grapes-one-home-v50-test-signed.apk.sha256
       - name: Archive TEST APK 7 days – no GitHub release
+        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: grapes-one-home-v50-signed-test-only
