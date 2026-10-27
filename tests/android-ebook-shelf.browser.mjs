@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright-core'
+import JSZip from 'jszip'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const baseUrl = 'http://127.0.0.1:43129'
@@ -16,9 +17,19 @@ const executablePath = [
 ].filter(Boolean).find(existsSync)
 if (!executablePath) throw new Error('Nem található Chromium-alapú böngésző.')
 
+async function epubFixture() {
+  const zip = new JSZip()
+  zip.file('mimetype', 'application/epub+zip', { compression: 'STORE' })
+  zip.file('META-INF/container.xml', '<?xml version="1.0"?><container><rootfiles><rootfile full-path="OPS/package.opf"/></rootfiles></container>')
+  zip.file('OPS/package.opf', '<package xmlns="http://www.idpf.org/2007/opf" version="3.0"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>Valódi könyv</dc:title></metadata><manifest><item id="one" href="one.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="one"/></spine></package>')
+  zip.file('OPS/one.xhtml', '<html xmlns="http://www.w3.org/1999/xhtml"><body><h1>Első fejezet</h1><p>A Grapes könyvtári polcából megnyitott tényleges EPUB.</p></body></html>')
+  return Buffer.from(await zip.generateAsync({ type: 'uint8array', mimeType: 'application/epub+zip' }))
+}
+
 const server = spawn(process.execPath, [resolve(root, 'node_modules/vite/bin/vite.js'), '--host', '127.0.0.1', '--port', '43129', '--strictPort'], { cwd: root, env: { ...process.env, VITE_GOOGLE_CLIENT_ID: 'ebook-shelf-test' }, stdio: ['ignore', 'pipe', 'pipe'] })
 let browser
 try {
+  const epub = await epubFixture()
   for (let attempt = 0; attempt < 80; attempt += 1) {
     if (server.exitCode !== null) throw new Error(`A tesztszerver leállt (${server.exitCode}).`)
     try { if ((await fetch(baseUrl)).ok) break } catch {}
@@ -37,6 +48,9 @@ try {
   await context.route('https://www.googleapis.com/**', route => {
     const url = new URL(route.request().url())
     const query = url.searchParams.get('q') || ''
+    if (url.pathname.endsWith('/files/book-1') && url.searchParams.get('alt') === 'media') {
+      return route.fulfill({ status: 200, contentType: 'application/epub+zip', body: epub })
+    }
     let body = { files: [] }
     if (query.includes("name = 'Grapes E-book Library'")) body = { files: [{ id: 'library' }] }
     else if (query.includes("name = '.grapes-ebook-metadata.json'")) body = { files: [{ id: 'metadata' }] }
@@ -61,10 +75,15 @@ try {
   assert.equal(await page.locator('[data-ebook-books] .book-tile small').first().textContent(), 'Teszt Szerző')
   assert.equal(await page.getByText('A csend térképe').count(), 0)
   assert.equal(await page.getByText('Valódi E-book könyvtár megnyitása').count(), 0)
+  // Current approved UX opens the actual EPUB inside the mobile reader,
+  // instead of navigating back to the legacy standalone E-book page.
   await page.locator('[data-ebook-books] .book-tile').first().click()
-  await page.waitForURL('**/index.html?module=ebook&android-shell=1')
-  assert.equal(await page.evaluate(() => sessionStorage.getItem('grapes-ebook-open-book')), 'book-1')
-  console.log('Android Drive-backed E-book shelf: OK')
+  await page.locator('[data-page="reader"]').waitFor({ state: 'visible' })
+  await page.locator('[data-reader-shell]').waitFor({ state: 'visible' })
+  assert.equal(await page.locator('[data-reader-title]').textContent(), 'Valódi könyv')
+  assert.match(await page.locator('[data-reader-page]').innerText(), /Első fejezet/)
+  assert.equal(await page.locator('[data-reader-status]').getAttribute('data-kind'), '')
+  console.log('Android Drive-backed E-book shelf opens the actual EPUB reader: OK')
 } finally {
   await browser?.close().catch(() => {})
   server.kill()
