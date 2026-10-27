@@ -66,8 +66,10 @@ try{
     assert.equal(await home.locator('[data-household-shopping]').isVisible(),true)
     assert.equal(await home.locator('[data-household-inventory]').isVisible(),true)
     assert.equal(await home.locator('[data-household-suggestions]').isVisible(),true)
-    assert.equal(await home.locator('[data-household-share]').isDisabled(),true,
-      'PROD must never fake enabled family sharing')
+    const shareControls=home.locator('[data-household-share]')
+    assert.ok(await shareControls.count()>=1,'Approved Home share UI remains present')
+    assert.ok((await shareControls.evaluateAll(nodes=>nodes.map(node=>node.disabled))).every(Boolean),
+      'PROD must never fake enabled family sharing in either header or quick action')
     await nav.locator('[data-main-nav="start"]').click()
     await page.locator('[data-page="home"]').waitFor({state:'visible'})
     await page.locator('[data-main-shortcut="food"]').click()
