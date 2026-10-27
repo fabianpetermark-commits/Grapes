@@ -22,12 +22,12 @@ export function createHomeTestReadOnlyGate({
 } = {}) {
   if (!testGateEnabled || projectRef !== TEST_REF)
     fail('A családi Supabase-felderítés csak külön Grapes TEST-kapuban engedélyezett.')
+  if (typeof client?.auth?.getUser !== 'function' || typeof client?.rpc !== 'function')
+    fail('Hiányzó hitelesített Supabase TEST kliens.')
   // Do not trust only a caller-provided TEST label. Verify the real
   // Supabase JS client's own backend URL and prohibit redirected hosts.
   if (client?.supabaseUrl !== 'https://' + TEST_REF + '.supabase.co')
     fail('A Supabase kliens tényleges projektje nem a Grapes TEST.')
-  if (typeof client?.auth?.getUser !== 'function' || typeof client?.rpc !== 'function')
-    fail('Hiányzó hitelesített Supabase TEST kliens.')
   const owner = cleanUuid(expectedUserId, 'Grapes-fiókazonosító')
   let invalid = false
 
