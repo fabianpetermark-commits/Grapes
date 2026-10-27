@@ -492,7 +492,11 @@ class MainActivity : ComponentActivity() {
                 val args = message.optJSONArray("args")
                 if (!BuildConfig.GRAPES_TEST_DATA_ENABLED ||
                     !BuildConfig.GRAPES_TEST_HOME_FAMILY_ENABLED ||
-                    subject == null || args?.optJSONObject(1) == null) {
+                    subject == null || args?.optJSONObject(1) == null ||
+                    args.optString(0) !in setOf(
+                        "home_m3b_list_households", "home_m3b_read_household",
+                        "home_m3b_compare_and_swap", "home_m3b_read_attempt"
+                    )) {
                     sendError(requestId, "A TEST Home-adatművelet nem engedélyezett.")
                 } else lifecycleScope.launch {
                     runCatching {
