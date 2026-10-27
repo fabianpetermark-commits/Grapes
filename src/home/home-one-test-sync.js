@@ -77,11 +77,10 @@ export function createOneHomeTestSync({
     async queue(householdId, command) {
       enabledForWrite()
       await activeOwner()
-      // The signed-in owner must be checked remotely before staging.
-      // Queue can be persisted offline only after a previously authenticated,
-      // owner-bound snapshot has been verified and cached by refresh().
-      // With no reliable native owner proof, do not allow offline queues.
-      await gateway.verify()
+      // The durable outbox requires a previously authenticated, owner-bound
+      // snapshot from refresh(). Its native owner pin is checked locally so
+      // queuing can work OFFLINE. No remote write occurs until retry(), when
+      // gateway.verify() revalidates the authenticated user with Supabase.
       return outbox.enqueue(householdId, command)
     },
     async retry(householdId) {
