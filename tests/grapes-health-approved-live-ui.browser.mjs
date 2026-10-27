@@ -60,7 +60,16 @@ try {
   }
 
   await health.locator('[data-health-nav="settings"]').click()
-  await settings.waitFor({state:'visible'})
+  await page.waitForTimeout(120)
+  const stateAfterSettings = await page.evaluate(() => ({
+    settingsHidden: document.querySelector('[data-page="health-settings"]').hidden,
+    healthHidden: document.querySelector('[data-page="hub-health"]').hidden,
+    appTitle: document.querySelector('#app-title').textContent,
+  }))
+  if (stateAfterSettings.settingsHidden)
+    throw new Error('Health settings routing did not activate: ' +
+      JSON.stringify({ ...stateAfterSettings, errors }))
+  await settings.waitFor({state:'visible',timeout:2500})
   assert.equal(await settings.locator('[data-health-settings-index] [data-health-section]').count(),2)
   assert.deepEqual(await settings.locator('[data-health-settings-index] [data-health-section] strong').allTextContents(),
     ['Napi célok','Adatkapcsolatok'])
