@@ -1,0 +1,59 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { MAIN_SHORTCUTS,createMainShortcutStore } from '../src/main-shortcuts-v12.js'
+
+function storage(){
+  const data=new Map()
+  return {getItem:key=>data.get(key)||null,setItem:(key,v)=>data.set(key,v),data}
+}
+test('Approved startup only routes to existing real Grapes module destinations',()=>{
+  const expected=['food','water','recipes','stats','shopping','inventory','finance','ebook','qr','projects','sync']
+  assert.deepEqual(MAIN_SHORTCUTS.map(m=>m.id),expected)
+  assert.ok(MAIN_SHORTCUTS.every(m=>typeof m.label==='string'&&m.label.length>0))
+  assert.equal(MAIN_SHORTCUTS.some(m=>['plants','weather','outdoor'].includes(m.id)),false,
+    'Unimplemented Plants must never appear as functioning shortcut')
+})
+test('Default start page pins working Food and Water; manual picks persist across reloads',()=>{
+  const mem=storage()
+  const a=createMainShortcutStore(mem)
+  assert.deepEqual(a.list().pinned.map(m=>m.id),['food','water'])
+  assert.equal(a.pin('shopping'),true)
+  assert.equal(a.pin('shopping'),false)
+  assert.deepEqual(createMainShortcutStore(mem).list().pinned.map(m=>m.id),
+    ['food','water','shopping'])
+  assert.equal(a.unpin('food'),true)
+  assert.equal(a.unpin('food'),false)
+  assert.deepEqual(createMainShortcutStore(mem).list().pinned.map(m=>m.id),
+    ['water','shopping'])
+})
+test('Actual opens (not synthetic samples) drive additional usage recommendation',()=>{
+  const mem=storage(),a=createMainShortcutStore(mem)
+  assert.deepEqual(a.list().recommended,[])
+  a.visit('ebook');a.visit('ebook');a.visit('finance')
+  assert.deepEqual(a.list().recommended.map(m=>m.id),['ebook','finance'])
+  const resumed=createMainShortcutStore(mem)
+  assert.deepEqual(resumed.list().recommended.map(m=>m.id),['ebook','finance'])
+  assert.equal(resumed.has('plants'),false)
+  assert.equal(resumed.get('unknown'),null)
+  assert.throws(()=>resumed.pin('plants'),/Ismeretlen/)
+})
+test('Corrupt/untrusted preference and unsafe counts cannot introduce foreign module IDs',()=>{
+  const mem=storage()
+  mem.setItem('grapes-main-shortcuts-v12',JSON.stringify({version:1,
+    pinned:['food','__proto__','food','qr',17],
+    usage:{food:-3,qr:9,unknown:10000,water:'NaN',finance:1.5}}))
+  const a=createMainShortcutStore(mem)
+  assert.deepEqual(a.list().pinned.map(x=>x.id),['food','qr'])
+  assert.equal(a.list().recommended.length,0)
+  a.visit('water')
+  assert.deepEqual(a.list().recommended.map(x=>x.id),['water'])
+})
+test('Storage permission denial never crashes the navigation or silently loses in-memory pins',()=>{
+  const denied={
+    getItem(){throw Error('denied')},
+    setItem(){throw Error('denied')},
+  }
+  const nav=createMainShortcutStore(denied)
+  assert.equal(nav.pin('shopping'),true)
+  assert.deepEqual(nav.list().pinned.map(m=>m.id),['food','water','shopping'])
+})
