@@ -49,9 +49,11 @@ try {
   const page = await context.newPage()
   page.on('dialog', (dialog) => dialog.accept())
   await page.goto('http://127.0.0.1:4174/?module=finance')
+  // Wait for real Finance initialization before clicking the tab.
+  // An early click would hit unbound markup and falsely report broken storage.
+  await page.waitForFunction(() => document.querySelector('#finance-save-status')?.textContent === 'Kész')
   await page.locator('[data-finance-tab="transaction"]').click()
   await page.locator('#finance-form').waitFor({ state: 'visible' })
-  await page.waitForFunction(() => document.querySelector('#finance-save-status')?.textContent === 'Kész')
   await page.selectOption('#finance-currency', 'EUR')
   await page.fill('#finance-amount', '7000')
   assert.equal(await page.locator('#finance-amount').inputValue(), '7.000')

@@ -1,0 +1,62 @@
+name: Grapes PROD approved Finance navigation functional preservation (NO RELEASE)
+on:
+  push:
+    branches:
+      - release/prod-finance-v12-safe-20261027
+  pull_request:
+    branches:
+      - codex/android-app
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-finance-approved-nav-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  finance-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout safe Finance UI patch without write credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Locked dependencies
+        run: npm ci
+      - name: All previous unit tests – no regression allowed
+        run: npm test
+      - name: Actual Android WebView assets compilation
+        run: npm run build:android-web
+      - name: Locate Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v google-chrome >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            npx playwright-core install --with-deps chromium
+            binary=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path '*chrome-linux*' | head -1)
+            test -n "$binary"
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$binary" >> "$GITHUB_ENV"
+          fi
+      - name: Real five-tab Finance icon/nav actions, 320–412px
+        run: node tests/prod-finance-approved-nav.browser.mjs
+      - name: Preserve existing Finance mobile interaction
+        run: node tests/finance-planned-mobile.browser.mjs
+      - name: Preserve existing Finance backup import/export flow
+        run: node tests/finance-backup.browser.mjs
+      - name: Preserve existing Finance CSV and OCR imports
+        run: |
+          node tests/finance-import.browser.mjs
+          node tests/finance-receipt-ocr.browser.mjs
+      - name: Safe candidate only
+        run: echo "NO PROD APK, signing, Supabase migration, real Finance data mutations, or release"
