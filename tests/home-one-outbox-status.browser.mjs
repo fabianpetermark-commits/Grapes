@@ -104,9 +104,14 @@ try {
   assert.equal(await page.evaluate(()=>window.__qaHomeWrites),2)
   assert.equal(await home.locator('[data-household-inventory-count]').textContent(),'0',
     'Megvettem must never add stock')
+  await home.locator('.household-head [data-household-share]').click()
+  assert.equal(await home.locator('[data-household-share-panel]').isVisible(),true)
+  assert.match(await home.locator('[data-household-share-details]').textContent(),/Tulajdonos/)
   await page.evaluate(()=>{window.__qaHomeActor='00000000-0000-4000-8000-000000000002';
     window.dispatchEvent(new Event('online'))})
   await home.locator('[data-household-sync][data-status="unverified"]').waitFor()
+  assert.equal(await home.locator('[data-household-share-panel]').isVisible(),false,
+    'A share role dialog must close immediately when native owner changes')
   assert.equal(await home.locator('[data-household-shopping-count]').textContent(),'0',
     'A previous family data must disappear after owner switch')
   assert.equal(await home.locator('[data-household-add="shopping"]').first().isDisabled(),true)
