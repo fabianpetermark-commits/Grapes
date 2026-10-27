@@ -38,7 +38,10 @@ try {
   assert.deepEqual(await page.locator('[data-menu-group]').evaluateAll(nodes => nodes.map(x => x.dataset.menuGroup)),
     ['home', 'health', 'utility', 'finance'])
   assert.equal(await page.locator('[data-page="home"] .hub-card__icon svg').count(), 4)
-  assert.match(await page.locator('[data-menu-group="health"]').textContent(), /Food.*Receptek.*Statisztika/)
+  // The approved top rail has icon-only labels. The real Health domain
+  // remains discoverable through its live dashboard, not text on the icon.
+  assert.equal(await page.locator('[data-main-rail] [data-menu-group="health"]').getAttribute('aria-label'), 'Health')
+  assert.match(await page.locator('[data-page="home"] [data-main-module-link="health"]').textContent(), /Food.*Receptek.*Statisztika/)
   assert.equal(await page.locator('.bottom-nav, .nav-item').count(), 0, 'Nincs párhuzamos alsó navigáció.')
   assert.equal(await page.locator('.appbar [data-nav="home"]').count(), 1)
   assert.equal(await page.locator('.appbar [data-nav="more"] svg').count(), 1, 'A jobb felső beállítások ikon legyen SVG fogaskerék.')
