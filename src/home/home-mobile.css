@@ -79,3 +79,36 @@
   .household-widget-head h2 {font-size:16px;}
   .household-totals span {font-size:9px;}
 }
+
+/* One Home TEST owner-bound outbox status: compact and within approved cyan UI. */
+.household-sync {
+  display:flex;
+  gap:10px;
+  align-items:center;
+  justify-content:space-between;
+  min-width:0;
+  margin:0 0 12px;
+  padding:10px 12px;
+  border:1px solid #2c4a58;
+  border-radius:12px;
+  background:#111e27;
+  color:#acd0da;
+  font-size:12px;
+  line-height:1.45;
+}
+.household-sync[hidden], .household-sync button[hidden] { display:none !important; }
+.household-sync span { min-width:0; overflow-wrap:anywhere; }
+.household-sync[data-status="synced"] { border-color:#2c6259; color:#8ce1bc; }
+.household-sync[data-status="pending"] { border-color:#846b37; color:#f1d49b; }
+.household-sync[data-status="conflict"],
+.household-sync[data-status="unverified"] { border-color:#8c4d58; color:#ffb1bc; }
+[data-household-root] .household-sync button {
+  flex:0 0 auto;
+  min-height:40px;
+  padding:7px 10px;
+  color:#09151a;
+  background:#3bdcf2;
+  border-color:#3bdcf2;
+  font-size:12px;
+}
+@media(max-width:350px){ .household-sync { align-items:flex-start;flex-wrap:wrap; } }
