@@ -1,4 +1,5 @@
 import QRCode from 'qrcode';
+import { isGrapesAndroidApp, saveAndroidQrPng } from './android-bridge.js';
 import { el } from './ui/dom.js';
 import { notifySuccess, notifyError } from './ui/toast.js';
 import { saveLocalProject, loadLocalProject } from './storage/local-project-store.js';
@@ -325,13 +326,22 @@ export function initQrStudio() {
 
   errorLevelSelect?.addEventListener('change', () => { generateQR(); scheduleAutosave(); });
 
-  downloadBtn?.addEventListener('click', () => {
+  downloadBtn?.addEventListener('click', async () => {
     if (!getQRData()) return notifyError('Előbb adj meg tartalmat a QR-kódhoz.');
-    const link = document.createElement('a');
-    link.download = 'qrcode.png';
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-    notifySuccess('QR-kód sikeresen letöltve!');
+    try {
+      if (isGrapesAndroidApp()) {
+        downloadBtn.disabled = true;
+        await saveAndroidQrPng(canvas.toDataURL('image/png'));
+        notifySuccess('QR-kód mentve a kiválasztott fájlba.');
+      } else {
+        const link = document.createElement('a');
+        link.download = 'qrcode.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        notifySuccess('A QR PNG letöltése elindult.');
+      }
+    } catch (error) { notifyError(error.message || 'A QR PNG mentése nem sikerült.'); }
+    finally { generateQR(); }
   });
 
   copyBtn?.addEventListener('click', () => {

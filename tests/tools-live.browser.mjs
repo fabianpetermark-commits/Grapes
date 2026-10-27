@@ -70,6 +70,20 @@ try {
   await page.locator('[data-page="ebook"]').waitFor({state:'visible'})
   await page.evaluate(()=>window.grapesHandleAndroidBack())
   await page.locator('[data-page="hub-utility"]').waitFor({state:'visible'})
+  await page.locator('[data-menu-destination="qr"]').click()
+  await page.locator('#qr-download-png:not([disabled])').waitFor()
+  await page.evaluate(()=>{
+    window.savedQrPng=null;window.qrNativeCalls=[]
+    window.GrapesAndroid={postMessage(raw){
+      const message=JSON.parse(raw);window.qrNativeCalls.push(message.method)
+      if(message.method!=='saveQrPng')return
+      window.savedQrPng=message.args[0]
+      queueMicrotask(()=>window.dispatchEvent(new CustomEvent('grapes:android-result',{detail:{requestId:message.requestId,ok:true,payload:'{}'}})))
+    }}
+  })
+  await page.locator('#qr-download-png').click()
+  await page.waitForFunction(()=>window.savedQrPng?.startsWith('data:image/png;base64,'),null,{timeout:10000}).catch(async e=>{console.log('QR native debug',await page.evaluate(()=>({calls:window.qrNativeCalls,png:window.savedQrPng?.slice(0,50),toast:document.querySelector('[role=status]')?.textContent})),errors);throw e})
+  await page.getByText('QR-kód mentve a kiválasztott fájlba.',{exact:true}).waitFor()
   assert.deepEqual(errors,[])
   console.log('PASS: QR generation/PNG/export/immediate exit/IDB restore, six destinations, PDF rendering/page selection, 320–412px screenshots')
 }finally{await browser?.close();server.kill()}

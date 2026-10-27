@@ -105,3 +105,10 @@ export async function saveAndroidJsonBackup(filename, json) {
     throw error
   }
 }
+
+export async function saveAndroidQrPng(dataUrl) {
+  if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/png;base64,') || dataUrl.length > 2800000) {
+    throw new Error('Ervenytelen QR PNG.')
+  }
+  return nativeRequest('saveQrPng', dataUrl)
+}
