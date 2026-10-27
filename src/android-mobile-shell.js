@@ -57,7 +57,6 @@ let mobileReaderSaveTimer = null
 let activeTransferBookId = ''
 let activePairingNonce = ''
 let mobileFood = null
-let household = createHomeMobile($('[data-household-root]'))
 let homeTestEpoch = 0
 const HOME_NATIVE_QA = import.meta.env?.VITE_GRAPES_TEST_AUTH_ENABLED === 'true' &&
   import.meta.env?.VITE_GRAPES_TEST_DATA_ENABLED === 'true' &&
@@ -65,13 +64,23 @@ const HOME_NATIVE_QA = import.meta.env?.VITE_GRAPES_TEST_AUTH_ENABLED === 'true'
   import.meta.env?.VITE_GRAPES_TEST_SUPABASE_URL === 'https://aighqtqjlzirlokxwupt.supabase.co' &&
   globalThis.location?.href === 'https://appassets.androidplatform.net/assets/design/android-mobile-preview.html' &&
   isGrapesAndroidApp()
+// The QA app does not render previous personal v1 Home data before the
+// owner-bound native session has been verified. PROD stays byte-for-byte
+// on the original local Home initialization path.
+let household = HOME_NATIVE_QA ? null : createHomeMobile($('[data-household-root]'))
 
 // PROD never opens this gateway. QA must have an authenticated native subject
 // before any family v2 snapshot reaches the existing single Home UI.
 async function showTestFamilyHome(entry='') {
   const epoch=++homeTestEpoch
-  household.invalidateFamilyPreview?.()
-  const root=$('[data-household-root]')
+  household?.invalidateFamilyPreview?.()
+  // Detach old DOM listeners when selecting a different household. The
+  // existing Home controller is intentionally single-use for a pinned owner
+  // and household; reusing its root would keep stale click handlers alive.
+  const previousRoot=$('[data-household-root]')
+  let root=previousRoot.cloneNode(false)
+  previousRoot.replaceWith(root)
+  household=null
   root.textContent='A közös Otthon natív TEST-hitelesítésének ellenőrzése…'
   root.dataset.homeSource='family-test-checking'
   try {
@@ -89,7 +98,14 @@ async function showTestFamilyHome(entry='') {
     if (!homes.some(h=>h.householdId===chosen)) chosen=homes.length===1?homes[0].householdId:null
     function openChosen(householdId) {
       if (epoch!==homeTestEpoch || activePage!=='household') return
-      household.invalidateFamilyPreview?.()
+      if (household) {
+        household?.invalidateFamilyPreview?.()
+        const previousRoot=root
+        const fresh=previousRoot.cloneNode(false)
+        previousRoot.replaceWith(fresh)
+        root=fresh
+        household=null
+      }
       household=createHomeMobile(root,undefined,{familySync:session.chooseHousehold(householdId)})
       // Selecting among multiple REAL households is not a Saját/Közös mode.
       if (homes.length>1) {
@@ -411,6 +427,10 @@ async function openUpdateInbox() {
 }
 
 function showPage(page, { parent = '', entry = '' } = {}) {
+  // The dedicated A/B QA APK cannot show earlier unclaimed personal
+  // Food/Finance/Water records: those are not owner-scoped yet. This limit
+  // is TEST-only. PROD and regular web builds keep their existing navigation.
+  if (HOME_NATIVE_QA && page !== 'household') page = 'household'
   // Remember only the menu origin. Reader/transfer views inherit E-book's origin.
   if (!['reader', 'transfer'].includes(page) || parent) {
     menuReturnPage = parent
@@ -419,7 +439,7 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   if (activePage === 'food' && page !== 'food') mobileFood?.flush().catch(() => {})
   if (activePage === 'household' && page !== 'household' && HOME_NATIVE_QA) {
     homeTestEpoch++
-    household.invalidateFamilyPreview?.()
+    household?.invalidateFamilyPreview?.()
   }
   if (mobileReader && !['reader'].includes(page)) persistReaderProgress().catch(() => {})
   if (page !== 'reader') setReaderFullscreen(false)
@@ -1533,7 +1553,7 @@ if (prodSignoutButton) {
   prodSignoutButton.addEventListener('click', () => {
     if (HOME_NATIVE_QA) {
       homeTestEpoch++
-      household.invalidateFamilyPreview?.()
+      household?.invalidateFamilyPreview?.()
       requestAndroidTestAccountSignOut()
       return
     }
@@ -1547,7 +1567,7 @@ installSheetGestures()
 refreshUpdateInbox()
 window.grapesHandleAndroidBack = () => {
   if ($('[data-notifications-sheet].is-open')) { closeSheet(); return true }
-  if (activePage === 'household' && household.handleBack()) return true
+  if (activePage === 'household' && household?.handleBack()) return true
   if (activePage === 'food' && menuReturnPage === 'hub-health') {
     if (menuEntry === 'stats' && $('[data-food-stats-sheet].is-open')) { showPage('hub-health'); return true }
     if (menuEntry === 'recipes' && !$('[data-food-recipes-view]').hidden && !$('.bottom-sheet.is-open')) { showPage('hub-health'); return true }
