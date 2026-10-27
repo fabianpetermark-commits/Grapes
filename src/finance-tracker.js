@@ -827,11 +827,17 @@ function bindControls() {
     try {
       const snapshot = serializeProject()
       const filename = `penzugyi-naplo-teljes-mentes-${backupTimestamp()}.json`
+      // Start the user-requested file download while the confirm button's
+      // transient activation is still available. Awaiting IndexedDB writes
+      // first can cause Chromium/Android WebView to silently block a later
+      // synthetic anchor click. This downloads a snapshot only; it deletes
+      // NOTHING. Deletion still requires BOTH local writes and a second,
+      // explicit confirmation to succeed below.
+      download(financeBackupToJson(snapshot), 'application/json;charset=utf-8', filename)
       clearTimeout(localSaveTimer)
       clearTimeout(driveSaveTimer)
       await persistLocal()
       await saveSafetySnapshot(DELETE_BACKUP_ID, 'Pénzügyi napló – utolsó törlés előtti mentés', snapshot)
-      download(financeBackupToJson(snapshot), 'application/json;charset=utf-8', filename)
       const confirmed = await showGrapesConfirm({
         title: 'Utolsó kérdés. Becsületszó.',
         message: `A teljes mentést helyben megőriztük, és a ${filename} letöltését elindítottuk. Ellenőrizd a letöltéseidet: a fájl személyes adatokat is tartalmazhat. Biztosan törlöd mind a(z) ${count} tételt?`,
