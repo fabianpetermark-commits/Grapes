@@ -63,7 +63,8 @@ try {
     assert.equal(await settings.locator('[data-account-login]').count(), 1, 'Existing account action still wired')
     assert.equal(await settings.locator('[data-grapes-test-logout]').count(), 1, 'Existing Auth sign-out hook retained')
     assert.equal(await settings.locator('[data-grapes-test-food-qa]').count(), 1, 'Synthetic QA must stay available behind its gate')
-    assert.equal(await settings.locator('[data-nav="sync"]').count(), 4, 'All provider rows navigate')
+    assert.equal(await settings.locator('[data-nav="sync"]').count(), 1, 'Existing Sync route stays uniquely addressable')
+    assert.equal(await settings.locator('[data-settings-sync]').count(), 3, 'Other providers use dedicated live navigation hooks')
     // Last settings block must be scroll-reachable on a small phone.
     await settings.getByText('A Grapes névjegye').scrollIntoViewIfNeeded()
     const geometry = await page.evaluate(() => ({
@@ -73,7 +74,7 @@ try {
     assert.ok(geometry.width <= geometry.view + 2,
       `Settings overflow at ${width}px: ${JSON.stringify(geometry)}`)
     for (const label of ['Google Drive', 'Health Connect', 'Samsung Health', 'YAZIO']) {
-      await settings.locator('[data-nav="sync"]').filter({has:page.getByText(label,{exact:true})}).click()
+      await settings.locator('[data-nav="sync"], [data-settings-sync]').filter({has:page.getByText(label,{exact:true})}).click()
       await page.locator('[data-page="sync"]').waitFor({state:'visible'})
       assert.equal(await page.locator('[data-sync-refresh]').count(),1,'Actual sync action retained')
       await topSettings.click()
