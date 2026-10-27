@@ -33,3 +33,49 @@
 .household-actions button { flex: 1 1 120px; }
 .household-undo { width: 100%; margin-top: 12px; }
 @media (max-width: 359px) { .household-toolbar { grid-template-columns: 1fr; } .household-card-actions button { flex-basis: 110px; } }
+
+
+/* APPROVED One Home. All three widgets are live; no own/shared tabs. */
+[data-household-root] { padding-bottom: max(96px, env(safe-area-inset-bottom)); }
+.household-head { display:flex;align-items:start;justify-content:space-between;gap:12px;padding:3px 0 14px; }
+.household-head h1 { margin:0;font-size:24px;letter-spacing:-.035em; }
+.household-head p { margin:6px 0 0;font-size:11px;color:var(--muted);line-height:1.35; }
+.household-head [data-household-share] { flex-shrink:0;min-width:49px;background:#18303b;color:#cce2e8;font-size:12px; }
+[data-household-share]:disabled { opacity:.7;cursor:not-allowed; }
+.household-totals { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:0 0 14px; }
+.household-totals>div { display:grid;gap:5px;min-width:0;padding:12px 8px;background:#101821;border:1px solid #293e4c;border-radius:13px;text-align:center; }
+.household-totals strong { color:#eafaff;font-size:22px;font-variant-numeric:tabular-nums; }
+.household-totals span { color:#94a5b8;font-size:10px;line-height:1.3; }
+.household-widget { position:relative;padding:14px;margin-bottom:13px;background:#101821;border:1px solid #293e4c;border-radius:19px;overflow:hidden;scroll-margin-top:80px; }
+.household-widget::before { content:"";position:absolute;top:0;left:15px;width:43%;height:1px;background:linear-gradient(90deg,#3bdcf2a8,#3bdcf224,transparent); }
+.household-widget-head { display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 12px; }
+.household-widget-head h2 { font-size:17px;line-height:1.2;letter-spacing:-.02em;margin:0; }
+[data-household-root] .household-widget-head button { min-height:44px;color:#041014;background:#3bdcf2;border-color:#3bdcf2;padding:7px 12px;white-space:nowrap;font-size:12px; }
+.household-widget .household-card { margin:8px 0;padding:11px;background:#17222e;border-color:#2c4656;border-radius:14px; }
+.household-widget .household-card strong { font-size:14px; }
+.household-widget .household-card p { font-size:11px; }
+.household-widget .household-card small { font-size:11px; }
+.household-widget .household-empty { margin:0;padding:11px;background:#17222e;border-color:#2b4553;border-radius:12px;font-size:12px; }
+.household-widget .household-filters { gap:5px;margin-bottom:9px; }
+.household-widget .household-filters button { min-height:40px;padding:7px 6px;font-size:11px; }
+.household-widget .household-toolbar { display:block;margin-bottom:9px; }
+.household-widget .household-toolbar input { width:100%; }
+.household-card-actions { gap:5px; }
+.household-card-actions button { flex:1 1 auto;min-height:40px;padding:7px 9px;font-size:11px; }
+.household-done { margin:10px 0 0; }
+.household-done summary { cursor:pointer;padding:10px 8px;border:1px solid #2b4553;border-radius:10px;color:#aac2cc;font-size:12px; }
+.household-suggestion { display:flex;gap:8px;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #2c4150; }
+.household-suggestion:last-child { border-bottom:0; }
+.household-suggestion strong,.household-suggestion small { display:block; }
+.household-suggestion strong { font-size:13px; }
+.household-suggestion small { color:#94a5b8;font-size:11px;margin-top:4px; }
+[data-household-root] .household-suggestion button { min-width:88px;color:#3bdcf2;background:#18313b;border-color:#3c6979; }
+.household-quick { display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) 48px;gap:6px;align-items:center;padding:7px;margin:12px 0 10px;background:#101821;border:1px solid #2c4a58;border-radius:19px; }
+[data-household-root] .household-quick button { min-width:0;min-height:46px;padding:5px 3px;background:transparent;border:1px solid transparent;border-radius:12px;color:#adc5d0;font-size:11px; }
+[data-household-root] .household-quick .household-quick-add { background:#3bdcf2;color:#041014;font-size:28px;line-height:1;border-radius:14px; }
+[data-household-root] [data-household-undo] { margin:9px 0 0; }
+@media (max-width:350px) {
+  .household-widget {padding:11px;}
+  .household-widget-head h2 {font-size:16px;}
+  .household-totals span {font-size:9px;}
+}
