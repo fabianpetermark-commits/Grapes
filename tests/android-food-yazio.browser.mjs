@@ -69,8 +69,10 @@ try {
   assert.equal(await page.locator('[data-yazio-records] input:checked').count(), 0)
   await page.locator('[data-yazio-cancel]').click()
   page.once('dialog', dialog => dialog.accept())
-  await page.locator('[data-yazio-import]').click()
-  await page.locator('[data-yazio-api-files]').click()
+  await page.locator('[data-menu-group="health"]').click()
+  await page.locator('.appbar [data-nav="more"]').click()
+  await page.locator('[data-health-section="integrations"]').click()
+  await page.locator('[data-health-command="yazio-import"]').click()
   await page.locator('[data-sync-import-sheet].is-open').waitFor()
   await page.locator('[data-yazio-undo]').click()
   await page.waitForFunction(async () => {
