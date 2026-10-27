@@ -40,6 +40,7 @@ async function run(id,test,width=360){
   })
   try{
     await p.goto(url);await p.waitForFunction(()=>window.qaReady)
+    assert.ok(await p.evaluate(()=>Array.from(document.styleSheets).some(sheet=>sheet.href?.endsWith('/src/home/home-mobile.css')&&sheet.cssRules.length>0)),'Original Home CSS must actually load')
     before=await p.evaluate(()=>qa.storage())
     await test(p)
     assert.deepEqual(await p.evaluate(()=>qa.storage()),before,'v1/current/previous and private module bytes must survive')
@@ -189,6 +190,8 @@ try{
   })
   for(const width of [320,360,390,412])await run('mobile-'+width,async p=>{
     await mount(p);await settled(p,'synced')
+    assert.equal(await p.locator('[data-household-sync]').evaluate(el=>getComputedStyle(el).display),'flex')
+    assert.equal(await p.locator('.household-totals').evaluate(el=>getComputedStyle(el).display),'grid')
     const check=async()=>assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth),false,'No horizontal overflow')
     await check();assert.equal(await p.locator('[data-household-tabs]').count(),0)
     assert.equal(await p.getByText('Kimenő üzenetek',{exact:true}).count(),0)
