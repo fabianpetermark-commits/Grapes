@@ -57,7 +57,7 @@
     .login__fine { margin-top: 18px; color: #74869a; font-size: 11px; line-height: 1.5; }
     .login__status { min-height: 36px; margin: 12px 0 0; color: var(--danger); font-size: 12px; line-height: 1.45; }
     .appbar { display: flex; gap: 12px; align-items: center; min-height: 58px; padding: 8px 16px; border-bottom: 1px solid var(--line); }
-    .appbar__home { display: flex; flex: 1; gap: 10px; align-items: center; min-width: 0; padding: 0; color: var(--text); text-align: left; cursor: pointer; background: transparent; border: 0; border-radius: 12px; }
+    .appbar__home { display: flex; flex: 1; gap: 10px; align-items: center; min-width: 0; padding: 0; color: var(--text); text-align: left; cursor: default; background: transparent; border: 0; border-radius: 12px; }
     .appbar__home:focus-visible, .icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     .appbar__logo { width: 36px; height: 36px; padding: 3px; filter: drop-shadow(0 5px 10px rgb(0 194 230 / 20%)); }
     .appbar__title { min-width: 0; flex: 1; }
@@ -748,7 +748,7 @@
 
       <section id="app" class="screen" hidden>
         <header class="appbar">
-          <button class="appbar__home" type="button" data-nav="home" aria-label="Főmenü"><img class="appbar__logo" src="../public/grapes-mark.svg" alt=""><span class="appbar__title"><strong id="app-title">Grapes</strong><span id="app-subtitle">Helyi mód</span></span></button>
+          <div class="appbar__home" role="group" aria-label="Grapes és aktuális modul"><img class="appbar__logo" src="../public/grapes-mark.svg" alt=""><span class="appbar__title"><strong id="app-title">Grapes</strong><span id="app-subtitle">Helyi mód</span></span></div>
           <button class="icon-btn" data-action="search" aria-label="Keresés">⌕</button>
           <button class="icon-btn" data-notifications aria-label="Értesítések"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v14H4zM4 13h4l2 3h4l2-3h4"/></svg><span class="notification-badge" data-notifications-badge hidden>1</span></button>
           <nav class="grapes-main-rail" data-main-rail aria-label="Grapes főmodulok">
