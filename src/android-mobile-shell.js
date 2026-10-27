@@ -174,7 +174,10 @@ const labels = {
   home: ['Grapes', 'Mobil munkaterület'], projects: ['Projektek', 'Helyi és Drive'],
   sync: ['Szinkron', 'Adatok és fiók'], more: ['Grapes', 'Beállítások'],
   food: ['Ételnapló', 'Mai áttekintés'], water: ['Víz', 'Napi folyadékbevitel'],
-  household: ['Home / Háztartás', 'Ezen az eszközön tárolva'],
+  // The selected Home can be a verified shared family Home in TEST.
+  // Never label a cloud-synced household as 'stored on this device' or repeat
+  // the page title above the approved single 'Otthonunk' heading.
+  household: ['Grapes', ''],
   'hub-home': ['Home', 'Háztartás'],
   'hub-health': ['Health', 'Napi egészségügyi áttekintés'],
   'health-settings': ['Health', 'Modulbeállítások'],
