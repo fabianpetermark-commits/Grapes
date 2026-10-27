@@ -271,3 +271,60 @@
   [data-household-root] .household-widget { padding: 12px; margin-bottom: 11px; }
   [data-household-root] .household-totals { margin-bottom: 12px; }
 }
+
+/* Design-approved information density + hierarchy (2026-10-26 spec). */
+[data-household-root] .household-quick {
+  grid-template-columns: repeat(3,minmax(0,1fr)) 50px;
+  gap: 5px;
+}
+[data-household-root] .household-quick button:not(.household-quick-add) {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 4px;
+  min-height: 53px;
+  padding: 5px 2px;
+  font-size: 10px;
+  line-height: 1.15;
+}
+[data-household-root] .household-quick button svg {
+  display: block;
+  width: 20px;
+  height: 20px;
+  color: #3bdcf2;
+}
+[data-household-root] .household-quick .household-quick-add {
+  align-self:center;
+  justify-self:center;
+  display:grid;
+  place-items:center;
+  width:50px;
+  height:50px;
+  min-height:50px;
+  padding:0;
+  border-radius:50%;
+}
+[data-household-root] .household-widget .household-card strong {font-size:15px;}
+[data-household-root] .household-widget .household-card p {font-size:13px;line-height:1.45;}
+[data-household-root] .household-totals span {font-size:11px;line-height:1.4;}
+[data-household-root] .household-card-actions [data-household-check] {
+  flex:1 1 100%;
+  order:-1;
+  min-height:44px;
+  color:#041014;
+  background:#3bdcf2;
+  border-color:#3bdcf2;
+  font-size:13px;
+  font-weight:750;
+}
+[data-household-root] [data-household-lots] {
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  gap:8px;
+}
+[data-household-root] [data-household-lots] > .household-card {margin:0;}
+@media(min-width:375px) {
+  [data-household-root] [data-household-lots] {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
