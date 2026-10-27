@@ -254,7 +254,13 @@ export function createHomeMobile(root, storage, { familyPreview = null, familySy
     load() {
       invalidateFamilyPreview()
       try {
-        store = createHomeStore(storage)
+        // Family TEST snapshots are fully owner-scoped v2. Do not even PARSE
+        // the pre-existing device Home v1/v2 storage when viewing them. Older
+        // installed QA v42 may have a different Home schema under the same
+        // localStorage key; it must remain byte-for-byte untouched.
+        store = familyQA
+          ? { getState: () => ({ inventory: [], shopping: [] }) }
+          : createHomeStore(storage)
         root.querySelectorAll('.household-widget').forEach(node => { node.hidden = false })
         alert(message || '', !!error)
         render()
