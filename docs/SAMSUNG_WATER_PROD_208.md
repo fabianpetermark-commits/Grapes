@@ -31,7 +31,7 @@ Final CI run [40590636094](https://github.com/fabianpetermark-commits/Grapes/act
 * Native owner gate / Android unit tests with stub: PASS (`BUILD SUCCESSFUL`).
 * Official licensed SDK obtained from the existing private #173 ZIP URL; archive and AAR checksums verified: PASS. The BASE64 secret is absent, but it is **not a remaining blocker** because the existing private ZIP source works.
 * Real Samsung SDK adapter compile, native tests and release Kotlin compile: PASS (`BUILD SUCCESSFUL`). No APK was assembled or uploaded by this workflow; artifacts list is empty.
-* PROD package/certificate registration gate: BLOCKED. Registration evidence/signing setup required by that step is incomplete. See the job's explicit error; configuration must correspond to Samsung's actual approval, not an invented certificate value.
+* PROD package/certificate registration gate: BLOCKED. The repository variables `SAMSUNG_HEALTH_REGISTERED_PACKAGE` and `SAMSUNG_HEALTH_REGISTERED_CERT_SHA256` are absent. Existing signing-key secrets are present. The variables must represent Samsung's actual package/certificate approval; that approval and physical-device permission/readback are not yet verified.
 
 The licensed AAR and temporary private download are deleted from the runner; no proprietary bytes are committed or uploaded.
 
