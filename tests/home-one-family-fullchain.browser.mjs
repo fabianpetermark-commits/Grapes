@@ -161,7 +161,9 @@ try{
     }
     await p.waitForFunction(phase=>qa.waiting(phase),phase)
     await p.evaluate(phase=>{qa.set({actor:qa.B});qa.release(phase)},phase)
-    if(phase!=='read')await p.waitForFunction(()=>document.querySelector('[data-household-sync-text]').textContent.includes('újrapróbálás'))
+    // Wait for reconciliation to finish; accept the correct fixed state as well as the current error state.
+    if(phase==='read')await settled(p,'unverified')
+    else await p.waitForFunction(()=>document.querySelector('[data-household-sync]').dataset.status==='unverified'||document.querySelector('[data-household-sync-text]').textContent.includes('újrapróbálás'))
     assert.equal(await p.locator('[data-household-sync]').getAttribute('data-status'),'unverified','Account switch must clear stale pending projection')
     for(const name of ['Közös tej','Offline kenyér','Személyes cukor'])assert.equal(await p.getByText(name,{exact:true}).count(),0)
     assert.equal(await p.locator('[data-household-add="shopping"]').first().isDisabled(),true)
