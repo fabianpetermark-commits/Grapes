@@ -86,7 +86,15 @@ try {
     assert.equal(await home.locator('[data-household-add]').first().isDisabled(),true)
     assert.equal(await home.locator('[data-household-check]').first().isDisabled(),true)
     assert.equal(await home.locator('[data-household-edit]').first().isDisabled(),true)
-    assert.equal(await home.locator('[data-household-share]').first().isDisabled(),true)
+    // A verified read-only family may inspect its own role; opening the
+    // permission overview must not allow invites, CAS or local journal writes.
+    const share=home.locator('.household-head [data-household-share]')
+    assert.equal(await share.isDisabled(),false)
+    await share.click()
+    assert.equal(await home.locator('[data-household-share-panel]').isVisible(),true)
+    assert.match(await home.locator('[data-household-share-details]').textContent(),/Tulajdonos/)
+    await home.locator('[data-household-share-panel] [data-household-cancel]').click()
+    assert.equal(await home.locator('[data-household-share-panel]').isVisible(),false)
     const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth)
     assert.ok(overflow<=2,'One Home overflow at '+width+'px: '+overflow)
     await page.evaluate(async B=>{
