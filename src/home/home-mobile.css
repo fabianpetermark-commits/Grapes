@@ -146,3 +146,128 @@
   color:#041014;
   border-radius:12px;
 }
+
+/* Accepted One Home mockup: one continuous screen, overlay sheets (not an
+   inline editor at the bottom of the scrolling dashboard), one action dock. */
+[data-household-root] .household-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgb(2 7 12 / 78%);
+  backdrop-filter: blur(5px);
+}
+[data-household-root] .household-sheet {
+  position: fixed;
+  z-index: 51;
+  left: max(0px, calc((100vw - 640px) / 2));
+  right: max(0px, calc((100vw - 640px) / 2));
+  bottom: 0;
+  width: auto;
+  max-height: min(88dvh, 720px);
+  margin: 0;
+  padding: 22px clamp(16px, 4vw, 28px) calc(22px + env(safe-area-inset-bottom));
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: #101821;
+  border: 1px solid #3b6371;
+  border-bottom: 0;
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -25px 90px rgb(0 0 0 / 62%);
+}
+[data-household-root] .household-sheet h2 {
+  color: #f2f7fb;
+  font-size: 21px;
+  letter-spacing: -.025em;
+  line-height: 1.25;
+}
+[data-household-root] .household-sheet input,
+[data-household-root] .household-sheet select {
+  min-height: 48px;
+}
+[data-household-root] .household-sheet .household-actions {
+  display: grid;
+  grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr);
+  gap: 9px;
+}
+[data-household-root] .household-sheet .household-actions button {
+  min-width: 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+[data-household-root] .household-share-note {
+  color: #94a5b8;
+  font-size: 12px;
+  line-height: 1.55;
+}
+[data-household-root] .household-share-panel .household-actions {
+  grid-template-columns: 1fr;
+}
+[data-household-root] .household-head [data-household-share] {
+  min-height: 40px;
+  min-width: 0;
+  padding: 8px 11px;
+  color: #3bdcf2;
+  background: #11232d;
+  border: 1px solid #356275;
+  border-radius: 12px;
+}
+[data-household-root][data-home-source="family-test-outbox"] .household-head [data-household-source],
+[data-household-root][data-home-source="family-test-readonly"] .household-head [data-household-source] {
+  /* CI-visible metadata belongs to diagnostics, not the everyday UI. */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+[data-household-root] .household-selector {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: -4px 0 12px;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+[data-household-root] .household-selector select {
+  flex: 1 1 auto;
+  min-height: 40px;
+  padding: 6px 9px;
+  border-radius: 11px;
+}
+[data-household-root] .household-widget,
+[data-household-root] .household-totals > div {
+  box-shadow: none;
+}
+@media(max-width: 640px) {
+  /* A persistent bottom quick-action rail replaces scrolling to a second
+     navigation block. The three data widgets still coexist above it. */
+  [data-household-root] { padding-bottom: calc(108px + env(safe-area-inset-bottom)); }
+  [data-household-root] .household-quick {
+    position: fixed;
+    z-index: 20;
+    left: 12px;
+    right: 12px;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    margin: 0;
+    padding: 6px;
+    background: rgb(16 24 33 / 96%);
+    border-color: #37616f;
+    box-shadow: 0 12px 32px rgb(0 0 0 / 45%);
+    backdrop-filter: blur(16px);
+  }
+  [data-household-root] .household-sheet {
+    left: 0;
+    right: 0;
+    max-height: 86dvh;
+    border-radius: 23px 23px 0 0;
+  }
+  [data-household-root] .household-card-actions button {
+    flex: 1 1 40%;
+    min-width: 0;
+  }
+  [data-household-root] .household-widget { padding: 12px; margin-bottom: 11px; }
+  [data-household-root] .household-totals { margin-bottom: 12px; }
+}
