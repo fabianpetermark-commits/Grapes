@@ -105,3 +105,26 @@ export async function saveAndroidJsonBackup(filename, json) {
     throw error
   }
 }
+
+// Only the isolated native QA package accepts these methods. The APP origin
+// never sees or stores an Auth bearer JWT, only a verified user UUID.
+export async function getAndroidTestAuthEnabled() {
+  return (await nativeRequest('getTestAuthEnabled')) === 'true'
+}
+export async function getAndroidTestAuthSubject() {
+  const id = await nativeRequest('getTestAuthSubject')
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id || ''))
+    throw new Error('A natív Grapes TEST-fiókazonosító nem ellenőrizhető.')
+  return id.toLowerCase()
+}
+export function requestAndroidTestSupabase(method, ...args) {
+  if (!['supabaseTestWhoAmI','supabaseTestRpc'].includes(method))
+    throw new Error('Nem engedélyezett családi TEST-művelet.')
+  return nativeRequest(method,...args)
+}
+export function requestAndroidTestAccountSignOut() {
+  if (!isGrapesAndroidApp()) throw new Error('A Grapes TEST alkalmazás nem érhető el.')
+  window.GrapesAndroid.postMessage(JSON.stringify({
+    method:'openTestAuthSignOut',requestId:crypto.randomUUID(),args:[],
+  }))
+}
