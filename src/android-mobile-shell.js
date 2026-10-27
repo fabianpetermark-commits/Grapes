@@ -450,8 +450,8 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   if (page !== 'reader') setReaderFullscreen(false)
   activePage = page
   toast.classList.remove('is-visible')
-  $('[data-page]').forEach(node => { node.hidden = node.dataset.page !== page })
-  $('[data-nav]').forEach(node => node.classList.toggle('is-active', node.dataset.nav === page))
+  $$('[data-page]').forEach(node => { node.hidden = node.dataset.page !== page })
+  $$('[data-nav]').forEach(node => node.classList.toggle('is-active', node.dataset.nav === page))
   const mainRail = $('[data-main-rail]')
   if (mainRail) mainRail.hidden = HOME_NATIVE_QA
   const currentMain =
@@ -461,7 +461,7 @@ function showPage(page, { parent = '', entry = '' } = {}) {
     ['hub-utility','ebook','reader','transfer'].includes(page) ? 'tools' :
     ['hub-finance','finance'].includes(page) ? 'finance' :
     ['more','sync'].includes(page) ? 'settings' : ''
-  $('[data-main-nav]').forEach(button => {
+  $$('[data-main-nav]').forEach(button => {
     if (button.dataset.mainNav === currentMain) button.setAttribute('aria-current','page')
     else button.removeAttribute('aria-current')
   })
@@ -1347,7 +1347,7 @@ $$('[data-settings-provider]').forEach(button => button.addEventListener('click'
   requestAnimationFrame(() => $(target)?.scrollIntoView({ block: 'center', behavior: 'instant' }))
 }))
 $('[data-settings-open-home]')?.addEventListener('click', () => showPage('household'))
-$('[data-menu-group], [data-main-module-link]').forEach(button => button.addEventListener('click', () => {
+$$('[data-menu-group], [data-main-module-link]').forEach(button => button.addEventListener('click', () => {
   const group = button.dataset.menuGroup || button.dataset.mainModuleLink
   if (group === 'home') showPage('household', { parent: 'home' })
   else if (['health', 'utility', 'finance'].includes(group)) showPage('hub-' + group)
