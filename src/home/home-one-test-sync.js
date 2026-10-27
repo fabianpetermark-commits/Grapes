@@ -2,7 +2,7 @@ import { createFamilyHomeGateway } from './home-family-gateway.js'
 import { createHomeFamilyOutbox } from './home-family-outbox.js'
 import { HOME_SUPABASE_TEST_REF } from './home-supabase-test-readonly.js'
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const TEST_URL = 'https://' + HOME_SUPABASE_TEST_REF + '.supabase.co'
 const READ_RPC = new Set([
   'home_m3b_list_households', 'home_m3b_read_household',
