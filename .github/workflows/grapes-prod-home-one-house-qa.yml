@@ -1,0 +1,58 @@
+name: Grapes PROD One Home real widgets preservation (NO RELEASE)
+on:
+  push:
+    branches:
+      - release/prod-home-one-house-widgets-20261027
+  pull_request:
+    branches:
+      - codex/android-app
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-one-home-qa-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  home-preservation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: All previous unit tests
+        run: npm test
+      - name: Build real Android WebView assets (without APK release)
+        run: npm run build:android-web
+      - name: Locate Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v google-chrome >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            npx playwright-core install --with-deps chromium
+            binary=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path '*chrome-linux*' | head -1)
+            test -n "$binary"
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$binary" >> "$GITHUB_ENV"
+          fi
+      - name: New approved One Home shopping inventory and suggestions real interaction
+        run: node tests/prod-home-one-house.browser.mjs
+      - name: Full existing Android menu/Health/Finance/E-book route preservation
+        run: node tests/android-module-hubs.browser.mjs
+      - name: Existing Settings/Auth/Drive/Health/YAZIO browser regressions
+        run: |
+          node tests/prod-settings-preservation.browser.mjs
+          node tests/android-mobile-preview.browser.mjs
+      - name: Read-only rollout statement
+        run: echo "NO signed APK, no remote Supabase mutation, no release"
