@@ -846,6 +846,8 @@ async function startReader(bookId) {
     mobileReaderBook = book
     $('[data-reader-title]').textContent = book.title
     $('[data-reader-author]').textContent = book.author || (isMobileReadablePdf(book) ? 'PDF' : 'EPUB')
+    $('[data-reader-section-label]').textContent = isMobileReadablePdf(book) ? 'Oldal' : 'Fejezet'
+    $$('[data-reader-font]').forEach(button => { button.hidden = isMobileReadablePdf(book) })
     const chapterSelect = $('[data-reader-chapter]')
     chapterSelect.replaceChildren(...mobileReader.chapters.map(chapter => new Option(chapter.title, chapter.id)))
     $('[data-reader-picker]').hidden = true
