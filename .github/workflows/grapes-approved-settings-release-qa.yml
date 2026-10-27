@@ -1,0 +1,142 @@
+name: Grapes TEST approved Settings + full module regression (NO RELEASE)
+
+on:
+  push:
+    branches:
+      - integration/grapes-release-readiness-20261027
+  pull_request:
+    branches:
+      - audit/grapes-functional-preservation-20261027
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-settings-release-readiness-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  module-preservation:
+    if: github.repository == 'fabianpetermark-commits/Grapes'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GRAPES_TEST_AUTH_ENABLED: 'true'
+      VITE_GRAPES_TEST_FRESH_OWNER_MODULES_ENABLED: 'true'
+      VITE_GRAPES_TEST_DATA_ENABLED: 'true'
+      VITE_GRAPES_TEST_FOOD_SYNTHETIC_ENABLED: 'false'
+      VITE_GRAPES_TEST_LOCAL_OWNER_QA_ENABLED: 'false'
+      VITE_GRAPES_TEST_LEGACY_BACKUP_ENABLED: 'false'
+      VITE_GRAPES_TEST_SAF_SYNTHETIC_QA_ENABLED: 'false'
+      VITE_GRAPES_TEST_HEALTH_SYNC_ENABLED: 'false'
+      VITE_GRAPES_TEST_FOOD_LOCAL_CAS_ENABLED: 'false'
+      VITE_GRAPES_TEST_WATER_PROFILE_ENABLED: 'false'
+      VITE_GRAPES_TEST_SUPABASE_URL: https://aighqtqjlzirlokxwupt.supabase.co
+      VITE_GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY: ${{ vars.GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY }}
+      VITE_EBOOK_EPUB_WRITE_ENABLED: 'true'
+    steps:
+      - name: Check out regression candidate without write credentials
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify original TEST v29 integrated feature ancestry
+        shell: bash
+        run: |
+          set -euo pipefail
+          for sha in \
+            1b9790817634c819274d7eff38a165bb5a34ff37 \
+            24dc93ddfe08055b6c5e75228ce0a77b2024696b \
+            a479ad934d3e344230befc38bd006abd9aacc569 \
+            53e70a7aaceff5ea048eff197341377178d869af \
+            edf56725f731497a8a2dda4a210296879b665956 \
+            6991a2811ccd7e6527b0a17e3071b29e01852475 \
+            d020d8bdee0a3baf948e73274e9de0bd118d1a8e \
+            3cb65e9844c98be728e900a6613faf4a3b45ddef \
+            d7520f0c8db515bbf18baa9381e56f4c51fb1e39 \
+            ebbab6f5b8af94eadb9ef1ab2e48c2d31ad2a732 \
+            dad598714db1089b1f304f9cfa3da77a82a91287; do
+            git merge-base --is-ancestor "$sha" HEAD || {
+              echo "::error::Missing v29 tested module ancestor $sha"; exit 1;
+            }
+          done
+          test "$VITE_GRAPES_TEST_FRESH_OWNER_MODULES_ENABLED" = true
+          test "$VITE_GRAPES_TEST_DATA_ENABLED" = true
+          test "$VITE_GRAPES_TEST_HEALTH_SYNC_ENABLED" = false
+          echo "PASS: all 11 originally tested owner module commits present"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install exact locked packages
+        run: npm ci
+
+      - name: All unit tests (Food, Finance, Water, QR, Home, Auth, health and imports)
+        run: npm test
+
+      - name: Generate Android WebView assets without Android release
+        run: npm run build:android-web
+
+      - name: Locate Chromium for real UI browser flows
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v google-chrome >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            npx playwright-core install --with-deps chromium
+            binary=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path '*chrome-linux*' | head -1)
+            test -n "$binary"
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$binary" >> "$GITHUB_ENV"
+          fi
+
+      - name: Regression on real browser UI, multiple modules and A-B-A owner isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/grapes-test-fresh-owner-water-projects.browser.mjs
+          node tests/grapes-test-fresh-owner-finance.browser.mjs
+          node tests/grapes-test-fresh-owner-food-mobile.browser.mjs
+          node tests/grapes-test-fresh-owner-ebook-mobile.browser.mjs
+          node tests/grapes-test-fresh-owner-home-mobile.browser.mjs
+          node tests/grapes-test-fresh-health-nutrition-mobile.browser.mjs
+          node tests/grapes-test-fresh-water-health-mobile.browser.mjs
+          node tests/grapes-test-fresh-yazio-mobile.browser.mjs
+          node tests/grapes-test-fresh-yazio-direct-mobile.browser.mjs
+          node tests/grapes-test-local-owner-store.browser.mjs
+          node tests/grapes-test-legacy-unclaimed-backup.browser.mjs
+
+      - name: Approved settings live Android WebView UI regression
+        run: node tests/grapes-settings-connections.browser.mjs
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Android SDK for native QA unit testing only
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager=$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | sort -V | tail -1)
+          test -n "$sdkmanager"
+          "$sdkmanager" "platforms;android-36" "build-tools;35.0.0"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.11.1
+
+      - name: Native Android TEST unit regressions
+        run: gradle --project-dir android-health-connect-poc :app:testQaUnitTest
+
+      - name: Explicitly no merge, signing, APK upload, remote database mutation or release
+        run: |
+          echo "CHECK COMPLETE: QA only, no signed artifact generated."
+          echo "NOT PROVEN: current Home One House, Samsung direct SDK, any full Supabase module sync or PROD."
