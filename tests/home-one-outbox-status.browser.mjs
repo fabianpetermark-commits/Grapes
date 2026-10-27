@@ -99,6 +99,7 @@ try {
   assert.equal(await page.evaluate(()=>window.__qaHomeWrites),1)
   assert.equal(await home.locator('[data-household-inventory-count]').textContent(),'0')
   await home.locator('[data-household-check]').first().click()
+  await page.waitForFunction(()=>window.__qaHomeWrites===2)
   await home.locator('[data-household-sync][data-status="synced"]').waitFor()
   assert.equal(await page.evaluate(()=>window.__qaHomeWrites),2)
   assert.equal(await home.locator('[data-household-inventory-count]').textContent(),'0',
