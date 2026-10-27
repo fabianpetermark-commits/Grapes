@@ -15,7 +15,7 @@ import { registerFoodSharing, sendMealShare, sendRecipeShare } from './food/food
 import { hydrateMobileIcons, mobileIconSvg } from './android-mobile-icons.js'
 import { createHomeMobile } from './home/home-mobile.js'
 import { openOneHomeNativeTestSync } from './home/home-one-native-test-sync.js'
-import { getAndroidTestAuthEnabled, requestAndroidTestAccountSignOut } from './android-bridge.js'
+import { getAndroidTestAuthEnabled, requestAndroidTestAccountSignOut } from './android-test-home-bridge.js'
 import { getAndroidAppUpdate, installAndroidAppUpdate, isGrapesAndroidApp, openAndroidHealthConnectSettings, saveAndroidJsonBackup } from './android-bridge.js'
 import { waterBackupToJson, waterBackupFromJson, readWaterStoreStrict, waterBackupSummary } from './water/water-backup.js'
 import {
