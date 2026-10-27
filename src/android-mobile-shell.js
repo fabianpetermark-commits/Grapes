@@ -1522,8 +1522,14 @@ if (prodSignoutButton) {
     import.meta.env?.VITE_GRAPES_PROD_LEGACY_DATA_ISOLATION_REVIEWED === 'true' &&
     globalThis.location?.href === 'https://appassets.androidplatform.net/assets/design/android-mobile-preview.html' &&
     isGrapesAndroidApp()
-  prodSignoutButton.hidden = !(prodAuthNative || HOME_NATIVE_QA)
-  prodSignoutButton.style.display = (prodAuthNative || HOME_NATIVE_QA) ? '' : 'none'
+  // Preserve the exact release-independent PROD sign-out behavior.
+  prodSignoutButton.hidden = !prodAuthNative
+  prodSignoutButton.style.display = prodAuthNative ? '' : 'none'
+  // QA is a separate APK and only overrides the same button in TEST.
+  if (HOME_NATIVE_QA) {
+    prodSignoutButton.hidden = false
+    prodSignoutButton.style.display = ''
+  }
   prodSignoutButton.addEventListener('click', () => {
     if (HOME_NATIVE_QA) {
       homeTestEpoch++
