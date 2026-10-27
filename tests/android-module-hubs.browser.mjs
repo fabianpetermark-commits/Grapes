@@ -52,17 +52,14 @@ try {
   await page.screenshot({ path: 'grapes-menu-main-preview.png' })
 
   await page.locator('[data-menu-group="home"]').click()
-  assert.equal(await page.locator('[data-page="hub-home"]').isVisible(), true)
-  await page.locator('[data-page="hub-home"] [data-menu-destination="shopping"]').click()
   await page.locator('[data-page="household"]').waitFor({ state: 'visible' })
-  assert.equal(await page.locator('[data-household-shopping]').isVisible(), true, 'Home lista a meglévő Home tárolót használja.')
+  assert.equal(await page.locator('[data-page="hub-home"]').isVisible(), false, 'Approved Home skips the legacy 2-card hub')
+  assert.equal(await page.locator('[data-household-shopping]').isVisible(), true, 'Shopping widget immediately visible')
+  assert.equal(await page.locator('[data-household-inventory]').isVisible(), true, 'Inventory widget immediately visible')
+  assert.equal(await page.locator('[data-household-suggestions]').isVisible(), true, 'Evidence-only suggestions widget immediately visible')
+  assert.equal(await page.locator('[data-household-tabs]').count(), 0, 'No inventory/shopping tab switch')
+  assert.equal(await page.locator('[data-household-share]').first().isDisabled(), true, 'No fake family sync before Supabase')
   await page.evaluate(() => window.grapesHandleAndroidBack())
-  await page.locator('[data-page="hub-home"]').waitFor({ state: 'visible' })
-  await page.locator('[data-page="hub-home"] [data-menu-destination="inventory"]').click()
-  await page.locator('[data-page="household"]').waitFor({ state: 'visible' })
-  assert.equal(await page.locator('[data-household-inventory]').isVisible(), true)
-  await page.evaluate(() => window.grapesHandleAndroidBack())
-  await page.locator('[data-page="hub-home"] [data-menu-back]').click()
   await page.locator('[data-page="home"]').waitFor({ state: 'visible' })
 
   await page.locator('[data-menu-group="health"]').click()
@@ -117,7 +114,7 @@ try {
     assert.equal(await page.locator(`[data-page="${name}"] .bottom-nav`).count(), 0, `Alsó navigáció maradt: ${name}`)
   }
   assert.deepEqual(pageErrors, [])
-  console.log('Grapes 2x2 hubs: Home lista/készlet, Health Food/Receptek/Statisztika, Utility E-book, Finance, 320–412 px, back és Projektek: OK')
+  console.log('Grapes approved One Home directly; Health Food/Receptek/Statisztika, Utility E-book, Finance, 320–412 px, back és Projektek: OK')
 } finally {
   await browser?.close()
   server.kill()
