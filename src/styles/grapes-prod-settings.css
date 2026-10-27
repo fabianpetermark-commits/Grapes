@@ -123,3 +123,5 @@
   .grapes-settings-card {padding: 12px}
   .grapes-settings-card .settings-link {gap: 8px}
 }
+
+.grapes-settings-provider-state[hidden] { display: none !important; }
