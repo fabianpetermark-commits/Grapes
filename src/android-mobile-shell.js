@@ -1366,10 +1366,10 @@ $('[data-health-recipe-open]').addEventListener('click', async event => {
     else mobileFood?.openNavigationView('recipes')
   } catch(e) { showToast(e?.message || 'A receptek nem tölthetők be.') }
 })
-$('[data-health-quick]').forEach(button => button.addEventListener('click', () => openHealthQuick(button.dataset.healthQuick)))
+$$('[data-health-quick]').forEach(button => button.addEventListener('click', () => openHealthQuick(button.dataset.healthQuick)))
 // All six approved Health actions route into existing live Food/Water/Import
 // controllers. Do not initialize parallel local or cloud data stores here.
-$('[data-health-nav]').forEach(button => button.addEventListener('click', () => {
+$$('[data-health-nav]').forEach(button => button.addEventListener('click', () => {
   const target = button.dataset.healthNav
   if (target === 'food') openHealthFood('overview')
   else if (target === 'water') showPage('water')
