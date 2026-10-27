@@ -40,7 +40,7 @@ jobs:
         run: |
           sdkmanager=$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | sort -V | tail -1)
           test -n "$sdkmanager"
-          "$sdkmanager" 'platforms;android-36' 'build-tools;35.0.0' 
+          "$sdkmanager" 'platforms;android-36' 'build-tools;35.0.0'
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
@@ -97,7 +97,7 @@ jobs:
         if: github.head_ref == 'integration/grapes-prod-v35-rc-20261027' || github.ref_name == 'integration/grapes-prod-v35-rc-20261027'
         run: echo 'Samsung PUBLIC distribution NOT approved. Private SDK compile only; developer mode and physical readback required.' >> "$GITHUB_STEP_SUMMARY"
       - name: Check Samsung-registered PROD package and signing certificate
-        if: steps.sdk.outputs.available == 'true' && github.head_ref != 'integration/grapes-prod-v35-rc-20261027' && github.ref_name != 'integration/grapes-prod-v35-rc-20261027' 
+        if: steps.sdk.outputs.available == 'true' && github.head_ref != 'integration/grapes-prod-v35-rc-20261027' && github.ref_name != 'integration/grapes-prod-v35-rc-20261027'
         env:
           REGISTERED_PACKAGE: ${{ vars.SAMSUNG_HEALTH_REGISTERED_PACKAGE }}
           REGISTERED_CERT: ${{ vars.SAMSUNG_HEALTH_REGISTERED_CERT_SHA256 }}

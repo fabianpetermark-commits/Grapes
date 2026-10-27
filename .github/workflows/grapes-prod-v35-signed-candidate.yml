@@ -85,9 +85,10 @@ jobs:
       - name: Protect OAuth, local data, One Home and working modules
         run: |
           npm test
+          node tests/android-ebook-shelf.browser.mjs
           node tests/android-ebook-reader.browser.mjs
           node tests/tools-live.browser.mjs
-          node tests/outdoor-live.browser.mjs
+          node tests/outdoor-mobile.browser.mjs
           node tests/samsung-water-prod.browser.mjs
           node tests/android-food-mobile.browser.mjs
           node tests/android-food-yazio.browser.mjs
@@ -201,7 +202,14 @@ jobs:
           sha256sum candidate/grapes-android-v35-rc.apk > candidate/SHA256SUMS
           printf 'source_commit=%s\nprod_base=%s\nupgrade_from=android-v%s\nversion_code=35\npackage=hu.grapes.healthconnect\nsamsung_sdk=official-1.1.0\nsamsung_mode=PRIVATE_DEVELOPER_PHONE_ONLY\nsamsung_public_registration=NOT_VERIFIED\nfamily_home_prod_sync=DISABLED\nrelease=NO\nprod_database_migration=NO\n' "$GITHUB_SHA" "$PROD_HEAD" "$BASELINE_PROD_CODE" > candidate/manifest.txt
           echo 'PASS: signed PROD v35 RC, no release; current PROD source and matching signer.'
-      - name: Preserve candidate as a temporary artifact (never publish Release or Play)
+      - name: Encrypt licensed private phone candidate before artifact upload
+        run: |
+          set -euo pipefail
+          openssl rand -hex 32 > "$RUNNER_TEMP/v35-passphrase"
+          openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -in candidate/grapes-android-v35-rc.apk -out candidate/grapes-android-v35-rc.apk.enc -pass file:"$RUNNER_TEMP/v35-passphrase"
+          openssl pkeyutl -encrypt -pubin -inkey .github/grapes-prod-v35-candidate-public.pem -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256 -in "$RUNNER_TEMP/v35-passphrase" -out candidate/passphrase.enc
+          rm -f candidate/grapes-android-v35-rc.apk "$RUNNER_TEMP/v35-passphrase"
+      - name: Preserve encrypted private candidate (never publish Release or Play)
         uses: actions/upload-artifact@v4
         with:
           name: grapes-prod-v35-signed-rc-NO-RELEASE

@@ -21,7 +21,8 @@ async function epubFixture() {
   const zip = new JSZip()
   zip.file('mimetype', 'application/epub+zip', { compression: 'STORE' })
   zip.file('META-INF/container.xml', '<?xml version="1.0"?><container><rootfiles><rootfile full-path="OPS/package.opf"/></rootfiles></container>')
-  zip.file('OPS/package.opf', '<package xmlns="http://www.idpf.org/2007/opf" version="3.0"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>Valódi könyv</dc:title></metadata><manifest><item id="one" href="one.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="one"/></spine></package>')
+  zip.file('OPS/package.opf', '<package xmlns="http://www.idpf.org/2007/opf" version="3.0"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>Valódi könyv</dc:title></metadata><manifest><item id="one" href="one.xhtml" media-type="application/xhtml+xml"/><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/></manifest><spine><itemref idref="one"/></spine></package>')
+  zip.file('OPS/nav.xhtml', '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><body><nav epub:type="toc"><ol><li><a href="one.xhtml">Első fejezet</a></li></ol></nav></body></html>')
   zip.file('OPS/one.xhtml', '<html xmlns="http://www.w3.org/1999/xhtml"><body><h1>Első fejezet</h1><p>A Grapes könyvtári polcából megnyitott tényleges EPUB.</p></body></html>')
   return Buffer.from(await zip.generateAsync({ type: 'uint8array', mimeType: 'application/epub+zip' }))
 }
@@ -79,7 +80,7 @@ try {
   // instead of navigating back to the legacy standalone E-book page.
   await page.locator('[data-ebook-books] .book-tile').first().click()
   await page.locator('[data-page="reader"]').waitFor({ state: 'visible' })
-  await page.locator('[data-reader-shell]').waitFor({ state: 'visible' })
+  await page.locator('[data-reader-shell]').waitFor({ state: 'visible' }).catch(async error => { console.log('Reader failure:', await page.locator('[data-page=reader]').innerText(), pageErrors); throw error })
   assert.equal(await page.locator('[data-reader-title]').textContent(), 'Valódi könyv')
   assert.match(await page.locator('[data-reader-page]').innerText(), /Első fejezet/)
   assert.equal(await page.locator('[data-reader-status]').getAttribute('data-kind'), '')

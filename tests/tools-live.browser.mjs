@@ -81,6 +81,10 @@ try {
       queueMicrotask(()=>window.dispatchEvent(new CustomEvent('grapes:android-result',{detail:{requestId:message.requestId,ok:true,payload:'{}'}})))
     }}
   })
+  // Native export uses a fresh user edit after the PDF/reload path.
+  await page.locator('#qr-type').selectOption('text')
+  await page.locator('#qr-val-text').fill('Natív QR PNG ellenőrzés')
+  await page.locator('#qr-download-png:not([disabled])').waitFor()
   await page.locator('#qr-download-png').click()
   await page.waitForFunction(()=>window.savedQrPng?.startsWith('data:image/png;base64,'),null,{timeout:10000}).catch(async e=>{console.log('QR native debug',await page.evaluate(()=>({calls:window.qrNativeCalls,png:window.savedQrPng?.slice(0,50),toast:document.querySelector('[role=status]')?.textContent})),errors);throw e})
   await page.getByText('QR-kód mentve a kiválasztott fájlba.',{exact:true}).waitFor()
