@@ -448,7 +448,23 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   if (page !== 'reader') setReaderFullscreen(false)
   activePage = page
   toast.classList.remove('is-visible')
-  $$('[data-page]').forEach(node => { node.hidden = node.dataset.page !== page })
+  // Only navigation is new: Food/Water/Recipe data stays in the existing
+  // live controllers. QA builds pinned to family Home never expose this rail.
+  const healthRail = $('[data-health-rail]')
+  const inHealth = page === 'hub-health' || page === 'health-settings' ||
+    (['food', 'water'].includes(page) && menuReturnPage === 'hub-health')
+  if (healthRail) {
+    healthRail.hidden = !inHealth
+    const chosen = page === 'health-settings' ? 'settings' :
+      page === 'water' ? 'water' :
+      page === 'food' && menuEntry === 'recipes' ? 'recipes' :
+      page === 'food' && menuEntry === 'stats' ? 'stats' : 'food'
+    $('[data-health-nav]').forEach(button => {
+      if (button.dataset.healthNav === chosen) button.setAttribute('aria-current', 'page')
+      else button.removeAttribute('aria-current')
+    })
+  }
+  $('[data-page]').forEach(node => { node.hidden = node.dataset.page !== page })
   $$('[data-nav]').forEach(node => node.classList.toggle('is-active', node.dataset.nav === page))
   ;[title.textContent, subtitle.textContent] = labels[page] || labels.home
   fab.hidden = page !== 'food' || !mobileFood?.isDetailOpen()
@@ -564,7 +580,7 @@ async function openHealthMeal(type) {
   } catch (error) { showToast(error?.message || 'Az étkezés nem tölthető be.') }
 }
 async function openHealthQuick(kind) {
-  if (kind === 'water') { showPage('water'); return }
+  if (kind === 'water') { showPage('water', { parent: 'hub-health' }); return }
   const hour = new Date().getHours()
   const meal = hour < 11 ? 'breakfast' : hour < 15 ? 'lunch' : hour < 18 ? 'afternoonSnack' : 'dinner'
   showPage('food', { parent: 'hub-health' })
@@ -583,7 +599,7 @@ function showHealthSettingsIndex() {
   $('[data-health-settings-detail]').hidden = true
 }
 function showHealthSettingsSection(section) {
-  const names = {goals:'Célok',units:'Mértékegységek',display:'Napló és megjelenítés',integrations:'Integrációk',data:'Adatok és biztonság'}
+  const names = { goals:'Napi célok', connections:'Adatkapcsolatok' }
   if (!names[section]) return
   $('[data-health-settings-index]').hidden = true
   $('[data-health-settings-detail]').hidden = false
@@ -591,26 +607,19 @@ function showHealthSettingsSection(section) {
   const el = $('[data-health-settings-content]')
   const box = (inner) => '<div class="health-settings-box">' + inner + '</div>'
   if (section === 'goals') {
-    el.innerHTML = box('<strong>Napi kalória- és makrócélok</strong><p>A meglévő Food célokat módosítod, érvényességi dátummal.</p><button data-health-command="food-targets">Kalória, fehérje, szénhidrát, zsír és étkezési keretek</button>') +
-      box('<strong>Testsúly és célsúly</strong><p>Testsúlynapló és célsúly kezelése: következő fejlesztési fázis. Most nem mentünk súlyadatokat.</p>') +
-      box('<strong>Folyadékbevitel</strong><p>Napi vízcél és a meglévő víznapló.</p><button data-health-command="water-goal">Napi vízcél módosítása</button>')
-  } else if (section === 'units') {
-    el.innerHTML = box('<strong>Metrikus mértékegységek</strong><p>kg, cm, ml és liter. A teljes Imperial bevitel / kijelzés biztonságos konverziója későbbi funkció, mert a tárolt adatok nem írhatók át.</p><button disabled aria-disabled="true">Imperial – még nem elérhető</button>')
-  } else if (section === 'display') {
     const p = healthOptions()
-    el.innerHTML = box('<strong>Health widgetek</strong><p>A beállítások az aktuális profilhoz tartoznak.</p>' +
-      [['meals','Étkezési gyorsgombok'],['water','Víz widget'],['recipe','Saját receptajánló']].map(([key,label]) =>
-      '<label style="display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 0;font-size:12px">' + label +
-      '<input type="checkbox" data-health-pref="' + key + '" ' + (p[key] === false ? '' : 'checked') + '></label>').join(''))
-  } else if (section === 'integrations') {
-    el.innerHTML = box('<strong>Health Connect</strong><p>Import előnézettel, a meglévő Android-jogosultságokkal.</p><button data-health-command="health-import">Beolvasás</button>') +
-      box('<strong>Samsung Health</strong><p>Health Connect vagy az elérhető Samsung-adatkapcsolat.</p><button data-health-command="samsung-import">Beolvasás</button>') +
-      box('<strong>YAZIO</strong><p>CSV / JSON előzményimport, duplikációszűréssel és visszavonási lehetőséggel.</p><button data-health-command="yazio-import">Import megnyitása</button>')
-  } else if (section === 'data') {
-    el.innerHTML = box('<strong>Food és Víz mentések</strong><p>A két napló biztonsági mentése továbbra is külön történik.</p><button data-health-command="food-backup">Ételnapló mentésének megnyitása</button><button data-health-command="water-backup">Víznapló exportálása</button>') +
-      box('<strong>Szinkron és importelőzmények</strong><p>A meglévő Drive- és importkezelés marad érvényben.</p><button data-health-command="sync">Szinkron állapota</button>')
-  }
-}
+    el.innerHTML = box('<strong>Napi kalória- és makrócélok</strong><p>A valódi Food célokat módosítod, érvényességi dátummal.</p><button data-health-command="food-targets">Kalória, fehérje, szénhidrát, zsír és étkezési keretek</button>') +
+      box('<strong>Napi folyadék</strong><p>A meglévő Víznapló célértéke.</p><button data-health-command="water-goal">Napi vízcél módosítása</button>') +
+      box('<strong>Megjelenített widgetek</strong><p>Az aktuális helyi profilhoz tartozó megjelenítési beállítások.</p>' +
+        [['meals','Étkezések'],['water','Mai folyadék'],['recipe','Saját receptek']].map(([key,label]) =>
+          '<label style="display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 0;font-size:12px">' + label +
+          '<input type="checkbox" data-health-pref="' + key + '" ' + (p[key] === false ? '' : 'checked') + '></label>').join(''))
+  } else if (section === 'connections') {
+    el.innerHTML = box('<strong>Health Connect</strong><p>A meglévő Android-jogosultságokkal, ellenőrzött előnézettel.</p><button data-health-command="health-import">Beolvasás</button>') +
+      box('<strong>Samsung Health</strong><p>Health Connect vagy az elérhető Samsung-adatkapcsolat. Közvetlen SDK nélkül nem állítunk automatikus szinkront.</p><button data-health-command="samsung-import">Beolvasás</button>') +
+      box('<strong>YAZIO</strong><p>CSV / JSON előzményimport, duplikációszűréssel és visszavonással.</p><button data-health-command="yazio-import">Import megnyitása</button>') +
+      box('<strong>Adatok és biztonsági mentés</strong><p>A korábban működő Food/Víz/Drive mentések érintetlenek.</p><button data-health-command="food-backup">Ételnapló mentésének megnyitása</button><button data-health-command="water-backup">Víznapló exportálása</button><button data-health-command="sync">Szinkron és importelőzmények</button>')
+  }}
 async function runHealthCommand(command) {
   if (command === 'food-targets') {
     showPage('food', { parent:'hub-health' })
@@ -1339,7 +1348,7 @@ $$('[data-menu-group]').forEach(button => button.addEventListener('click', () =>
 }))
 $$('[data-menu-back]').forEach(button => button.addEventListener('click', () => showPage('home')))
 
-$('[data-health-settings-back]').addEventListener('click', () => showPage('hub-health'))
+$('[data-health-settings-back]')?.addEventListener('click', () => showPage('hub-health'))
 $('[data-health-section-back]').addEventListener('click', showHealthSettingsIndex)
 $$('[data-health-section]').forEach(button => button.addEventListener('click', () => showHealthSettingsSection(button.dataset.healthSection)))
 $('[data-health-settings-content]').addEventListener('click', event => {
@@ -1351,11 +1360,28 @@ $('[data-health-settings-content]').addEventListener('change', event => {
   try { setHealthOption(event.target.dataset.healthPref, event.target.checked) }
   catch { showToast('A beállítás nem menthető.') }
 })
+$('[data-health-nav]').forEach(button => button.addEventListener('click', () => {
+  const view = button.dataset.healthNav
+  if (view === 'food') openHealthFood('overview')
+  else if (view === 'water') showPage('water', { parent:'hub-health' })
+  else if (view === 'recipes') openHealthFood('recipes')
+  else if (view === 'stats') openHealthFood('stats')
+  else if (view === 'settings') showPage('health-settings', { parent:'hub-health' })
+  else if (view === 'barcode') {
+    void openHealthQuick('barcode').then(() => {
+      if (activePage === 'food' && menuReturnPage === 'hub-health')
+        $('[data-health-nav]').forEach(tab => {
+          if (tab.dataset.healthNav === 'barcode') tab.setAttribute('aria-current','page')
+          else tab.removeAttribute('aria-current')
+        })
+    })
+  }
+}))
 $('[data-health-stats]').addEventListener('click', () => openHealthFood('stats'))
 $('[data-health-food-open]').addEventListener('click', () => openHealthFood('overview'))
 $$('[data-health-meal]').forEach(button => button.addEventListener('click', () => openHealthMeal(button.dataset.healthMeal)))
 $('[data-health-water-add]').addEventListener('click', () => { addWater(250); renderHealthDashboard() })
-$('[data-health-water-open]').addEventListener('click', () => showPage('water'))
+$('[data-health-water-open]').addEventListener('click', () => showPage('water', { parent:'hub-health' }))
 $('[data-health-recipe-open]').addEventListener('click', async event => {
   const recipeId = event.currentTarget.dataset.recipeId
   showPage('food',{parent:'hub-health',entry:recipeId?'':'recipes'})
