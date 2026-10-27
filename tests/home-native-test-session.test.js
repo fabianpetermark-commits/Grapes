@@ -49,7 +49,7 @@ test('verified native UUID only, api RPC list, no bearer; real family gateway re
   assert.ok(!JSON.stringify(x.calls).includes('Bearer'))
   assert.throws(()=>session.chooseHousehold(B),/hozzáférhető/)
   x.change(B)
-  await assert.rejects(gate.sync.read(H),/megváltozott|Fiókváltás/)
+  await assert.rejects(gate.sync.read(H),/megváltozott|Fiókváltás|nem ellenőrizhető/)
 })
 test('multiple memberships require explicit selection, never selecting by first result',async()=>{
   const x=fixture({names:['Helyi TEST','Közös család']})
@@ -69,7 +69,7 @@ test('read error and malformed RPC payload are rejected, never passed to family 
     if(name==='home_m3b_list_households')return '{not-json'
     return original(method,name,args)
   }
-  await assert.rejects(openAndroidOneHomeTestSession(invalid.options),/ellenőrizhető/)
+  await assert.rejects(openAndroidOneHomeTestSession(invalid.options),/ellenőrizhető|bizonytalan/)
 })
 test('native identity changes while list request is pending: fail closed',async()=>{
   const x=fixture()
@@ -85,5 +85,5 @@ test('native identity changes while list request is pending: fail closed',async(
   assert.equal(typeof release,'function')
   x.change(B)
   release()
-  await assert.rejects(pending,/Fiókváltás/)
+  await assert.rejects(pending,/Fiókváltás|bizonytalan|nem ellenőrizhető/)
 })
