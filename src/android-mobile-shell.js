@@ -889,6 +889,7 @@ function showPage(page, { parent = '', entry = '', skipFoodLoad = false } = {}) 
   closeSheet()
   if (page === 'projects') renderProjects()
   if (page === 'sync') renderSync()
+  if (page === 'more') renderSettingsConnectionState()
   if (page === 'water') {
     if (FRESH_OWNER_MODULES) resetFreshWaterUi()
     renderWater()
@@ -1286,7 +1287,29 @@ async function pairMobileLibrary() {
   finally { button.disabled = false }
 }
 
+function renderSettingsConnectionState() {
+  // Only Google Drive has a verified live connection getter here.
+  // Health Connect and Samsung Health remain honestly 'not checked'
+  // until their separate native permission/status probes have run.
+  const state = $('[data-settings-drive-status]')
+  if (!state) return
+  const connected = !FRESH_OWNER_MODULES && isGrapesDriveConnected()
+  const description = connected
+    ? 'Google Drive csatlakoztatva'
+    : FRESH_OWNER_MODULES
+      ? 'Google Drive a TEST-fiókmódban nem használható'
+      : 'Google Drive nincs csatlakoztatva'
+  state.dataset.state = connected ? 'connected' : 'unverified'
+  state.setAttribute('aria-label', description)
+  state.title = description
+  const warning = state.querySelector('[data-settings-warning-glyph]')
+  const check = state.querySelector('[data-settings-connected-glyph]')
+  if (warning) warning.hidden = connected
+  if (check) check.hidden = !connected
+}
+
 function renderAccount() {
+  renderSettingsConnectionState()
   if (FRESH_OWNER_MODULES) {
     $('[data-account-mode]').textContent = 'Grapes TEST – fiókonkénti mód'
     $('[data-sync-title]').textContent = 'Grapes TEST – helyi fióktárhely'
@@ -2139,6 +2162,9 @@ $('[data-update-install]').addEventListener('click', async event => {
 $('[data-sync-refresh]').addEventListener('click', () => renderSync({ refreshed: true }))
 $('[data-sync-projects]').addEventListener('click', () => showPage('projects'))
 $$('[data-nav]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.nav)))
+// Preserve the single legacy Sync navigation identifier for existing Health flows;
+// provider-specific Settings buttons call the same verified handler.
+$$('[data-settings-sync]').forEach(button => button.addEventListener('click', () => showPage('sync')))
 $$('[data-menu-group]').forEach(button => button.addEventListener('click', () => {
   const group = button.dataset.menuGroup
   if (['home', 'health', 'utility', 'finance'].includes(group)) showPage('hub-' + group)

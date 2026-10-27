@@ -1,0 +1,65 @@
+name: Grapes TEST approved settings isolated mobile smoke (NO RELEASE)
+
+on:
+  push:
+    branches:
+      - integration/grapes-release-readiness-20261027
+  pull_request:
+    branches:
+      - audit/grapes-functional-preservation-20261027
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-settings-mobile-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  settings-mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GRAPES_TEST_AUTH_ENABLED: 'true'
+      VITE_GRAPES_TEST_FRESH_OWNER_MODULES_ENABLED: 'true'
+      VITE_GRAPES_TEST_DATA_ENABLED: 'true'
+      VITE_GRAPES_TEST_FOOD_SYNTHETIC_ENABLED: 'false'
+      VITE_GRAPES_TEST_LOCAL_OWNER_QA_ENABLED: 'false'
+      VITE_GRAPES_TEST_LEGACY_BACKUP_ENABLED: 'false'
+      VITE_GRAPES_TEST_SAF_SYNTHETIC_QA_ENABLED: 'false'
+      VITE_GRAPES_TEST_HEALTH_SYNC_ENABLED: 'false'
+      VITE_GRAPES_TEST_FOOD_LOCAL_CAS_ENABLED: 'false'
+      VITE_GRAPES_TEST_WATER_PROFILE_ENABLED: 'false'
+      VITE_GRAPES_TEST_SUPABASE_URL: https://aighqtqjlzirlokxwupt.supabase.co
+      VITE_GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY: ${{ vars.GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY }}
+      VITE_EBOOK_EPUB_WRITE_ENABLED: 'true'
+    steps:
+      - name: Checkout exact integration commit with no repository write credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Locate Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v google-chrome >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            npx playwright-core install --with-deps chromium
+            binary=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path '*chrome-linux*' | head -1)
+            test -n "$binary"
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$binary" >> "$GITHUB_ENV"
+          fi
+      - name: Check real settings navigation, status icons and small-screen scroll
+        run: node tests/grapes-settings-connections.browser.mjs
+      - name: Release safety
+        run: echo "SETTINGS SCREEN TEST ONLY. No APP write, APK, signing, backend, merge or PROD release."
