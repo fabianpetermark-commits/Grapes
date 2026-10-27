@@ -38,10 +38,10 @@ try {
   assert.deepEqual(await page.locator('[data-menu-group]').evaluateAll(nodes => nodes.map(x => x.dataset.menuGroup)),
     ['home', 'health', 'utility', 'finance'])
   assert.equal(await page.locator('[data-page="home"] .hub-card__icon svg').count(), 4)
-  // The approved top rail has icon-only labels. The real Health domain
-  // remains discoverable through its live dashboard, not text on the icon.
-  assert.equal(await page.locator('[data-main-rail] [data-menu-group="health"]').getAttribute('aria-label'), 'Health')
-  assert.match(await page.locator('[data-page="home"] [data-main-module-link="health"]').textContent(), /Food.*Receptek.*Statisztika/)
+  // Approved module capsule is icon-only; the existing Health hub must
+  // still expose its live Food, Recipes and Stats destinations.
+  assert.equal(await page.locator('[data-main-rail] [data-menu-group="health"]').getAttribute('aria-label'),'Health')
+  assert.match(await page.locator('[data-page="home"] [data-main-module-link="health"]').textContent(),/Food.*Receptek.*Statisztika/)
   assert.equal(await page.locator('.bottom-nav, .nav-item').count(), 0, 'Nincs párhuzamos alsó navigáció.')
   assert.equal(await page.locator('.appbar [data-nav="home"]').count(), 1)
   assert.equal(await page.locator('.appbar [data-nav="more"] svg').count(), 1, 'A jobb felső beállítások ikon legyen SVG fogaskerék.')
@@ -83,9 +83,16 @@ try {
   await page.locator('[data-page="hub-health"]').waitFor({ state: 'visible' })
   await page.locator('.appbar [data-nav="more"]').click()
   await page.locator('[data-page="health-settings"]').waitFor({ state: 'visible' })
-  assert.equal(await page.locator('[data-health-section]').count(), 5)
+  assert.equal(await page.locator('[data-health-section]').count(), 2,
+    'The approved Health v1.2 has exactly two settings groups')
+  assert.deepEqual(await page.locator('[data-health-section] strong').allTextContents(),
+    ['Napi célok','Adatkapcsolatok'])
   await page.locator('[data-health-section="integrations"]').click()
   assert.match(await page.locator('[data-health-settings-content]').textContent(), /Health Connect.*Samsung Health.*YAZIO/)
+  assert.equal(await page.locator('[data-health-command="water-backup"]').count(), 1,
+    'Water backup remains reachable inside Data connections')
+  assert.equal(await page.locator('[data-health-command="food-backup"]').count(), 1,
+    'Food backup remains reachable inside Data connections')
   await page.locator('[data-health-settings-back]').click()
   await page.locator('[data-page="hub-health"] [data-health-food-open]').click()
   await page.locator('[data-page="food"] [data-food-overview]').waitFor({ state: 'visible' })
