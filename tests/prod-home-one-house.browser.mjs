@@ -33,6 +33,14 @@ try {
     const home=page.locator('[data-page="household"]')
     await home.waitFor({state:'visible'})
     assert.equal(await home.locator('[data-household-tabs]').count(),0)
+    assert.equal(await home.locator('.household-quick button svg').count(),3,
+      'Accepted quick actions must use three labeled icons')
+    const dock=await home.locator('.household-quick').evaluate(node=>({
+      position:getComputedStyle(node).position,
+      addRadius:getComputedStyle(node.querySelector('.household-quick-add')).borderRadius,
+    }))
+    assert.equal(dock.position,'fixed','Home quick rail stays in reach during scrolling')
+    assert.equal(dock.addRadius,'50%','Main add action is round')
     assert.equal(await home.locator('[data-household-shopping]').isVisible(),true)
     assert.equal(await home.locator('[data-household-inventory]').isVisible(),true)
     assert.equal(await home.locator('[data-household-suggestions]').isVisible(),true)
