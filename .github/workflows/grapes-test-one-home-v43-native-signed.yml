@@ -1,9 +1,9 @@
 name: Grapes TEST v43 native One Home CAS signed APK (NO PROD RELEASE)
 
 on:
-  push:
+  pull_request:
     branches:
-      - feature/grapes-test-onehome-native-cas-v43-20261027
+      - codex/android-app
   workflow_dispatch:
 
 permissions:
@@ -11,12 +11,18 @@ permissions:
 
 concurrency:
   group: grapes-home-v43-native-signed-test
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   signed-test-apk:
+    # Secrets/signing permitted only for a PR branch originating in this repo.
+    # No pull_request_target, no untrusted forks, no PROD release.
     if: github.repository == 'fabianpetermark-commits/Grapes' &&
-        github.ref == 'refs/heads/feature/grapes-test-onehome-native-cas-v43-20261027'
+        ((github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.head_ref == 'feature/grapes-test-onehome-native-cas-v43-20261027') ||
+         (github.event_name == 'workflow_dispatch' &&
+          github.ref == 'refs/heads/feature/grapes-test-onehome-native-cas-v43-20261027'))
     runs-on: ubuntu-latest
     timeout-minutes: 70
     env:
