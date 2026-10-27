@@ -1347,8 +1347,8 @@ $$('[data-settings-provider]').forEach(button => button.addEventListener('click'
   requestAnimationFrame(() => $(target)?.scrollIntoView({ block: 'center', behavior: 'instant' }))
 }))
 $('[data-settings-open-home]')?.addEventListener('click', () => showPage('household'))
-$$('[data-menu-group]').forEach(button => button.addEventListener('click', () => {
-  const group = button.dataset.menuGroup
+$('[data-menu-group], [data-main-module-link]').forEach(button => button.addEventListener('click', () => {
+  const group = button.dataset.menuGroup || button.dataset.mainModuleLink
   if (group === 'home') showPage('household', { parent: 'home' })
   else if (['health', 'utility', 'finance'].includes(group)) showPage('hub-' + group)
 }))
