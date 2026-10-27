@@ -6,6 +6,7 @@ on:
       - integration/grapes-prod-v35-rc-20261027
     paths:
       - .github/workflows/grapes-prod-v35-signed-candidate.yml
+      - .github/workflows/grapes-prod-auth-staging.yml
       - src/**
       - android-health-connect-poc/**
       - design/**
@@ -63,6 +64,9 @@ jobs:
           git merge-base --is-ancestor "$prod_head" "$GITHUB_SHA" || {
             echo 'ERROR: Candidate does not contain the current PROD source.'; exit 1;
           }
+          # The signed candidate must contain the exact reviewed module heads.
+          git merge-base --is-ancestor 5eca009f09f2cac3828c9c17be29959a8fae86ef HEAD
+          git merge-base --is-ancestor a817d520e2ea482193c8144931f69b001f945131 HEAD
           latest=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq '[.[] | select(.draft == false and .prerelease == false and (.tag_name | test("^android-v[0-9]+$"))) | (.tag_name | ltrimstr("android-v") | tonumber)] | max // 0')
           test "$latest" -ge 33
           test "$GRAPES_VERSION_CODE" -gt "$latest"

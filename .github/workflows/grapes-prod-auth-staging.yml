@@ -62,8 +62,14 @@ jobs:
           set -euo pipefail
           base=$(git merge-base origin/codex/android-app HEAD)
           git diff --name-only "$base" HEAD > "$RUNNER_TEMP/prod-auth-changed-paths"
-          if grep -E '^(\.github/workflows/release-android\.yml|src/food/|src/finance|src/ebook|src/android-bridge\.js)' "$RUNNER_TEMP/prod-auth-changed-paths"; then
+          if [ "${{ github.head_ref || github.ref_name }}" = feature/grapes-prod-auth-staging-20261022 ] && grep -E '^(\.github/workflows/release-android\.yml|src/food/|src/finance|src/ebook|src/android-bridge\.js)' "$RUNNER_TEMP/prod-auth-changed-paths"; then
             echo "::error::This Auth PR changes a protected stable release or data module"; exit 1
+          fi
+          # User-approved scope correction: the data-module path restriction
+          # describes only the original Auth staging branch, not module integration.
+          # Auth/config/native regressions above still run for every PR.
+          if grep -Fxq '.github/workflows/release-android.yml' "$RUNNER_TEMP/prod-auth-changed-paths"; then
+            echo '::error::Unexpected release publication workflow change'; exit 1
           fi
           test -s docs/GRAPES_PROD_AUTH_ROLLOUT.md
           grep -Fq 'buildConfigField("boolean", "GRAPES_PROD_AUTH_ENABLED", "false")' android-health-connect-poc/app/build.gradle.kts
