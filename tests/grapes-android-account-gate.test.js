@@ -75,8 +75,17 @@ test('the last Settings action is exactly Kijelentkezés with a door exit pictog
   const more = mobile.split('data-page="more" hidden>')[1]?.split('data-page="food"')[0]
   assert.ok(more, 'Settings markup missing')
   assert.match(more, /<h1>Beállítások<\/h1>/)
-  assert.match(more, /<p class="eyebrow">Fiók és alkalmazás<\/p>/)
-  assert.match(more, /aria-label="Kapcsolódó oldalak"/)
+  // The accepted Settings design has a single view title and semantic groups,
+  // not the old duplicate Fiók és alkalmazás eyebrow.
+  assert.match(more, /id="settings-account-title">Fiók és Otthon<\/h2>/)
+  assert.match(more, /id="settings-connections-title">Adatkapcsolatok<\/h2>/)
+  assert.match(more, /aria-label="Adatkapcsolatok és működő kezelőoldalaik"/)
+  assert.match(more, /data-settings-drive-status[^>]*data-state="unverified"/)
+  assert.match(more, /data-settings-health-status[^>]*data-state="unverified"/)
+  assert.match(more, /data-settings-samsung-status[^>]*data-state="unverified"/)
+  assert.match(more, /data-nav="sync" aria-label="Google Drive kapcsolat kezelése/)
+  assert.match(more, /data-nav="sync" aria-label="Health Connect adatimport kezelése/)
+  assert.match(more, /data-nav="sync" aria-label="Samsung Health vízimport kezelése/)
   assert.match(mobile, /more: \['Beállítások', 'Fiók és alkalmazás'\]/)
   assert.match(shell, /more: \['Beállítások', 'Fiók és alkalmazás'\]/)
   assert.ok(more.lastIndexOf('data-grapes-test-logout hidden') > more.lastIndexOf('A Grapes névjegye'))
