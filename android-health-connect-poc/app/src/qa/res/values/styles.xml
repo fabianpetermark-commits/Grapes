@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- QA only. Match the web Auth background without touching PROD themes. -->
+    <style name="GrapesQaLaunchTheme" parent="AppTheme">
+        <item name="android:windowBackground">#05080C</item>
+    </style>
+</resources>
