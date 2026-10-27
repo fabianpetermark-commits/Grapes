@@ -24,6 +24,15 @@ No APK assembly/publication, Release, Play, PROD SQL or v52 cycle is performed. 
 
 ## Verification and remaining external requirements
 
-Local: `npm test`, Android web build, native-mock Samsung Water A→B→A/CSV/permission tests, existing Home/Health/Food/YAZIO regressions. Native gate tests are extended in `ProdAuthGateTest` and PASS in CI run [40589505173](https://github.com/fabianpetermark-commits/Grapes/actions/runs/40589505173) (Gradle BUILD SUCCESSFUL). The initial licensed stage explicitly FAILED/BLOCKED because `SAMSUNG_HEALTH_DATA_SDK_AAR_BASE64` is absent. The final workflow also checks the existing #173 private ZIP/AAR URL sources before declaring the licensed SDK unavailable. The certificate stage cannot run without those SDK bytes. The execution environment has no Gradle/Android SDK or licensed AAR, so local Android unit execution and licensed compilation are blocked; CI and local results are reported separately.
+Local PASS: `npm test` (487/487), Android web build, native-mock Samsung Water A→B→A/CSV/permission tests, Home/Health/Food and 151-record YAZIO import/undo regressions. The execution environment has no local Gradle/Android SDK or licensed AAR; native verification ran in CI.
 
-A successful direct production integration additionally requires the licensed AAR, Samsung's registration of the actual production package/signing certificate, a supported Samsung Health installation and a physical-device permission + real water-record readback. None can be proved by JS/native mocks. Until these pass, direct Samsung sync is **not production-certified**. The existing Health Connect route and verified-owner CSV alternative remain available.
+Final CI run [40590636094](https://github.com/fabianpetermark-commits/Grapes/actions/runs/40590636094), commit `13566812`:
+
+* Native owner gate / Android unit tests with stub: PASS (`BUILD SUCCESSFUL`).
+* Official licensed SDK obtained from the existing private #173 ZIP URL; archive and AAR checksums verified: PASS. The BASE64 secret is absent, but it is **not a remaining blocker** because the existing private ZIP source works.
+* Real Samsung SDK adapter compile, native tests and release Kotlin compile: PASS (`BUILD SUCCESSFUL`). No APK was assembled or uploaded by this workflow; artifacts list is empty.
+* PROD package/certificate registration gate: BLOCKED. Registration evidence/signing setup required by that step is incomplete. See the job's explicit error; configuration must correspond to Samsung's actual approval, not an invented certificate value.
+
+The licensed AAR and temporary private download are deleted from the runner; no proprietary bytes are committed or uploaded.
+
+A successful direct production integration additionally requires Samsung's registration of the actual production package/signing certificate, a supported Samsung Health installation and a physical-device permission + real water-record readback. None can be proved by JS/native mocks. Until these pass, direct Samsung sync is **not production-certified**. The existing Health Connect route and verified-owner CSV alternative remain available.
