@@ -114,8 +114,13 @@ export function createHomeMobile(root, storage, { familyPreview = null, familySy
       $('[data-household-sync-retry]').disabled = familyStatus !== 'pending'
     }
     root.querySelectorAll('[data-household-share]').forEach(node => {
+      // Never advertise a working family feature in the PROD local-only Home.
+      // A real, verified TEST family can inspect its role; invites remain gated.
+      node.disabled = !familyQA || !familyState
       node.setAttribute('aria-label', 'Megosztás és jogosultságok')
-      node.title = 'Megosztás és jogosultságok'
+      node.title = node.disabled
+        ? 'A családi megosztás ezen az Otthonon még nem elérhető.'
+        : 'Közös Otthon és hozzáférési szint'
     })
     root.querySelectorAll('[data-household-filter]').forEach(node => node.classList.toggle('is-active', node.dataset.householdFilter === filter))
     const lots = current.inventory.filter(lot => (filter === 'all' || lot.storageLocation === filter) && lot.name.toLocaleLowerCase('hu-HU').includes(search))
