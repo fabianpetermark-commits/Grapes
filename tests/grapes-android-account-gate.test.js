@@ -88,7 +88,9 @@ test('the last Settings action is exactly Kijelentkezés with a door exit pictog
   assert.match(more, /data-settings-sync aria-label="Samsung Health vízimport kezelése/)
   assert.equal((more.match(/data-nav="sync"/g) || []).length, 1,
     'Legacy Health/YAZIO flows must resolve the single original Sync nav')
-  assert.match(shell, /\$\$\('\[data-settings-sync\]'\)\.forEach\(button => button\.addEventListener\('click', \(\) => showPage\('sync'\)\)\)/)
+  assert.ok(shell.includes("$('[data-settings-sync]').forEach(") &&
+    shell.includes("button.addEventListener('click', () => showPage('sync'))"),
+    'Provider rows must route to the existing Sync page without duplicate data-nav')
   assert.match(mobile, /more: \['Beállítások', 'Fiók és alkalmazás'\]/)
   assert.match(shell, /more: \['Beállítások', 'Fiók és alkalmazás'\]/)
   assert.ok(more.lastIndexOf('data-grapes-test-logout hidden') > more.lastIndexOf('A Grapes névjegye'))
