@@ -1,0 +1,48 @@
+name: Grapes TEST actual A/B authenticated Home readback (NO HOME WRITES)
+on:
+  push:
+    branches:
+      - qa/supabase-home-real-ab-readproof-20261027
+  pull_request:
+    branches:
+      - codex/android-app
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-supabase-qa-ab-read-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-qa-fixture:
+    if: github.repository == 'fabianpetermark-commits/Grapes'
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Validate A/B read-only script syntax (no QA credentials required)
+        run: node --check tests/home-supabase-hosted-ab-readonly.mjs
+      - name: Test TEST-only session/owner identity boundaries with fake identities
+        run: node --test tests/home-supabase-test-readonly.test.js
+      - name: Actual TEST Auth A/B session and shared/isolated household readback
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY: ${{ vars.GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY }}
+          GRAPES_TEST_QA_A_EMAIL: ${{ secrets.GRAPES_TEST_QA_A_EMAIL }}
+          GRAPES_TEST_QA_A_PASSWORD: ${{ secrets.GRAPES_TEST_QA_A_PASSWORD }}
+          GRAPES_TEST_QA_B_EMAIL: ${{ secrets.GRAPES_TEST_QA_B_EMAIL }}
+          GRAPES_TEST_QA_B_PASSWORD: ${{ secrets.GRAPES_TEST_QA_B_PASSWORD }}
+        run: |
+          set -euo pipefail
+          node tests/home-supabase-hosted-ab-readonly.mjs
+      - name: Explicit backend isolation
+        run: echo 'TEST-only existing QA users. No Home mutation, invite, CAS, PROD API, signing or release. Login creates TEST Auth sessions.'
