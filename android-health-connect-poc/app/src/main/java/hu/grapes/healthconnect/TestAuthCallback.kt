@@ -16,6 +16,9 @@ internal class TestAuthCallback(context: Context, private val now: () -> Long = 
     companion object {
         const val CALLBACK_BASE = "hu.grapes.healthconnect.test://auth/callback"
         const val PROJECT_HOST = "aighqtqjlzirlokxwupt.supabase.co"
+        const val AUTH_HOST = "grapes-test-auth.invalid"
+        const val AUTH_ORIGIN = "https://$AUTH_HOST"
+        const val AUTH_URL = "$AUTH_ORIGIN/assets/login-auth-test.html"
         private const val MAX_AGE_MS = 5 * 60 * 1000L
         private val STATE = Regex("[a-f0-9]{64}")
         private val CODE = Regex("[A-Za-z0-9._~-]{16,1024}")
