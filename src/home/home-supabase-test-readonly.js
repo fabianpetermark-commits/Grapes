@@ -22,6 +22,10 @@ export function createHomeTestReadOnlyGate({
 } = {}) {
   if (!testGateEnabled || projectRef !== TEST_REF)
     fail('A családi Supabase-felderítés csak külön Grapes TEST-kapuban engedélyezett.')
+  // Do not trust only a caller-provided TEST label. Verify the real
+  // Supabase JS client's own backend URL and prohibit redirected hosts.
+  if (client?.supabaseUrl !== 'https://' + TEST_REF + '.supabase.co')
+    fail('A Supabase kliens tényleges projektje nem a Grapes TEST.')
   if (typeof client?.auth?.getUser !== 'function' || typeof client?.rpc !== 'function')
     fail('Hiányzó hitelesített Supabase TEST kliens.')
   const owner = cleanUuid(expectedUserId, 'Grapes-fiókazonosító')
@@ -79,7 +83,8 @@ export function createHomeTestReadOnlyGate({
           state.householdId !== id || state.revision !== data.revision ||
           !Array.isArray(state.inventory) || !Array.isArray(state.shopping) ||
           !Array.isArray(state.events) || !Array.isArray(state.prepared) ||
-          state.prepared.length)
+          state.prepared.length || state.revision !== state.events.length ||
+          !UUID.test(state.actorId || ''))
         fail('A távoli családi Home-séma eltér; automatikus összefésülés tilos.')
       if (state.inventory.some(x => x.householdId !== id ||
           x.sourceType !== 'manual' || x.sourceId != null) ||
