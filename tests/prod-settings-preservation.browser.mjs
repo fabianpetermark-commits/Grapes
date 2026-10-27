@@ -72,7 +72,9 @@ try {
   await page.locator('[data-page="household"]').waitFor({state:'visible'})
   // Previous root route to Health + Food remains available.
   await page.locator('.appbar [data-nav="home"]').click()
-  await page.locator('[data-page="home"] [data-menu-group="health"]').click()
+  const healthRail=page.locator('[data-main-rail] [data-main-nav="health"]')
+  if(await healthRail.count()) await healthRail.click()
+  else await page.locator('[data-page="home"] [data-menu-group="health"]').click()
   await page.locator('[data-page="hub-health"]').waitFor({state:'visible'})
   console.log('PASS: PROD Settings v1.2 grouped; Drive/Health/Samsung/YAZIO real shortcuts; older Auth, projects, Home, Health retained.')
 } finally {
