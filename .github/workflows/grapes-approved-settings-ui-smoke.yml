@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - integration/grapes-release-readiness-20261027
+  pull_request:
+    branches:
+      - audit/grapes-functional-preservation-20261027
   workflow_dispatch:
 
 permissions:
