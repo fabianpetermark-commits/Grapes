@@ -10,16 +10,22 @@ function rig({owner=A,switchAfterRpc=false,data,mutateClient=false}={}) {
   const client={
     supabaseUrl:'https://'+HOME_SUPABASE_TEST_REF+'.supabase.co',
     auth:{ async getUser(){return {data:{user:{id:subject,is_anonymous:false}}}}},
-    async rpc(name,args){
-      calls.push([name,args])
-      if(switchAfterRpc)subject=B
-      return {data:data?.[name] ?? (
-        name==='home_m3b_list_households'
-          ? [{householdId:H,name:'Otthonunk',role:'owner',revision:0}]
-          : {householdId:H,role:'owner',revision:0,
-              state:{schemaVersion:2,householdId:H,actorId:A,revision:0,
-                inventory:[],shopping:[],prepared:[],events:[]}}
-      )}
+    schema(selectedSchema) {
+      calls.push(['schema',selectedSchema])
+      if (selectedSchema !== 'api') throw new Error('Unexpected schema')
+      return {
+        async rpc(name,args){
+          calls.push([name,args])
+          if(switchAfterRpc)subject=B
+          return {data:data?.[name] ?? (
+            name==='home_m3b_list_households'
+              ? [{householdId:H,name:'Otthonunk',role:'owner',revision:0}]
+              : {householdId:H,role:'owner',revision:0,
+                  state:{schemaVersion:2,householdId:H,actorId:A,revision:0,
+                    inventory:[],shopping:[],prepared:[],events:[]}}
+          )}
+        },
+      }
     },
   }
   return {client,calls,changeUser:id=>{subject=id}}
@@ -49,8 +55,10 @@ test('signed-in actor reads only the authenticated private RPC; no implicit crea
   assert.equal(typeof g.compareAndSwap,'undefined')
   assert.equal(typeof g.create,'undefined')
   assert.deepEqual(r.calls.map(x=>x[0]),[
-    'home_m3b_list_households','home_m3b_read_household'])
-  assert.equal(r.calls[1][1].p_household_id,H)
+    'schema','home_m3b_list_households','schema','home_m3b_read_household'])
+  assert.equal(r.calls[0][1],'api')
+  assert.equal(r.calls[2][1],'api')
+  assert.equal(r.calls[3][1].p_household_id,H)
 })
 test('A→B during pending network RPC NEVER reveals A data',async()=>{
   const r=rig({switchAfterRpc:true}),g=gateFor(r)
@@ -73,6 +81,6 @@ test('reject malformed family permissions and anonymous/auth-error sessions',asy
   await assert.rejects(gateFor(r).list(),/hivatkozás/)
   const client={supabaseUrl:'https://'+HOME_SUPABASE_TEST_REF+'.supabase.co',
     auth:{getUser:async()=>({data:{user:{id:A,is_anonymous:true}}})},
-    rpc:async()=>({data:[]})}
+    schema:(selectedSchema)=>({rpc:async()=>({data:[]})})}
   await assert.rejects(gateFor({client}).list(),/Fiókváltás/)
 })
