@@ -104,6 +104,11 @@ try {
   await enterHealth()
   await health.locator('[data-health-nav="stats"]').click()
   await page.locator('[data-page="food"]').waitFor({state:'visible'})
+  await page.locator('[data-food-stats-sheet].is-open').waitFor({state:'visible'})
+  // Stats is an intentional modal. Native Back must close it before a
+  // subsequent tap, instead of clicking through an active backdrop.
+  await page.evaluate(() => window.grapesHandleAndroidBack())
+  await health.waitFor({state:'visible'})
   await enterHealth()
   await health.locator('[data-health-nav="barcode"]').click()
   await page.locator('[data-page="food"]').waitFor({state:'visible'})
