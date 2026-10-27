@@ -32,6 +32,10 @@ try {
   await page.evaluate(async ({A,H})=>{
     const {createHomeMobile}=await import('/Grapes/src/home/home-mobile.js')
     const {createEmptyFamilyHome,stageFamilyHomeCommand}=await import('/Grapes/src/home/home-family-data.js')
+    // Upgrade over v42: legacy Home key can contain incompatible v2 data.
+    // The new TEST family view must not read, migrate, or touch this record.
+    localStorage.setItem('grapes-home-household-v1',
+      '{"schemaVersion":2,"priorQaRevision":8,"legacy":"KEEP_BYTES"}')
     const el=document.createElement('main')
     el.setAttribute('data-household-root','')
     el.id='qa-one-home'
@@ -93,7 +97,8 @@ try {
   assert.equal(await page.evaluate(()=>window.__qaHomeWrites),0)
   assert.equal(await home.locator('[data-household-add="shopping"]').first().isDisabled(),true)
   const before=await page.evaluate(()=>localStorage.getItem('grapes-home-household-v1'))
-  assert.equal(before,null,'Shared QA event must never be saved into local v1')
+  assert.equal(before,'{"schemaVersion":2,"priorQaRevision":8,"legacy":"KEEP_BYTES"}',
+    'Legacy v42 TEST data must be preserved byte-for-byte')
   await page.evaluate(()=>{window.__qaHomeOffline=false;window.dispatchEvent(new Event('online'))})
   await home.locator('[data-household-sync][data-status="synced"]').waitFor()
   assert.equal(await page.evaluate(()=>window.__qaHomeWrites),1)
@@ -110,7 +115,8 @@ try {
   assert.equal(await home.locator('[data-household-shopping-count]').textContent(),'0',
     'A previous family data must disappear after owner switch')
   assert.equal(await home.locator('[data-household-add="shopping"]').first().isDisabled(),true)
-  assert.equal(await page.evaluate(()=>localStorage.getItem('grapes-home-household-v1')),null)
+  assert.equal(await page.evaluate(()=>localStorage.getItem('grapes-home-household-v1')),before,
+    'Neither queue/retry nor A→B switch can touch the previous QA v42 storage')
   assert.deepEqual(errors,[])
   console.log('PASS: One Home TEST offline queue/amber status, verified reconnect/green, no silent stock, owner switch denied; untouched local v1')
 } finally {
