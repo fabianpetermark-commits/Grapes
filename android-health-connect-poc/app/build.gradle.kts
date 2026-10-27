@@ -1,3 +1,5 @@
+import java.security.MessageDigest
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -5,6 +7,17 @@ plugins {
 }
 
 val samsungSdk = file("libs/samsung-health-data-api-1.1.0.aar")
+if (providers.environmentVariable("GRAPES_REQUIRE_SAMSUNG_SDK").orNull == "true" && !samsungSdk.isFile) {
+    error("Licensed Samsung Health Data SDK 1.1.0 is required for this check; stub is not an integration pass.")
+}
+if (samsungSdk.isFile) {
+    val digest = MessageDigest.getInstance("SHA-256").digest(samsungSdk.readBytes())
+        .joinToString("") { "%02x".format(it) }
+    check(digest == "f5d3d83cf00b97d0bb1b1db4da076e861eb1c3e6e704d89a34e68909d2f38654") {
+        "Samsung Health Data SDK checksum does not match the verified official 1.1.0 AAR."
+    }
+}
+
 val releaseKeystorePath = providers.environmentVariable("ANDROID_KEYSTORE_PATH").orNull
 val releaseStorePassword = providers.environmentVariable("ANDROID_KEYSTORE_PASSWORD").orNull
 val releaseKeyAlias = providers.environmentVariable("ANDROID_KEY_ALIAS").orNull
