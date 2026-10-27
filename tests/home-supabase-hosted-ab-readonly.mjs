@@ -21,7 +21,6 @@ if (!/^sb_publishable_[A-Za-z0-9_-]+$/.test(key || '') ||
 }
 const connect = () => createClient(url, key, {
   auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-  global: { headers: { 'X-Grapes-QA-Read-Only': 'true' } },
 })
 const clients = [connect(), connect()]
 try {
@@ -29,7 +28,7 @@ try {
   for (let i = 0; i < 2; i++) {
     const [email, password] = credentials[i]
     const result = await clients[i].auth.signInWithPassword({email, password})
-    assert.ifError(result.error)
+    if (result.error) throw new Error('A TEST QA-fiók hitelesítése sikertelen.')
     assert.ok(result.data?.user?.id, 'TEST QA Auth did not return authenticated user')
     identities.push(result.data.user.id)
   }
