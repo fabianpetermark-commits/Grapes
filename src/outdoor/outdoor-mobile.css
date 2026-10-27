@@ -1,0 +1,27 @@
+[data-outdoor-root] {padding-bottom:48px;overflow-wrap:anywhere}
+[data-outdoor-root] [hidden] {display:none!important}
+[data-outdoor-root] p {font-size:13px;line-height:1.65;color:var(--muted)}
+[data-outdoor-root] h1 {font-size:28px;margin:0}
+[data-outdoor-root] h2 {font-size:19px;margin-top:24px}
+[data-outdoor-root] h3 {font-size:17px;margin:8px 0}
+.outdoor-head {border-bottom:1px solid var(--line);padding-bottom:18px}
+.outdoor-actions {display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+[data-outdoor-root] button, [data-outdoor-root] summary {min-height:44px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--raised);color:var(--text);font:inherit;cursor:pointer}
+[data-outdoor-root] button:focus-visible, [data-outdoor-root] input:focus-visible {outline:2px solid var(--accent);outline-offset:2px}
+[data-outdoor-root] button:disabled {opacity:.5}
+[data-outdoor-root] button[type=submit], [data-outdoor-form] button:not([type]) {background:var(--accent);color:#090e14;font-weight:700}
+.outdoor-actions button {flex:1 1 110px;font-size:13px}
+.outdoor-card, [data-outdoor-editor], [data-outdoor-catalog] {padding:16px;border:1px solid var(--line);border-radius:18px;background:var(--surface);margin:12px 0;min-width:0}
+[data-outdoor-editor] {border-color:var(--accent);scroll-margin-top:130px}
+[data-outdoor-root] label {display:block;font-size:13px;margin:12px 0}
+[data-outdoor-root] input:not([type=checkbox]), [data-outdoor-root] textarea, [data-outdoor-root] select {display:block;width:100%;min-width:0;max-width:100%;min-height:46px;border:1px solid var(--line);background:var(--raised);color:var(--text);border-radius:10px;padding:10px;font:inherit;margin-top:6px;box-sizing:border-box}
+[data-outdoor-root] textarea {min-height:88px}
+[data-outdoor-root] input[type=checkbox] {width:24px;height:24px;vertical-align:middle}
+[data-outdoor-root] a {display:block;min-height:44px;line-height:44px;color:var(--accent)}
+[data-outdoor-root] dl {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:6px;font-size:13px;line-height:1.5}
+[data-outdoor-root] dt {color:var(--muted)}
+[data-outdoor-root] dd {margin:0}
+.outdoor-photo {width:100%;max-height:220px;object-fit:cover;border-radius:12px}
+.outdoor-leaf {display:grid;place-items:center;width:48px;height:48px;border-radius:16px;background:var(--raised);color:var(--accent);font-size:34px}
+[data-outdoor-status].is-error {color:#ffc8ce}
+[data-outdoor-cities] {display:grid;gap:8px;margin-top:12px}

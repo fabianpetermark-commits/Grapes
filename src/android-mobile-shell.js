@@ -14,6 +14,7 @@ import { createYazioApiPanel } from './food/yazio-api-panel.js'
 import { registerFoodSharing, sendMealShare, sendRecipeShare } from './food/food-sharing-client.js'
 import { hydrateMobileIcons, mobileIconSvg } from './android-mobile-icons.js'
 import { mountMainShortcuts } from './main-shortcuts-v12.js'
+import { mountOutdoor } from './outdoor/outdoor-mobile.js'
 import { createHomeMobile } from './home/home-mobile.js'
 import { openAndroidOneHomeTestSession } from './home/home-native-test-session.js'
 import { getAndroidAppUpdate, installAndroidAppUpdate, isGrapesAndroidApp, openAndroidHealthConnectSettings, saveAndroidJsonBackup } from './android-bridge.js'
@@ -70,6 +71,7 @@ const HOME_NATIVE_QA = import.meta.env?.VITE_GRAPES_TEST_AUTH_ENABLED === 'true'
 // on the original local Home initialization path.
 let household = HOME_NATIVE_QA ? null : createHomeMobile($('[data-household-root]'))
 let mainShortcuts = null
+const outdoor = mountOutdoor($('[data-outdoor-root]'), {getProfile:()=>getGrapesAccount()?.id || getGrapesAccount()?.email || 'local'})
 
 // PROD never opens this gateway. QA must have an authenticated native subject
 // before any family v2 snapshot reaches the existing single Home UI.
@@ -173,6 +175,7 @@ document.addEventListener('grapes:food-subtitle', event => {
 })
 
 const labels = {
+  outdoor: ['Outdoor','Növényeim'],
   home: ['Grapes', 'Mobil munkaterület'], projects: ['Projektek', 'Helyi és Drive'],
   sync: ['Szinkron', 'Adatok és fiók'], more: ['Grapes', 'Beállítások'],
   food: ['Ételnapló', 'Mai áttekintés'], water: ['Víz', 'Napi folyadékbevitel'],
@@ -477,6 +480,7 @@ function showPage(page, { parent = '', entry = '' } = {}) {
     if (unknown) unknown.hidden = driveConnected
     if (known) known.hidden = !driveConnected
   }
+  if (page === 'outdoor') outdoor.load()
   if (page === 'projects') renderProjects()
   if (page === 'sync') renderSync()
   if (page === 'water') renderWater()
@@ -1349,7 +1353,8 @@ $$('[data-settings-provider]').forEach(button => button.addEventListener('click'
 $('[data-settings-open-home]')?.addEventListener('click', () => showPage('household'))
 $$('[data-menu-group], [data-main-module-link]').forEach(button => button.addEventListener('click', () => {
   const group = button.dataset.menuGroup || button.dataset.mainModuleLink
-  if (group === 'home') showPage('household', { parent: 'home' })
+  if (group === 'outdoor') showPage('outdoor', {parent:'home'})
+  else if (group === 'home') showPage('household', { parent: 'home' })
   else if (['health', 'utility', 'finance'].includes(group)) showPage('hub-' + group)
 }))
 $$('[data-menu-back]').forEach(button => button.addEventListener('click', () => showPage('home')))
@@ -1422,7 +1427,8 @@ $('[data-food-stats-back]').addEventListener('click', event => {
 }, true)
 $$('[data-module]').forEach(button => button.addEventListener('click', () => {
   const module = button.dataset.module
-  if (module === 'food' || module === 'ebook' || module === 'household') showPage(module)
+  if (module === 'outdoor') showPage('outdoor',{parent:'home'})
+  else if (module === 'food' || module === 'ebook' || module === 'household') showPage(module)
   else openModule(module)
 }))
 $$('[data-open-module]').forEach(button => button.addEventListener('click', () => openModule(button.dataset.openModule)))
@@ -1576,6 +1582,7 @@ function openMainShortcut(id) {
   else if (id === 'finance') openModule('finance')
   else if (id === 'ebook') showPage('ebook',{parent:'hub-utility'})
   else if (id === 'qr') openModule('qr')
+  else if (id === 'outdoor') showPage('outdoor',{parent:'home'})
   else if (id === 'projects') showPage('projects')
   else if (id === 'sync') showPage('sync')
 }
@@ -1618,6 +1625,7 @@ installSheetGestures()
 refreshUpdateInbox()
 window.grapesHandleAndroidBack = () => {
   if ($('[data-notifications-sheet].is-open')) { closeSheet(); return true }
+  if (activePage === 'outdoor' && outdoor.handleBack()) return true
   if (activePage === 'household' && household?.handleBack()) return true
   if (activePage === 'food' && menuReturnPage === 'hub-health') {
     if (menuEntry === 'stats' && $('[data-food-stats-sheet].is-open')) { showPage('hub-health'); return true }

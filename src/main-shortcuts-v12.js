@@ -6,6 +6,7 @@ import { mobileIconSvg } from './android-mobile-icons.js'
  * All buttons delegate to the EXISTING app controller's routes.
  */
 export const MAIN_SHORTCUTS = Object.freeze([
+  { id:'outdoor', label:'Növényeim', icon:'outdoor', group:'Outdoor' },
   { id:'food', label:'Ételnapló', icon:'food', group:'Health' },
   { id:'water', label:'Víznapló', icon:'water', group:'Health' },
   { id:'recipes', label:'Receptek', icon:'recipe', group:'Health' },
