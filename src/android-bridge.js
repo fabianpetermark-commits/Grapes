@@ -105,26 +105,3 @@ export async function saveAndroidJsonBackup(filename, json) {
     throw error
   }
 }
-
-
-/** TEST-only native Auth bridge. App-origin JavaScript never receives a bearer. */
-export async function getAndroidTestAuthEnabled() {
-  return (await nativeRequest('getTestAuthEnabled')) === 'true'
-}
-export async function getAndroidTestAuthSubject() {
-  const value = await nativeRequest('getTestAuthSubject')
-  if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value))
-    throw new Error('A hitelesített TEST-fiókazonosító hiányzik.')
-  return value.toLowerCase()
-}
-export function requestAndroidTestSupabase(method, ...args) {
-  if (!['supabaseTestWhoAmI', 'supabaseTestRpc'].includes(method))
-    throw new Error('Nem engedélyezett natív Supabase-művelet.')
-  return nativeRequest(method, ...args)
-}
-export function requestAndroidTestAccountSignOut() {
-  if (!isGrapesAndroidApp()) throw new Error('A Grapes TEST Android alkalmazás nem aktív.')
-  window.GrapesAndroid.postMessage(JSON.stringify({
-    method: 'openTestAuthSignOut', requestId: crypto.randomUUID(), args: [],
-  }))
-}
