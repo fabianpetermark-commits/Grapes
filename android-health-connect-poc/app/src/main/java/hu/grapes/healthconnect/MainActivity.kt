@@ -340,6 +340,12 @@ class MainActivity : ComponentActivity() {
 
                 override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                     if (request.url.scheme == "https" && request.url.host == APP_HOST) {
+                        // QA has only audited the Home family owner boundary.
+                        // Never navigate into non-owner-scoped personal modules.
+                        if (isTestQa && request.url.toString() != APP_URL) {
+                            view.loadUrl(if (testGate.canDisplayApp()) APP_URL else TEST_AUTH_URL)
+                            return true
+                        }
                         if (isTestQa && !testGate.canDisplayApp()) {
                             view.loadUrl(TEST_AUTH_URL)
                             return true
