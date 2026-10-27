@@ -1522,9 +1522,15 @@ if (prodSignoutButton) {
     import.meta.env?.VITE_GRAPES_PROD_LEGACY_DATA_ISOLATION_REVIEWED === 'true' &&
     globalThis.location?.href === 'https://appassets.androidplatform.net/assets/design/android-mobile-preview.html' &&
     isGrapesAndroidApp()
-  prodSignoutButton.hidden = !prodAuthNative
-  prodSignoutButton.style.display = prodAuthNative ? '' : 'none'
+  prodSignoutButton.hidden = !(prodAuthNative || HOME_NATIVE_QA)
+  prodSignoutButton.style.display = (prodAuthNative || HOME_NATIVE_QA) ? '' : 'none'
   prodSignoutButton.addEventListener('click', () => {
+    if (HOME_NATIVE_QA) {
+      homeTestEpoch++
+      household.invalidateFamilyPreview?.()
+      requestAndroidTestAccountSignOut()
+      return
+    }
     if (!prodAuthNative) return
     globalThis.GrapesAndroid.postMessage(JSON.stringify({
       method: 'openProdAuthSignOut', requestId: crypto.randomUUID(), args: [],
