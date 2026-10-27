@@ -52,18 +52,36 @@ jobs:
         id: sdk
         env:
           SDK_B64: ${{ secrets.SAMSUNG_HEALTH_DATA_SDK_AAR_BASE64 }}
+          SDK_ZIP_URL: ${{ secrets.SAMSUNG_HEALTH_DATA_SDK_ZIP_URL }}
+          SDK_AAR_URL: ${{ secrets.SAMSUNG_HEALTH_DATA_SDK_AAR_URL }}
         shell: bash
         run: |
           set -euo pipefail
-          if [ -z "$SDK_B64" ]; then
+          dest=android-health-connect-poc/app/libs/samsung-health-data-api-1.1.0.aar
+          umask 077
+          if [ -n "$SDK_B64" ]; then
+            printf '%s' "$SDK_B64" | base64 --decode > "$dest"
+          elif [ -n "$SDK_ZIP_URL" ]; then
+            case "$SDK_ZIP_URL" in https://*) ;; *) echo '::error::SDK ZIP URL must use HTTPS'; exit 1;; esac
+            zipfile="$RUNNER_TEMP/samsung-sdk-private.zip"
+            trap 'rm -f "$zipfile"' EXIT
+            case "$SDK_ZIP_URL" in
+              https://drive.google.com/*|https://drive.usercontent.google.com/*)
+                python -m pip install --disable-pip-version-check --quiet 'gdown==5.2.2'
+                gdown --fuzzy --no-cookies --quiet --output "$zipfile" "$SDK_ZIP_URL" ;;
+              *) curl --fail --location --silent --show-error --retry 2 --max-time 150 --proto '=https' --proto-redir '=https' "$SDK_ZIP_URL" --output "$zipfile" ;;
+            esac
+            printf '%s  %s\n' '7a51440d840e099769b150c6414365bc43eecb61c01fa5bf6d0e54e09c2b663f' "$zipfile" | sha256sum --check --status
+            unzip -p "$zipfile" '1.1.0/libs/samsung-health-data-api-1.1.0.aar' > "$dest"
+          elif [ -n "$SDK_AAR_URL" ]; then
+            case "$SDK_AAR_URL" in https://*) ;; *) echo '::error::SDK AAR URL must use HTTPS'; exit 1;; esac
+            curl --fail --location --silent --show-error --retry 2 --max-time 150 --proto '=https' --proto-redir '=https' "$SDK_AAR_URL" --output "$dest"
+          else
             echo 'available=false' >> "$GITHUB_OUTPUT"
-            echo '::error::BLOCKED: SAMSUNG_HEALTH_DATA_SDK_AAR_BASE64 absent. Stub tests are NOT a licensed integration pass.'
-            echo 'Licensed Samsung compile: BLOCKED — private AAR secret absent.' >> "$GITHUB_STEP_SUMMARY"
+            echo '::error::BLOCKED: no licensed Samsung SDK secret (BASE64 or existing #173 ZIP/AAR URL). Stub is NOT a direct integration pass.'
+            echo 'Licensed Samsung compile: BLOCKED — private AAR and ZIP/AAR URL secrets absent.' >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
-          umask 077
-          dest=android-health-connect-poc/app/libs/samsung-health-data-api-1.1.0.aar
-          printf '%s' "$SDK_B64" | base64 --decode > "$dest"
           printf '%s  %s\n' 'f5d3d83cf00b97d0bb1b1db4da076e861eb1c3e6e704d89a34e68909d2f38654' "$dest" | sha256sum --check --status
           unzip -t "$dest" >/dev/null
           unzip -Z -1 "$dest" | grep -Fxq classes.jar
