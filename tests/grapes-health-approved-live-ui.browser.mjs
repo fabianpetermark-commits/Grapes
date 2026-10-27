@@ -86,8 +86,10 @@ try {
       'Previous working Health integration/backup action missing: '+action)
   }
   await settings.locator('[data-health-command="health-import"]').click()
-  await page.locator('[data-page="sync"]').waitFor({state:'visible'})
+  // The existing import controller is a bottom sheet over the current Health
+  // settings page; it does NOT navigate to the Sync page before consent.
   await page.locator('[data-sync-import-sheet].is-open').waitFor({state:'visible'})
+  assert.equal(await page.locator('[data-sync-import-title]').textContent(),'Health Connect import')
   await page.keyboard.press('Escape')
 
   await enterHealth()
