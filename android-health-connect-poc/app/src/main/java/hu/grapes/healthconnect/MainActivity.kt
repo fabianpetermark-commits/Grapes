@@ -992,7 +992,7 @@ class MainActivity : ComponentActivity() {
         private const val APP_HOST = "appassets.androidplatform.net"
         private const val APP_ORIGIN = "https://$APP_HOST"
         private const val APP_URL = "https://$APP_HOST/assets/design/android-mobile-preview.html"
-        private const val TEST_AUTH_HOST = "grapes-test-auth.invalid"
+        private const val TEST_AUTH_HOST = TestAuthCallback.LOGIN_HOST
         private const val TEST_AUTH_ORIGIN = "https://$TEST_AUTH_HOST"
         private const val TEST_AUTH_URL = "$TEST_AUTH_ORIGIN/assets/login-auth-test.html"
         private const val PROD_AUTH_HOST = "grapes-prod-auth.invalid"
