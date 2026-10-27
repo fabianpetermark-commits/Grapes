@@ -67,7 +67,7 @@ document.addEventListener('grapes:food-subtitle', event => {
 
 const labels = {
   home: ['Grapes', 'Mobil munkaterület'], projects: ['Projektek', 'Helyi és Drive'],
-  sync: ['Szinkron', 'Adatok és fiók'], more: ['Továbbiak', 'Beállítások'],
+  sync: ['Szinkron', 'Adatok és fiók'], more: ['Grapes', 'Beállítások'],
   food: ['Ételnapló', 'Mai áttekintés'], water: ['Víz', 'Napi folyadékbevitel'],
   household: ['Home / Háztartás', 'Ezen az eszközön tárolva'],
   'hub-home': ['Home', 'Háztartás'],
@@ -337,6 +337,15 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   ;[title.textContent, subtitle.textContent] = labels[page] || labels.home
   fab.hidden = page !== 'food' || !mobileFood?.isDetailOpen()
   closeSheet()
+  if (page === 'more') {
+    // Status indicators are informational. Never guess a Health/Samsung login state.
+    // Only the already verified existing Drive session may show a green check.
+    const driveConnected = isGrapesDriveConnected()
+    const unknown = $('[data-settings-drive-unknown]')
+    const known = $('[data-settings-drive-ok]')
+    if (unknown) unknown.hidden = driveConnected
+    if (known) known.hidden = !driveConnected
+  }
   if (page === 'projects') renderProjects()
   if (page === 'sync') renderSync()
   if (page === 'water') renderWater()
@@ -1188,7 +1197,22 @@ $$('[data-nav]').forEach(button => button.addEventListener('click', () => {
   if (button.dataset.nav === 'more' && activePage === 'hub-health') showPage('health-settings', { parent:'hub-health' })
   else showPage(button.dataset.nav)
 }))
-$$('[data-menu-group]').forEach(button => button.addEventListener('click', () => {
+// Approved Settings navigation is an additive view over existing live actions.
+// Never auto-connect providers or import records by navigating to the Sync page.
+const settingsProviderTargets = {
+  drive: '[data-connect-drive]',
+  health: '[data-health-sync]',
+  samsung: '[data-samsung-sync-action]',
+  yazio: '[data-yazio-import]',
+}
+$('[data-settings-provider]').forEach(button => button.addEventListener('click', () => {
+  const target = settingsProviderTargets[button.dataset.settingsProvider]
+  if (!target) return
+  showPage('sync')
+  requestAnimationFrame(() => $(target)?.scrollIntoView({ block: 'center', behavior: 'instant' }))
+}))
+$('[data-settings-open-home]')?.addEventListener('click', () => showPage('household'))
+$('[data-menu-group]').forEach(button => button.addEventListener('click', () => {
   const group = button.dataset.menuGroup
   if (['home', 'health', 'utility', 'finance'].includes(group)) showPage('hub-' + group)
 }))
