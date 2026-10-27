@@ -566,3 +566,33 @@ html.is-grapes-android-module #finance-app:has([data-finance-tab="transaction"].
   html.is-grapes-android-module .finance__tabs button:last-child { min-height: 46px; }
   .finance__tabs .finance__tab-icon { width: 20px; height: 20px; }
 }
+
+/* 320px Finance import regression: the top action grid and import intro
+   must be allowed to shrink below their intrinsic text width. Keep the
+   workbook preview in its own horizontally scrollable review frame. */
+@media (max-width: 700px) {
+  .finance__header,
+  .finance__header-actions,
+  .finance__import-intro,
+  .finance__import-block-head {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .finance__header-actions {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+  .finance__header-actions > .btn,
+  .finance__header-actions > button,
+  #finance-drive-save {
+    min-width: 0;
+  }
+  #finance-drive-save {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .finance__import-intro,
+  .finance__import-block-head {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
