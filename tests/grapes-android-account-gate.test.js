@@ -84,8 +84,11 @@ test('the last Settings action is exactly Kijelentkezés with a door exit pictog
   assert.match(more, /data-settings-health-status[^>]*data-state="unverified"/)
   assert.match(more, /data-settings-samsung-status[^>]*data-state="unverified"/)
   assert.match(more, /data-nav="sync" aria-label="Google Drive kapcsolat kezelése/)
-  assert.match(more, /data-nav="sync" aria-label="Health Connect adatimport kezelése/)
-  assert.match(more, /data-nav="sync" aria-label="Samsung Health vízimport kezelése/)
+  assert.match(more, /data-settings-sync aria-label="Health Connect adatimport kezelése/)
+  assert.match(more, /data-settings-sync aria-label="Samsung Health vízimport kezelése/)
+  assert.equal((more.match(/data-nav="sync"/g) || []).length, 1,
+    'Legacy Health/YAZIO flows must resolve the single original Sync nav')
+  assert.match(shell, /\$\$\('\[data-settings-sync\]'\)\.forEach\(button => button\.addEventListener\('click', \(\) => showPage\('sync'\)\)\)/)
   assert.match(mobile, /more: \['Beállítások', 'Fiók és alkalmazás'\]/)
   assert.match(shell, /more: \['Beállítások', 'Fiók és alkalmazás'\]/)
   assert.ok(more.lastIndexOf('data-grapes-test-logout hidden') > more.lastIndexOf('A Grapes névjegye'))
