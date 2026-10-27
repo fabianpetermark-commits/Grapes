@@ -1,0 +1,59 @@
+name: Grapes TEST One Home outbox status + foreground reconnect (NO RELEASE)
+on:
+  push:
+    branches:
+      - feature/grapes-one-home-outbox-status-auto-retry-test-20261027
+  pull_request:
+    branches:
+      - codex/android-app
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-one-home-outbox-status-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  outbox-status-qa:
+    if: github.repository == 'fabianpetermark-commits/Grapes'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: All existing Grapes unit regressions + outbox controller state machine
+        run: npm test
+      - name: TEST-only offline/online/owner-switch unit proof
+        run: node --test tests/home-family-auto-sync.test.js
+      - name: Preserve Android WebView browser asset compilation
+        run: npm run build:android-web
+      - name: Locate Chromium for UI proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v google-chrome >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            npx playwright-core install --with-deps chromium
+            binary=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path '*chrome-linux*' | head -1)
+            test -n "$binary"
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$binary" >> "$GITHUB_ENV"
+          fi
+      - name: New real browser approved One Home QA outbox status, reconnect, stock safety and owner privacy
+        run: node tests/home-one-outbox-status.browser.mjs
+      - name: Existing durable IndexedDB CAS proof (reload, conflict and switch)
+        run: node tests/home-m3b-family-outbox.browser.mjs
+      - name: PROD approved One Home local flow unchanged
+        run: node tests/prod-home-one-house.browser.mjs
+      - name: Safety boundary
+        run: echo 'QA mode injection only; no PROD UI flag, native bearer access, live TEST/PROD write, DB migration or signed APK.'
