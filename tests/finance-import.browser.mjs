@@ -101,14 +101,34 @@ try {
   await page.getByText(/lehetséges duplikációról döntened kell/).waitFor()
   assert.equal(await page.locator('[data-finance-tab="import"][aria-selected="true"]').count(), 1)
 
-  await page.setViewportSize({ width: 360, height: 800 })
-  const mobileLayout = await page.locator('#finance-app').evaluate((node) => ({
-    clientWidth: node.clientWidth, scrollWidth: node.scrollWidth,
-    wide: [...node.querySelectorAll('*')].filter((item) => item.getBoundingClientRect().right > node.clientWidth + 1)
-      .slice(0, 8).map((item) => `${item.tagName}.${item.className}:${Math.round(item.getBoundingClientRect().right)}`),
-  }))
-  assert.ok(mobileLayout.scrollWidth <= mobileLayout.clientWidth + 1, JSON.stringify(mobileLayout))
-  assert.ok(await page.locator('#finance-import-commit').evaluate((node) => node.getBoundingClientRect().height >= 44))
+  for (const width of [320, 350, 360, 390, 412]) {
+    await page.setViewportSize({ width, height: 800 })
+    const mobileLayout = await page.locator('#finance-app').evaluate((node) => {
+      const wrap = node.querySelector('.finance__import-review-wrap')
+      const box = wrap.getBoundingClientRect()
+      const appBox = node.getBoundingClientRect()
+      return {
+        clientWidth: node.clientWidth, scrollWidth: node.scrollWidth,
+        reviewFrameWidth: wrap.clientWidth, reviewFrameScrollWidth: wrap.scrollWidth,
+        frameLeft: box.left, frameRight: box.right,
+        appLeft: appBox.left, appRight: appBox.right,
+        overflow: getComputedStyle(wrap).overflowX,
+        wide: [...node.querySelectorAll('*')]
+          .filter(item => item.getBoundingClientRect().right > node.getBoundingClientRect().right + 1)
+          .slice(0, 8)
+          .map(item => `${item.tagName}.${item.className}:${Math.round(item.getBoundingClientRect().right)}`),
+      }
+    })
+    assert.ok(mobileLayout.scrollWidth <= mobileLayout.clientWidth + 1,
+      `Finance root overflow on ${width}px: ${JSON.stringify(mobileLayout)}`)
+    assert.ok(mobileLayout.frameLeft >= mobileLayout.appLeft - 1 &&
+      mobileLayout.frameRight <= mobileLayout.appRight + 1,
+      `Review frame escaped its parent on ${width}px: ${JSON.stringify(mobileLayout)}`)
+    assert.equal(mobileLayout.overflow, 'auto',
+      'Wide import table must scroll within the review frame')
+    assert.ok(await page.locator('#finance-import-commit')
+      .evaluate(node => node.getBoundingClientRect().height >= 44))
+  }
 
   await page.locator('#finance-import-reset').click()
   await page.locator('#finance-workbook-input').setInputFiles({
