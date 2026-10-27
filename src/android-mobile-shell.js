@@ -1039,7 +1039,8 @@ function showApp() {
   app.hidden = false
   updateHomeGreeting()
   renderAccount()
-  const route = new URLSearchParams(location.search).get('page')
+  let route
+  try { route = sessionStorage.getItem('grapes-mobile-return-page'); sessionStorage.removeItem('grapes-mobile-return-page') } catch {}
   const allowed = ['home','household','hub-health','hub-utility','hub-finance','ebook','sync','projects','more']
   showPage(allowed.includes(route) ? route : 'home', {parent: route === 'ebook' ? 'hub-utility' : ''})
   renderProjects()

@@ -52,6 +52,7 @@ try {
     return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)})
   })
   await page.reload()
+  await page.locator('[data-menu-group="utility"]').click()
   await page.locator('[data-menu-destination="ebook"]').click()
   await page.locator('.book-tile').click()
   await page.locator('[data-reader-page] canvas').waitFor()

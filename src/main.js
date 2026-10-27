@@ -243,7 +243,7 @@ async function navigateMobile(page) {
     catch { alert('A QR-projekt helyi mentése nem sikerült. A kilépést megszakítottuk.'); return }
   }
   const target = new URL('./design/android-mobile-preview.html', location.href)
-  target.searchParams.set('page', page)
+  try { sessionStorage.setItem('grapes-mobile-return-page', page) } catch {}
   location.href = target.href
 }
 if (androidModuleShell && ['qr','ebook'].includes(requestedScreen)) {
