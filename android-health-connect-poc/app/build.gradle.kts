@@ -29,7 +29,6 @@ android {
                 storeType = "PKCS12"
             }
         }
-    }
         if (!testKeystorePath.isNullOrBlank()) {
             create("qa") {
                 storeFile = file(testKeystorePath)
@@ -67,8 +66,6 @@ android {
                 providers.environmentVariable("GRAPES_PROD_AUTH_CANDIDATE").orNull == "true"
             buildConfigField("boolean", "GRAPES_PROD_AUTH_CANDIDATE", authCandidate.toString())
         }
-    }
-
         create("qa") {
             // Dedicated, existing TEST package; PROD Auth and local data stay isolated.
             initWith(getByName("release"))
