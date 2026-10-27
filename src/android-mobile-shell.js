@@ -13,6 +13,7 @@ import { createMobileFoodController } from './food/food-mobile.js'
 import { createYazioApiPanel } from './food/yazio-api-panel.js'
 import { registerFoodSharing, sendMealShare, sendRecipeShare } from './food/food-sharing-client.js'
 import { hydrateMobileIcons, mobileIconSvg } from './android-mobile-icons.js'
+import { mountMainShortcuts } from './main-shortcuts-v12.js'
 import { createHomeMobile } from './home/home-mobile.js'
 import { openAndroidOneHomeTestSession } from './home/home-native-test-session.js'
 import { getAndroidAppUpdate, installAndroidAppUpdate, isGrapesAndroidApp, openAndroidHealthConnectSettings, saveAndroidJsonBackup } from './android-bridge.js'
@@ -68,6 +69,7 @@ const HOME_NATIVE_QA = import.meta.env?.VITE_GRAPES_TEST_AUTH_ENABLED === 'true'
 // owner-bound native session has been verified. PROD stays byte-for-byte
 // on the original local Home initialization path.
 let household = HOME_NATIVE_QA ? null : createHomeMobile($('[data-household-root]'))
+let mainShortcuts = null
 
 // PROD never opens this gateway. QA must have an authenticated native subject
 // before any family v2 snapshot reaches the existing single Home UI.
@@ -450,6 +452,19 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   toast.classList.remove('is-visible')
   $$('[data-page]').forEach(node => { node.hidden = node.dataset.page !== page })
   $$('[data-nav]').forEach(node => node.classList.toggle('is-active', node.dataset.nav === page))
+  const mainRail = $('[data-main-rail]')
+  if (mainRail) mainRail.hidden = HOME_NATIVE_QA
+  const currentMain =
+    page === 'home' ? 'start' :
+    page === 'household' || page === 'hub-home' ? 'home' :
+    ['hub-health','health-settings','food','water'].includes(page) ? 'health' :
+    ['hub-utility','ebook','reader','transfer'].includes(page) ? 'tools' :
+    ['hub-finance','finance'].includes(page) ? 'finance' :
+    ['more','sync'].includes(page) ? 'settings' : ''
+  $$('[data-main-nav]').forEach(button => {
+    if (button.dataset.mainNav === currentMain) button.setAttribute('aria-current','page')
+    else button.removeAttribute('aria-current')
+  })
   ;[title.textContent, subtitle.textContent] = labels[page] || labels.home
   fab.hidden = page !== 'food' || !mobileFood?.isDetailOpen()
   closeSheet()
@@ -1332,8 +1347,8 @@ $$('[data-settings-provider]').forEach(button => button.addEventListener('click'
   requestAnimationFrame(() => $(target)?.scrollIntoView({ block: 'center', behavior: 'instant' }))
 }))
 $('[data-settings-open-home]')?.addEventListener('click', () => showPage('household'))
-$$('[data-menu-group]').forEach(button => button.addEventListener('click', () => {
-  const group = button.dataset.menuGroup
+$$('[data-menu-group], [data-main-module-link]').forEach(button => button.addEventListener('click', () => {
+  const group = button.dataset.menuGroup || button.dataset.mainModuleLink
   if (group === 'home') showPage('household', { parent: 'home' })
   else if (['health', 'utility', 'finance'].includes(group)) showPage('hub-' + group)
 }))
@@ -1547,6 +1562,28 @@ mobileFood = createMobileFoodController({
   sendRecipe: sendRecipeShare,
   onHydrationImport: importHydrationEntries,
   getHydrationExternalKeys: hydrationExternalKeys,
+})
+// The final v1.2 start page delegates every shortcut to a LIVE existing
+// module, rather than creating a second Food, Home or Finance data store.
+function openMainShortcut(id) {
+  if (HOME_NATIVE_QA) return
+  if (id === 'food') showPage('food',{parent:'hub-health'})
+  else if (id === 'water') showPage('water',{parent:'hub-health'})
+  else if (id === 'recipes' || id === 'stats')
+    showPage('food',{parent:'hub-health',entry:id})
+  else if (id === 'shopping' || id === 'inventory')
+    showPage('household',{parent:'home',entry:id})
+  else if (id === 'finance') openModule('finance')
+  else if (id === 'ebook') showPage('ebook',{parent:'hub-utility'})
+  else if (id === 'qr') openModule('qr')
+  else if (id === 'projects') showPage('projects')
+  else if (id === 'sync') showPage('sync')
+}
+mainShortcuts = mountMainShortcuts({
+  root:$('[data-page="home"]'),
+  storage:localStorage,
+  onOpen:openMainShortcut,
+  onError:message=>showToast(message),
 })
 hydrateMobileIcons()
 // Grapes PROD login is independent of the user's Google Drive authorization.
