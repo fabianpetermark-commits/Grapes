@@ -46,6 +46,19 @@ import java.time.LocalDate
 class MainActivity : ComponentActivity() {
     private val healthConnect by lazy { HealthConnectBridge(this) }
     private val prodAuth by lazy { ProdAuthCallback(this) }
+    // QA-only Auth is deliberately separate from the existing PROD Auth gate.
+    private val testAuth by lazy { TestAuthCallback(this) }
+    private val isTestQa get() = BuildConfig.APPLICATION_ID == "hu.grapes.healthconnect.test" &&
+        BuildConfig.GRAPES_TEST_AUTH_ENABLED
+    private val testGate by lazy { TestAuthGate(isTestQa) }
+    private val testGatePreferences by lazy { getSharedPreferences("grapes-test-auth-gate-v1", MODE_PRIVATE) }
+    private val testSupabaseProxy by lazy {
+        TestSupabaseProxy(
+            isTestQa && BuildConfig.GRAPES_TEST_DATA_ENABLED,
+            BuildConfig.GRAPES_TEST_PUBLISHABLE_KEY,
+            familyEnabled = isTestQa && BuildConfig.GRAPES_TEST_HOME_FAMILY_ENABLED,
+        )
+    }
     private val isProdAuth get() = BuildConfig.APPLICATION_ID == "hu.grapes.healthconnect" && BuildConfig.GRAPES_PROD_AUTH_ENABLED
     private val prodGatePreferences by lazy { getSharedPreferences("grapes-prod-auth-gate-v1", MODE_PRIVATE) }
     private val prodGate by lazy { ProdAuthGate(isProdAuth, prodGatePreferences) }
@@ -189,12 +202,17 @@ class MainActivity : ComponentActivity() {
         setContentView(webView)
         UpdateNotifications.createChannel(this)
         UpdateCheckWorker.schedule(this)
-        val oauthReturn = isProdAuth && prodAuth.accept(intent?.data)
-        if (oauthReturn) setIntent(Intent(intent).setData(null))
-        if (oauthReturn) prodGate.lock()
-        // Preserve byte-for-byte legacy startup behavior when production Auth is disabled.
-        if (isProdAuth) webView.loadUrl(prodGate.initialUrl(APP_URL, PROD_AUTH_URL))
-        else webView.loadUrl(APP_URL)
+        val prodReturn = isProdAuth && prodAuth.accept(intent?.data)
+        val testReturn = isTestQa && testAuth.accept(intent?.data)
+        if (prodReturn || testReturn) setIntent(Intent(intent).setData(null))
+        if (prodReturn) prodGate.lock()
+        if (testReturn) { testGate.lock(); testSupabaseProxy.clear() }
+        // Separate package/origin + gate for TEST; existing PROD and legacy startup unchanged.
+        when {
+            isProdAuth -> webView.loadUrl(prodGate.initialUrl(APP_URL, PROD_AUTH_URL))
+            isTestQa -> webView.loadUrl(testGate.initialUrl(APP_URL, TEST_AUTH_URL))
+            else -> webView.loadUrl(APP_URL)
+        }
         // A foreground launch must always see a release published since the previous
         // background check. The six-hour throttle only belongs to WorkManager.
         checkForAppUpdate(force = true)
@@ -206,7 +224,9 @@ class MainActivity : ComponentActivity() {
                 ) { handled ->
                     if (handled == "true") return@evaluateJavascript
                     if (isProdAuth && !prodGate.canDisplayApp()) finish()
+                    else if (isTestQa && !testGate.canDisplayApp()) finish()
                     else if (isProdAuth && webView.url == APP_URL) finish()
+                    else if (isTestQa && webView.url == APP_URL) finish()
                     else if (webView.canGoBack()) webView.goBack() else finish()
                 }
             }
@@ -215,6 +235,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        if (isTestQa && testAuth.accept(intent.data)) {
+            testGate.lock()
+            testSupabaseProxy.clear()
+            setIntent(Intent(intent).setData(null))
+            webView.loadUrl(TEST_AUTH_URL)
+            return
+        }
         if (isProdAuth && prodAuth.accept(intent.data)) {
             prodGate.lock()
             setIntent(Intent(intent).setData(null))
