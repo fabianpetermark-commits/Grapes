@@ -14,7 +14,9 @@ import { createYazioApiPanel } from './food/yazio-api-panel.js'
 import { registerFoodSharing, sendMealShare, sendRecipeShare } from './food/food-sharing-client.js'
 import { hydrateMobileIcons, mobileIconSvg } from './android-mobile-icons.js'
 import { createHomeMobile } from './home/home-mobile.js'
+import { openAndroidOneHomeTestSession } from './home/home-native-test-session.js'
 import { getAndroidAppUpdate, installAndroidAppUpdate, isGrapesAndroidApp, openAndroidHealthConnectSettings, saveAndroidJsonBackup } from './android-bridge.js'
+import { requestAndroidTestAccountSignOut } from './home/home-test-native-bridge.js'
 import { waterBackupToJson, waterBackupFromJson, readWaterStoreStrict, waterBackupSummary } from './water/water-backup.js'
 import {
   isMobileShareableBook,
@@ -55,7 +57,110 @@ let mobileReaderSaveTimer = null
 let activeTransferBookId = ''
 let activePairingNonce = ''
 let mobileFood = null
-const household = createHomeMobile($('[data-household-root]'))
+let homeTestEpoch = 0
+const HOME_NATIVE_QA = import.meta.env?.VITE_GRAPES_TEST_AUTH_ENABLED === 'true' &&
+  import.meta.env?.VITE_GRAPES_TEST_DATA_ENABLED === 'true' &&
+  import.meta.env?.VITE_GRAPES_TEST_HOME_FAMILY_ENABLED === 'true' &&
+  import.meta.env?.VITE_GRAPES_TEST_SUPABASE_URL === 'https://aighqtqjlzirlokxwupt.supabase.co' &&
+  globalThis.location?.href === 'https://appassets.androidplatform.net/assets/design/android-mobile-preview.html' &&
+  isGrapesAndroidApp()
+// The QA app does not render previous personal v1 Home data before the
+// owner-bound native session has been verified. PROD stays byte-for-byte
+// on the original local Home initialization path.
+let household = HOME_NATIVE_QA ? null : createHomeMobile($('[data-household-root]'))
+
+// PROD never opens this gateway. QA must have an authenticated native subject
+// before any family v2 snapshot reaches the existing single Home UI.
+async function showTestFamilyHome(entry='') {
+  const epoch=++homeTestEpoch
+  household?.invalidateFamilyPreview?.()
+  // Detach old DOM listeners when selecting a different household. The
+  // existing Home controller is intentionally single-use for a pinned owner
+  // and household; reusing its root would keep stale click handlers alive.
+  const previousRoot=$('[data-household-root]')
+  let root=previousRoot.cloneNode(false)
+  previousRoot.replaceWith(root)
+  household=null
+  root.textContent='A közös Otthon natív TEST-hitelesítésének ellenőrzése…'
+  root.dataset.homeSource='family-test-checking'
+  try {
+    const session=await openAndroidOneHomeTestSession({enabled:HOME_NATIVE_QA})
+    if (epoch!==homeTestEpoch || activePage!=='household') return
+    const homes=session.households
+    if (!homes.length) {
+      root.textContent='Ehhez a TEST-fiókhoz nem tartozik családi Otthon. A helyi adatok változatlanok.'
+      root.dataset.homeSource='family-test-empty'
+      return
+    }
+    const choiceKey='grapes-test-home-selected-'+session.expectedUserId
+    let chosen=null
+    try { chosen=localStorage.getItem(choiceKey) } catch { /* Explicit selection remains possible. */ }
+    if (!homes.some(h=>h.householdId===chosen)) chosen=homes.length===1?homes[0].householdId:null
+    function openChosen(householdId) {
+      if (epoch!==homeTestEpoch || activePage!=='household') return
+      if (household) {
+        household?.invalidateFamilyPreview?.()
+        const previousRoot=root
+        const fresh=previousRoot.cloneNode(false)
+        previousRoot.replaceWith(fresh)
+        root=fresh
+        household=null
+      }
+      household=createHomeMobile(root,undefined,{familySync:session.chooseHousehold(householdId)})
+      // Selecting among multiple REAL households is not a Saját/Közös mode.
+      if (homes.length>1) {
+        const picker=document.createElement('label')
+        picker.className='household-selector'
+        picker.textContent='Háztartás'
+        const select=document.createElement('select')
+        select.setAttribute('aria-label','Családi háztartás kiválasztása')
+        homes.forEach(h=>{
+          const option=new Option(h.name||'Családi Otthon',h.householdId)
+          select.add(option)
+        })
+        select.value=householdId
+        select.addEventListener('change',()=>{
+          const id=select.value
+          if (!homes.some(h=>h.householdId===id)) return
+          try { localStorage.setItem(choiceKey,id) } catch {}
+          openChosen(id)
+        })
+        picker.append(select)
+        root.querySelector('.household-head')?.after(picker)
+      }
+      household.load()
+      if (entry==='inventory'||entry==='shopping') household.openTab(entry)
+    }
+    if (chosen) { openChosen(chosen);return }
+    // Do NOT silently pick the first household when multiple are accessible.
+    root.replaceChildren()
+    root.dataset.homeSource='family-test-select'
+    const form=document.createElement('div')
+    form.className='household-choose'
+    const label=document.createElement('label')
+    label.textContent='Melyik családi Otthont nyissuk meg?'
+    const select=document.createElement('select')
+    select.setAttribute('aria-label','Családi háztartás')
+    select.add(new Option('Válassz egy Otthont…',''))
+    homes.forEach(h=>select.add(new Option(h.name||'Otthon',h.householdId)))
+    const open=document.createElement('button')
+    open.textContent='Otthon megnyitása'
+    open.disabled=true
+    select.addEventListener('change',()=>{open.disabled=!homes.some(h=>h.householdId===select.value)})
+    open.addEventListener('click',()=>{
+      if (!homes.some(h=>h.householdId===select.value)) return
+      try { localStorage.setItem(choiceKey,select.value) } catch {}
+      openChosen(select.value)
+    })
+    label.append(select)
+    form.append(label,open)
+    root.append(form)
+  } catch {
+    if (epoch!==homeTestEpoch || activePage!=='household') return
+    root.textContent='A Grapes TEST családi kapcsolat most nem ellenőrizhető. A korábbi helyi adatok megmaradtak, de nem jelennek meg más fiók alatt.'
+    root.dataset.homeSource='family-test-unverified'
+  }
+}
 let activePage = 'home'
 let menuReturnPage = ''
 let menuEntry = ''
@@ -322,12 +427,20 @@ async function openUpdateInbox() {
 }
 
 function showPage(page, { parent = '', entry = '' } = {}) {
+  // The dedicated A/B QA APK cannot show earlier unclaimed personal
+  // Food/Finance/Water records: those are not owner-scoped yet. This limit
+  // is TEST-only. PROD and regular web builds keep their existing navigation.
+  if (HOME_NATIVE_QA && page !== 'household') page = 'household'
   // Remember only the menu origin. Reader/transfer views inherit E-book's origin.
   if (!['reader', 'transfer'].includes(page) || parent) {
     menuReturnPage = parent
     menuEntry = entry
   }
   if (activePage === 'food' && page !== 'food') mobileFood?.flush().catch(() => {})
+  if (activePage === 'household' && page !== 'household' && HOME_NATIVE_QA) {
+    homeTestEpoch++
+    household?.invalidateFamilyPreview?.()
+  }
   if (mobileReader && !['reader'].includes(page)) persistReaderProgress().catch(() => {})
   if (page !== 'reader') setReaderFullscreen(false)
   activePage = page
@@ -359,9 +472,12 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   }
   if (page === 'health-settings') showHealthSettingsIndex()
   if (page === 'household') {
-    household.load()
-    // Legacy deep links may request a section; never hide the other widgets.
-    if (entry === 'shopping' || entry === 'inventory') household.openTab(entry)
+    if (HOME_NATIVE_QA) void showTestFamilyHome(entry)
+    else {
+      household.load()
+      // Legacy deep links may request a section; never hide the other widgets.
+      if (entry === 'shopping' || entry === 'inventory') household.openTab(entry)
+    }
   }
   if (page === 'food') mobileFood?.load().then(async () => {
     // A delayed load must not open a sheet on a different screen.
@@ -1426,9 +1542,21 @@ if (prodSignoutButton) {
     import.meta.env?.VITE_GRAPES_PROD_LEGACY_DATA_ISOLATION_REVIEWED === 'true' &&
     globalThis.location?.href === 'https://appassets.androidplatform.net/assets/design/android-mobile-preview.html' &&
     isGrapesAndroidApp()
+  // Preserve the exact release-independent PROD sign-out behavior.
   prodSignoutButton.hidden = !prodAuthNative
   prodSignoutButton.style.display = prodAuthNative ? '' : 'none'
+  // QA is a separate APK and only overrides the same button in TEST.
+  if (HOME_NATIVE_QA) {
+    prodSignoutButton.hidden = false
+    prodSignoutButton.style.display = ''
+  }
   prodSignoutButton.addEventListener('click', () => {
+    if (HOME_NATIVE_QA) {
+      homeTestEpoch++
+      household?.invalidateFamilyPreview?.()
+      requestAndroidTestAccountSignOut()
+      return
+    }
     if (!prodAuthNative) return
     globalThis.GrapesAndroid.postMessage(JSON.stringify({
       method: 'openProdAuthSignOut', requestId: crypto.randomUUID(), args: [],
@@ -1439,7 +1567,7 @@ installSheetGestures()
 refreshUpdateInbox()
 window.grapesHandleAndroidBack = () => {
   if ($('[data-notifications-sheet].is-open')) { closeSheet(); return true }
-  if (activePage === 'household' && household.handleBack()) return true
+  if (activePage === 'household' && household?.handleBack()) return true
   if (activePage === 'food' && menuReturnPage === 'hub-health') {
     if (menuEntry === 'stats' && $('[data-food-stats-sheet].is-open')) { showPage('hub-health'); return true }
     if (menuEntry === 'recipes' && !$('[data-food-recipes-view]').hidden && !$('.bottom-sheet.is-open')) { showPage('hub-health'); return true }
@@ -1462,4 +1590,6 @@ const prodNativeAuthenticated = import.meta.env?.VITE_GRAPES_PROD_AUTH_ENABLED =
   import.meta.env?.VITE_GRAPES_PROD_LEGACY_DATA_ISOLATION_REVIEWED === 'true' &&
   globalThis.location?.href === 'https://appassets.androidplatform.net/assets/design/android-mobile-preview.html' &&
   isGrapesAndroidApp()
-if (isGrapesDriveConnected() || localMode() || prodNativeAuthenticated) showApp()
+// The TEST package has already passed the native Auth gate before MainActivity
+// serves this app asset. Never require a second Google Drive login.
+if (isGrapesDriveConnected() || localMode() || prodNativeAuthenticated || HOME_NATIVE_QA) showApp()

@@ -46,6 +46,19 @@ import java.time.LocalDate
 class MainActivity : ComponentActivity() {
     private val healthConnect by lazy { HealthConnectBridge(this) }
     private val prodAuth by lazy { ProdAuthCallback(this) }
+    // QA-only Auth is deliberately separate from the existing PROD Auth gate.
+    private val testAuth by lazy { TestAuthCallback(this) }
+    private val isTestQa get() = BuildConfig.APPLICATION_ID == "hu.grapes.healthconnect.test" &&
+        BuildConfig.GRAPES_TEST_AUTH_ENABLED
+    private val testGate by lazy { TestAuthGate(isTestQa) }
+    private val testGatePreferences by lazy { getSharedPreferences("grapes-test-auth-gate-v1", MODE_PRIVATE) }
+    private val testSupabaseProxy by lazy {
+        TestSupabaseProxy(
+            isTestQa && BuildConfig.GRAPES_TEST_DATA_ENABLED,
+            BuildConfig.GRAPES_TEST_PUBLISHABLE_KEY,
+            familyEnabled = isTestQa && BuildConfig.GRAPES_TEST_HOME_FAMILY_ENABLED,
+        )
+    }
     private val isProdAuth get() = BuildConfig.APPLICATION_ID == "hu.grapes.healthconnect" && BuildConfig.GRAPES_PROD_AUTH_ENABLED
     private val prodGatePreferences by lazy { getSharedPreferences("grapes-prod-auth-gate-v1", MODE_PRIVATE) }
     private val prodGate by lazy { ProdAuthGate(isProdAuth, prodGatePreferences) }
@@ -189,12 +202,17 @@ class MainActivity : ComponentActivity() {
         setContentView(webView)
         UpdateNotifications.createChannel(this)
         UpdateCheckWorker.schedule(this)
-        val oauthReturn = isProdAuth && prodAuth.accept(intent?.data)
-        if (oauthReturn) setIntent(Intent(intent).setData(null))
-        if (oauthReturn) prodGate.lock()
-        // Preserve byte-for-byte legacy startup behavior when production Auth is disabled.
-        if (isProdAuth) webView.loadUrl(prodGate.initialUrl(APP_URL, PROD_AUTH_URL))
-        else webView.loadUrl(APP_URL)
+        val prodReturn = isProdAuth && prodAuth.accept(intent?.data)
+        val testReturn = isTestQa && testAuth.accept(intent?.data)
+        if (prodReturn || testReturn) setIntent(Intent(intent).setData(null))
+        if (prodReturn) prodGate.lock()
+        if (testReturn) { testGate.lock(); testSupabaseProxy.clear() }
+        // Separate package/origin + gate for TEST; existing PROD and legacy startup unchanged.
+        when {
+            isProdAuth -> webView.loadUrl(prodGate.initialUrl(APP_URL, PROD_AUTH_URL))
+            isTestQa -> webView.loadUrl(testGate.initialUrl(APP_URL, TEST_AUTH_URL))
+            else -> webView.loadUrl(APP_URL)
+        }
         // A foreground launch must always see a release published since the previous
         // background check. The six-hour throttle only belongs to WorkManager.
         checkForAppUpdate(force = true)
@@ -206,7 +224,9 @@ class MainActivity : ComponentActivity() {
                 ) { handled ->
                     if (handled == "true") return@evaluateJavascript
                     if (isProdAuth && !prodGate.canDisplayApp()) finish()
+                    else if (isTestQa && !testGate.canDisplayApp()) finish()
                     else if (isProdAuth && webView.url == APP_URL) finish()
+                    else if (isTestQa && webView.url == APP_URL) finish()
                     else if (webView.canGoBack()) webView.goBack() else finish()
                 }
             }
@@ -215,6 +235,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        if (isTestQa && testAuth.accept(intent.data)) {
+            testGate.lock()
+            testSupabaseProxy.clear()
+            setIntent(Intent(intent).setData(null))
+            webView.loadUrl(TEST_AUTH_URL)
+            return
+        }
         if (isProdAuth && prodAuth.accept(intent.data)) {
             prodGate.lock()
             setIntent(Intent(intent).setData(null))
@@ -285,6 +312,10 @@ class MainActivity : ComponentActivity() {
             .setDomain(PROD_AUTH_HOST)
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
             .build()
+        val testAuthAssetLoader = WebViewAssetLoader.Builder()
+            .setDomain(TEST_AUTH_HOST)
+            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
+            .build()
         webView = WebView(this).apply {
             setBackgroundColor(android.graphics.Color.rgb(5, 8, 12))
             settings.javaScriptEnabled = true
@@ -294,16 +325,24 @@ class MainActivity : ComponentActivity() {
             WebViewCompat.addWebMessageListener(
                 this,
                 "GrapesAndroid",
-                if (isProdAuth) setOf(APP_ORIGIN, PROD_AUTH_ORIGIN) else setOf(APP_ORIGIN)
+                when {
+                    isProdAuth -> setOf(APP_ORIGIN, PROD_AUTH_ORIGIN)
+                    isTestQa -> setOf(APP_ORIGIN, TEST_AUTH_ORIGIN)
+                    else -> setOf(APP_ORIGIN)
+                }
             ) { _, message, _, isMainFrame, _ ->
                 if (!isMainFrame) return@addWebMessageListener
                 handleBridgeMessage(message.data ?: return@addWebMessageListener)
             }
             webViewClient = object : WebViewClient() {
                 override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest) =
-                    if (isProdAuth && request.url.host == PROD_AUTH_HOST)
-                        authAssetLoader.shouldInterceptRequest(request.url)
-                    else assetLoader.shouldInterceptRequest(request.url)
+                    when {
+                        isProdAuth && request.url.host == PROD_AUTH_HOST ->
+                            authAssetLoader.shouldInterceptRequest(request.url)
+                        isTestQa && request.url.host == TEST_AUTH_HOST ->
+                            testAuthAssetLoader.shouldInterceptRequest(request.url)
+                        else -> assetLoader.shouldInterceptRequest(request.url)
+                    }
 
                 override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                     if (request.url.scheme == "https" && request.url.host == APP_HOST) {
@@ -311,11 +350,18 @@ class MainActivity : ComponentActivity() {
                             view.loadUrl(PROD_AUTH_URL)
                             return true
                         }
+                        if (isTestQa && !testGate.canDisplayApp()) {
+                            view.loadUrl(TEST_AUTH_URL)
+                            return true
+                        }
                         return false
                     }
                     if (isProdAuth && request.url.scheme == "https" &&
                         request.url.host == PROD_AUTH_HOST &&
                         request.url.path == "/assets/login-auth-prod.html") return false
+                    if (isTestQa && request.url.scheme == "https" &&
+                        request.url.host == TEST_AUTH_HOST &&
+                        request.url.path == "/assets/login-auth-test.html") return false
                     runCatching { startActivity(Intent(Intent.ACTION_VIEW, request.url)) }
                         .onFailure {
                             Toast.makeText(
@@ -375,7 +421,97 @@ class MainActivity : ComponentActivity() {
             )) {
             return sendError(requestId, "Nem engedélyezett PROD Auth-művelet.")
         }
+        if (isTrustedTestAuthPage() && message.optString("method") !in setOf(
+                "beginTestAuthOAuth", "takeTestAuthCallback", "cancelTestAuthOAuth",
+                "takeTestAuthLaunchMode", "finishTestAuthSignOut", "completeTestAuthLogin",
+                "authorizeTestSupabaseSession"
+            )) return sendError(requestId, "Nem engedélyezett TEST Auth-művelet.")
         when (message.optString("method")) {
+            "beginTestAuthOAuth" -> beginTestAuthOAuth(message, requestId)
+            "takeTestAuthLaunchMode" -> {
+                if (!isTrustedTestAuthPage()) sendError(requestId, "A TEST Auth oldal nem aktív.")
+                else sendResult(requestId, JSONObject().apply {
+                    put("logout", testGatePreferences.getBoolean("logout-pending", false))
+                }.toString())
+            }
+            "finishTestAuthSignOut" -> {
+                if (!isTrustedTestAuthPage()) sendError(requestId, "A TEST Auth oldal nem aktív.")
+                else if (!testGatePreferences.edit().remove("logout-pending").commit())
+                    sendError(requestId, "A kijelentkezés állapota nem menthető.")
+                else { testGate.lock(); testSupabaseProxy.clear(); sendResult(requestId, "{}") }
+            }
+            "authorizeTestSupabaseSession" -> {
+                if (!isTrustedTestAuthPage() || !BuildConfig.GRAPES_TEST_DATA_ENABLED) {
+                    sendError(requestId, "A TEST adatkapu nem érhető el.")
+                } else {
+                    val args = message.optJSONArray("args")
+                    lifecycleScope.launch {
+                        runCatching { testSupabaseProxy.authorize(
+                            args?.optString(0).orEmpty(), args?.optString(1).orEmpty()) }
+                            .onSuccess {
+                                if (isTrustedTestAuthPage()) sendResult(requestId, "{}")
+                                else testSupabaseProxy.clear()
+                            }
+                            .onFailure { sendError(requestId, it.message ?: "A TEST-munkamenet nem ellenőrizhető.") }
+                    }
+                }
+            }
+            "completeTestAuthLogin" -> {
+                val userId = message.optJSONArray("args")?.optString(0).orEmpty()
+                if (testGatePreferences.getBoolean("logout-pending", false) ||
+                    !isTrustedTestAuthPage() ||
+                    !BuildConfig.GRAPES_TEST_DATA_ENABLED ||
+                    testSupabaseProxy.currentSubject() != userId.lowercase() ||
+                    !testGate.allowApp(true, userId)) {
+                    sendError(requestId, "A TEST-fiók nincs hitelesítve.")
+                } else webView.loadUrl(APP_URL)
+            }
+            "getTestAuthEnabled" -> sendResult(requestId, (isTestQa && isTrustedTestAppPage()).toString())
+            "getTestAuthSubject" -> {
+                val subject = testGate.subject(isTrustedTestAppPage())
+                if (subject == null) sendError(requestId, "A TEST-fiók nincs hitelesítve.")
+                else sendResult(requestId, subject)
+            }
+            "supabaseTestWhoAmI" -> {
+                val subject = testGate.subject(isTrustedTestAppPage())
+                if (!BuildConfig.GRAPES_TEST_DATA_ENABLED || subject == null) {
+                    sendError(requestId, "A TEST adatkapu nem érhető el.")
+                } else lifecycleScope.launch {
+                    runCatching { testSupabaseProxy.whoAmI(subject) }
+                        .onSuccess { sendResult(requestId, it) }
+                        .onFailure { sendError(requestId, it.message ?: "A TEST-fiók nem ellenőrizhető.") }
+                }
+            }
+            "supabaseTestRpc" -> {
+                val subject = testGate.subject(isTrustedTestAppPage())
+                val args = message.optJSONArray("args")
+                if (!BuildConfig.GRAPES_TEST_HOME_FAMILY_ENABLED || subject == null ||
+                    args?.optJSONObject(1) == null) {
+                    sendError(requestId, "A TEST családi adatkapu nem engedélyezett.")
+                } else lifecycleScope.launch {
+                    runCatching { testSupabaseProxy.rpc(subject, args.optString(0), args.getJSONObject(1)) }
+                        .onSuccess { sendResult(requestId, it) }
+                        .onFailure { sendError(requestId, it.message ?: "A TEST családi művelet sikertelen.") }
+                }
+            }
+            "openTestAuthSignOut" -> {
+                if (!testGate.startLogout(isTrustedTestAppPage())) {
+                    sendError(requestId, "A Grapes TEST-fiók nem aktív.")
+                } else {
+                    testSupabaseProxy.clear()
+                    if (!testGatePreferences.edit().putBoolean("logout-pending", true).commit())
+                        sendError(requestId, "A kijelentkezés nem készíthető elő.")
+                    else webView.loadUrl(TEST_AUTH_URL)
+                }
+            }
+            "takeTestAuthCallback" -> {
+                if (!isTrustedTestAuthPage()) sendError(requestId, "A TEST Auth oldal nem aktív.")
+                else sendResult(requestId, testAuth.consume().toString())
+            }
+            "cancelTestAuthOAuth" -> {
+                if (!isTrustedTestAuthPage()) sendError(requestId, "A TEST Auth oldal nem aktív.")
+                else { testAuth.cancel(); sendResult(requestId, "{}") }
+            }
             "beginProdAuthOAuth" -> beginProdAuthOAuth(message, requestId)
             "takeProdAuthLaunchMode" -> {
                 if (!isTrustedProdAuthPage()) sendError(requestId, "A PROD Auth oldal nem aktív.")
@@ -487,6 +623,24 @@ class MainActivity : ComponentActivity() {
             }
             else -> sendError(requestId, "Ismeretlen Android-művelet.")
         }
+    }
+
+    private fun isTrustedTestAuthPage(): Boolean = isTestQa && webView.url == TEST_AUTH_URL
+    private fun isTrustedTestAppPage(): Boolean = isTestQa && webView.url == APP_URL
+
+    private fun beginTestAuthOAuth(message: JSONObject, requestId: String) {
+        if (!isTrustedTestAuthPage()) return sendError(requestId, "A TEST Auth oldal nem aktív.")
+        val args = message.optJSONArray("args") ?: return sendError(requestId, "Érvénytelen Auth-kérés.")
+        val authorizeUrl = args.optString(0)
+        val state = args.optString(1)
+        if (!testAuth.begin(authorizeUrl, state)) return sendError(requestId, "Érvénytelen TEST OAuth-cím.")
+        runCatching {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(authorizeUrl)).addCategory(Intent.CATEGORY_BROWSABLE))
+        }.onSuccess { sendResult(requestId, "{}") }
+            .onFailure {
+                testAuth.cancel()
+                sendError(requestId, "A rendszerböngésző nem nyitható meg.")
+            }
     }
 
     private fun isTrustedProdAuthPage(): Boolean = isProdAuth && webView.url == PROD_AUTH_URL
@@ -815,6 +969,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        testSupabaseProxy.clear()
         pendingProdOwnerRequest = null
         backupSession?.temporaryFile?.delete()
         backupSession = null
@@ -831,6 +986,10 @@ class MainActivity : ComponentActivity() {
         private const val PROD_AUTH_HOST = "grapes-prod-auth.invalid"
         private const val PROD_AUTH_ORIGIN = "https://$PROD_AUTH_HOST"
         private const val PROD_AUTH_URL = "$PROD_AUTH_ORIGIN/assets/login-auth-prod.html"
+        // Values live in the QA-only OAuth endpoint class, never alongside PROD credentials.
+        private const val TEST_AUTH_HOST = TestAuthCallback.AUTH_HOST
+        private const val TEST_AUTH_ORIGIN = TestAuthCallback.AUTH_ORIGIN
+        private const val TEST_AUTH_URL = TestAuthCallback.AUTH_URL
         private const val DRIVE_FILE_SCOPE = "https://www.googleapis.com/auth/drive.file"
         private const val DRIVE_READ_SCOPE = "https://www.googleapis.com/auth/drive.readonly"
         private const val NOTIFICATION_PREFERENCES = "grapes-notifications"

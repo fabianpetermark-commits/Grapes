@@ -112,3 +112,37 @@
   font-size:12px;
 }
 @media(max-width:350px){ .household-sync { align-items:flex-start;flex-wrap:wrap; } }
+
+/* QA-only: choose between actual joined households, never switch between
+   separate personal and shared Home views. PROD does not render these. */
+[data-household-root] .household-selector,
+[data-household-root] .household-choose {
+  display:grid;
+  gap:7px;
+  min-width:0;
+  padding:11px 12px;
+  border:1px solid #2c4a58;
+  border-radius:14px;
+  background:#111e27;
+  color:#acd0da;
+  font-size:12px;
+}
+[data-household-root] .household-selector { margin:-5px 0 12px; }
+[data-household-root] .household-selector select,
+[data-household-root] .household-choose select {
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  min-height:44px;
+  background:#101821;
+  color:#f2f7fb;
+  border:1px solid #3d6170;
+  border-radius:9px;
+}
+[data-household-root] .household-choose button {
+  min-height:44px;
+  padding:9px 14px;
+  background:#3bdcf2;
+  color:#041014;
+  border-radius:12px;
+}

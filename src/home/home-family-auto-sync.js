@@ -111,6 +111,13 @@ export function createHomeFamilyAutoSync({
       update('synced', 'Szinkronizálva · ellenőrzött közös Otthon.', 0)
     } catch (error) {
       if (!live || epoch !== generation) return
+      // Gateway.verify() may reject an in-flight CAS/read_attempt response
+      // after an A→B account switch. On failure its own post-RPC pin never
+      // reaches the caller. Recheck the native owner in *every* error path
+      // before retaining A's pending snapshot in the DOM.
+      // pin() clears the visible snapshot, but NEVER deletes A's durable job.
+      try { await pin(epoch) } catch { return }
+      if (!live || epoch !== generation) return
       // Never claim "synced" after an ambiguous remote response.
       if (status === 'pending' || status === 'conflict') {
         update(status, status === 'pending'
