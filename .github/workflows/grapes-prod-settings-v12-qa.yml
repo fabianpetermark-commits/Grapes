@@ -1,0 +1,75 @@
+name: Grapes PROD settings v1.2 safe UI regression (NO RELEASE)
+
+on:
+  push:
+    branches:
+      - release/prod-settings-v12-safe-20261027
+  pull_request:
+    branches:
+      - codex/android-app
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-prod-settings-v12-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  prod-settings-preservation:
+    if: github.repository == 'fabianpetermark-commits/Grapes'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out safe UI candidate
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Full existing unit regressions
+        run: npm test
+      - name: Android WebView production assets build
+        run: npm run build:android-web
+      - name: Locate test browser
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v google-chrome >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            npx playwright-core install --with-deps chromium
+            binary=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path '*chrome-linux*' | head -1)
+            test -n "$binary"
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$binary" >> "$GITHUB_ENV"
+          fi
+      - name: New real Settings provider and account routing regression
+        run: node tests/prod-settings-preservation.browser.mjs
+      - name: Existing full mobile navigation/Health/Food/Drive/YAZIO browser regression
+        run: node tests/android-mobile-preview.browser.mjs
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK for debug compilation only
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager=$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | sort -V | tail -1)
+          test -n "$sdkmanager"
+          "$sdkmanager" "platforms;android-36" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.11.1
+      - name: Verify unchanged Android native app compiles without release signer
+        run: gradle --project-dir android-health-connect-poc :app:assembleDebug :app:testDebugUnitTest
+      - name: Safe rollout gate – no APK publication or remote DB writes
+        run: |
+          echo "PASS candidate checks only. NO merge, no release, no Supabase/Drive write."
