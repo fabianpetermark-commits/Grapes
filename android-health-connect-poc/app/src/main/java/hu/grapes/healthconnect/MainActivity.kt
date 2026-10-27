@@ -421,7 +421,97 @@ class MainActivity : ComponentActivity() {
             )) {
             return sendError(requestId, "Nem engedélyezett PROD Auth-művelet.")
         }
+        if (isTrustedTestAuthPage() && message.optString("method") !in setOf(
+                "beginTestAuthOAuth", "takeTestAuthCallback", "cancelTestAuthOAuth",
+                "takeTestAuthLaunchMode", "finishTestAuthSignOut", "completeTestAuthLogin",
+                "authorizeTestSupabaseSession"
+            )) return sendError(requestId, "Nem engedélyezett TEST Auth-művelet.")
         when (message.optString("method")) {
+            "beginTestAuthOAuth" -> beginTestAuthOAuth(message, requestId)
+            "takeTestAuthLaunchMode" -> {
+                if (!isTrustedTestAuthPage()) sendError(requestId, "A TEST Auth oldal nem aktív.")
+                else sendResult(requestId, JSONObject().apply {
+                    put("logout", testGatePreferences.getBoolean("logout-pending", false))
+                }.toString())
+            }
+            "finishTestAuthSignOut" -> {
+                if (!isTrustedTestAuthPage()) sendError(requestId, "A TEST Auth oldal nem aktív.")
+                else if (!testGatePreferences.edit().remove("logout-pending").commit())
+                    sendError(requestId, "A kijelentkezés állapota nem menthető.")
+                else { testGate.lock(); testSupabaseProxy.clear(); sendResult(requestId, "{}") }
+            }
+            "authorizeTestSupabaseSession" -> {
+                if (!isTrustedTestAuthPage() || !BuildConfig.GRAPES_TEST_DATA_ENABLED) {
+                    sendError(requestId, "A TEST adatkapu nem érhető el.")
+                } else {
+                    val args = message.optJSONArray("args")
+                    lifecycleScope.launch {
+                        runCatching { testSupabaseProxy.authorize(
+                            args?.optString(0).orEmpty(), args?.optString(1).orEmpty()) }
+                            .onSuccess {
+                                if (isTrustedTestAuthPage()) sendResult(requestId, "{}")
+                                else testSupabaseProxy.clear()
+                            }
+                            .onFailure { sendError(requestId, it.message ?: "A TEST-munkamenet nem ellenőrizhető.") }
+                    }
+                }
+            }
+            "completeTestAuthLogin" -> {
+                val userId = message.optJSONArray("args")?.optString(0).orEmpty()
+                if (testGatePreferences.getBoolean("logout-pending", false) ||
+                    !isTrustedTestAuthPage() ||
+                    !BuildConfig.GRAPES_TEST_DATA_ENABLED ||
+                    testSupabaseProxy.currentSubject() != userId.lowercase() ||
+                    !testGate.allowApp(true, userId)) {
+                    sendError(requestId, "A TEST-fiók nincs hitelesítve.")
+                } else webView.loadUrl(APP_URL)
+            }
+            "getTestAuthEnabled" -> sendResult(requestId, (isTestQa && isTrustedTestAppPage()).toString())
+            "getTestAuthSubject" -> {
+                val subject = testGate.subject(isTrustedTestAppPage())
+                if (subject == null) sendError(requestId, "A TEST-fiók nincs hitelesítve.")
+                else sendResult(requestId, subject)
+            }
+            "supabaseTestWhoAmI" -> {
+                val subject = testGate.subject(isTrustedTestAppPage())
+                if (!BuildConfig.GRAPES_TEST_DATA_ENABLED || subject == null) {
+                    sendError(requestId, "A TEST adatkapu nem érhető el.")
+                } else lifecycleScope.launch {
+                    runCatching { testSupabaseProxy.whoAmI(subject) }
+                        .onSuccess { sendResult(requestId, it) }
+                        .onFailure { sendError(requestId, it.message ?: "A TEST-fiók nem ellenőrizhető.") }
+                }
+            }
+            "supabaseTestRpc" -> {
+                val subject = testGate.subject(isTrustedTestAppPage())
+                val args = message.optJSONArray("args")
+                if (!BuildConfig.GRAPES_TEST_HOME_FAMILY_ENABLED || subject == null ||
+                    args?.optJSONObject(1) == null) {
+                    sendError(requestId, "A TEST családi adatkapu nem engedélyezett.")
+                } else lifecycleScope.launch {
+                    runCatching { testSupabaseProxy.rpc(subject, args.optString(0), args.getJSONObject(1)) }
+                        .onSuccess { sendResult(requestId, it) }
+                        .onFailure { sendError(requestId, it.message ?: "A TEST családi művelet sikertelen.") }
+                }
+            }
+            "openTestAuthSignOut" -> {
+                if (!testGate.startLogout(isTrustedTestAppPage())) {
+                    sendError(requestId, "A Grapes TEST-fiók nem aktív.")
+                } else {
+                    testSupabaseProxy.clear()
+                    if (!testGatePreferences.edit().putBoolean("logout-pending", true).commit())
+                        sendError(requestId, "A kijelentkezés nem készíthető elő.")
+                    else webView.loadUrl(TEST_AUTH_URL)
+                }
+            }
+            "takeTestAuthCallback" -> {
+                if (!isTrustedTestAuthPage()) sendError(requestId, "A TEST Auth oldal nem aktív.")
+                else sendResult(requestId, testAuth.consume().toString())
+            }
+            "cancelTestAuthOAuth" -> {
+                if (!isTrustedTestAuthPage()) sendError(requestId, "A TEST Auth oldal nem aktív.")
+                else { testAuth.cancel(); sendResult(requestId, "{}") }
+            }
             "beginProdAuthOAuth" -> beginProdAuthOAuth(message, requestId)
             "takeProdAuthLaunchMode" -> {
                 if (!isTrustedProdAuthPage()) sendError(requestId, "A PROD Auth oldal nem aktív.")
@@ -533,6 +623,24 @@ class MainActivity : ComponentActivity() {
             }
             else -> sendError(requestId, "Ismeretlen Android-művelet.")
         }
+    }
+
+    private fun isTrustedTestAuthPage(): Boolean = isTestQa && webView.url == TEST_AUTH_URL
+    private fun isTrustedTestAppPage(): Boolean = isTestQa && webView.url == APP_URL
+
+    private fun beginTestAuthOAuth(message: JSONObject, requestId: String) {
+        if (!isTrustedTestAuthPage()) return sendError(requestId, "A TEST Auth oldal nem aktív.")
+        val args = message.optJSONArray("args") ?: return sendError(requestId, "Érvénytelen Auth-kérés.")
+        val authorizeUrl = args.optString(0)
+        val state = args.optString(1)
+        if (!testAuth.begin(authorizeUrl, state)) return sendError(requestId, "Érvénytelen TEST OAuth-cím.")
+        runCatching {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(authorizeUrl)).addCategory(Intent.CATEGORY_BROWSABLE))
+        }.onSuccess { sendResult(requestId, "{}") }
+            .onFailure {
+                testAuth.cancel()
+                sendError(requestId, "A rendszerböngésző nem nyitható meg.")
+            }
     }
 
     private fun isTrustedProdAuthPage(): Boolean = isProdAuth && webView.url == PROD_AUTH_URL
@@ -861,6 +969,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        testSupabaseProxy.clear()
         pendingProdOwnerRequest = null
         backupSession?.temporaryFile?.delete()
         backupSession = null
@@ -877,6 +986,9 @@ class MainActivity : ComponentActivity() {
         private const val PROD_AUTH_HOST = "grapes-prod-auth.invalid"
         private const val PROD_AUTH_ORIGIN = "https://$PROD_AUTH_HOST"
         private const val PROD_AUTH_URL = "$PROD_AUTH_ORIGIN/assets/login-auth-prod.html"
+        private const val TEST_AUTH_HOST = "grapes-test-auth.invalid"
+        private const val TEST_AUTH_ORIGIN = "https://$TEST_AUTH_HOST"
+        private const val TEST_AUTH_URL = "$TEST_AUTH_ORIGIN/assets/login-auth-test.html"
         private const val DRIVE_FILE_SCOPE = "https://www.googleapis.com/auth/drive.file"
         private const val DRIVE_READ_SCOPE = "https://www.googleapis.com/auth/drive.readonly"
         private const val NOTIFICATION_PREFERENCES = "grapes-notifications"
