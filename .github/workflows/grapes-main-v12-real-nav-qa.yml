@@ -1,0 +1,57 @@
+name: Grapes approved v1.2 main navigation + real favorites (NO RELEASE)
+on:
+  pull_request:
+    branches: [codex/android-app]
+  push:
+    branches: [feature/grapes-main-v12-navigation-favorites-20261027]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-main-v12-navigation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  real-main-navigation:
+    if: github.repository == 'fabianpetermark-commits/Grapes'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: All storage and domain regressions including favorites
+        run: npm test
+      - name: Android WebView production asset bundling
+        run: npm run build:android-web
+      - name: Locate Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v google-chrome >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            npx playwright-core install --with-deps chromium
+            binary=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path '*chrome-linux*' | head -1)
+            test -n "$binary"
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$binary" >> "$GITHUB_ENV"
+          fi
+      - name: Six icon capsule / manual pinned and usage-based recommendations / real handlers
+        run: node tests/grapes-main-v12-live.browser.mjs
+      - name: Existing Android Food, Health, Water and settings parity
+        run: node tests/android-mobile-preview.browser.mjs
+      - name: Existing One Home / inventory / shopping / no automatic stock
+        run: node tests/prod-home-one-house.browser.mjs
+      - name: Existing owner-pinned TEST family CAS and Auth boundary
+        run: node tests/home-one-family-fullchain.browser.mjs
+      - name: Scope
+        run: echo 'NO PROD schema migration, NO TEST/PROD writes, NO Android signer/QA artifact, NO forced Plants mock'
