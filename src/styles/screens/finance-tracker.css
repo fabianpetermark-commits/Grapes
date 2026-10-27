@@ -227,7 +227,22 @@
 .finance__import-controls { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3); }
 .finance__import-field { display: grid; gap: var(--space-2); min-width: 0; font-size: var(--text-sm); color: var(--color-text-muted); }
 .finance__import-field input, .finance__import-field select { width: 100%; min-width: 0; }
-.finance__import-grid-wrap, .finance__import-review-wrap { overflow: auto; border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+/* Tables can be wider than the phone, but must scroll inside their own frame.
+   min-width:0 is essential for nested CSS grid items (otherwise the natural
+   table width expands the entire Finance view by several pixels). */
+.finance__import, .finance__import-preview, .finance__import-blocks,
+.finance__import-block, .finance__import-grid-wrap, .finance__import-review-wrap {
+  min-width: 0;
+  max-width: 100%;
+}
+.finance__import-grid-wrap, .finance__import-review-wrap {
+  box-sizing: border-box;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
 .finance__import-grid, .finance__import-review-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
 .finance__import-grid th, .finance__import-grid td, .finance__import-review-table th, .finance__import-review-table td {
   max-width: 260px;
