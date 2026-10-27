@@ -1205,14 +1205,14 @@ const settingsProviderTargets = {
   samsung: '[data-samsung-sync-action]',
   yazio: '[data-yazio-import]',
 }
-$('[data-settings-provider]').forEach(button => button.addEventListener('click', () => {
+$$('[data-settings-provider]').forEach(button => button.addEventListener('click', () => {
   const target = settingsProviderTargets[button.dataset.settingsProvider]
   if (!target) return
   showPage('sync')
   requestAnimationFrame(() => $(target)?.scrollIntoView({ block: 'center', behavior: 'instant' }))
 }))
 $('[data-settings-open-home]')?.addEventListener('click', () => showPage('household'))
-$('[data-menu-group]').forEach(button => button.addEventListener('click', () => {
+$$('[data-menu-group]').forEach(button => button.addEventListener('click', () => {
   const group = button.dataset.menuGroup
   if (['home', 'health', 'utility', 'finance'].includes(group)) showPage('hub-' + group)
 }))
