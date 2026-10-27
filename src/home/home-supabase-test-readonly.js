@@ -22,7 +22,7 @@ export function createHomeTestReadOnlyGate({
 } = {}) {
   if (!testGateEnabled || projectRef !== TEST_REF)
     fail('A családi Supabase-felderítés csak külön Grapes TEST-kapuban engedélyezett.')
-  if (typeof client?.auth?.getUser !== 'function' || typeof client?.rpc !== 'function')
+  if (typeof client?.auth?.getUser !== 'function' || typeof client?.schema !== 'function')
     fail('Hiányzó hitelesített Supabase TEST kliens.')
   // Do not trust only a caller-provided TEST label. Verify the real
   // Supabase JS client's own backend URL and prohibit redirected hosts.
@@ -47,8 +47,15 @@ export function createHomeTestReadOnlyGate({
   async function readRpc(name, params) {
     await assertUser()
     let result
-    try { result = await client.rpc(name, params) }
-    catch { fail('A családi Home-visszaolvasás sikertelen; nem használható helyi másolat.') }
+    // Supabase JS defaults RPC to public. The installed Home functions exist
+    // in the explicitly exposed 'api' schema; never fall back to public.
+    try {
+      const api = client.schema('api')
+      if (typeof api?.rpc !== 'function') fail('Hiányzó Grapes Home API séma.')
+      result = await api.rpc(name, params)
+    } catch {
+      fail('A családi Home-visszaolvasás sikertelen; nem használható helyi másolat.')
+    }
     // A response from user A must never be rendered after a switch to B.
     await assertUser()
     if (result?.error || !Object.hasOwn(result || {}, 'data'))
