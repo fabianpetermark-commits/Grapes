@@ -654,6 +654,78 @@
     @media(max-height:620px){[data-food-add-sheet].meal-quick-panel{bottom:84px;height:calc(100dvh - 170px);max-height:none}}
     @media(prefers-reduced-motion:reduce){.fab span,[data-food-add-sheet].meal-quick-panel{transition:none}}
 
+
+/* Approved main menu v1.2: compact six-icon top capsule and LIVE favorites. */
+#app > .appbar { flex-wrap: wrap; row-gap: 3px; padding-bottom: 6px; min-width: 0; }
+.grapes-main-rail {
+  display:grid;grid-template-columns:repeat(6,minmax(0,1fr));
+  flex:0 0 100%;gap:3px;min-width:0;min-height:63px;padding:5px;
+  border:1px solid #2c4a58;border-radius:23px;background:#101821;
+}
+.grapes-main-rail > button {
+  display:grid;place-items:center;min-width:0;min-height:51px;
+  width:100%;padding:0;color:#9bb2c0;background:transparent;
+  border:1px solid transparent;border-radius:17px;cursor:pointer;
+}
+.grapes-main-rail > button[aria-current="page"] {
+  color:#3bdcf2;background:#1b3541;border-color:#477a88;
+  box-shadow:inset 0 -2px 0 rgb(59 220 242 / 55%);
+}
+.grapes-main-rail > button:focus-visible {outline:2px solid #3bdcf2;outline-offset:1px;}
+.grapes-main-rail svg, .grapes-main-rail .mobile-icon {width:22px;height:22px;display:block;}
+.grapes-main-rail > .icon-btn--settings {
+  box-shadow:none;font-size:inherit;
+}
+.grapes-main-rail > .icon-btn--settings:not([aria-current="page"]) {
+  color:#9bb2c0;background:transparent;border-color:transparent;
+}
+.grapes-start-page h1 {font-size:24px;letter-spacing:-.035em;line-height:1.2;}
+.grapes-favorite-actions {display:flex;justify-content:flex-end;margin:0 0 12px;}
+.grapes-favorite-actions button, .grapes-favorite-picker button {
+  min-height:44px;padding:6px 13px;border:1px solid #3a6372;border-radius:13px;
+  background:#173440;color:#9eeef6;font-size:13px;font-weight:700;
+}
+.grapes-favorite-actions button span {font-size:20px;vertical-align:middle;}
+.grapes-favorite-picker {display:grid;gap:8px;padding:12px;margin-bottom:12px;border:1px solid #294856;border-radius:14px;background:#101d27;}
+.grapes-favorite-picker[hidden] {display:none;}
+.grapes-favorite-picker label {color:var(--muted);font-size:12px;}
+.grapes-favorite-picker select {width:100%;min-width:0;min-height:44px;padding:8px;border:1px solid #365767;border-radius:12px;background:#142630;color:var(--text);}
+.grapes-favorite-grid {display:grid;gap:10px;min-width:0;}
+.grapes-favorite-card {
+  display:grid;grid-template-columns:minmax(0,1fr) 46px;align-items:center;
+  min-height:82px;background:linear-gradient(150deg,#14232d,#101821);
+  border:1px solid #2d4d5b;border-radius:19px;overflow:hidden;
+}
+.grapes-favorite-open {display:grid;grid-template-columns:42px minmax(0,1fr);
+  grid-template-rows:auto auto;column-gap:12px;align-content:center;
+  min-height:80px;min-width:0;padding:10px 12px;text-align:left;color:var(--text);
+  border:0;background:none;cursor:pointer;}
+.grapes-favorite-icon {grid-row:1/3;align-self:center;width:32px;height:32px;color:#3bdcf2;}
+.grapes-favorite-open span {min-width:0;font-size:15px;font-weight:750;overflow-wrap:anywhere;}
+.grapes-favorite-open small {margin-top:5px;color:var(--muted);font-size:11px;}
+.grapes-favorite-unpin {width:44px;height:44px;border:0;background:transparent;color:#a8c5ce;font-size:24px;cursor:pointer;}
+.grapes-favorite-card:has(.grapes-favorite-unpin) .grapes-favorite-unpin:hover{color:var(--accent);}
+.grapes-favorite-card:has(.grapes-favorite-unpin) .grapes-favorite-unpin:focus-visible,
+.grapes-favorite-open:focus-visible {outline:2px solid var(--accent);outline-offset:-3px;}
+.grapes-favorite-card:not(:has(.grapes-favorite-unpin)) {grid-template-columns:1fr;}
+.grapes-favorite-empty {color:var(--muted);font-size:13px;}
+.grapes-start-all {margin-top:18px;}
+.grapes-start-all summary {cursor:pointer;color:var(--muted);min-height:44px;font-size:13px;font-weight:750;display:flex;align-items:center;}
+.grapes-start-all .hub-grid {grid-template-columns:1fr;gap:8px;}
+.grapes-start-all .hub-card {
+  min-height:68px;display:grid;grid-template-columns:44px minmax(0,1fr);
+  align-items:center;padding:9px 12px;gap:10px;
+}
+.grapes-start-all .hub-card__icon {width:42px;height:42px;}
+.grapes-start-all .hub-card__icon svg {width:24px;height:24px;}
+.grapes-start-all .hub-card strong {font-size:15px;}
+.grapes-start-all .hub-card small {font-size:11px;}
+@media(max-width:350px) {
+  .grapes-main-rail {gap:2px;min-height:58px;padding:4px;border-radius:23px;}
+  .grapes-main-rail > button {min-height:46px;border-radius:14px;}
+  .grapes-main-rail svg, .grapes-main-rail .mobile-icon {width:20px;height:20px;}
+}
+
   </style>
   <link rel="stylesheet" href="../src/home/home-mobile.css">
   <link rel="stylesheet" href="../src/styles/grapes-prod-settings.css">
@@ -678,19 +750,36 @@
           <button class="appbar__home" type="button" data-nav="home" aria-label="Főmenü"><img class="appbar__logo" src="../public/grapes-mark.svg" alt=""><span class="appbar__title"><strong id="app-title">Grapes</strong><span id="app-subtitle">Helyi mód</span></span></button>
           <button class="icon-btn" data-action="search" aria-label="Keresés">⌕</button>
           <button class="icon-btn" data-notifications aria-label="Értesítések"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v14H4zM4 13h4l2 3h4l2-3h4"/></svg><span class="notification-badge" data-notifications-badge hidden>1</span></button>
-          <button class="icon-btn icon-btn--settings" type="button" data-nav="more" aria-label="Beállítások" title="Beállítások"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 2.5h4l.6 2.4 1.6.9 2.4-.7 2 3.5-1.8 1.7v1.9l1.8 1.7-2 3.5-2.4-.7-1.6.9-.6 2.4h-4l-.6-2.4-1.6-.9-2.4.7-2-3.5 1.8-1.7v-1.9L3.4 8.6l2-3.5 2.4.7 1.6-.9z"/><circle cx="12" cy="12" r="3"/></svg></button>
+          <nav class="grapes-main-rail" data-main-rail aria-label="Grapes főmodulok">
+            <button type="button" data-main-nav="start" data-nav="home" aria-label="Kezdő" title="Kezdő" aria-current="page"><span data-mobile-icon="start"></span></button>
+            <button type="button" data-main-nav="home" data-menu-group="home" aria-label="Home" title="Home"><span data-mobile-icon="household"></span></button>
+            <button type="button" data-main-nav="health" data-menu-group="health" aria-label="Health" title="Health"><span data-mobile-icon="health"></span></button>
+            <button type="button" data-main-nav="tools" data-menu-group="utility" aria-label="Tools" title="Tools"><span data-mobile-icon="utility"></span></button>
+            <button type="button" data-main-nav="finance" data-menu-group="finance" aria-label="Finance" title="Finance"><span data-mobile-icon="finance"></span></button>
+            <button class="icon-btn icon-btn--settings" type="button" data-main-nav="settings" data-nav="more" aria-label="Beállítások" title="Beállítások"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 2.5h4l.6 2.4 1.6.9 2.4-.7 2 3.5-1.8 1.7v1.9l1.8 1.7-2 3.5-2.4-.7-1.6.9-.6 2.4h-4l-.6-2.4-1.6-.9-2.4.7-2-3.5 1.8-1.7v-1.9L3.4 8.6l2-3.5 2.4.7 1.6-.9z"/><circle cx="12" cy="12" r="3"/></svg></button>
+          </nav>
         </header>
 
-        <div class="content" data-page="home">
-          <p class="eyebrow" data-home-greeting>Jó napot</p>
-          <h1>Miben segíthetünk?</h1>
-          <p class="lead">Válassz egy területet, és minden eszközöd kéznél lesz.</p>
-          <div class="hub-grid" aria-label="Grapes főmodulok">
-            <button type="button" class="hub-card" data-menu-group="home"><span class="hub-card__icon" data-module-icon="household"></span><span class="hub-card__copy"><strong>Home</strong><small>Bevásárlólista · Készletkezelő</small></span></button>
-            <button type="button" class="hub-card" data-menu-group="health"><span class="hub-card__icon" data-module-icon="health"></span><span class="hub-card__copy"><strong>Health</strong><small>Food · Receptek · Statisztika</small></span></button>
-            <button type="button" class="hub-card" data-menu-group="utility"><span class="hub-card__icon" data-module-icon="utility"></span><span class="hub-card__copy"><strong>Utility</strong><small>E-book · QR modul</small></span></button>
-            <button type="button" class="hub-card" data-menu-group="finance"><span class="hub-card__icon" data-module-icon="finance"></span><span class="hub-card__copy"><strong>Finance</strong><small>Pénzügyi napló</small></span></button>
+        <div class="content grapes-start-page" data-page="home">
+          <h1>Gyakran használt</h1>
+          <div class="grapes-favorite-actions">
+            <button type="button" data-main-shortcut-add aria-label="Modul rögzítése a kezdőlapon"><span aria-hidden="true">＋</span> Hozzáadás</button>
           </div>
+          <div class="grapes-favorite-picker" data-main-shortcut-picker hidden>
+            <label for="grapes-shortcut-choice">Modul hozzáadása</label>
+            <select id="grapes-shortcut-choice" data-main-shortcut-select aria-label="Kedvenc modul kiválasztása"></select>
+            <button type="button" data-main-shortcut-pin>Rögzítés</button>
+          </div>
+          <div class="grapes-favorite-grid" data-main-shortcut-list aria-label="Rögzített és gyakran használt modulok"></div>
+          <details class="grapes-start-all">
+            <summary>Összes főmodul</summary>
+            <div class="hub-grid" aria-label="További Grapes főmodulok">
+              <button type="button" class="hub-card" data-menu-group="home"><span class="hub-card__icon" data-module-icon="household"></span><span class="hub-card__copy"><strong>Home</strong><small>Bevásárlólista · Készletkezelő</small></span></button>
+              <button type="button" class="hub-card" data-menu-group="health"><span class="hub-card__icon" data-module-icon="health"></span><span class="hub-card__copy"><strong>Health</strong><small>Food · Receptek · Statisztika</small></span></button>
+              <button type="button" class="hub-card" data-menu-group="utility"><span class="hub-card__icon" data-module-icon="utility"></span><span class="hub-card__copy"><strong>Tools</strong><small>E-book · QR modul</small></span></button>
+              <button type="button" class="hub-card" data-menu-group="finance"><span class="hub-card__icon" data-module-icon="finance"></span><span class="hub-card__copy"><strong>Finance</strong><small>Pénzügyi napló</small></span></button>
+            </div>
+          </details>
         </div>
 
         <div class="content" data-page="hub-home" hidden>
