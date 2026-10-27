@@ -986,9 +986,10 @@ class MainActivity : ComponentActivity() {
         private const val PROD_AUTH_HOST = "grapes-prod-auth.invalid"
         private const val PROD_AUTH_ORIGIN = "https://$PROD_AUTH_HOST"
         private const val PROD_AUTH_URL = "$PROD_AUTH_ORIGIN/assets/login-auth-prod.html"
-        private const val TEST_AUTH_HOST = "grapes-test-auth.invalid"
-        private const val TEST_AUTH_ORIGIN = "https://$TEST_AUTH_HOST"
-        private const val TEST_AUTH_URL = "$TEST_AUTH_ORIGIN/assets/login-auth-test.html"
+        // Values live in the QA-only OAuth endpoint class, never alongside PROD credentials.
+        private const val TEST_AUTH_HOST = TestAuthCallback.AUTH_HOST
+        private const val TEST_AUTH_ORIGIN = TestAuthCallback.AUTH_ORIGIN
+        private const val TEST_AUTH_URL = TestAuthCallback.AUTH_URL
         private const val DRIVE_FILE_SCOPE = "https://www.googleapis.com/auth/drive.file"
         private const val DRIVE_READ_SCOPE = "https://www.googleapis.com/auth/drive.readonly"
         private const val NOTIFICATION_PREFERENCES = "grapes-notifications"
