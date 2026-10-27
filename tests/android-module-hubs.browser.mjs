@@ -37,7 +37,7 @@ try {
   await page.locator('[data-page="home"]').waitFor({ state: 'visible' })
   assert.deepEqual(await page.locator('[data-menu-group]').evaluateAll(nodes => nodes.map(x => x.dataset.menuGroup)),
     ['home', 'health', 'utility', 'finance'])
-  assert.equal(await page.locator('[data-page="home"] .hub-card__icon svg').count(), 4)
+  assert.equal(await page.locator('[data-page="home"] .hub-card__icon svg').count(), 5)
   // Approved module capsule is icon-only; the existing Health hub must
   // still expose its live Food, Recipes and Stats destinations.
   assert.equal(await page.locator('[data-main-rail] [data-menu-group="health"]').getAttribute('aria-label'),'Health')

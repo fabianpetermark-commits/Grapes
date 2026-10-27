@@ -7,11 +7,11 @@ function storage(){
   return {getItem:key=>data.get(key)||null,setItem:(key,v)=>data.set(key,v),data}
 }
 test('Approved startup only routes to existing real Grapes module destinations',()=>{
-  const expected=['food','water','recipes','stats','shopping','inventory','finance','ebook','qr','projects','sync']
+  const expected=['outdoor','food','water','recipes','stats','shopping','inventory','finance','ebook','qr','projects','sync']
   assert.deepEqual(MAIN_SHORTCUTS.map(m=>m.id),expected)
   assert.ok(MAIN_SHORTCUTS.every(m=>typeof m.label==='string'&&m.label.length>0))
-  assert.equal(MAIN_SHORTCUTS.some(m=>['plants','weather','outdoor'].includes(m.id)),false,
-    'Unimplemented Plants must never appear as functioning shortcut')
+  assert.equal(MAIN_SHORTCUTS.some(m=>['plants','weather'].includes(m.id)),false,
+    'Standalone placeholders must never appear as functioning shortcuts')
 })
 test('Default start page pins working Food and Water; manual picks persist across reloads',()=>{
   const mem=storage()
