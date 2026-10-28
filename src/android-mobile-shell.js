@@ -1475,17 +1475,8 @@ $('[data-health-recipe-open]').addEventListener('click', async event => {
   } catch(e) { showToast(e?.message || 'A receptek nem tölthetők be.') }
 })
 $$('[data-health-quick]').forEach(button => button.addEventListener('click', () => openHealthQuick(button.dataset.healthQuick)))
-// All six approved Health actions route into existing live Food/Water/Import
-// controllers. Do not initialize parallel local or cloud data stores here.
-$$('[data-health-nav]').forEach(button => button.addEventListener('click', () => {
-  const target = button.dataset.healthNav
-  if (target === 'food') openHealthFood('overview')
-  else if (target === 'water') showPage('water')
-  else if (target === 'recipes') openHealthFood('recipes')
-  else if (target === 'stats') openHealthFood('stats')
-  else if (target === 'barcode') void openHealthQuick('barcode')
-  else if (target === 'settings') showPage('health-settings', {parent:'hub-health'})
-}))
+// Health routes use the live dashboard links and bottom Quick Action dock.
+// The shared module rail's gear opens Health-specific settings in Health context.
 
 $$('[data-menu-destination]').forEach(button => button.addEventListener('click', () => {
   const destination = button.dataset.menuDestination
