@@ -28,6 +28,9 @@ if (androidModuleShell) {
   document.querySelectorAll('#ebook-app .toolbar__brand-mark, #finance-app .toolbar__brand-mark').forEach((mark) => {
     mark.src = './grapes-mark.svg'
   })
+  // Android system Back is the single top-level exit from a module.
+  const financeBack = document.querySelector('#finance-back-to-menu-btn')
+  if (financeBack) financeBack.hidden = true
 }
 
 const mobilePreviewButton = el('#pick-mobile-preview')
