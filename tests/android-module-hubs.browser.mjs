@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright-core'
@@ -35,6 +35,13 @@ try {
   page.on('pageerror', error => pageErrors.push(error.message))
   await page.goto(url, { waitUntil: 'networkidle' })
   await page.locator('[data-page="home"]').waitFor({ state: 'visible' })
+  const shellSource = readFileSync(resolve(root, 'src/android-mobile-shell.js'), 'utf8')
+  assert.doesNotMatch(shellSource, /if\\s*\\(HOME_NATIVE_QA\\s*&&\\s*page\\s*!==\\s*'household'\\)\\s*page\\s*=\\s*'household'/,
+    'Native Home family QA must not lock every other module to Home')
+  assert.match(shellSource, /if \\(mainRail\\) mainRail\\.hidden = page === 'hub-health'/,
+    'Health must use one context rail instead of two stacked icon bars')
+  assert.match(shellSource, /if \\(page === 'household'\\) \\{\\s*if \\(HOME_NATIVE_QA\\) void showTestFamilyHome/,
+    'The family ownership gate remains applied to Home itself')
   assert.deepEqual(await page.locator('[data-main-rail] [data-menu-group]').evaluateAll(nodes => nodes.map(x => x.dataset.menuGroup)),
     ['home', 'health', 'utility', 'finance', 'outdoor'])
   assert.equal(await page.locator('[data-page="home"] .hub-card__icon svg').count(), 5)
