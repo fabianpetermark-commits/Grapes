@@ -7,13 +7,13 @@ const kindName={watering:'Locsolás',wintering:'Teleltetés',note:'Megfigyelés'
 const fields={name:'Példány neve',species:'Faj / fajta',light:'Fényigény',water:'Vízigény',soil:'Talajigény',wintering:'Teleltetés',ripening:'Érés / betakarítás (saját megfigyelés)',notes:'Megjegyzés'}
 export function mountOutdoor(root,{storage=localStorage,getProfile=()=> 'local'}={}) {
   let store,profile,state,photo='',catalogId='',searchEpoch=0,weatherEpoch=0
-  root.innerHTML=\`<nav class="outdoor-rail" aria-label="Növények funkciói">
-      <button type="button" data-outdoor-view="plants" aria-label="Növényeim" title="Növényeim" aria-current="page">\${mobileIconSvg('outdoor')}</button>
-      <button type="button" data-outdoor-view="catalog" data-outdoor-action="catalog" aria-label="Növénykatalógus" title="Növénykatalógus">\${mobileIconSvg('recipe')}</button>
-      <button type="button" data-outdoor-view="tasks" aria-label="Aktuális teendők" title="Aktuális teendők">\${mobileIconSvg('shopping')}</button>
-      <button type="button" data-outdoor-view="logs" aria-label="Napló" title="Napló">\${mobileIconSvg('clock')}</button>
-      <button type="button" data-outdoor-action="add" aria-label="Új növény" title="Új növény">\${mobileIconSvg('outdoor')}</button>
-      <button type="button" data-outdoor-view="settings" aria-label="Beállítások" title="Beállítások">\${mobileIconSvg('settings')}</button>
+  root.innerHTML=`<nav class="outdoor-rail" aria-label="Növények funkciói">
+      <button type="button" data-outdoor-view="plants" aria-label="Növényeim" title="Növényeim" aria-current="page">${mobileIconSvg('outdoor')}</button>
+      <button type="button" data-outdoor-view="catalog" data-outdoor-action="catalog" aria-label="Növénykatalógus" title="Növénykatalógus">${mobileIconSvg('recipe')}</button>
+      <button type="button" data-outdoor-view="tasks" aria-label="Aktuális teendők" title="Aktuális teendők">${mobileIconSvg('shopping')}</button>
+      <button type="button" data-outdoor-view="logs" aria-label="Napló" title="Napló">${mobileIconSvg('clock')}</button>
+      <button type="button" data-outdoor-action="add" aria-label="Új növény" title="Új növény">${mobileIconSvg('outdoor')}</button>
+      <button type="button" data-outdoor-view="settings" aria-label="Beállítások" title="Beállítások">${mobileIconSvg('settings')}</button>
     </nav>
     <header class="outdoor-head"><h1 data-outdoor-title>Növényeim</h1></header>
     <p data-outdoor-status role="status" aria-live="polite"></p>
@@ -28,7 +28,7 @@ export function mountOutdoor(root,{storage=localStorage,getProfile=()=> 'local'}
       <h2>Aktuális teendők</h2><div data-outdoor-tasks></div>
     </section>
     <section data-outdoor-panel="logs" hidden><h2>Napló</h2><div data-outdoor-logs></div></section>
-    <section data-outdoor-panel="settings" hidden><h2>Beállítások</h2><p>Helyszín, időjárás és saját növénygondozási adatok.</p><button type="button" data-outdoor-action="location">Helyszín és időjárás beállítása</button><button type="button" data-outdoor-action="global-settings">Központi beállítások</button></section>\`
+    <section data-outdoor-panel="settings" hidden><h2>Beállítások</h2><p>Helyszín, időjárás és saját növénygondozási adatok.</p><button type="button" data-outdoor-action="location">Helyszín és időjárás beállítása</button><button type="button" data-outdoor-action="global-settings">Központi beállítások</button></section>`
   const $=selector=>root.querySelector(selector)
   const editor=$('[data-outdoor-editor]')
   let activeView='plants'
