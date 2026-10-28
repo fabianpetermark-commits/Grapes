@@ -99,7 +99,7 @@ export function mountOutdoor(root,{storage=localStorage,getProfile=()=> 'local'}
     try{
       const result=await readOutdoorWeather(location)
       if(epoch!==weatherEpoch||pinned!==String(getProfile()||'local'))return
-      state=store.dispatch({type:'weather',location,weather:result});weather()
+      state=store.dispatch({type:'weather',location,weather:result});weather();renderWeatherTasks()
     }catch{
       if(epoch===weatherEpoch)status('Az időjárás most nem frissíthető. '+(state.weather?'A legutóbbi, dátummal jelzett előrejelzést látod.':'A növényeid offline is használhatók.'),true)
     }
@@ -124,7 +124,6 @@ export function mountOutdoor(root,{storage=localStorage,getProfile=()=> 'local'}
         const task=state.tasks.find(t=>t.id===id)
         openForm(`<form data-outdoor-form="postpone" data-id="${id}"><h2>Teendő halasztása</h2><label>Új dátum<input type="date" name="due" required min="${addDays(task.due>localDay()?task.due:localDay(),1)}" value="${addDays(task.due>localDay()?task.due:localDay(),1)}"></label><div class="outdoor-actions"><button>Halasztás mentése</button>${cancel}</div></form>`)
       }else if(action==='task')openForm(`<form data-outdoor-form="task" data-id="${id}"><h2>Új növényteendő</h2><label>Teendő<input name="title" required maxlength="160"></label><label>Típus<select name="kind"><option value="other">Egyéb</option><option value="watering">Locsolás</option><option value="wintering">Teleltetés</option></select></label><label>Esedékesség<input type="date" name="due" value="${localDay()}" required></label><div class="outdoor-actions"><button>Mentés</button>${cancel}</div></form>`)
-      else if(action==='catalog'){$('[data-outdoor-catalog]').hidden=!$('[data-outdoor-catalog]').hidden;$('[name=query]').focus()}
       else if(action==='catalogAdd'){
         const taxon=button.catalogTaxon
         editPlant({name:taxon.name,species:taxon.scientificName,catalogId:taxon.id})
