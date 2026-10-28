@@ -397,8 +397,9 @@ html.is-grapes-android-module .finance__header .finance__eyebrow{margin-bottom:2
 html.is-grapes-android-module .finance__header-actions{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;width:100%;align-items:center}
 html.is-grapes-android-module .finance__header-actions>.btn{min-height:44px;padding-inline:12px;border-radius:12px;white-space:nowrap}
 html.is-grapes-android-module #finance-drive-save{overflow:hidden;max-width:150px;text-overflow:ellipsis}
-html.is-grapes-android-module #finance-back-to-menu-btn{width:44px;min-width:44px;padding:0;font-size:0}
-html.is-grapes-android-module #finance-back-to-menu-btn::before{content:'⌂';font-size:24px;line-height:1}
+/* The approved mobile UI has no visible Home/Back button; Android Back
+   returns to the previous Grapes shell through grapesHandleAndroidBack. */
+html.is-grapes-android-module #finance-back-to-menu-btn{display:none!important}
 html.is-grapes-android-module .finance__save-status{grid-column:1/-1;grid-row:2;width:auto;min-height:18px;font-size:12px}
 html.is-grapes-android-module .finance__main{gap:12px;width:100%;padding:12px 12px calc(94px + env(safe-area-inset-bottom))}
 html.is-grapes-android-module .finance__tabs{
