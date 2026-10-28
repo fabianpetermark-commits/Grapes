@@ -360,6 +360,10 @@ try {
     'A Finance modulon nem jelenhet meg a régi duplikált főmenüsor.')
   assert.equal(await page.locator('#finance-back-to-menu-btn').count(), 0,
     'Az Android modulban a régi Home/Főmenü gomb ne is legyen a DOM-ban.')
+  assert.equal(await page.evaluate(() => window.grapesHandleAndroidBack?.()), true,
+    'A modulból az Android rendszer-vissza művelet legyen az egyetlen kilépés.')
+  await page.waitForURL(/android-mobile-preview\.html/)
+  await page.locator('[data-page="hub-finance"]').waitFor({ state: 'visible' })
 } finally {
   await browser?.close()
   server.kill()
