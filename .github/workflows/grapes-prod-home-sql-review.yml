@@ -102,10 +102,20 @@ jobs:
           rpc_output="$(psql -v ON_ERROR_STOP=1 -At -c "SET request.jwt.claim.sub='11111111-1111-4111-8111-111111111111'; SELECT set_config('request.jwt.claims', json_build_object('sub','11111111-1111-4111-8111-111111111111','role','authenticated','is_anonymous',false)::text,false); SET ROLE authenticated; SELECT api.home_m3b_create_household('SQL review QA'); SELECT api.home_m3b_list_households(); RESET ROLE;")"
           printf '%s\n' "$rpc_output"
           echo "$rpc_output" | grep -q 'householdId'
-          household_id="$(printf '%s\\n' "$rpc_output" | sed -n 's/.*"householdId":"\\([^"]*\\)".*/\\1/p' | head -1)"
+          household_id="$(printf '%s\n' "$rpc_output" | sed -n 's/.*"householdId":"\([^"]*\)".*/\1/p' | head -1)"
           test -n "$household_id"
           invite_output="$(psql -qAt -v ON_ERROR_STOP=1 -c "SET request.jwt.claim.sub='11111111-1111-4111-8111-111111111111'; SELECT set_config('request.jwt.claims', json_build_object('sub','11111111-1111-4111-8111-111111111111','role','authenticated','is_anonymous',false)::text,false); SET ROLE authenticated; SELECT api.home_m3b_create_invite('$household_id','viewer',24)->>'inviteCode'; RESET ROLE;")"
-          invite_code="$(printf '%s\\n' "$invite_output" | grep -E '^[0-9a-f]{64}
+          invite_code="$(printf '%s\n' "$invite_output" | grep -E '^[0-9a-f]{64}$' | tail -1)"
+          test -n "$invite_code"
+          psql -v ON_ERROR_STOP=1 -c "INSERT INTO auth.users(id) VALUES ('22222222-2222-4222-8222-222222222222');"
+          viewer_output="$(psql -qAt -v ON_ERROR_STOP=1 -c "SET request.jwt.claim.sub='22222222-2222-4222-8222-222222222222'; SELECT set_config('request.jwt.claims', json_build_object('sub','22222222-2222-4222-8222-222222222222','role','authenticated','is_anonymous',false)::text,false); SET ROLE authenticated; SELECT api.home_m3b_accept_invite('$invite_code'); SELECT api.home_m3b_read_household('$household_id'); RESET ROLE;")"
+          printf '%s\n' "$viewer_output" | grep -q '"role": "viewer"'
+          if psql -qAt -v ON_ERROR_STOP=1 -c "SET request.jwt.claim.sub='22222222-2222-4222-8222-222222222222'; SELECT set_config('request.jwt.claims', json_build_object('sub','22222222-2222-4222-8222-222222222222','role','authenticated','is_anonymous',false)::text,false); SET ROLE authenticated; SELECT api.home_m3b_compare_and_swap('$household_id','33333333-3333-4333-8333-333333333333',0,'{}'::jsonb); RESET ROLE;" >/tmp/viewer-cas.log 2>&1; then
+            echo '::error::viewer unexpectedly wrote to Home'
+            exit 1
+          fi
+          grep -qi 'no household write permission' /tmp/viewer-cas.log
+          if psql -v ON_ERROR_STOP=1 -At -c "SET ROLE anon; SELECT api.home_m3b_list_households();" >/tmp/anon-rpc.log 2>&1; then
             echo '::error::anon unexpectedly executed a Home RPC'
             exit 1
           fi
