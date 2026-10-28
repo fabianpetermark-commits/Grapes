@@ -606,6 +606,36 @@
 
 
 
+
+    /* Approved Tools home: live E-book continuation and direct QR widget. */
+    .tools-home {display:grid;align-content:start;gap:13px;padding-bottom:calc(108px + env(safe-area-inset-bottom))}
+    .tools-home__title {margin:0 0 1px;font-size:24px;letter-spacing:-.035em}
+    .tools-widget {min-width:0;padding:14px;background:#101821;border:1px solid #293e4c;border-radius:19px;position:relative}
+    .tools-widget::before {content:"";position:absolute;top:0;left:14px;width:42%;height:1px;background:linear-gradient(90deg,#3bdcf2a8,#3bdcf224,transparent)}
+    .tools-widget__head {display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+    .tools-widget__head h2 {margin:0;font-size:17px;letter-spacing:-.02em}
+    .tools-widget__head button,.tools-actions button,.tools-quick-actions button,.tools-book-continue,.tools-qr-recent button {min-height:42px;padding:9px 12px;color:#f2f7fb;background:#17222e;border:1px solid #314654;border-radius:12px;font-size:12px;font-weight:700}
+    .tools-widget__hint,.tools-empty {color:#94a5b8;font-size:12px;line-height:1.5}
+    .tools-book-feature {display:grid;grid-template-columns:76px minmax(0,1fr);gap:13px;align-items:center;min-width:0}
+    .tools-book-feature .book-cover {width:76px;height:104px;border-radius:10px}
+    .tools-book-feature__copy {display:grid;gap:5px;min-width:0}
+    .tools-book-feature__copy strong {font-size:15px;line-height:1.3;overflow-wrap:anywhere}
+    .tools-book-feature__copy span {font-size:11px;color:#94a5b8}
+    .tools-book-progress {height:4px;background:#243343;border-radius:99px;overflow:hidden}
+    .tools-book-progress i {display:block;height:100%;background:#3bdcf2;border-radius:99px}
+    .tools-book-continue,.tools-primary {color:#041014!important;background:#3bdcf2!important;border-color:#3bdcf2!important}
+    .tools-book-continue {width:100%;margin-top:12px}
+    .tools-qr-form label {display:grid;gap:7px;color:#94a5b8;font-size:12px}
+    .tools-qr-form input {width:100%;min-width:0;min-height:46px;padding:10px 12px;color:#f2f7fb;background:#17222e;border:1px solid #314654;border-radius:12px}
+    .tools-actions {display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .tools-actions button {flex:1 1 110px}
+    .tools-qr-recent {margin-top:12px}
+    .tools-qr-recent button {width:100%;text-align:left}
+    .tools-quick-actions {position:sticky;bottom:calc(8px + env(safe-area-inset-bottom));z-index:3;display:flex;gap:5px;align-items:center;padding:5px;background:#101821;border:1px solid #2c4a58;border-radius:22px;box-shadow:0 8px 25px #0008}
+    .tools-quick-actions button {flex:1;min-width:0;min-height:43px;padding:7px 4px;font-size:11px;border-color:transparent;background:transparent}
+    .tools-quick-actions .tools-quick-add {flex:0 0 48px;border-radius:50%;color:#041014;background:#3bdcf2;border-color:#3bdcf2;font-size:12px}
+    @media(max-width:350px){.tools-home{padding-left:12px;padding-right:12px}.tools-book-feature{grid-template-columns:64px minmax(0,1fr);gap:9px}.tools-book-feature .book-cover{width:64px;height:92px}.tools-quick-actions button{font-size:10px}}
+
     /* Approved Health v1.2: six outlined SVG actions with one compact capsule. */
     .health-top-rail { flex:0 0 100%;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:3px;
       align-items:center;margin:8px 0 14px;padding:5px;border:1px solid #345362;
@@ -883,14 +913,27 @@
           </section>
         </div>
 
-        <div class="content" data-page="hub-utility" hidden>
-          <button type="button" class="hub-back" data-menu-back>‹ Főmenü</button>
-          <p class="eyebrow">Tools</p><h1>Eszközök</h1>
-          <p class="lead">Könyvtár és QR Stúdió, a meglévő funkciókkal.</p>
-          <div class="hub-options" aria-label="Utility almodulok">
-            <button type="button" class="hub-option" data-menu-destination="ebook"><span class="hub-option__icon" data-module-icon="ebook"></span><strong>E-book</strong></button>
-            <button type="button" class="hub-option" data-menu-destination="qr"><span class="hub-option__icon" data-module-icon="qr"></span><strong>QR modul</strong></button>
-          </div>
+        <div class="content tools-home" data-page="hub-utility" hidden>
+          <h1 class="tools-home__title">Tools</h1>
+          <section class="tools-widget" aria-labelledby="tools-book-title">
+            <div class="tools-widget__head"><h2 id="tools-book-title">E-book</h2><button type="button" data-tools-book-library>Könyvtár</button></div>
+            <div data-tools-book-content><p class="tools-empty">A könyvtár adatainak ellenőrzése…</p></div>
+            <button type="button" class="tools-book-continue" data-tools-book-continue hidden>Olvasás folytatása</button>
+          </section>
+          <section class="tools-widget" aria-labelledby="tools-qr-title">
+            <div class="tools-widget__head"><h2 id="tools-qr-title">QR Stúdió</h2><span class="tools-widget__hint">Valódi QR-szerkesztő</span></div>
+            <form class="tools-qr-form" data-tools-qr-form>
+              <label>Link vagy szöveg<input type="text" data-tools-qr-input maxlength="2000" placeholder="https://pelda.hu vagy saját szöveg"></label>
+              <div class="tools-actions"><button type="submit" class="tools-primary">QR szerkesztése</button><button type="button" data-tools-qr-new>Új QR</button></div>
+            </form>
+            <div class="tools-qr-recent" data-tools-qr-projects><p class="tools-empty" data-tools-qr-empty>Még nincs mentett QR-projekt ezen az eszközön.</p><button type="button" data-tools-qr-project-edit hidden>Legutóbbi QR-projekt szerkesztése</button></div>
+          </section>
+          <nav class="tools-quick-actions" aria-label="Tools gyorsműveletek">
+            <button type="button" data-tools-action="continue" hidden>Folytatás</button>
+            <button type="button" data-tools-action="library">Könyv</button>
+            <button type="button" data-tools-action="transfer">Átvitel</button>
+            <button type="button" class="tools-quick-add" data-tools-qr-new>Új QR</button>
+          </nav>
         </div>
 
         <div class="content" data-page="hub-finance" hidden>
