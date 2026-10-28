@@ -470,7 +470,6 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   const mainRail = $('[data-main-rail]')
   if (mainRail) mainRail.hidden = HOME_NATIVE_QA
   const currentMain =
-    page === 'home' ? 'start' :
     page === 'household' || page === 'hub-home' ? 'home' :
     page === 'outdoor' ? 'outdoor' :
     ['hub-health','health-settings','food','water','samsung-water'].includes(page) ? 'health' :
