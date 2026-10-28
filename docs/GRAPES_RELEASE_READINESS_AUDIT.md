@@ -24,7 +24,7 @@ Source of truth: `codex/android-app` plus the unmerged UI fixes in PR #218. This
 2. Run `npm test` and `npm run build:android-web` on the exact source commit selected for release.
 3. Build the Android assets into the APK from that same commit. Verify package ID, version code/name, APK SHA-256 and signing certificate against the intended release key.
 4. Install the new build **over the existing installation** on the phone. Do not clear app data or uninstall; existing local Home, Food, Finance and Water data must remain.
-5. On the phone verify: one main-menu row only on the main screen; Android Back exits a module; Tools opens E-book and QR; Outdoor opens Növényeim, catalogue, weather/task sections; Finance opens with all five tabs and no blank screen; Settings actions open their real destinations.
+5. On the phone verify: one global six-icon rail only (no duplicated in-module rail); Android Back exits a standalone module; Tools opens E-book and QR; Outdoor opens Növényeim, catalogue, weather/task sections; Finance opens with all five tabs and no blank screen; Settings actions open their real destinations.
 6. Re-test Home: shopping, inventory and evidence-only suggestions; confirm “Megvettem” does not silently add inventory; confirm unknown stock is not presented as confirmed missing.
 7. Re-test Health Connect read/write/permission revocation with explicit consent. Direct Samsung Health SDK is a separate gate and cannot pass using the stub adapter.
 8. Test Google/Drive OAuth with the actual configured Android client. A web browser test cannot prove Android OAuth registration.
