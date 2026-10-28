@@ -327,7 +327,7 @@ try {
   assert.equal((await page.locator('[data-water-total]').textContent()).replace(/\s/g, ''), '550ml')
   await page.screenshot({ path: 'mobile-water.png', fullPage: true })
 
-  await page.locator('.appbar [data-nav="home"]').click()
+  await backToHome(page)
   await page.locator('[data-menu-group="utility"]').click()
   await page.locator('[data-page="hub-utility"] [data-menu-destination="ebook"]').click()
   await page.locator('[data-page="ebook"]').waitFor({ state: 'visible' })
