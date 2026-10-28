@@ -23,7 +23,7 @@ export function mountOutdoor(root,{storage=localStorage,getProfile=()=> 'local'}
       <section data-outdoor-catalog><h2>Növénykatalógus</h2><form data-outdoor-form="catalog"><label>Magyar vagy angol név<input name="query" required minlength="2" maxlength="100" placeholder="pl. paradicsom / tomato"></label><button>Keresés</button></form><p>Nyílt adatforrás: iNaturalist. A gondozási adatokat saját tapasztalatod alapján töltsd ki.</p><div data-outdoor-results></div></section>
     </section>
     <section data-outdoor-panel="tasks" hidden>
-      <p class="outdoor-weather-summary"><strong>Helyi időjárás</strong><span data-outdoor-weather></span><button type="button" data-outdoor-action="location">Helyszín és időjárás</button></p>
+      <p class="outdoor-weather-summary"><strong>Helyi időjárás</strong><span data-outdoor-weather></span></p>
       <div data-outdoor-weather-tasks></div>
       <h2>Aktuális teendők</h2><div data-outdoor-tasks></div>
     </section>
