@@ -255,6 +255,9 @@ if (androidModuleShell) {
 document.addEventListener('grapes:open-main-menu', goToMainMenu)
 
 if (hasEbookPair) showScreen('ebook')
+// A native Android shell already owns authentication. Standalone module routes
+// must not fall through to the separate Google Drive login screen.
+else if (androidApp && androidModuleShell && requestedScreen) showScreen(requestedScreen)
 else if (isGrapesDriveConnected() || isLocalMode()) showAuthenticatedStart()
 else showLogin()
 
