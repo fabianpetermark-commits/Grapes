@@ -468,9 +468,9 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   $$('[data-page]').forEach(node => { node.hidden = node.dataset.page !== page })
   $$('[data-nav]').forEach(node => node.classList.toggle('is-active', node.dataset.nav === page))
   const mainRail = $('[data-main-rail]')
-  // The six-icon module picker belongs to the main screen only. Modules keep
-  // their own controls; Android Back returns to the previous hub/home.
-  if (mainRail) mainRail.hidden = HOME_NATIVE_QA || page !== 'home'
+  // Keep exactly one global six-icon rail across the shell. Legacy module
+  // pages must not inject a second copy of this navigation.
+  if (mainRail) mainRail.hidden = HOME_NATIVE_QA
   const currentMain =
     page === 'home' ? 'start' :
     page === 'household' || page === 'hub-home' ? 'home' :
