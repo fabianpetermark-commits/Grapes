@@ -352,7 +352,11 @@ try {
   await page.locator('[data-main-module-link="finance"]').click()
   await page.locator('[data-page="hub-finance"]').waitFor({ state: 'visible' })
   await page.locator('[data-menu-destination="finance"]').click()
-  await page.waitForURL(/\/index\.html\?module=finance/)
+  await page.waitForURL(url => url.pathname.endsWith('/index.html') &&
+    url.searchParams.get('module') === 'finance' &&
+    url.searchParams.get('android-shell') === '1')
+  assert.equal(new URL(page.url()).searchParams.get('android-shell'), '1',
+    'A Finance belépési útvonalnak az Android-shell módot kell használnia.')
   await page.locator('#finance-app .finance__header h1').waitFor({ state: 'visible' })
   assert.equal(await page.locator('#finance-app [data-finance-tab]').count(), 5,
     'A Finance modulnak mind az öt nézetfüle betöltődik, nem maradhat üres/fehér képernyő.')
