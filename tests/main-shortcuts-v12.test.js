@@ -7,7 +7,7 @@ function storage(){
   return {getItem:key=>data.get(key)||null,setItem:(key,v)=>data.set(key,v),data}
 }
 test('Approved startup only routes to existing real Grapes module destinations',()=>{
-  const expected=['outdoor','food','water','recipes','stats','shopping','inventory','finance','ebook','qr','projects','sync']
+  const expected=['home','outdoor','food','water','recipes','stats','shopping','inventory','finance','ebook','qr','projects','sync']
   assert.deepEqual(MAIN_SHORTCUTS.map(m=>m.id),expected)
   assert.ok(MAIN_SHORTCUTS.every(m=>typeof m.label==='string'&&m.label.length>0))
   assert.equal(MAIN_SHORTCUTS.some(m=>['plants','weather'].includes(m.id)),false,
