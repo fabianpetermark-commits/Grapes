@@ -348,6 +348,7 @@ try {
   // Exercise the real Finance entry route from the mobile shell. A blank white
   // module is a release blocker, so assert its main content and tab controls.
   await backToHome(page)
+  await page.locator('[data-page="home"] .grapes-start-all summary').click()
   await page.locator('[data-main-module-link="finance"]').click()
   await page.locator('[data-page="hub-finance"]').waitFor({ state: 'visible' })
   await page.locator('[data-menu-destination="finance"]').click()
