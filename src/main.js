@@ -259,7 +259,15 @@ if (androidModuleShell && ['qr','ebook'].includes(requestedScreen)) {
     button.type = 'button'; button.setAttribute('aria-label',label)
     button.innerHTML = mobileIconSvg(icon)
     if (page === 'hub-utility') button.setAttribute('aria-current','page')
-    button.addEventListener('click', () => navigateMobile(page))
+    button.addEventListener('click', () => {
+      if (page === 'hub-finance') {
+        const target = new URL('./index.html', location.href)
+        target.searchParams.set('module', 'finance')
+        target.searchParams.set('android-shell', '1')
+        target.searchParams.set('return-page', 'home')
+        location.href = target.href
+      } else navigateMobile(page)
+    })
     nav.append(button)
   }
   document.querySelector('#'+requestedScreen+'-app .toolbar').after(nav)
