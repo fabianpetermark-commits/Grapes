@@ -324,6 +324,7 @@ try {
   await page.locator('[data-tools-qr-input]').fill('https://example.com/grapes-test')
   await page.locator('[data-tools-qr-form] button[type="submit"]').click()
   await page.locator('#qr-app:not(.hidden)').waitFor({ state: 'visible' })
+  await page.waitForFunction(() => document.querySelector('#qr-url')?.value === 'https://example.com/grapes-test')
   assert.equal(await page.locator('#qr-url').inputValue(), 'https://example.com/grapes-test', 'Tools must pass explicit input into the real QR editor.')
   await page.locator('#qr-back-to-menu-btn').click()
   await page.locator('[data-page="hub-utility"] [data-tools-book-library]').waitFor({ state: 'visible' })
