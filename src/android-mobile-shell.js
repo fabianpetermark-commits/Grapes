@@ -1060,7 +1060,7 @@ function showApp() {
   renderAccount()
   let route
   try { route = sessionStorage.getItem('grapes-mobile-return-page'); sessionStorage.removeItem('grapes-mobile-return-page') } catch {}
-  const allowed = ['home','household','hub-health','hub-utility','hub-finance','ebook','sync','projects','more']
+  const allowed = ['home','household','hub-health','hub-utility','outdoor','ebook','sync','projects','more']
   showPage(allowed.includes(route) ? route : 'home', {parent: route === 'ebook' ? 'hub-utility' : ''})
   renderProjects()
 }
@@ -1448,7 +1448,7 @@ $$('[data-menu-group], [data-main-module-link]').forEach(button => button.addEve
 }))
 $$('[data-menu-back]').forEach(button => button.addEventListener('click', () => showPage('home')))
 
-$('[data-health-settings-back]').addEventListener('click', () => showPage('hub-health'))
+$('[data-health-settings-back]')?.addEventListener('click', () => showPage('hub-health'))
 $('[data-health-section-back]').addEventListener('click', showHealthSettingsIndex)
 $$('[data-health-section]').forEach(button => button.addEventListener('click', () => showHealthSettingsSection(button.dataset.healthSection)))
 $('[data-health-settings-content]').addEventListener('click', event => {
