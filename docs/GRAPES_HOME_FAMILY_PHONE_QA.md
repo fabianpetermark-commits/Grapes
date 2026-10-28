@@ -1,43 +1,32 @@
-# Grapes Egységes Otthon — v50 TEST APK telefonos elfogadási próba
+# Egységes Otthon – telefonos TEST APK ellenőrzőlista (#190)
 
-**Állapot: TELEFONON NOT RUN (2026-10-27).** Az APK natív és teljes böngészős tesztkapui **14/14 PASS** a #192 PR-en; a Codex #190/#193 által felfedezett két késői CAS/read_attempt fiókváltási hibát a #192 branchben kijavítottuk, a böngészős fullchain teszt PASS. **A telefonos működés még nem igazolt.**
+Állapot: **NOT RUN**. Ezt a listát a későbbi natív integráció TEST APK-jával kell végrehajtani. Az alap A/B családmegosztást a felhasználó korábban telefonon már sikeresen ellenőrizte; ez a lista a kibővített regresszióhoz készült, nem állít új telefonos eredményt. PROD fiókot/adatbázist ne használj.
 
-## Ellenőrzött TESZT-csomag
+## Telepítés és azonosítás
 
-- Forrás: `codex/android-app`, PR **#192**, squash commit `111bd141b78d4825a25428fe3116d04d89e018cf`; APK az eredeti QA head `da3d3ef989a02c556fcdb76ae98d41453cb712ea` commiton épült.
-- GitHub Actions: https://github.com/fabianpetermark-commits/Grapes/actions/runs/40544521094
-- Artifact: `grapes-one-home-v50-signed-test-only` (`grapes-one-home-v50-test-signed.apk`, `grapes-one-home-v50-test-signed.apk.sha256`). A workflow hét napig őrzi az artifactot (2026-11-03-ig).
-- APK SHA-256: `18f3c96c43f0da1f3da8c644a2d526131e2f2c09c10ad0c2a21493d9a779a915` — a letöltött ZIP-ből visszaellenőrizve.
-- Android package: `hu.grapes.healthconnect.test`; `versionCode=50`; a CI az aláíró SHA-256 tanúsítványt a meglévő TEST kulcshoz egyeztette: `cc9dc997fa4bff3845884afd2f011efe939c02806f91393a1ddb0455b6a2ff33`.
-- Csak a Supabase **TEST** projekt: `aighqtqjlzirlokxwupt`. A PROD Supabase: `yopabovoxyffhokhbgxl`, **tilos érinteni**. A telefonon végzett családi tesztek valódi TEST-adatmódosításokat hajtanak végre, csak a már ismert tesztfiókokkal és háztartással végezd.
+- [ ] Rögzítsd: tesztelő, dátum, telefon/Android-verzió, APK forrása, Git commit, TEST projekt, A/B tesztfiók és háztartás azonosítója (jelszó/JWT nélkül).
+- [ ] A kiadó által átadott APK SHA-256: `sha256sum TEST.apk` (Windows: `Get-FileHash TEST.apk -Algorithm SHA256`). Vesd össze a kiadó ellenőrzőösszegével.
+- [ ] Android SDK: `apksigner verify --verbose --print-certs TEST.apk`. Jegyezd fel az aláíró SHA-256 tanúsítványujjlenyomatát; egyezzen a telepített TEST változat kiadó által igazolt tanúsítványával.
+- [ ] `aapt dump badging TEST.apk`: ellenőrizd a `package: name`, `versionCode`, `versionName` értékeit; egyezzenek a TEST kiadási adatokkal, a verziókód ne legyen visszalépés.
+- [ ] A telefonon a Beállítások → Alkalmazások alatt ellenőrizd a meglévő TEST app verzióját. A csomagazonosító a kiadó által átadott TEST azonosító legyen; ne találgasd.
+- [ ] **A meglévő TEST app fölé telepíts**, például `adb install -r TEST.apk`. Ne töröld az appot, ne töröld az adatait, ne használj downgrade kapcsolót. Aláírás/csomaghiba esetén állj meg és jegyezd fel; ne kerüld meg adattörléssel.
 
-## Előkészítés és frissítés
+## Felhasználói próba két TEST fiókkal
 
-1. Jegyezd fel az előző TEST appban meglévő Home / Food / Finance / Health adatokból néhány nem érzékeny kontrolltétel nevét. Ne készíts képernyőképet jelszóról vagy bearer tokenről.
-2. Töltsd le a fenti workflow **TEST APK** artifactját, és ellenőrizd a hash értéket (Linux/macOS: `sha256sum grapes-one-home-v50-test-signed.apk`; Windows: `Get-FileHash .\grapes-one-home-v50-test-signed.apk -Algorithm SHA256`).
-3. Opcionális Android SDK ellenőrzés: `apksigner verify --print-certs grapes-one-home-v50-test-signed.apk`, `aapt dump badging grapes-one-home-v50-test-signed.apk`; ellenőrizd a fenti tanúsítványt, csomagazonosítót és verziót.
-4. **A meglévő Grapes TEST alkalmazás fölé telepítsd** (Android fájlkezelő vagy `adb install -r grapes-one-home-v50-test-signed.apk`). **Ne töröld az alkalmazást, ne töröld az adatait és ne engedélyezz downgrade-et.** Ha aláírás vagy csomagazonosító eltérés miatt hibázik, állj meg és jelezd; ne oldd meg adattörléssel.
-5. Az éles Grapes alkalmazás nem célpontja ennek a tesztnek.
+| Próba | Lépés és elvárt eredmény | Eredmény / bizonyíték |
+| --- | --- | --- |
+| Adatmegőrzés | Frissítés előtt és után ugyanazok a személyes v1, Food, Finance és Health adatok. Írd fel néhány ismert tétel nevét/darabszámát. | NOT RUN |
+| Egységes Otthon | Egy Otthon, állandó Bevásárlás/Készlet/Javaslatok szekció, nincs Saját/Közös kapcsoló vagy külön Kimenő üzenetek képernyő. | NOT RUN |
+| A/B közös adat | A és B ugyanannak a TEST családnak tagja. A közös listaelem és revízió B-nél is megjelenik. Személyes v1 tétel nem kerül közéjük. Csak ellenőrzött állapot zöld. | NOT RUN |
+| Tartós offline művelet | A: repülő mód, új listaelem → „1 módosítás várakozik”. App háttérbe, bezárás és újranyitás; ugyanaz a tétel várakozik, nem duplázódik. | NOT RUN |
+| Automatikus folytatás | Repülő mód ki → előtérbe vissza → „Szinkronizálva”. B-nél egyetlen példány és új revízió látszik. Többszöri hálózatváltás sem dupláz. | NOT RUN |
+| A→B→A | A offline javaslata mellett válts B-re: A korábbi képernyőadata és várakozó javaslata nem látható. A-ra visszatérve a saját javaslat megmarad. Ugyanazon család igazolt közös adatai B-nél természetesen láthatók. | NOT RUN |
+| Lassú válasz közbeni váltás | Korlátozott hálózat mellett indíts mentést, közben válts A-ról B-re. A régi válasza nem jelenítheti meg A javaslatát B alatt. **A böngészős QA jelenleg itt NO-GO hibát mutat; javítás után kötelező újramérni.** | NOT RUN |
+| Jogosultság | Owner/editor tud módosítani. Viewer látja a közös adatot, de nem adhat hozzá, nem szerkeszthet és nem jelölhet vásároltnak. | NOT RUN |
+| Hálózati hiba | Megszakított mentés után nincs hamis zöld státusz. A javaslat megmarad, az „Újrapróbálás” elérhető, későbbi siker nem dupláz. | NOT RUN |
+| Tudatos konfliktus | A offline javaslatot készít; B online módosítja ugyanazt a revíziót. A online lesz → ütközés, javaslat megmarad, nincs automatikus felülírás. Rögzítsd a javaslatot és kérj kézi egyeztetést; a jelenlegi QA nem igazol kész konfliktusfeloldó UI-t. | NOT RUN |
+| Megvettem | Rögzítsd a készletet. Egy listatételnél „Megvettem” → elintézett listaelem, a készlet neve/mennyisége nem változik. | NOT RUN |
+| Ismeretlen mennyiség | Mennyiség nélküli listaelem nem készlet és nem igazolt hiány. Csak kézzel megerősített nulla készletből lehet hiányjavaslat. | NOT RUN |
+| Mobil / akadálymentesség | Keskeny kijelzőn és nagyított betűvel nincs vízszintes túlnyúlás; a kis szinkronjelzés és az Újrapróbálás olvasható/kezelhető. TalkBack felolvassa a státuszváltozást. | NOT RUN |
 
-## A/B, offline és biztonság — kézi ellenőrzések
-
-| # | Teendő | PASS feltétel | Eredmény |
-| --- | --- | --- | --- |
-| 1 | Nyisd meg a TEST appot, jelentkezz be az **A** Grapes TEST-fiókkal | A fiók hitelesített; a közös Otthonon **Bevásárlás, Készlet, Javaslatok** működik, nincs Saját/Közös vagy külön outbox menü | NOT RUN |
-| 2 | Ha A több családi háztartás tagja, válaszd ki a közöset | Nem nyit meg tetszőleges másik háztartást; a választott család listája látható | NOT RUN |
-| 3 | A létrehoz egy egyedi nevű listaelemet (pl. `v50 QA tej 2 l`) | „Szinkronizálva”, elem egyszer szerepel, készlet változatlan | NOT RUN |
-| 4 | Lépj át a **B** TEST-fiókra; nyisd meg ugyanazt a családi Otthont | A új eleme B-nél látható; B saját korábbi képernyő- és outbox-adatai nem keverednek A személyes adataival | NOT RUN |
-| 5 | B változtasson egy másik listaelemen, A frissítse a Home-ot | A B módosítását látja, külön fiókok közös családi adata működik | NOT RUN |
-| 6 | A-val kapcsold be a repülő módot, vegyél fel egy új listaelemet | „1 módosítás várakozik”, a módosítás látható; nincs hamis szinkronizálva állapot | NOT RUN |
-| 7 | Tedd háttérbe / indítsd újra a TEST appot ugyanazzal az A-fiókkal, még offline | Az offline művelet megmaradt; nincs duplikáció; ha a bejelentkezés online megújítást kér, a pending állapot ellenőrzéséig ne töröld a tárolót | NOT RUN |
-| 8 | Kapcsold vissza a hálózatot, nyisd előtérbe az appot | A műveletet egyszer szinkronizálja, „Szinkronizálva”; B-nél egyetlen új elem jelenik meg | NOT RUN |
-| 9 | A offline pending módosítása mellett válts A→B→A fiókot | B alatt A függő javaslata nem látszik; A-ba visszatérve a saját pending művelet megmarad | NOT RUN |
-| 10 | Mentés közben, késleltetett internetnél válts A-ról B-re | Sem a CAS, sem a `read_attempt` késve érkező válasza nem mutathatja A védett adatait B alatt; ezt a Codex korábban reprodukálta, a #192 javította browser teszttel | NOT RUN |
-| 11 | A offline módosítás mellett B módosítsa a közös revíziót, majd A kapcsolódjon vissza | „Ütközés”: nincs automatikus felülírás, a függő javaslat megmarad; nincs garantált automatikus konfliktusfeloldás | NOT RUN |
-| 12 | Jelölj `Megvettem`-ként egy listaelemet | Az elem állapota megváltozik, de a készletbe **nem** kerül automatikusan | NOT RUN |
-| 13 | Ellenőrizd a régi kontrolltételeket a frissítés előtt/után | A PROD app és a meglévő Food, Finance, Health adatok nem sérültek; a személyes Home v1 nem kerül a családi v2-be engedély nélkül | NOT RUN |
-| 14 | Keskeny kijelző / nagy betű / TalkBack | Nincs vízszintes túlnyúlás, a kis szinkronstátusz kezelhető és felolvasható | NOT RUN |
-
-**Tesztjegyzőkönyv:** minden tételnél jelöld PASS/FAIL/NOT RUN, röviden írd le a várt/tényleges eredményt, és ahol releváns, rögzíts képernyőképet a Home-ról. Személyes adatot és jelszót ne másolj a PR-be. A régi alkalmazás adatait a teszt kedvéért ne töröld.
-
-**GO/NO-GO:** ez a v50 a sikeres CI ellenére továbbra is csak **TEST jelölt**. A natív telefonos A/B, offline visszaszinkron és a fiókváltási adatelrejtés bizonyítása után lehet PROD-release jelöltről dönteni. Nem történt PROD-adatbázis-migráció vagy PROD APK-kiadás.
+Minden sorhoz PASS/FAIL/NOT RUN, időpont, képernyőkép és a tényleges revízió kerüljön. Hibánál írd le a lépéseket és a várt/tényleges eredményt; ne töröld a függő javaslatot és ne ismételd új műveletként a bizonytalan mentést. Személyes adatot, jelszót és tokent ne csatolj. APK-készítés, aláírás és kiadás nem része ennek a QA-feladatnak.
