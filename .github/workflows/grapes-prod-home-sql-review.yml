@@ -124,22 +124,3 @@ jobs:
             exit 1
           fi
           echo 'PASS: isolated SQL syntax, RLS/ACL checks and authenticated RPC path. No Supabase project or PROD database contacted.'
- | tail -1)"
-          test -n "$invite_code"
-          psql -v ON_ERROR_STOP=1 -c "INSERT INTO auth.users(id) VALUES ('22222222-2222-4222-8222-222222222222');"
-          viewer_output="$(psql -qAt -v ON_ERROR_STOP=1 -c "SET request.jwt.claim.sub='22222222-2222-4222-8222-222222222222'; SELECT set_config('request.jwt.claims', json_build_object('sub','22222222-2222-4222-8222-222222222222','role','authenticated','is_anonymous',false)::text,false); SET ROLE authenticated; SELECT api.home_m3b_accept_invite('$invite_code'); SELECT api.home_m3b_read_household('$household_id'); RESET ROLE;")"
-          printf '%s\\n' "$viewer_output" | grep -q '"role": "viewer"'
-          if psql -qAt -v ON_ERROR_STOP=1 -c "SET request.jwt.claim.sub='22222222-2222-4222-8222-222222222222'; SELECT set_config('request.jwt.claims', json_build_object('sub','22222222-2222-4222-8222-222222222222','role','authenticated','is_anonymous',false)::text,false); SET ROLE authenticated; SELECT api.home_m3b_compare_and_swap('$household_id','33333333-3333-4333-8333-333333333333',0,'{}'::jsonb); RESET ROLE;" >/tmp/viewer-cas.log 2>&1; then
-            echo '::error::viewer unexpectedly wrote to Home'
-            exit 1
-          fi
-          grep -qi 'no household write permission' /tmp/viewer-cas.log
-          if psql -v ON_ERROR_STOP=1 -At -c "SET ROLE anon; SELECT api.home_m3b_list_households();" >/tmp/anon-rpc.log 2>&1; then
-            echo '::error::anon unexpectedly executed a Home RPC'
-            exit 1
-          fi
-          if psql -v ON_ERROR_STOP=1 -At -c "SET request.jwt.claim.sub='11111111-1111-4111-8111-111111111111'; SET ROLE authenticated; SELECT * FROM grapes_home_private.households;" >/tmp/direct-table.log 2>&1; then
-            echo '::error::authenticated unexpectedly selected a private Home table directly'
-            exit 1
-          fi
-          echo 'PASS: isolated SQL syntax, RLS/ACL checks and authenticated RPC path. No Supabase project or PROD database contacted.'
