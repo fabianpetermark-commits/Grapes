@@ -1,6 +1,5 @@
 import './styles/index.css'
 import { mobileIconSvg } from './android-mobile-icons.js'
-import './styles/components/mobile-module-nav.css'
 import { el } from './ui/dom.js'
 import { showScreen } from './screens.js'
 import {
