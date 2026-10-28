@@ -744,7 +744,10 @@
       .samsung-water-page button:disabled {opacity:.45;cursor:not-allowed}
     .samsung-water-page input[type=checkbox] {min-width:24px;min-height:24px}
     .samsung-water-page [data-samsung-water-availability] {color:var(--muted);font-size:13px;line-height:1.6}
-</style>
+.tools-launch-list { display:grid; gap:10px; margin-top:18px; }
+    .tools-launch-list .settings-link { width:100%; min-width:0; }
+    .hub-back { display:none !important; }
+    </style>
   <link rel="stylesheet" href="../src/home/home-mobile.css">
   <link rel="stylesheet" href="../src/styles/grapes-prod-settings.css">
 </head>
@@ -886,9 +889,9 @@
           <button type="button" class="hub-back" data-menu-back>‹ Főmenü</button>
           <p class="eyebrow">Tools</p><h1>Eszközök</h1>
           <p class="lead">Könyvtár és QR Stúdió, a meglévő funkciókkal.</p>
-          <div class="hub-options" aria-label="Utility almodulok">
-            <button type="button" class="hub-option" data-menu-destination="ebook"><span class="hub-option__icon" data-module-icon="ebook"></span><strong>E-book</strong></button>
-            <button type="button" class="hub-option" data-menu-destination="qr"><span class="hub-option__icon" data-module-icon="qr"></span><strong>QR modul</strong></button>
+          <div class="settings-list tools-launch-list" aria-label="Tools modulok">
+            <button class="settings-link" type="button" data-menu-destination="ebook"><span class="settings-link__icon" data-module-icon="ebook"></span><span><strong>E-book könyvtár</strong><small>Könyvek importálása, olvasása és kezelése</small></span><span aria-hidden="true">›</span></button>
+            <button class="settings-link" type="button" data-menu-destination="qr"><span class="settings-link__icon" data-module-icon="qr"></span><span><strong>QR és vonalkód</strong><small>QR-kód létrehozása és exportálása</small></span><span aria-hidden="true">›</span></button>
           </div>
         </div>
 
