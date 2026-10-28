@@ -2,7 +2,7 @@ name: Grapes Android TEST One Home native Auth + CAS v52 (SIGNED QA ONLY)
 
 on:
   push:
-    branches: [qa/grapes-one-home-v52-signed-phone-20261027]
+    branches: [qa/grapes-one-home-v52-signed-ui-20261028]
   pull_request:
     branches: [codex/android-app]
   workflow_dispatch:
