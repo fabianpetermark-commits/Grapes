@@ -1736,7 +1736,9 @@ window.grapesHandleAndroidBack = () => {
   if (activePage === 'outdoor' && outdoor.handleBack()) return true
   if (activePage === 'household' && household?.handleBack()) return true
   if (activePage === 'food' && menuReturnPage === 'hub-health') {
-    if (menuEntry === 'stats' && $('[data-food-stats-sheet].is-open')) { showPage('hub-health'); return true }
+    // Stats may close its full-screen sheet when the range is changed; the
+    // next Back must still return to Health, not strand the user on Food.
+    if (menuEntry === 'stats') { showPage('hub-health'); return true }
     if (menuEntry === 'recipes' && !$('[data-food-recipes-view]').hidden && !$('.bottom-sheet.is-open')) { showPage('hub-health'); return true }
   }
   if (activePage === 'food' && mobileFood?.handleBack()) return true
