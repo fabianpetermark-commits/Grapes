@@ -195,11 +195,12 @@ const labels = {
   // Never label a cloud-synced household as 'stored on this device' or repeat
   // the page title above the approved single 'Otthonunk' heading.
   household: ['Grapes', ''],
-  'hub-home': ['Home', 'Háztartás'],
-  'hub-health': ['Health', 'Napi egészségügyi áttekintés'],
-  'health-settings': ['Health', 'Modulbeállítások'],
-  'hub-utility': ['Tools', 'Eszközök'],
-  'hub-finance': ['Finance', 'Pénzügyek'],
+  outdoor: ['Növényeim', ''],
+  'hub-home': ['Home', ''],
+  'hub-health': ['Health', ''],
+  'health-settings': ['Beállítások', ''],
+  'hub-utility': ['Tools', ''],
+  'hub-finance': ['Finance', ''],
   ebook: ['E-book', 'Könyvtár'], reader: ['E-book', 'Olvasó'],
   transfer: ['E-book átvitel', 'Olvasóeszköz'],
 }
@@ -468,13 +469,15 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   $$('[data-page]').forEach(node => { node.hidden = node.dataset.page !== page })
   $$('[data-nav]').forEach(node => node.classList.toggle('is-active', node.dataset.nav === page))
   const mainRail = $('[data-main-rail]')
-  if (mainRail) mainRail.hidden = HOME_NATIVE_QA
+  // Health has its own six-icon view rail; never stack the root rail above it.
+  if (mainRail) mainRail.hidden = HOME_NATIVE_QA || page === 'hub-health'
   const currentMain =
     page === 'home' ? 'start' :
     page === 'household' || page === 'hub-home' ? 'home' :
     ['hub-health','health-settings','food','water','samsung-water'].includes(page) ? 'health' :
     ['hub-utility','ebook','reader','transfer'].includes(page) ? 'tools' :
     ['hub-finance','finance'].includes(page) ? 'finance' :
+    page === 'outdoor' ? 'outdoor' :
     ['more','sync'].includes(page) ? 'settings' : ''
   $$('[data-main-nav]').forEach(button => {
     if (button.dataset.mainNav === currentMain) button.setAttribute('aria-current','page')
@@ -1442,7 +1445,8 @@ $$('[data-menu-group], [data-main-module-link]').forEach(button => button.addEve
   const group = button.dataset.menuGroup || button.dataset.mainModuleLink
   if (group === 'outdoor') showPage('outdoor', {parent:'home'})
   else if (group === 'home') showPage('household', { parent: 'home' })
-  else if (['health', 'utility', 'finance'].includes(group)) showPage('hub-' + group)
+  else if (group === 'finance') openModule('finance')
+  else if (['health', 'utility'].includes(group)) showPage('hub-' + group)
 }))
 $$('[data-menu-back]').forEach(button => button.addEventListener('click', () => showPage('home')))
 
