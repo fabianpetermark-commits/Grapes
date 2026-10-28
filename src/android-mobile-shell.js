@@ -186,7 +186,7 @@ document.addEventListener('grapes:food-subtitle', event => {
 })
 
 const labels = {
-  outdoor: ['Outdoor','Növényeim'],
+  outdoor: ['Grapes',''],
   'samsung-water': ['Samsung Health','Víznapló-kapcsolat'],
   home: ['Grapes', 'Mobil munkaterület'], projects: ['Projektek', 'Helyi és Drive'],
   sync: ['Szinkron', 'Adatok és fiók'], more: ['Grapes', 'Beállítások'],
@@ -195,11 +195,11 @@ const labels = {
   // Never label a cloud-synced household as 'stored on this device' or repeat
   // the page title above the approved single 'Otthonunk' heading.
   household: ['Grapes', ''],
-  'hub-home': ['Home', 'Háztartás'],
-  'hub-health': ['Health', 'Napi egészségügyi áttekintés'],
+  'hub-home': ['Home', ''],
+  'hub-health': ['Health', ''],
   'health-settings': ['Health', 'Modulbeállítások'],
-  'hub-utility': ['Tools', 'Eszközök'],
-  'hub-finance': ['Finance', 'Pénzügyek'],
+  'hub-utility': ['Tools', ''],
+  'hub-finance': ['Finance', ''],
   ebook: ['E-book', 'Könyvtár'], reader: ['E-book', 'Olvasó'],
   transfer: ['E-book átvitel', 'Olvasóeszköz'],
 }
@@ -472,6 +472,7 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   const currentMain =
     page === 'home' ? 'start' :
     page === 'household' || page === 'hub-home' ? 'home' :
+    page === 'outdoor' ? 'outdoor' :
     ['hub-health','health-settings','food','water','samsung-water'].includes(page) ? 'health' :
     ['hub-utility','ebook','reader','transfer'].includes(page) ? 'tools' :
     ['hub-finance','finance'].includes(page) ? 'finance' :
@@ -1059,7 +1060,7 @@ function showApp() {
   renderAccount()
   let route
   try { route = sessionStorage.getItem('grapes-mobile-return-page'); sessionStorage.removeItem('grapes-mobile-return-page') } catch {}
-  const allowed = ['home','household','hub-health','hub-utility','hub-finance','ebook','sync','projects','more']
+  const allowed = ['home','household','outdoor','hub-health','hub-utility','hub-finance','ebook','sync','projects','more']
   showPage(allowed.includes(route) ? route : 'home', {parent: route === 'ebook' ? 'hub-utility' : ''})
   renderProjects()
 }
