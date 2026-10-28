@@ -81,9 +81,11 @@ jobs:
                        WHERE n.nspname='api' AND p.proname LIKE 'home_m3b_%' AND p.prosecdef) THEN
               RAISE EXCEPTION 'API wrappers must remain SECURITY INVOKER';
             END IF;
-            IF has_schema_privilege('anon','grapes_home_private','USAGE')
-               OR has_schema_privilege('authenticated','grapes_home_private','USAGE') THEN
-              RAISE EXCEPTION 'Private schema should not be directly usable by API roles';
+            IF has_schema_privilege('anon','grapes_home_private','USAGE') THEN
+              RAISE EXCEPTION 'anon must not use the private Home schema';
+            END IF;
+            IF NOT has_schema_privilege('authenticated','grapes_home_private','USAGE') THEN
+              RAISE EXCEPTION 'authenticated needs private-schema USAGE for SECURITY INVOKER wrappers; PostgREST must not expose this schema';
             END IF;
             IF has_table_privilege('authenticated','grapes_home_private.households','SELECT') THEN
               RAISE EXCEPTION 'Authenticated must not read private tables directly';
