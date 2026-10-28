@@ -540,6 +540,17 @@
     .settings-link:hover { border-color: rgb(59 220 242 / 35%); }
     /* Grapes main menu: navigation-only hierarchy, no module state or data changes. */
     .hub-grid, .hub-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    /* Tools is a compact launcher, not the retired oversized tile screen. */
+    .utility-launch-list { display:grid; gap:10px; margin-top:18px; }
+    .utility-launch { display:grid; grid-template-columns:48px minmax(0,1fr) auto; align-items:center; gap:13px; width:100%; min-height:78px; padding:12px 14px; color:var(--text); text-align:left; cursor:pointer; background:linear-gradient(110deg, rgb(59 220 242 / 5%), var(--surface) 44%); border:1px solid var(--line); border-radius:17px; }
+    .utility-launch__icon { display:grid; place-items:center; width:46px; height:46px; color:var(--accent); background:rgb(59 220 242 / 9%); border:1px solid rgb(59 220 242 / 20%); border-radius:14px; }
+    .utility-launch__icon svg { width:25px; height:25px; }
+    .utility-launch__copy { display:grid; gap:4px; min-width:0; }
+    .utility-launch__copy strong { font-size:14px; line-height:1.25; }
+    .utility-launch__copy small { color:var(--muted); font-size:11px; line-height:1.4; }
+    .utility-launch__arrow { color:var(--accent); font-size:20px; }
+    .utility-launch:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+    .utility-launch:active { border-color:var(--accent); }
     .hub-card, .hub-option { display: flex; flex-direction: column; align-items: flex-start; width: 100%; min-width: 0; color: var(--text); text-align: left; cursor: pointer; background: linear-gradient(155deg, var(--raised) 0%, var(--surface) 40%, var(--surface) 100%); border: 1px solid var(--line); border-radius: 21px; }
     .hub-card { min-height: 190px; justify-content: space-between; padding: 19px 15px 17px; gap: 23px; }
     .hub-card__icon, .hub-option__icon { display: grid; place-items: center; color: var(--accent); background: rgb(59 220 242 / 9%); border: 1px solid rgb(59 220 242 / 17%); border-radius: 18px; }
@@ -801,10 +812,10 @@
           </details>
         </div>
 
-        <div class="content" data-page="outdoor" hidden><button type="button" class="hub-back" data-menu-back>‹ Főmenü</button><div data-outdoor-root></div></div>
+        <div class="content" data-page="outdoor" hidden><div data-outdoor-root></div></div>
 
         <div class="content" data-page="hub-home" hidden>
-          <button type="button" class="hub-back" data-menu-back>‹ Főmenü</button>
+          
           <p class="eyebrow">Home / Háztartás</p><h1>Otthon</h1>
           <p class="lead">Bevásárlás és élelmiszerkészlet egy helyen.</p>
           <div class="hub-options" aria-label="Home almodulok">
@@ -814,7 +825,7 @@
         </div>
 
         <div class="content health-dashboard" data-page="hub-health" hidden>
-          <button type="button" class="hub-back" data-menu-back>‹ Főmenü</button>
+          
           <!-- Accepted Health v1.2 six-action rail; all actions reuse existing data-bound modules. -->
           <nav class="health-top-rail" aria-label="Health modulok">
             <button type="button" data-health-nav="food" aria-label="Food" title="Food"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3v7a4 4 0 0 0 8 0V3M8 3v18M17 3v18M17 3c4 3 4 7 0 9"/></svg></button>
@@ -883,17 +894,24 @@
         </div>
 
         <div class="content" data-page="hub-utility" hidden>
-          <button type="button" class="hub-back" data-menu-back>‹ Főmenü</button>
-          <p class="eyebrow">Tools</p><h1>Eszközök</h1>
-          <p class="lead">Könyvtár és QR Stúdió, a meglévő funkciókkal.</p>
-          <div class="hub-options" aria-label="Utility almodulok">
-            <button type="button" class="hub-option" data-menu-destination="ebook"><span class="hub-option__icon" data-module-icon="ebook"></span><strong>E-book</strong></button>
-            <button type="button" class="hub-option" data-menu-destination="qr"><span class="hub-option__icon" data-module-icon="qr"></span><strong>QR modul</strong></button>
+          
+          <p class="eyebrow">TOOLS / MODULOK</p><h1>Eszközök</h1>
+          <div class="utility-launch-list" aria-label="Tools modulok">
+            <button type="button" class="utility-launch" data-menu-destination="ebook" aria-label="E-book könyvtár">
+              <span class="utility-launch__icon" data-module-icon="ebook" aria-hidden="true"></span>
+              <span class="utility-launch__copy"><strong>E-book könyvtár</strong><small>Könyvtár, olvasó és átvitel</small></span>
+              <span class="utility-launch__arrow" aria-hidden="true">→</span>
+            </button>
+            <button type="button" class="utility-launch" data-menu-destination="qr" aria-label="QR Stúdió">
+              <span class="utility-launch__icon" data-module-icon="qr" aria-hidden="true"></span>
+              <span class="utility-launch__copy"><strong>QR Stúdió</strong><small>QR-kódok létrehozása és testreszabása</small></span>
+              <span class="utility-launch__arrow" aria-hidden="true">→</span>
+            </button>
           </div>
         </div>
 
         <div class="content" data-page="hub-finance" hidden>
-          <button type="button" class="hub-back" data-menu-back>‹ Főmenü</button>
+          
           <p class="eyebrow">Finance</p><h1>Pénzügyek</h1>
           <p class="lead">A megszokott pénzügyi modul változatlanul.</p>
           <div class="hub-options" aria-label="Finance almodulok">
