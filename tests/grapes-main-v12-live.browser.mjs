@@ -32,18 +32,20 @@ try{
     assert.equal(await nav.isVisible(),true)
     assert.equal(await nav.locator('button').count(),6)
     assert.deepEqual(await nav.locator('button').evaluateAll(nodes=>nodes.map(x=>x.getAttribute('aria-label'))),
-      ['Kezdő','Home','Health','Tools','Finance','Beállítások'])
+      ['Home','Health','Tools','Finance','Outdoor','Beállítások'])
     assert.equal(await nav.locator('svg').count(),6)
     assert.equal(await nav.locator('button[aria-current="page"]').count(),1)
-    assert.equal(await nav.locator('[data-main-nav="start"]').getAttribute('aria-current'),'page')
+    assert.equal(await nav.locator('button[aria-current="page"]').count(),0,'Favorites landing is not a seventh module icon')
     const rail=await nav.evaluate(node=>({
-      cols:getComputedStyle(node).gridTemplateColumns.trim().split(/\s+/).length,
       width:node.getBoundingClientRect().width,
+      clientWidth:node.clientWidth,
+      scrollWidth:node.scrollWidth,
       cells:[...node.querySelectorAll('button')].map(x=>x.getBoundingClientRect().height),
     }))
-    assert.equal(rail.cols,6,'One six-column capsule, no repeated labels')
-    assert.ok(rail.width<=width-10,'Rail must fit 320px: '+JSON.stringify(rail))
+    assert.ok(rail.width<=width-10,'Rail must fit viewport: '+JSON.stringify(rail))
+    assert.ok(rail.scrollWidth>rail.clientWidth,'Outdoor must be reachable by horizontal rail scroll: '+JSON.stringify(rail))
     assert.ok(rail.cells.every(h=>h>=44),'Minimum touch target')
+    assert.equal(await page.locator('.grapes-start-all').count(),0,'No duplicated legacy all-modules tile menu')
     assert.equal(await page.locator('[data-page="home"] h1').textContent(),'Gyakran használt')
     const favorites=page.locator('[data-main-shortcut-list]')
     assert.deepEqual(await favorites.locator('[data-main-shortcut]').evaluateAll(nodes=>nodes.map(x=>x.dataset.mainShortcut)),
@@ -70,7 +72,7 @@ try{
     assert.ok(await shareControls.count()>=1,'Approved Home share UI remains present')
     assert.ok((await shareControls.evaluateAll(nodes=>nodes.map(node=>node.disabled))).every(Boolean),
       'PROD must never fake enabled family sharing in either header or quick action')
-    await nav.locator('[data-main-nav="start"]').click()
+    await page.locator('.appbar__home').click()
     await page.locator('[data-page="home"]').waitFor({state:'visible'})
     await page.locator('[data-main-shortcut="food"]').click()
     await page.locator('[data-page="food"]').waitFor({state:'visible'})
@@ -82,8 +84,20 @@ try{
     await nav.locator('[data-main-nav="health"]').click()
     await page.locator('[data-page="hub-health"]').waitFor({state:'visible'})
     assert.equal(await page.locator('[data-page="hub-health"] .health-panel--food').isVisible(),true)
+    await nav.locator('[data-main-nav="outdoor"]').click()
+    const outdoor=page.locator('[data-page="outdoor"]')
+    await outdoor.waitFor({state:'visible'})
+    assert.equal(await outdoor.locator('[data-outdoor-root] h1').textContent(),'Növényeim')
+    assert.equal(await outdoor.locator('[data-outdoor-action="catalog"]').count(),1)
+    assert.equal(await nav.locator('[data-main-nav="outdoor"]').getAttribute('aria-current'),'page')
     await nav.locator('[data-main-nav="tools"]').click()
-    await page.locator('[data-page="hub-utility"]').waitFor({state:'visible'})
+    const tools=page.locator('[data-page="hub-utility"]')
+    await tools.waitFor({state:'visible'})
+    assert.equal(await tools.locator('[data-tools-widget]').count(),2)
+    assert.equal(await tools.locator('[data-menu-destination="ebook"]').count(),1)
+    assert.equal(await tools.locator('[data-menu-destination="qr"]').count(),1)
+    assert.equal(await tools.locator('.hub-option').count(),0,'Tools must not use legacy oversized tiles')
+    assert.equal(await tools.locator('.health-top-rail').count(),0,'No duplicated inner module rail')
     await nav.locator('[data-main-nav="finance"]').click()
     await page.locator('[data-page="hub-finance"]').waitFor({state:'visible'})
     await nav.locator('[data-main-nav="settings"]').click()

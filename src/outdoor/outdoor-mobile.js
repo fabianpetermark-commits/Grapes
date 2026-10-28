@@ -6,7 +6,7 @@ const kindName={watering:'Locsolás',wintering:'Teleltetés',note:'Megfigyelés'
 const fields={name:'Példány neve',species:'Faj / fajta',light:'Fényigény',water:'Vízigény',soil:'Talajigény',wintering:'Teleltetés',ripening:'Érés / betakarítás (saját megfigyelés)',notes:'Megjegyzés'}
 export function mountOutdoor(root,{storage=localStorage,getProfile=()=> 'local'}={}) {
   let store,profile,state,photo='',catalogId='',searchEpoch=0,weatherEpoch=0
-  root.innerHTML=`<header class="outdoor-head"><p class="eyebrow">Outdoor</p><h1>Növényeim</h1><p data-outdoor-weather></p><button type="button" data-outdoor-action="location">Helyszín és időjárás</button></header>
+  root.innerHTML=`<header class="outdoor-head"><h1>Növényeim</h1><p data-outdoor-weather></p><button type="button" data-outdoor-action="location">Helyszín és időjárás</button></header>
     <p data-outdoor-status role="status" aria-live="polite"></p>
     <section data-outdoor-editor hidden></section>
     <div class="outdoor-actions"><button type="button" data-outdoor-action="add">＋ Növény hozzáadása</button><button type="button" data-outdoor-action="catalog">Növénykatalógus</button></div>
