@@ -25,3 +25,39 @@
 .outdoor-leaf {display:grid;place-items:center;width:48px;height:48px;border-radius:16px;background:var(--raised);color:var(--accent);font-size:34px}
 [data-outdoor-status].is-error {color:#ffc8ce}
 [data-outdoor-cities] {display:grid;gap:8px;margin-top:12px}
+
+
+/* Approved Outdoor v1.2: six compact boxed actions replace the old plain list. */
+.outdoor-rail {
+  display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:3px;
+  margin:8px 0 14px;padding:5px;min-width:0;
+  border:1px solid #345362;border-radius:22px;background:#13232e;
+}
+.outdoor-rail button {
+  display:grid;place-items:center;min-width:0;min-height:47px;padding:7px 3px;
+  color:#bbccd6;border:1px solid transparent;border-radius:15px;background:transparent;
+  touch-action:manipulation;
+}
+.outdoor-rail button[aria-current="page"] {
+  color:#3bdcf2;background:#203743;border-color:#355b69;
+}
+.outdoor-rail svg {width:22px;height:22px;display:block;flex:none}
+.outdoor-rail button:focus-visible {outline:2px solid #3bdcf2;outline-offset:1px}
+.outdoor-head {border:0;padding:0 0 8px}
+.outdoor-head h1 {font-size:24px;line-height:1.15;letter-spacing:-.035em}
+.outdoor-weather-summary {
+  display:grid;gap:6px;padding:10px 12px;margin:0 0 12px;
+  border-left:2px solid #3bdcf2;background:#101821;border-radius:0 12px 12px 0;
+}
+.outdoor-weather-summary strong {font-size:12px;color:#f2f7fb}
+.outdoor-weather-summary span {font-size:12px;line-height:1.55;overflow-wrap:anywhere}
+.outdoor-weather-summary button {justify-self:start;min-height:36px;padding:6px 10px;font-size:12px}
+.outdoor-weather-task {margin:8px 0;padding:11px 12px;border:1px solid #39444a;border-left:2px solid #dbb477;border-radius:12px;background:#101821}
+.outdoor-weather-task strong {font-size:13px}
+.outdoor-weather-task p {margin:5px 0 0}
+.outdoor-empty {color:var(--muted);line-height:1.5}
+@media(max-width:350px) {
+  .outdoor-rail {gap:2px;padding:4px}
+  .outdoor-rail button {min-height:44px;border-radius:12px}
+  .outdoor-rail svg {width:20px;height:20px}
+}

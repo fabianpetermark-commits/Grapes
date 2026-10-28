@@ -1,0 +1,63 @@
+name: Grapes accepted UI integration QA (NO RELEASE)
+on:
+  push:
+    branches:
+      - release/grapes-accepted-ui-integration-20261028
+  pull_request:
+    branches:
+      - codex/android-app
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-accepted-ui-{{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  accepted-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install exact lockfile dependencies
+        run: npm ci
+      - name: Existing unit regression suite
+        run: npm test
+      - name: Build real Android WebView assets (no APK publication)
+        run: npm run build:android-web
+      - name: Locate Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v google-chrome >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            npx playwright-core install --with-deps chromium
+            binary=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path '*chrome-linux*' | head -1)
+            test -n "$binary"
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$binary" >> "$GITHUB_ENV"
+          fi
+      - name: Accepted Android shell navigation and real Finance/Tools routes
+        run: node tests/android-mobile-preview.browser.mjs
+      - name: Outdoor six-icon views, plant records and weather task warnings
+        run: node tests/outdoor-mobile.browser.mjs
+      - name: Home real widgets and no automatic stock intake
+        run: node tests/prod-home-one-house.browser.mjs
+      - name: Existing module hub navigation regression
+        run: node tests/android-module-hubs.browser.mjs
+      - name: Finance approved navigation and actual functionality
+        run: node tests/prod-finance-approved-nav.browser.mjs
+      - name: Settings and Auth/Drive/Health/YAZIO preservation
+        run: node tests/prod-settings-preservation.browser.mjs
+      - name: Release boundary
+        run: echo "NO signed APK, no PROD Supabase writes, no schema migration, no release"

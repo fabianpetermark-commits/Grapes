@@ -6,7 +6,7 @@ import {
   listGrapesProjects,
   onGrapesDriveChange,
 } from './storage/grapes-drive.js'
-import { listLocalProjects } from './storage/local-project-store.js'
+import { listLocalProjects, loadLocalProject } from './storage/local-project-store.js'
 import { listMobileEbooks, saveMobileReadingProgress, uploadMobileEbook } from './ebook-mobile-library.js'
 import { isMobileReadableEpub, normalizedReadingProgress, openMobileEpub } from './ebook-mobile-reader.js'
 import { createMobileFoodController } from './food/food-mobile.js'
@@ -56,6 +56,7 @@ const moduleFolders = [
   ['E-mail Stúdió', 'email', 'email'],
 ]
 let mobileEbooks = []
+let toolsLatestBookId = ''
 let mobileReader = null
 let mobileReaderBook = null
 let mobileReaderChapterIndex = 0
@@ -468,7 +469,19 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   $$('[data-page]').forEach(node => { node.hidden = node.dataset.page !== page })
   $$('[data-nav]').forEach(node => node.classList.toggle('is-active', node.dataset.nav === page))
   const mainRail = $('[data-main-rail]')
-  if (mainRail) mainRail.hidden = HOME_NATIVE_QA
+  const healthPages = ['hub-health','health-settings','food','water','samsung-water'].includes(page)
+  if (mainRail) mainRail.hidden = HOME_NATIVE_QA || healthPages || page === 'outdoor' || ['ebook','reader','transfer'].includes(page)
+  const healthRail = $('[data-health-rail]')
+  if (healthRail) {
+    healthRail.hidden = !healthPages
+    const currentHealth = page === 'water' ? 'water' :
+      ['health-settings','samsung-water'].includes(page) ? 'settings' :
+      page === 'food' && ['recipes','stats','barcode'].includes(menuEntry) ? menuEntry : 'food'
+    $('[data-health-nav]').forEach(button => {
+      if (healthPages && button.dataset.healthNav === currentHealth) button.setAttribute('aria-current','page')
+      else button.removeAttribute('aria-current')
+    })
+  }
   const currentMain =
     page === 'home' ? 'start' :
     page === 'household' || page === 'hub-home' ? 'home' :
@@ -493,6 +506,7 @@ function showPage(page, { parent = '', entry = '' } = {}) {
     if (known) known.hidden = !driveConnected
   }
   if (page === 'outdoor') outdoor.load()
+  if (page === 'hub-utility') renderToolsHome()
   if (page === 'projects') renderProjects()
   if (page === 'sync') renderSync()
   if (page === 'water') renderWater()
@@ -745,6 +759,70 @@ async function renderMobileEbooks() {
   } catch (error) {
     renderEbookCards([])
     status.textContent = `A könyvtár nem tölthető be. ${error?.message || ''}`
+  }
+}
+
+async function renderToolsHome() {
+  if (activePage !== 'hub-utility') return
+  const bookHost = $('[data-tools-book-content]')
+  const continueButton = $('[data-tools-book-continue]')
+  const dockContinue = $('[data-tools-action="continue"]')
+  const qrEmpty = $('[data-tools-qr-empty]')
+  const qrEdit = $('[data-tools-qr-project-edit]')
+  toolsLatestBookId = ''
+  continueButton.hidden = true
+  dockContinue.hidden = true
+  bookHost.replaceChildren()
+  const bookLoading = document.createElement('p')
+  bookLoading.className = 'tools-empty'
+  bookLoading.textContent = 'Könyvtár ellenőrzése…'
+  bookHost.append(bookLoading)
+  try {
+    const books = await listMobileEbooks()
+    if (activePage !== 'hub-utility') return
+    mobileEbooks = books
+    const readable = books.filter(isMobileReadableBook)
+    const latest = [...readable].sort((a,b) => Date.parse(b.reading?.updatedAt || '') - Date.parse(a.reading?.updatedAt || ''))[0]
+    bookHost.replaceChildren()
+    if (!latest) {
+      const empty = document.createElement('p')
+      empty.className = 'tools-empty'
+      empty.textContent = isGrapesDriveConnected()
+        ? (books.length ? 'A könyvtárban még nincs olvasható PDF/EPUB-könyv.' : 'Még nincs könyv a könyvtárban. Nyisd meg a könyvtárat könyv importálásához.')
+        : 'A valódi könyvtárhoz csatlakoztasd a Google Drive-ot a Beállítások / Szinkron oldalon.'
+      bookHost.append(empty)
+    } else {
+      toolsLatestBookId = latest.id
+      const feature = document.createElement('div')
+      feature.className = 'tools-book-feature'
+      feature.append(ebookCover(latest.title, 0))
+      const copy = document.createElement('div')
+      copy.className = 'tools-book-feature__copy'
+      const title = document.createElement('strong'); title.textContent = latest.title
+      const author = document.createElement('span'); author.textContent = latest.author || latest.name || 'PDF / EPUB'
+      const progress = document.createElement('div'); progress.className = 'tools-book-progress'
+      const fill = document.createElement('i'); fill.style.width = Math.max(0,Math.min(100,Number(latest.reading?.overallPercent)||0)) + '%'; progress.append(fill)
+      const label = document.createElement('span'); label.textContent = latest.reading ? Math.round(latest.reading.overallPercent) + '% elolvasva' : 'Még nem kezdted el'
+      copy.append(title,author,progress,label);feature.append(copy);bookHost.append(feature)
+      continueButton.hidden = false;dockContinue.hidden = false
+      continueButton.textContent = latest.reading ? 'Olvasás folytatása' : 'Olvasás megkezdése'
+    }
+  } catch (error) {
+    if (activePage !== 'hub-utility') return
+    bookHost.replaceChildren()
+    const empty = document.createElement('p');empty.className='tools-empty'
+    empty.textContent = 'A könyvtár most nem tölthető be. ' + (error?.message || 'Ellenőrizd a Drive-kapcsolatot.')
+    bookHost.append(empty)
+  }
+  try {
+    const project = await loadLocalProject('qr-studio-current')
+    if (activePage !== 'hub-utility') return
+    const valid = project?.data?.format === 'grapes-qr'
+    qrEmpty.textContent = valid ? 'Legutóbbi projekt: ' + (project.name || 'QR projekt') : 'Még nincs mentett QR-projekt ezen az eszközön.'
+    qrEdit.hidden = !valid
+  } catch {
+    qrEmpty.textContent = 'A helyi QR-projekt állapota most nem ellenőrizhető.'
+    qrEdit.hidden = true
   }
 }
 
@@ -1438,11 +1516,13 @@ $$('[data-settings-provider]').forEach(button => button.addEventListener('click'
   requestAnimationFrame(() => $(target)?.scrollIntoView({ block: 'center', behavior: 'instant' }))
 }))
 $('[data-settings-open-home]')?.addEventListener('click', () => showPage('household'))
+document.addEventListener('grapes:open-global-settings', () => showPage('more', { parent: activePage }))
 $$('[data-menu-group], [data-main-module-link]').forEach(button => button.addEventListener('click', () => {
   const group = button.dataset.menuGroup || button.dataset.mainModuleLink
   if (group === 'outdoor') showPage('outdoor', {parent:'home'})
   else if (group === 'home') showPage('household', { parent: 'home' })
-  else if (['health', 'utility', 'finance'].includes(group)) showPage('hub-' + group)
+  else if (group === 'finance') openModule('finance')
+  else if (['health', 'utility'].includes(group)) showPage('hub-' + group)
 }))
 $$('[data-menu-back]').forEach(button => button.addEventListener('click', () => showPage('home')))
 
@@ -1486,7 +1566,28 @@ $$('[data-health-nav]').forEach(button => button.addEventListener('click', () =>
   else if (target === 'settings') showPage('health-settings', {parent:'hub-health'})
 }))
 
-$$('[data-menu-destination]').forEach(button => button.addEventListener('click', () => {
+$('[data-tools-book-library]').forEach(button => button.addEventListener('click', () => showPage('ebook', {parent:'hub-utility',entry:'ebook'})))
+$('[data-tools-book-continue], [data-tools-action="continue"]').forEach(button => button.addEventListener('click', () => {
+  if (toolsLatestBookId) startReader(toolsLatestBookId)
+  else showToast('Nincs folytatható könyv. Nyisd meg a könyvtárat.')
+}))
+$('[data-tools-action="library"]').forEach(button => button.addEventListener('click', () => showPage('ebook', {parent:'hub-utility',entry:'ebook'})))
+$('[data-tools-action="transfer"]').forEach(button => button.addEventListener('click', () => showPage('transfer', {parent:'hub-utility',entry:'transfer'})))
+$('[data-tools-qr-new]').forEach(button => button.addEventListener('click', () => openModule('qr')))
+$('[data-tools-qr-form]')?.addEventListener('submit', event => {
+  event.preventDefault()
+  const value = $('[data-tools-qr-input]')?.value?.trim() || ''
+  if (!value) { showToast('Adj meg egy linket vagy szöveget a QR-kódhoz.'); $('[data-tools-qr-input]')?.focus(); return }
+  try { sessionStorage.setItem('grapes-qr-prefill-v1', value) }
+  catch { showToast('A QR-előkészítés nem menthető. Nyisd meg az Új QR funkciót.'); return }
+  openModule('qr')
+})
+$('[data-tools-qr-project-edit]')?.addEventListener('click', () => {
+  try { sessionStorage.setItem('grapes-open-project', JSON.stringify({module:'QR & Barcode',source:'Local',id:'qr-studio-current'})) }
+  catch { showToast('A QR-projekt nem nyitható meg.'); return }
+  openModule('qr')
+})
+$('[data-menu-destination]').forEach(button => button.addEventListener('click', () => {
   const destination = button.dataset.menuDestination
   const parent = button.closest('[data-page]')?.dataset.page
   if (!['hub-home', 'hub-health', 'hub-utility', 'hub-finance'].includes(parent)) return
