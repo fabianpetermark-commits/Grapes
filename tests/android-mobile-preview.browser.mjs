@@ -134,7 +134,7 @@ try {
   assert.match(await page.locator('[data-sync-status]').textContent(), /helyi mentések/i)
   await page.screenshot({ path: 'mobile-sync.png', fullPage: true })
 
-  await page.locator('.appbar [data-nav="home"]').click()
+  await backToHome(page)
 
   await page.locator('[data-menu-group="health"]').click()
   await page.locator('[data-page="hub-health"] .health-panel--food').waitFor({ state: 'visible' })
@@ -165,7 +165,7 @@ try {
   assert.equal(await page.evaluate(() => window.grapesHandleAndroidBack()), true)
   await page.waitForFunction(() => !document.querySelector('[data-food-stats-sheet]')?.classList.contains('is-open'))
   // Goals are now configured from Health-specific settings.
-  await page.locator('.appbar [data-nav="more"]').click()
+  await page.locator('[data-page="hub-health"] [data-health-nav="settings"]').click()
   await page.locator('[data-health-section="goals"]').click()
   await page.locator('[data-health-command="food-targets"]').click()
   await page.locator('[data-food-targets-sheet].is-open').waitFor({ state: 'visible' })
@@ -175,7 +175,7 @@ try {
   await page.locator('[data-food-target-save]').click()
   await page.evaluate(() => window.grapesHandleAndroidBack())
   await page.locator('[data-page="hub-health"]').waitFor({ state: 'visible' })
-  await page.locator('.appbar [data-nav="more"]').click()
+  await page.locator('[data-page="hub-health"] [data-health-nav="settings"]').click()
   await page.locator('[data-health-section="goals"]').click()
   await page.locator('[data-health-command="food-targets"]').click()
   assert.equal(await page.locator('[data-food-target-energy]').inputValue(), '2100')
@@ -305,6 +305,7 @@ try {
   await page.locator('[data-water-log] button').filter({ hasText: '300 ml' }).evaluate(button => button.click())
   assert.equal((await page.locator('[data-water-total]').textContent()).replace(/\s/g, ''), '250ml', 'A Health-víz törölhető legyen.')
 
+  await backToHome(page)
   await page.locator('.appbar [data-nav="more"]').click()
   await page.locator('[data-page="more"] [data-nav="sync"]').click()
   const retryChooserPromise = page.waitForEvent('filechooser')
