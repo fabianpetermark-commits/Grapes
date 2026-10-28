@@ -41,10 +41,11 @@ try {
     await health.waitFor({state:'visible'})
   }
   await enterHealth()
-  const buttons=health.locator('[data-health-nav]')
-  assert.deepEqual(await buttons.evaluateAll(nodes=>nodes.map(n=>n.dataset.healthNav)),
-    ['food','water','recipes','stats','barcode','settings'])
-  assert.equal(await buttons.locator('svg').count(),6)
+  assert.equal(await health.locator('.health-top-rail').count(),0,
+    'The global module rail and a second Health top rail must not be duplicated')
+  const dock=health.locator('.health-dock')
+  assert.equal(await dock.locator('.health-dock-pill button').count(),3)
+  assert.equal(await dock.locator('[data-health-quick="barcode"]').count(),1)
   assert.equal(await health.locator('.health-panel--food .health-panel-head strong').textContent(),'Mai tápanyagok')
   assert.equal(await health.locator('.health-panel--water .health-panel-head strong').textContent(),'Mai folyadék')
   assert.equal(await health.locator('[data-health-kcal]').count(),1)
@@ -54,16 +55,16 @@ try {
     await page.setViewportSize({width,height:844})
     const dimensions=await health.evaluate(node=>({
       clientWidth:node.clientWidth,scrollWidth:node.scrollWidth,
-      railWidth:node.querySelector('.health-top-rail').getBoundingClientRect().width,
-      railScrollWidth:node.querySelector('.health-top-rail').scrollWidth,
+      dockWidth:node.querySelector('.health-dock').getBoundingClientRect().width,
+      dockScrollWidth:node.querySelector('.health-dock').scrollWidth,
     }))
     assert.ok(dimensions.scrollWidth<=dimensions.clientWidth+1,
       'Health root horizontal overflow '+width+': '+JSON.stringify(dimensions))
-    assert.ok(dimensions.railScrollWidth<=dimensions.railWidth+2,
-      'Health rail horizontal overflow '+width+': '+JSON.stringify(dimensions))
+    assert.ok(dimensions.dockScrollWidth<=dimensions.dockWidth+2,
+      'Health quick-action dock horizontal overflow '+width+': '+JSON.stringify(dimensions))
   }
 
-  await health.locator('[data-health-nav="settings"]').click()
+  await page.locator('[data-main-nav="settings"]').click()
   await page.waitForTimeout(120)
   const stateAfterSettings = await page.evaluate(() => ({
     settingsHidden: document.querySelector('[data-page="health-settings"]').hidden,
@@ -97,16 +98,16 @@ try {
   await page.keyboard.press('Escape')
 
   await enterHealth()
-  await health.locator('[data-health-nav="water"]').click()
+  await health.locator('[data-health-water-open]').click()
   await page.locator('[data-page="water"]').waitFor({state:'visible'})
   await enterHealth()
-  await health.locator('[data-health-nav="food"]').click()
+  await health.locator('[data-health-food-open]').click()
   await page.locator('[data-page="food"]').waitFor({state:'visible'})
   await enterHealth()
-  await health.locator('[data-health-nav="recipes"]').click()
+  await health.locator('[data-health-recipe-open]').click()
   await page.locator('[data-page="food"]').waitFor({state:'visible'})
   await enterHealth()
-  await health.locator('[data-health-nav="stats"]').click()
+  await health.locator('[data-health-stats]').click()
   await page.locator('[data-page="food"]').waitFor({state:'visible'})
   await page.locator('[data-food-stats-sheet].is-open').waitFor({state:'visible'})
   // Stats is an intentional modal. Native Back must close it before a
@@ -114,10 +115,10 @@ try {
   await page.evaluate(() => window.grapesHandleAndroidBack())
   await health.waitFor({state:'visible'})
   await enterHealth()
-  await health.locator('[data-health-nav="barcode"]').click()
+  await health.locator('[data-health-quick="barcode"]').click()
   await page.locator('[data-page="food"]').waitFor({state:'visible'})
   assert.deepEqual(errors,[],'Health must not trigger JS exceptions')
-  console.log('PASS: accepted Health 6 live routes, real Food/Water binding, two settings groups, all legacy import/backup controls, 320–412px responsive')
+  console.log('PASS: single shared module rail + Health quick-action dock, real Food/Water binding, two settings groups, all legacy import/backup controls, 320–412px responsive')
 } finally {
   await browser?.close()
   server.kill('SIGTERM')
