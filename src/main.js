@@ -253,7 +253,7 @@ if (androidModuleShell && ['qr','ebook'].includes(requestedScreen)) {
   for (const [page,label,icon] of [
     ['home','Kezdő','start'],['household','Home','household'],
     ['hub-health','Health','health'],['hub-utility','Tools','utility'],
-    ['hub-finance','Finance','finance'],['more','Beállítások','settings'],
+    ['hub-finance','Finance','finance'],['outdoor','Outdoor','outdoor'],['more','Beállítások','settings'],
   ]) {
     const button = document.createElement('button')
     button.type = 'button'; button.setAttribute('aria-label',label)
