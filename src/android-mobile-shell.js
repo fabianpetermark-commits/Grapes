@@ -479,7 +479,6 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   // Health has its own six-icon view rail; never stack the root rail above it.
   if (mainRail) mainRail.hidden = page === 'hub-health'
   const currentMain =
-    page === 'home' ? 'start' :
     page === 'household' || page === 'hub-home' ? 'home' :
     ['hub-health','health-settings','food','water','samsung-water'].includes(page) ? 'health' :
     ['hub-utility','ebook','reader','transfer'].includes(page) ? 'tools' :
