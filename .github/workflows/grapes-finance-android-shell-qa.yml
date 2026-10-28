@@ -1,0 +1,35 @@
+name: Grapes Finance Android-shell route QA (NO RELEASE)
+
+on:
+  push:
+    branches: [fix/grapes-approved-v12-ui-module-integration-20261028]
+  pull_request:
+    branches: [codex/android-app]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-finance-android-shell-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  finance-shell:
+    if: github.repository == 'fabianpetermark-commits/Grapes'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Android web build
+        run: npm run build:android-web
+      - name: Install Chromium
+        run: npx playwright-core install --with-deps chromium
+      - name: Verify Finance renders and all views work at 320–412px
+        run: node tests/finance-android-shell.browser.mjs
