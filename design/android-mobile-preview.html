@@ -57,7 +57,7 @@
     .login__fine { margin-top: 18px; color: #74869a; font-size: 11px; line-height: 1.5; }
     .login__status { min-height: 36px; margin: 12px 0 0; color: var(--danger); font-size: 12px; line-height: 1.45; }
     .appbar { display: flex; gap: 12px; align-items: center; min-height: 58px; padding: 8px 16px; border-bottom: 1px solid var(--line); }
-    .appbar__home { display: flex; flex: 1; gap: 10px; align-items: center; min-width: 0; padding: 0; color: var(--text); text-align: left; cursor: default; background: transparent; border: 0; border-radius: 12px; }
+    .appbar__home { display: flex; flex: 1; gap: 10px; align-items: center; min-width: 0; padding: 0; color: var(--text); text-align: left; cursor: pointer; font: inherit; background: transparent; border: 0; border-radius: 12px; }
     .appbar__home:focus-visible, .icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     .appbar__logo { width: 36px; height: 36px; padding: 3px; filter: drop-shadow(0 5px 10px rgb(0 194 230 / 20%)); }
     .appbar__title { min-width: 0; flex: 1; }
@@ -607,9 +607,10 @@
 
 
     /* Approved Health v1.2: six outlined SVG actions with one compact capsule. */
-    .health-top-rail { display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:3px;
+    .health-top-rail { flex:0 0 100%;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:3px;
       align-items:center;margin:8px 0 14px;padding:5px;border:1px solid #345362;
       border-radius:22px;background:#13232e;min-width:0; }
+    .health-top-rail[hidden] {display:none!important;}
     .health-top-rail button { display:grid;place-items:center;min-width:0;min-height:47px;
       padding:7px 3px;color:#bbccd6;border:0;border-radius:15px;background:transparent;touch-action:manipulation; }
     .health-top-rail button:first-child{color:#3bdcf2;background:#203743}
@@ -768,16 +769,24 @@
 
       <section id="app" class="screen" hidden>
         <header class="appbar">
-          <div class="appbar__home" role="group" aria-label="Grapes és aktuális modul"><img class="appbar__logo" src="../public/grapes-mark.svg" alt=""><span class="appbar__title"><strong id="app-title">Grapes</strong><span id="app-subtitle">Helyi mód</span></span></div>
+          <button type="button" class="appbar__home" data-nav="home" aria-label="Kezdőlap / Gyakran használt"><img class="appbar__logo" src="../public/grapes-mark.svg" alt=""><span class="appbar__title"><strong id="app-title">Grapes</strong><span id="app-subtitle">Helyi mód</span></span></button>
           <button class="icon-btn" data-action="search" aria-label="Keresés">⌕</button>
           <button class="icon-btn" data-notifications aria-label="Értesítések"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v14H4zM4 13h4l2 3h4l2-3h4"/></svg><span class="notification-badge" data-notifications-badge hidden>1</span></button>
           <nav class="grapes-main-rail" data-main-rail aria-label="Grapes főmodulok">
-            <button type="button" data-main-nav="start" data-nav="home" aria-label="Kezdő" title="Kezdő" aria-current="page"><span data-mobile-icon="start"></span></button>
             <button type="button" data-main-nav="home" data-menu-group="home" aria-label="Home" title="Home"><span data-mobile-icon="household"></span></button>
             <button type="button" data-main-nav="health" data-menu-group="health" aria-label="Health" title="Health"><span data-mobile-icon="health"></span></button>
             <button type="button" data-main-nav="tools" data-menu-group="utility" aria-label="Tools" title="Tools"><span data-mobile-icon="utility"></span></button>
             <button type="button" data-main-nav="finance" data-menu-group="finance" aria-label="Finance" title="Finance"><span data-mobile-icon="finance"></span></button>
+            <button type="button" data-main-nav="outdoor" data-menu-group="outdoor" aria-label="Outdoor" title="Outdoor"><span data-mobile-icon="outdoor"></span></button>
             <button class="icon-btn icon-btn--settings" type="button" data-main-nav="settings" data-nav="more" aria-label="Beállítások" title="Beállítások"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 2.5h4l.6 2.4 1.6.9 2.4-.7 2 3.5-1.8 1.7v1.9l1.8 1.7-2 3.5-2.4-.7-1.6.9-.6 2.4h-4l-.6-2.4-1.6-.9-2.4.7-2-3.5 1.8-1.7v-1.9L3.4 8.6l2-3.5 2.4.7 1.6-.9z"/><circle cx="12" cy="12" r="3"/></svg></button>
+          </nav>
+          <nav class="health-top-rail" data-health-rail aria-label="Health modulok" hidden>
+            <button type="button" data-health-nav="food" aria-label="Food" title="Food"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3v7a4 4 0 0 0 8 0V3M8 3v18M17 3v18M17 3c4 3 4 7 0 9"/></svg></button>
+            <button type="button" data-health-nav="water" aria-label="Víznapló" title="Víznapló"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3C9 7 5 11 5 15a7 7 0 0 0 14 0c0-4-4-8-7-12Z"/><path d="M8 16a4 4 0 0 0 4 4"/></svg></button>
+            <button type="button" data-health-nav="recipes" aria-label="Receptek" title="Receptek"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5a3 3 0 0 1 3-3h13v19H6a3 3 0 0 1-3-3V5Z"/><path d="M3 18a3 3 0 0 1 3-3h13M8 7h7M8 10h5"/></svg></button>
+            <button type="button" data-health-nav="stats" aria-label="Statisztika" title="Statisztika"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V12h4v8M10 20V5h4v15M16 20v-9h4v9M3 20h18"/></svg></button>
+            <button type="button" data-health-nav="barcode" aria-label="Vonalkód" title="Vonalkód"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5v14M6 5v14M10 5v14M13 5v14M15 5v14M19 5v14M22 5v14"/></svg></button>
+            <button type="button" class="health-top-rail__settings" data-health-nav="settings" aria-label="Beállítások" title="Beállítások"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.6 2.5h2.8l.65 2.1c.55.17 1.08.39 1.55.65l1.95-1.06 2 2-1.05 1.95c.26.47.48 1 .65 1.55l2.1.65v2.8l-2.1.65a8 8 0 0 1-.65 1.55l1.05 1.95-2 2-1.95-1.05c-.47.26-1 .48-1.55.65l-.65 2.1h-2.8l-.65-2.1a8 8 0 0 1-1.55-.65L6.5 19.3l-2-2 1.05-1.95a8 8 0 0 1-.65-1.55l-2.1-.65v-2.8l2.1-.65c.17-.55.39-1.08.65-1.55L4.5 6.2l-2-2 1.95 1.05c.47-.26 1-.48 1.55-.65z"/><circle cx="12" cy="12" r="3"/></svg></button>
           </nav>
         </header>
 
@@ -804,7 +813,7 @@
           </details>
         </div>
 
-        <div class="content" data-page="outdoor" hidden><button type="button" class="hub-back" data-menu-back>‹ Főmenü</button><div data-outdoor-root></div></div>
+        <div class="content" data-page="outdoor" hidden><div data-outdoor-root></div></div>
 
         <div class="content" data-page="hub-home" hidden>
           <button type="button" class="hub-back" data-menu-back>‹ Főmenü</button>
@@ -819,14 +828,7 @@
         <div class="content health-dashboard" data-page="hub-health" hidden>
           <button type="button" class="hub-back" data-menu-back>‹ Főmenü</button>
           <!-- Accepted Health v1.2 six-action rail; all actions reuse existing data-bound modules. -->
-          <nav class="health-top-rail" aria-label="Health modulok">
-            <button type="button" data-health-nav="food" aria-label="Food" title="Food"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3v7a4 4 0 0 0 8 0V3M8 3v18M17 3v18M17 3c4 3 4 7 0 9"/></svg></button>
-            <button type="button" data-health-nav="water" aria-label="Víznapló" title="Víznapló"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3C9 7 5 11 5 15a7 7 0 0 0 14 0c0-4-4-8-7-12Z"/><path d="M8 16a4 4 0 0 0 4 4"/></svg></button>
-            <button type="button" data-health-nav="recipes" aria-label="Receptek" title="Receptek"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5a3 3 0 0 1 3-3h13v19H6a3 3 0 0 1-3-3V5Z"/><path d="M3 18a3 3 0 0 1 3-3h13M8 7h7M8 10h5"/></svg></button>
-            <button type="button" data-health-nav="stats" aria-label="Statisztika" title="Statisztika"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V12h4v8M10 20V5h4v15M16 20v-9h4v9M3 20h18"/></svg></button>
-            <button type="button" data-health-nav="barcode" aria-label="Vonalkód" title="Vonalkód"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5v14M6 5v14M10 5v14M13 5v14M15 5v14M19 5v14M22 5v14"/></svg></button>
-            <button type="button" class="health-top-rail__settings" data-health-nav="settings" aria-label="Beállítások" title="Beállítások"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.6 2.5h2.8l.65 2.1c.55.17 1.08.39 1.55.65l1.95-1.06 2 2-1.05 1.95c.26.47.48 1 .65 1.55l2.1.65v2.8l-2.1.65a8 8 0 0 1-.65 1.55l1.05 1.95-2 2-1.95-1.05c-.47.26-1 .48-1.55.65l-.65 2.1h-2.8l-.65-2.1a8 8 0 0 1-1.55-.65L6.5 19.3l-2-2 1.05-1.95a8 8 0 0 1-.65-1.55l-2.1-.65v-2.8l2.1-.65c.17-.55.39-1.08.65-1.55L4.5 6.2l2-2 1.95 1.05a8 8 0 0 1 1.55-.65l.6-2.1Z"/><circle cx="12" cy="12" r="3"/></svg></button>
-          </nav>
+          
 
           <section class="health-panel health-panel--food" aria-label="Napi Food összesítő">
             <div class="health-panel-head"><strong>Mai tápanyagok</strong><span>Mai összesítés</span></div>
@@ -872,7 +874,7 @@
         </div>
 
         <div class="content health-settings-page" data-page="health-settings" hidden>
-          <button type="button" class="hub-back" data-health-settings-back>‹ Health</button>
+          
           <h2>Beállítások</h2><p class="health-settings-intro">Személyes célok és ellenőrizhető adatkapcsolatok.</p>
           <div data-health-settings-index>
             <button class="health-settings-item" data-health-section="goals"><strong>Napi célok</strong><small>Kalória, makrók, víz, megjelenítés</small></button>
