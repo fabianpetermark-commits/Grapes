@@ -13,18 +13,18 @@ test('Approved startup only routes to existing real Grapes module destinations',
   assert.equal(MAIN_SHORTCUTS.some(m=>['plants','weather'].includes(m.id)),false,
     'Standalone placeholders must never appear as functioning shortcuts')
 })
-test('Default start page pins working Food and Water; manual picks persist across reloads',()=>{
+test('Default start page pins Food, Water and Outdoor; manual picks persist across reloads',()=>{
   const mem=storage()
   const a=createMainShortcutStore(mem)
-  assert.deepEqual(a.list().pinned.map(m=>m.id),['food','water'])
+  assert.deepEqual(a.list().pinned.map(m=>m.id),['food','water','outdoor'])
   assert.equal(a.pin('shopping'),true)
   assert.equal(a.pin('shopping'),false)
   assert.deepEqual(createMainShortcutStore(mem).list().pinned.map(m=>m.id),
-    ['food','water','shopping'])
+    ['food','water','outdoor','shopping'])
   assert.equal(a.unpin('food'),true)
   assert.equal(a.unpin('food'),false)
   assert.deepEqual(createMainShortcutStore(mem).list().pinned.map(m=>m.id),
-    ['water','shopping'])
+    ['water','outdoor','shopping'])
 })
 test('Actual opens (not synthetic samples) drive additional usage recommendation',()=>{
   const mem=storage(),a=createMainShortcutStore(mem)
@@ -43,7 +43,7 @@ test('Corrupt/untrusted preference and unsafe counts cannot introduce foreign mo
     pinned:['food','__proto__','food','qr',17],
     usage:{food:-3,qr:9,unknown:10000,water:'NaN',finance:1.5}}))
   const a=createMainShortcutStore(mem)
-  assert.deepEqual(a.list().pinned.map(x=>x.id),['food','qr'])
+  assert.deepEqual(a.list().pinned.map(x=>x.id),['food','qr','outdoor'])
   assert.equal(a.list().recommended.length,0)
   a.visit('water')
   assert.deepEqual(a.list().recommended.map(x=>x.id),['water'])
@@ -55,7 +55,7 @@ test('Storage permission denial never crashes the navigation or silently loses i
   }
   const nav=createMainShortcutStore(denied)
   assert.equal(nav.pin('shopping'),true)
-  assert.deepEqual(nav.list().pinned.map(m=>m.id),['food','water','shopping'])
+  assert.deepEqual(nav.list().pinned.map(m=>m.id),['food','water','outdoor','shopping'])
 })
 
 test('Navigating and pinning on approved main v1.2 cannot mutate existing Home/Food/Water records',()=>{

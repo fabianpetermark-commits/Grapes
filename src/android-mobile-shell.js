@@ -447,14 +447,19 @@ async function openUpdateInbox() {
 }
 
 function showPage(page, { parent = '', entry = '' } = {}) {
-  // The dedicated A/B QA APK cannot show earlier unclaimed personal
-  // Food/Finance/Water records: those are not owner-scoped yet. This limit
-  // is TEST-only. PROD and regular web builds keep their existing navigation.
-  if (HOME_NATIVE_QA && page !== 'household') page = 'household'
-  // Remember only the menu origin. Reader/transfer views inherit E-book's origin.
-  if (!['reader', 'transfer'].includes(page) || parent) {
+  // TEST ownership gates apply to the Home data adapter, not to app navigation.
+  // The approved Home icon opens the one real Home directly; legacy hub URLs
+  // are redirected instead of exposing the retired shopping/inventory tiles.
+  if (page === 'hub-home') page = 'household'
+  // Preserve context for same-module detail routes, but reset it when
+  // the user enters another module from the shared navigation.
+  const previousPage = activePage
+  if (parent) {
     menuReturnPage = parent
     menuEntry = entry
+  } else if (!['reader', 'transfer'].includes(page) && page !== previousPage) {
+    menuReturnPage = ''
+    menuEntry = ''
   }
   if (activePage === 'food' && page !== 'food') mobileFood?.flush().catch(() => {})
   if (activePage === 'household' && page !== 'household' && HOME_NATIVE_QA) {
@@ -468,13 +473,25 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   $$('[data-page]').forEach(node => { node.hidden = node.dataset.page !== page })
   $$('[data-nav]').forEach(node => node.classList.toggle('is-active', node.dataset.nav === page))
   const mainRail = $('[data-main-rail]')
-  if (mainRail) mainRail.hidden = HOME_NATIVE_QA
+  const healthPages = ['hub-health','health-settings','food','water','samsung-water'].includes(page)
+  if (mainRail) mainRail.hidden = healthPages || page === 'outdoor' || ['ebook','reader','transfer'].includes(page)
+  const healthRail = $('[data-health-rail]')
+  if (healthRail) {
+    healthRail.hidden = !healthPages
+    const currentHealth = page === 'water' ? 'water' :
+      ['health-settings','samsung-water'].includes(page) ? 'settings' :
+      page === 'food' && ['recipes','stats','barcode'].includes(menuEntry) ? menuEntry : 'food'
+    $('[data-health-nav]').forEach(button => {
+      if (healthPages && button.dataset.healthNav === currentHealth) button.setAttribute('aria-current','page')
+      else button.removeAttribute('aria-current')
+    })
+  }
   const currentMain =
-    page === 'home' ? 'start' :
     page === 'household' || page === 'hub-home' ? 'home' :
     ['hub-health','health-settings','food','water','samsung-water'].includes(page) ? 'health' :
     ['hub-utility','ebook','reader','transfer'].includes(page) ? 'tools' :
     ['hub-finance','finance'].includes(page) ? 'finance' :
+    page === 'outdoor' ? 'outdoor' :
     ['more','sync'].includes(page) ? 'settings' : ''
   $$('[data-main-nav]').forEach(button => {
     if (button.dataset.mainNav === currentMain) button.setAttribute('aria-current','page')
@@ -1438,15 +1455,19 @@ $$('[data-settings-provider]').forEach(button => button.addEventListener('click'
   requestAnimationFrame(() => $(target)?.scrollIntoView({ block: 'center', behavior: 'instant' }))
 }))
 $('[data-settings-open-home]')?.addEventListener('click', () => showPage('household'))
-$$('[data-menu-group], [data-main-module-link]').forEach(button => button.addEventListener('click', () => {
+$('#app').addEventListener('click', event => {
+  // Delegate for Home actions created after the authenticated household loads.
+  const button = event.target.closest('[data-menu-group], [data-main-module-link]')
+  if (!button) return
   const group = button.dataset.menuGroup || button.dataset.mainModuleLink
-  if (group === 'outdoor') showPage('outdoor', {parent:'home'})
+  if (group === 'outdoor') showPage('outdoor', { parent: 'home' })
   else if (group === 'home') showPage('household', { parent: 'home' })
-  else if (['health', 'utility', 'finance'].includes(group)) showPage('hub-' + group)
-}))
+  else if (group === 'finance') openModule('finance')
+  else if (['health', 'utility'].includes(group)) showPage('hub-' + group)
+})
 $$('[data-menu-back]').forEach(button => button.addEventListener('click', () => showPage('home')))
 
-$('[data-health-settings-back]').addEventListener('click', () => showPage('hub-health'))
+$('[data-health-settings-back]')?.addEventListener('click', () => showPage('hub-health'))
 $('[data-health-section-back]').addEventListener('click', showHealthSettingsIndex)
 $$('[data-health-section]').forEach(button => button.addEventListener('click', () => showHealthSettingsSection(button.dataset.healthSection)))
 $('[data-health-settings-content]').addEventListener('click', event => {

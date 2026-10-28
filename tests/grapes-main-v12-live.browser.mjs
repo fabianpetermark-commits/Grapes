@@ -32,10 +32,10 @@ try{
     assert.equal(await nav.isVisible(),true)
     assert.equal(await nav.locator('button').count(),6)
     assert.deepEqual(await nav.locator('button').evaluateAll(nodes=>nodes.map(x=>x.getAttribute('aria-label'))),
-      ['Kezdő','Home','Health','Tools','Finance','Beállítások'])
+      ['Home','Health','Tools','Finance','Outdoor','Beállítások'])
     assert.equal(await nav.locator('svg').count(),6)
-    assert.equal(await nav.locator('button[aria-current="page"]').count(),1)
-    assert.equal(await nav.locator('[data-main-nav="start"]').getAttribute('aria-current'),'page')
+    assert.equal(await nav.locator('button[aria-current="page"]').count(),0,'The favorites page is represented by the clickable brand, not a seventh/start module icon')
+    assert.equal(await page.locator('.appbar__home').getAttribute('aria-current'),'page')
     const rail=await nav.evaluate(node=>({
       cols:getComputedStyle(node).gridTemplateColumns.trim().split(/\s+/).length,
       width:node.getBoundingClientRect().width,
@@ -47,18 +47,18 @@ try{
     assert.equal(await page.locator('[data-page="home"] h1').textContent(),'Gyakran használt')
     const favorites=page.locator('[data-main-shortcut-list]')
     assert.deepEqual(await favorites.locator('[data-main-shortcut]').evaluateAll(nodes=>nodes.map(x=>x.dataset.mainShortcut)),
-      ['food','water'])
+      ['food','water','outdoor'])
     // Manual favourite is real navigation state and survives reload; never creates Food data.
     await page.locator('[data-main-shortcut-add]').click()
     assert.equal(await page.locator('[data-main-shortcut-picker]').isVisible(),true)
     await page.locator('[data-main-shortcut-select]').selectOption('shopping')
     await page.locator('[data-main-shortcut-pin]').click()
     assert.deepEqual(await favorites.locator('[data-main-shortcut]').evaluateAll(nodes=>nodes.map(x=>x.dataset.mainShortcut)),
-      ['food','water','shopping'])
+      ['food','water','outdoor','shopping'])
     await page.reload()
     await page.locator('[data-page="home"]').waitFor({state:'visible'})
     assert.deepEqual(await favorites.locator('[data-main-shortcut]').evaluateAll(nodes=>nodes.map(x=>x.dataset.mainShortcut)),
-      ['food','water','shopping'])
+      ['food','water','outdoor','shopping'])
     await page.locator('[data-main-shortcut="shopping"]').click()
     const home=page.locator('[data-page="household"]')
     await home.waitFor({state:'visible'})
@@ -70,7 +70,7 @@ try{
     assert.ok(await shareControls.count()>=1,'Approved Home share UI remains present')
     assert.ok((await shareControls.evaluateAll(nodes=>nodes.map(node=>node.disabled))).every(Boolean),
       'PROD must never fake enabled family sharing in either header or quick action')
-    await nav.locator('[data-main-nav="start"]').click()
+    await page.locator('.appbar__home').click()
     await page.locator('[data-page="home"]').waitFor({state:'visible'})
     await page.locator('[data-main-shortcut="food"]').click()
     await page.locator('[data-page="food"]').waitFor({state:'visible'})
@@ -85,7 +85,13 @@ try{
     await nav.locator('[data-main-nav="tools"]').click()
     await page.locator('[data-page="hub-utility"]').waitFor({state:'visible'})
     await nav.locator('[data-main-nav="finance"]').click()
-    await page.locator('[data-page="hub-finance"]').waitFor({state:'visible'})
+    await page.waitForURL(/module=finance/)
+    await page.locator('#finance-app').waitFor({state:'visible'})
+    assert.ok(await page.locator('[data-finance-tab]').count()>=5,'Finance opens the live journal, not the retired blank hub.')
+    await page.goBack()
+    await page.locator('[data-page="hub-utility"]').waitFor({state:'visible'})
+    await page.locator('.appbar__home').click()
+    await page.locator('[data-page="home"]').waitFor({state:'visible'})
     await nav.locator('[data-main-nav="settings"]').click()
     await page.locator('[data-page="more"]').waitFor({state:'visible'})
     assert.equal(await nav.locator('button[aria-current="page"]').count(),1)
