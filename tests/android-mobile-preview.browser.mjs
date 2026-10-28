@@ -316,7 +316,18 @@ try {
 
   await page.locator('.appbar [data-nav="home"]').click()
   await page.locator('[data-menu-group="utility"]').click()
-  await page.locator('[data-page="hub-utility"] [data-menu-destination="ebook"]').click()
+  await page.locator('[data-page="hub-utility"] [data-tools-qr-form]').waitFor({ state: 'visible' })
+  assert.equal(await page.locator('[data-page="hub-utility"] h1').textContent(), 'Tools')
+  assert.equal(await page.locator('[data-page="hub-utility"] [data-menu-destination]').count(), 0, 'The old E-book/QR chooser tiles must be gone.')
+  assert.equal(await page.locator('[data-page="hub-utility"] [data-tools-book-content]').count(), 1)
+  assert.equal(await page.locator('[data-page="hub-utility"] [data-tools-qr-form]').count(), 1)
+  await page.locator('[data-tools-qr-input]').fill('https://example.com/grapes-test')
+  await page.locator('[data-tools-qr-form] button[type="submit"]').click()
+  await page.locator('#qr-app:not(.hidden)').waitFor({ state: 'visible' })
+  assert.equal(await page.locator('#qr-url').inputValue(), 'https://example.com/grapes-test', 'Tools must pass explicit input into the real QR editor.')
+  await page.locator('#qr-back-to-menu-btn').click()
+  await page.locator('[data-page="hub-utility"] [data-tools-book-library]').waitFor({ state: 'visible' })
+  await page.locator('[data-tools-book-library]').click()
   await page.locator('[data-page="ebook"]').waitFor({ state: 'visible' })
   await page.screenshot({ path: 'mobile-ebook-library.png', fullPage: true })
 
@@ -330,8 +341,10 @@ try {
   assert.equal(layout.documentWidth, layout.viewportWidth, 'Az előnézet vízszintesen kilóg a mobil viewportból.')
   assert.deepEqual(layout.visiblePages, ['ebook'])
   assert.equal(layout.openSheet, false)
-  // The Finance rail opens the real Finance module directly, never an obsolete
-  // one-tile hub. This also catches the reported blank/white Finance route.
+  // The global rail is contextual: it is visible on Tools, not duplicated in
+  // the E-book reader/library's own navigation.
+  await page.locator('.appbar [data-nav="home"]').click()
+  await page.locator('[data-page="home"]').waitFor({ state: 'visible' })
   await page.locator('.appbar [data-menu-group="finance"]').click()
   await page.locator('#finance-app:not(.hidden)').waitFor({ state: 'visible' })
   await page.locator('#finance-app [data-finance-tab="overview"]').waitFor({ state: 'visible' })
