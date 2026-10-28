@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { returnToHome } from './helpers/mobile-navigation.js'
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
@@ -81,7 +82,7 @@ try {
   await page.locator('[data-food-stats-sheet].is-open').waitFor({ state: 'visible' })
   await page.evaluate(() => window.grapesHandleAndroidBack())
   await page.locator('[data-page="hub-health"]').waitFor({ state: 'visible' })
-  await page.locator('.appbar [data-nav="more"]').click()
+  await page.locator('[data-page="hub-health"] [data-health-nav="settings"]').click()
   await page.locator('[data-page="health-settings"]').waitFor({ state: 'visible' })
   assert.equal(await page.locator('[data-health-section]').count(), 2,
     'The approved Health v1.2 has exactly two settings groups')
@@ -110,15 +111,17 @@ try {
   assert.equal(await page.locator('[data-page="hub-finance"] [data-menu-destination="finance"]').count(), 1)
   await page.locator('[data-page="hub-finance"] [data-menu-back]').click()
 
+  await returnToHome(page)
   await page.locator('.appbar [data-nav="more"]').click()
   await page.locator('[data-page="more"]').waitFor({ state: 'visible' })
   await page.screenshot({ path: 'grapes-menu-settings-preview.png' })
   await page.locator('[data-page="more"] [data-nav="projects"]').click()
   await page.locator('[data-page="projects"]').waitFor({ state: 'visible' })
+  await returnToHome(page)
   await page.locator('.appbar [data-nav="more"]').click()
   await page.locator('[data-page="more"] [data-nav="sync"]').click()
   await page.locator('[data-page="sync"]').waitFor({ state: 'visible' })
-  await page.locator('.appbar [data-nav="home"]').click()
+  await returnToHome(page)
   assert.equal(await page.locator('[data-page="home"]').isVisible(), true)
   for (const name of ['home', 'hub-home', 'hub-health', 'hub-utility', 'hub-finance', 'household', 'food', 'ebook', 'projects', 'sync', 'more']) {
     assert.equal(await page.locator(`[data-page="${name}"] .bottom-nav`).count(), 0, `Alsó navigáció maradt: ${name}`)
