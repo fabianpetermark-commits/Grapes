@@ -450,10 +450,15 @@ async function openUpdateInbox() {
 function showPage(page, { parent = '', entry = '' } = {}) {
   // TEST native ownership gates only the shared Home data/session. It must
   // not disable the rest of the app's real modules or hide the main menu.
-  // Remember only the menu origin. Reader/transfer views inherit E-book's origin.
-  if (!['reader', 'transfer'].includes(page) || parent) {
+  // Preserve a parent route during same-page Food subviews (e.g. Health Stats),
+  // but clear it when the user enters a module from the root rail.
+  const previousPage = activePage
+  if (parent) {
     menuReturnPage = parent
     menuEntry = entry
+  } else if (!['reader', 'transfer'].includes(page) && page !== previousPage) {
+    menuReturnPage = ''
+    menuEntry = ''
   }
   if (activePage === 'food' && page !== 'food') mobileFood?.flush().catch(() => {})
   if (activePage === 'household' && page !== 'household' && HOME_NATIVE_QA) {
