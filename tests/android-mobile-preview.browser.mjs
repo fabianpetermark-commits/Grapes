@@ -70,7 +70,7 @@ try {
   await page.keyboard.press('Escape')
   await page.screenshot({ path: 'mobile-home-icons.png', fullPage: true })
 
-  await page.locator('.appbar [data-nav="more"]').click()await page.locator('[data-health-nav="settings"]').click()
+  await page.locator('.appbar [data-nav="more"]').click()
   await page.locator('[data-page="more"]').waitFor({ state: 'visible' })
   assert.equal(await page.locator('[data-prod-auth-signout]').isVisible(), false,
     'A PROD Auth kijelentkezés Auth nélküli appban nem jelenhet meg.')
