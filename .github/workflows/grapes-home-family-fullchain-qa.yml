@@ -1,0 +1,55 @@
+name: Grapes Home family fullchain QA (NO RELEASE)
+on:
+  push:
+    branches: [release/grapes-ui-audit-and-home-switch-fixes-20261028]
+  pull_request:
+    branches: [codex/android-app]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: home-fullchain-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  family-fullchain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Locate runner Chromium
+        run: echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+      - name: Unit regressions
+        id: unit
+        run: npm test
+      - name: Android web compilation only (no APK)
+        if: ${{ !cancelled() }}
+        run: npm run build:android-web
+      - name: Existing PROD One Home
+        if: ${{ !cancelled() }}
+        run: node tests/prod-home-one-house.browser.mjs
+      - name: Existing outbox status
+        if: ${{ !cancelled() }}
+        run: node tests/home-one-outbox-status.browser.mjs
+      - name: Existing family preview
+        if: ${{ !cancelled() }}
+        run: node tests/home-family-preview.browser.mjs
+      - name: Existing durable outbox
+        if: ${{ !cancelled() }}
+        run: node tests/home-m3b-family-outbox.browser.mjs
+      - name: Original UI → auto-sync → TEST sync → real IndexedDB → gateway → mocked authenticated RPC
+        if: ${{ !cancelled() }}
+        run: node tests/home-one-family-fullchain.browser.mjs
+      - name: Preserve results and failure evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: home-family-fullchain-evidence
+          path: qa-results/home-family-fullchain/
+          if-no-files-found: warn
