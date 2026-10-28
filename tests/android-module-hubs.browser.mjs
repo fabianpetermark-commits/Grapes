@@ -55,6 +55,18 @@ try {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.screenshot({ path: 'grapes-menu-main-preview.png' })
 
+  // Outdoor is already implemented in source; verify the main menu actually
+  // routes to the plant catalogue and task surface instead of a dead tile.
+  await page.locator('[data-page="home"] .grapes-start-all summary').click()
+  await page.locator('[data-page="home"] [data-module="outdoor"]').click()
+  await page.locator('[data-page="outdoor"] [data-outdoor-root] h1').waitFor({ state: 'visible' })
+  assert.equal(await page.locator('[data-page="outdoor"] [data-outdoor-root] h1').textContent(), 'Növényeim')
+  assert.equal(await page.locator('[data-page="outdoor"] [data-outdoor-action="catalog"]').count(), 1)
+  assert.equal(await page.locator('[data-page="outdoor"] [data-outdoor-tasks]').count(), 1)
+  assert.equal(await page.locator('[data-page="outdoor"] [data-menu-back]').count(), 0,
+    'Outdoor must use Android Back, not a duplicated in-module Home button.')
+  await returnToHome(page)
+
   await page.locator('[data-menu-group="home"]').click()
   await page.locator('[data-page="household"]').waitFor({ state: 'visible' })
   assert.equal(await page.locator('[data-page="hub-home"]').isVisible(), false, 'Approved Home skips the legacy 2-card hub')
