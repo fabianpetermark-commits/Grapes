@@ -149,7 +149,7 @@ try {
   assert.equal(await page.evaluate(() => window.grapesHandleAndroidBack()), true)
   await page.waitForFunction(() => !document.querySelector('[data-food-stats-sheet]')?.classList.contains('is-open'))
   // Goals are now configured from Health-specific settings.
-  await page.locator('.appbar [data-nav="more"]').click()
+  await page.locator('[data-health-nav="settings"]').click()
   await page.locator('[data-health-section="goals"]').click()
   await page.locator('[data-health-command="food-targets"]').click()
   await page.locator('[data-food-targets-sheet].is-open').waitFor({ state: 'visible' })
@@ -159,7 +159,7 @@ try {
   await page.locator('[data-food-target-save]').click()
   await page.evaluate(() => window.grapesHandleAndroidBack())
   await page.locator('[data-page="hub-health"]').waitFor({ state: 'visible' })
-  await page.locator('.appbar [data-nav="more"]').click()
+  await page.locator('[data-health-nav="settings"]').click()
   await page.locator('[data-health-section="goals"]').click()
   await page.locator('[data-health-command="food-targets"]').click()
   assert.equal(await page.locator('[data-food-target-energy]').inputValue(), '2100')
@@ -289,7 +289,7 @@ try {
   await page.locator('[data-water-log] button').filter({ hasText: '300 ml' }).evaluate(button => button.click())
   assert.equal((await page.locator('[data-water-total]').textContent()).replace(/\s/g, ''), '250ml', 'A Health-víz törölhető legyen.')
 
-  await page.locator('.appbar [data-nav="more"]').click()
+  await page.locator('[data-health-nav="settings"]').click()
   await page.locator('[data-page="more"] [data-nav="sync"]').click()
   const retryChooserPromise = page.waitForEvent('filechooser')
   await page.locator('[data-health-sync]').click()
