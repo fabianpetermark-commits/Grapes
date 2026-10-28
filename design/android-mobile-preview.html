@@ -672,10 +672,12 @@
 /* Approved main menu v1.2: compact six-icon top capsule and LIVE favorites. */
 #app > .appbar { flex-wrap: wrap; row-gap: 3px; padding-bottom: 6px; min-width: 0; }
 .grapes-main-rail {
-  display:grid;grid-template-columns:repeat(6,minmax(0,1fr));
-  flex:0 0 100%;gap:3px;min-width:0;min-height:63px;padding:5px;
+  display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 15px)/6);
+  grid-template-columns:none;flex:0 0 100%;gap:3px;min-width:0;min-height:63px;
+  padding:5px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;
   border:1px solid #2c4a58;border-radius:23px;background:#101821;
 }
+.grapes-main-rail::-webkit-scrollbar {display:none;}
 .grapes-main-rail[hidden] {display:none !important;}
 .grapes-main-rail > button {
   display:grid;place-items:center;min-width:0;min-height:51px;
@@ -694,6 +696,13 @@
 .grapes-main-rail > .icon-btn--settings:not([aria-current="page"]) {
   color:#9bb2c0;background:transparent;border-color:transparent;
 }
+.grapes-tools-page h1 {font-size:24px;letter-spacing:-.035em;line-height:1.2;margin:4px 0 18px;}
+.tools-module-grid {display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;}
+.tools-module-icon {display:grid;place-items:center;min-width:0;min-height:58px;padding:6px;color:#9bb2c0;background:#101821;border:1px solid #2c4a58;border-radius:17px;}
+.tools-module-icon svg,.tools-module-icon .mobile-icon {width:22px;height:22px;}
+.tools-module-icon:focus-visible {outline:2px solid #3bdcf2;outline-offset:2px;}
+.tools-module-icon:active {color:#3bdcf2;background:#1b3541;border-color:#477a88;}
+@media(max-width:350px){.tools-module-grid{gap:4px}.tools-module-icon{min-height:48px;border-radius:14px}.tools-module-icon svg,.tools-module-icon .mobile-icon{width:20px;height:20px;}}
 .grapes-start-page h1 {font-size:24px;letter-spacing:-.035em;line-height:1.2;}
 .grapes-favorite-actions {display:flex;justify-content:flex-end;margin:0 0 12px;}
 .grapes-favorite-actions button, .grapes-favorite-picker button {
@@ -774,6 +783,7 @@
             <button type="button" data-main-nav="health" data-menu-group="health" aria-label="Health" title="Health"><span data-mobile-icon="health"></span></button>
             <button type="button" data-main-nav="tools" data-menu-group="utility" aria-label="Tools" title="Tools"><span data-mobile-icon="utility"></span></button>
             <button type="button" data-main-nav="finance" data-menu-group="finance" aria-label="Finance" title="Finance"><span data-mobile-icon="finance"></span></button>
+            <button type="button" data-main-nav="outdoor" data-menu-group="outdoor" aria-label="Outdoor" title="Outdoor"><span data-mobile-icon="outdoor"></span></button>
             <button class="icon-btn icon-btn--settings" type="button" data-main-nav="settings" data-nav="more" aria-label="Beállítások" title="Beállítások"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 2.5h4l.6 2.4 1.6.9 2.4-.7 2 3.5-1.8 1.7v1.9l1.8 1.7-2 3.5-2.4-.7-1.6.9-.6 2.4h-4l-.6-2.4-1.6-.9-2.4.7-2-3.5 1.8-1.7v-1.9L3.4 8.6l2-3.5 2.4.7 1.6-.9z"/><circle cx="12" cy="12" r="3"/></svg></button>
           </nav>
         </header>
@@ -801,10 +811,9 @@
           </details>
         </div>
 
-        <div class="content" data-page="outdoor" hidden><button type="button" class="hub-back" data-menu-back>‹ Főmenü</button><div data-outdoor-root></div></div>
+        <div class="content" data-page="outdoor" hidden><div data-outdoor-root></div></div>
 
         <div class="content" data-page="hub-home" hidden>
-          <button type="button" class="hub-back" data-menu-back>‹ Főmenü</button>
           <p class="eyebrow">Home / Háztartás</p><h1>Otthon</h1>
           <p class="lead">Bevásárlás és élelmiszerkészlet egy helyen.</p>
           <div class="hub-options" aria-label="Home almodulok">
@@ -814,7 +823,6 @@
         </div>
 
         <div class="content health-dashboard" data-page="hub-health" hidden>
-          <button type="button" class="hub-back" data-menu-back>‹ Főmenü</button>
           <!-- Accepted Health v1.2 six-action rail; all actions reuse existing data-bound modules. -->
           <nav class="health-top-rail" aria-label="Health modulok">
             <button type="button" data-health-nav="food" aria-label="Food" title="Food"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3v7a4 4 0 0 0 8 0V3M8 3v18M17 3v18M17 3c4 3 4 7 0 9"/></svg></button>
@@ -869,7 +877,6 @@
         </div>
 
         <div class="content health-settings-page" data-page="health-settings" hidden>
-          <button type="button" class="hub-back" data-health-settings-back>‹ Health</button>
           <h2>Beállítások</h2><p class="health-settings-intro">Személyes célok és ellenőrizhető adatkapcsolatok.</p>
           <div data-health-settings-index>
             <button class="health-settings-item" data-health-section="goals"><strong>Napi célok</strong><small>Kalória, makrók, víz, megjelenítés</small></button>
@@ -882,23 +889,12 @@
           </section>
         </div>
 
-        <div class="content" data-page="hub-utility" hidden>
-          <button type="button" class="hub-back" data-menu-back>‹ Főmenü</button>
-          <p class="eyebrow">Tools</p><h1>Eszközök</h1>
-          <p class="lead">Könyvtár és QR Stúdió, a meglévő funkciókkal.</p>
-          <div class="hub-options" aria-label="Utility almodulok">
-            <button type="button" class="hub-option" data-menu-destination="ebook"><span class="hub-option__icon" data-module-icon="ebook"></span><strong>E-book</strong></button>
-            <button type="button" class="hub-option" data-menu-destination="qr"><span class="hub-option__icon" data-module-icon="qr"></span><strong>QR modul</strong></button>
-          </div>
-        </div>
-
-        <div class="content" data-page="hub-finance" hidden>
-          <button type="button" class="hub-back" data-menu-back>‹ Főmenü</button>
-          <p class="eyebrow">Finance</p><h1>Pénzügyek</h1>
-          <p class="lead">A megszokott pénzügyi modul változatlanul.</p>
-          <div class="hub-options" aria-label="Finance almodulok">
-            <button type="button" class="hub-option" data-menu-destination="finance"><span class="hub-option__icon" data-module-icon="finance"></span><strong>Pénzügyi napló</strong></button>
-          </div>
+        <div class="content grapes-tools-page" data-page="hub-utility" hidden>
+          <h1>Tools</h1>
+          <nav class="tools-module-grid" aria-label="Tools modulok">
+            <button type="button" class="tools-module-icon" data-menu-destination="ebook" aria-label="E-book" title="E-book"><span data-module-icon="ebook"></span></button>
+            <button type="button" class="tools-module-icon" data-menu-destination="qr" aria-label="QR-kód" title="QR-kód"><span data-module-icon="qr"></span></button>
+          </nav>
         </div>
 
         <div class="content" data-page="household" hidden><div data-household-root></div></div>
