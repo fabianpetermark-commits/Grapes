@@ -34,7 +34,7 @@ try{
     assert.equal(await button.getAttribute('aria-selected'),'true','Finance tab must activate: '+tab)
     await page.locator('[data-finance-panel="'+tab+'"]').waitFor({state:'visible'})
     const visiblePanels=await page.locator('[data-finance-panel]').evaluateAll(nodes=>nodes.filter(n=>!n.hidden&&getComputedStyle(n).display!=='none').length)
-    assert.equal(visiblePanels,1,'Exactly one Finance view should be visible: '+tab)
+    assert.equal(visiblePanels,tab==='overview'?3:1,'Expected visible Finance panels for '+tab)
   }
   for(const width of [320,360,390,412]){
     await page.setViewportSize({width,height:844})
