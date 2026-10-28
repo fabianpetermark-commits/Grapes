@@ -1,6 +1,4 @@
 import './styles/index.css'
-import { mobileIconSvg } from './android-mobile-icons.js'
-import './styles/components/mobile-module-nav.css'
 import { el } from './ui/dom.js'
 import { showScreen } from './screens.js'
 import {
@@ -246,32 +244,8 @@ async function navigateMobile(page) {
   try { sessionStorage.setItem('grapes-mobile-return-page', page) } catch {}
   location.href = target.href
 }
-if (androidModuleShell && ['qr','ebook'].includes(requestedScreen)) {
-  const nav = document.createElement('nav')
-  nav.className = 'mobile-module-nav'
-  nav.setAttribute('aria-label','Grapes főmodulok')
-  for (const [page,label,icon] of [
-    ['home','Kezdő','start'],['household','Home','household'],
-    ['hub-health','Health','health'],['hub-utility','Tools','utility'],
-    ['hub-finance','Finance','finance'],['outdoor','Outdoor','outdoor'],['more','Beállítások','settings'],
-  ]) {
-    const button = document.createElement('button')
-    button.type = 'button'; button.setAttribute('aria-label',label)
-    button.innerHTML = mobileIconSvg(icon)
-    if (page === 'hub-utility') button.setAttribute('aria-current','page')
-    button.addEventListener('click', () => {
-      if (page === 'hub-finance') {
-        const target = new URL('./index.html', location.href)
-        target.searchParams.set('module', 'finance')
-        target.searchParams.set('android-shell', '1')
-        target.searchParams.set('return-page', 'home')
-        location.href = target.href
-      } else navigateMobile(page)
-    })
-    nav.append(button)
-  }
-  document.querySelector('#'+requestedScreen+'-app .toolbar').after(nav)
-}
+// Navigation is owned by the Android mobile shell. Do not inject a second
+// module rail into standalone QR/E-book screens; Android Back returns to shell.
 if (androidModuleShell) {
   // Native Android Back returns to the previous Grapes shell for every
   // standalone module, not only E-book and QR.
