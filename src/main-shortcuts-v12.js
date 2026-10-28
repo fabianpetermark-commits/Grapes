@@ -22,7 +22,7 @@ export const MAIN_SHORTCUTS = Object.freeze([
 ])
 const byId = new Map(MAIN_SHORTCUTS.map(entry => [entry.id, entry]))
 const STORAGE_KEY = 'grapes-main-shortcuts-v12'
-const DEFAULT_PINS = ['food','water']
+const DEFAULT_PINS = ['home','food','water']
 const MAX_PINS = 10
 
 function parseSettings(raw) {
