@@ -358,8 +358,8 @@ try {
     'A Finance modulnak mind az öt nézetfüle betöltődik, nem maradhat üres/fehér képernyő.')
   assert.equal(await page.locator('.mobile-module-nav').count(), 0,
     'A Finance modulon nem jelenhet meg a régi duplikált főmenüsor.')
-  assert.equal(await page.locator('#finance-back-to-menu-btn').isVisible(), false,
-    'Az Android modulban nem jelenhet meg külön Home/Főmenü gomb.')
+  assert.equal(await page.locator('#finance-back-to-menu-btn').count(), 0,
+    'Az Android modulban a régi Home/Főmenü gomb ne is legyen a DOM-ban.')
 } finally {
   await browser?.close()
   server.kill()
