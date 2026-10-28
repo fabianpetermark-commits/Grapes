@@ -448,10 +448,8 @@ async function openUpdateInbox() {
 }
 
 function showPage(page, { parent = '', entry = '' } = {}) {
-  // The dedicated A/B QA APK cannot show earlier unclaimed personal
-  // Food/Finance/Water records: those are not owner-scoped yet. This limit
-  // is TEST-only. PROD and regular web builds keep their existing navigation.
-  if (HOME_NATIVE_QA && page !== 'household') page = 'household'
+  // TEST native ownership gates only the shared Home data/session. It must
+  // not disable the rest of the app's real modules or hide the main menu.
   // Remember only the menu origin. Reader/transfer views inherit E-book's origin.
   if (!['reader', 'transfer'].includes(page) || parent) {
     menuReturnPage = parent
@@ -470,7 +468,7 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   $$('[data-nav]').forEach(node => node.classList.toggle('is-active', node.dataset.nav === page))
   const mainRail = $('[data-main-rail]')
   // Health has its own six-icon view rail; never stack the root rail above it.
-  if (mainRail) mainRail.hidden = HOME_NATIVE_QA || page === 'hub-health'
+  if (mainRail) mainRail.hidden = page === 'hub-health'
   const currentMain =
     page === 'home' ? 'start' :
     page === 'household' || page === 'hub-home' ? 'home' :
