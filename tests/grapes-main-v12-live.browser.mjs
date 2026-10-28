@@ -57,7 +57,7 @@ try{
     await page.reload()
     await page.locator('[data-page="home"]').waitFor({state:'visible'})
     assert.deepEqual(await favorites.locator('[data-main-shortcut]').evaluateAll(nodes=>nodes.map(x=>x.dataset.mainShortcut)),
-      ['food','water','shopping'])
+      ['home','food','water','shopping'])
     await page.locator('[data-main-shortcut="shopping"]').click()
     const home=page.locator('[data-page="household"]')
     await home.waitFor({state:'visible'})
