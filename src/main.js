@@ -245,23 +245,9 @@ async function navigateMobile(page) {
   try { sessionStorage.setItem('grapes-mobile-return-page', page) } catch {}
   location.href = target.href
 }
-if (androidModuleShell && ['qr','ebook'].includes(requestedScreen)) {
-  const nav = document.createElement('nav')
-  nav.className = 'mobile-module-nav'
-  nav.setAttribute('aria-label','Grapes főmodulok')
-  for (const [page,label,icon] of [
-    ['home','Kezdő','start'],['household','Home','household'],
-    ['hub-health','Health','health'],['hub-utility','Tools','utility'],
-    ['hub-finance','Finance','finance'],['more','Beállítások','settings'],
-  ]) {
-    const button = document.createElement('button')
-    button.type = 'button'; button.setAttribute('aria-label',label)
-    button.innerHTML = mobileIconSvg(icon)
-    if (page === 'hub-utility') button.setAttribute('aria-current','page')
-    button.addEventListener('click', () => navigateMobile(page))
-    nav.append(button)
-  }
-  document.querySelector('#'+requestedScreen+'-app .toolbar').after(nav)
+if (androidModuleShell) {
+  // One module surface at a time. Do not inject a second six-icon menu into
+  // legacy module pages; the Android system Back action returns to the shell.
   window.grapesHandleAndroidBack = () => { goToMainMenu(); return true }
 }
 
