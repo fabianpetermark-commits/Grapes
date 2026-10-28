@@ -318,6 +318,7 @@ try {
   await page.locator('[data-menu-group="utility"]').click()
   await page.locator('[data-page="hub-utility"] [data-tools-qr-form]').waitFor({ state: 'visible' })
   assert.equal(await page.locator('[data-page="hub-utility"] h1').textContent(), 'Tools')
+  assert.equal(await page.locator('[data-main-rail]').isVisible(), true, 'Tools keeps the six-icon global module rail on its approved main screen.')
   assert.equal(await page.locator('[data-page="hub-utility"] [data-menu-destination]').count(), 0, 'The old E-book/QR chooser tiles must be gone.')
   assert.equal(await page.locator('[data-page="hub-utility"] [data-tools-book-content]').count(), 1)
   assert.equal(await page.locator('[data-page="hub-utility"] [data-tools-qr-form]').count(), 1)
@@ -330,6 +331,7 @@ try {
   await page.locator('[data-page="hub-utility"] [data-tools-book-library]').waitFor({ state: 'visible' })
   await page.locator('[data-tools-book-library]').click()
   await page.locator('[data-page="ebook"]').waitFor({ state: 'visible' })
+  assert.equal(await page.locator('[data-main-rail]').isVisible(), false, 'E-book detail navigation must not duplicate the global rail.')
   await page.screenshot({ path: 'mobile-ebook-library.png', fullPage: true })
 
   const layout = await page.evaluate(() => ({
