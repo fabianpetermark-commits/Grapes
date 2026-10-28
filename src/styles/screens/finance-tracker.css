@@ -594,3 +594,9 @@ html.is-grapes-android-module #finance-app:has([data-finance-tab="transaction"].
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Android shell uses the system Back action; never expose the legacy
+   Finance toolbar exit in the native module route. The regular web UI keeps it. */
+html.is-grapes-android-module #finance-back-to-menu-btn {
+  display: none !important;
+}
