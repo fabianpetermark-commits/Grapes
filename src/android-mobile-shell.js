@@ -468,7 +468,19 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   $$('[data-page]').forEach(node => { node.hidden = node.dataset.page !== page })
   $$('[data-nav]').forEach(node => node.classList.toggle('is-active', node.dataset.nav === page))
   const mainRail = $('[data-main-rail]')
-  if (mainRail) mainRail.hidden = HOME_NATIVE_QA
+  const healthPages = ['hub-health','health-settings','food','water','samsung-water'].includes(page)
+  if (mainRail) mainRail.hidden = HOME_NATIVE_QA || healthPages || page === 'outdoor'
+  const healthRail = $('[data-health-rail]')
+  if (healthRail) {
+    healthRail.hidden = !healthPages
+    const currentHealth = page === 'water' ? 'water' :
+      ['health-settings','samsung-water'].includes(page) ? 'settings' :
+      page === 'food' && ['recipes','stats','barcode'].includes(menuEntry) ? menuEntry : 'food'
+    $('[data-health-nav]').forEach(button => {
+      if (healthPages && button.dataset.healthNav === currentHealth) button.setAttribute('aria-current','page')
+      else button.removeAttribute('aria-current')
+    })
+  }
   const currentMain =
     page === 'home' ? 'start' :
     page === 'household' || page === 'hub-home' ? 'home' :
@@ -1442,7 +1454,8 @@ $$('[data-menu-group], [data-main-module-link]').forEach(button => button.addEve
   const group = button.dataset.menuGroup || button.dataset.mainModuleLink
   if (group === 'outdoor') showPage('outdoor', {parent:'home'})
   else if (group === 'home') showPage('household', { parent: 'home' })
-  else if (['health', 'utility', 'finance'].includes(group)) showPage('hub-' + group)
+  else if (group === 'finance') openModule('finance')
+  else if (['health', 'utility'].includes(group)) showPage('hub-' + group)
 }))
 $$('[data-menu-back]').forEach(button => button.addEventListener('click', () => showPage('home')))
 
