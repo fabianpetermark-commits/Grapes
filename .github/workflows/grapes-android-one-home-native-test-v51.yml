@@ -1,0 +1,141 @@
+name: Grapes Android TEST One Home native Auth + CAS v51 (SIGNED QA ONLY)
+
+on:
+  push:
+    branches: [qa/grapes-one-home-v51-signed-phone-20261027]
+  pull_request:
+    branches: [codex/android-app]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-one-home-native-test-v51-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  qa:
+    if: github.repository == 'fabianpetermark-commits/Grapes'
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      GRAPES_VERSION_CODE: '51'
+      GRAPES_VERSION_NAME: '0.9.51-one-home-ui'
+      VITE_GRAPES_TEST_CHANNEL: '1'
+      VITE_GRAPES_TEST_AUTH_ENABLED: 'true'
+      VITE_GRAPES_TEST_DATA_ENABLED: 'true'
+      VITE_GRAPES_TEST_HOME_FAMILY_ENABLED: 'true'
+      VITE_GRAPES_TEST_SUPABASE_URL: 'https://aighqtqjlzirlokxwupt.supabase.co'
+      VITE_GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY: ${{ vars.GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY }}
+      VITE_GRAPES_TEST_LEGACY_BACKUP_ENABLED: 'false'
+      VITE_GRAPES_TEST_HEALTH_SYNC_ENABLED: 'false'
+      VITE_GRAPES_PROD_AUTH_ENABLED: 'false'
+      VITE_GRAPES_PROD_LEGACY_DATA_ISOLATION_REVIEWED: 'false'
+      VITE_GOOGLE_CLIENT_ID: '991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com'
+      VITE_GOOGLE_APP_ID: '991532871119'
+      VITE_GOOGLE_PICKER_API_KEY: ${{ secrets.GOOGLE_PICKER_API_KEY }}
+      VITE_GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
+      VITE_EBOOK_EPUB_WRITE_ENABLED: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Validate TEST project and flags, never use PROD
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$VITE_GRAPES_TEST_SUPABASE_URL" = "https://aighqtqjlzirlokxwupt.supabase.co"
+          test "$VITE_GRAPES_TEST_AUTH_ENABLED" = true
+          test "$VITE_GRAPES_TEST_DATA_ENABLED" = true
+          test "$VITE_GRAPES_TEST_HOME_FAMILY_ENABLED" = true
+          test "$VITE_GRAPES_PROD_AUTH_ENABLED" = false
+          case "$VITE_GRAPES_TEST_SUPABASE_PUBLISHABLE_KEY" in
+            sb_publishable_????????????????*) echo 'QA publishable key configured';;
+            *) echo '::error::TEST publishable key not configured'; exit 1;;
+          esac
+      - run: npm ci
+      - name: All existing tests + native session owner/scope unit
+        run: |
+          npm test
+          node --test tests/home-native-test-session.test.js
+          node --test tests/home-family-auto-sync.test.js
+          node --test tests/home-one-test-sync.test.js
+      - name: Compile TEST Auth and One Home WebView assets
+        run: npm run build:android-web
+      - name: Chromium setup for Codex real IndexedDB A/B full-chain gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v google-chrome >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium >/dev/null; then
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            npx playwright-core install --with-deps chromium
+            binary=$(find "$HOME/.cache/ms-playwright" -type f -name chrome -path '*chrome-linux*' | head -1)
+            test -n "$binary"
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$binary" >> "$GITHUB_ENV"
+          fi
+      - name: Codex #190 full-chain browser QA – BLOCK signed APK on A/B owner leaks
+        run: node tests/home-one-family-fullchain.browser.mjs
+      - name: Reject PROD credential or silent family activation in bundle
+        run: |
+          set -euo pipefail
+          test -s android-health-connect-poc/app/src/main/assets/login-auth-test.html
+          test -s android-health-connect-poc/app/src/main/assets/login-auth-prod.html
+          grep -Fq 'login-auth-test' android-health-connect-poc/app/src/main/assets/login-auth-test.html
+          grep -Fq 'login-auth-prod' android-health-connect-poc/app/src/main/assets/login-auth-prod.html
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android SDK 36
+        run: |
+          sdkmanager=$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | sort -V | tail -1)
+          "$sdkmanager" "platforms;android-36" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.11.1
+      - name: Native test Auth, CAS allowlist and other QA unit regressions
+        run: gradle --project-dir android-health-connect-poc :app:testQaUnitTest
+      - name: Signed TEST APK only; no release/install/update
+        env:
+          ANDROID_TEST_KEYSTORE_BASE64: ${{ secrets.ANDROID_TEST_KEYSTORE_BASE64 }}
+          ANDROID_TEST_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_TEST_KEYSTORE_PASSWORD }}
+          ANDROID_TEST_KEY_ALIAS: ${{ secrets.ANDROID_TEST_KEY_ALIAS }}
+          ANDROID_TEST_KEY_PASSWORD: ${{ secrets.ANDROID_TEST_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$ANDROID_TEST_KEYSTORE_BASE64"
+          test -n "$ANDROID_TEST_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_TEST_KEY_ALIAS"
+          test -n "$ANDROID_TEST_KEY_PASSWORD"
+          export ANDROID_TEST_KEYSTORE_PATH="$RUNNER_TEMP/grapes-one-home-v51-test.p12"
+          trap 'rm -f "$ANDROID_TEST_KEYSTORE_PATH"' EXIT
+          printf '%s' "$ANDROID_TEST_KEYSTORE_BASE64" | base64 --decode > "$ANDROID_TEST_KEYSTORE_PATH"
+          chmod 600 "$ANDROID_TEST_KEYSTORE_PATH"
+          gradle --project-dir android-health-connect-poc :app:assembleQa
+          src=android-health-connect-poc/app/build/outputs/apk/qa/app-qa.apk
+          test -s "$src"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$src" | grep -F "package: name='hu.grapes.healthconnect.test'"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$src" | grep -F "versionCode='51'"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$src" |
+            grep -Fi 'Signer #1 certificate SHA-256 digest: cc9dc997fa4bff3845884afd2f011efe939c02806f91393a1ddb0455b6a2ff33'
+          mv "$src" grapes-one-home-v51-test-signed.apk
+          sha256sum grapes-one-home-v51-test-signed.apk > grapes-one-home-v51-test-signed.apk.sha256
+          sha256sum -c grapes-one-home-v51-test-signed.apk.sha256
+      - name: Archive TEST APK 7 days – no GitHub release
+        uses: actions/upload-artifact@v4
+        with:
+          name: grapes-one-home-v51-signed-test-only
+          path: |
+            grapes-one-home-v51-test-signed.apk
+            grapes-one-home-v51-test-signed.apk.sha256
+          if-no-files-found: error
+          retention-days: 7
