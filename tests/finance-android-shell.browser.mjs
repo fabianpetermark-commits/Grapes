@@ -32,7 +32,7 @@ try{
     const button=page.locator('[data-finance-tab="'+tab+'"]')
     await button.click()
     assert.equal(await button.getAttribute('aria-selected'),'true','Finance tab must activate: '+tab)
-    await page.locator('[data-finance-panel="'+tab+'"]').waitFor({state:'visible'})
+    await page.locator('[data-finance-panel="'+tab+'"]').first().waitFor({state:'visible'})
     const visiblePanels=await page.locator('[data-finance-panel]').evaluateAll(nodes=>nodes.filter(n=>!n.hidden&&getComputedStyle(n).display!=='none').length)
     assert.equal(visiblePanels,tab==='overview'?3:1,'Expected visible Finance panels for '+tab)
   }
