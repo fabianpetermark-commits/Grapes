@@ -277,7 +277,7 @@
   grid-template-columns: repeat(3,minmax(0,1fr)) 50px 42px;
   gap: 5px;
 }
-[data-household-root] .household-quick button:not(.household-quick-add) {
+[data-household-root] .household-quick button:not(.household-quick-add):not(.household-quick-outdoor) {
   display: grid;
   place-items: center;
   align-content: center;
