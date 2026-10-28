@@ -1450,6 +1450,7 @@ $$('[data-settings-provider]').forEach(button => button.addEventListener('click'
   requestAnimationFrame(() => $(target)?.scrollIntoView({ block: 'center', behavior: 'instant' }))
 }))
 $('[data-settings-open-home]')?.addEventListener('click', () => showPage('household'))
+document.addEventListener('grapes:open-global-settings', () => showPage('more', { parent: activePage }))
 $$('[data-menu-group], [data-main-module-link]').forEach(button => button.addEventListener('click', () => {
   const group = button.dataset.menuGroup || button.dataset.mainModuleLink
   if (group === 'outdoor') showPage('outdoor', {parent:'home'})
