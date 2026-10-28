@@ -53,7 +53,7 @@ try {
     documentWidth: document.documentElement.scrollWidth,
     appWidth: document.querySelector('#ebook-app').scrollWidth,
     toolbarHeight: document.querySelector('#ebook-toolbar').getBoundingClientRect().height,
-    homeHeight: document.querySelector('#ebook-back-to-menu-btn').getBoundingClientRect().height,
+    homeVisible: getComputedStyle(document.querySelector('#ebook-back-to-menu-btn')).display !== 'none',\n    moduleNavCount: document.querySelectorAll('.mobile-module-nav').length,\n    activeModule: document.querySelector('.mobile-module-nav [aria-current]')?.getAttribute('aria-label'),
     uploadHeight: document.querySelector('#ebook-upload-btn').getBoundingClientRect().height,
     markSource: document.querySelector('#ebook-toolbar .toolbar__brand-mark').getAttribute('src'),
   }))
@@ -61,7 +61,7 @@ try {
   assert.equal(ebookLayout.documentWidth, ebookLayout.viewportWidth, 'Az E-book modul vízszintesen kilóg a mobilnézetből.')
   assert.ok(ebookLayout.appWidth <= ebookLayout.viewportWidth)
   assert.ok(ebookLayout.toolbarHeight >= 58)
-  assert.ok(ebookLayout.homeHeight >= 44)
+  assert.equal(ebookLayout.homeVisible, false, 'A duplikált E-book Főmenü gomb el van rejtve az egységes modulnavigáció mellett.')\n  assert.equal(ebookLayout.moduleNavCount, 1)\n  assert.equal(ebookLayout.activeModule, 'Tools')
   assert.ok(ebookLayout.uploadHeight >= 48)
   assert.ok(ebookLayout.markSource.endsWith('grapes-mark.svg'))
   await ebook.screenshot({ path: 'mobile-ebook-full.png', fullPage: true })
@@ -87,7 +87,7 @@ try {
     fabHeight: document.querySelector('#finance-mobile-add').getBoundingClientRect().height,
     fieldHeight: document.querySelector('#finance-filter-search').getBoundingClientRect().height,
     visiblePanels: [...document.querySelectorAll('[data-finance-panel]:not([hidden])')].length,
-    markSource: document.querySelector('#finance-app .toolbar__brand-mark').getAttribute('src'),
+    markSource: document.querySelector('#finance-app .toolbar__brand-mark').getAttribute('src'),\n    moduleNavCount: document.querySelectorAll('.mobile-module-nav').length,\n    activeModule: document.querySelector('.mobile-module-nav [aria-current]')?.getAttribute('aria-label'),\n    homeVisible: getComputedStyle(document.querySelector('#finance-back-to-menu-btn')).display !== 'none',
   }))
   assert.equal(financeLayout.documentWidth, financeLayout.viewportWidth, 'A Pénzügyi Napló vízszintesen kilóg a mobilnézetből.')
   assert.ok(financeLayout.appWidth <= financeLayout.viewportWidth)
@@ -95,7 +95,7 @@ try {
   assert.ok(financeLayout.fabHeight >= 54)
   assert.ok(financeLayout.fieldHeight >= 44)
   assert.ok(financeLayout.visiblePanels >= 3)
-  assert.ok(financeLayout.markSource.endsWith('grapes-mark.svg'))
+  assert.ok(financeLayout.markSource.endsWith('grapes-mark.svg'))\n  assert.equal(financeLayout.moduleNavCount, 1, 'Finance must use the shared module navigation.')\n  assert.equal(financeLayout.activeModule, 'Finance')\n  assert.equal(financeLayout.homeVisible, false, 'No duplicate Finance Főmenü control.')
   await finance.screenshot({ path: 'mobile-finance-overview.png', fullPage: true })
 
   for (const tab of ['savings', 'forecast', 'import', 'overview']) {
