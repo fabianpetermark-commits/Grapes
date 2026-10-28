@@ -31,14 +31,15 @@ try {
   mkdirSync('artifacts/tools-206',{recursive:true})
   for(const width of [320,360,390,412]){
     await page.setViewportSize({width,height:844})
-    assert.equal(await page.locator('.mobile-module-nav button').count(),7)
+    // Standalone QR must not inject a second module rail; Android Back returns to the shell.
+    assert.equal(await page.locator('.mobile-module-nav').count(),0)
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth), 'QR overflow '+width)
     await page.locator('#qr-tab-color').click()
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth), 'QR color overflow '+width)
     assert.ok(await page.locator('[data-qr-color]').first().evaluate(x=>x.getBoundingClientRect().height>=44))
     await page.screenshot({path:`artifacts/tools-206/qr-${width}.png`})
   }
-  await page.locator('.mobile-module-nav [aria-label="Tools"]').click()
+  await page.locator('#qr-back-to-menu-btn').click()
   await page.locator('[data-page="hub-utility"]').waitFor({state:'visible'})
   // Actual PDF bytes through mocked external Drive only; application/controller stay real.
   const pdf=await PDFDocument.create();pdf.addPage().drawText('Grapes PDF page one',{x:50,y:700});pdf.addPage().drawText('Second PDF page',{x:50,y:700})
