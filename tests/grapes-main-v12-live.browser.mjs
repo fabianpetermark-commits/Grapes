@@ -30,12 +30,12 @@ try{
     await page.locator('[data-page="home"]').waitFor({state:'visible'})
     const nav=page.locator('[data-main-rail]')
     assert.equal(await nav.isVisible(),true)
-    assert.equal(await nav.locator('button').count(),7)
+    assert.equal(await nav.locator('button').count(),6)
     assert.deepEqual(await nav.locator('button').evaluateAll(nodes=>nodes.map(x=>x.getAttribute('aria-label'))),
-      ['Kezdő','Home','Health','Tools','Finance','Outdoor','Beállítások'])
-    assert.equal(await nav.locator('svg').count(),7)
+      ['Home','Health','Tools','Finance','Outdoor','Beállítások'])
+    assert.equal(await nav.locator('svg').count(),6)
     assert.equal(await nav.locator('button[aria-current="page"]').count(),1)
-    assert.equal(await nav.locator('[data-main-nav="start"]').getAttribute('aria-current'),'page')
+    assert.equal(await nav.locator('button[aria-current="page"]').count(),0,'Favorites landing is not a seventh module icon')
     const rail=await nav.evaluate(node=>({
       cols:getComputedStyle(node).gridAutoFlow === 'column' ? 6 : 0,
       width:node.getBoundingClientRect().width,
@@ -70,7 +70,7 @@ try{
     assert.ok(await shareControls.count()>=1,'Approved Home share UI remains present')
     assert.ok((await shareControls.evaluateAll(nodes=>nodes.map(node=>node.disabled))).every(Boolean),
       'PROD must never fake enabled family sharing in either header or quick action')
-    await nav.locator('[data-main-nav="start"]').click()
+    await page.locator('.appbar__home').click()
     await page.locator('[data-page="home"]').waitFor({state:'visible'})
     await page.locator('[data-main-shortcut="food"]').click()
     await page.locator('[data-page="food"]').waitFor({state:'visible'})
