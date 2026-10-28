@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { returnToHome } from './helpers/mobile-navigation.js'
 import {spawn} from 'node:child_process'
 import {existsSync,mkdirSync} from 'node:fs'
 import {chromium} from 'playwright-core'
@@ -35,7 +36,7 @@ try{
   const page=await context.newPage();page.setDefaultTimeout(10000);const errors=[]
   page.on('pageerror',e=>errors.push(e.message))
   await page.goto(url)
-  async function water(){await page.locator('.appbar [data-nav=home]').click();await page.locator('[data-main-shortcut=water]').click();await page.locator('[data-page=water]').waitFor({state:'visible'})}
+  async function water(){await returnToHome(page);await page.locator('[data-main-shortcut=water]').click();await page.locator('[data-page=water]').waitFor({state:'visible'})}
   async function samsung(){await water();await page.locator('[data-page=water] [data-samsung-sync-action]').click();await page.locator('[data-page=samsung-water]').waitFor({state:'visible'})}
   const read=page.locator('[data-samsung-water-read]'),toggle=page.locator('[data-samsung-water-auto]')
   await samsung();assert.equal(await toggle.isDisabled(),true)

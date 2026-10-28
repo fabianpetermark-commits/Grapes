@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { returnToHome } from './helpers/mobile-navigation.js'
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
@@ -54,6 +55,18 @@ try {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.screenshot({ path: 'grapes-menu-main-preview.png' })
 
+  // Outdoor is already implemented in source; verify the main menu actually
+  // routes to the plant catalogue and task surface instead of a dead tile.
+  await page.locator('[data-page="home"] .grapes-start-all summary').click()
+  await page.locator('[data-page="home"] [data-module="outdoor"]').click()
+  await page.locator('[data-page="outdoor"] [data-outdoor-root] h1').waitFor({ state: 'visible' })
+  assert.equal(await page.locator('[data-page="outdoor"] [data-outdoor-root] h1').textContent(), 'Növényeim')
+  assert.equal(await page.locator('[data-page="outdoor"] [data-outdoor-action="catalog"]').count(), 1)
+  assert.equal(await page.locator('[data-page="outdoor"] [data-outdoor-tasks]').count(), 1)
+  assert.equal(await page.locator('[data-page="outdoor"] [data-menu-back]').count(), 0,
+    'Outdoor must use Android Back, not a duplicated in-module Home button.')
+  await returnToHome(page)
+
   await page.locator('[data-menu-group="home"]').click()
   await page.locator('[data-page="household"]').waitFor({ state: 'visible' })
   assert.equal(await page.locator('[data-page="hub-home"]').isVisible(), false, 'Approved Home skips the legacy 2-card hub')
@@ -81,7 +94,7 @@ try {
   await page.locator('[data-food-stats-sheet].is-open').waitFor({ state: 'visible' })
   await page.evaluate(() => window.grapesHandleAndroidBack())
   await page.locator('[data-page="hub-health"]').waitFor({ state: 'visible' })
-  await page.locator('.appbar [data-nav="more"]').click()
+  await page.locator('[data-page="hub-health"] [data-health-nav="settings"]').click()
   await page.locator('[data-page="health-settings"]').waitFor({ state: 'visible' })
   assert.equal(await page.locator('[data-health-section]').count(), 2,
     'The approved Health v1.2 has exactly two settings groups')
@@ -98,27 +111,31 @@ try {
   await page.locator('[data-page="food"] [data-food-overview]').waitFor({ state: 'visible' })
   await page.evaluate(() => window.grapesHandleAndroidBack())
   await page.locator('[data-page="hub-health"]').waitFor({ state: 'visible' })
-  await page.locator('[data-page="hub-health"] [data-menu-back]').click()
+  await returnToHome(page)
 
   await page.locator('[data-menu-group="utility"]').click()
+  assert.equal(await page.locator('[data-page="hub-utility"] .utility-launch').count(), 2, 'Tools uses the compact two-row launcher, not legacy tiles.')
+  assert.deepEqual(await page.locator('[data-page="hub-utility"] .utility-launch').evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label'))), ['E-book könyvtár','QR Stúdió'])
   await page.locator('[data-page="hub-utility"] [data-menu-destination="ebook"]').click()
   await page.locator('[data-page="ebook"]').waitFor({ state: 'visible' })
   await page.evaluate(() => window.grapesHandleAndroidBack())
   await page.locator('[data-page="hub-utility"]').waitFor({ state: 'visible' })
-  await page.locator('[data-page="hub-utility"] [data-menu-back]').click()
+  await returnToHome(page)
   await page.locator('[data-menu-group="finance"]').click()
   assert.equal(await page.locator('[data-page="hub-finance"] [data-menu-destination="finance"]').count(), 1)
-  await page.locator('[data-page="hub-finance"] [data-menu-back]').click()
+  await returnToHome(page)
 
+  await returnToHome(page)
   await page.locator('.appbar [data-nav="more"]').click()
   await page.locator('[data-page="more"]').waitFor({ state: 'visible' })
   await page.screenshot({ path: 'grapes-menu-settings-preview.png' })
   await page.locator('[data-page="more"] [data-nav="projects"]').click()
   await page.locator('[data-page="projects"]').waitFor({ state: 'visible' })
+  await returnToHome(page)
   await page.locator('.appbar [data-nav="more"]').click()
   await page.locator('[data-page="more"] [data-nav="sync"]').click()
   await page.locator('[data-page="sync"]').waitFor({ state: 'visible' })
-  await page.locator('.appbar [data-nav="home"]').click()
+  await returnToHome(page)
   assert.equal(await page.locator('[data-page="home"]').isVisible(), true)
   for (const name of ['home', 'hub-home', 'hub-health', 'hub-utility', 'hub-finance', 'household', 'food', 'ebook', 'projects', 'sync', 'more']) {
     assert.equal(await page.locator(`[data-page="${name}"] .bottom-nav`).count(), 0, `Alsó navigáció maradt: ${name}`)

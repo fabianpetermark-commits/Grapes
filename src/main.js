@@ -1,6 +1,4 @@
 import './styles/index.css'
-import { mobileIconSvg } from './android-mobile-icons.js'
-import './styles/components/mobile-module-nav.css'
 import { el } from './ui/dom.js'
 import { showScreen } from './screens.js'
 import {
@@ -30,6 +28,12 @@ if (androidModuleShell) {
   document.querySelectorAll('#ebook-app .toolbar__brand-mark, #finance-app .toolbar__brand-mark').forEach((mark) => {
     mark.src = './grapes-mark.svg'
   })
+  // Android system Back is the single top-level exit from a module.
+  document.querySelectorAll([
+    '#app-back-to-menu-btn', '#finance-back-to-menu-btn', '#email-back-to-menu-btn',
+    '#fabric-back-to-menu-btn', '#studio-back-to-menu-btn',
+    '#ebook-back-to-menu-btn', '#qr-back-to-menu-btn',
+  ].join(',')).forEach(button => button.remove())
 }
 
 const mobilePreviewButton = el('#pick-mobile-preview')
@@ -246,23 +250,9 @@ async function navigateMobile(page) {
   try { sessionStorage.setItem('grapes-mobile-return-page', page) } catch {}
   location.href = target.href
 }
-if (androidModuleShell && ['qr','ebook'].includes(requestedScreen)) {
-  const nav = document.createElement('nav')
-  nav.className = 'mobile-module-nav'
-  nav.setAttribute('aria-label','Grapes főmodulok')
-  for (const [page,label,icon] of [
-    ['home','Kezdő','start'],['household','Home','household'],
-    ['hub-health','Health','health'],['hub-utility','Tools','utility'],
-    ['hub-finance','Finance','finance'],['more','Beállítások','settings'],
-  ]) {
-    const button = document.createElement('button')
-    button.type = 'button'; button.setAttribute('aria-label',label)
-    button.innerHTML = mobileIconSvg(icon)
-    if (page === 'hub-utility') button.setAttribute('aria-current','page')
-    button.addEventListener('click', () => navigateMobile(page))
-    nav.append(button)
-  }
-  document.querySelector('#'+requestedScreen+'-app .toolbar').after(nav)
+if (androidModuleShell) {
+  // One module surface at a time. Do not inject a second six-icon menu into
+  // legacy module pages; the Android system Back action returns to the shell.
   window.grapesHandleAndroidBack = () => { goToMainMenu(); return true }
 }
 
