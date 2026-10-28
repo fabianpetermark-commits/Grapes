@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { returnToHome } from './helpers/mobile-navigation.js'
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
@@ -62,16 +63,18 @@ try {
     await page.locator('[data-page="sync"]').waitFor({state:'visible'})
     assert.equal(await page.locator('[data-page="sync"] '+target).isVisible(),true,
       'Existing action missing from live Sync page: '+provider)
+    await returnToHome(page)
     await page.locator('.appbar [data-nav="more"]').click()
     await page.locator('[data-page="more"]').waitFor({state:'visible'})
   }
   await page.locator('[data-page="more"] [data-nav="projects"]').click()
   await page.locator('[data-page="projects"]').waitFor({state:'visible'})
+  await returnToHome(page)
   await page.locator('.appbar [data-nav="more"]').click()
   await page.locator('[data-settings-open-home]').click()
   await page.locator('[data-page="household"]').waitFor({state:'visible'})
   // Previous root route to Health + Food remains available.
-  await page.locator('.appbar [data-nav="home"]').click()
+  await returnToHome(page)
   const healthRail=page.locator('[data-main-rail] [data-main-nav="health"]')
   if(await healthRail.count()) await healthRail.click()
   else await page.locator('[data-page="home"] [data-menu-group="health"]').click()
