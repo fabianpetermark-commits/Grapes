@@ -30,18 +30,18 @@ try{
     await page.locator('[data-page="home"]').waitFor({state:'visible'})
     const nav=page.locator('[data-main-rail]')
     assert.equal(await nav.isVisible(),true)
-    assert.equal(await nav.locator('button').count(),6)
+    assert.equal(await nav.locator('button').count(),7)
     assert.deepEqual(await nav.locator('button').evaluateAll(nodes=>nodes.map(x=>x.getAttribute('aria-label'))),
-      ['Kezdő','Home','Health','Tools','Finance','Beállítások'])
-    assert.equal(await nav.locator('svg').count(),6)
+      ['Kezdő','Home','Health','Tools','Finance','Outdoor','Beállítások'])
+    assert.equal(await nav.locator('svg').count(),7)
     assert.equal(await nav.locator('button[aria-current="page"]').count(),1)
     assert.equal(await nav.locator('[data-main-nav="start"]').getAttribute('aria-current'),'page')
     const rail=await nav.evaluate(node=>({
-      cols:getComputedStyle(node).gridTemplateColumns.trim().split(/\s+/).length,
+      cols:getComputedStyle(node).gridAutoFlow === 'column' ? 6 : 0,
       width:node.getBoundingClientRect().width,
       cells:[...node.querySelectorAll('button')].map(x=>x.getBoundingClientRect().height),
     }))
-    assert.equal(rail.cols,6,'One six-column capsule, no repeated labels')
+    assert.equal(rail.cols,6,'Six visible icon slots in one horizontally scrollable capsule')
     assert.ok(rail.width<=width-10,'Rail must fit 320px: '+JSON.stringify(rail))
     assert.ok(rail.cells.every(h=>h>=44),'Minimum touch target')
     assert.equal(await page.locator('[data-page="home"] h1').textContent(),'Gyakran használt')
