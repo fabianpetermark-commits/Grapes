@@ -22,7 +22,7 @@ try{
     if(u.hostname==='api.open-meteo.com')return route.fulfill({json:{current:{temperature_2m:7},daily:{time:['2026-10-28'],temperature_2m_min:[-2],temperature_2m_max:[12],precipitation_sum:[4]}}})
     return route.abort()
   })
-  async function open(){await page.locator('[data-page=home] summary').click();await page.locator('[data-module=outdoor]').click();await page.locator('[data-outdoor-root]').waitFor({state:'visible'})}
+  async function open(){await page.locator('[data-page=home] summary').click();await page.locator('[data-module=outdoor]').click();await page.locator('[data-outdoor-root]').waitFor({state:'visible'});assert.equal(await page.locator('.outdoor-rail button').count(),6,'Outdoor must expose the six approved icon actions.');assert.equal(await page.locator('.outdoor-rail button[aria-current=page]').getAttribute('aria-label'),'Növényeim')}
   await page.goto(url);await open()
   const action=name=>page.locator(`[data-outdoor-action=${name}]`)
   const form=()=>page.locator('[data-outdoor-editor] form')
@@ -41,10 +41,10 @@ try{
   const snapshot=await page.evaluate(()=>JSON.parse(localStorage.getItem('grapes-outdoor-v1:local')))
   assert.equal(snapshot.logs.length,3)
   assert.ok(snapshot.tasks.some(t=>t.status==='done'))
-  await action('location').click();await form().locator('[name=city]').fill('Budapest');await form().getByRole('button',{name:'Város keresése'}).click()
+  await page.locator('[data-outdoor-view=settings]').click();await action('location').click();await form().locator('[name=city]').fill('Budapest');await form().getByRole('button',{name:'Város keresése'}).click()
   await page.locator('[data-outdoor-cities] button').click().catch(async e=>{console.log('CITY',await page.locator('[data-outdoor-root]').innerText(),errors);throw e})
   await page.waitForFunction(()=>document.querySelector('[data-outdoor-weather]').textContent.includes('Fagy várható'),null,{timeout:10000})
-  await action('catalog').click();await page.locator('[name=query]').fill('paradicsom');await page.locator('[data-outdoor-form=catalog] button').click()
+  await action('catalog').click();assert.equal(await page.locator('[data-outdoor-title]').textContent(),'Növénykatalógus');await page.locator('[name=query]').fill('paradicsom');await page.locator('[data-outdoor-form=catalog] button').click()
   await action('catalogAdd').click();await form().locator('[name=name]').fill('Katalógus példány');await form().locator('button[type=submit]').click()
   assert.equal(await page.locator('[data-plant-id]').count(),3)
   // Packaged Android assets remain available offline; block external APIs while reloading local assets.
