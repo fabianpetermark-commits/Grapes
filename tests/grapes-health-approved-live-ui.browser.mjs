@@ -41,7 +41,7 @@ try {
     await health.waitFor({state:'visible'})
   }
   await enterHealth()
-  const buttons=health.locator('[data-health-nav]')
+  const buttons=page.locator('[data-health-rail] [data-health-nav]')
   assert.deepEqual(await buttons.evaluateAll(nodes=>nodes.map(n=>n.dataset.healthNav)),
     ['food','water','recipes','stats','barcode','settings'])
   assert.equal(await buttons.locator('svg').count(),6)
@@ -52,18 +52,19 @@ try {
 
   for(const width of [320,360,390,412]){
     await page.setViewportSize({width,height:844})
-    const dimensions=await health.evaluate(node=>({
-      clientWidth:node.clientWidth,scrollWidth:node.scrollWidth,
-      railWidth:node.querySelector('.health-top-rail').getBoundingClientRect().width,
-      railScrollWidth:node.querySelector('.health-top-rail').scrollWidth,
-    }))
+    const dimensions=await page.evaluate(()=>{
+      const node=document.querySelector('[data-page="hub-health"]')
+      const rail=document.querySelector('[data-health-rail]')
+      return {clientWidth:node.clientWidth,scrollWidth:node.scrollWidth,
+        railWidth:rail.getBoundingClientRect().width,railScrollWidth:rail.scrollWidth}
+    })
     assert.ok(dimensions.scrollWidth<=dimensions.clientWidth+1,
       'Health root horizontal overflow '+width+': '+JSON.stringify(dimensions))
     assert.ok(dimensions.railScrollWidth<=dimensions.railWidth+2,
       'Health rail horizontal overflow '+width+': '+JSON.stringify(dimensions))
   }
 
-  await health.locator('[data-health-nav="settings"]').click()
+  await page.locator('[data-health-rail] [data-health-nav="settings"]').click()
   await page.waitForTimeout(120)
   const stateAfterSettings = await page.evaluate(() => ({
     settingsHidden: document.querySelector('[data-page="health-settings"]').hidden,
@@ -97,16 +98,16 @@ try {
   await page.keyboard.press('Escape')
 
   await enterHealth()
-  await health.locator('[data-health-nav="water"]').click()
+  await page.locator('[data-health-rail] [data-health-nav="water"]').click()
   await page.locator('[data-page="water"]').waitFor({state:'visible'})
   await enterHealth()
-  await health.locator('[data-health-nav="food"]').click()
+  await page.locator('[data-health-rail] [data-health-nav="food"]').click()
   await page.locator('[data-page="food"]').waitFor({state:'visible'})
   await enterHealth()
-  await health.locator('[data-health-nav="recipes"]').click()
+  await page.locator('[data-health-rail] [data-health-nav="recipes"]').click()
   await page.locator('[data-page="food"]').waitFor({state:'visible'})
   await enterHealth()
-  await health.locator('[data-health-nav="stats"]').click()
+  await page.locator('[data-health-rail] [data-health-nav="stats"]').click()
   await page.locator('[data-page="food"]').waitFor({state:'visible'})
   await page.locator('[data-food-stats-sheet].is-open').waitFor({state:'visible'})
   // Stats is an intentional modal. Native Back must close it before a
@@ -114,7 +115,7 @@ try {
   await page.evaluate(() => window.grapesHandleAndroidBack())
   await health.waitFor({state:'visible'})
   await enterHealth()
-  await health.locator('[data-health-nav="barcode"]').click()
+  await page.locator('[data-health-rail] [data-health-nav="barcode"]').click()
   await page.locator('[data-page="food"]').waitFor({state:'visible'})
   assert.deepEqual(errors,[],'Health must not trigger JS exceptions')
   console.log('PASS: accepted Health 6 live routes, real Food/Water binding, two settings groups, all legacy import/backup controls, 320–412px responsive')
