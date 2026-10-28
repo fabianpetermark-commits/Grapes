@@ -468,11 +468,14 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   $$('[data-nav]').forEach(node => node.classList.toggle('is-active', node.dataset.nav === page))
   const appbar = $('#app > .appbar')
   const isStartPage = page === 'home'
-  if (appbar) appbar.hidden = page === 'hub-health'
+  // Keep the brand as a consistent, accessible route back to Favorites.
+  // Health replaces the six-icon root capsule with its own six-action rail,
+  // but retains the brand bar so the user can leave Health without a second menu.
+  if (appbar) appbar.hidden = false
   const appbarBrand = $('.appbar__home')
   const searchButton = $('[data-action="search"]')
   const notificationButton = $('[data-notifications]')
-  if (appbarBrand) appbarBrand.hidden = !isStartPage
+  if (appbarBrand) appbarBrand.hidden = false
   if (searchButton) searchButton.hidden = !isStartPage
   if (notificationButton) notificationButton.hidden = !isStartPage
   const mainRail = $('[data-main-rail]')
