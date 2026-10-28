@@ -53,7 +53,7 @@ function currentMonth() {
 
 function backupTimestamp() {
   const date = new Date()
-  return `${today()}-${String(date.getHours()).padStart(2, '0')}${String(date.getMinutes()).padStart(2, '0')}${String(date.getSeconds()).padStart(2, '0')}`
+  return `${today()}-${String(date.getHours()).padStart(2, '0')}${String(date.getMinutes()).padStart(2, '0')}${String(date.getSeconds()).padStart(2, '0')}-${String(date.getMilliseconds()).padStart(3, '0')}`
 }
 
 function formatMoney(value) {
