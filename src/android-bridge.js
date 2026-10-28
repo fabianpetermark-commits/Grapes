@@ -40,8 +40,16 @@ export async function requestAndroidYazio(operation, ...args) {
   return JSON.parse(await nativeRequest('yazio', operation, ...args))
 }
 
-export function readAndroidSamsungHealthExport(fromDate) {
-  return nativeRequest('readSamsungHealthData', fromDate)
+export function readAndroidSamsungHealthExport(fromDate, ownerId = '') {
+  return nativeRequest('readSamsungHealthData', fromDate, ownerId)
+}
+
+export function readAndroidSamsungHealthExportSilent(fromDate, ownerId) {
+  return nativeRequest('readSamsungHealthDataSilent', fromDate, ownerId)
+}
+
+export async function getAndroidSamsungWaterStatus() {
+  return JSON.parse(await nativeRequest('getSamsungWaterStatus'))
 }
 
 export function openAndroidHealthConnectSettings() {
@@ -104,4 +112,11 @@ export async function saveAndroidJsonBackup(filename, json) {
     if (token) await nativeRequest('cancelFoodBackupExport', token).catch(() => {})
     throw error
   }
+}
+
+export async function saveAndroidQrPng(dataUrl) {
+  if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/png;base64,') || dataUrl.length > 2800000) {
+    throw new Error('Ervenytelen QR PNG.')
+  }
+  return nativeRequest('saveQrPng', dataUrl)
 }

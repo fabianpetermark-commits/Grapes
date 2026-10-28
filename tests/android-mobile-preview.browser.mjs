@@ -84,7 +84,7 @@ try {
   await page.locator('[data-sync-local-count]').filter({ hasText: /\d+ projekt/ }).waitFor()
   await page.locator('[data-sync-drive-count]').filter({ hasText: 'Nincs csatlakoztatva' }).waitFor()
   assert.equal(await page.locator('[data-health-sync]').count(), 1)
-  assert.equal(await page.locator('[data-samsung-sync-action]').count(), 1)
+  assert.equal(await page.locator('[data-page="sync"] [data-samsung-sync-action]').count(), 1)
   assert.equal(await page.locator('[data-yazio-import]').count(), 1)
   assert.equal(await page.locator('[data-page="sync"] [data-food-health-auto]').count(), 1, 'A Health automatikus import kapcsolója a Szinkron oldalon legyen.')
   assert.equal(await page.locator('[data-page="sync"] [data-food-yazio-auto]').count(), 1, 'A YAZIO automatikus import kapcsolója a Szinkron oldalon legyen.')

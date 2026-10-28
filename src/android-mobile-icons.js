@@ -1,5 +1,6 @@
 const ICON_PATHS = {
   outdoor: '<path d="M12 21V10M12 15C5 15 3 10 4 5c6-1 9 3 8 10zM12 12c0-6 4-9 9-9 1 6-2 10-9 9z"/>',
+  settings: '<path d="M9 3h6l1 3 3 1 2 5-2 5-3 1-1 3H9l-1-3-3-1-2-5 2-5 3-1z"/><circle cx="12" cy="12" r="3"/>',
   start: '<path d="M3 11.5 12 4l9 7.5v9H3zM9 20.5v-7h6v7"/><path d="M12 7.3v3"/>',
   household: '<path d="M3 11.5 12 4l9 7.5v9H3zM9 20.5v-7h6v7"/>',
   utility: '<path d="M3.5 7h8v9h-8zM14 4h7v7h-7zM14 14h7v7h-7zM7.5 3v4M16 7h3M7.5 16v4"/>',
