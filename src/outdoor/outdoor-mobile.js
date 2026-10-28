@@ -1,24 +1,56 @@
 import './outdoor-mobile.css'
 import { createOutdoorStore, localDay, addDays } from './outdoor-data.js'
 import { searchPlantCatalog, searchCities, readOutdoorWeather, weatherSummary } from './outdoor-api.js'
+import { mobileIconSvg } from '../android-mobile-icons.js'
 const escape = value => String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
 const kindName={watering:'Locsolás',wintering:'Teleltetés',note:'Megfigyelés',other:'Egyéb'}
 const fields={name:'Példány neve',species:'Faj / fajta',light:'Fényigény',water:'Vízigény',soil:'Talajigény',wintering:'Teleltetés',ripening:'Érés / betakarítás (saját megfigyelés)',notes:'Megjegyzés'}
 export function mountOutdoor(root,{storage=localStorage,getProfile=()=> 'local'}={}) {
   let store,profile,state,photo='',catalogId='',searchEpoch=0,weatherEpoch=0
-  root.innerHTML=`<header class="outdoor-head"><p class="eyebrow">Outdoor</p><h1>Növényeim</h1><p data-outdoor-weather></p><button type="button" data-outdoor-action="location">Helyszín és időjárás</button></header>
+  root.innerHTML=\`<nav class="outdoor-rail" aria-label="Növények funkciói">
+      <button type="button" data-outdoor-view="plants" aria-label="Növényeim" title="Növényeim" aria-current="page">\${mobileIconSvg('outdoor')}</button>
+      <button type="button" data-outdoor-view="catalog" data-outdoor-action="catalog" aria-label="Növénykatalógus" title="Növénykatalógus">\${mobileIconSvg('recipe')}</button>
+      <button type="button" data-outdoor-view="tasks" aria-label="Aktuális teendők" title="Aktuális teendők">\${mobileIconSvg('shopping')}</button>
+      <button type="button" data-outdoor-view="logs" aria-label="Napló" title="Napló">\${mobileIconSvg('clock')}</button>
+      <button type="button" data-outdoor-action="add" aria-label="Új növény" title="Új növény">\${mobileIconSvg('outdoor')}</button>
+      <button type="button" data-outdoor-view="settings" aria-label="Beállítások" title="Beállítások">\${mobileIconSvg('settings')}</button>
+    </nav>
+    <header class="outdoor-head"><h1 data-outdoor-title>Növényeim</h1></header>
     <p data-outdoor-status role="status" aria-live="polite"></p>
     <section data-outdoor-editor hidden></section>
-    <div class="outdoor-actions"><button type="button" data-outdoor-action="add">＋ Növény hozzáadása</button><button type="button" data-outdoor-action="catalog">Növénykatalógus</button></div>
-    <section data-outdoor-catalog hidden><h2>Növénykatalógus</h2><form data-outdoor-form="catalog"><label>Magyar vagy angol név<input name="query" required minlength="2" maxlength="100" placeholder="pl. paradicsom / tomato"></label><button>Keresés</button></form><p>Nyílt adatforrás: iNaturalist. A gondozási adatokat saját tapasztalatod alapján töltsd ki.</p><div data-outdoor-results></div></section>
-    <section><h2>Saját példányok</h2><div data-outdoor-plants></div></section>
-    <section><h2>Aktuális teendők</h2><p>A locsolási ütemezés a saját beállításodból készül; a talajt mindig ellenőrizd.</p><div data-outdoor-tasks></div></section>`
+    <section data-outdoor-panel="plants"><div data-outdoor-plants></div></section>
+    <section data-outdoor-panel="catalog" hidden>
+      <section data-outdoor-catalog><h2>Növénykatalógus</h2><form data-outdoor-form="catalog"><label>Magyar vagy angol név<input name="query" required minlength="2" maxlength="100" placeholder="pl. paradicsom / tomato"></label><button>Keresés</button></form><p>Nyílt adatforrás: iNaturalist. A gondozási adatokat saját tapasztalatod alapján töltsd ki.</p><div data-outdoor-results></div></section>
+    </section>
+    <section data-outdoor-panel="tasks" hidden>
+      <p class="outdoor-weather-summary"><strong>Helyi időjárás</strong><span data-outdoor-weather></span><button type="button" data-outdoor-action="location">Helyszín és időjárás</button></p>
+      <div data-outdoor-weather-tasks></div>
+      <h2>Aktuális teendők</h2><div data-outdoor-tasks></div>
+    </section>
+    <section data-outdoor-panel="logs" hidden><h2>Napló</h2><div data-outdoor-logs></div></section>
+    <section data-outdoor-panel="settings" hidden><h2>Beállítások</h2><p>Helyszín, időjárás és saját növénygondozási adatok.</p><button type="button" data-outdoor-action="location">Helyszín és időjárás beállítása</button><button type="button" data-outdoor-action="global-settings">Központi beállítások</button></section>\`
   const $=selector=>root.querySelector(selector)
   const editor=$('[data-outdoor-editor]')
+  let activeView='plants'
+  const viewTitles={plants:'Növényeim',catalog:'Növénykatalógus',tasks:'Aktuális teendők',logs:'Napló',settings:'Beállítások'}
+  function showView(view){
+    if(!viewTitles[view])return false
+    if(!editor.hidden && !confirm('Elveted a nem mentett növényűrlapot?'))return false
+    editor.hidden=true;editor.replaceChildren()
+    activeView=view
+    $('[data-outdoor-title]').textContent=viewTitles[view]
+    root.querySelectorAll('[data-outdoor-panel]').forEach(panel=>{panel.hidden=panel.dataset.outdoorPanel!==view})
+    root.querySelectorAll('[data-outdoor-view]').forEach(button=>{
+      if(button.dataset.outdoorView===view)button.setAttribute('aria-current','page')
+      else button.removeAttribute('aria-current')
+    })
+    return true
+  }
+  showView('plants')
   function status(message,error=false){const node=$('[data-outdoor-status]');node.textContent=message;node.classList.toggle('is-error',error)}
   function checkProfile(){
     const current=String(getProfile()||'local')
-    if(current!==profile){profile=current;store=createOutdoorStore(storage,profile);state=null;searchEpoch++;weatherEpoch++;editor.hidden=true;editor.replaceChildren();$('[data-outdoor-catalog]').hidden=true}
+    if(current!==profile){profile=current;store=createOutdoorStore(storage,profile);state=null;searchEpoch++;weatherEpoch++;editor.hidden=true;editor.replaceChildren();showView('plants')}
   }
   function save(command){
     if(String(getProfile()||'local')!==profile)throw Error('A Grapes-fiók megváltozott. Nyisd meg újra a Növényeim modult.')
@@ -27,7 +59,18 @@ export function mountOutdoor(root,{storage=localStorage,getProfile=()=> 'local'}
     status('Tartósan mentve ezen az eszközön, offline is elérhető.')
   }
   function weather(){
-    $('[data-outdoor-weather]').textContent=(state.location?state.location.name+' · ':'')+weatherSummary(state.weather)+(state.weather?' · Előrejelzés letöltve: '+new Date(state.weather.fetchedAt).toLocaleString('hu-HU'):'')
+    const node=$('[data-outdoor-weather]')
+    if(node)node.textContent=(state.location?state.location.name+' · ':'')+weatherSummary(state.weather)+(state.weather?' · Frissítve: '+new Date(state.weather.fetchedAt).toLocaleString('hu-HU'):'')
+  }
+  function renderWeatherTasks(){
+    const host=$('[data-outdoor-weather-tasks]')
+    if(!host)return
+    const days=(state.weather?.days||[]).filter(day=>day.date>=localDay())
+    const alerts=[]
+    if(days.some(day=>day.min<=0))for(const plant of state.plants)alerts.push({plant,title:'Fagyveszély',detail:plant.wintering?('Teleltetés: '+plant.wintering):'Ellenőrizd ennek a növénynek a teleltetési igényét.'})
+    if(days.some(day=>day.max>=32))for(const plant of state.plants)alerts.push({plant,title:'Hőség',detail:plant.water?('Vízigény: '+plant.water+' · Ellenőrizd a talajt.'):'Ellenőrizd a növény vízigényét és a talajt.'})
+    if(days.some(day=>day.rain>0))for(const plant of state.plants)alerts.push({plant,title:'Várható csapadék',detail:'Locsolás előtt ellenőrizd a talajt; a rendszer nem locsol automatikusan.'})
+    host.innerHTML=alerts.length?alerts.map(item=>'<article class="outdoor-weather-task"><strong>'+escape(item.plant.name)+' · '+escape(item.title)+'</strong><p>'+escape(item.detail)+'</p></article>').join(''):'<p class="outdoor-empty">Nincs aktuális időjárási figyelmeztetés, vagy még nincs ellenőrzött előrejelzés.</p>'
   }
   function render(){
     weather()
@@ -39,6 +82,9 @@ export function mountOutdoor(root,{storage=localStorage,getProfile=()=> 'local'}
       <details><summary>Napló (${state.logs.filter(l=>l.plantId===p.id).length})</summary>${state.logs.filter(l=>l.plantId===p.id).sort((a,b)=>b.date.localeCompare(a.date)).map(l=>`<p>${escape(l.date)} · ${kindName[l.type]} · ${escape(l.note)}</p>`).join('')||'<p>Még nincs bejegyzés.</p>'}</details></article>`).join('') : '<p class="outdoor-empty">Még nincs növényed. Adj hozzá saját példányt, akár internet nélkül.</p>'
     const pending=state.tasks.filter(t=>t.status==='pending').sort((a,b)=>a.due.localeCompare(b.due))
     $('[data-outdoor-tasks]').innerHTML=pending.length?pending.map(t=>`<article class="outdoor-card" data-task-id="${t.id}"><h3>${escape(state.plants.find(p=>p.id===t.plantId)?.name)} · ${escape(t.title)}</h3><p>${escape(t.due)}${t.due<localDay()?' · Elmaradt':t.due===localDay()?' · Ma esedékes':' · Következő'}</p><div class="outdoor-actions"><button data-outdoor-action="complete" data-id="${t.id}">Teljesítve</button><button data-outdoor-action="postpone" data-id="${t.id}">Halasztás</button></div></article>`).join(''):'<p class="outdoor-empty">Nincs függő teendő. Növényenként adhatsz hozzá saját feladatot.</p>'
+    const logs=[...state.logs].sort((a,b)=>b.date.localeCompare(a.date))
+    $('[data-outdoor-logs]').innerHTML=logs.length?logs.map(log=>'<article class="outdoor-card"><strong>'+escape(state.plants.find(p=>p.id===log.plantId)?.name||'Növény')+' · '+escape(kindName[log.type]||'Megfigyelés')+'</strong><p>'+escape(log.date)+' · '+escape(log.note||'Nincs megjegyzés')+'</p></article>').join(''):'<p class="outdoor-empty">Még nincs naplóbejegyzés. A növényeidnél a Naplózás művelettel rögzíthetsz eseményt.</p>'
+    renderWeatherTasks()
   }
   function openForm(html){editor.innerHTML=html;editor.hidden=false;editor.scrollIntoView({block:'start'});editor.querySelector('input,select,button')?.focus()}
   const cancel='<button type="button" data-outdoor-action="cancel">Mégse</button>'
@@ -60,10 +106,14 @@ export function mountOutdoor(root,{storage=localStorage,getProfile=()=> 'local'}
   }
   async function locationSelected(location){save({type:'location',location});editor.hidden=true;await refreshWeather()}
   root.addEventListener('click',async event=>{
+    const viewButton=event.target.closest('[data-outdoor-view]')
+    if(viewButton){showView(viewButton.dataset.outdoorView);return}
     const button=event.target.closest('[data-outdoor-action]');if(!button)return
     const action=button.dataset.outdoorAction,id=button.dataset.id
     try {
-      if(action==='add')editPlant()
+      if(action==='add'){showView('plants');$('[data-outdoor-title]').textContent='Új növény';editPlant()}
+      else if(action==='global-settings'){document.dispatchEvent(new CustomEvent('grapes:open-global-settings'))}
+      else if(action==='catalog'){showView('catalog');$('[name=query]').focus()}
       else if(action==='edit')editPlant(state.plants.find(p=>p.id===id))
       else if(action==='cancel'){editor.hidden=true;editor.replaceChildren()}
       else if(action==='delete'){
@@ -78,7 +128,7 @@ export function mountOutdoor(root,{storage=localStorage,getProfile=()=> 'local'}
       else if(action==='catalogAdd'){
         const taxon=button.catalogTaxon
         editPlant({name:taxon.name,species:taxon.scientificName,catalogId:taxon.id})
-      }else if(action==='location')openForm(`<form data-outdoor-form="city"><h2>Helyi időjárás</h2><label>Város<input name="city" required minlength="2"></label><button>Város keresése</button></form><div data-outdoor-cities></div><div class="outdoor-actions"><button type="button" data-outdoor-action="geolocate">Helymeghatározás egyszer</button>${cancel}</div><p>A helyadat csak ezen az eszközön marad; az előrejelzéshez az Open-Meteo kapja meg a koordinátákat.</p>`)
+      }else if(action==='location'){showView('settings');openForm(`<form data-outdoor-form="city"><h2>Helyi időjárás</h2><label>Város<input name="city" required minlength="2"></label><button>Város keresése</button></form><div data-outdoor-cities></div><div class="outdoor-actions"><button type="button" data-outdoor-action="geolocate">Helymeghatározás egyszer</button>${cancel}</div><p>A helyadat csak ezen az eszközön marad; az előrejelzéshez az Open-Meteo kapja meg a koordinátákat.</p>`)}
       else if(action==='geolocate'){
         if(!navigator.geolocation)throw Error('A helymeghatározás nem támogatott. Válassz várost.')
         const pinned=profile
@@ -133,7 +183,7 @@ export function mountOutdoor(root,{storage=localStorage,getProfile=()=> 'local'}
       editor.hidden=true;editor.replaceChildren()
     }catch(error){status(error.message,true)}finally{if(submit)submit.disabled=false}
   })
-  return {load(){try{checkProfile();state=store.read();render();refreshWeather()}catch(error){status(error.message,true);$('[data-outdoor-plants]').textContent='Az eredeti mentés megmaradt. A tárhelyhibát javítani kell a folytatáshoz.'}},handleBack(){if(editor.hidden && $('[data-outdoor-catalog]').hidden)return false;if(!editor.hidden && !confirm('Bezárod a nem mentett űrlapot?'))return true;editor.hidden=true;editor.replaceChildren();$('[data-outdoor-catalog]').hidden=true;searchEpoch++;return true}}
+  return {load(){try{checkProfile();state=store.read();render();showView(activeView);refreshWeather()}catch(error){status(error.message,true);$('[data-outdoor-plants]').textContent='Az eredeti mentés megmaradt. A tárhelyhibát javítani kell a folytatáshoz.'}},handleBack(){if(!editor.hidden && !confirm('Bezárod a nem mentett űrlapot?'))return true;if(!editor.hidden){editor.hidden=true;editor.replaceChildren();return true}if(activeView!=='plants'){showView('plants');searchEpoch++;return true}return false}}
 }
 async function resizePhoto(file){
   if(file.size>10*1024*1024 || !['image/jpeg','image/png','image/webp'].includes(file.type))throw Error('Legfeljebb 10 MB-os JPEG/PNG/WebP fotót válassz.')
