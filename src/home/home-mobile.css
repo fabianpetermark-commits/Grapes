@@ -274,7 +274,7 @@
 
 /* Design-approved information density + hierarchy (2026-10-26 spec). */
 [data-household-root] .household-quick {
-  grid-template-columns: repeat(3,minmax(0,1fr)) 50px;
+  grid-template-columns: repeat(3,minmax(0,1fr)) 50px 42px;
   gap: 5px;
 }
 [data-household-root] .household-quick button:not(.household-quick-add) {
@@ -303,6 +303,17 @@
   min-height:50px;
   padding:0;
   border-radius:50%;
+}
+[data-household-root] .household-quick .household-quick-outdoor {
+  align-self:center;justify-self:center;display:grid;place-items:center;
+  width:42px;min-height:42px;height:42px;padding:0;
+  color:#3bdcf2;background:#142630;border:1px solid #355b69;border-radius:50%;
+}
+[data-household-root] .household-quick .household-quick-outdoor svg {width:22px;height:22px;color:#3bdcf2;}
+@media(max-width:350px) {
+  [data-household-root] .household-quick {grid-template-columns:repeat(3,minmax(0,1fr)) 44px 36px;gap:3px;}
+  [data-household-root] .household-quick .household-quick-add {width:44px;height:44px;min-height:44px;}
+  [data-household-root] .household-quick .household-quick-outdoor {width:36px;height:36px;min-height:36px;}
 }
 [data-household-root] .household-widget .household-card strong {font-size:15px;}
 [data-household-root] .household-widget .household-card p {font-size:13px;line-height:1.45;}
