@@ -35,12 +35,13 @@ try {
   page.on('pageerror', error => pageErrors.push(error.message))
   await page.goto(url, { waitUntil: 'networkidle' })
   await page.locator('[data-page="home"]').waitFor({ state: 'visible' })
-  assert.deepEqual(await page.locator('[data-menu-group]').evaluateAll(nodes => nodes.map(x => x.dataset.menuGroup)),
-    ['home', 'health', 'utility', 'finance'])
+  assert.deepEqual(await page.locator('[data-main-rail] [data-menu-group]').evaluateAll(nodes => nodes.map(x => x.dataset.menuGroup)),
+    ['home', 'health', 'utility', 'finance', 'outdoor'])
   assert.equal(await page.locator('[data-page="home"] .hub-card__icon svg').count(), 5)
   // Approved module capsule is icon-only; the existing Health hub must
   // still expose its live Food, Recipes and Stats destinations.
   assert.equal(await page.locator('[data-main-rail] [data-menu-group="health"]').getAttribute('aria-label'),'Health')
+  assert.equal(await page.locator('[data-main-rail] [data-menu-group="outdoor"]').getAttribute('aria-label'),'Outdoor')
   assert.match(await page.locator('[data-page="home"] [data-main-module-link="health"]').textContent(),/Food.*Receptek.*Statisztika/)
   assert.equal(await page.locator('.bottom-nav, .nav-item').count(), 0, 'Nincs párhuzamos alsó navigáció.')
   assert.equal(await page.locator('.appbar [data-nav="home"]').count(), 1)
@@ -81,7 +82,7 @@ try {
   await page.locator('[data-food-stats-sheet].is-open').waitFor({ state: 'visible' })
   await page.evaluate(() => window.grapesHandleAndroidBack())
   await page.locator('[data-page="hub-health"]').waitFor({ state: 'visible' })
-  await page.locator('.appbar [data-nav="more"]').click()
+  await page.locator('[data-page="hub-health"] [data-health-nav="settings"]').click()
   await page.locator('[data-page="health-settings"]').waitFor({ state: 'visible' })
   assert.equal(await page.locator('[data-health-section]').count(), 2,
     'The approved Health v1.2 has exactly two settings groups')
@@ -93,22 +94,34 @@ try {
     'Water backup remains reachable inside Data connections')
   assert.equal(await page.locator('[data-health-command="food-backup"]').count(), 1,
     'Food backup remains reachable inside Data connections')
-  await page.locator('[data-health-settings-back]').click()
+  await page.evaluate(() => window.grapesHandleAndroidBack())
   await page.locator('[data-page="hub-health"] [data-health-food-open]').click()
   await page.locator('[data-page="food"] [data-food-overview]').waitFor({ state: 'visible' })
   await page.evaluate(() => window.grapesHandleAndroidBack())
   await page.locator('[data-page="hub-health"]').waitFor({ state: 'visible' })
-  await page.locator('[data-page="hub-health"] [data-menu-back]').click()
+  await page.evaluate(() => window.grapesHandleAndroidBack())
+  await page.locator('[data-page="home"]').waitFor({state:'visible'})
 
   await page.locator('[data-menu-group="utility"]').click()
   await page.locator('[data-page="hub-utility"] [data-menu-destination="ebook"]').click()
   await page.locator('[data-page="ebook"]').waitFor({ state: 'visible' })
   await page.evaluate(() => window.grapesHandleAndroidBack())
   await page.locator('[data-page="hub-utility"]').waitFor({ state: 'visible' })
-  await page.locator('[data-page="hub-utility"] [data-menu-back]').click()
-  await page.locator('[data-menu-group="finance"]').click()
-  assert.equal(await page.locator('[data-page="hub-finance"] [data-menu-destination="finance"]').count(), 1)
-  await page.locator('[data-page="hub-finance"] [data-menu-back]').click()
+  assert.equal(await page.locator('[data-page="hub-utility"] .tools-module-icon').count(), 2)
+  assert.equal(await page.locator('[data-page="hub-utility"] .hub-option').count(), 0, 'Legacy Tools cards removed')
+  await page.evaluate(() => window.grapesHandleAndroidBack())
+  await page.locator('[data-page="home"]').waitFor({state:'visible'})
+  await page.locator('[data-main-rail] [data-main-nav="finance"]').click()
+  await page.waitForURL(/module=finance/)
+  await page.locator('#finance-app').waitFor({state:'visible'})
+  await page.locator('#finance-save-status').waitFor()
+  assert.ok(await page.locator('#finance-app .finance__tabs').isVisible(), 'Finance opens the real module, not an empty hub')
+  await page.goBack()
+  await page.locator('[data-page="home"]').waitFor({state:'visible'})
+  await page.locator('[data-main-rail] [data-main-nav="outdoor"]').click()
+  await page.locator('[data-page="outdoor"] [data-outdoor-root]').waitFor({state:'visible'})
+  await page.evaluate(() => window.grapesHandleAndroidBack())
+  await page.locator('[data-page="home"]').waitFor({state:'visible'})
 
   await page.locator('.appbar [data-nav="more"]').click()
   await page.locator('[data-page="more"]').waitFor({ state: 'visible' })
@@ -120,7 +133,7 @@ try {
   await page.locator('[data-page="sync"]').waitFor({ state: 'visible' })
   await page.locator('.appbar [data-nav="home"]').click()
   assert.equal(await page.locator('[data-page="home"]').isVisible(), true)
-  for (const name of ['home', 'hub-home', 'hub-health', 'hub-utility', 'hub-finance', 'household', 'food', 'ebook', 'projects', 'sync', 'more']) {
+  for (const name of ['home', 'hub-home', 'hub-health', 'hub-utility', 'household', 'food', 'ebook', 'outdoor', 'projects', 'sync', 'more']) {
     assert.equal(await page.locator(`[data-page="${name}"] .bottom-nav`).count(), 0, `Alsó navigáció maradt: ${name}`)
   }
   assert.deepEqual(pageErrors, [])
