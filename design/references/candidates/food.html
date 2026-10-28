@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="hu" data-health-page="food">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#090e14"><title>Grapes – Ételnapló · belső HTML-terv</title><link rel="stylesheet" href="../shared/health-inner.css"></head>
+<body><div class="hi-shell"><nav class="hi-rail" aria-label="Health belső nézetek">
+<a href="food.html" class="active" aria-label="Ételnapló" title="Ételnapló" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6c-2-4-7-4-8 0-3-4-8-3-9 2-1 5 9 12 9 12s10-7 9-12"/><path d="M4 12h5l2-3 2 6 2-3h5"/></svg></a>
+<a href="water.html" class="" aria-label="Víznapló" title="Víznapló" ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2S5 10 5 15a7 7 0 0 0 14 0C19 10 12 2 12 2Z"/><path d="M8 16a4 4 0 0 0 4 4"/></svg></a>
+<a href="recipes.html" class="" aria-label="Receptek" title="Receptek" ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5a8 8 0 0 0-9-1v15a8 8 0 0 1 9 1 8 8 0 0 1 9-1V4a8 8 0 0 0-9 1Z"/><path d="M12 5v15"/></svg></a>
+<button type="button" data-nav-stats aria-label="Statisztika" title="Statisztika"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V5M4 20h16M8 16v-4M12 16V8M16 16v-6M20 16V6"/></svg></button>
+<button type="button" data-scan aria-label="Vonalkódolvasó" title="Vonalkódolvasó"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V4h4m8 0h4v4m0 8v4h-4m-8 0H4v-4M7 10v5m3-6v7m3-6v5m3-6v7"/></svg></button>
+<button type="button" data-settings aria-label="Health beállítások" title="Health beállítások"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 2.5h4l.6 2.4 1.6.9 2.4-.7 2 3.5-1.8 1.7v1.9l1.8 1.7-2 3.5-2.4-.7-1.6.9-.6 2.4h-4l-.6-2.4-1.6-.9-2.4.7-2-3.5 1.8-1.7v-1.9L3.4 8.6l2-3.5 2.4.7 1.6-.9Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+</nav><h1 class="hi-title">Ételnapló</h1>
+<section class="hi-block"><div class="hi-row"><label style="flex:1" class="hi-label" for="food-date">Nap kiválasztása</label><input type="date" class="hi-field" id="food-date" value="2026-10-25" style="max-width:188px"></div></section>
+<section class="hi-block highlight" aria-label="Napi összesítő"><div class="hi-head"><h2>Kalória és tápanyagok</h2><span class="hi-sub">Napi cél: 2100 kcal</span></div>
+<div class="hi-dashboard"><div class="hi-ring" id="food-ring" style="--p:68"><div><small>Elfogyasztva</small><strong id="food-total">1420</strong><small>kcal</small></div></div>
+<div class="hi-macros">
+<div><div class="hi-macro-top"><span>Fehérje</span><b>78 / 120 g</b></div><div class="hi-track"><i style="--w:65%"></i></div></div>
+<div><div class="hi-macro-top"><span>Szénhidrát</span><b>154 / 230 g</b></div><div class="hi-track"><i style="--w:67%"></i></div></div>
+<div><div class="hi-macro-top"><span>Zsír</span><b>49 / 70 g</b></div><div class="hi-track"><i style="--w:70%"></i></div></div>
+</div></div><p class="hi-sub" id="food-rest">680 kcal maradt a napi célból</p></section>
+<section class="hi-block"><div class="hi-head"><h2>Mai étkezések</h2><button type="button" class="hi-chip" data-add-food>+ Étel</button></div>
+<div class="hi-meal-grid">
+<button type="button" class="hi-meal" data-meal="Reggeli"><span>Reggeli</span><strong data-meal-total="Reggeli">380 kcal</strong></button>
+<button type="button" class="hi-meal" data-meal="Ebéd"><span>Ebéd</span><strong data-meal-total="Ebéd">560 kcal</strong></button>
+<button type="button" class="hi-meal" data-meal="Uzsonna"><span>Uzsonna</span><strong data-meal-total="Uzsonna">190 kcal</strong></button>
+<button type="button" class="hi-meal" data-meal="Vacsora"><span>Vacsora</span><strong data-meal-total="Vacsora">290 kcal</strong></button>
+</div></section>
+<section class="hi-block"><div class="hi-head"><h2>Rögzített ételek</h2><span class="hi-sub">4 mintatétel</span></div><div id="food-items"></div></section>
+<section class="hi-block"><div class="hi-head"><h2>Receptek és keresés</h2><a class="hi-button" href="recipes.html">Saját receptek</a></div><p class="hi-sub">A kész alkalmazásban megmarad az OFF/USDA keresés, adagolás, YAZIO-import, mentés és Statisztika. Ezek itt nem író műveletek.</p></section><p class="hi-note">Interaktív Grapes dizájnterv. Minden megjelenített érték minta, a valódi Food, Water, Drive és Supabase adatokat nem olvassa és nem módosítja.</p></div><footer class="hi-dock" aria-label="Health Quick Action">
+<div class="hi-dock-inner"><div class="hi-dock-group">
+<button type="button" class="hi-action" data-photo aria-label="Fotós ételfelvétel"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="15" rx="2"/><path d="M8 6l1.6-3h4.8L16 6"/><circle cx="12" cy="13.5" r="4"/></svg><span>Fotó</span></button>
+<button type="button" class="hi-action" data-add-food aria-label="Étel hozzáadása"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v16M4 12h16"/></svg><span>Étel</span></button>
+<button type="button" class="hi-action" data-quick-water aria-label="Víz hozzáadása"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2S5 10 5 15a7 7 0 0 0 14 0C19 10 12 2 12 2Z"/><path d="M8 16a4 4 0 0 0 4 4"/></svg><span>Víz</span></button>
+</div><button type="button" class="hi-dock-scan" data-scan aria-label="Vonalkódolvasó" title="Vonalkódolvasó"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V4h4m8 0h4v4m0 8v4h-4m-8 0H4v-4M7 10v5m3-6v7m3-6v5m3-6v7"/></svg></button></div>
+</footer><div class="hi-dialog" id="hi-dialog" hidden role="presentation"><section class="hi-dialog-card" role="dialog" aria-modal="true" aria-labelledby="hi-dialog-title"><header><h2 id="hi-dialog-title"></h2><button type="button" class="hi-mini" id="hi-dialog-close" aria-label="Bezárás">×</button></header><div class="hi-dialog-body" id="hi-dialog-body"></div><footer class="hi-dialog-footer" id="hi-dialog-footer"></footer></section></div><div class="hi-toast" id="hi-toast" role="status" aria-live="polite" hidden></div><script src="../shared/health-inner.js" defer></script></body></html>

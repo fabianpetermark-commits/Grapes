@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="hu" data-health-page="water">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#090e14"><title>Grapes – Víznapló · belső HTML-terv</title><link rel="stylesheet" href="../shared/health-inner.css"></head>
+<body><div class="hi-shell"><nav class="hi-rail" aria-label="Health belső nézetek">
+<a href="food.html" class="" aria-label="Ételnapló" title="Ételnapló" ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6c-2-4-7-4-8 0-3-4-8-3-9 2-1 5 9 12 9 12s10-7 9-12"/><path d="M4 12h5l2-3 2 6 2-3h5"/></svg></a>
+<a href="water.html" class="active" aria-label="Víznapló" title="Víznapló" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2S5 10 5 15a7 7 0 0 0 14 0C19 10 12 2 12 2Z"/><path d="M8 16a4 4 0 0 0 4 4"/></svg></a>
+<a href="recipes.html" class="" aria-label="Receptek" title="Receptek" ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5a8 8 0 0 0-9-1v15a8 8 0 0 1 9 1 8 8 0 0 1 9-1V4a8 8 0 0 0-9 1Z"/><path d="M12 5v15"/></svg></a>
+<button type="button" data-nav-stats aria-label="Statisztika" title="Statisztika"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V5M4 20h16M8 16v-4M12 16V8M16 16v-6M20 16V6"/></svg></button>
+<button type="button" data-scan aria-label="Vonalkódolvasó" title="Vonalkódolvasó"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V4h4m8 0h4v4m0 8v4h-4m-8 0H4v-4M7 10v5m3-6v7m3-6v5m3-6v7"/></svg></button>
+<button type="button" data-settings aria-label="Health beállítások" title="Health beállítások"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 2.5h4l.6 2.4 1.6.9 2.4-.7 2 3.5-1.8 1.7v1.9l1.8 1.7-2 3.5-2.4-.7-1.6.9-.6 2.4h-4l-.6-2.4-1.6-.9-2.4.7-2-3.5 1.8-1.7v-1.9L3.4 8.6l2-3.5 2.4.7 1.6-.9Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+</nav><h1 class="hi-title">Víznapló</h1>
+<section class="hi-block highlight" aria-label="Napi folyadék"><div class="hi-head"><h2>Mai vízfogyasztás</h2><button class="hi-button" id="water-goal-edit" type="button">Napi cél</button></div>
+<div class="hi-dashboard"><div class="hi-ring" id="water-ring" style="--p:57"><div><small>Elfogyasztva</small><strong id="water-total">1250</strong><small>ml</small></div></div>
+<div style="flex:1;min-width:0"><span class="hi-label">Napi cél</span><strong style="font-size:24px;font-variant-numeric:tabular-nums"><span id="water-goal-value">2200</span> ml</strong><div class="hi-track" style="margin-top:12px"><i style="--w:57%"></i></div><p class="hi-sub" id="water-remaining">Még 950 ml hiányzik a célhoz.</p></div></div>
+</section>
+<section class="hi-block"><div class="hi-head"><h2>Gyors vízfelvétel</h2><span class="hi-sub">Egy érintés</span></div>
+<div class="hi-metric-grid">
+<button type="button" class="hi-button" data-water-add="150"><strong style="font-size:20px">+150</strong><br>ml</button>
+<button type="button" class="hi-button" data-water-add="250"><strong style="font-size:20px">+250</strong><br>ml</button>
+<button type="button" class="hi-button" data-water-add="500"><strong style="font-size:20px">+500</strong><br>ml</button>
+</div></section>
+<section class="hi-block"><div class="hi-head"><h2>Heti áttekintés</h2><span class="hi-sub">Utolsó 7 nap · minta</span></div><div class="hi-week" aria-label="Heti vízfogyasztás, mintaszámok">
+<div class="hi-week-item"><div class="hi-week-bar"><i style="--p:62%"></i></div><small>H</small></div><div class="hi-week-item"><div class="hi-week-bar"><i style="--p:85%"></i></div><small>K</small></div><div class="hi-week-item"><div class="hi-week-bar"><i style="--p:70%"></i></div><small>Sze</small></div><div class="hi-week-item"><div class="hi-week-bar"><i style="--p:92%"></i></div><small>Cs</small></div><div class="hi-week-item"><div class="hi-week-bar"><i style="--p:59%"></i></div><small>P</small></div><div class="hi-week-item"><div class="hi-week-bar"><i style="--p:78%"></i></div><small>Szo</small></div><div class="hi-week-item"><div class="hi-week-bar"><i style="--p:57%"></i></div><small>V</small></div></div>
+</section>
+<section class="hi-block"><div class="hi-head"><h2>Mai napló</h2><strong style="font-size:14px" class="hi-accent"><span id="water-count">1250</span> ml</strong></div><div id="water-entries"></div></section>
+<section class="hi-block"><h2 style="font-size:17px;margin:0">Víznapló biztonságos mentése</h2><p class="hi-sub">A valós alkalmazásban a külön Water backup, profilhoz kötés, Health Connect és helyi mentés változatlan marad. A mintában minden adat csak memóriában él.</p></section><p class="hi-note">Interaktív Grapes dizájnterv. Minden megjelenített érték minta, a valódi Food, Water, Drive és Supabase adatokat nem olvassa és nem módosítja.</p></div><footer class="hi-dock" aria-label="Health Quick Action">
+<div class="hi-dock-inner"><div class="hi-dock-group">
+<button type="button" class="hi-action" data-photo aria-label="Fotós ételfelvétel"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="15" rx="2"/><path d="M8 6l1.6-3h4.8L16 6"/><circle cx="12" cy="13.5" r="4"/></svg><span>Fotó</span></button>
+<button type="button" class="hi-action" data-add-food aria-label="Étel hozzáadása"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v16M4 12h16"/></svg><span>Étel</span></button>
+<button type="button" class="hi-action" data-quick-water aria-label="Víz hozzáadása"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2S5 10 5 15a7 7 0 0 0 14 0C19 10 12 2 12 2Z"/><path d="M8 16a4 4 0 0 0 4 4"/></svg><span>Víz</span></button>
+</div><button type="button" class="hi-dock-scan" data-scan aria-label="Vonalkódolvasó" title="Vonalkódolvasó"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V4h4m8 0h4v4m0 8v4h-4m-8 0H4v-4M7 10v5m3-6v7m3-6v5m3-6v7"/></svg></button></div>
+</footer><div class="hi-dialog" id="hi-dialog" hidden role="presentation"><section class="hi-dialog-card" role="dialog" aria-modal="true" aria-labelledby="hi-dialog-title"><header><h2 id="hi-dialog-title"></h2><button type="button" class="hi-mini" id="hi-dialog-close" aria-label="Bezárás">×</button></header><div class="hi-dialog-body" id="hi-dialog-body"></div><footer class="hi-dialog-footer" id="hi-dialog-footer"></footer></section></div><div class="hi-toast" id="hi-toast" role="status" aria-live="polite" hidden></div><script src="../shared/health-inner.js" defer></script></body></html>

@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#090e14">
+  <meta name="description" content="Grapes Health – interaktív widgetes dizájntervezet, a Növényekkel azonos sötét felületekkel és visszafogott neon élekkel.">
+  <title>Grapes · Health – neon szegélyes widgettervezet</title>
+  <style>
+/* Grapes Health – visually aligned with the approved Növények widget concept.
+   Neon is restricted to short, soft segments of panel outlines. */
+:root{color-scheme:dark;--bg:#090e14;--surface:#101821;--raised:#17222e;--stroke:#243343;--text:#f2f7fb;--muted:#94a5b8;--accent:#3bdcf2;--accent-muted:#77c6d2;--accent-ink:rgba(59,220,242,.38);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+*,*::before,*::after{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:#070c11;color:var(--text);-webkit-font-smoothing:antialiased}button,input,select{font:inherit}button{color:inherit;cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:3px}[hidden]{display:none!important}.icon-defs{position:absolute;width:0;height:0;overflow:hidden}.icon{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.desktop-layout{display:flex;justify-content:center;gap:50px;align-items:flex-start;min-height:100dvh;padding:27px 24px;background:radial-gradient(ellipse at 26% 20%,rgba(34,58,72,.16),transparent 45%),#070c11}.designer-note{width:257px;padding-top:104px}.designer-note__eyebrow{font-size:10px;font-weight:850;letter-spacing:.18em;color:var(--accent)}.designer-note h1{font-size:31px;line-height:1.15;letter-spacing:-.05em;margin:13px 0 19px}.designer-note h1 span{color:#77c6d2}.designer-note p{color:#a7b6c3;font-size:12px;line-height:1.75;margin:0 0 19px}.designer-note__line{height:1px;background:linear-gradient(90deg,#3bdcf2,rgba(59,220,242,.12),transparent);margin:24px 0 18px}.designer-note__small{font-size:11px!important}.palette{display:flex;gap:8px;margin-top:24px}.palette span{height:28px;width:28px;border-radius:9px;border:1px solid #60728175;background:var(--sample)}
+.phone{width:390px;max-width:100%;height:845px;background:var(--bg);border:1px solid #2c4252;border-radius:35px;padding:6px;overflow:hidden;box-shadow:0 26px 80px #0009;flex-shrink:0}.phone__screen{height:100%;min-height:0;display:flex;flex-direction:column;border-radius:29px;background:var(--bg);overflow:hidden}.appbar{height:65px;flex:0 0 65px;display:flex;align-items:center;gap:10px;padding:0 15px;border-bottom:1px solid #233440;background:#0c131c}.appbar__text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.appbar__text h1{font-size:21px;letter-spacing:-.025em;margin:0;line-height:1.12;font-weight:770}.icon-button{width:36px;height:36px;border:1px solid transparent;border-radius:10px;background:transparent;color:#bdcad6;display:grid;place-items:center;flex-shrink:0}.icon-button .icon{width:20px;height:20px}.icon-button--settings{width:40px;height:40px;border-color:#335a66;color:var(--accent);background:#111e29}
+.scroll-content{overflow-y:auto;overflow-x:hidden;min-height:0;flex:1;overscroll-behavior:contain;padding:16px 15px 25px;scrollbar-width:thin;scrollbar-color:#304753 transparent}
+/* The sole neon glow: confined to the very edge of widgets, never their background. */
+.neon-edge{position:relative;isolation:isolate;border:1px solid #293e4c;background:var(--surface);border-radius:19px;overflow:hidden}.neon-edge::before{content:"";position:absolute;pointer-events:none;z-index:1;left:17px;top:-1px;width:45%;height:1px;background:linear-gradient(90deg,rgba(59,220,242,.87),rgba(59,220,242,.35) 53%,transparent);box-shadow:0 0 4px rgba(59,220,242,.22)}.neon-edge::after{content:"";pointer-events:none;position:absolute;z-index:1;top:19px;left:-1px;width:1px;height:52px;background:linear-gradient(180deg,rgba(59,220,242,.42),transparent);box-shadow:0 0 3px rgba(59,220,242,.2)}
+.widget{padding:15px 13px 14px;margin-bottom:12px}.widget__heading{display:flex;align-items:center;gap:9px;margin-bottom:14px}.heading-icon{color:var(--accent);display:grid;place-items:center}.heading-icon .icon{width:19px;height:19px}.widget__heading h3{font-size:16px;line-height:1.25;letter-spacing:-.025em;margin:0;font-weight:760;white-space:nowrap}.heading-count{font-size:9px;color:#a3b4bf;padding:4px 6px;border:1px solid #354b59;border-radius:7px;white-space:nowrap}.text-link{margin-left:auto;background:none;border:0;padding:4px 0;color:var(--accent);font-weight:750;font-size:10.5px;white-space:nowrap}
+/* Food energy ring + macros */
+.daily-overview{display:grid;grid-template-columns:122px minmax(0,1fr);gap:12px;align-items:center}.calorie-ring{background:none;border:0;padding:0;position:relative;width:120px;height:120px;display:grid;place-items:center;text-align:center}.calorie-ring svg{width:120px;height:120px;position:absolute;inset:0;transform:rotate(-90deg)}.calorie-ring svg circle{fill:none;stroke-width:7;stroke-linecap:round}.calorie-ring .ring-track{stroke:#293d4a}.calorie-ring .ring-fill{stroke:#60c1d2;stroke-dasharray:0 100;transition:stroke-dasharray .25s}.ring-copy{z-index:1;display:flex;flex-direction:column;gap:2px;align-items:center}.ring-copy small{font-size:9px;color:var(--muted)}.ring-copy b{font-size:24px;font-variant-numeric:tabular-nums;letter-spacing:-.035em}.ring-copy span{font-size:9px;color:#c6d7df}.macro-list{display:grid;gap:14px;min-width:0}.macro-row{display:grid;gap:6px}.macro-head{display:flex;align-items:center;justify-content:space-between;gap:4px;font-size:10px;color:var(--muted)}.macro-head strong{color:#dae7ed;font-size:10px;white-space:nowrap;font-weight:650}.track{height:6px;border-radius:99px;background:#273c49;overflow:hidden;position:relative}.track>i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#4598aa,#71c6d5);transition:width .25s}
+.widget-divider{height:1px;background:#293b47;margin:16px 0 12px}.widget-minihead{display:flex;align-items:center;justify-content:space-between;gap:7px;margin-bottom:11px}.widget-minihead strong{font-size:12px}.widget-minihead span{font-size:9px;color:var(--muted)}.meal-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.meal-button{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:7px;border:1px solid #324957;border-radius:11px;background:#15242e;padding:10px 1px;min-height:60px;min-width:0}.meal-button span{font-size:9.5px;color:#b7cbd5}.meal-button b{font-size:10.5px;font-weight:750}.meal-button:hover,.meal-button:focus-visible{border-color:#4a8692}.inline-link{display:inline-block;border:0;background:transparent;color:var(--accent);font-size:10.5px;font-weight:750;padding:0;margin-top:13px;text-align:left}
+/* Water */
+.water-total{font-size:11px;color:var(--muted);white-space:nowrap}.water-total strong{font-size:13px;color:var(--text)}.water-controls{display:flex;align-items:center;gap:10px}.water-controls .track{flex:1;height:7px}.water-add{border:1px solid #3d6978;background:#1b3440;border-radius:10px;color:#92e0ec;padding:10px 9px;font-size:10px;white-space:nowrap;font-weight:730}.water-desc{font-size:10px;color:var(--muted);margin:11px 0 0}
+/* Recipe recommendation */
+.recipe-card{width:100%;display:flex;align-items:center;gap:12px;text-align:left;padding:14px 13px;cursor:pointer}.recipe-art{width:56px;height:56px;flex-shrink:0;border-radius:12px;border:1px solid #375057;background:#182c30;display:grid;place-items:center;overflow:hidden}.recipe-art svg{width:56px;height:56px}.recipe-copy{display:grid;gap:4px;flex:1;min-width:0}.recipe-copy small{color:#78bfc9;font-size:9px;letter-spacing:.09em;font-weight:800}.recipe-copy strong{font-size:14px;line-height:1.32}.recipe-copy em{font-size:10px;color:var(--muted);font-style:normal}.recipe-next{color:var(--accent);font-size:21px}
+/* Lower shortcut bar, same silhouette as Növények */
+.action-dock{height:78px;flex:0 0 78px;display:flex;align-items:center;gap:9px;background:linear-gradient(180deg,#0d141b,#0a1119);border-top:1px solid #243846;padding:9px 15px 12px}.action-dock__pill{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));flex:1;border:1px solid #385260;border-radius:24px;background:#162530;padding:3px;min-width:0}.action-dock__pill button{display:flex;align-items:center;flex-direction:column;justify-content:center;gap:3px;height:53px;min-width:0;border:0;background:transparent;font-size:10px;color:#c1d3dd}.action-dock__pill button .icon{width:21px;height:21px;color:#83d2dc}.action-dock__pill button span{white-space:nowrap}.action-dock__primary{width:56px;height:56px;flex:0 0 56px;display:grid;place-items:center;border-radius:50%;border:1px solid #3b8190;background:#152e3a;color:var(--accent);position:relative}.action-dock__primary .icon{width:24px;height:24px}.action-dock__primary::before{position:absolute;content:"";left:9px;right:18px;top:-1px;height:1px;background:linear-gradient(90deg,var(--accent),transparent)}
+/* Dialog / Settings, design-only interactivity */
+.toast{position:fixed;bottom:105px;left:50%;transform:translateX(-50%);width:min(calc(100vw - 28px),360px);z-index:10;border-radius:12px;background:#1d3440;color:#f2f7fb;border:1px solid #3f7180;padding:13px 15px;font-size:12px;box-shadow:0 9px 36px #000a;text-align:center}.modal-backdrop{position:fixed;inset:0;background:#000b;display:grid;place-items:center;z-index:11;padding:15px}.modal{width:min(380px,100%);max-height:90dvh;overflow-y:auto;padding:18px 16px 16px}.modal__header{display:flex;align-items:center;justify-content:space-between;gap:9px;margin-bottom:14px}.modal__header h2{font-size:18px;margin:0}.modal__header .icon-button{font-size:25px}.modal p{font-size:12px;line-height:1.6;color:var(--muted)}.modal__button{border:1px solid #45737d;border-radius:12px;color:var(--accent);background:#193541;padding:11px 14px;margin-top:16px;width:100%;font-weight:750}.option-row{display:flex;justify-content:space-between;align-items:center;gap:15px;color:#d5e3e9;font-size:12px;border-bottom:1px solid #293b47;padding:13px 1px}.option-row input[type="checkbox"]{accent-color:#3bdcf2;width:18px;height:18px}.option-row input[type="number"]{background:#0c1921;border:1px solid #365564;border-radius:8px;color:var(--text);padding:8px;width:94px;text-align:right}.option-row select{background:#0c1921;border:1px solid #365564;border-radius:8px;color:var(--text);padding:8px;width:126px}.modal__sub{font-size:10px;color:var(--muted)}.settings-heading{font-size:11px;font-weight:800;color:#9fcad3;letter-spacing:.07em;margin-top:18px}.settings-button{border:1px solid #334b58;border-radius:10px;background:#162a34;color:#bedee4;padding:10px;margin-top:10px;font-size:11px;width:100%;text-align:left}.glass-link{font-weight:700;color:#87cad5;background:transparent;border:0;cursor:pointer}
+@media(max-width:700px){.desktop-layout{display:block;padding:0;background:var(--bg)}.designer-note{display:none}.phone{height:100dvh;width:100%;max-width:none;border:0;border-radius:0;padding:0;box-shadow:none}.phone__screen{border-radius:0}.scroll-content{padding-bottom:28px}.action-dock{padding-bottom:max(12px,env(safe-area-inset-bottom));height:calc(78px + env(safe-area-inset-bottom));flex-basis:calc(78px + env(safe-area-inset-bottom))}}
+@media(max-width:355px){.widget{padding:13px 10px}.scroll-content{padding:18px 11px}.appbar{padding:0 11px}.action-dock{padding-left:11px;padding-right:11px}.daily-overview{grid-template-columns:102px minmax(0,1fr);gap:7px}.calorie-ring,.calorie-ring svg{height:100px;width:100px}.ring-copy b{font-size:20px}.macro-list{gap:10px}.meal-grid{gap:4px}.meal-button span{font-size:8.5px}.widget__heading h3{font-size:14.5px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}
+
+  
+/* Grapes Brand v1.2 – unified compact six-icon navigation. */
+.grapes-six-rail{width:calc(100% - 26px);margin:10px 13px 8px;flex:0 0 auto;
+ display:grid;grid-template-columns:repeat(6,minmax(0,1fr));align-items:center;gap:3px;
+ border:1px solid #2c4a58;border-radius:23px;background:#101821;min-height:62px;
+ padding:5px;box-shadow:inset 0 1px 0 rgba(255,255,255,.025)}
+.grapes-six-rail button{display:flex;align-items:center;justify-content:center;min-width:0;min-height:50px;
+ background:transparent;border:1px solid transparent;border-radius:17px;padding:0;color:#a5b8c8;
+ cursor:pointer;box-shadow:none}
+.grapes-six-rail button .icon{width:22px;height:22px;stroke-width:1.8}
+.grapes-six-rail button.is-selected{color:#3bdcf2;border-color:#477a88;background:#1b3541;
+ box-shadow:inset 0 -2px 0 rgba(59,220,242,.68),0 0 5px rgba(59,220,242,.1)}
+.grapes-six-rail button:focus-visible{outline:2px solid #3bdcf2;outline-offset:2px}
+@media(max-width:350px){.grapes-six-rail{width:calc(100% - 18px);margin-inline:9px;padding:4px;gap:2px;min-height:56px}.grapes-six-rail button{min-height:46px;border-radius:14px}.grapes-six-rail button .icon{width:20px;height:20px}}
+
+/* Review parity v1.2 – one title BELOW the six-icon rail. */
+.phone__screen > .grapes-six-rail{order:0;flex-shrink:0}
+.phone__screen > .appbar{order:1;flex:0 0 58px;height:58px;border-bottom:0;background:#090e14;padding:0 16px}
+.phone__screen > .appbar h1{font-size:23px;font-weight:780}
+.phone__screen > .scroll-content{order:2;flex:1 1 auto;min-height:0}
+.phone__screen > .action-dock{order:3;flex-shrink:0}
+</style>
+</head>
+<body>
+  <svg class="icon-defs" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="ic-health" viewBox="0 0 24 24"><path d="M20.8 9.2c0 5-8.8 10.3-8.8 10.3S3.2 14.2 3.2 9.2A4.7 4.7 0 0 1 12 6.8a4.7 4.7 0 0 1 8.8 2.4Z"/><path d="M7.5 12h2l1.2-2.5 2.2 5 1.2-2.5h2.4"/></symbol>
+    <symbol id="ic-settings" viewBox="0 0 24 24"><path d="M10 2.5h4l.6 2.4 1.6.9 2.4-.7 2 3.5-1.8 1.7v1.9l1.8 1.7-2 3.5-2.4-.7-1.6.9-.6 2.4h-4l-.6-2.4-1.6-.9-2.4.7-2-3.5 1.8-1.7v-1.9L3.4 8.6l2-3.5 2.4.7 1.6-.9z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="ic-book" viewBox="0 0 24 24"><path d="M6 3h12v18H6zM9 7h6M9 11h6M9 15h3"/></symbol>
+    <symbol id="ic-drop" viewBox="0 0 24 24"><path d="M12 2s7 7 7 12a7 7 0 1 1-14 0c0-5 7-12 7-12z"/><path d="M9 16a3 3 0 0 0 3 3"/></symbol>
+    <symbol id="ic-chart" viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 16v-5M13 16V7M18 16v-9"/></symbol>
+    <symbol id="ic-camera" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.6-2h4.8L16 6"/></symbol>
+    <symbol id="ic-scan" viewBox="0 0 24 24"><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4M7 10v4M10 9v6M13 10v4M16 9v6"/></symbol>
+    <symbol id="ic-plus" viewBox="0 0 24 24"><path d="M12 4v16M4 12h16"/></symbol>
+    <symbol id="ic-right" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+    <symbol id="ic-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></symbol>
+    <symbol id="ic-sliders" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16M9 4v6M15 14v6"/></symbol>
+    <symbol id="ic-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/></symbol>
+    <symbol id="ic-arrow" viewBox="0 0 24 24"><path d="M4 12h16m-6-6 6 6-6 6"/></symbol>
+  </svg>
+  <div class="desktop-layout">
+    <aside class="designer-note">
+      <div class="designer-note__eyebrow">GRAPES / UI CONCEPT 03</div>
+      <h1>Health.<br><span>Ugyanaz a neonél.</span></h1>
+      <p>A Növények modulban jóváhagyott sötét Grapes-palette, pontosan ugyanolyan finom szegélyfénnyel. A Health meglévő widgetes elrendezésének újragondolt megjelenése.</p>
+      <div class="designer-note__line"></div>
+      <p class="designer-note__small">Kattintható mintaterv. A napi kalória, víz, makrók és recept adatai bemutatóértékek, nem a Grapesből kerülnek be.</p>
+      <div class="palette" aria-label="Grapes színpaletta">
+        <span style="--sample:#090e14" title="Háttér #090E14"></span>
+        <span style="--sample:#101821" title="Panel #101821"></span>
+        <span style="--sample:#17222e" title="Emelt felület #17222E"></span>
+        <span style="--sample:#243343" title="Szegély #243343"></span>
+        <span style="--sample:#3bdcf2" title="Grapes cyan #3BDCF2"></span>
+      </div>
+    </aside>
+    <div class="phone" aria-label="Grapes Health mobilos prototípus">
+      <div class="phone__screen">
+        <header class="appbar"><div class="appbar__text"><h1>Health</h1></div></header>
+        <nav class="grapes-six-rail" aria-label="Health modul funkciói">
+   <button type="button" class="is-selected" data-action="food" aria-label="Food" title="Food"><svg class="icon" aria-hidden="true"><use href="#ic-health"/></svg></button>
+   <button type="button" data-action="water-log" aria-label="Víznapló" title="Víznapló"><svg class="icon" aria-hidden="true"><use href="#ic-drop"/></svg></button>
+   <button type="button" data-action="recipe" aria-label="Receptek" title="Receptek"><svg class="icon" aria-hidden="true"><use href="#ic-book"/></svg></button>
+   <button type="button" data-action="stats" aria-label="Statisztika" title="Statisztika"><svg class="icon" aria-hidden="true"><use href="#ic-chart"/></svg></button>
+   <button type="button" data-action="barcode" aria-label="Vonalkód" title="Vonalkód"><svg class="icon" aria-hidden="true"><use href="#ic-scan"/></svg></button>
+   <button type="button" class="rail-gear" id="settings-open" aria-label="Health beállítások" title="Health beállítások"><svg class="icon" aria-hidden="true"><use href="#ic-settings"/></svg></button>
+  </nav>
+        <main class="scroll-content" id="scroll-content">
+          <section class="widget neon-edge" id="widget-food" aria-label="Food – napi összesítő">
+            <div class="widget__heading">
+              <div class="heading-icon"><svg class="icon"><use href="#ic-health"/></svg></div>
+              <h3>Food</h3><span class="heading-count">MAI ÖSSZESÍTŐ</span>
+              <button class="text-link" type="button" data-action="stats">Statisztika →</button>
+            </div>
+            <div class="daily-overview">
+              <button type="button" class="calorie-ring" id="calorie-ring" data-action="stats" aria-label="Kalória Statisztika megnyitása, minta napi fogyasztás">
+                <svg viewBox="0 0 120 120" aria-hidden="true"><circle class="ring-track" cx="60" cy="60" r="48" pathLength="100"/><circle class="ring-fill" id="ring-progress" cx="60" cy="60" r="48" pathLength="100"/></svg>
+                <span class="ring-copy"><small>Elfogyasztva</small><b id="kcal-value">1 420</b><span>kcal</span><small id="kcal-goal">/ 2 100 cél</small></span>
+              </button>
+              <div class="macro-list" aria-label="Makrotápanyagok">
+                <div class="macro-row"><div class="macro-head"><span>Fehérje</span><strong id="protein-text">78 / 120 g</strong></div><div class="track"><i id="protein-progress"></i></div></div>
+                <div class="macro-row"><div class="macro-head"><span>Szénhidrát</span><strong id="carb-text">154 / 230 g</strong></div><div class="track"><i id="carb-progress"></i></div></div>
+                <div class="macro-row"><div class="macro-head"><span>Zsír</span><strong id="fat-text">49 / 70 g</strong></div><div class="track"><i id="fat-progress"></i></div></div>
+              </div>
+            </div>
+            <div class="widget-divider"></div>
+            <div class="widget-minihead"><strong>Mai étkezések</strong><span>Érintsd meg a részletekhez</span></div>
+            <div class="meal-grid" id="meals">
+              <button type="button" class="meal-button" data-meal="Reggeli"><span>Reggeli</span><b>380 kcal</b></button>
+              <button type="button" class="meal-button" data-meal="Ebéd"><span>Ebéd</span><b>560 kcal</b></button>
+              <button type="button" class="meal-button" data-meal="Uzsonna"><span>Uzsonna</span><b>190 kcal</b></button>
+              <button type="button" class="meal-button" data-meal="Vacsora"><span>Vacsora</span><b>290 kcal</b></button>
+            </div>
+            <button class="inline-link" type="button" data-action="food">Teljes ételnapló megnyitása →</button>
+          </section>
+          <section class="widget neon-edge" id="widget-water" aria-label="Vízfogyasztás">
+            <div class="widget__heading">
+              <div class="heading-icon"><svg class="icon"><use href="#ic-drop"/></svg></div>
+              <h3>Víz</h3><span class="water-total"><strong id="water-total">1 250</strong> / <span id="water-goal">2 200</span> ml</span>
+            </div>
+            <div class="water-controls">
+              <div class="track" role="progressbar" aria-label="Napi vízcél teljesülése" aria-valuemin="0" aria-valuemax="2200" aria-valuenow="1250" id="water-track"><i id="water-progress"></i></div>
+              <button type="button" class="water-add" id="water-add">＋ 250 ml</button>
+            </div>
+            <p class="water-desc" id="water-description">Még 950 ml hiányzik a napi célhoz.</p>
+            <button class="inline-link" type="button" data-action="water-log">Víznapló megnyitása →</button>
+          </section>
+          <button class="recipe-card neon-edge" id="widget-recipe" type="button" data-action="recipe" aria-label="Saját receptajánló megnyitása">
+            <span class="recipe-art" aria-hidden="true">
+              <svg viewBox="0 0 56 56" fill="none" aria-hidden="true"><ellipse cx="28" cy="43" rx="20" ry="5" fill="#0d2127"/><ellipse cx="28" cy="37" rx="19" ry="5.6" fill="#a68a60"/><ellipse cx="28" cy="32" rx="17" ry="5.1" fill="#cead77"/><ellipse cx="28" cy="27" rx="16" ry="5" fill="#e8c58e"/><ellipse cx="28" cy="22" rx="14" ry="4.7" fill="#d7ae75"/><path d="M20 19c4 3 8 3 12 0" stroke="#f3dfad" stroke-width="3" stroke-linecap="round"/><circle cx="26" cy="16" r="3" fill="#7d5062"/><circle cx="32" cy="17" r="2" fill="#99617f"/><path d="M27 14c-2-4-3-6-1-8" stroke="#80b889" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </span>
+            <span class="recipe-copy"><small>SAJÁT RECEPTAJÁNLÓ</small><strong>Banános zabpalacsinta</strong><em>Recept részletei és tápértékek</em></span>
+            <span class="recipe-next" aria-hidden="true">›</span>
+          </button>
+        </main>
+        <footer class="action-dock" aria-label="Health gyorsműveletek">
+          <div class="action-dock__pill">
+            <button type="button" data-action="photo" aria-label="Étel felvétele fotóval"><svg class="icon"><use href="#ic-camera"/></svg><span>Fotó</span></button>
+            <button type="button" data-action="add-food" aria-label="Étel hozzáadása"><svg class="icon"><use href="#ic-plus"/></svg><span>Étel</span></button>
+            <button type="button" data-action="add-water" aria-label="Víz hozzáadása"><svg class="icon"><use href="#ic-drop"/></svg><span>Víz</span></button>
+          </div>
+          <button class="action-dock__primary" type="button" data-action="barcode" aria-label="Vonalkódolvasó"><svg class="icon"><use href="#ic-scan"/></svg></button>
+        </footer>
+      </div>
+    </div>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <div class="modal-backdrop" id="modal-backdrop" hidden>
+    <section class="modal neon-edge" role="dialog" aria-modal="true" aria-labelledby="modal-title" id="modal">
+      <div class="modal__header"><h2 id="modal-title">Health beállítások</h2><button type="button" class="icon-button" id="modal-close" aria-label="Bezárás">×</button></div>
+      <div id="modal-body"></div>
+      <button type="button" class="modal__button" id="modal-done">Rendben</button>
+    </section>
+  </div>
+  <script>
+/* Standalone Health design preview. All values are intentionally fictional;
+   no Grapes profile, local storage, network connection, or private health data used. */
+(() => {
+  const $ = selector => document.querySelector(selector);
+  const $$ = selector => [...document.querySelectorAll(selector)];
+  const number = value => new Intl.NumberFormat('hu-HU',{maximumFractionDigits:0}).format(value);
+  const state = { energy:1420, goal:2100, protein:78, proteinGoal:120, carbs:154, carbGoal:230, fat:49, fatGoal:70, water:1250, waterGoal:2200 };
+  let toastTimer;
+  function toast(message){
+    const el=$('#toast'); el.textContent=message;el.hidden=false;
+    clearTimeout(toastTimer);toastTimer=setTimeout(()=>{el.hidden=true},3300);
+  }
+  const modal=$('#modal-backdrop');
+  function closeModal(){modal.hidden=true;document.body.style.overflow=''}
+  function openModal(title,content){
+    $('#modal-title').textContent=title;
+    $('#modal-body').innerHTML=content;
+    modal.hidden=false;document.body.style.overflow='hidden';
+    $('#modal-close').focus();
+  }
+  $('#modal-close').addEventListener('click',closeModal);
+  $('#modal-done').addEventListener('click',closeModal);
+  modal.addEventListener('click',event=>{if(event.target===modal)closeModal()});
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!modal.hidden)closeModal()});
+  const percentage=(value,goal)=>goal>0?Math.max(0,Math.min(100,value/goal*100)):0;
+  function render(){
+    $('#kcal-value').textContent=number(state.energy);
+    $('#kcal-goal').textContent=`/ ${number(state.goal)} cél`;
+    $('#ring-progress').style.strokeDasharray=`${percentage(state.energy,state.goal)} 100`;
+    const macros=[['protein','proteinGoal','protein-text','protein-progress'],['carbs','carbGoal','carb-text','carb-progress'],['fat','fatGoal','fat-text','fat-progress']];
+    macros.forEach(([key,goal,label,bar])=>{
+      $('#'+label).textContent=`${number(state[key])} / ${number(state[goal])} g`;
+      $('#'+bar).style.width=percentage(state[key],state[goal])+'%';
+    });
+    $('#water-total').textContent=number(state.water);$('#water-goal').textContent=number(state.waterGoal);
+    $('#water-progress').style.width=percentage(state.water,state.waterGoal)+'%';
+    $('#water-track').setAttribute('aria-valuemax',state.waterGoal);
+    $('#water-track').setAttribute('aria-valuenow',state.water);
+    $('#water-description').textContent=state.water>=state.waterGoal?'A mintacél teljesült.':`Még ${number(state.waterGoal-state.water)} ml hiányzik a napi célhoz.`;
+  }
+  function addWater(){state.water+=250;render();toast('＋250 ml – csak a mintanézetben, nincs mentés.')}
+  $('#water-add').addEventListener('click',addWater);
+  $('#settings-open').addEventListener('click',()=>{
+    const opts=[['widget-food','Food összesítő'],['widget-water','Víz widget'],['widget-recipe','Saját receptajánló']];
+    const toggles=opts.map(([id,label])=>`<label class="option-row"><span>${label}</span><input type="checkbox" data-widget="${id}" ${$('#'+id).hidden?'':'checked'}></label>`).join('');
+    openModal('Health beállítások',
+      '<p>A jelenlegi Health modul beállításai alapján készült mintanézet. A változtatások nem mentődnek.</p>'+
+      '<div class="settings-heading">CÉLOK</div>'+
+      `<label class="option-row"><span>Napi kalóriacél (kcal)</span><input type="number" min="1" max="10000" step="50" data-goal="goal" value="${state.goal}"></label>`+
+      `<label class="option-row"><span>Vízcél (ml)</span><input type="number" min="250" max="10000" step="250" data-goal="waterGoal" value="${state.waterGoal}"></label>`+
+      '<div class="settings-heading">MEGJELENÍTÉS</div>'+toggles+
+      '<div class="settings-heading">TOVÁBBI BEÁLLÍTÁSOK</div>'+
+      '<button class="settings-button" type="button" data-extra="Mértékegységek">Mértékegységek · Metrikus / Imperial (terv)</button>'+
+      '<button class="settings-button" type="button" data-extra="Integrációk">Integrációk · Health Connect / Samsung Health / YAZIO</button>'+
+      '<button class="settings-button" type="button" data-extra="Adatok és biztonság">Adatok és biztonság · mentések és importok</button>'+
+      '<p class="modal__sub">A valódi Health modul meglévő adatkezelését ez a HTML nem érinti.</p>');
+  });
+  $('#modal-body').addEventListener('change',event=>{
+    const w=event.target.dataset.widget;
+    if(w){$('#'+w).hidden=!event.target.checked;return}
+    const g=event.target.dataset.goal;
+    if(g){const value=Number(event.target.value);if(Number.isFinite(value)&&value>0&&value<=10000){state[g]=value;render()}else{event.target.value=state[g]}}
+  });
+  $('#modal-body').addEventListener('click',event=>{
+    const btn=event.target.closest('[data-extra]');
+    if(btn)toast(`${btn.dataset.extra}: külön beállítási képernyő a végleges alkalmazásban.`);
+  });
+  $$('[data-meal]').forEach(button=>button.addEventListener('click',()=>{
+    const name=button.dataset.meal;
+    openModal(name,`<p><strong>${button.querySelector('b').textContent}</strong> · mintabejegyzés.</p><p>A valódi Health modulban innen az adott étkezés Food-naplója nyílna meg, annak meglévő adataival.</p>`);
+  }));
+  const descriptions={
+    stats:['Statisztika','A kalóriagyűrű a részletes Food Statisztika képernyőt nyitná meg, grafikonokkal, makrókkal és előzményekkel.'],
+    food:['Food napló','A tényleges ételnaplóban a napi étkezések és a hozzájuk tartozó ételek láthatók.'],
+    'water-log':['Víznapló','A valódi Víz modul naplózási és előzménykezelő felülete nyílna meg.'],
+    recipe:['Saját receptajánló','Banános zabpalacsinta · mintarecept. Az éles felület csak valóban mentett saját receptet ajánljon, és a recept adatlapját nyissa meg.'],
+    photo:['Fotós ételfelvétel','A Food meglévő fotós felvitelét indítaná, a szükséges jogosultságokkal.'],
+    'add-food':['Étel hozzáadása','A Food ételkeresőjéhez és naplójához navigálna.'],
+    barcode:['Vonalkódolvasó','A Grapes jelenlegi natív vonalkódolvasóját indítaná, neonkék szkennelési felülettel.']
+  };
+  $$('[data-action]').forEach(button=>button.addEventListener('click',()=>{
+    if(button.dataset.action==='add-water'){addWater();return}
+    const pair=descriptions[button.dataset.action];if(pair)openModal(pair[0],`<p>${pair[1]}</p><p class="modal__sub">Bemutató interakció – nem éles navigáció vagy adatmentés.</p>`);
+  }));
+  render();
+})();
+
+  </script>
+<script>document.querySelectorAll('.grapes-six-rail button:not(.rail-gear)').forEach(button=>button.addEventListener('click',()=>{document.querySelectorAll('.grapes-six-rail button').forEach(b=>b.classList.toggle('is-selected',b===button));}));</script></body>
+</html>

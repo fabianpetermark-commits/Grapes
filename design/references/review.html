@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#090e14">
+<title>Grapes · végleges HTML-ellenőrző</title>
+<style>
+:root{color-scheme:dark;--bg:#090e14;--surface:#101821;--raised:#17222e;--line:#2b4350;--text:#f1f7fa;--muted:#9daebc;--cyan:#3bdcf2;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+*{box-sizing:border-box}body{margin:0;color:var(--text);background:var(--bg);line-height:1.48}
+button,select{font:inherit}button,a{touch-action:manipulation}button:focus-visible,a:focus-visible,select:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+a{color:#81dceb;text-decoration:none}a:hover{text-decoration:underline}
+.top{padding:21px clamp(16px,4vw,42px) 17px;background:#0c1720;border-bottom:1px solid #253b47}
+.top-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
+.brand{font-size:26px;font-weight:780;letter-spacing:-.04em}
+.brand span{color:var(--cyan)}.subtitle{margin:4px 0 0;color:var(--muted);font-size:13px}
+.status{font-size:12px;padding:7px 10px;border-radius:100px;color:#acd9e0;border:1px solid #41606d;background:#152a34}
+.content{max-width:1200px;margin:auto;padding:20px clamp(12px,3vw,35px) 38px}
+.intro{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:15px 18px;position:relative;overflow:hidden}
+.intro::before{content:"";position:absolute;top:0;left:19px;width:170px;height:1px;background:linear-gradient(90deg,#3bdcf2,transparent)}
+.intro strong{font-size:15px}.intro p{margin:6px 0 0;color:var(--muted);font-size:13px}
+.layout{display:grid;grid-template-columns:minmax(230px,295px) minmax(0,1fr);gap:19px;margin-top:18px;align-items:start}
+.sidebar{display:grid;gap:7px}
+.side-label{font-size:11px;font-weight:750;text-transform:uppercase;letter-spacing:.09em;color:#88a5b5;margin:12px 4px 2px}
+.screen-button{width:100%;display:flex;align-items:center;text-align:left;gap:11px;padding:11px 12px;border:1px solid #28404e;border-radius:13px;background:#101b24;color:var(--text);cursor:pointer}
+.screen-button:hover{border-color:#426676}.screen-button[aria-pressed=true]{background:#193441;border-color:#508493;box-shadow:inset 0 -2px 0 rgba(59,220,242,.56)}
+.screen-icon{width:42px;height:42px;flex:none;border-radius:12px;border:1px solid #395b69;background:#1b323e;color:#79ccdb;display:grid;place-items:center}
+.screen-icon svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.85;stroke-linecap:round;stroke-linejoin:round}
+.screen-label{flex:1;min-width:0}.screen-label strong{display:block;font-size:14px}.screen-label small{display:block;color:var(--muted);font-size:11px;margin-top:3px}
+.dot{width:7px;height:7px;border-radius:100%;background:#68bdca}
+.dot.proposed{background:#d9b47d}
+.viewer{min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:14px;position:relative}
+.viewer::before{content:"";position:absolute;top:0;left:20px;height:1px;width:35%;background:linear-gradient(90deg,#3bdcf2,transparent)}
+.viewer-heading{display:flex;gap:12px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap}
+.viewer-heading h2{margin:1px 0 0;font-size:21px;letter-spacing:-.025em}
+.viewer-heading p{color:var(--muted);font-size:12px;margin:5px 0 7px;max-width:550px}
+.viewer-links{display:flex;align-items:center;gap:12px;font-size:12px;margin-top:5px}
+.controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-top:1px solid #243946;padding:12px 0 10px;margin-top:6px}
+.controls strong{font-size:12px;color:#b8cbd5;margin-right:5px}
+.width-btn,.state-btn{min-height:37px;min-width:43px;border-radius:10px;border:1px solid #354d5b;color:#b9cfda;background:#192a35;cursor:pointer;padding:6px 10px;font-size:12px}
+.width-btn[aria-pressed=true],.state-btn[aria-pressed=true]{border-color:#5694a2;background:#21414d;color:#9de7f2}
+.preview-area{border-radius:17px;background:radial-gradient(ellipse at top,#18303a,#0b141c 68%);padding:19px 10px;display:flex;justify-content:center;align-items:flex-start;min-height:310px;overflow:hidden}
+.device-viewport{width:390px;max-width:none;height:805px;position:relative;flex:none}
+.device-shell{position:absolute;top:0;left:0;width:390px;height:805px;border:1px solid #3a5968;border-radius:29px;background:#090e14;overflow:hidden;transform-origin:top left;box-shadow:0 10px 50px #0007}
+.device-shell iframe{display:block;border:0;background:#090e14;width:100%;height:100%}
+.view-note{color:#96b0bd;margin:12px 0 0;font-size:12px}
+.checklist{margin:16px 0 0;background:#0c1720;border:1px solid #2c4350;border-radius:16px;padding:15px}
+.checklist h3{font-size:15px;margin:0 0 10px}
+.checklist ul{margin:0;padding-left:18px;color:#b4c4cd;font-size:12px;display:grid;gap:6px}
+.footer-note{font-size:12px;color:#859ead;line-height:1.6;margin:19px 4px}
+[hidden]{display:none!important}
+@media(max-width:800px){.layout{grid-template-columns:1fr}.sidebar{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(143px,1fr);overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:5px}.sidebar .side-label{display:none}.screen-button{min-width:143px;scroll-snap-align:start;display:grid;justify-items:start;padding:10px}.screen-icon{width:36px;height:36px}.viewer{padding:12px}.preview-area{padding:12px 3px}.top{padding:15px}.content{padding:12px 9px 24px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top"><div class="top-inner"><div><div class="brand">Grapes <span>·</span> UI ellenőrzés</div><p class="subtitle">11 valódi HTML-felület · Brand Guide v1.2 · egységes vizuális áttekintés</p></div><span class="status">Dizájn-referencia • nincs éles adatkapcsolat</span></div></header>
+<main class="content">
+<section class="intro" aria-label="Ellenőrzés célja"><strong>Ez nem generált látványkép: az eredeti HTML-fájlokat jelenítjük meg.</strong>
+<p>Kattints a képernyőkre, próbáld ki a funkcióikat, váltogasd a telefonméreteket. Az elfogadott stílus és a még jóváhagyandó modulrészletek külön jelölést kapnak. A mintaszámok nem Grapes-fiókadatok.</p></section>
+<div class="layout">
+<nav class="sidebar" id="screens" aria-label="Ellenőrzendő képernyők"></nav>
+<section class="viewer" aria-label="Interaktív mobilos előnézet">
+<div class="viewer-heading">
+ <div><h2 id="screen-title">Kezdő</h2><p id="screen-description"></p></div>
+ <div class="viewer-links"><a id="open-source" href="#" target="_blank" rel="noopener">HTML teljes méretben ↗</a></div>
+</div>
+<div class="controls" aria-label="Előnézet szélessége"><strong>Kijelző:</strong>
+ <button type="button" class="width-btn" data-width="320">320</button><button type="button" class="width-btn" data-width="360">360</button>
+ <button type="button" class="width-btn" data-width="390">390</button><button type="button" class="width-btn" data-width="412">412</button>
+ <span style="color:#8da5b1;font-size:11px">px</span>
+</div>
+<div class="controls" id="view-states" aria-label="Belső nézetek" hidden></div>
+<div class="preview-area" id="preview-area"><div class="device-viewport" id="device-viewport"><div class="device-shell" id="device-shell"><iframe id="screen-iframe" title="Grapes kiválasztott képernyő interaktív HTML előnézete" loading="eager"></iframe></div></div></div>
+<p class="view-note" id="view-note">A belső görgetés és gombok a tényleges HTML-mintában működnek.</p>
+<section class="checklist"><h3>Végső vizuális ellenőrzés</h3><ul id="checklist">
+ <li>Hat egyforma méretű ikon egy kerekített, sötét kapszulában; feliratok nélkül.</li>
+ <li>20–22 px-es ikonok, egységes kijelölési keret és fogaskerék; nincs külön Vissza/Home gomb.</li>
+ <li>Egyetlen világos tartalomcím, nincs redundáns alcím vagy duplázott fejléc.</li>
+ <li>Finom neon csak a kártyák rövid peremén; olvasható kártyák, megfelelő térközök.</li>
+ <li>A modul saját alsó gyorsműveletei nem takarhatnak ki tartalmat.</li>
+ <li>A valódi alkalmazás később is a meglévő mentést, Authot és Drive-kapcsolatot használja.</li>
+ </ul></section>
+</section>
+</div>
+<p class="footer-note">Forrás: <a href="./README.md">referencia- és integrációs szerződés</a> · <a href="../../docs/GRAPES_BRAND_GUIDE.md">Brand Guide</a>. A végső megvalósítási egyezést később azonos képernyőméretű Grapes TEST képernyőmentéssel kell ellenőrizni. Ez a galéria nem módosít alkalmazásadatot, Supabase-t vagy Drive-ot.</p>
+</main>
+<script>
+const icons={
+start:'<path d="m3 11 9-7 9 7v10H3z"/><path d="M9 21v-7h6v7"/>',
+home:'<path d="m3 10 9-7 9 7v10H3z"/><path d="M9 20v-7h6v7"/>',
+health:'<path d="M20 7c-3-5-8-3-8 0-2-4-8-4-9 1-2 6 9 12 9 12s11-6 9-12z"/><path d="M5 13h4l2-3 2 5 2-2h4"/>',
+plants:'<path d="M20 4C9 4 4 10 5 19c9 2 15-3 15-15Z"/><path d="M4 21 17 8"/>',
+tools:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+ebook:'<path d="M12 5a8 8 0 0 0-9-1v15a8 8 0 0 1 9 1 8 8 0 0 1 9-1V4a8 8 0 0 0-9 1z"/><path d="M12 5v15"/>',
+qr:'<path d="M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 0v4h4m3-4v7h-4m-3 0v-3"/>',
+finance:'<rect x="2" y="5" width="20" height="15" rx="3"/><path d="M3 10h18M7 16h4"/>'
+};
+const svg=k=>'<svg viewBox="0 0 24 24" aria-hidden="true">'+icons[k]+'</svg>';
+const modules=[
+{id:'start',name:'Kezdő',caption:'Személyre szabott widgetek',status:'style',path:'candidates/main-shell-tools.html',icon:'start',desc:'A Grapes működő HTML-kezdőoldala; ezen a fájlon belül a Home/Health/Tools/Finance felső modulikonjai is kipróbálhatók.',states:[['Kezdő','start'],['Home','home'],['Health','health'],['Tools','utility'],['Finance','finance']]},
+{id:'home',name:'Home',caption:'Bevásárlás és készlet',status:'proposal',path:'candidates/home.html',icon:'home',desc:'Új egységes Home célterv: privát / családi váltás, közös vásárlás, készlet, becsült és igazolt javaslatok, piros X, összecsukott háztartáskezelés. Kattintható minta, nem a v40 kiadott UI-ja.'},
+{id:'health',name:'Health',caption:'Food, Víz és receptek',status:'style',path:'approved/health-minimal.html',icon:'health',desc:'Elfogadott Health-widgetstílus: kalóriagyűrű, makrók, víz, receptajánló és alsó gyorssáv.'},
+{id:'food',name:'Ételnapló',caption:'Food belső oldal',status:'proposal',path:'candidates/food.html',icon:'health',desc:'Részletes napi Food napló: étkezések, tápanyagok, rögzített mintatételek és Health Quick Action.'},
+{id:'water',name:'Víznapló',caption:'Víz belső oldal',status:'proposal',path:'candidates/water.html',icon:'health',desc:'Napi vízcél, interaktív vízfelvétel, heti grafikon, napló és Health Quick Action.'},
+{id:'recipes',name:'Receptek',caption:'Saját receptek',status:'proposal',path:'candidates/recipes.html',icon:'ebook',desc:'Kereshető receptgyűjtemény, ötfüles szerkesztő, mintarecept és Health Quick Action.'},
+{id:'plants',name:'Növények',caption:'Gondozás és aktuális teendők',status:'style',path:'approved/plants-widget.html',icon:'plants',desc:'Elfogadott Növények-stílus, a részletes saját növényadat-kezelés még fejlesztés alatt.'},
+{id:'tools',name:'Tools',caption:'E-book és QR',status:'proposal',path:'candidates/tools.html',icon:'tools',desc:'A korábbi Utility új neve; E-book/QR widgetes főoldal.'},
+{id:'ebook',name:'E-book',caption:'Könyvtár, olvasó, átvitel',status:'proposal',path:'candidates/ebook.html',icon:'ebook',desc:'Külön nézetek a könyvtárhoz, olvasóhoz és az átvitelhez. A személyre szabott olvasási téma marad.',states:[['Könyvtár','library'],['Olvasó','reader'],['Átvitel','transfer']]},
+{id:'qr',name:'QR Stúdió',caption:'Kód, tartalom, színek',status:'proposal',path:'candidates/qr.html',icon:'qr',desc:'A QR-grafika csak bemutató, nem beolvasható; a valós QR-motor később marad a forrás.',states:[['Tartalom','link'],['Színek','colors'],['Beállítások','extra']]},
+{id:'finance',name:'Finance',caption:'Pénzügyi napló · 5 nézet',status:'proposal',path:'candidates/finance.html',icon:'finance',desc:'Teljes Finance-modulterv: áttekintés, tranzakciók, megtakarítások, előrejelzés és import, saját gyorssávval.',states:[['Áttekintés','overview'],['Tranzakciók','ledger'],['Megtakarítások','savings'],['Előrejelzés','forecast'],['Import','import']]}
+];
+let active='start',width=390,desiredState=null;
+const $=sel=>document.querySelector(sel);
+const iframe=$('#screen-iframe'),screenPanel=$('#screens');
+screenPanel.innerHTML=modules.map(m=>'<button type="button" class="screen-button" data-screen="'+m.id+'" aria-pressed="false"><span class="screen-icon">'+svg(m.icon)+'</span><span class="screen-label"><strong>'+m.name+'</strong><small>'+m.caption+'</small></span><span class="dot '+(m.status==='proposal'?'proposed':'')+'" aria-hidden="true"></span></button>').join('');
+function resize(){
+ const available=$('#preview-area').clientWidth-8;
+ const scale=Math.min(1,available/width);
+ $('#device-shell').style.width=width+'px';$('#device-shell').style.transform='scale('+scale+')';
+ $('#device-viewport').style.width=(width*scale)+'px';$('#device-viewport').style.height=(805*scale)+'px';
+}
+function applyDesiredState(){
+ const m=modules.find(x=>x.id===active);if(!desiredState||!m.states)return;
+ try{
+   const d=iframe.contentDocument;
+   const selector=active==='start'?'[data-tab="'+desiredState+'"]':active==='finance'?'[data-tab="'+desiredState+'"]':active==='ebook'?'[data-view="'+desiredState+'"]':'[data-qr-tab="'+desiredState+'"]';
+   const button=d?.querySelector(selector);
+   button?.click();
+ }catch(error){console.warn('Az előnézet saját fájlként is megnyitható:',error);}
+}
+function selectScreen(id){
+ const m=modules.find(x=>x.id===id);if(!m)return;active=id;desiredState=null;
+ $('#screen-title').textContent=m.name;$('#screen-description').textContent=m.desc;
+ $('#open-source').href=m.path;
+ screenPanel.querySelectorAll('[data-screen]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.screen===id)));
+ const stateArea=$('#view-states');stateArea.innerHTML='';stateArea.hidden=!m.states;
+ if(m.states){stateArea.innerHTML='<strong>Belső nézet:</strong>'+m.states.map((s,i)=>'<button class="state-btn" type="button" aria-pressed="'+String(i===0)+'" data-state="'+s[1]+'">'+s[0]+'</button>').join('');
+ stateArea.querySelectorAll('[data-state]').forEach(b=>b.addEventListener('click',()=>{desiredState=b.dataset.state;stateArea.querySelectorAll('[data-state]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));applyDesiredState();}));}
+ iframe.src=m.path;
+ resize();
+}
+iframe.addEventListener('load',applyDesiredState);
+screenPanel.addEventListener('click',e=>{const b=e.target.closest('[data-screen]');if(b)selectScreen(b.dataset.screen);});
+document.querySelectorAll('[data-width]').forEach(button=>button.addEventListener('click',()=>{width=Number(button.dataset.width);document.querySelectorAll('[data-width]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));resize();}));
+new ResizeObserver(resize).observe($('#preview-area'));
+document.querySelector('[data-width="390"]').setAttribute('aria-pressed','true');
+selectScreen(active);
+</script>
+</body></html>

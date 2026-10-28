@@ -1,0 +1,403 @@
+<!doctype html><html lang="hu"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#090e14"><title>Grapes – Home | UI reference v1.2</title><style>
+/* Grapes Brand v1.1 — module redesign previews. VISUAL SPECIFICATION ONLY, not app runtime CSS. */
+:root{color-scheme:dark;--bg:#090e14;--panel:#101821;--raised:#17222e;--line:#243343;--line2:#314654;--text:#f2f7fb;--muted:#94a5b8;--cyan:#3bdcf2;--matte:#77c6d2;--amber:#dbb477;--danger:#f28b8b;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);margin:0;min-height:100dvh;-webkit-font-smoothing:antialiased}
+button,input,textarea,select{font:inherit}button{cursor:pointer;color:inherit}a{color:inherit;text-decoration:none}
+button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+.shell{max-width:480px;margin:0 auto;min-height:100dvh;position:relative;padding-bottom:calc(112px + env(safe-area-inset-bottom))}
+.shell.detail{padding-bottom:calc(42px + env(safe-area-inset-bottom))}
+.header{min-height:91px;border-bottom:1px solid #243343;display:flex;align-items:center;justify-content:space-between;padding:16px 16px 16px 18px;gap:12px;background:#0b141d}
+.header h1{font-size:24px;letter-spacing:-.04em;margin:0;font-weight:790}
+.head-icon{border:1px solid #355362;min-width:49px;height:49px;display:grid;place-items:center;border-radius:15px;color:var(--cyan);background:#13222c;font-size:22px}
+.head-icon svg{width:22px;height:22px}
+.tabs{display:flex;gap:3px;overflow:auto;scrollbar-width:none;padding:11px 13px;background:#0b141d;border-bottom:1px solid var(--line)}
+.tabs::-webkit-scrollbar{display:none}
+.tab{min-width:65px;flex:1;display:grid;justify-items:center;gap:5px;padding:9px 6px 8px;border:1px solid transparent;border-radius:15px;background:transparent;color:var(--muted);font-size:11px;font-weight:650}
+.tab i{width:28px;height:28px;display:grid;place-items:center;font-size:23px;font-style:normal}
+.tab.is-active{background:#172833;color:var(--cyan);border-color:#375765;box-shadow:inset 0 -2px 0 rgba(59,220,242,.65)}
+.main{padding:15px 15px 18px;display:grid;gap:12px}
+.sectionTitle{font-size:19px;margin:8px 0 2px;font-weight:730;letter-spacing:-.02em}
+.widget{background:var(--panel);border:1px solid #293e4c;border-radius:19px;position:relative;isolation:isolate;padding:16px;overflow:hidden}
+.widget::before{content:"";position:absolute;top:-1px;left:17px;width:45%;height:1px;background:linear-gradient(90deg,rgba(59,220,242,.87),rgba(59,220,242,.35) 53%,transparent);box-shadow:0 0 4px rgba(59,220,242,.22);pointer-events:none}
+.widget::after{content:"";position:absolute;top:19px;left:-1px;width:1px;height:52px;background:linear-gradient(180deg,rgba(59,220,242,.42),transparent);box-shadow:0 0 3px rgba(59,220,242,.2);pointer-events:none}
+.widgetHeader,.split{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.widgetHeader h2{display:flex;align-items:center;gap:9px;font-size:19px;margin:0;font-weight:750}
+.widgetHeader .glyph{color:var(--cyan);font-size:21px}
+.link{background:none;border:0;color:var(--cyan);font-size:13px;font-weight:700;padding:10px 0}
+.muted{color:var(--muted)}.small{font-size:12px}.tiny{font-size:11px}.value{font-size:27px;font-weight:800;letter-spacing:-.04em;line-height:1.1}
+.dim{color:var(--muted);font-size:13px}
+.sub{margin:9px 0 14px;color:var(--muted);font-size:13px;line-height:1.55}
+.metricGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:16px}
+.metric{padding:12px;background:#15232d;border:1px solid #304654;border-radius:13px;min-width:0}
+.metric .value{font-size:21px;margin-top:8px}.metric .dim{font-size:11px}
+.bar{height:7px;background:#263948;border-radius:30px;overflow:hidden;margin-top:10px}.bar>i{display:block;width:var(--progress,50%);height:100%;background:#77c6d2;border-radius:inherit}
+.items{display:grid;gap:0;margin-top:8px}
+.item{display:flex;align-items:center;gap:11px;padding:13px 0;border-bottom:1px solid #243343;min-height:52px}
+.item:last-child{border-bottom:0}
+.item .grow{flex:1;min-width:0}.item strong{font-size:14px}.item p{color:var(--muted);font-size:12px;margin:3px 0 0}
+.iconBox{width:45px;height:45px;flex:none;border:1px solid #365563;border-radius:13px;background:#1a303b;display:grid;place-items:center;font-size:21px;color:#8ed8e3}
+.pill{border:1px solid #34515c;color:#c9e2ea;background:#172e39;border-radius:13px;padding:11px 14px;font-weight:700;font-size:13px}
+.pill.primary{color:#aaf2fa;border-color:#45808b;background:#173845}
+.pill:disabled{opacity:.5;cursor:not-allowed}
+input,select,textarea{display:block;width:100%;min-height:45px;border:1px solid #38505e;border-radius:12px;background:#14232d;padding:12px;color:var(--text);font-size:14px;min-width:0}
+textarea{resize:vertical}
+label{display:grid;gap:7px;font-size:12px;color:var(--muted);font-weight:650}
+.form{display:grid;gap:13px}
+.row{display:flex;gap:9px;align-items:center}
+.dock{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(480px,100%);padding:8px 15px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(180deg,transparent 0,#0b141d 22%,#0b141d 100%);border-top:1px solid #283a48;z-index:10}
+.dockInner{display:flex;align-items:stretch;gap:9px}
+.dockGroup{flex:1;display:flex;justify-content:space-around;background:#172d38;border:1px solid #3b5b68;border-radius:25px;min-height:66px}
+.action{border:0;background:transparent;color:#b2c6d0;display:grid;align-content:center;justify-items:center;gap:3px;padding:6px 5px;flex:1;font-size:11px}
+.action i{font-style:normal;font-size:21px;color:#8fcbd3}
+.dockMain{border:1px solid #468995;background:#173843;border-radius:22px;min-width:70px;min-height:65px;color:var(--cyan);font-size:25px}
+.empty{border:1px dashed #36505f;background:#101a23;border-radius:13px;padding:18px;text-align:center;color:var(--muted);font-size:13px}
+.detailNav{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;padding:6px;background:#14242e;border:1px solid #314754;border-radius:15px}
+.detailNav button{flex:1 0 auto;background:none;border:0;padding:10px 13px;border-radius:10px;font-size:12px;color:var(--muted)}
+.detailNav button.active{background:#264450;color:#aaf2fa}
+.pageSection[hidden],[hidden]{display:none!important}
+.note{font-size:11px;color:#758a9c;line-height:1.5;margin:12px 3px}
+.qrPreview{display:grid;place-items:center;aspect-ratio:1;max-width:240px;margin:15px auto;background:#fff;border-radius:13px;color:#111;outline:6px solid #192b36;border:12px solid white;font-size:13px;text-align:center}
+.qrGraphic{display:grid;grid-template-columns:repeat(17,1fr);grid-template-rows:repeat(17,1fr);width:180px;height:180px}
+.qrGraphic span.on{background:#0b1723}
+.cover{width:68px;height:93px;border-radius:7px;background:linear-gradient(135deg,#315c65,#142c3b 65%,#0e1b27);box-shadow:5px 5px 0 #0a1219;border:1px solid #3d6670;flex:none;display:grid;place-items:center;text-align:center;padding:6px;font-size:13px;font-weight:700}
+.cardLink{display:block;cursor:pointer}
+.status{min-height:21px;color:#8bcfdd;font-size:12px;padding-top:5px}
+.back{border:0;background:none;color:var(--cyan);font-size:13px;font-weight:700;padding:9px 1px}
+@media(max-width:350px){.tabs{padding-inline:7px}.tab{min-width:61px;font-size:10px}.main{padding-inline:12px}.widget{padding:13px}.dock{padding-inline:10px}.action{font-size:10px}.header h1{font-size:22px}}
+@media(min-width:720px){body{background:#060a0e}.shell{border-left:1px solid #243343;border-right:1px solid #243343}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+
+/* Brand v1.2 – universal six-slot icon rail. NO icon captions: aria-label remains. */
+:root { --rail-bg:#101821; --rail-border:#2a4352; --rail-active:#1b3541; }
+.tabs,.detailNav.icon-rail { display:grid;grid-template-columns:repeat(6,minmax(0,1fr));align-items:center;gap:3px;
+ padding:5px;margin:10px 13px 4px;border:1px solid var(--rail-border);
+ border-radius:23px;background:var(--rail-bg);box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
+ overflow:visible;min-height:63px }
+.tabs .tab,.detailNav.icon-rail button,.detailNav.icon-rail a{
+ display:flex;align-items:center;justify-content:center;min-width:0;min-height:51px;padding:0;
+ border:1px solid transparent;border-radius:18px;background:transparent;color:#9bb2c0;
+ font-size:0;line-height:0;box-shadow:none;text-decoration:none;
+}
+.tabs .tab i{width:22px;height:22px;display:grid;place-items:center;font-size:0;color:inherit}
+.tabs .tab i svg,.detailNav.icon-rail svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tabs .tab.is-active,.detailNav.icon-rail .active{
+ background:var(--rail-active);border-color:#3f7585;color:#3bdcf2;
+ box-shadow:inset 0 -2px 0 #3bdcf2b0,0 0 5px rgba(59,220,242,.1);
+}
+.tabs .tab:focus-visible,.detailNav.icon-rail :is(a,button):focus-visible{outline:2px solid var(--cyan);outline-offset:1px}
+.header .head-icon{display:none!important}
+.header{min-height:63px;padding:10px 17px}
+.header h1{font-size:22px}
+@media(max-width:350px){.tabs,.detailNav.icon-rail{margin-inline:9px;padding:4px;gap:2px;min-height:58px}.tabs .tab,.detailNav.icon-rail :is(button,a){min-height:47px;border-radius:14px}.tabs .tab i svg,.detailNav.icon-rail svg{width:20px;height:20px}}
+
+/* Review parity v1.2: the 6-icon capsule comes before the SINGLE page title. */
+.shell:not(.detail){display:flex;flex-direction:column}
+.shell:not(.detail) > .tabs{order:0;flex-shrink:0}
+.shell:not(.detail) > .header{order:1;flex-shrink:0;min-height:59px;background:transparent;border:0;padding:7px 16px 4px}
+.shell:not(.detail) > .main{order:2;flex:1 0 auto}
+.shell:not(.detail) > .dock{order:3}
+.shell:not(.detail) > .header h1{font-size:23px;font-weight:780}
+.shell.detail > .header{display:none}
+.shell.detail .main > .detailNav.icon-rail{margin:0 0 4px}
+.module-view-title{font-size:23px;font-weight:780;letter-spacing:-.035em;line-height:1.2;margin:7px 1px 5px;color:#f2f7fb}
+
+</style></head><body><div class="shell "><nav class="tabs" aria-label="Grapes főmodulok"><a class="tab" href="main-shell-tools.html" aria-label="Kezdő" title="Kezdő"><i aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 3l9 8v9a1 1 0 0 1-1 1h-6v-6h-4v6H4a1 1 0 0 1-1-1z"/><path d="m17 5 .6 1.3L19 7l-1.4.7L17 9l-.7-1.3L15 7l1.3-.7z"/></svg></i></a><a class="tab is-active" href="home.html" aria-label="Home" title="Home" aria-current="page"><i aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10H3z"/><path d="M9 20v-7h6v7"/></svg></i></a><a class="tab" href="../approved/health-minimal.html" aria-label="Health" title="Health"><i aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 5.5a5.3 5.3 0 0 0-7.5 0L12 6.8l-1.3-1.3a5.3 5.3 0 0 0-7.5 7.5l8.8 8.8 8.8-8.8a5.3 5.3 0 0 0 0-7.5z"/><path d="M3.8 12h4l1.6-3 2.6 6 1.5-3h6"/></svg></i></a><a class="tab" href="tools.html" aria-label="Tools" title="Tools"><i aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></i></a><a class="tab" href="finance.html" aria-label="Finance" title="Finance"><i aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="5" width="19" height="15" rx="3"/><path d="M3 10h18"/><path d="M7 15h4"/></svg></i></a><button class="tab" type="button" data-settings aria-label="Beállítások" title="Beállítások"><i aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 2h4l.7 2.4 2.1.9 2.2-1.2 2.8 2.8-1.2 2.2.9 2.1L24 12v4l-2.4.7-.9 2.1 1.2 2.2-2.8 2.8-2.2-1.2-2.1.9L14 26h-4l-.7-2.4-2.1-.9-2.2 1.2-2.8-2.8 1.2-2.2-.9-2.1L0 16v-4l2.4-.7.9-2.1-1.2-2.2 2.8-2.8 2.2 1.2 2.1-.9z" transform="translate(1.8 0) scale(.84)"/><circle cx="12" cy="12" r="3"/></svg></i></button></nav>
+<style>
+/* Home / Household UX 2026-10-26. Brand v1.2, design-only: never connects to live Grapes data. */
+.h-home{padding-top:18px;gap:12px}
+.h-home h2,.h-home h3,.h-home p{margin:0}
+.h-head{display:grid;gap:5px;padding:4px 1px 6px}
+.h-head h2{font-size:26px;line-height:1.15;letter-spacing:-.04em}
+.h-head p{font-size:13px;color:var(--muted);line-height:1.5}
+.h-scope{display:grid;grid-template-columns:1fr 1fr;background:#0d1820;border:1px solid #29404e;border-radius:16px;padding:4px;gap:4px}
+.h-scope button{border:1px solid transparent;border-radius:12px;background:transparent;padding:11px 5px;min-width:0;min-height:45px;text-align:center;font-size:13px;font-weight:700;color:#9fb4c2}
+.h-scope button.active{background:#203945;border-color:#3c7380;color:#b3f5fb;box-shadow:inset 0 -2px 0 #3bdcf287}
+.h-context{padding:15px 16px;background:#101821;border:1px solid #2b404c;border-radius:17px;display:grid;gap:7px}
+.h-context-top{display:flex;gap:9px;justify-content:space-between;align-items:center}
+.h-context strong{font-size:16px;font-weight:750}
+.h-chip{border-radius:9px;border:1px solid #42626e;background:#19313d;color:#b6e8f0;padding:5px 8px;font-size:10px;font-weight:800;white-space:nowrap}
+.h-context p{font-size:12px;color:#9fb4c2;line-height:1.5}
+.h-context .h-note{font-size:11px;color:#8198a8}
+.h-sections{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;border:1px solid #253c49;border-radius:14px;background:#101821;padding:4px}
+.h-sections button{border:0;border-radius:10px;background:transparent;min-width:0;min-height:45px;color:#a3b5c1;font-size:12px;font-weight:700;padding:8px 3px}
+.h-sections button.active{background:#27404b;color:#a9f3fa}
+.h-sections button[hidden]{display:none}
+.h-content{display:grid;gap:12px;min-width:0}
+.h-card{background:#101821;border:1px solid #2b414e;border-radius:18px;padding:15px;display:grid;gap:13px;position:relative;overflow:hidden}
+.h-card::before{content:"";height:1px;position:absolute;top:0;left:19px;width:42%;background:linear-gradient(90deg,#3bdcf2a0,transparent);box-shadow:0 0 3px #3bdcf230;pointer-events:none}
+.h-card-top{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.h-card-top h3{font-size:16px;letter-spacing:-.01em}
+.h-quiet{font-size:12px;color:#9eb1be;line-height:1.5}
+.h-action{border:1px solid #447a85;background:#1b3d48;color:#c2f8fc;border-radius:11px;padding:9px 11px;min-height:41px;font-weight:700;font-size:12px}
+.h-action.primary{background:#3bdcf2;border-color:#3bdcf2;color:#09202a}
+.h-action.danger{border-color:#79414d;background:#301b25;color:#f28b8b}
+.h-action:disabled{opacity:.5}
+.h-products{display:grid;gap:2px}
+.h-product{display:flex;align-items:center;gap:12px;min-height:61px;padding:11px 2px;border-bottom:1px solid #233441}
+.h-product:last-child{border-bottom:0}
+.h-product input[type=checkbox]{width:21px;min-height:21px;height:21px;margin:0;accent-color:#3bdcf2;flex:none}
+.h-product span{min-width:0;flex:1}
+.h-product strong{display:block;font-size:14px}
+.h-product small{font-size:11px;color:#90a8b8;display:block;line-height:1.6;margin-top:3px}
+.h-product .h-x{border:1px solid #814552;background:#341e28;color:#f28b8b;min-width:44px;min-height:44px;border-radius:12px;font-size:20px;font-weight:700}
+.h-product.done strong{opacity:.7;text-decoration:line-through;text-decoration-color:#778a97}
+.h-empty{border:1px dashed #304757;background:#0e1b25;border-radius:13px;color:#8fa6b6;text-align:center;padding:18px 14px;font-size:12px;line-height:1.55}
+.h-inline{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.h-list-select{font-size:13px;max-width:100%;min-width:0}
+.h-details{border-top:1px solid #283945;padding-top:8px}
+.h-details summary{cursor:pointer;padding:10px 2px;font-size:12px;color:#c6dbe4;font-weight:700;min-height:39px}
+.h-details p{font-size:12px;color:#9caeba;line-height:1.55;padding:4px 1px 11px}
+.h-tools{background:#0e1821;border:1px solid #253947;border-radius:16px;padding:0 13px}
+.h-tools summary{min-height:48px;padding:15px 3px;cursor:pointer;color:#a9c9d5;font-size:13px;font-weight:700}
+.h-tools[open]{padding-bottom:12px}
+.h-tools .h-tool-content{display:grid;gap:11px;padding:4px}
+.h-tools .h-tool-content h3{font-size:14px}
+.h-tools .h-tool-content p{font-size:12px;color:#91a7b7;line-height:1.6}
+.h-tools .h-tool-content .h-action{width:100%}
+.h-status{min-height:18px;font-size:11px;color:#a6dce5;line-height:1.5;margin:2px 0}
+.h-badge-estimate{color:#edc994;background:#423827;border:1px solid #776445;border-radius:7px;padding:3px 7px;font-size:10px;display:inline-block}
+.h-pick{margin-top:9px;display:flex;align-items:center;gap:9px;min-width:0}
+.h-pick input[type=checkbox]{width:20px;min-height:20px;height:20px;accent-color:#3bdcf2}
+.h-forecast{display:grid;gap:7px}
+.h-stock-row{display:flex;align-items:center;gap:10px;border-bottom:1px solid #243744;padding:10px 0}
+.h-stock-row:last-child{border:0}
+.h-stock-row div{flex:1;min-width:0}
+.h-stock-row strong{font-size:14px}
+.h-stock-row span{font-size:12px;color:#99b2c0}
+.h-icon-mini{border-radius:12px;background:#19343e;border:1px solid #375d68;width:37px;height:37px;display:grid;place-items:center;color:#3bdcf2;font-size:19px}
+.h-demo-note{font-size:11px;color:#7e94a3;line-height:1.5;margin:0 2px}
+.h-dialog{border:1px solid #426272;border-radius:19px;background:#101b24;color:#eef9fc;width:min(420px,calc(100vw - 28px));max-width:420px;max-height:calc(100dvh - 48px);overflow:auto;padding:21px;box-shadow:0 20px 70px #000a}
+.h-dialog::backdrop{background:#02070dc9;backdrop-filter:blur(4px)}
+.h-dialog h3{font-size:19px;margin:0 0 5px}
+.h-dialog .form{margin-top:18px}
+.h-dialog footer{display:flex;gap:9px;justify-content:flex-end;margin-top:16px}
+.h-dialog input,.h-dialog select{background:#172632}
+.h-dialog .h-qty-grid{display:grid;grid-template-columns:1fr 112px;gap:9px}
+.h-stock-confirm{background:#132b35;border:1px solid #3b6f7c;border-radius:14px;padding:13px;display:grid;gap:9px}
+.h-stock-confirm strong{font-size:13px;color:#dcf9fc}
+.h-stock-confirm p{font-size:12px;line-height:1.45;color:#adcbd4}
+.h-stock-confirm .h-inline{justify-content:flex-start}
+.h-manage-grid{display:grid;gap:8px}
+.h-manage-grid button{border:1px solid #314c5b;background:#172631;color:#c3dee9;text-align:left;border-radius:11px;padding:12px;font-size:12px;min-height:42px}
+/* Home Quick Action uses the shared dock pill (3 actions) + one separate add button. */
+.dock .action{text-decoration:none}
+.dock .dockMain{display:grid;place-items:center;font-weight:550;font-size:27px}
+@media(max-width:359px){
+ .h-home{padding-inline:11px}
+ .h-card{padding:12px}
+ .h-sections button{font-size:11px}
+ .h-context{padding:13px}
+ .h-product{gap:8px}
+}
+/* Standalone Home Quick Action polish */
+.h-plants-main{display:grid;place-items:center;min-width:66px;min-height:66px}
+.h-plants-main svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.h-home{padding-top:12px}
+.h-home .h-head h2{font-size:24px}
+@media(max-width:350px){.h-plants-main{min-width:56px}}
+.h-product-label{display:flex;align-items:center;gap:10px;flex:1;min-width:0;cursor:pointer}
+.h-product-label span{min-width:0;flex:1}
+.h-received{flex:0 0 auto!important;font-size:11px!important;color:#79d9bf!important;font-weight:750;white-space:nowrap}
+.h-receive{min-height:44px;white-space:nowrap;font-size:11px;padding-inline:10px}
+.h-receive-quantity{font-size:12px;color:#b9d4df;font-weight:700;max-width:225px}
+.h-receive-quantity input{border:1px solid #3b6575;border-radius:11px;padding:10px;min-height:44px;margin-top:5px}
+</style>
+<main class="main h-home" id="content">
+  <div class="h-head"><h2>Home</h2></div>
+  <div class="h-scope" role="group" aria-label="Melyik készletet nézed?">
+    <button type="button" data-home-scope="own">Saját</button>
+    <button type="button" data-home-scope="family" class="active">Közös családi</button>
+  </div>
+  <div class="h-context" id="h-context" aria-live="polite"></div>
+  <nav class="h-sections" role="tablist" aria-label="Home napi műveletei">
+    <button type="button" data-home-tab="shopping" class="active" role="tab">Bevásárlás</button>
+    <button type="button" data-home-tab="stock" role="tab">Készlet</button>
+    <button type="button" data-home-tab="suggestions" role="tab">Javaslatok</button>
+  </nav>
+  <section class="h-content" id="h-panel" aria-live="polite"></section>
+  <details class="h-tools" id="h-more"><summary>Háztartás kezelése és egyéb eszközök</summary><div class="h-tool-content" id="h-tools-content"></div></details>
+  <p class="h-status" role="status" aria-live="polite" id="h-status"></p>
+  <p class="h-demo-note">Interaktív Grapes v1.2 UI-terv, kizárólag helyben módosítható mintaadatokkal. Nem azonos a jelenlegi v40 felülettel, és nem olvas/ír Grapes-fiókot vagy Supabase-adatot.</p>
+</main>
+<footer class="dock" aria-label="Home Quick Action"><div class="dockInner"><div class="dockGroup">
+<button class="action" type="button" data-home-quick="add-shopping" aria-label="Bevásárlólista-tétel hozzáadása"><i aria-hidden="true">☷</i><span>Lista +</span></button>
+<button class="action" type="button" data-home-quick="add-stock" aria-label="Készlettétel hozzáadása"><i aria-hidden="true">▤</i><span>Készlet +</span></button>
+<button class="action" type="button" data-home-quick="manage" aria-label="Háztartás kezelése"><i aria-hidden="true">♧</i><span>Háztartás</span></button>
+</div><a class="dockMain h-plants-main" href="../approved/plants-widget.html" aria-label="Növények megnyitása" title="Növények"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 4C9 4 4 10 5 19c9 2 15-3 15-15Z"/><path d="M4 21 17 8"/></svg></a></div></footer>
+<dialog class="h-dialog" id="h-dialog" aria-label="Új Home tétel">
+  <form method="dialog" id="h-add-form" class="form">
+    <h3 id="h-dialog-title">Új tétel</h3>
+    <p class="h-quiet" id="h-dialog-hint">A módosítás csak a mintában történik.</p>
+    <label>Termék neve<input id="h-input-name" autocomplete="off" maxlength="90" required placeholder="Pl. Kenyér"></label>
+    <div class="h-qty-grid"><label>Mennyiség (opcionális)<input id="h-input-qty" type="number" min="0.001" step="any" inputmode="decimal" placeholder="Pl. 1"></label>
+    <label>Egység<select id="h-input-unit"><option value="db">db</option><option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="l">l</option><option value="csomag">csomag</option></select></label></div>
+    <footer><button type="button" class="pill" id="h-cancel">Mégse</button><button type="submit" class="pill primary">Hozzáadás</button></footer>
+  </form>
+</dialog>
+</div>
+<script>
+(function(){
+  'use strict';
+  const state={
+    scope:'family',tab:'shopping',shoppingList:'heti',sequence:20,pendingStock:null,
+    family:{name:'Családi otthon',role:'Tulajdonos',revision:3,
+      stock:[{id:'fs1',name:'Tej',qty:2,unit:'l'},{id:'fs2',name:'Liszt',qty:1,unit:'kg'}],
+      shopping:[{id:'f1',name:'Tojás',qty:6,unit:'db',done:false},{id:'f2',name:'Tej',qty:2,unit:'l',done:true}]},
+    own:{stock:[{id:'os1',name:'Zabpehely',qty:500,unit:'g'},{id:'os2',name:'Só',qty:1,unit:'kg'}],
+      lists:[{id:'heti',name:'Heti bevásárlás'},{id:'nagy',name:'Nagybevásárlás'}],
+      shopping:[{id:'o1',name:'Paradicsom',qty:4,unit:'db',done:false,listId:'heti'},
+                {id:'o2',name:'Olívaolaj',qty:1,unit:'l',done:false,listId:'nagy'}],
+      suggestions:[{id:'s1',name:'Élesztő',type:'forecast',cause:'Vásárlási gyakoriság alapján · kb. 5 napon belül',qty:null,unit:'csomag',archived:false,age:1},
+                   {id:'s2',name:'Rizs',type:'confirmed',cause:'Igazolt készlethiány',qty:1,unit:'kg',archived:false,age:2}]}
+  };
+  const $=s=>document.querySelector(s);
+  const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const txt=(s)=>$('#h-status').textContent=s;
+  const amount=item=>item.qty==null?'Mennyiség nincs megadva':String(item.qty).replace('.',',')+' '+item.unit;
+  const data=()=>state[state.scope];
+  function render(){
+    document.querySelectorAll('[data-home-scope]').forEach(el=>{const active=el.dataset.homeScope===state.scope;el.classList.toggle('active',active);el.setAttribute('aria-pressed',String(active))});
+    document.querySelectorAll('[data-home-tab]').forEach(el=>{const active=el.dataset.homeTab===state.tab;el.classList.toggle('active',active);el.hidden=state.scope==='family'&&el.dataset.homeTab==='suggestions';el.setAttribute('aria-selected',String(active))});
+    $('#h-context').innerHTML=state.scope==='family'?
+      '<div class="h-context-top"><strong>'+esc(state.family.name)+'</strong><span class="h-chip">KÖZÖS</span></div><p>Megosztva a háztartás tagjaival · '+esc(state.family.role)+'</p>':
+      '<div class="h-context-top"><strong>Saját Home</strong><span class="h-chip">PRIVÁT</span></div><p>Csak a te fiókodhoz tartozik; nincs automatikus közös megosztás.</p>';
+    const items=data();
+    if(state.tab==='shopping')renderShopping(items);
+    if(state.tab==='stock')renderStock(items);
+    if(state.tab==='suggestions')renderSuggestions(items);
+    $('#h-tools-content').innerHTML=state.scope==='family'?
+      '<h3>Háztartás kezelése</h3><p>A háztartás létrehozása, meghívás és csatlakozás külön beállítási részben történik – nem a bevásárlás közepén. A mintában a tényleges meghívókód nem generálódik.</p><div class="h-manage-grid"><button type="button" data-home-manage="Új családi háztartás">+ Új háztartás</button><button type="button" data-home-manage="Családtag meghívása">Meghívás / tagok kezelése</button><button type="button" data-home-manage="Csatlakozás kóddal">Csatlakozás meghívókóddal</button></div><p>A kapcsolati állapot és a hibák itt csak szimulációk. Nem történt valódi adatátvitel.</p>':
+      '<h3>Saját Home eszközei</h3><div class="h-manage-grid"><button type="button" data-home-manage="Receptek és főzés">Receptek és főzés</button><button type="button" data-home-manage="Blokkok">Blokkok feldolgozása</button></div><p>A megvett tétel csak ellenőrzött mennyiséggel növeli a készletet.</p>';
+  }
+  function renderShopping(items){
+    const own=state.scope==='own';
+    const subset=items.shopping.filter(x=>!own||x.listId===state.shoppingList);
+    const pending=subset.filter(x=>!x.done), done=subset.filter(x=>x.done);
+    const awaitingReceipt=state.pendingStock?.scope===state.scope
+      ? items.shopping.find(x=>x.id===state.pendingStock.id&&x.done) : null;
+    const listings=own
+      ? '<label class="h-quiet">Bevásárlólista<select class="h-list-select" id="h-select-list" aria-label="Bevásárlólista">'+
+        items.lists.map(x=>'<option value="'+esc(x.id)+'"'+(x.id===state.shoppingList?' selected':'')+'>'+esc(x.name)+'</option>').join('')+'</select></label>'
+      : '';
+    const row=(x)=>{
+      const received=items.stock.some(z=>z.sourceShoppingId===x.id);
+      return '<div class="h-product'+(x.done?' done':'')+'"><label class="h-product-label">'+
+        '<input data-check type="checkbox" data-id="'+esc(x.id)+'"'+(x.done?' checked':'')+' aria-label="'+esc(x.name)+' megvásárlása">'+
+        '<span><strong>'+esc(x.name)+'</strong><small>'+esc(amount(x))+(x.done?' · Megvásárolva':' · Listán')+'</small></span></label>'+
+        (x.done?(received?'<span class="h-received">Készleten ✓</span>':
+          '<button type="button" class="h-action h-receive" data-home-receive="open:'+esc(x.id)+'" aria-label="'+esc(x.name)+' készletbe vétele">Készletbe</button>'):'')+
+        '</div>';
+    };
+    const confirm=awaitingReceipt
+      ? '<div class="h-stock-confirm" id="h-stock-confirm" role="group" aria-label="Készletbevétel megerősítése">'+
+        '<strong>'+esc(awaitingReceipt.name)+' · Megvásárolva</strong>'+
+        '<p>A bevásárlólista jelölése nem módosít készletet. Ellenőrizd a ténylegesen átvett mennyiséget.</p>'+
+        '<label class="h-receive-quantity">Tényleges mennyiség ('+esc(awaitingReceipt.unit)+')'+
+        '<input id="h-receive-qty" type="number" inputmode="decimal" min="0.001" step="any" required value="'+(awaitingReceipt.qty==null?'':esc(awaitingReceipt.qty))+'" placeholder="Pl. 1"></label>'+
+        '<div class="h-inline"><button type="button" class="h-action primary" data-home-receive="confirm">Készletbe vétele</button>'+
+        '<button type="button" class="h-action" data-home-receive="skip">Most nem</button></div></div>'
+      : '';
+    $('#h-panel').innerHTML='<section class="h-card"><div class="h-card-top"><h3>'+ (own?'Saját bevásárlás':'Közös bevásárlás') +
+      '</h3><button class="h-action primary" type="button" data-home-add="shopping">+ Tétel</button></div>'+listings+
+      '<div class="h-products" data-home-open-items>'+(pending.length?pending.map(row).join(''):'<p class="h-empty">Nincs vásárolnivaló ezen a listán.</p>')+'</div>'+
+      (done.length?'<details class="h-details" id="h-completed"><summary>Megvett tételek ('+done.length+')</summary><div>'+done.map(row).join('')+'</div></details>':'')+
+      confirm+'</section>';
+  }
+  function renderStock(items){
+    $('#h-panel').innerHTML='<section class="h-card"><div class="h-card-top"><h3>'+(state.scope==='own'?'Saját készlet':'Közös készlet')+'</h3><button class="h-action primary" type="button" data-home-add="stock">+ Készlet</button></div><p class="h-quiet">A készlet és a bevásárlólista külön adat. A készlet csak ténylegesen rögzített mennyiségből változik.</p><div>'+
+      (items.stock.length?items.stock.map(x=>'<div class="h-stock-row"><span class="h-icon-mini" aria-hidden="true">▣</span><div><strong>'+esc(x.name)+'</strong></div><span>'+esc(amount(x))+'</span></div>').join(''):'<div class="h-empty">A készlet még üres.</div>')+'</div></section>';
+  }
+  function renderSuggestions(items){
+    const active=items.suggestions.filter(x=>!x.archived),archived=items.suggestions.filter(x=>x.archived);
+    const suggestion=x=>'<div class="h-product"><label class="h-pick" style="flex:1"><input type="checkbox" data-home-pick="'+esc(x.id)+'"><span><strong>'+esc(x.name)+'</strong><small>'+esc(x.cause)+'</small>'+ (x.type==='forecast'?'<small><em class="h-badge-estimate">BECSLÉS · nem biztos hiány</em></small>':'<small>Igazolt · '+esc(amount(x))+'</small>')+'</span></label><button type="button" class="h-x" data-home-dismiss="'+esc(x.id)+'" aria-label="'+esc(x.name)+' elvetése" title="Most nem">×</button></div>';
+    $('#h-panel').innerHTML='<section class="h-card"><div class="h-card-top"><h3>Automatikus javaslatok</h3><span class="h-chip">NEM BEVÁSÁRLÓLISTA</span></div><p class="h-quiet">Igazolt hiány és becsült újravásárlás külön megjelölve. Csak te döntöd el, mi kerüljön át a bevásárlólistára.</p>'+
+      (active.length?active.map(suggestion).join(''):'<p class="h-empty">Nincs aktuális javaslat.</p>')+
+      '<button class="h-action primary" type="button" id="h-move">Kijelöltek listára</button><details class="h-details" id="h-archive"><summary>Korábbi javaslatok ('+archived.length+')</summary>'+ (archived.length?archived.map(x=>'<div class="h-product"><span><strong>'+esc(x.name)+'</strong><small>Elvetve vagy automatikusan archiválva</small></span><button class="h-action" type="button" data-home-restore="'+esc(x.id)+'">Visszaállítás</button></div>').join(''):'<p class="h-quiet">Nincs korábbi javaslat.</p>')+'</details></section>';
+  }
+  function openForm(kind){
+    $('#h-add-form').dataset.kind=kind;
+    $('#h-add-form').reset();
+    $('#h-dialog-title').textContent=kind==='stock'?'Készlet rögzítése':'Új bevásárlólista-tétel';
+    $('#h-dialog-hint').textContent='Ez csak interaktív minta. Nem módosít fiókot vagy valódi készletet.';
+    $('#h-input-name').required=true;
+    $('#h-dialog').showModal();
+    $('#h-input-name').focus();
+  }
+  document.addEventListener('click',event=>{
+    const node=event.target.closest('button');
+    if(!node)return;
+    if(node.dataset.homeScope){
+      state.scope=node.dataset.homeScope;state.pendingStock=null;if(state.scope==='family'&&state.tab==='suggestions')state.tab='shopping';render();txt(state.scope==='family'?'Közös háztartás mintanézet.':'Saját készlet mintanézet.');return;
+    }
+    if(node.dataset.homeTab){state.tab=node.dataset.homeTab;render();return}
+    if(node.dataset.homeReceive){
+      const action=node.dataset.homeReceive;
+      if(action.startsWith('open:')){
+        const id=action.slice(5),item=data().shopping.find(row=>row.id===id&&row.done);
+        if(!item||data().stock.some(row=>row.sourceShoppingId===id)){txt('A tétel nem vehető újra készletbe.');return}
+        state.pendingStock={scope:state.scope,id};render();
+        if($('#h-completed'))$('#h-completed').open=true;
+        $('#h-receive-qty')?.focus();return;
+      }
+      const pending=state.pendingStock;
+      if(action==='confirm'&&pending&&pending.scope===state.scope){
+        const item=data().shopping.find(row=>row.id===pending.id&&row.done);
+        const input=$('#h-receive-qty'),qty=input&&input.value.trim()?Number(input.value):NaN;
+        if(!item||!Number.isFinite(qty)||qty<=0){
+          txt('Készletbe vételhez ellenőrzött, pozitív mennyiséget adj meg.');input?.focus();return;
+        }
+        if(!data().stock.some(row=>row.sourceShoppingId===item.id)){
+          data().stock.push({id:'from-'+item.id,sourceShoppingId:item.id,name:item.name,qty,unit:item.unit});
+        }
+        txt(item.name+' külön megerősítéssel a '+(state.scope==='family'?'közös':'saját')+' készletbe került.');
+      }else txt('A vásárlás megmaradt, a készlet változatlan.');
+      state.pendingStock=null;render();return;
+    }
+    if(node.dataset.homeQuick){const action=node.dataset.homeQuick;if(action==='add-shopping'||action==='add-stock'){openForm(action==='add-stock'?'stock':'shopping');return}if(action==='manage'){const el=$('#h-more');el.open=true;el.scrollIntoView({behavior:'smooth',block:'center'});return}}
+    if(node.dataset.homeAdd){openForm(node.dataset.homeAdd);return}
+    if(node.dataset.homeManage){txt(node.dataset.homeManage+' – a valódi családi kezelő továbbra is a működő TEST-alkalmazás feladata.');return}
+    if(node.dataset.homeDismiss){const x=state.own.suggestions.find(row=>row.id===node.dataset.homeDismiss);if(x){x.archived=true;render();txt(x.name+' elvetve. Ugyanez a hiányciklus nem jelenne meg újra.')}return}
+    if(node.dataset.homeRestore){const x=state.own.suggestions.find(row=>row.id===node.dataset.homeRestore);if(x){x.archived=false;render();txt(x.name+' újra megjelenik a javaslatok között.')}return}
+    if(node.id==='h-move'){
+      const selected=[...document.querySelectorAll('[data-home-pick]:checked')].map(x=>x.dataset.homePick);
+      if(!selected.length){txt('Jelölj ki előbb legalább egy javaslatot.');return}
+      selected.forEach(id=>{
+        const x=state.own.suggestions.find(row=>row.id===id);
+        if(x&&!state.own.shopping.some(a=>a.name===x.name&&!a.done))state.own.shopping.push({id:'o'+(++state.sequence),name:x.name,qty:x.qty,unit:x.unit,done:false,listId:state.shoppingList});
+        if(x)x.archived=true;
+      });
+      state.tab='shopping';render();txt('Kijelölt javaslat(ok) külön döntéssel a saját bevásárlólistára kerültek.');return;
+    }
+    if(node.id==='h-cancel')$('#h-dialog').close();
+    if(node.dataset.settings!==undefined){$('#h-more').open=true;$('#h-more').scrollIntoView({behavior:'smooth',block:'start'});$('#h-more summary').focus();txt('A háztartáskezelő eszközök megnyitva a mintában.');return}
+  });
+  document.addEventListener('change',event=>{
+    if(event.target.matches('#h-select-list')){state.shoppingList=event.target.value;render();return}
+    if(event.target.matches('[data-check]')){
+      const x=data().shopping.find(item=>item.id===event.target.dataset.id);
+      if(!x)return;x.done=event.target.checked;
+      // IMPORTANT: shopping completion is NOT a stock-receipt event.
+      // Previously received stock remains independent when shopping is unchecked.
+      state.pendingStock=x.done?{scope:state.scope,id:x.id}:null;
+      const keepDoneOpen=Boolean($('#h-completed')?.open);
+      render(); if(keepDoneOpen&&$('#h-completed'))$('#h-completed').open=true;
+      txt(x.done?'Megvásárolva jelölve. Készletátvételhez külön megerősítés szükséges.':'A vásárlásjelölés visszavonva, a készlet változatlan.');
+    }
+  });
+  $('#h-add-form').addEventListener('submit',event=>{
+    event.preventDefault();
+    const name=$('#h-input-name').value.trim();
+    const value=$('#h-input-qty').value;
+    if(!name)return;
+    const qty=value===''?null:Number(value);
+    if(qty!==null&&(!Number.isFinite(qty)||qty<=0))return;
+    const unit=$('#h-input-unit').value, id='new'+(++state.sequence);
+    if(event.currentTarget.dataset.kind==='stock'){if(qty==null){txt('Készlet csak ismert mennyiséggel rögzíthető.');return}data().stock.push({id,name,qty,unit})}
+    else data().shopping.push({id,name,qty,unit,done:false,...(state.scope==='own'?{listId:state.shoppingList}:{})});
+    $('#h-dialog').close();render();txt('Mintaelem rögzítve – nincs valódi adatmentés.');
+  });
+  render();
+})();
+</script></body></html>
