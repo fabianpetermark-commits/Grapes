@@ -356,5 +356,26 @@ export function initQrStudio() {
   syncHexInputs();
   activateTab('link');
   renderLegacyInputs();
-  restored = restoreLastProject();
+  let requestedPrefill = ''
+  try {
+    requestedPrefill = sessionStorage.getItem('grapes-qr-prefill-v1') || ''
+    if (requestedPrefill) sessionStorage.removeItem('grapes-qr-prefill-v1')
+  } catch {}
+  restored = restoreLastProject()
+  if (requestedPrefill) {
+    restored = restored.then(() => {
+      if (/^https?:\/\//i.test(requestedPrefill)) {
+        typeSelect.value = 'url'
+        renderLegacyInputs()
+        urlInput.value = requestedPrefill
+      } else {
+        typeSelect.value = 'text'
+        renderLegacyInputs()
+        const textInput = el('#qr-val-text')
+        if (textInput) textInput.value = requestedPrefill
+      }
+      generateQR()
+      scheduleAutosave()
+    })
+  }
 }
