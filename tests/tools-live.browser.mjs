@@ -31,7 +31,7 @@ try {
   mkdirSync('artifacts/tools-206',{recursive:true})
   for(const width of [320,360,390,412]){
     await page.setViewportSize({width,height:844})
-    assert.equal(await page.locator('.mobile-module-nav button').count(),6)
+    assert.equal(await page.locator('.mobile-module-nav button').count(),7)
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth), 'QR overflow '+width)
     await page.locator('#qr-tab-color').click()
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth), 'QR color overflow '+width)

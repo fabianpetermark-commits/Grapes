@@ -5,13 +5,15 @@
   --color-accent-hover: #70e9f8;
 }
 .mobile-module-nav {
-  display:flex; flex-shrink:0; justify-content:center; gap:2px;
-  margin:8px auto; padding:4px; border:1px solid var(--color-border);
+  display:flex; flex:0 0 100%; justify-content:flex-start; gap:2px;
+  margin:8px auto; padding:4px; overflow-x:auto; overscroll-behavior-x:contain;
+  scrollbar-width:none; border:1px solid var(--color-border);
   border-radius:32px; background:var(--color-bg-surface);
 }
+.mobile-module-nav::-webkit-scrollbar {display:none}
 .mobile-module-nav button {
-  display:grid; place-items:center; width:44px; height:44px; padding:10px;
-  border:0; border-radius:50%; background:transparent; color:var(--color-text-muted);
+  display:grid; place-items:center; flex:0 0 44px; width:44px; height:44px; padding:10px;
+  border:0; border-radius:14px; background:transparent; color:var(--color-text-muted);
 }
 .mobile-module-nav button[aria-current], .mobile-module-nav button:focus-visible {color:var(--color-accent); background:var(--color-bg-active)}
 .mobile-module-nav svg {width:24px;height:24px}

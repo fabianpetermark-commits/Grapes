@@ -253,16 +253,28 @@ if (androidModuleShell && ['qr','ebook'].includes(requestedScreen)) {
   for (const [page,label,icon] of [
     ['home','Kezdő','start'],['household','Home','household'],
     ['hub-health','Health','health'],['hub-utility','Tools','utility'],
-    ['hub-finance','Finance','finance'],['more','Beállítások','settings'],
+    ['hub-finance','Finance','finance'],['outdoor','Outdoor','outdoor'],['more','Beállítások','settings'],
   ]) {
     const button = document.createElement('button')
     button.type = 'button'; button.setAttribute('aria-label',label)
     button.innerHTML = mobileIconSvg(icon)
     if (page === 'hub-utility') button.setAttribute('aria-current','page')
-    button.addEventListener('click', () => navigateMobile(page))
+    button.addEventListener('click', () => {
+      if (page === 'hub-finance') {
+        const target = new URL('./index.html', location.href)
+        target.searchParams.set('module', 'finance')
+        target.searchParams.set('android-shell', '1')
+        target.searchParams.set('return-page', 'home')
+        location.href = target.href
+      } else navigateMobile(page)
+    })
     nav.append(button)
   }
   document.querySelector('#'+requestedScreen+'-app .toolbar').after(nav)
+}
+if (androidModuleShell) {
+  // Native Android Back returns to the previous Grapes shell for every
+  // standalone module, not only E-book and QR.
   window.grapesHandleAndroidBack = () => { goToMainMenu(); return true }
 }
 

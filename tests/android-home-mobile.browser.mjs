@@ -69,7 +69,7 @@ try {
     throw new Error('Home bootstrap: ' + JSON.stringify({ state, pageErrors, message: error.message }))
   })
   assert.equal(await page.locator('[data-nav="home"]').count(), 1)
-  assert.equal(await page.locator('[data-menu-group]').count(), 4)
+  assert.equal(await page.locator('[data-menu-group]').count(), 5)
   await page.locator('[data-menu-group="home"]').click()
   await page.locator('[data-page="household"]').waitFor({ state: 'visible' })
   assert.match(await page.locator('[data-household-root]').textContent(), /Helyi adatok/)

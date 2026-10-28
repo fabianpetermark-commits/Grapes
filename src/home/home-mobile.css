@@ -304,6 +304,10 @@
   padding:0;
   border-radius:50%;
 }
+@media(max-width:350px) {
+  [data-household-root] .household-quick {grid-template-columns:repeat(3,minmax(0,1fr)) 44px;gap:3px;}
+  [data-household-root] .household-quick .household-quick-add {width:44px;height:44px;min-height:44px;}
+}
 [data-household-root] .household-widget .household-card strong {font-size:15px;}
 [data-household-root] .household-widget .household-card p {font-size:13px;line-height:1.45;}
 [data-household-root] .household-totals span {font-size:11px;line-height:1.4;}

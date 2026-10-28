@@ -195,11 +195,12 @@ const labels = {
   // Never label a cloud-synced household as 'stored on this device' or repeat
   // the page title above the approved single 'Otthonunk' heading.
   household: ['Grapes', ''],
-  'hub-home': ['Home', 'Háztartás'],
-  'hub-health': ['Health', 'Napi egészségügyi áttekintés'],
-  'health-settings': ['Health', 'Modulbeállítások'],
-  'hub-utility': ['Tools', 'Eszközök'],
-  'hub-finance': ['Finance', 'Pénzügyek'],
+  outdoor: ['Növényeim', ''],
+  'hub-home': ['Home', ''],
+  'hub-health': ['Health', ''],
+  'health-settings': ['Beállítások', ''],
+  'hub-utility': ['Tools', ''],
+  'hub-finance': ['Finance', ''],
   ebook: ['E-book', 'Könyvtár'], reader: ['E-book', 'Olvasó'],
   transfer: ['E-book átvitel', 'Olvasóeszköz'],
 }
@@ -447,14 +448,17 @@ async function openUpdateInbox() {
 }
 
 function showPage(page, { parent = '', entry = '' } = {}) {
-  // The dedicated A/B QA APK cannot show earlier unclaimed personal
-  // Food/Finance/Water records: those are not owner-scoped yet. This limit
-  // is TEST-only. PROD and regular web builds keep their existing navigation.
-  if (HOME_NATIVE_QA && page !== 'household') page = 'household'
-  // Remember only the menu origin. Reader/transfer views inherit E-book's origin.
-  if (!['reader', 'transfer'].includes(page) || parent) {
+  // TEST native ownership gates only the shared Home data/session. It must
+  // not disable the rest of the app's real modules or hide the main menu.
+  // Preserve a parent route during same-page Food subviews (e.g. Health Stats),
+  // but clear it when the user enters a module from the root rail.
+  const previousPage = activePage
+  if (parent) {
     menuReturnPage = parent
     menuEntry = entry
+  } else if (!['reader', 'transfer'].includes(page) && page !== previousPage) {
+    menuReturnPage = ''
+    menuEntry = ''
   }
   if (activePage === 'food' && page !== 'food') mobileFood?.flush().catch(() => {})
   if (activePage === 'household' && page !== 'household' && HOME_NATIVE_QA) {
@@ -467,14 +471,27 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   toast.classList.remove('is-visible')
   $$('[data-page]').forEach(node => { node.hidden = node.dataset.page !== page })
   $$('[data-nav]').forEach(node => node.classList.toggle('is-active', node.dataset.nav === page))
+  const appbar = $('#app > .appbar')
+  const isStartPage = page === 'home'
+  // Keep the brand as a consistent, accessible route back to Favorites.
+  // Health replaces the six-icon root capsule with its own six-action rail,
+  // but retains the brand bar so the user can leave Health without a second menu.
+  if (appbar) appbar.hidden = false
+  const appbarBrand = $('.appbar__home')
+  const searchButton = $('[data-action="search"]')
+  const notificationButton = $('[data-notifications]')
+  if (appbarBrand) appbarBrand.hidden = false
+  if (searchButton) searchButton.hidden = !isStartPage
+  if (notificationButton) notificationButton.hidden = !isStartPage
   const mainRail = $('[data-main-rail]')
-  if (mainRail) mainRail.hidden = HOME_NATIVE_QA
+  // Health has its own six-icon view rail; never stack the root rail above it.
+  if (mainRail) mainRail.hidden = page === 'hub-health'
   const currentMain =
-    page === 'home' ? 'start' :
     page === 'household' || page === 'hub-home' ? 'home' :
     ['hub-health','health-settings','food','water','samsung-water'].includes(page) ? 'health' :
     ['hub-utility','ebook','reader','transfer'].includes(page) ? 'tools' :
     ['hub-finance','finance'].includes(page) ? 'finance' :
+    page === 'outdoor' ? 'outdoor' :
     ['more','sync'].includes(page) ? 'settings' : ''
   $$('[data-main-nav]').forEach(button => {
     if (button.dataset.mainNav === currentMain) button.setAttribute('aria-current','page')
@@ -1059,7 +1076,7 @@ function showApp() {
   renderAccount()
   let route
   try { route = sessionStorage.getItem('grapes-mobile-return-page'); sessionStorage.removeItem('grapes-mobile-return-page') } catch {}
-  const allowed = ['home','household','hub-health','hub-utility','hub-finance','ebook','sync','projects','more']
+  const allowed = ['home','household','hub-health','hub-utility','outdoor','ebook','sync','projects','more']
   showPage(allowed.includes(route) ? route : 'home', {parent: route === 'ebook' ? 'hub-utility' : ''})
   renderProjects()
 }
@@ -1438,15 +1455,20 @@ $$('[data-settings-provider]').forEach(button => button.addEventListener('click'
   requestAnimationFrame(() => $(target)?.scrollIntoView({ block: 'center', behavior: 'instant' }))
 }))
 $('[data-settings-open-home]')?.addEventListener('click', () => showPage('household'))
-$$('[data-menu-group], [data-main-module-link]').forEach(button => button.addEventListener('click', () => {
+$('#app').addEventListener('click', event => {
+  // Delegate because the verified native TEST session creates the Home DOM
+  // only after authentication; its Outdoor quick action must still navigate.
+  const button = event.target.closest('[data-menu-group], [data-main-module-link]')
+  if (!button) return
   const group = button.dataset.menuGroup || button.dataset.mainModuleLink
   if (group === 'outdoor') showPage('outdoor', {parent:'home'})
   else if (group === 'home') showPage('household', { parent: 'home' })
-  else if (['health', 'utility', 'finance'].includes(group)) showPage('hub-' + group)
-}))
+  else if (group === 'finance') openModule('finance')
+  else if (['health', 'utility'].includes(group)) showPage('hub-' + group)
+})
 $$('[data-menu-back]').forEach(button => button.addEventListener('click', () => showPage('home')))
 
-$('[data-health-settings-back]').addEventListener('click', () => showPage('hub-health'))
+$('[data-health-settings-back]')?.addEventListener('click', () => showPage('hub-health'))
 $('[data-health-section-back]').addEventListener('click', showHealthSettingsIndex)
 $$('[data-health-section]').forEach(button => button.addEventListener('click', () => showHealthSettingsSection(button.dataset.healthSection)))
 $('[data-health-settings-content]').addEventListener('click', event => {
@@ -1719,7 +1741,9 @@ window.grapesHandleAndroidBack = () => {
   if (activePage === 'outdoor' && outdoor.handleBack()) return true
   if (activePage === 'household' && household?.handleBack()) return true
   if (activePage === 'food' && menuReturnPage === 'hub-health') {
-    if (menuEntry === 'stats' && $('[data-food-stats-sheet].is-open')) { showPage('hub-health'); return true }
+    // Stats may close its full-screen sheet when the range is changed; the
+    // next Back must still return to Health, not strand the user on Food.
+    if (menuEntry === 'stats') { showPage('hub-health'); return true }
     if (menuEntry === 'recipes' && !$('[data-food-recipes-view]').hidden && !$('.bottom-sheet.is-open')) { showPage('hub-health'); return true }
   }
   if (activePage === 'food' && mobileFood?.handleBack()) return true

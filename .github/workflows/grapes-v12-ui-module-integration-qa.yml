@@ -1,0 +1,54 @@
+name: Grapes v1.2 live module integration QA (NO RELEASE)
+
+on:
+  push:
+    branches: [fix/grapes-approved-v12-ui-module-integration-20261028]
+  pull_request:
+    branches: [codex/android-app]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-v12-live-module-qa-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  live-module-integration:
+    if: github.repository == 'fabianpetermark-commits/Grapes'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Full unit regression
+        run: npm test
+      - name: Build Android WebView assets
+        run: npm run build:android-web
+      - name: Install Chromium for actual browser tests
+        run: |
+          npx playwright-core install --with-deps chromium
+          browser="$(find "$HOME/.cache/ms-playwright" -type f -path '*chrome-linux*/chrome' | head -1)"
+          test -n "$browser"
+          echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$browser" >> "$GITHUB_ENV"
+      - name: Approved six-icon main rail, favorites, module routes
+        run: node tests/grapes-main-v12-live.browser.mjs
+      - name: Approved Health rail and real controllers
+        run: node tests/grapes-health-approved-live-ui.browser.mjs
+      - name: One Home widgets, no duplicate Outdoor action, local v1 preservation
+        run: node tests/prod-home-one-house.browser.mjs
+      - name: Home / Outdoor / Tools integration and navigation
+        run: |
+          node tests/android-module-hubs.browser.mjs
+          node tests/tools-live.browser.mjs
+          node tests/outdoor-mobile.browser.mjs
+      - name: Existing mobile navigation, Food and settings regression
+        run: node tests/android-mobile-preview.browser.mjs
+      - name: Finance Android route, five views and 320–412px layout
+        run: node tests/finance-android-shell.browser.mjs
