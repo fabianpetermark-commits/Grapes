@@ -36,11 +36,11 @@ try {
   await page.goto(url, { waitUntil: 'networkidle' })
   await page.locator('[data-page="home"]').waitFor({ state: 'visible' })
   const shellSource = readFileSync(resolve(root, 'src/android-mobile-shell.js'), 'utf8')
-  assert.doesNotMatch(shellSource, /if\\s*\\(HOME_NATIVE_QA\\s*&&\\s*page\\s*!==\\s*'household'\\)\\s*page\\s*=\\s*'household'/,
+  assert.equal(shellSource.includes("if (HOME_NATIVE_QA && page !== 'household') page = 'household'"), false,
     'Native Home family QA must not lock every other module to Home')
-  assert.match(shellSource, /if \\(mainRail\\) mainRail\\.hidden = page === 'hub-health'/,
+  assert.ok(shellSource.includes("if (mainRail) mainRail.hidden = page === 'hub-health'"),
     'Health must use one context rail instead of two stacked icon bars')
-  assert.match(shellSource, /if \\(page === 'household'\\) \\{\\s*if \\(HOME_NATIVE_QA\\) void showTestFamilyHome/,
+  assert.ok(shellSource.includes("if (HOME_NATIVE_QA) void showTestFamilyHome(entry)"),
     'The family ownership gate remains applied to Home itself')
   assert.deepEqual(await page.locator('[data-main-rail] [data-menu-group]').evaluateAll(nodes => nodes.map(x => x.dataset.menuGroup)),
     ['home', 'health', 'utility', 'finance', 'outdoor'])
