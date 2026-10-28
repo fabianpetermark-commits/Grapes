@@ -12,6 +12,12 @@ Az SQL tranzakcióba foglalja a négy új privát táblát (households, members,
 4. Külön alkalmazásoldali PROD natív gateway és egyetlen aktív home_id. A régi Home v1 → v2 átvitel külön export+hash+előnézet+explicit elfogadás; ez az SQL csak üres backend, önmagában nem kész családi szinkron.
 5. Külön telepítési jóváhagyás után `supabase migration new home_m3b_prod` hozza létre a valódi migrációt. Az itt lévő SQL review-kapuja alapból megállítja a futtatást. Nincs CLI link/push vagy adatbázis-parancs ebben a PR-ben.
 
+## Új izolált SQL-ellenőrzés (2026-10-28)
+
+A `.github/workflows/grapes-prod-home-sql-review.yml` kizárólag egy ideiglenes PostgreSQL 16 konténerben futtatja a javaslatot. A workflow **PASS**: SQL-szintaxis, mind a négy RLS-tábla, tíz SECURITY INVOKER API-wrapper, anon jogosultságtiltás, hitelesített háztartás-létrehozás/listázás, valamint közvetlen táblalekérdezés megtagadása. A hitelesített szerep a privát séma USAGE-jogát csak az invoker wrapper belső hívásához kapja; a privát séma továbbra sem lehet PostgREST által exponált séma.
+
+Ez izolált PostgreSQL-ellenőrzés, nem Supabase-projekt, nem RLS/CAS teljes integrációs bizonyítás, nem advisor-futtatás és nem PROD telepítés. A tényleges Supabase TEST-en futó A/B bizonyíték nem helyettesíti a javaslaton végzett teljes owner/editor/viewer és párhuzamos CAS teszteket.
+
 ## Backup és visszaállítás
 
 Telepítés előtt teljes séma/ACL mentés és a helyi Home export hash-e szükséges. Hiba esetén a telepítő tranzakció visszagörget. Commit utáni rollback első lépése a PROD gateway kikapcsolása és az új RPC EXECUTE jogainak visszavonása. Új családi adatok létrejötte után DROP SCHEMA CASCADE tilos: előbb ellenőrzött export, majd külön review-olt visszaállítás. A régi helyi Home adatokhoz ez a javaslat nem nyúl.
