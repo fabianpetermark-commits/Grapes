@@ -24,6 +24,9 @@ try{
   })
   async function open(){await page.locator('[data-page=home] summary').click();await page.locator('[data-module=outdoor]').click();await page.locator('[data-outdoor-root]').waitFor({state:'visible'});assert.equal(await page.locator('.outdoor-rail button').count(),6,'Outdoor must expose the six approved icon actions.');assert.equal(await page.locator('.outdoor-rail button[aria-current=page]').getAttribute('aria-label'),'Növényeim')}
   await page.goto(url);await open()
+  await page.locator('[data-outdoor-view=tasks]').click();assert.equal(await page.locator('[data-outdoor-title]').textContent(),'Aktuális teendők')
+  await page.locator('[data-outdoor-view=logs]').click();assert.equal(await page.locator('[data-outdoor-title]').textContent(),'Napló')
+  await page.locator('[data-outdoor-view=plants]').click();assert.equal(await page.locator('[data-outdoor-title]').textContent(),'Növényeim')
   const action=name=>page.locator(`[data-outdoor-action=${name}]`)
   const form=()=>page.locator('[data-outdoor-editor] form')
   async function add(name){await action('add').click();await form().locator('[name=name]').fill(name);await form().locator('[name=species]').fill('Solanum lycopersicum');await form().locator('[name=wateringDays]').fill('3');await form().locator('button[type=submit]').click()}
@@ -44,6 +47,7 @@ try{
   await page.locator('[data-outdoor-view=settings]').click();await action('location').click();await form().locator('[name=city]').fill('Budapest');await form().getByRole('button',{name:'Város keresése'}).click()
   await page.locator('[data-outdoor-cities] button').click().catch(async e=>{console.log('CITY',await page.locator('[data-outdoor-root]').innerText(),errors);throw e})
   await page.waitForFunction(()=>document.querySelector('[data-outdoor-weather]').textContent.includes('Fagy várható'),null,{timeout:10000})
+  assert.ok(await page.locator('.outdoor-weather-task').count()>0,'Forecast risks must become plant-specific checks, not a standalone weather card.')
   await action('catalog').click();assert.equal(await page.locator('[data-outdoor-title]').textContent(),'Növénykatalógus');await page.locator('[name=query]').fill('paradicsom');await page.locator('[data-outdoor-form=catalog] button').click()
   await action('catalogAdd').click();await form().locator('[name=name]').fill('Katalógus példány');await form().locator('button[type=submit]').click()
   assert.equal(await page.locator('[data-plant-id]').count(),3)
