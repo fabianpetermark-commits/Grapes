@@ -263,6 +263,10 @@ if (androidModuleShell && ['qr','ebook'].includes(requestedScreen)) {
     nav.append(button)
   }
   document.querySelector('#'+requestedScreen+'-app .toolbar').after(nav)
+}
+if (androidModuleShell) {
+  // Native Android Back returns to the previous Grapes shell for every
+  // standalone module, not only E-book and QR.
   window.grapesHandleAndroidBack = () => { goToMainMenu(); return true }
 }
 
