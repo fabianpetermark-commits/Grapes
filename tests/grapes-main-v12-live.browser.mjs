@@ -34,7 +34,6 @@ try{
     assert.deepEqual(await nav.locator('button').evaluateAll(nodes=>nodes.map(x=>x.getAttribute('aria-label'))),
       ['Home','Health','Tools','Finance','Outdoor','Beállítások'])
     assert.equal(await nav.locator('svg').count(),6)
-    assert.equal(await nav.locator('button[aria-current="page"]').count(),1)
     assert.equal(await nav.locator('button[aria-current="page"]').count(),0,'Favorites landing is not a seventh module icon')
     const rail=await nav.evaluate(node=>({
       cols:getComputedStyle(node).gridAutoFlow === 'column' ? 6 : 0,
@@ -75,7 +74,7 @@ try{
     await page.locator('[data-main-shortcut="food"]').click()
     await page.locator('[data-page="food"]').waitFor({state:'visible'})
     assert.equal(await nav.locator('[data-main-nav="health"]').getAttribute('aria-current'),'page')
-    await nav.locator('[data-main-nav="start"]').click()
+    await page.locator('.appbar__home').click()
     await page.locator('[data-page="home"]').waitFor({state:'visible'})
     const choices=await favorites.locator('[data-main-shortcut]').evaluateAll(nodes=>nodes.map(x=>x.dataset.mainShortcut))
     assert.equal(choices.filter(x=>x==='food').length,1,'Pinned favourite is not duplicated')
