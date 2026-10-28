@@ -85,7 +85,7 @@ try {
   await backToHome(page)
   await page.locator('.appbar [data-nav="more"]').click()
   await page.locator('[data-page="more"]').waitFor({ state: 'visible' })
-  assert.equal(await page.locator('[data-main-rail]').isVisible(), false, 'A főmenü ikonválasztó nem jelenhet meg a Beállítások képernyőn.')
+  assert.equal(await page.locator('[data-main-rail]').isVisible(), true, 'A globális hatikonos navigáció a modulokban is pontosan egyszer jelenjen meg.')
   assert.equal(await page.locator('[data-prod-auth-signout]').isVisible(), false,
     'A PROD Auth kijelentkezés Auth nélküli appban nem jelenhet meg.')
   const visibleSettings = page.locator('[data-page="more"] .setting:not([hidden])')
@@ -95,7 +95,7 @@ try {
 
   await page.locator('[data-page="more"] [data-nav="sync"]').click()
   await page.locator('[data-page="sync"]').waitFor({ state: 'visible' })
-  assert.equal(await page.locator('[data-main-rail]').isVisible(), false, 'A főmenü ikonválasztó nem jelenhet meg a Szinkron képernyőn.')
+  assert.equal(await page.locator('[data-main-rail]').isVisible(), true, 'A globális navigáció a Szinkron képernyőn is elérhető.')
   await page.locator('[data-sync-local-count]').filter({ hasText: /\d+ projekt/ }).waitFor()
   await page.locator('[data-sync-drive-count]').filter({ hasText: 'Nincs csatlakoztatva' }).waitFor()
   assert.equal(await page.locator('[data-health-sync]').count(), 1)
@@ -141,7 +141,7 @@ try {
   assert.equal(await page.locator('.statusbar').count(), 0, 'A statikus óra/akku sáv eltávolítva.')
   await page.locator('[data-page="hub-health"] [data-health-food-open]').click()
   await page.locator('[data-page="food"]').waitFor({ state: 'visible' })
-  assert.equal(await page.locator('[data-main-rail]').isVisible(), false, 'A főmenü ikonválasztó nem jelenhet meg a Food modulon belül.')
+  assert.equal(await page.locator('[data-main-rail]').isVisible(), true, 'A Food képernyőn egyetlen globális navigáció marad.')
   await page.locator('[data-food-meals] .meal').first().waitFor()
   assert.equal(await page.locator('[data-food-overview] [data-food-health-auto], [data-food-overview] [data-food-yazio-auto], [data-food-overview] [data-food-sync-refresh], [data-food-overview] [data-food-inbox]').count(), 0, 'Az import-, kézi szinkron- és megosztáskártyák ne maradjanak a Food főoldalon.')
   assert.equal(await page.locator('[data-fab]').isVisible(), false, 'A + gomb a főképernyőn nem jelenhet meg.')
