@@ -63,8 +63,13 @@ try {
   assert.equal(await page.locator('[data-household-suggestions]').isVisible(), true, 'Evidence-only suggestions widget immediately visible')
   assert.equal(await page.locator('[data-household-tabs]').count(), 0, 'No inventory/shopping tab switch')
   assert.equal(await page.locator('[data-household-share]').first().isDisabled(), true, 'No fake family sync before Supabase')
+  assert.equal(await home.locator('.household-quick-outdoor').count(),1,'Approved Home has a separate Outdoor quick icon')
+  await home.locator('.household-quick-outdoor').click()
+  await page.locator('[data-page="outdoor"] [data-outdoor-root]').waitFor({state:'visible'})
   await page.evaluate(() => window.grapesHandleAndroidBack())
   await page.locator('[data-page="home"]').waitFor({ state: 'visible' })
+  await page.locator('[data-menu-group="home"]').click()
+  await page.locator('[data-page="household"]').waitFor({state:'visible'})
 
   await page.locator('[data-menu-group="health"]').click()
   assert.equal(await page.locator('[data-page="hub-health"] .health-panel--food').isVisible(), true)
