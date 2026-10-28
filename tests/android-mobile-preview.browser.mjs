@@ -123,9 +123,13 @@ try {
 
   await page.locator('[data-menu-group="health"]').click()
   await page.locator('[data-page="hub-health"] .health-panel--food').waitFor({ state: 'visible' })
+  assert.equal(await page.locator('[data-main-rail]').isVisible(), false, 'Health replaces the global rail with its own six-icon rail.')
+  assert.equal(await page.locator('[data-health-rail]').isVisible(), true, 'Health rail remains visible on the Health dashboard.')
   assert.equal(await page.locator('.statusbar').count(), 0, 'A statikus óra/akku sáv eltávolítva.')
   await page.locator('[data-page="hub-health"] [data-health-food-open]').click()
   await page.locator('[data-page="food"]').waitFor({ state: 'visible' })
+  assert.equal(await page.locator('[data-main-rail]').isVisible(), false, 'The root module selector must not duplicate the Health navigation.')
+  assert.equal(await page.locator('[data-health-rail]').isVisible(), true, 'Health navigation stays present while opening Food.')
   await page.locator('[data-food-meals] .meal').first().waitFor()
   assert.equal(await page.locator('[data-food-overview] [data-food-health-auto], [data-food-overview] [data-food-yazio-auto], [data-food-overview] [data-food-sync-refresh], [data-food-overview] [data-food-inbox]').count(), 0, 'Az import-, kézi szinkron- és megosztáskártyák ne maradjanak a Food főoldalon.')
   assert.equal(await page.locator('[data-fab]').isVisible(), false, 'A + gomb a főképernyőn nem jelenhet meg.')
@@ -326,7 +330,13 @@ try {
   assert.equal(layout.documentWidth, layout.viewportWidth, 'Az előnézet vízszintesen kilóg a mobil viewportból.')
   assert.deepEqual(layout.visiblePages, ['ebook'])
   assert.equal(layout.openSheet, false)
-  console.log(JSON.stringify({ ...layout, sheetLayout }, null, 2))
+  // The Finance rail opens the real Finance module directly, never an obsolete
+  // one-tile hub. This also catches the reported blank/white Finance route.
+  await page.locator('.appbar [data-menu-group="finance"]').click()
+  await page.locator('#finance-app:not(.hidden)').waitFor({ state: 'visible' })
+  await page.locator('#finance-app [data-finance-tab="overview"]').waitFor({ state: 'visible' })
+  assert.deepEqual(errors, [], 'Module navigation must not throw runtime errors.')
+  console.log(JSON.stringify({ ...layout, financeRoute: page.url(), sheetLayout }, null, 2))
 } finally {
   await browser?.close()
   server.kill()
