@@ -76,7 +76,7 @@ try{
     await page.locator('[data-main-shortcut="food"]').click()
     await page.locator('[data-page="food"]').waitFor({state:'visible'})
     assert.equal(await nav.locator('[data-main-nav="health"]').getAttribute('aria-current'),'page')
-    await nav.locator('[data-main-nav="start"]').click()
+    await returnToHome(page)
     await page.locator('[data-page="home"]').waitFor({state:'visible'})
     const choices=await favorites.locator('[data-main-shortcut]').evaluateAll(nodes=>nodes.map(x=>x.dataset.mainShortcut))
     assert.equal(choices.filter(x=>x==='food').length,1,'Pinned favourite is not duplicated')
