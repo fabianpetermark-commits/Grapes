@@ -466,6 +466,15 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   toast.classList.remove('is-visible')
   $$('[data-page]').forEach(node => { node.hidden = node.dataset.page !== page })
   $$('[data-nav]').forEach(node => node.classList.toggle('is-active', node.dataset.nav === page))
+  const appbar = $('#app > .appbar')
+  const isStartPage = page === 'home'
+  if (appbar) appbar.hidden = page === 'hub-health'
+  const appbarBrand = $('.appbar__home')
+  const searchButton = $('[data-action="search"]')
+  const notificationButton = $('[data-notifications]')
+  if (appbarBrand) appbarBrand.hidden = !isStartPage
+  if (searchButton) searchButton.hidden = !isStartPage
+  if (notificationButton) notificationButton.hidden = !isStartPage
   const mainRail = $('[data-main-rail]')
   // Health has its own six-icon view rail; never stack the root rail above it.
   if (mainRail) mainRail.hidden = page === 'hub-health'
