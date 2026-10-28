@@ -29,8 +29,7 @@ if (androidModuleShell) {
     mark.src = './grapes-mark.svg'
   })
   // Android system Back is the single top-level exit from a module.
-  const financeBack = document.querySelector('#finance-back-to-menu-btn')
-  if (financeBack) financeBack.hidden = true
+  document.querySelector('#finance-back-to-menu-btn')?.remove()
 }
 
 const mobilePreviewButton = el('#pick-mobile-preview')
