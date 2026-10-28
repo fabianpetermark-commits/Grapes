@@ -26,6 +26,7 @@ async function mobilePage(context, module) {
   const page = await context.newPage()
   await page.goto(`${baseUrl}/?module=${module}&android-shell=1`, { waitUntil: 'networkidle' })
   await page.locator(`#${module}-app`).waitFor({ state: 'visible' })
+  assert.equal(await page.locator('#login-screen').isVisible(), false, 'A native shell module route must not fall back to the separate Drive login screen.')
   return page
 }
 
@@ -43,7 +44,8 @@ try {
     hasTouch: true,
     isMobile: true,
   })
-  await context.addInitScript(() => localStorage.setItem('grapes-local-mode', '1'))
+  // Model the native WebView bridge, but deliberately leave Drive disconnected and local mode off.
+  await context.addInitScript(() => { window.GrapesAndroid = { postMessage() {} } })
 
   const ebook = await mobilePage(context, 'ebook')
   await ebook.locator('#ebook-status').waitFor()
