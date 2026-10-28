@@ -8,6 +8,16 @@ import { chromium } from 'playwright-core'
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const previewUrl = 'http://127.0.0.1:4181/Grapes/design/android-mobile-preview.html'
 
+async function backToHome(page) {
+  for (let attempt = 0; attempt < 6; attempt++) {
+    if (await page.locator('[data-page="home"]').isVisible().catch(() => false)) return
+    await page.evaluate(() => window.grapesHandleAndroidBack?.())
+    await page.waitForTimeout(60)
+  }
+  assert.equal(await page.locator('[data-page="home"]').isVisible().catch(() => false), true,
+    'A modulból Android Back művelettel vissza kell jutni a kezdőképernyőre.')
+}
+
 const executablePath = [
   process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
   '/usr/bin/google-chrome',
@@ -55,6 +65,8 @@ try {
   assert.equal(await page.locator('[data-account-card]').count(), 0, 'A fiókkártya nem maradhat a kezdőlapon.')
   assert.equal(await page.locator('[data-recent-projects]').count(), 0, 'A legutóbbi projektek blokk nem maradhat a kezdőlapon.')
   assert.equal(await page.locator('[data-main-rail] button').count(), 6, 'The approved top capsule has exactly six live module controls.')
+  assert.equal(await page.locator('[data-main-rail]').isVisible(), true, 'A főmodulválasztó a kezdőképernyőn látható.')
+  assert.equal(await page.locator('.mobile-module-nav').count(), 0, 'Nem szabad második főmenüsort beszúrni.')
   assert.equal(await page.locator('[data-page="home"] h1').textContent(), 'Gyakran használt')
   assert.deepEqual(await page.locator('[data-page="home"] [data-main-shortcut]').evaluateAll(nodes => nodes.map(node => node.dataset.mainShortcut)), ['food', 'water'],
     'The approved startup must open real pinned Food/Water modules, not old hub mock cards.')
@@ -70,8 +82,10 @@ try {
   await page.keyboard.press('Escape')
   await page.screenshot({ path: 'mobile-home-icons.png', fullPage: true })
 
+  await backToHome(page)
   await page.locator('.appbar [data-nav="more"]').click()
   await page.locator('[data-page="more"]').waitFor({ state: 'visible' })
+  assert.equal(await page.locator('[data-main-rail]').isVisible(), false, 'A főmenü ikonválasztó nem jelenhet meg a Beállítások képernyőn.')
   assert.equal(await page.locator('[data-prod-auth-signout]').isVisible(), false,
     'A PROD Auth kijelentkezés Auth nélküli appban nem jelenhet meg.')
   const visibleSettings = page.locator('[data-page="more"] .setting:not([hidden])')
@@ -81,6 +95,7 @@ try {
 
   await page.locator('[data-page="more"] [data-nav="sync"]').click()
   await page.locator('[data-page="sync"]').waitFor({ state: 'visible' })
+  assert.equal(await page.locator('[data-main-rail]').isVisible(), false, 'A főmenü ikonválasztó nem jelenhet meg a Szinkron képernyőn.')
   await page.locator('[data-sync-local-count]').filter({ hasText: /\d+ projekt/ }).waitFor()
   await page.locator('[data-sync-drive-count]').filter({ hasText: 'Nincs csatlakoztatva' }).waitFor()
   assert.equal(await page.locator('[data-health-sync]').count(), 1)
@@ -126,6 +141,7 @@ try {
   assert.equal(await page.locator('.statusbar').count(), 0, 'A statikus óra/akku sáv eltávolítva.')
   await page.locator('[data-page="hub-health"] [data-health-food-open]').click()
   await page.locator('[data-page="food"]').waitFor({ state: 'visible' })
+  assert.equal(await page.locator('[data-main-rail]').isVisible(), false, 'A főmenü ikonválasztó nem jelenhet meg a Food modulon belül.')
   await page.locator('[data-food-meals] .meal').first().waitFor()
   assert.equal(await page.locator('[data-food-overview] [data-food-health-auto], [data-food-overview] [data-food-yazio-auto], [data-food-overview] [data-food-sync-refresh], [data-food-overview] [data-food-inbox]').count(), 0, 'Az import-, kézi szinkron- és megosztáskártyák ne maradjanak a Food főoldalon.')
   assert.equal(await page.locator('[data-fab]').isVisible(), false, 'A + gomb a főképernyőn nem jelenhet meg.')
@@ -301,7 +317,7 @@ try {
   assert.equal(await page.locator('[data-food-health-record]:checked').count(), 1, 'A törölt víz rekord újra importálható legyen.')
   await page.locator('[data-food-health-confirm]').click()
   await page.waitForFunction(() => !document.querySelector('[data-food-health-sheet]')?.classList.contains('is-open'))
-  await page.locator('.appbar [data-nav="home"]').click()
+  await backToHome(page)
   await page.locator('[data-page="home"]').waitFor({ state: 'visible' })
   await page.locator('[data-menu-group="health"]').click()
   await page.locator('[data-page="hub-health"] [data-health-food-open]').click()
@@ -327,6 +343,21 @@ try {
   assert.deepEqual(layout.visiblePages, ['ebook'])
   assert.equal(layout.openSheet, false)
   console.log(JSON.stringify({ ...layout, sheetLayout }, null, 2))
+
+  // Exercise the real Finance entry route from the mobile shell. A blank white
+  // module is a release blocker, so assert its main content and tab controls.
+  await backToHome(page)
+  await page.locator('[data-main-module-link="finance"]').click()
+  await page.locator('[data-page="hub-finance"]').waitFor({ state: 'visible' })
+  await page.locator('[data-menu-destination="finance"]').click()
+  await page.waitForURL(/\/index\.html\?module=finance/)
+  await page.locator('#finance-app .finance__header h1').waitFor({ state: 'visible' })
+  assert.equal(await page.locator('#finance-app [data-finance-tab]').count(), 5,
+    'A Finance modulnak mind az öt nézetfüle betöltődik, nem maradhat üres/fehér képernyő.')
+  assert.equal(await page.locator('.mobile-module-nav').count(), 0,
+    'A Finance modulon nem jelenhet meg a régi duplikált főmenüsor.')
+  assert.equal(await page.locator('#finance-back-to-menu-btn').isVisible(), false,
+    'Az Android modulban nem jelenhet meg külön Home/Főmenü gomb.')
 } finally {
   await browser?.close()
   server.kill()
