@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 75
     env:
-      GRAPES_VERSION_CODE: '51'
+      GRAPES_VERSION_CODE: '52'
       GRAPES_VERSION_NAME: '0.9.52-one-home-ui'
       VITE_GRAPES_TEST_CHANNEL: '1'
       VITE_GRAPES_TEST_AUTH_ENABLED: 'true'
