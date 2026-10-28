@@ -12,6 +12,12 @@ try {
   browser = await chromium.launch({executablePath,headless:true,args:['--no-sandbox']})
   const context = await browser.newContext({viewport:{width:390,height:844},acceptDownloads:true})
   await context.addInitScript(()=>localStorage.setItem('grapes-local-mode','1'))
+  // Exercise the exact standalone Android-shell URL that used to inject a duplicate rail.
+  const standaloneQr = await context.newPage()
+  await standaloneQr.goto(base+'?module=qr&android-shell=1')
+  await standaloneQr.locator('#qr-app').waitFor({state:'visible'})
+  assert.equal(await standaloneQr.locator('.mobile-module-nav').count(),0,'Standalone Android-shell QR must not inject a duplicate module rail.')
+  await standaloneQr.close()
   const page = await context.newPage(); page.setDefaultTimeout(10000); const errors=[]
   page.on('pageerror',e=>errors.push(e.message))
   await page.goto(base+'design/android-mobile-preview.html')
