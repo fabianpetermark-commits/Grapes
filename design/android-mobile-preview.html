@@ -562,6 +562,18 @@
       .hub-card__icon { width: 56px; height: 56px; }
     }
 
+    
+    /* Tools v1.2: functional widgets, not the legacy oversized hub tiles. */
+    .tools-widgets { display:grid;grid-template-columns:minmax(0,1fr);gap:11px;min-width:0; }
+    .tools-widget { display:grid;grid-template-columns:48px minmax(0,1fr);gap:13px;align-items:start;min-width:0;padding:15px;background:linear-gradient(145deg,#142630,#101821 68%);border:1px solid #2d4d5b;border-radius:19px; }
+    .tools-widget__icon { display:grid;place-items:center;width:46px;height:46px;color:#3bdcf2;background:#173440;border:1px solid #355d6c;border-radius:14px; }
+    .tools-widget__icon svg { width:25px;height:25px; }
+    .tools-widget__body { min-width:0; }
+    .tools-widget h2 { margin:1px 0 6px;font-size:16px;line-height:1.25; }
+    .tools-widget p { margin:0 0 12px;color:var(--muted);font-size:13px;line-height:1.5; }
+    .tools-widget button { min-height:44px;padding:8px 12px;color:#9eeef6;background:#173440;border:1px solid #3a6372;border-radius:12px;font-size:13px;font-weight:700; }
+    .tools-widget button:focus-visible { outline:2px solid #3bdcf2;outline-offset:2px; }
+
     /* PROD Health dashboard — real Food and Water sources, no static demo values */
     .health-dashboard{position:relative;padding-bottom:16px}
     .health-settings-trigger{position:absolute;right:16px;top:10px;width:40px;height:40px;border:1px solid #315868;border-radius:12px;background:#132b35;color:var(--accent);font-size:24px}
@@ -606,17 +618,6 @@
 
 
 
-    /* Approved Health v1.2: six outlined SVG actions with one compact capsule. */
-    .health-top-rail { display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:3px;
-      align-items:center;margin:8px 0 14px;padding:5px;border:1px solid #345362;
-      border-radius:22px;background:#13232e;min-width:0; }
-    .health-top-rail button { display:grid;place-items:center;min-width:0;min-height:47px;
-      padding:7px 3px;color:#bbccd6;border:0;border-radius:15px;background:transparent;touch-action:manipulation; }
-    .health-top-rail button:first-child{color:#3bdcf2;background:#203743}
-    .health-top-rail button:last-child{margin-left:2px;border:1px solid #355b69}
-    .health-top-rail svg {width:22px;height:22px;fill:none;stroke:currentColor;
-      stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
-    .health-top-rail button:focus-visible{outline:2px solid #3bdcf2;outline-offset:1px}
     .health-panel-head strong {letter-spacing:-.015em}
 
     /* Approved meal-detail redesign: no redundant controls, compact summary. */
@@ -669,17 +670,19 @@
     @media(prefers-reduced-motion:reduce){.fab span,[data-food-add-sheet].meal-quick-panel{transition:none}}
 
 
-/* Approved main menu v1.2: compact six-icon top capsule and LIVE favorites. */
+/* Approved v1.2 shared module capsule. Six items remain visible; extra real
+   modules are horizontally reachable without wrapping into a second menu row. */
 #app > .appbar { flex-wrap: wrap; row-gap: 3px; padding-bottom: 6px; min-width: 0; }
 .grapes-main-rail {
-  display:grid;grid-template-columns:repeat(6,minmax(0,1fr));
-  flex:0 0 100%;gap:3px;min-width:0;min-height:63px;padding:5px;
+  display:flex;flex:0 0 100%;gap:3px;min-width:0;min-height:63px;padding:5px;
+  overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:none;
   border:1px solid #2c4a58;border-radius:23px;background:#101821;
 }
+.grapes-main-rail::-webkit-scrollbar {display:none;}
 .grapes-main-rail[hidden] {display:none !important;}
 .grapes-main-rail > button {
-  display:grid;place-items:center;min-width:0;min-height:51px;
-  width:100%;padding:0;color:#9bb2c0;background:transparent;
+  display:grid;place-items:center;flex:0 0 calc((100% - 15px) / 6);min-width:0;min-height:51px;
+  width:auto;padding:0;color:#9bb2c0;background:transparent;
   border:1px solid transparent;border-radius:17px;cursor:pointer;
 }
 .grapes-main-rail > button[aria-current="page"] {
@@ -774,6 +777,7 @@
             <button type="button" data-main-nav="health" data-menu-group="health" aria-label="Health" title="Health"><span data-mobile-icon="health"></span></button>
             <button type="button" data-main-nav="tools" data-menu-group="utility" aria-label="Tools" title="Tools"><span data-mobile-icon="utility"></span></button>
             <button type="button" data-main-nav="finance" data-menu-group="finance" aria-label="Finance" title="Finance"><span data-mobile-icon="finance"></span></button>
+            <button type="button" data-main-nav="outdoor" data-menu-group="outdoor" aria-label="Outdoor" title="Outdoor"><span data-mobile-icon="outdoor"></span></button>
             <button class="icon-btn icon-btn--settings" type="button" data-main-nav="settings" data-nav="more" aria-label="Beállítások" title="Beállítások"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 2.5h4l.6 2.4 1.6.9 2.4-.7 2 3.5-1.8 1.7v1.9l1.8 1.7-2 3.5-2.4-.7-1.6.9-.6 2.4h-4l-.6-2.4-1.6-.9-2.4.7-2-3.5 1.8-1.7v-1.9L3.4 8.6l2-3.5 2.4.7 1.6-.9z"/><circle cx="12" cy="12" r="3"/></svg></button>
           </nav>
         </header>
@@ -789,17 +793,7 @@
             <button type="button" data-main-shortcut-pin>Rögzítés</button>
           </div>
           <div class="grapes-favorite-grid" data-main-shortcut-list aria-label="Rögzített és gyakran használt modulok"></div>
-          <details class="grapes-start-all">
-            <summary>Összes főmodul</summary>
-            <div class="hub-grid" aria-label="További Grapes főmodulok">
-              <button type="button" class="hub-card" data-main-module-link="home"><span class="hub-card__icon" data-module-icon="household"></span><span class="hub-card__copy"><strong>Home</strong><small>Bevásárlólista · Készletkezelő</small></span></button>
-              <button type="button" class="hub-card" data-main-module-link="health"><span class="hub-card__icon" data-module-icon="health"></span><span class="hub-card__copy"><strong>Health</strong><small>Food · Receptek · Statisztika</small></span></button>
-              <button type="button" class="hub-card" data-main-module-link="utility"><span class="hub-card__icon" data-module-icon="utility"></span><span class="hub-card__copy"><strong>Tools</strong><small>E-book · QR modul</small></span></button>
-              <button type="button" class="hub-card" data-main-module-link="finance"><span class="hub-card__icon" data-module-icon="finance"></span><span class="hub-card__copy"><strong>Finance</strong><small>Pénzügyi napló</small></span></button>
-              <button type="button" class="hub-card" data-module="outdoor"><span class="hub-card__icon" data-module-icon="outdoor"></span><span class="hub-card__copy"><strong>Outdoor</strong><small>Növényeim · Katalógus · Teendők</small></span></button>
-            </div>
-          </details>
-        </div>
+          </div>
 
         <div class="content" data-page="outdoor" hidden><button type="button" class="hub-back" data-menu-back>‹ Főmenü</button><div data-outdoor-root></div></div>
 
@@ -816,15 +810,6 @@
         <div class="content health-dashboard" data-page="hub-health" hidden>
           <button type="button" class="hub-back" data-menu-back>‹ Főmenü</button>
           <!-- Accepted Health v1.2 six-action rail; all actions reuse existing data-bound modules. -->
-          <nav class="health-top-rail" aria-label="Health modulok">
-            <button type="button" data-health-nav="food" aria-label="Food" title="Food"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3v7a4 4 0 0 0 8 0V3M8 3v18M17 3v18M17 3c4 3 4 7 0 9"/></svg></button>
-            <button type="button" data-health-nav="water" aria-label="Víznapló" title="Víznapló"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3C9 7 5 11 5 15a7 7 0 0 0 14 0c0-4-4-8-7-12Z"/><path d="M8 16a4 4 0 0 0 4 4"/></svg></button>
-            <button type="button" data-health-nav="recipes" aria-label="Receptek" title="Receptek"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5a3 3 0 0 1 3-3h13v19H6a3 3 0 0 1-3-3V5Z"/><path d="M3 18a3 3 0 0 1 3-3h13M8 7h7M8 10h5"/></svg></button>
-            <button type="button" data-health-nav="stats" aria-label="Statisztika" title="Statisztika"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V12h4v8M10 20V5h4v15M16 20v-9h4v9M3 20h18"/></svg></button>
-            <button type="button" data-health-nav="barcode" aria-label="Vonalkód" title="Vonalkód"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5v14M6 5v14M10 5v14M13 5v14M15 5v14M19 5v14M22 5v14"/></svg></button>
-            <button type="button" class="health-top-rail__settings" data-health-nav="settings" aria-label="Beállítások" title="Beállítások"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.6 2.5h2.8l.65 2.1c.55.17 1.08.39 1.55.65l1.95-1.06 2 2-1.05 1.95c.26.47.48 1 .65 1.55l2.1.65v2.8l-2.1.65a8 8 0 0 1-.65 1.55l1.05 1.95-2 2-1.95-1.05c-.47.26-1 .48-1.55.65l-.65 2.1h-2.8l-.65-2.1a8 8 0 0 1-1.55-.65L6.5 19.3l-2-2 1.05-1.95a8 8 0 0 1-.65-1.55l-2.1-.65v-2.8l2.1-.65c.17-.55.39-1.08.65-1.55L4.5 6.2l2-2 1.95 1.05a8 8 0 0 1 1.55-.65l.6-2.1Z"/><circle cx="12" cy="12" r="3"/></svg></button>
-          </nav>
-
           <section class="health-panel health-panel--food" aria-label="Napi Food összesítő">
             <div class="health-panel-head"><strong>Mai tápanyagok</strong><span>Mai összesítés</span></div>
             <div class="health-food-metrics">
@@ -883,12 +868,17 @@
         </div>
 
         <div class="content" data-page="hub-utility" hidden>
-          <button type="button" class="hub-back" data-menu-back>‹ Főmenü</button>
-          <p class="eyebrow">Tools</p><h1>Eszközök</h1>
-          <p class="lead">Könyvtár és QR Stúdió, a meglévő funkciókkal.</p>
-          <div class="hub-options" aria-label="Utility almodulok">
-            <button type="button" class="hub-option" data-menu-destination="ebook"><span class="hub-option__icon" data-module-icon="ebook"></span><strong>E-book</strong></button>
-            <button type="button" class="hub-option" data-menu-destination="qr"><span class="hub-option__icon" data-module-icon="qr"></span><strong>QR modul</strong></button>
+          <h1>Eszközök</h1>
+          <p class="lead">Könyvtár, olvasás és QR-kódok – a meglévő eszközökkel.</p>
+          <div class="tools-widgets" aria-label="Tools widgetek">
+            <section class="tools-widget" data-tools-widget="ebook">
+              <span class="tools-widget__icon" data-module-icon="ebook" aria-hidden="true"></span>
+              <div class="tools-widget__body"><h2>E-book könyvtár</h2><p>Meglévő könyvek, olvasási folyamat és fájlátvitel.</p><button type="button" data-menu-destination="ebook">Könyvtár megnyitása</button></div>
+            </section>
+            <section class="tools-widget" data-tools-widget="qr">
+              <span class="tools-widget__icon" data-module-icon="qr" aria-hidden="true"></span>
+              <div class="tools-widget__body"><h2>QR &amp; Barcode</h2><p>QR-kódok létrehozása és a meglévő vonalkód-eszközök.</p><button type="button" data-menu-destination="qr">QR-eszköz megnyitása</button></div>
+            </section>
           </div>
         </div>
 
