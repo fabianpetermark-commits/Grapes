@@ -13,7 +13,7 @@ test('Approved startup only routes to existing real Grapes module destinations',
   assert.equal(MAIN_SHORTCUTS.some(m=>['plants','weather'].includes(m.id)),false,
     'Standalone placeholders must never appear as functioning shortcuts')
 })
-test('Default start page pins working Food and Water; manual picks persist across reloads',()=>{
+test('Default start page pins Home, Food and Water; manual picks persist across reloads',()=>{
   const mem=storage()
   const a=createMainShortcutStore(mem)
   assert.deepEqual(a.list().pinned.map(m=>m.id),['home','food','water'])
@@ -24,7 +24,7 @@ test('Default start page pins working Food and Water; manual picks persist acros
   assert.equal(a.unpin('food'),true)
   assert.equal(a.unpin('food'),false)
   assert.deepEqual(createMainShortcutStore(mem).list().pinned.map(m=>m.id),
-    ['water','shopping'])
+    ['home','water','shopping'])
 })
 test('Actual opens (not synthetic samples) drive additional usage recommendation',()=>{
   const mem=storage(),a=createMainShortcutStore(mem)
