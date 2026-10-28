@@ -1,6 +1,6 @@
 # Grapes TEST v52 – gyors telefonos ellenőrzés
 
-**Állapot: telefonos NOT RUN.** A #216-ban összevont jóváhagyott v1.2 navigáció és modulkapcsolás került a #192-ben ellenőrzött natív TEST Supabase/Auth/CAS alapra. A #196 csak **aláírt QA artifactot** hoz létre; nem PROD kiadás és nem Supabase migráció.
+**Állapot: telefonos NOT RUN.** A #216-ban összevont jóváhagyott v1.2 navigáció és modulkapcsolás került a #192-ben ellenőrzött natív TEST Supabase/Auth/CAS alapra. A v52 QA workflow csak **aláírt QA artifactot** hoz létre; nem PROD kiadás és nem Supabase migráció.
 
 ## Előbb ellenőrizd a csomagot
 
