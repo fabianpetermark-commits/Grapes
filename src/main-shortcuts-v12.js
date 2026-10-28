@@ -27,18 +27,21 @@ const MAX_PINS = 10
 function parseSettings(raw) {
   let parsed = null
   try { parsed = JSON.parse(raw || 'null') } catch {}
-  if (parsed?.version !== 1 || !Array.isArray(parsed.pinned) ||
+  if (![1,2].includes(parsed?.version) || !Array.isArray(parsed.pinned) ||
       !parsed.usage || typeof parsed.usage !== 'object') {
-    return { version:1, pinned:[...DEFAULT_PINS], usage:{} }
+    return { version:2, pinned:[...DEFAULT_PINS], usage:{} }
   }
   const pinned = [...new Set(parsed.pinned.filter(id => typeof id === 'string' && byId.has(id)))].slice(0,MAX_PINS)
+  // v1 preferences predate the Outdoor screen. Add the real plants module once
+  // during migration, without touching any Home/Food/Health/Finance data.
+  if (parsed.version === 1 && !pinned.includes('outdoor') && pinned.length < MAX_PINS) pinned.push('outdoor')
   const usage = {}
   for (const id of byId.keys()) {
     const value = parsed.usage[id]
     if (Number.isSafeInteger(value) && value > 0)
       usage[id] = Math.min(value,1_000_000)
   }
-  return {version:1,pinned,usage}
+  return {version:2,pinned,usage}
 }
 
 export function createMainShortcutStore(storage,{key=STORAGE_KEY}={}){
