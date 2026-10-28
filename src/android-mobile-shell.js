@@ -451,6 +451,9 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   // Food/Finance/Water records: those are not owner-scoped yet. This limit
   // is TEST-only. PROD and regular web builds keep their existing navigation.
   if (HOME_NATIVE_QA && page !== 'household') page = 'household'
+  // The approved Home icon opens the one real Home directly; legacy hub URLs
+  // are redirected instead of exposing the retired shopping/inventory tiles.
+  if (page === 'hub-home') page = 'household'
   // Remember only the menu origin. Reader/transfer views inherit E-book's origin.
   if (!['reader', 'transfer'].includes(page) || parent) {
     menuReturnPage = parent
@@ -1442,7 +1445,8 @@ $$('[data-menu-group], [data-main-module-link]').forEach(button => button.addEve
   const group = button.dataset.menuGroup || button.dataset.mainModuleLink
   if (group === 'outdoor') showPage('outdoor', {parent:'home'})
   else if (group === 'home') showPage('household', { parent: 'home' })
-  else if (['health', 'utility', 'finance'].includes(group)) showPage('hub-' + group)
+  else if (group === 'finance') openModule('finance')
+  else if (['health', 'utility'].includes(group)) showPage('hub-' + group)
 }))
 $$('[data-menu-back]').forEach(button => button.addEventListener('click', () => showPage('home')))
 
