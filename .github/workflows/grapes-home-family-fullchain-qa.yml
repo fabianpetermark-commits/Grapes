@@ -80,3 +80,13 @@ jobs:
           name: home-family-fullchain-evidence
           path: qa-results/home-family-fullchain/
           if-no-files-found: warn
+
+      - name: Preserve responsive UI screenshots for visual audit
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: grapes-ui-visual-audit
+          path: |
+            mobile-*.png
+            artifacts/**/*.png
+          if-no-files-found: warn
