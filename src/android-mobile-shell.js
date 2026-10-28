@@ -1448,13 +1448,17 @@ $$('[data-settings-provider]').forEach(button => button.addEventListener('click'
   requestAnimationFrame(() => $(target)?.scrollIntoView({ block: 'center', behavior: 'instant' }))
 }))
 $('[data-settings-open-home]')?.addEventListener('click', () => showPage('household'))
-$$('[data-menu-group], [data-main-module-link]').forEach(button => button.addEventListener('click', () => {
+$('#app').addEventListener('click', event => {
+  // Delegate because the verified native TEST session creates the Home DOM
+  // only after authentication; its Outdoor quick action must still navigate.
+  const button = event.target.closest('[data-menu-group], [data-main-module-link]')
+  if (!button) return
   const group = button.dataset.menuGroup || button.dataset.mainModuleLink
   if (group === 'outdoor') showPage('outdoor', {parent:'home'})
   else if (group === 'home') showPage('household', { parent: 'home' })
   else if (group === 'finance') openModule('finance')
   else if (['health', 'utility'].includes(group)) showPage('hub-' + group)
-}))
+})
 $$('[data-menu-back]').forEach(button => button.addEventListener('click', () => showPage('home')))
 
 $('[data-health-settings-back]')?.addEventListener('click', () => showPage('hub-health'))
