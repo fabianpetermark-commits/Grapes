@@ -655,7 +655,7 @@ html.is-grapes-android-module #finance-app:has([data-finance-tab="transaction"].
   .finance__save-status { display: none; }
   .finance__main { gap: 14px; padding: 14px; }
   .finance__tabs { top: 64px; border-radius: 14px; }
-  .finance__tabs button { min-height: 42px; padding: 0 13px; font-size: 12px; }
+  .finance__tabs button { min-height: 44px; padding: 0 13px; font-size: 12px; }
   .finance__summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
   .finance__metric { gap: 6px; padding: 13px; border-radius: 15px; }
   .finance__metric span { font-size: 11px; }
