@@ -21,6 +21,7 @@ test('Default start page pins Home, Food and Water; manual picks persist across 
   assert.equal(a.pin('shopping'),false)
   assert.deepEqual(createMainShortcutStore(mem).list().pinned.map(m=>m.id),
     ['home','food','water','shopping'])
+  assert.equal(a.unpin('home'),false,'Otthon must remain pinned when favorites are edited')
   assert.equal(a.unpin('food'),true)
   assert.equal(a.unpin('food'),false)
   assert.deepEqual(createMainShortcutStore(mem).list().pinned.map(m=>m.id),
@@ -43,9 +44,10 @@ test('Corrupt/untrusted preference and unsafe counts cannot introduce foreign mo
     pinned:['food','__proto__','food','qr',17],
     usage:{food:-3,qr:9,unknown:10000,water:'NaN',finance:1.5}}))
   const a=createMainShortcutStore(mem)
-  assert.deepEqual(a.list().pinned.map(x=>x.id),['food','qr'])
+  assert.deepEqual(a.list().pinned.map(x=>x.id),['home','food','qr'])
   assert.equal(a.list().recommended.length,0)
   a.visit('water')
+  assert.deepEqual(a.list().pinned.map(x=>x.id),['home','food','qr'])
   assert.deepEqual(a.list().recommended.map(x=>x.id),['water'])
 })
 test('Storage permission denial never crashes the navigation or silently loses in-memory pins',()=>{
