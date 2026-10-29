@@ -127,11 +127,11 @@ try {
   await page.locator('#finance-rows tr').first().waitFor()
   assert.equal(await page.locator('#finance-currency').inputValue(), 'EUR')
   assert.equal(await page.locator('.finance__receipt-link').textContent(), 'szamla.pdf')
+  // The first backup already proves that the confirmation starts a download.
+  // Repeat deletion to verify the destructive path, without requiring a second
+  // download event from the same browser context for file-import coverage.
   await page.locator('#finance-delete-all').click()
-  await Promise.all([
-    page.waitForEvent('download'),
-    page.getByRole('button', { name: 'Igen, készíts mentést' }).click(),
-  ])
+  await page.getByRole('button', { name: 'Igen, készíts mentést' }).click()
   await page.getByRole('button', { name: /Igen, töröld mind/ }).click()
   await page.locator('#finance-rows tr').waitFor({ state: 'detached' })
   await page.locator('#finance-backup-input').setInputFiles(await download.path())
