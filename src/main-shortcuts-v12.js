@@ -122,7 +122,7 @@ export function mountMainShortcuts({root,storage,onOpen,onError=()=>{}}={}){
     marker.textContent=pinned?'Rögzített':'Gyakran használt'
     open.append(marker)
     card.append(open)
-    if(pinned){
+    if(pinned && entry.id !== 'home'){
       const remove=document.createElement('button')
       remove.type='button'
       remove.className='grapes-favorite-unpin'
