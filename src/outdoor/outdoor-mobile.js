@@ -6,13 +6,20 @@ const kindName={watering:'Locsolás',wintering:'Teleltetés',note:'Megfigyelés'
 const fields={name:'Példány neve',species:'Faj / fajta',light:'Fényigény',water:'Vízigény',soil:'Talajigény',wintering:'Teleltetés',ripening:'Érés / betakarítás (saját megfigyelés)',notes:'Megjegyzés'}
 export function mountOutdoor(root,{storage=localStorage,getProfile=()=> 'local'}={}) {
   let store,profile,state,photo='',catalogId='',searchEpoch=0,weatherEpoch=0
-  root.innerHTML=`<header class="outdoor-head"><p class="eyebrow">Outdoor</p><h1>Növényeim</h1><p data-outdoor-weather></p><button type="button" data-outdoor-action="location">Helyszín és időjárás</button></header>
+  root.innerHTML=`<header class="outdoor-head">
+      <p class="eyebrow">OUTDOOR / NÖVÉNYEK</p>
+      <h1>Kert és növények</h1>
+      <div class="outdoor-weather-line"><span class="outdoor-weather-mark" aria-hidden="true">☼</span><div><strong>Helyi körülmények</strong><p data-outdoor-weather>Állítsd be a helyszínt az időjárás és a teendők megjelenítéséhez.</p></div><button type="button" class="outdoor-weather-settings" data-outdoor-action="location" aria-label="Helyszín és időjárás beállítása">⚙</button></div>
+    </header>
+    <nav class="outdoor-primary-nav" aria-label="Outdoor főnézetek">
+      <button type="button" data-outdoor-action="plants" class="is-active"><span aria-hidden="true">♧</span><strong>Növényeim</strong><small>Saját növények és naplók</small></button>
+      <button type="button" data-outdoor-action="catalog"><span aria-hidden="true">⌕</span><strong>Növénykatalógus</strong><small>Keresés és új példány</small></button>
+    </nav>
     <p data-outdoor-status role="status" aria-live="polite"></p>
     <section data-outdoor-editor hidden></section>
-    <div class="outdoor-actions"><button type="button" data-outdoor-action="add">＋ Növény hozzáadása</button><button type="button" data-outdoor-action="catalog">Növénykatalógus</button></div>
     <section data-outdoor-catalog hidden><h2>Növénykatalógus</h2><form data-outdoor-form="catalog"><label>Magyar vagy angol név<input name="query" required minlength="2" maxlength="100" placeholder="pl. paradicsom / tomato"></label><button>Keresés</button></form><p>Nyílt adatforrás: iNaturalist. A gondozási adatokat saját tapasztalatod alapján töltsd ki.</p><div data-outdoor-results></div></section>
-    <section><h2>Saját példányok</h2><div data-outdoor-plants></div></section>
-    <section><h2>Aktuális teendők</h2><p>A locsolási ütemezés a saját beállításodból készül; a talajt mindig ellenőrizd.</p><div data-outdoor-tasks></div></section>`
+    <section class="outdoor-section" data-outdoor-plants-section><div class="outdoor-section-head"><div><p class="eyebrow">GYŰJTEMÉNY</p><h2>Növényeim</h2></div><button type="button" data-outdoor-action="add">＋ Növény</button></div><div data-outdoor-plants></div></section>
+    <section class="outdoor-section outdoor-tasks-section"><div class="outdoor-section-head"><div><p class="eyebrow">GONDOZÁSI TERV</p><h2>Teendők</h2></div></div><p>A javaslatok a saját locsolási beállításaidból és az elérhető időjárási adatokból készülnek. A talajt mindig ellenőrizd.</p><div data-outdoor-tasks></div></section>`
   const $=selector=>root.querySelector(selector)
   const editor=$('[data-outdoor-editor]')
   function status(message,error=false){const node=$('[data-outdoor-status]');node.textContent=message;node.classList.toggle('is-error',error)}
@@ -74,7 +81,17 @@ export function mountOutdoor(root,{storage=localStorage,getProfile=()=> 'local'}
         const task=state.tasks.find(t=>t.id===id)
         openForm(`<form data-outdoor-form="postpone" data-id="${id}"><h2>Teendő halasztása</h2><label>Új dátum<input type="date" name="due" required min="${addDays(task.due>localDay()?task.due:localDay(),1)}" value="${addDays(task.due>localDay()?task.due:localDay(),1)}"></label><div class="outdoor-actions"><button>Halasztás mentése</button>${cancel}</div></form>`)
       }else if(action==='task')openForm(`<form data-outdoor-form="task" data-id="${id}"><h2>Új növényteendő</h2><label>Teendő<input name="title" required maxlength="160"></label><label>Típus<select name="kind"><option value="other">Egyéb</option><option value="watering">Locsolás</option><option value="wintering">Teleltetés</option></select></label><label>Esedékesség<input type="date" name="due" value="${localDay()}" required></label><div class="outdoor-actions"><button>Mentés</button>${cancel}</div></form>`)
-      else if(action==='catalog'){$('[data-outdoor-catalog]').hidden=!$('[data-outdoor-catalog]').hidden;$('[name=query]').focus()}
+      else if(action==='plants'){
+        $('[data-outdoor-catalog]').hidden=true
+        $('[data-outdoor-plants-section]').scrollIntoView({block:'start',behavior:'smooth'})
+        root.querySelectorAll('.outdoor-primary-nav button').forEach(node=>node.classList.toggle('is-active',node===button))
+      }
+      else if(action==='catalog'){
+        const catalog=$('[data-outdoor-catalog]')
+        catalog.hidden=!catalog.hidden
+        root.querySelectorAll('.outdoor-primary-nav button').forEach(node=>node.classList.toggle('is-active',node===button&& !catalog.hidden))
+        if(!catalog.hidden){catalog.scrollIntoView({block:'start',behavior:'smooth'});$('[name=query]').focus()}
+      }
       else if(action==='catalogAdd'){
         const taxon=button.catalogTaxon
         editPlant({name:taxon.name,species:taxon.scientificName,catalogId:taxon.id})
