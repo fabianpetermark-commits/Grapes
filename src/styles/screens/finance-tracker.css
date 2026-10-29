@@ -597,3 +597,89 @@ html.is-grapes-android-module #finance-app:has([data-finance-tab="transaction"].
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+
+/* Grapes accepted neon-cyan mobile hierarchy for Finance. */
+.finance {
+  --finance-cyan: #41dff3;
+  background:
+    radial-gradient(ellipse at 5% 0%, rgb(65 223 243 / 8%), transparent 34%),
+    var(--color-bg-app);
+}
+.finance__header {
+  background: rgb(8 14 20 / 96%);
+  border-bottom-color: #263e49;
+}
+.finance__eyebrow { color: var(--finance-cyan); }
+.finance__tabs {
+  border-color: #263e49;
+  background: rgb(8 14 20 / 96%);
+}
+.finance__tabs button.is-active {
+  color: #eafaff;
+  background: #142b35;
+  box-shadow: inset 0 0 0 1px rgb(65 223 243 / 24%);
+}
+.finance__metric, .finance__panel {
+  border-color: #263e49;
+  background: linear-gradient(150deg, #121c25, #0e151c 82%);
+  box-shadow: none;
+}
+.finance__metric--forecast::before { background: var(--finance-cyan); }
+.finance__metric--forecast strong { color: var(--finance-cyan); }
+.finance__panel-head { align-items: flex-start; }
+.finance__panel-head h2 { letter-spacing: -.025em; }
+.finance input:focus, .finance select:focus {
+  border-color: var(--finance-cyan);
+  box-shadow: 0 0 0 2px rgb(65 223 243 / 15%);
+}
+.finance__category-track { background: #1a2a34; }
+.finance__goal { border: 1px solid #263e49; background: #111b24; }
+.finance__forecast-metrics div { border: 1px solid #263e49; background: #111b24; }
+.finance__chart { border-bottom-color: #34505d; }
+.finance__bar--planned { background: #e9ad4d; }
+.finance__tabs button:focus-visible,
+.finance button:focus-visible,
+.finance a:focus-visible {
+  outline: 2px solid var(--finance-cyan);
+  outline-offset: 2px;
+}
+@media (max-width: 760px) {
+  .finance__header {
+    gap: 10px;
+    min-height: 64px;
+    padding: 12px 14px;
+  }
+  .finance__header h1 { font-size: 18px; }
+  .finance__header-actions { gap: 6px; }
+  .finance__save-status { display: none; }
+  .finance__main { gap: 14px; padding: 14px; }
+  .finance__tabs { top: 64px; border-radius: 14px; }
+  .finance__tabs button { min-height: 44px; padding: 0 13px; font-size: 12px; }
+  .finance__summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+  .finance__metric { gap: 6px; padding: 13px; border-radius: 15px; }
+  .finance__metric span { font-size: 11px; }
+  .finance__metric strong { font-size: clamp(18px, 5.2vw, 25px); overflow-wrap: anywhere; }
+  .finance__metric:last-child { grid-column: 1 / -1; }
+  .finance__panel { padding: 14px; border-radius: 16px; }
+  .finance__panel-head { gap: 10px; margin-bottom: 14px; }
+  .finance__panel-head h2 { font-size: 16px; }
+  .finance__chart { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; min-height: 190px; padding: 10px 0 0; }
+  .finance__chart-group { height: 174px; font-size: 10px; }
+  .finance__bars { min-height: 148px; gap: 3px; }
+  .finance__bar { width: clamp(6px, 2.2vw, 13px); }
+  .finance__category-row { grid-template-columns: minmax(68px, 1fr) minmax(45px, 1.2fr) minmax(76px, auto); gap: 8px; font-size: 11px; }
+  .finance__compact-form { grid-template-columns: minmax(0, 1fr); }
+  .finance__forecast-controls { grid-template-columns: minmax(0, 1fr); }
+  .finance__forecast-metrics { grid-template-columns: minmax(0, 1fr); gap: 8px; margin: 14px 0; }
+  .finance__saving-row { grid-template-columns: minmax(60px, .7fr) minmax(0, 1.4fr) auto; gap: 8px; }
+  .finance__saving-row > :last-child { grid-column: 2 / -1; }
+}
+@media (max-width: 380px) {
+  .finance__header { padding-inline: 10px; }
+  .finance__header-actions .btn { padding-inline: 8px; }
+  .finance__main { padding: 10px; }
+  .finance__metric { padding: 10px; }
+  .finance__panel { padding: 11px; }
+  .finance__category-row { grid-template-columns: minmax(58px, .9fr) minmax(35px, 1fr) minmax(68px, auto); gap: 6px; }
+}

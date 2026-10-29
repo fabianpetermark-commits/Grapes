@@ -53,7 +53,7 @@ function currentMonth() {
 
 function backupTimestamp() {
   const date = new Date()
-  return `${today()}-${String(date.getHours()).padStart(2, '0')}${String(date.getMinutes()).padStart(2, '0')}${String(date.getSeconds()).padStart(2, '0')}`
+  return `${today()}-${String(date.getHours()).padStart(2, '0')}${String(date.getMinutes()).padStart(2, '0')}${String(date.getSeconds()).padStart(2, '0')}-${String(date.getMilliseconds()).padStart(3, '0')}`
 }
 
 function formatMoney(value) {
@@ -815,25 +815,24 @@ function bindControls() {
   el('#finance-delete-all').addEventListener('click', async () => {
     if (!transactions.length) return
     const count = transactions.length
+    const snapshot = serializeProject()
+    const filename = `penzugyi-naplo-teljes-mentes-${backupTimestamp()}.json`
     if (!await showGrapesConfirm({
       title: 'Nagy piros gomb következik…',
       message: `Mind a(z) ${count} tétel törlésére készülsz. Előbb készítsek teljes mentést a tételekről és a bizonylatokról? A törlésről utána még egyszer külön megkérdezlek — mert ennyire nem bízom a véletlen kattintásokban.`,
       confirmLabel: 'Igen, készíts mentést',
       cancelLabel: 'Nem, visszavonulok',
       icon: '🚨',
+      // Start the download synchronously inside the trusted confirmation
+      // click, before its Promise continuation can lose browser user activation.
+      onConfirm: () => download(financeBackupToJson(snapshot), 'application/json;charset=utf-8', filename),
     })) return
     const button = el('#finance-delete-all')
     button.disabled = true
     try {
-      const snapshot = serializeProject()
-      const filename = `penzugyi-naplo-teljes-mentes-${backupTimestamp()}.json`
-      // Start the user-requested file download while the confirm button's
-      // transient activation is still available. Awaiting IndexedDB writes
-      // first can cause Chromium/Android WebView to silently block a later
-      // synthetic anchor click. This downloads a snapshot only; it deletes
-      // NOTHING. Deletion still requires BOTH local writes and a second,
-      // explicit confirmation to succeed below.
-      download(financeBackupToJson(snapshot), 'application/json;charset=utf-8', filename)
+      // The first confirmation only starts a snapshot download; it deletes
+      // NOTHING. Deletion still requires local writes and a second explicit
+      // confirmation to succeed below.
       clearTimeout(localSaveTimer)
       clearTimeout(driveSaveTimer)
       await persistLocal()

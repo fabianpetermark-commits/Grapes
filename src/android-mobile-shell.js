@@ -484,8 +484,10 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   if (searchButton) searchButton.hidden = !isStartPage
   if (notificationButton) notificationButton.hidden = !isStartPage
   const mainRail = $('[data-main-rail]')
-  // Health has its own six-icon view rail; never stack the root rail above it.
-  if (mainRail) mainRail.hidden = page === 'hub-health'
+  // The six-icon module chooser belongs only on the Favorites/start page.
+  // Keeping it visible inside modules duplicates their own navigation and wastes
+  // scarce mobile viewport height. The persistent brand button returns to start.
+  if (mainRail) mainRail.hidden = page !== 'home'
   const currentMain =
     page === 'household' || page === 'hub-home' ? 'home' :
     ['hub-health','health-settings','food','water','samsung-water'].includes(page) ? 'health' :
@@ -1685,8 +1687,11 @@ mobileFood = createMobileFoodController({
 // The final v1.2 start page delegates every shortcut to a LIVE existing
 // module, rather than creating a second Food, Home or Finance data store.
 function openMainShortcut(id) {
-  if (HOME_NATIVE_QA) return
-  if (id === 'food') showPage('food',{parent:'hub-health'})
+  // Home remains directly reachable in TEST; its data is still gated by the
+  // owner-bound native session in showTestFamilyHome().
+  if (HOME_NATIVE_QA && id !== 'home') return
+  if (id === 'home') showPage('household',{parent:'home'})
+  else if (id === 'food') showPage('food',{parent:'hub-health'})
   else if (id === 'water') showPage('water',{parent:'hub-health'})
   else if (id === 'recipes' || id === 'stats')
     showPage('food',{parent:'hub-health',entry:id})

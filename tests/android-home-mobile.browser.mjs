@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, mkdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright-core'
@@ -77,6 +77,10 @@ try {
   assert.equal(await page.locator('[data-household-shopping]').isVisible(),true)
   assert.equal(await page.locator('[data-household-inventory]').isVisible(),true)
   assert.equal(await page.locator('[data-household-suggestions]').isVisible(),true)
+
+  // Keep an untouched baseline screenshot for visual review before the test mutates Home data.
+  mkdirSync('artifacts/ui-visual-audit', { recursive: true })
+  await page.screenshot({ path: 'artifacts/ui-visual-audit/home-390.png', fullPage: true })
 
   await page.locator('[data-household-shopping] [data-household-add="shopping"]').click()
   await page.locator('[data-household-form] [name="name"]').fill('Csirkemell')

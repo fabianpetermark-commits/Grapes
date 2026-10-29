@@ -6,6 +6,7 @@ import { mobileIconSvg } from './android-mobile-icons.js'
  * All buttons delegate to the EXISTING app controller's routes.
  */
 export const MAIN_SHORTCUTS = Object.freeze([
+  { id:'home', label:'Otthon', icon:'household', group:'Home' },
   { id:'outdoor', label:'Növényeim', icon:'outdoor', group:'Outdoor' },
   { id:'food', label:'Ételnapló', icon:'food', group:'Health' },
   { id:'water', label:'Víznapló', icon:'water', group:'Health' },
@@ -21,7 +22,7 @@ export const MAIN_SHORTCUTS = Object.freeze([
 ])
 const byId = new Map(MAIN_SHORTCUTS.map(entry => [entry.id, entry]))
 const STORAGE_KEY = 'grapes-main-shortcuts-v12'
-const DEFAULT_PINS = ['food','water']
+const DEFAULT_PINS = ['home','food','water']
 const MAX_PINS = 10
 
 function parseSettings(raw) {
@@ -31,7 +32,10 @@ function parseSettings(raw) {
       !parsed.usage || typeof parsed.usage !== 'object') {
     return { version:1, pinned:[...DEFAULT_PINS], usage:{} }
   }
-  const pinned = [...new Set(parsed.pinned.filter(id => typeof id === 'string' && byId.has(id)))].slice(0,MAX_PINS)
+  const pinned = [...new Set(parsed.pinned.filter(id => typeof id === 'string' && byId.has(id)))]
+  // Otthon is a permanent entry point: editing favorites must never remove it.
+  if (!pinned.includes('home')) pinned.unshift('home')
+  pinned.splice(MAX_PINS)
   const usage = {}
   for (const id of byId.keys()) {
     const value = parsed.usage[id]
@@ -71,7 +75,8 @@ export function createMainShortcutStore(storage,{key=STORAGE_KEY}={}){
       return true
     },
     unpin(id) {
-      if(!byId.has(id)||!state.pinned.includes(id))return false
+      // The accepted Home/Otthon entry point is required and cannot be unpinned.
+      if(id === 'home' || !byId.has(id) || !state.pinned.includes(id))return false
       commit({...state,pinned:state.pinned.filter(x=>x!==id)})
       return true
     },
@@ -117,7 +122,7 @@ export function mountMainShortcuts({root,storage,onOpen,onError=()=>{}}={}){
     marker.textContent=pinned?'Rögzített':'Gyakran használt'
     open.append(marker)
     card.append(open)
-    if(pinned){
+    if(pinned && entry.id !== 'home'){
       const remove=document.createElement('button')
       remove.type='button'
       remove.className='grapes-favorite-unpin'

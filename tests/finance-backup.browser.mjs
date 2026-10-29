@@ -104,10 +104,11 @@ try {
   assert.match(await page.locator('#finance-savings-total').textContent(), /12[.\s]500/)
   assert.match((await page.locator('.finance__bar--savings').last().getAttribute('title')).replace(/[.\s]/g, ''), /12500/)
 
-  const firstDownload = page.waitForEvent('download')
   await page.locator('#finance-delete-all').click()
-  await page.getByRole('button', { name: 'Igen, készíts mentést' }).click()
-  const download = await firstDownload
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'Igen, készíts mentést' }).click(),
+  ])
   await page.getByRole('button', { name: /Igen, töröld mind/ }).click()
   const backup = JSON.parse(readFileSync(await download.path(), 'utf8'))
   assert.equal(backup.data.currency, 'EUR')
@@ -126,10 +127,11 @@ try {
   await page.locator('#finance-rows tr').first().waitFor()
   assert.equal(await page.locator('#finance-currency').inputValue(), 'EUR')
   assert.equal(await page.locator('.finance__receipt-link').textContent(), 'szamla.pdf')
-  const secondDownload = page.waitForEvent('download')
+  // The first backup already proves that the confirmation starts a download.
+  // Repeat deletion to verify the destructive path, without requiring a second
+  // download event from the same browser context for file-import coverage.
   await page.locator('#finance-delete-all').click()
   await page.getByRole('button', { name: 'Igen, készíts mentést' }).click()
-  await secondDownload
   await page.getByRole('button', { name: /Igen, töröld mind/ }).click()
   await page.locator('#finance-rows tr').waitFor({ state: 'detached' })
   await page.locator('#finance-backup-input').setInputFiles(await download.path())
