@@ -56,8 +56,8 @@ try {
   assert.equal(await page.locator('[data-recent-projects]').count(), 0, 'A legutóbbi projektek blokk nem maradhat a kezdőlapon.')
   assert.equal(await page.locator('[data-main-rail] button').count(), 6, 'The approved top capsule has exactly six live module controls.')
   assert.equal(await page.locator('[data-page="home"] h1').textContent(), 'Gyakran használt')
-  assert.deepEqual(await page.locator('[data-page="home"] [data-main-shortcut]').evaluateAll(nodes => nodes.map(node => node.dataset.mainShortcut)), ['food', 'water'],
-    'The approved startup must open real pinned Food/Water modules, not old hub mock cards.')
+  assert.deepEqual(await page.locator('[data-page="home"] [data-main-shortcut]').evaluateAll(nodes => nodes.map(node => node.dataset.mainShortcut)), ['home', 'food', 'water'],
+    'The approved startup must open the real pinned Home/Food/Water modules, not old hub mock cards.')
   assert.equal(await page.locator('[data-page="home"] [data-main-module-link]').count(), 4, 'Existing four hubs remain discoverable in the expandable module list.')
   await page.evaluate(() => window.dispatchEvent(new CustomEvent('grapes:android-update', { detail: { versionCode: 99, versionName: 'Grapes 99', notes: 'Tesztfrissítés' } })))
   assert.equal(await page.locator('[data-notifications-badge]').isVisible(), true, 'Az új frissítésnek jelvényt kell mutatnia.')
