@@ -38,8 +38,8 @@ try {
   const shellSource = readFileSync(resolve(root, 'src/android-mobile-shell.js'), 'utf8')
   assert.equal(shellSource.includes("if (HOME_NATIVE_QA && page !== 'household') page = 'household'"), false,
     'Native Home family QA must not lock every other module to Home')
-  assert.ok(shellSource.includes("if (mainRail) mainRail.hidden = page === 'hub-health'"),
-    'Health must use one context rail instead of two stacked icon bars')
+  assert.ok(shellSource.includes("if (mainRail) mainRail.hidden = page !== 'home'"),
+    'The global six-icon chooser must be limited to Favorites; modules use their own context navigation')
   assert.ok(shellSource.includes("if (HOME_NATIVE_QA) void showTestFamilyHome(entry)"),
     'The family ownership gate remains applied to Home itself')
   assert.deepEqual(await page.locator('[data-main-rail] [data-menu-group]').evaluateAll(nodes => nodes.map(x => x.dataset.menuGroup)),
