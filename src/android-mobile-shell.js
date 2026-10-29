@@ -484,8 +484,10 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   if (searchButton) searchButton.hidden = !isStartPage
   if (notificationButton) notificationButton.hidden = !isStartPage
   const mainRail = $('[data-main-rail]')
-  // Health has its own six-icon view rail; never stack the root rail above it.
-  if (mainRail) mainRail.hidden = page === 'hub-health'
+  // The six-icon module chooser belongs only on the Favorites/start page.
+  // Keeping it visible inside modules duplicates their own navigation and wastes
+  // scarce mobile viewport height. The persistent brand button returns to start.
+  if (mainRail) mainRail.hidden = page !== 'home'
   const currentMain =
     page === 'household' || page === 'hub-home' ? 'home' :
     ['hub-health','health-settings','food','water','samsung-water'].includes(page) ? 'health' :
