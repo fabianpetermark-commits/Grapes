@@ -1,0 +1,160 @@
+name: Grapes PROD v34 unified UI signed candidate (NO RELEASE)
+
+on:
+  push:
+    branches:
+      - release/grapes-prod-v34-candidate-20261027
+    paths:
+      - .github/workflows/grapes-prod-v34-signed-candidate.yml
+      - src/**
+      - android-health-connect-poc/**
+      - design/**
+      - tests/**
+      - package*.json
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-prod-v34-no-release
+  cancel-in-progress: false
+
+jobs:
+  build-signed-candidate:
+    if: github.repository == 'fabianpetermark-commits/Grapes' && github.ref == 'refs/heads/release/grapes-prod-v34-candidate-20261027'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GRAPES_VERSION_CODE: '34'
+      GRAPES_VERSION_NAME: '0.3.34-rc'
+      PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH: /usr/bin/google-chrome
+      VITE_GOOGLE_CLIENT_ID: '991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com'
+      VITE_GOOGLE_APP_ID: '991532871119'
+      VITE_GOOGLE_PICKER_API_KEY: ${{ secrets.GOOGLE_PICKER_API_KEY }}
+      VITE_GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
+      VITE_EBOOK_EPUB_WRITE_ENABLED: 'true'
+      VITE_EBOOK_TRANSFER_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
+      VITE_FOOD_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
+      VITE_GRAPES_PROD_AUTH_ENABLED: 'true'
+      VITE_GRAPES_PROD_LEGACY_DATA_ISOLATION_REVIEWED: 'true'
+      VITE_GRAPES_PROD_SUPABASE_URL: https://yopabovoxyffhokhbgxl.supabase.co
+      VITE_GRAPES_PROD_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ZbcYVjCGzHeLmRWluW5bwQ_qJaSIGfs
+      # The TEST Supabase native family/Auth switches must never be enabled in PROD.
+      VITE_GRAPES_TEST_AUTH_ENABLED: 'false'
+      VITE_GRAPES_TEST_DATA_ENABLED: 'false'
+      VITE_GRAPES_TEST_HOME_FAMILY_ENABLED: 'false'
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Require latest production source and a monotonically newer candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          prod_head=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/codex/android-app" --jq .object.sha)
+          git merge-base --is-ancestor "$prod_head" "$GITHUB_SHA" || {
+            echo 'ERROR: Candidate does not contain the current PROD source.'; exit 1;
+          }
+          latest=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq '[.[] | select(.draft == false and .prerelease == false and (.tag_name | test("^android-v[0-9]+$"))) | (.tag_name | ltrimstr("android-v") | tonumber)] | max // 0')
+          test "$latest" -ge 33
+          test "$GRAPES_VERSION_CODE" -gt "$latest"
+          echo "BASELINE_PROD_CODE=$latest" >> "$GITHUB_ENV"
+          echo "PROD_HEAD=$prod_head" >> "$GITHUB_ENV"
+          test -z "${VITE_GRAPES_TEST_SUPABASE_URL:-}"
+          test "$VITE_GRAPES_TEST_AUTH_ENABLED" = false
+          test "$VITE_GRAPES_TEST_DATA_ENABLED" = false
+          test "$VITE_GRAPES_TEST_HOME_FAMILY_ENABLED" = false
+          echo "PASS: current PROD source included; TEST family/Auth disabled; candidate code $GRAPES_VERSION_CODE > $latest"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Verify Chromium for all legacy browser regressions
+        run: |
+          test -x "$PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"
+          "$PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH" --version
+      - name: Protect OAuth, local data, One Home and working modules
+        run: |
+          npm test
+          node tests/grapes-main-v12-live.browser.mjs
+          node tests/grapes-health-approved-live-ui.browser.mjs
+          node tests/prod-home-one-house.browser.mjs
+          node tests/prod-finance-approved-nav.browser.mjs
+          node tests/android-mobile-preview.browser.mjs
+          node tests/android-module-hubs.browser.mjs
+          node tests/android-ebook-finance-mobile.browser.mjs
+          node tests/finance-backup.browser.mjs
+          node tests/android-recipe-ingredient.browser.mjs
+      - name: Produce the actual production web assets
+        run: npm run build:android-web
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK 36
+        run: |
+          set -euo pipefail
+          SDKMANAGER=$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | sort -V | tail -1)
+          test -n "$SDKMANAGER"
+          "$SDKMANAGER" 'platforms;android-36' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.11.1
+      - name: Require established PROD signing key
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          test -n "$ANDROID_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_KEY_ALIAS"
+          test -n "$ANDROID_KEY_PASSWORD"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/grapes-v34-release.p12"
+          chmod 600 "$RUNNER_TEMP/grapes-v34-release.p12"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/grapes-v34-release.p12" >> "$GITHUB_ENV"
+      - name: Native unit tests and signed release-package build
+        run: gradle --project-dir android-health-connect-poc :app:testReleaseUnitTest :app:assembleRelease
+      - name: Assert package, upgrade version, signing certificate and build lineage
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=android-health-connect-poc/app/build/outputs/apk/release/app-release.apk
+          test -s "$APK"
+          AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          SIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          "$SIGNER" verify --print-certs "$APK" > "$RUNNER_TEMP/new-cert.txt"
+          "$AAPT" dump badging "$APK" | grep -F "package: name='hu.grapes.healthconnect' versionCode='$GRAPES_VERSION_CODE'"
+          current=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/codex/android-app" --jq .object.sha)
+          test "$current" = "$PROD_HEAD" || { echo 'PROD moved: rebuild candidate.'; exit 1; }
+          current_latest=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)
+          test "$current_latest" = "android-v$BASELINE_PROD_CODE" || { echo 'Release moved: rebuild candidate.'; exit 1; }
+          mkdir -p "$RUNNER_TEMP/previous"
+          gh release download "android-v$BASELINE_PROD_CODE" --repo "$GITHUB_REPOSITORY" --pattern "grapes-android-v$BASELINE_PROD_CODE.apk" --dir "$RUNNER_TEMP/previous"
+          OLD="$RUNNER_TEMP/previous/grapes-android-v$BASELINE_PROD_CODE.apk"
+          "$SIGNER" verify --print-certs "$OLD" > "$RUNNER_TEMP/old-cert.txt"
+          OLD_SHA=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/old-cert.txt" | head -1)
+          NEW_SHA=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/new-cert.txt" | head -1)
+          test -n "$OLD_SHA"
+          test "$OLD_SHA" = "$NEW_SHA" || { echo 'Signer mismatch: cannot install as an update.'; exit 1; }
+          mkdir -p candidate
+          cp "$APK" candidate/grapes-android-v34-rc.apk
+          sha256sum candidate/grapes-android-v34-rc.apk > candidate/SHA256SUMS
+          printf 'source_commit=%s\nprod_base=%s\nupgrade_from=android-v%s\nversion_code=34\npackage=hu.grapes.healthconnect\nrelease=NO\nprod_database_migration=NO\n' "$GITHUB_SHA" "$PROD_HEAD" "$BASELINE_PROD_CODE" > candidate/manifest.txt
+          echo 'PASS: signed PROD v34 RC, no release; current PROD source and matching signer.'
+      - name: Preserve candidate as a temporary artifact (never publish Release or Play)
+        uses: actions/upload-artifact@v4
+        with:
+          name: grapes-prod-v34-signed-rc-NO-RELEASE
+          path: candidate/
+          if-no-files-found: error
+          retention-days: 3
