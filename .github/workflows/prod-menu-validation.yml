@@ -39,7 +39,7 @@ jobs:
         run: npm run build:android-web
       - name: Home inventory and shopping browser
         run: node tests/android-home-mobile.browser.mjs
-      - name: Approved 2x2 menu, neon gear and Food icon
+      - name: Approved single navigation, neon gear and Food icon
         run: node tests/android-module-hubs.browser.mjs
       - name: Existing Android shell regressions
         run: node tests/android-mobile-preview.browser.mjs
