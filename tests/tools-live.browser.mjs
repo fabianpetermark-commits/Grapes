@@ -39,8 +39,10 @@ try {
   for(const width of [320,360,390,412]){
     await page.setViewportSize({width,height:844})
     const embeddedModuleNav = page.locator('.mobile-module-nav')
-    assert.equal(await embeddedModuleNav.count(),1, 'The standalone shell navigation remains in the DOM but is disabled in the integrated preview.')
-    assert.equal(await embeddedModuleNav.isVisible(),false, 'The integrated QR view must not display a second module navigation rail.')
+    assert.equal(await embeddedModuleNav.count(),1, 'The standalone Android module shell has one shared navigation rail.')
+    assert.equal(await embeddedModuleNav.isVisible(),true, 'The Android module shell keeps the shared rail visible.')
+    assert.equal(await embeddedModuleNav.locator('[data-module-nav]').count(),6, 'The shared rail exposes all six global destinations.')
+    assert.equal(await embeddedModuleNav.locator('[aria-current="page"]').getAttribute('data-module-nav'),'tools', 'QR is selected under Tools.')
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth), 'QR overflow '+width)
     await page.locator('#qr-tab-color').click()
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth), 'QR color overflow '+width)
