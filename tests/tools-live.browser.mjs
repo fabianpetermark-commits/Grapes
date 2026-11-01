@@ -38,7 +38,9 @@ try {
   mkdirSync('artifacts/tools-206',{recursive:true})
   for(const width of [320,360,390,412]){
     await page.setViewportSize({width,height:844})
-    assert.equal(await page.locator('.mobile-module-nav').count(),0)
+    const embeddedModuleNav = page.locator('.mobile-module-nav')
+    assert.equal(await embeddedModuleNav.count(),1, 'The standalone shell navigation remains in the DOM but is disabled in the integrated preview.')
+    assert.equal(await embeddedModuleNav.isVisible(),false, 'The integrated QR view must not display a second module navigation rail.')
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth), 'QR overflow '+width)
     await page.locator('#qr-tab-color').click()
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth), 'QR color overflow '+width)
