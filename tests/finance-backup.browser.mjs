@@ -163,7 +163,7 @@ try {
   await page.getByRole('button', { name: 'Nem, maradjon a jelen' }).waitFor()
   await page.getByRole('button', { name: 'Nem, maradjon a jelen' }).click()
   assert.equal(await page.locator('#finance-goals').getByText('Csak megtakarítás').count(), 1)
-  assert.match(await page.locator('#finance-savings-total').textContent(), /15[.\\s]?000/)
+  assert.match(await page.locator('#finance-savings-total').textContent(), /15[.\s]?000/)
   console.log('✓ Mentés/visszaállítás és megerősítés csak megtakarítási adatok esetén is')
   await context.close()
 } finally {
