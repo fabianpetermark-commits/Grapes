@@ -2,6 +2,18 @@ name: Build Android APK
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - codex/android-app
+    paths:
+      - android-health-connect-poc/**
+      - src/**
+      - public/**
+      - index.html
+      - package.json
+      - package-lock.json
+      - vite.config.js
+      - .github/workflows/build-android.yml
   push:
     branches:
       - codex/android-app
