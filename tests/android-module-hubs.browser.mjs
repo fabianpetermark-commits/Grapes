@@ -38,8 +38,8 @@ try {
   const shellSource = readFileSync(resolve(root, 'src/android-mobile-shell.js'), 'utf8')
   assert.equal(shellSource.includes("if (HOME_NATIVE_QA && page !== 'household') page = 'household'"), false,
     'Native Home family QA must not lock every other module to Home')
-  assert.ok(shellSource.includes('if (mainRail) mainRail.hidden = false'),
-    'The global six-icon navigation remains available across module routes')
+  assert.ok(shellSource.includes("if (mainRail) mainRail.hidden = page === 'hub-health' || page === 'more'"),
+    'Health and Settings replace the root rail with their own contextual navigation')
   assert.ok(shellSource.includes("if (HOME_NATIVE_QA) void showTestFamilyHome(entry)"),
     'The family ownership gate remains applied to Home itself')
   assert.deepEqual(await page.locator('[data-main-rail] [data-menu-group]').evaluateAll(nodes => nodes.map(x => x.dataset.menuGroup)),
@@ -81,7 +81,7 @@ try {
   await page.locator('[data-page="household"]').waitFor({state:'visible'})
 
   await page.locator('[data-menu-group="health"]').click()
-  assert.equal(await page.locator('[data-main-rail]').isVisible(), true, 'A globális navigáció a Health képernyőn is elérhető.')
+  assert.equal(await page.locator('[data-main-rail]').isVisible(), false, 'A Health saját hatikonos navigációja váltja ki a globális sínt; nincs duplikáció.')
   assert.equal(await page.locator('[data-page="hub-health"] [data-health-nav]').count(), 6, 'A Health saját navigációja külön marad.')
   assert.equal(await page.locator('[data-page="hub-health"] .health-panel--food').isVisible(), true)
   assert.equal(await page.locator('[data-page="hub-health"] [data-health-stats]').isVisible(), true)
@@ -141,6 +141,7 @@ try {
 
   await page.locator('.appbar [data-nav="more"]').click()
   await page.locator('[data-page="more"]').waitFor({ state: 'visible' })
+  assert.equal(await page.locator('[data-main-rail]').isVisible(), false, 'A Beállítások saját kontextusú felülete nem duplikálja a globális modulsínt.')
   await page.screenshot({ path: 'grapes-menu-settings-preview.png' })
   await page.locator('[data-page="more"] [data-nav="projects"]').click()
   await page.locator('[data-page="projects"]').waitFor({ state: 'visible' })
