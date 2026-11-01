@@ -38,8 +38,8 @@ try {
   const shellSource = readFileSync(resolve(root, 'src/android-mobile-shell.js'), 'utf8')
   assert.equal(shellSource.includes("if (HOME_NATIVE_QA && page !== 'household') page = 'household'"), false,
     'Native Home family QA must not lock every other module to Home')
-  assert.ok(shellSource.includes("if (mainRail) mainRail.hidden = page !== 'home'"),
-    'The global six-icon chooser must be limited to Favorites; modules use their own context navigation')
+  assert.ok(shellSource.includes('if (mainRail) mainRail.hidden = false'),
+    'The global six-icon navigation remains available across module routes')
   assert.ok(shellSource.includes("if (HOME_NATIVE_QA) void showTestFamilyHome(entry)"),
     'The family ownership gate remains applied to Home itself')
   assert.deepEqual(await page.locator('[data-main-rail] [data-menu-group]').evaluateAll(nodes => nodes.map(x => x.dataset.menuGroup)),
@@ -65,6 +65,7 @@ try {
   await page.locator('[data-menu-group="home"]').click()
   const home = page.locator('[data-page="household"]')
   await home.waitFor({ state: 'visible' })
+  assert.equal(await page.locator('[data-main-rail]').isVisible(), true, 'A globális navigáció az Otthon képernyőn is elérhető.')
   assert.equal(await page.locator('[data-page="hub-home"]').isVisible(), false, 'Approved Home skips the legacy 2-card hub')
   assert.equal(await home.locator('[data-household-shopping]').isVisible(), true, 'Shopping widget immediately visible')
   assert.equal(await home.locator('[data-household-inventory]').isVisible(), true, 'Inventory widget immediately visible')
@@ -80,6 +81,8 @@ try {
   await page.locator('[data-page="household"]').waitFor({state:'visible'})
 
   await page.locator('[data-menu-group="health"]').click()
+  assert.equal(await page.locator('[data-main-rail]').isVisible(), true, 'A globális navigáció a Health képernyőn is elérhető.')
+  assert.equal(await page.locator('[data-page="hub-health"] [data-health-nav]').count(), 6, 'A Health saját navigációja külön marad.')
   assert.equal(await page.locator('[data-page="hub-health"] .health-panel--food').isVisible(), true)
   assert.equal(await page.locator('[data-page="hub-health"] [data-health-stats]').isVisible(), true)
   assert.equal(await page.locator('[data-page="hub-health"] [data-health-meal]').count(), 4)

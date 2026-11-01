@@ -199,6 +199,15 @@
       </main>
     </div>
 
+    <nav id="android-module-nav" class="mobile-module-nav" aria-label="Grapes főmodulok" hidden>
+      <button type="button" data-module-nav="home" aria-label="Home" title="Home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3.5 11 8.5-7.5 8.5 7.5"/><path d="M6 9.5v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-10"/></svg></button>
+      <button type="button" data-module-nav="health" aria-label="Health" title="Health"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 8.8c0 5.2-8.8 11-8.8 11s-8.8-5.8-8.8-11a4.8 4.8 0 0 1 8.8-2.6 4.8 4.8 0 0 1 8.8 2.6Z"/><path d="M7 12h3l1.5-3 2 6 1.5-3H18"/></svg></button>
+      <button type="button" data-module-nav="tools" aria-label="Tools" title="Tools"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 14h2v2h-2zM18 18h2v2h-2zM18 14v2M14 18h2"/></svg></button>
+      <button type="button" data-module-nav="finance" aria-label="Finance" title="Finance"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5V11h4v8.5M10 19.5V5h4v14.5M16 19.5V8h4v11.5M3 19.5h18"/></svg></button>
+      <button type="button" data-module-nav="outdoor" aria-label="Outdoor" title="Outdoor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 4c-8.5 0-14 3.8-14 10a6 6 0 0 0 6 6c6.2 0 8-7.5 8-16Z"/><path d="M4 21c3-5 7-8 12-11"/></svg></button>
+      <button type="button" data-module-nav="settings" aria-label="Beállítások" title="Beállítások"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2.5h4l.6 2.4 1.6.9 2.4-.7 2 3.5-1.8 1.7v1.9l1.8 1.7-2 3.5-2.4-.7-1.6.9-.6 2.4h-4l-.6-2.4-1.6-.9-2.4.7-2-3.5 1.8-1.7v-1.9L3.4 8.6l2-3.5 2.4.7 1.6-.9z"/><circle cx="12" cy="12" r="3"/></svg></button>
+    </nav>
+
     <div id="app">
       <div id="toolbar">
         <div class="brand">
@@ -276,7 +285,6 @@
           <button id="finance-backup-import-btn" class="btn" type="button" data-finance-overflow>Teljes mentés import</button>
           <button id="finance-backup-export-btn" class="btn" type="button" data-finance-overflow>Teljes mentés</button>
           <button id="finance-drive-save" class="btn btn--primary" type="button">Mentés Drive-ra</button>
-          <button id="finance-back-to-menu-btn" class="btn btn--ghost" type="button">Főmenü</button>
         </div>
         <input id="finance-backup-input" type="file" accept=".json,application/json" hidden>
       </header>

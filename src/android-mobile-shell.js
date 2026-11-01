@@ -196,7 +196,6 @@ const labels = {
   // the page title above the approved single 'Otthonunk' heading.
   household: ['Grapes', ''],
   outdoor: ['Növényeim', ''],
-  'hub-home': ['Home', ''],
   'hub-health': ['Health', ''],
   'health-settings': ['Beállítások', ''],
   'hub-utility': ['Tools', ''],
@@ -484,12 +483,11 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   if (searchButton) searchButton.hidden = !isStartPage
   if (notificationButton) notificationButton.hidden = !isStartPage
   const mainRail = $('[data-main-rail]')
-  // The six-icon module chooser belongs only on the Favorites/start page.
-  // Keeping it visible inside modules duplicates their own navigation and wastes
-  // scarce mobile viewport height. The persistent brand button returns to start.
-  if (mainRail) mainRail.hidden = page !== 'home'
+  // Keep the one global module rail available while module pages show their
+  // own content navigation separately.
+  if (mainRail) mainRail.hidden = false
   const currentMain =
-    page === 'household' || page === 'hub-home' ? 'home' :
+    page === 'household' ? 'home' :
     ['hub-health','health-settings','food','water','samsung-water'].includes(page) ? 'health' :
     ['hub-utility','ebook','reader','transfer'].includes(page) ? 'tools' :
     ['hub-finance','finance'].includes(page) ? 'finance' :
@@ -1513,10 +1511,8 @@ $$('[data-health-nav]').forEach(button => button.addEventListener('click', () =>
 $$('[data-menu-destination]').forEach(button => button.addEventListener('click', () => {
   const destination = button.dataset.menuDestination
   const parent = button.closest('[data-page]')?.dataset.page
-  if (!['hub-home', 'hub-health', 'hub-utility', 'hub-finance'].includes(parent)) return
-  if (parent === 'hub-home' && ['inventory', 'shopping'].includes(destination)) {
-    showPage('household', { parent, entry: destination })
-  } else if (parent === 'hub-health' && ['food', 'recipes', 'stats'].includes(destination)) {
+  if (!['hub-health', 'hub-utility', 'hub-finance'].includes(parent)) return
+  if (parent === 'hub-health' && ['food', 'recipes', 'stats'].includes(destination)) {
     showPage('food', { parent, entry: destination === 'food' ? 'overview' : destination })
   } else if (parent === 'hub-utility' && destination === 'ebook') {
     showPage('ebook', { parent, entry: destination })

@@ -16,7 +16,8 @@ try {
   const standaloneQr = await context.newPage()
   await standaloneQr.goto(base+'?module=qr&android-shell=1')
   await standaloneQr.locator('#qr-app').waitFor({state:'visible'})
-  assert.equal(await standaloneQr.locator('.mobile-module-nav').count(),0,'Standalone Android-shell QR must not inject a duplicate module rail.')
+  assert.equal(await standaloneQr.locator('.mobile-module-nav [data-module-nav]').count(),6,'Standalone Android-shell QR exposes the shared six-icon navigation.')
+  assert.equal(await standaloneQr.locator('.mobile-module-nav [aria-current="page"]').getAttribute('data-module-nav'),'tools','QR belongs to the Tools global module.')
   await standaloneQr.close()
   const page = await context.newPage(); page.setDefaultTimeout(10000); const errors=[]
   page.on('pageerror',e=>errors.push(e.message))

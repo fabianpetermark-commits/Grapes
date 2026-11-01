@@ -25,6 +25,25 @@ const LOCAL_MODE_KEY = 'grapes-local-mode'
 
 if (androidModuleShell) {
   document.documentElement.classList.add('is-grapes-android-module')
+  const moduleNav = el('#android-module-nav')
+  moduleNav.hidden = false
+  const activeModuleNav = requestedModule === 'finance'
+    ? 'finance'
+    : ['ebook', 'qr'].includes(requestedModule) ? 'tools' : ''
+  if (activeModuleNav) moduleNav.querySelector(`[data-module-nav="${activeModuleNav}"]`)?.setAttribute('aria-current', 'page')
+  moduleNav.addEventListener('click', async event => {
+    const target = event.target.closest('[data-module-nav]')?.dataset.moduleNav
+    if (!target) return
+    if (target === 'finance') {
+      if (requestedModule !== 'finance') {
+        if (!(await flushQrBeforeNavigation())) return
+        window.location.href = new URL('./?module=finance&android-shell=1', window.location.href).href
+      }
+      return
+    }
+    const shellPages = { home: 'household', health: 'hub-health', tools: 'hub-utility', outdoor: 'outdoor', settings: 'more' }
+    navigateMobile(shellPages[target])
+  })
   document.querySelectorAll('#ebook-app .toolbar__brand-mark, #finance-app .toolbar__brand-mark').forEach((mark) => {
     mark.src = './grapes-mark.svg'
   })
@@ -218,7 +237,7 @@ onGrapesDriveChange((connected) => {
 
 for (const selector of [
   '#app-back-to-menu-btn', '#studio-back-to-menu-btn', '#fabric-back-to-menu-btn',
-  '#qr-back-to-menu-btn', '#ebook-back-to-menu-btn', '#email-back-to-menu-btn', '#finance-back-to-menu-btn',
+  '#qr-back-to-menu-btn', '#ebook-back-to-menu-btn', '#email-back-to-menu-btn',
 ]) {
   el(selector).addEventListener('click', goToMainMenu)
 }
@@ -236,13 +255,21 @@ async function goToMainMenu() {
 
 
 async function navigateMobile(page) {
-  if (document.body.dataset.screen === 'qr') {
-    try { await (await import('./qr-studio.js')).flushQrProject() }
-    catch { alert('A QR-projekt helyi mentése nem sikerült. A kilépést megszakítottuk.'); return }
-  }
+  if (!(await flushQrBeforeNavigation())) return
   const target = new URL('./design/android-mobile-preview.html', location.href)
   try { sessionStorage.setItem('grapes-mobile-return-page', page) } catch {}
   location.href = target.href
+}
+
+async function flushQrBeforeNavigation() {
+  if (document.body.dataset.screen !== 'qr') return true
+  try {
+    await (await import('./qr-studio.js')).flushQrProject()
+    return true
+  } catch {
+    alert('A QR-projekt helyi mentése nem sikerült. A kilépést megszakítottuk.')
+    return false
+  }
 }
 // Navigation is owned by the Android mobile shell. Do not inject a second
 // module rail into standalone QR/E-book screens; Android Back returns to shell.

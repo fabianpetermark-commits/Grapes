@@ -27,6 +27,9 @@ try{
   await page.locator('#finance-app').waitFor({state:'visible'})
   await page.waitForFunction(()=>document.querySelector('#finance-save-status')?.textContent==='Kész')
   assert.equal(await page.locator('#finance-app .finance__header').isVisible(),true)
+  assert.equal(await page.locator('#finance-back-to-menu-btn').count(),0,'The obsolete Finance Főmenü control is removed from markup.')
+  assert.equal(await page.locator('.mobile-module-nav [data-module-nav]').count(),6,'Finance keeps the shared six-icon global navigation.')
+  assert.equal(await page.locator('.mobile-module-nav [aria-current="page"]').getAttribute('data-module-nav'),'finance')
   assert.equal(await page.locator('[data-finance-tab]').count(),5)
   for(const tab of ['overview','transaction','savings','forecast','import']){
     const button=page.locator('[data-finance-tab="'+tab+'"]')

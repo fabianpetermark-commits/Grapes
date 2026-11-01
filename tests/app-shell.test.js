@@ -21,6 +21,24 @@ test('the app shell groups every module and starts with Google sign-in', async (
   }
 })
 
+test('Android standalone modules share one six-icon navigation rail', async () => {
+  const [html, main, css, styles] = await Promise.all([
+    read('index.html'), read('src/main.js'), read('src/styles/components/mobile-module-nav.css'), read('src/styles/index.css'),
+  ])
+  assert.deepEqual([...html.matchAll(/data-module-nav="([^"]+)"/g)].map(match => match[1]), ['home', 'health', 'tools', 'finance', 'outdoor', 'settings'])
+  assert.match(main, /if \(androidModuleShell\)[\s\S]*moduleNav\.hidden = false/)
+  assert.match(main, /const shellPages = \{ home: 'household', health: 'hub-health', tools: 'hub-utility', finance: '[^']*', outdoor: 'outdoor', settings: 'more' \}|data-module-nav/)
+  assert.match(styles, /components\/mobile-module-nav\.css/)
+  assert.match(css, /\.mobile-module-nav\[hidden\]\s*\{\s*display:\s*none!important\s*\}/)
+})
+
+test('QR projects flush before global navigation leaves the standalone screen', async () => {
+  const main = await read('src/main.js')
+  assert.match(main, /async function flushQrBeforeNavigation\(\)[\s\S]*flushQrProject\(\)/)
+  assert.match(main, /if \(target === 'finance'\)[\s\S]*flushQrBeforeNavigation\(\)[\s\S]*window\.location\.href/)
+  assert.match(main, /async function navigateMobile\(page\)[\s\S]*flushQrBeforeNavigation\(\)/)
+})
+
 test('HU and EN translations cover every shell translation key', async () => {
   const [html, source] = await Promise.all([read('index.html'), read('src/i18n.js')])
   const keys = [...html.matchAll(/data-i18n="([^"]+)"/g)].map(match => match[1])
