@@ -38,8 +38,8 @@ try {
   const shellSource = readFileSync(resolve(root, 'src/android-mobile-shell.js'), 'utf8')
   assert.equal(shellSource.includes("if (HOME_NATIVE_QA && page !== 'household') page = 'household'"), false,
     'Native Home family QA must not lock every other module to Home')
-  assert.ok(shellSource.includes("if (mainRail) mainRail.hidden = page === 'hub-health'"),
-    'Health must use one context rail instead of two stacked icon bars')
+  assert.ok(shellSource.includes("if (mainRail) mainRail.hidden = page === 'hub-health' || page === 'more'"),
+    'Health and Settings replace the root rail with their own contextual navigation')
   assert.ok(shellSource.includes("if (HOME_NATIVE_QA) void showTestFamilyHome(entry)"),
     'The family ownership gate remains applied to Home itself')
   assert.deepEqual(await page.locator('[data-main-rail] [data-menu-group]').evaluateAll(nodes => nodes.map(x => x.dataset.menuGroup)),
@@ -65,6 +65,7 @@ try {
   await page.locator('[data-menu-group="home"]').click()
   const home = page.locator('[data-page="household"]')
   await home.waitFor({ state: 'visible' })
+  assert.equal(await page.locator('[data-main-rail]').isVisible(), true, 'A globális navigáció az Otthon képernyőn is elérhető.')
   assert.equal(await page.locator('[data-page="hub-home"]').isVisible(), false, 'Approved Home skips the legacy 2-card hub')
   assert.equal(await home.locator('[data-household-shopping]').isVisible(), true, 'Shopping widget immediately visible')
   assert.equal(await home.locator('[data-household-inventory]').isVisible(), true, 'Inventory widget immediately visible')
@@ -80,6 +81,8 @@ try {
   await page.locator('[data-page="household"]').waitFor({state:'visible'})
 
   await page.locator('[data-menu-group="health"]').click()
+  assert.equal(await page.locator('[data-main-rail]').isVisible(), false, 'A Health saját hatikonos navigációja váltja ki a globális sínt; nincs duplikáció.')
+  assert.equal(await page.locator('[data-page="hub-health"] [data-health-nav]').count(), 6, 'A Health saját navigációja külön marad.')
   assert.equal(await page.locator('[data-page="hub-health"] .health-panel--food').isVisible(), true)
   assert.equal(await page.locator('[data-page="hub-health"] [data-health-stats]').isVisible(), true)
   assert.equal(await page.locator('[data-page="hub-health"] [data-health-meal]').count(), 4)
@@ -138,6 +141,7 @@ try {
 
   await page.locator('.appbar [data-nav="more"]').click()
   await page.locator('[data-page="more"]').waitFor({ state: 'visible' })
+  assert.equal(await page.locator('[data-main-rail]').isVisible(), false, 'A Beállítások saját kontextusú felülete nem duplikálja a globális modulsínt.')
   await page.screenshot({ path: 'grapes-menu-settings-preview.png' })
   await page.locator('[data-page="more"] [data-nav="projects"]').click()
   await page.locator('[data-page="projects"]').waitFor({ state: 'visible' })

@@ -1,6 +1,4 @@
 import './styles/index.css'
-import { mobileIconSvg } from './android-mobile-icons.js'
-import './styles/components/mobile-module-nav.css'
 import { el } from './ui/dom.js'
 import { showScreen } from './screens.js'
 import {
@@ -27,6 +25,25 @@ const LOCAL_MODE_KEY = 'grapes-local-mode'
 
 if (androidModuleShell) {
   document.documentElement.classList.add('is-grapes-android-module')
+  const moduleNav = el('#android-module-nav')
+  moduleNav.hidden = false
+  const activeModuleNav = requestedModule === 'finance'
+    ? 'finance'
+    : ['ebook', 'qr'].includes(requestedModule) ? 'tools' : ''
+  if (activeModuleNav) moduleNav.querySelector(`[data-module-nav="${activeModuleNav}"]`)?.setAttribute('aria-current', 'page')
+  moduleNav.addEventListener('click', async event => {
+    const target = event.target.closest('[data-module-nav]')?.dataset.moduleNav
+    if (!target) return
+    if (target === 'finance') {
+      if (requestedModule !== 'finance') {
+        if (!(await flushQrBeforeNavigation())) return
+        window.location.href = new URL('./?module=finance&android-shell=1', window.location.href).href
+      }
+      return
+    }
+    const shellPages = { home: 'household', health: 'hub-health', tools: 'hub-utility', outdoor: 'outdoor', settings: 'more' }
+    navigateMobile(shellPages[target])
+  })
   document.querySelectorAll('#ebook-app .toolbar__brand-mark, #finance-app .toolbar__brand-mark').forEach((mark) => {
     mark.src = './grapes-mark.svg'
   })
@@ -220,7 +237,7 @@ onGrapesDriveChange((connected) => {
 
 for (const selector of [
   '#app-back-to-menu-btn', '#studio-back-to-menu-btn', '#fabric-back-to-menu-btn',
-  '#qr-back-to-menu-btn', '#ebook-back-to-menu-btn', '#email-back-to-menu-btn', '#finance-back-to-menu-btn',
+  '#qr-back-to-menu-btn', '#ebook-back-to-menu-btn', '#email-back-to-menu-btn',
 ]) {
   el(selector).addEventListener('click', goToMainMenu)
 }
@@ -238,40 +255,24 @@ async function goToMainMenu() {
 
 
 async function navigateMobile(page) {
-  if (document.body.dataset.screen === 'qr') {
-    try { await (await import('./qr-studio.js')).flushQrProject() }
-    catch { alert('A QR-projekt helyi mentése nem sikerült. A kilépést megszakítottuk.'); return }
-  }
+  if (!(await flushQrBeforeNavigation())) return
   const target = new URL('./design/android-mobile-preview.html', location.href)
   try { sessionStorage.setItem('grapes-mobile-return-page', page) } catch {}
   location.href = target.href
 }
-if (androidModuleShell && ['qr','ebook'].includes(requestedScreen)) {
-  const nav = document.createElement('nav')
-  nav.className = 'mobile-module-nav'
-  nav.setAttribute('aria-label','Grapes főmodulok')
-  for (const [page,label,icon] of [
-    ['home','Kezdő','start'],['household','Home','household'],
-    ['hub-health','Health','health'],['hub-utility','Tools','utility'],
-    ['hub-finance','Finance','finance'],['outdoor','Outdoor','outdoor'],['more','Beállítások','settings'],
-  ]) {
-    const button = document.createElement('button')
-    button.type = 'button'; button.setAttribute('aria-label',label)
-    button.innerHTML = mobileIconSvg(icon)
-    if (page === 'hub-utility') button.setAttribute('aria-current','page')
-    button.addEventListener('click', () => {
-      if (page === 'hub-finance') {
-        const target = new URL('./index.html', location.href)
-        target.searchParams.set('module', 'finance')
-        target.searchParams.set('android-shell', '1')
-        target.searchParams.set('return-page', 'home')
-        location.href = target.href
-      } else navigateMobile(page)
-    })
-    nav.append(button)
+
+async function flushQrBeforeNavigation() {
+  if (document.body.dataset.screen !== 'qr') return true
+  try {
+    await (await import('./qr-studio.js')).flushQrProject()
+    return true
+  } catch {
+    alert('A QR-projekt helyi mentése nem sikerült. A kilépést megszakítottuk.')
+    return false
   }
-  document.querySelector('#'+requestedScreen+'-app .toolbar').after(nav)
 }
+// Navigation is owned by the Android mobile shell. Do not inject a second
+// module rail into standalone QR/E-book screens; Android Back returns to shell.
 if (androidModuleShell) {
   // Native Android Back returns to the previous Grapes shell for every
   // standalone module, not only E-book and QR.
@@ -281,6 +282,9 @@ if (androidModuleShell) {
 document.addEventListener('grapes:open-main-menu', goToMainMenu)
 
 if (hasEbookPair) showScreen('ebook')
+// A native Android shell already owns authentication. Standalone module routes
+// must not fall through to the separate Google Drive login screen.
+else if (androidApp && androidModuleShell && requestedScreen) showScreen(requestedScreen)
 else if (isGrapesDriveConnected() || isLocalMode()) showAuthenticatedStart()
 else showLogin()
 

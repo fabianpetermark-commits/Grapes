@@ -15,6 +15,7 @@
 @import './components/toast.css';
 @import './components/empty-state.css';
 @import './components/status.css';
+@import './components/mobile-module-nav.css';
 
 @import './screens/splash.css';
 @import './screens/brochure.css';

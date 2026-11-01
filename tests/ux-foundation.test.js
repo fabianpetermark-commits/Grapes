@@ -56,9 +56,9 @@ test('finance deletes all transactions only after creating a safety export', asy
   // Deletion remains strictly AFTER BOTH local snapshots and a second explicit
   // user confirmation; a failed local safety write must prevent deletion.
   const stages = [
-    'if (!await showGrapesConfirm({',
     'const snapshot = serializeProject()',
-    'download(financeBackupToJson(snapshot)',
+    'if (!await showGrapesConfirm({',
+    'onConfirm: () => download(financeBackupToJson(snapshot)',
     'await persistLocal()',
     'await saveSafetySnapshot(DELETE_BACKUP_ID',
     'const confirmed = await showGrapesConfirm({',

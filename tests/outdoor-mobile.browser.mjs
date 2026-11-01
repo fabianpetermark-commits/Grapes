@@ -19,7 +19,7 @@ try{
     const u=new URL(route.request().url())
     if(u.hostname==='api.inaturalist.org')return route.fulfill({json:{results:[{id:123,name:'Solanum lycopersicum',preferred_common_name:'Paradicsom',iconic_taxon_name:'Plantae'}]}})
     if(u.hostname==='geocoding-api.open-meteo.com')return route.fulfill({json:{results:[{name:'Budapest',country:'Magyarország',latitude:47.5,longitude:19}]}})
-    if(u.hostname==='api.open-meteo.com')return route.fulfill({json:{current:{temperature_2m:7},daily:{time:['2026-10-28'],temperature_2m_min:[-2],temperature_2m_max:[12],precipitation_sum:[4]}}})
+    if(u.hostname==='api.open-meteo.com')return route.fulfill({json:{current:{temperature_2m:7},daily:{time:[new Date().toISOString().slice(0,10)],temperature_2m_min:[-2],temperature_2m_max:[12],precipitation_sum:[4]}}})
     return route.abort()
   })
   async function open(){await page.locator('[data-page=home] summary').click();await page.locator('[data-module=outdoor]').click();await page.locator('[data-outdoor-root]').waitFor({state:'visible'})}
