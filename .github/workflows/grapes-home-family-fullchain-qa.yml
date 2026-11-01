@@ -1,7 +1,9 @@
 name: Grapes Home family fullchain QA (NO RELEASE)
 on:
   push:
-    branches: [release/grapes-ui-audit-and-home-switch-fixes-20261028]
+    branches:
+      - release/grapes-ui-audit-and-home-switch-fixes-20261028
+      - fix/finance-savings-only-restore-confirmation
   pull_request:
     branches: [codex/android-app]
   workflow_dispatch:
