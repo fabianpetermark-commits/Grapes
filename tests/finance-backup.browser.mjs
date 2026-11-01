@@ -124,6 +124,7 @@ try {
   await page.reload()
   await page.waitForFunction(() => document.querySelector('#finance-save-status')?.textContent === 'Kész')
   await page.locator('#finance-restore-last').click()
+  await page.getByRole('button', { name: 'Igen, állítsd vissza' }).click()
   await page.locator('#finance-rows tr').first().waitFor()
   assert.equal(await page.locator('#finance-currency').inputValue(), 'EUR')
   assert.equal(await page.locator('.finance__receipt-link').textContent(), 'szamla.pdf')
