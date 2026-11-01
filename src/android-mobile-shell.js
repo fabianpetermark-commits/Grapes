@@ -483,9 +483,9 @@ function showPage(page, { parent = '', entry = '' } = {}) {
   if (searchButton) searchButton.hidden = !isStartPage
   if (notificationButton) notificationButton.hidden = !isStartPage
   const mainRail = $('[data-main-rail]')
-  // Keep the one global module rail available while module pages show their
-  // own content navigation separately.
-  if (mainRail) mainRail.hidden = false
+  // Health and Settings provide their own contextual navigation; avoid
+  // stacking the global six-icon rail on those screens.
+  if (mainRail) mainRail.hidden = page === 'hub-health' || page === 'more'
   const currentMain =
     page === 'household' ? 'home' :
     ['hub-health','health-settings','food','water','samsung-water'].includes(page) ? 'health' :
