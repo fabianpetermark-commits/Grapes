@@ -1,9 +1,18 @@
 name: Release Android APK
 
 on:
-  # EMERGENCY HOLD (2026-10-23): the v29 login path lives in an unmerged
-  # candidate. Prevent further unattended signed releases until auth is
-  # integrated, tested and a device regression has passed.
+  push:
+    branches:
+      - codex/android-app
+    paths:
+      - .github/workflows/release-android.yml
+      - android-health-connect-poc/**
+      - src/**
+      - public/**
+      - index.html
+      - package.json
+      - package-lock.json
+      - vite.config.js
   workflow_dispatch:
     inputs:
       version_code:
@@ -18,6 +27,11 @@ on:
         description: Short release notes shown by the in-app updater
         required: true
         type: string
+      publish_release:
+        description: Publish the verified APK as a GitHub Release (false uploads a private review artifact only)
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -29,8 +43,8 @@ concurrency:
 
 jobs:
   release-apk:
-    # Manual workflow dispatch only during the auth recovery hold.
-    if: github.event_name == 'workflow_dispatch'
+    # Push builds require an explicit marker and remain private candidates by default.
+    if: github.repository == 'fabianpetermark-commits/Grapes' && (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[build-prod-candidate]'))
     runs-on: ubuntu-latest
     env:
       VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
@@ -173,9 +187,32 @@ jobs:
           [[ -n "$old_cert" && -n "$new_cert" && "$old_cert" == "$new_cert" ]] \
             || { echo "ERROR: Signing certificate mismatch; cannot update installed Grapes safely"; exit 1; }
           mv "$SOURCE" "$TARGET"
-          sha256sum "$TARGET"
+          apk_sha=$(sha256sum "$TARGET" | awk '{print $1}')
+          printf '%s  %s\n' "$apk_sha" "$TARGET" > "$TARGET.sha256"
+          {
+            printf 'commit=%s\n' "$GITHUB_SHA"
+            printf 'package=hu.grapes.healthconnect\n'
+            printf 'version_code=%s\n' "$GRAPES_VERSION_CODE"
+            printf 'version_name=%s\n' "$GRAPES_VERSION_NAME"
+            printf 'previous_version_code=%s\n' "$PREVIOUS_VERSION_CODE"
+            printf 'signer_sha256=%s\n' "$new_cert"
+            printf 'apk_sha256=%s\n' "$apk_sha"
+          } > "$TARGET.manifest.txt"
+          cat "$TARGET.manifest.txt"
           echo "APK_PATH=$TARGET" >> "$GITHUB_ENV"
+      - name: Upload verified PROD APK for inspection without publishing
+        if: ${{ !inputs.publish_release }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: grapes-prod-signed-candidate-${{ github.run_id }}
+          path: |
+            grapes-android-v*.apk
+            grapes-android-v*.apk.sha256
+            grapes-android-v*.apk.manifest.txt
+          if-no-files-found: error
+          retention-days: 7
       - name: Publish update to Grapes app updater
+        if: ${{ inputs.publish_release }}
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash

@@ -40,7 +40,13 @@ A felhasználó végzi el a GitHub eszközkód böngészős jóváhagyását. Je
 2. A `version_code` mindig legyen nagyobb az előzőnél.
 3. A workflow indítása:
 
-   `gh workflow run release-android.yml --repo fabianpetermark-commits/Grapes --ref codex/android-app -f version_code=<szám> -f version_name=<verzió> -f release_notes="<rövid leírás>"`
+   Kiadás előtti, nem publikáló ellenőrzéshez `publish_release=false` értékkel induljon. Ez PROD-kulccsal aláír, ellenőrzi a korábbi stabil tanúsítványt, majd APK/hash/manifest Actions artifactot ad át:
+
+   `gh workflow run release-android.yml --repo fabianpetermark-commits/Grapes --ref codex/android-app -f version_code=<szám> -f version_name=<verzió> -f release_notes="<rövid leírás>" -f publish_release=false`
+
+   GitHub Release csak külön, kifejezett `publish_release=true` értékkel készülhet:
+
+   `gh workflow run release-android.yml --repo fabianpetermark-commits/Grapes --ref codex/android-app -f version_code=<szám> -f version_name=<verzió> -f release_notes="<rövid leírás>" -f publish_release=true`
 
 4. A futás figyelése: `gh run watch <run-id> --repo fabianpetermark-commits/Grapes --exit-status`.
 5. Siker után ellenőrizni kell, hogy az új GitHub Release tartalmazza a névre átírt, aláírt APK-t.
