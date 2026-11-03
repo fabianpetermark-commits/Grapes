@@ -1,4 +1,119 @@
-# Grapes – Brand Guide / Design System v1.2 (elfogadott mobil vizuális irány)
+# Grapes – Brand Guide / Design System v1.3 (modulfüggetlen komponensrendszer)
+
+
+## 0.B. Grapes Brand Guide v1.3 — univerzális komponens- és interakciós szerződés (2026-11-03)
+
+**Státusz:** a felhasználó által megadott v1.3 specifikáció a modulfüggetlen vizuális komponensek új, elsődleges célállapota. A szabályok a Health, Food, Finance, Tools, Outdoor/Növények, Home, E-book, QR és későbbi modulok közös design rendszerére vonatkoznak. Ez a dokumentum a célállapotot rögzíti; a leírás önmagában nem bizonyítja, hogy az adott komponens minden modulban implementálva vagy tesztelve van.
+
+**Elsőbbség és kompatibilitás**
+- A v1.3 pontjai a benne kifejezetten szabályozott komponensekben felülírják a korábbi, általános vagy modulhoz kötött vizuális eltéréseket.
+- A v1.2 közös felső, hathelyes, felirat nélküli ikonsora, a beállításikon helye, az egyszeri oldalcím, a natív Android Back és a Quick Action sáv navigációs elkülönítése továbbra is kötelező.
+- A cián glow továbbra sem terjedhet ki automatikusan teljes kártyára vagy a teljes háttérre. Az aktív ikonrail és az itt külön megadott FAB a saját, korlátozott kivétele.
+- A tokenek szemantikus szerepet jelentenek, nem modulneveket. Egy modul csak dokumentált indokkal vezethet be új színt vagy eltérő geometriát.
+
+### 0.B.1. Core grid és aszimmetrikus Split Visual-Action Card
+
+A modul fő összefoglaló kártyája az **58% / 42%** vízszintes felosztást használja:
+- **Bal oldali vizuális zóna: 58%.** Alapméretű progresszív SVG-kör vagy műszerfal: **160 × 160 px**. A középső tartalom sorrendje: státuszjelvény (például Day / Status), fő számérték (**2xl, font-extrabold**), majd célérték vagy mértékegység.
+- **Jobb oldali interaktív zóna: 42%.** A kapcsolódó szintjelző (például víz, akkumulátor, tárhely vagy büdzsé) és a közvetlen **+ / −** gyorsbeállítások.
+- A két zóna között **nincs látható függőleges divider**, külön keret vagy díszítő vonal. A komponens egyetlen kártyafelület marad.
+- A 160 px-es vizuális elem a névleges célméret. Olyan keskeny viewporton, ahol a 58/42 elosztás mellett túlcsordulna, a kártya belső tartalma arányosan zsugorítható, de a két zóna sorrendje és aránya nem cserélhető fel; vízszintes oldal-túlcsordulás nem engedélyezett.
+- A kártya alsó adatsorában legfeljebb **egy** függőleges elválasztó használható: `border-right: 1px solid color-mix(in srgb, var(--grapes-line) 80%, transparent)`. Ez kizárólag az elsődleges metrikákat választja el a másodlagos widgetértéktől. Ha nincs alsó adatsor, nincs divider sem.
+
+### 0.B.2. Kanonikus szemantikus színtokenek
+
+| Token | Kanonikus érték | Szerep és használati korlát |
+| --- | --- | --- |
+| `--grapes-bg` | `#090E14` | Globális nézetháttér; visszafogott rács-overlay megengedett |
+| `--grapes-surface` | `#101821` | Kártyák és modulok alapfelülete |
+| `--grapes-raised` | `#17222E` | Kiemelt elemek, gombháttér, ikontartó |
+| `--grapes-line` | `#243343` | Keret, inaktív progress track, passzív elválasztó |
+| `--grapes-cyan` | `#3BDCF2` | Elsődleges akcentus, aktív interakció, FAB és elsődleges állapot |
+| `--grapes-cyanSoft` | `rgba(59,220,242,0.12)` | Halk kiemelő háttér, jelvény és sorszám |
+| `--grapes-cyanBorder` | `rgba(59,220,242,0.22)` | Interaktív kártya és modális ablak kiemelt kerete |
+| `--grapes-metric-1` | `#22C55E` | 1. metrikasorozat színe; pozitív állapot, zöld |
+| `--grapes-metric-2` | `#A3FF12` | 2. metrikasorozat színe; aktív/neonzöld |
+| `--grapes-metric-3` | `#D946EF` | 3. metrikasorozat színe; kiegészítő/magenta |
+| `--grapes-warning` | `#F59E0B` | Figyelmeztetés, értékelés, kiemelt figyelmi státusz |
+| `--grapes-muted` | `#94A5B8` | Másodlagos szöveg és inaktív ikon |
+
+- A fenti értékek a v1.3 design tokenek kanonikus célértékei. A korábbi `--grapes-accent`, `--grapes-accent-soft` és `--grapes-success` név csak kompatibilitási alias lehet; azonos szemantikus szerep esetén ugyanarra a kanonikus értékre kell leképezni, nem szabad párhuzamos színpalettát létrehozni.
+- A tokenek megléte a dokumentumban **nem bizonyítja**, hogy a natív Android, WebView és desktop kódban már be vannak vezetve. Implementáció előtt ellenőrizni kell a tényleges tokenforrást; ismeretlen CSS-változóra nem szabad vakon hivatkozni.
+- A három metric-szín csak összehasonlítható, három sorozatú adatvizualizációban alkalmazható. A figyelmeztetés, hiba, siker és törlés szemantikus jelentését nem írhatja felül a sorozatszín.
+
+### 0.B.3. 32 × 32 px-es, háromszegmenses mini progressgyűrű
+
+Minden olyan vízszintes nap-, hét-, időszak- vagy kategóriaválasztó elem mögött, amely három kapcsolódó részmetrikát mutat, **32 × 32 px SVG mini gyűrű** jelenik meg.
+
+- SVG viewport: **32 × 32 px**; középpont: **(16, 16)**; sugár: **R = 13 px**.
+- Alapkör kerülete: **C = 2πR ≈ 81,68 px**.
+- A rajzolás kezdőszöge: **−90°**. A három metrika azonos, egyharmad környi pályát használ; a stroke-dasharray / stroke-dashoffset beállítások az alábbi kanonikus offseteket követik:
+  - 1. metrika: `stroke-dashoffset: -2.00px`
+  - 2. metrika: `stroke-dashoffset: -29.23px`
+  - 3. metrika: `stroke-dashoffset: -56.45px`
+- A három szegmens a `--grapes-metric-1`, `--grapes-metric-2`, `--grapes-metric-3` színeket használja. A track sötét és fénytelen; a glow nem lehet nagyobb a tényleges aktív stroke-nál.
+- A kiválasztott elem jelzése **telített `--grapes-cyan` háttér és kontrasztos sötét előtér**. A kijelölés nem csak színnel azonosítható; hozzáférhető selected/current állapot is szükséges.
+- Ha egy időszakhoz nincs adat, az üres szegmensek trackje marad sötét. Hiányzó adat nem jeleníthető meg 0%-os valós teljesítményként, ha a különbség üzletileg fontos.
+
+### 0.B.4. Animált folyadék- és szintjelző widget
+
+Folyadék, akkumulátor, tárhely, költségkeret és más százalékos/mennyiségi telítettség konténeres megjelenítéséhez SVG-alapú folyadék/szintjelző használható.
+
+- A folyadékcsoport függőleges helyzete a normalizált `pct ∈ [0,1]` értékből számítandó:
+  `translateY = 122px - 128px × pct`.
+- Ellenőrző végpontok: **0% → +122 px** (rejtett/üres), **50% → +58 px**, **100% → −6 px** (telített). A számítás eredménye 0–100% között korlátozandó; a nyers bemenet nem mozdíthatja ki a csoportot a konténerből.
+- A hullámmozgás neve `waveSlosh`, időtartama **2,2 s**, lineáris, végtelen ismétlésű.
+- `prefers-reduced-motion: reduce` esetén a hullám- és szintanimáció leáll vagy statikus állapotot mutat; az érték animáció nélkül is pontosan olvasható. Az animáció nem változtathatja meg a ténylegesen kijelzett mennyiséget.
+
+### 0.B.5. Felső ikonrail, aktív állapot és íves menü
+
+**Felső Grapes Icon Rail**
+- Kapszula: **24 px border-radius**, sötét keret **`#2C4A58`**. A v1.2 szerinti hat egyenlő ikonhely, feliratmentesség, méret és elhelyezés változatlan.
+- Aktív ikon: `--grapes-cyan` előtér; `inset 0 -2px 0` alsó belső jelölés; `box-shadow: 0 0 12px rgba(59,220,242,0.30)`.
+- A fény kizárólag az aktív ikon/ikonkeret környezetére korlátozódik; a teljes navigációs kapszula vagy a környező oldal nem kap glow-t.
+
+**FAB és Radial Arc Menu**
+- Alap FAB: **58 × 58 px**, kör alakú, jobb alsó sarokhoz rögzítve, `#3BDCF2` háttérrel; külső árnyék blur sugara **20 px**. A fény vizuális intenzitása maradjon kontrollált, és ne mosódjon össze a tartalommal.
+- Megnyitáskor a FAB ikonja **135°-kal** fordul el a bezáró × jel felé, a háttér világosabb árnyalatra vált. Az animáció rövid és reduced-motion módban elhagyható.
+- Az íves menü sugara **R = 120 px**; négy akciógomb **46 × 46 px**, **30°-os** szögközökkel, az alábbi végpontokkal:
+  1. Felső / beolvasás: **−90°**, `translate(0px, -120px)`.
+  2. Bal-felső / új vagy manuális elem: **−120°**, `translate(-60px, -104px)`.
+  3. Felső-bal / fotó vagy AI-felismerés: **−150°**, `translate(-104px, -60px)`.
+  4. Bal / gyorsrögzítés vagy szint: **−180°**, `translate(-120px, 0px)`.
+- A menünek nem szabad a képernyőn kívülre vagy rendszer-navigációs safe-area alá nyílnia. Kis viewporton a pozíciót a rendelkezésre álló helyhez kell igazítani, miközben a fenti relatív geometria az alapérték marad.
+- A menü nyitott állapotában az akciógombok egyértelmű accessible nevet és legalább **44 × 44 px** interaktív területet kapnak; az ikonok önmagukban nem elegendő címkék.
+
+### 0.B.6. Harmonika-listák, mikro progress és gesztusok
+
+**Kompakt harmonika-kártya**
+- A fejléc tartalmazza: kategóriaikon, név, szükséges metaadat, összegzett érték(ek) és `.meal-chev` kinyitó jel.
+- A fejléc alatt **4 px** magas, lekerekített mikro progress-sáv jeleníti meg a kategórián belüli három metrikasorozat arányát. A színek a `--grapes-metric-1/2/3` tokenek; a sáv nem kaphat teljes felületű glow-t.
+- Üres kategória esetén a kártya **egysoros kompakt** alakra vált: kategóriaikon, kategórianév és közvetlen **+ hozzáadás** művelet. Üres állapotban nem marad üres, nagy harmonika-panel.
+
+**Univerzális mikrogesztusok**
+- **Balra húzás törléshez:** listaelem legfeljebb **−64 px**-ig húzható; ekkor válik láthatóvá a `bg-rose-500/90` jellegű, piros áttetsző törlési művelet. A törléshez külön, jól tappolható vezérlő és szükség esetén megerősítés kell; véletlen érintésre nem törölhető adat.
+- **650 ms-os hosszan nyomás duplikáláshoz:** rögzített listaelem 650 ms-os long-press művelete duplikálási parancsot indít, azonnali toast visszajelzéssel. A műveletnek nem lehet ütközése a rendszeres szövegkijelöléssel, görgetéssel vagy akadálymentesítő vezérléssel; legyen elérhető alternatív duplikálási művelet is.
+- A gesztusokat nem szabad olyan vezérlőre rátenni, ahol a vízszintes húzás már más jelentéssel bír. A törlés/duplikálás nem változtathat adatot a puszta animáció kedvéért; a tényleges adatállapot sikerét kell visszajelezni.
+
+### 0.B.7. Tartalomkártyák és ajánlómotor
+
+- Alapforma: **vízszintes lista**, `rounded-2xl` kártyák, finom keret, érintéskor `active:scale-[0.99]`.
+- Tartalmi elemek — csak ha az adott adattípusnak van értelme: emoji/ikon avatar gradiens háttéren, kategória-badge, értékelés, idő- vagy költségindikátor, színes metrikapontok.
+- Kedvenc kapcsoló: `toggleFav` szívikon; aktív állapotban **`text-rose-400`**, kitöltött szívvel. A kedvenc állapotot tartósan menteni kell; pusztán vizuális toggle nem elegendő.
+- Ajánlás csak tényleges adatból, előzményből vagy megnevezett megbízható forrásból származhat. A demo/mintaértékeket tilos valódi felhasználói adatként feltüntetni.
+
+### 0.B.8. Implementációs és megfelelőségi kapu
+
+Minden v1.3 komponenst a közös design tokenekből és újrahasznosítható komponensből kell felépíteni; modulonként másolt, eltérő CSS-változat nem elfogadható. A v1.3 célállapot elfogadási ellenőrzése legalább:
+- **320 / 360 / 390 / 412 px** szélesség; safe-area; nagyobb rendszerbetű; hosszú magyar szövegek; portrait és szükség esetén landscape.
+- Split kártya 58/42 aránya, 160 px-es névleges vizuális elem, egyetlen engedélyezett alsó divider, nulla felső zónabeli szeparátor.
+- Mini ring 32 × 32 px, R=13 px, C≈81,68 px, kezdőszög −90°, három megadott offset; 0/50/100%, hiányzó adat.
+- Fluid widget 0/50/100%, 2,2 s hullám és reduced-motion állapot.
+- FAB 58 × 58 px; íves menü négy 46 × 46 px-es gombbal, pontos eltolásokkal, képernyőszél- és safe-area-ellenőrzéssel.
+- Swipe törlés −64 px; long-press 650 ms; toast; duplikálás és törlés tényleges adatállapotának ellenőrzése.
+- Billentyűzet/fókusz, TalkBack, accessible nevek, tap targetek, hibás/üres/betöltési állapotok és valós adatforrások.
+- A dokumentáció vagy referencia-HTML frissítése **nem** jelent automatikus alkalmazásmódosítást, PR-merge-et, adatbázis-migrációt vagy APK/PROD-release-t.
+
 
 > **2026-10-26 — HOME JÓVÁHAGYOTT KIVÉTEL / VÉGLEGES DÖNTÉS:** az [egységes Otthon koncepció](./GRAPES_HOME_ONE_HOUSE_APPROVED_20261026.md) felülírja a Home korábbi „Saját / Közös családi” és „Bevásárlás / Készlet / Javaslatok” kétlépcsős navigációs terveit. A Home egyetlen adatmodellt és azonnal látható három widgetet használ; a családi megosztás külön jogosultsági művelet. A korábbi `candidates/home.html` dual-scope HTML **nem a jóváhagyott végső képernyő**, ezért a megvalósítás előtt aktualizálandó. A v1.2 hatikonos közös shell és stílus változatlan; az alkalmazás és a PROD kiadás még nincs átvezetve.
 
@@ -361,7 +476,7 @@ Betűskála szűk képernyőn is olvasható, nagyobb rendszerbetűnél se legyen
 - `ANDROID_UI_DESIGN_PLAN.md` – korábbi mobil UI-felvevő követelmények, kontraszt és méretezés.
 - `docs/CODEX_FOOD_RING_BRIEF.md` – azonnali, pontos megvalósítási brief.
 
-**Verzió:** v1.1 / 2026-10-23. A 0. fejezet szerinti mobilos megjelenés felhasználói jóváhagyást kapott (APPROVED). A 2026-10-18-i alapszabályok és audit megőrzött forrásadatok, nem mindenütt kész implementációk. A jóváhagyás önmagában nem kódváltozás és nem APK-release.
+**Verziótörténet:** v1.1 / 2026-10-23 (alap mobil irány); v1.2 / 2026-10-24–26 (közös ikonrail és Home-döntés); **v1.3 / 2026-11-03 (modulfüggetlen komponens- és interakciós szerződés).** A 0. fejezet szerinti mobilos megjelenés felhasználói jóváhagyást kapott (APPROVED). A 2026-10-18-i alapszabályok és audit megőrzött forrásadatok, nem mindenütt kész implementációk. A jóváhagyás önmagában nem kódváltozás és nem APK-release.
 
 
 ## 11. Ellenőrizhető komponensszerződés (célállapot, nem kész implementáció)
