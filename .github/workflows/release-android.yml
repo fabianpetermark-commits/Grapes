@@ -1,18 +1,6 @@
 name: Release Android APK
 
 on:
-  push:
-    branches:
-      - codex/android-app
-    paths:
-      - .github/workflows/release-android.yml
-      - android-health-connect-poc/**
-      - src/**
-      - public/**
-      - index.html
-      - package.json
-      - package-lock.json
-      - vite.config.js
   workflow_dispatch:
     inputs:
       version_code:
@@ -43,8 +31,8 @@ concurrency:
 
 jobs:
   release-apk:
-    # Push builds require an explicit marker and remain private candidates by default.
-    if: github.repository == 'fabianpetermark-commits/Grapes' && (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[build-prod-candidate]'))
+    # Manual workflow dispatch only during the PROD auth recovery hold.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     env:
       VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
@@ -81,27 +69,15 @@ jobs:
           latest=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq \
             '[.[] | select(.draft == false and .prerelease == false and (.tag_name | test("^android-v[0-9]+$"))) | (.tag_name | ltrimstr("android-v") | tonumber)] | max // 0')
           [[ "$latest" =~ ^[0-9]+$ ]]
-          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
-            code="$REQUESTED_CODE"
-            [[ "$code" =~ ^[0-9]+$ ]]
-            name="$REQUESTED_NAME"
-            notes="$REQUESTED_NOTES"
-          else
-            code=$((latest + 1))
-            # The v29 signed candidate may already be installed even if not published.
-            # Always supersede that candidate to keep in-app upgrades monotonic.
-            if (( code < 30 )); then code=30; fi
-            name="0.3.$code"
-            notes=$(printf 'Ellenőrzött automatikus Grapes PROD-frissítés:\n%s' "$(git log -5 --pretty='- %s')")
-          fi
+          code="$REQUESTED_CODE"
+          [[ "$code" =~ ^[0-9]+$ ]]
+          name="$REQUESTED_NAME"
+          notes="$REQUESTED_NOTES"
           (( code > latest )) || { echo "ERROR: Release versionCode must exceed latest published $latest"; exit 1; }
           # Existing installed production builds must remain updatable; compare
           # the signing cert to the latest published Android release later.
           (( latest > 0 )) || { echo "ERROR: No prior signed production release for signature comparison"; exit 1; }
           [[ -n "$name" && -n "$notes" ]]
-          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
-            [[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]] || { echo "ERROR: A newer PROD branch commit exists; skipping stale release"; exit 1; }
-          fi
           echo "GRAPES_VERSION_CODE=$code" >> "$GITHUB_ENV"
           echo "GRAPES_VERSION_NAME=$name" >> "$GITHUB_ENV"
           echo "PREVIOUS_VERSION_CODE=$latest" >> "$GITHUB_ENV"
