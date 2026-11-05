@@ -1,9 +1,9 @@
 pluginManagement {
-    repositories { google(); mavenCentral(); gradlePluginPortal() }
+    repositories { maven("https://maven.google.com"); mavenCentral(); gradlePluginPortal() }
 }
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-    repositories { google(); mavenCentral() }
+    repositories { maven("https://maven.google.com"); mavenCentral() }
 }
 rootProject.name = "GrapesHealthConnectPoc"
 include(":app")
