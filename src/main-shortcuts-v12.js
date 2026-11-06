@@ -6,6 +6,7 @@ import { mobileIconSvg } from './android-mobile-icons.js'
  * All buttons delegate to the EXISTING app controller's routes.
  */
 export const MAIN_SHORTCUTS = Object.freeze([
+  { id:'home', label:'Otthon', icon:'household', group:'Home' },
   { id:'outdoor', label:'Növényeim', icon:'outdoor', group:'Outdoor' },
   { id:'food', label:'Ételnapló', icon:'food', group:'Health' },
   { id:'water', label:'Víznapló', icon:'water', group:'Health' },
@@ -21,7 +22,7 @@ export const MAIN_SHORTCUTS = Object.freeze([
 ])
 const byId = new Map(MAIN_SHORTCUTS.map(entry => [entry.id, entry]))
 const STORAGE_KEY = 'grapes-main-shortcuts-v12'
-const DEFAULT_PINS = ['food','water']
+const DEFAULT_PINS = ['home','food','water']
 const MAX_PINS = 10
 
 function parseSettings(raw) {

@@ -46,18 +46,18 @@ try{
     assert.equal(await page.locator('[data-page="home"] h1').textContent(),'Gyakran használt')
     const favorites=page.locator('[data-main-shortcut-list]')
     assert.deepEqual(await favorites.locator('[data-main-shortcut]').evaluateAll(nodes=>nodes.map(x=>x.dataset.mainShortcut)),
-      ['food','water'])
+      ['home','food','water'])
     // Manual favourite is real navigation state and survives reload; never creates Food data.
     await page.locator('[data-main-shortcut-add]').click()
     assert.equal(await page.locator('[data-main-shortcut-picker]').isVisible(),true)
     await page.locator('[data-main-shortcut-select]').selectOption('shopping')
     await page.locator('[data-main-shortcut-pin]').click()
     assert.deepEqual(await favorites.locator('[data-main-shortcut]').evaluateAll(nodes=>nodes.map(x=>x.dataset.mainShortcut)),
-      ['food','water','shopping'])
+      ['home','food','water','shopping'])
     await page.reload()
     await page.locator('[data-page="home"]').waitFor({state:'visible'})
     assert.deepEqual(await favorites.locator('[data-main-shortcut]').evaluateAll(nodes=>nodes.map(x=>x.dataset.mainShortcut)),
-      ['food','water','shopping'])
+      ['home','food','water','shopping'])
     await page.locator('[data-main-shortcut="shopping"]').click()
     const home=page.locator('[data-page="household"]')
     await home.waitFor({state:'visible'})

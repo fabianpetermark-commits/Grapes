@@ -1685,8 +1685,11 @@ mobileFood = createMobileFoodController({
 // The final v1.2 start page delegates every shortcut to a LIVE existing
 // module, rather than creating a second Food, Home or Finance data store.
 function openMainShortcut(id) {
-  if (HOME_NATIVE_QA) return
-  if (id === 'food') showPage('food',{parent:'hub-health'})
+  // Home remains directly reachable in TEST; its data is still gated by the
+  // owner-bound native session in showTestFamilyHome().
+  if (HOME_NATIVE_QA && id !== 'home') return
+  if (id === 'home') showPage('household',{parent:'home'})
+  else if (id === 'food') showPage('food',{parent:'hub-health'})
   else if (id === 'water') showPage('water',{parent:'hub-health'})
   else if (id === 'recipes' || id === 'stats')
     showPage('food',{parent:'hub-health',entry:id})

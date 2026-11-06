@@ -7,24 +7,24 @@ function storage(){
   return {getItem:key=>data.get(key)||null,setItem:(key,v)=>data.set(key,v),data}
 }
 test('Approved startup only routes to existing real Grapes module destinations',()=>{
-  const expected=['outdoor','food','water','recipes','stats','shopping','inventory','finance','ebook','qr','projects','sync']
+  const expected=['home','outdoor','food','water','recipes','stats','shopping','inventory','finance','ebook','qr','projects','sync']
   assert.deepEqual(MAIN_SHORTCUTS.map(m=>m.id),expected)
   assert.ok(MAIN_SHORTCUTS.every(m=>typeof m.label==='string'&&m.label.length>0))
   assert.equal(MAIN_SHORTCUTS.some(m=>['plants','weather'].includes(m.id)),false,
     'Standalone placeholders must never appear as functioning shortcuts')
 })
-test('Default start page pins working Food and Water; manual picks persist across reloads',()=>{
+test('Default start page pins Home, Food and Water; manual picks persist across reloads',()=>{
   const mem=storage()
   const a=createMainShortcutStore(mem)
-  assert.deepEqual(a.list().pinned.map(m=>m.id),['food','water'])
+  assert.deepEqual(a.list().pinned.map(m=>m.id),['home','food','water'])
   assert.equal(a.pin('shopping'),true)
   assert.equal(a.pin('shopping'),false)
   assert.deepEqual(createMainShortcutStore(mem).list().pinned.map(m=>m.id),
-    ['food','water','shopping'])
+    ['home','food','water','shopping'])
   assert.equal(a.unpin('food'),true)
   assert.equal(a.unpin('food'),false)
   assert.deepEqual(createMainShortcutStore(mem).list().pinned.map(m=>m.id),
-    ['water','shopping'])
+    ['home','water','shopping'])
 })
 test('Actual opens (not synthetic samples) drive additional usage recommendation',()=>{
   const mem=storage(),a=createMainShortcutStore(mem)
@@ -55,7 +55,7 @@ test('Storage permission denial never crashes the navigation or silently loses i
   }
   const nav=createMainShortcutStore(denied)
   assert.equal(nav.pin('shopping'),true)
-  assert.deepEqual(nav.list().pinned.map(m=>m.id),['food','water','shopping'])
+  assert.deepEqual(nav.list().pinned.map(m=>m.id),['home','food','water','shopping'])
 })
 
 test('Navigating and pinning on approved main v1.2 cannot mutate existing Home/Food/Water records',()=>{
