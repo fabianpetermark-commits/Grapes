@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Grapes – teendőlista</title>
+<style>
+:root{--bg:#faf9f6;--card:#fff;--fg:#1f1f1c;--mut:#6b6a63;--line:#e3e1d9;--ac:#6a3fa0;--acbg:#efe8f7;--bad:#a32d2d;--badbg:#fceaea;--dec:#854f0b;--decbg:#faeeda;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1b1a18;--card:#262522;--fg:#ecebe5;--mut:#a09f96;--line:#3a3935;--ac:#b9a2e0;--acbg:#34294a;--bad:#f09595;--badbg:#4a2323;--dec:#efbf6f;--decbg:#44341a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1b1a18;--card:#262522;--fg:#ecebe5;--mut:#a09f96;--line:#3a3935;--ac:#b9a2e0;--acbg:#34294a;--bad:#f09595;--badbg:#4a2323;--dec:#efbf6f;--decbg:#44341a;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:720px;margin:0 auto;padding:16px 16px 48px}
+h1{font-size:22px;margin:8px 0 2px;font-weight:600}
+.sub{color:var(--mut);font-size:14px;margin:0 0 14px}
+.bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--ac);transition:width .2s}
+.tot{font-size:14px;color:var(--mut);margin:6px 0 12px}
+.ctl{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+button{font:inherit;font-size:14px;padding:8px 12px;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:8px;cursor:pointer}
+section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}
+h2{font-size:17px;margin:0;font-weight:600}
+.note{color:var(--mut);font-size:14px;margin:4px 0 6px}
+.cnt{font-size:13px;color:var(--mut);margin:0 0 6px}
+ul{list-style:none;margin:0;padding:0}
+li{border-top:1px solid var(--line)}
+label{display:flex;gap:10px;align-items:flex-start;padding:10px 0;cursor:pointer}
+input[type=checkbox]{width:20px;height:20px;margin:2px 0 0;flex:none;accent-color:var(--ac)}
+.d span.t{text-decoration:line-through;color:var(--mut)}
+.tag{display:inline-block;font-size:12px;padding:0 7px;border-radius:10px;margin-left:6px;white-space:nowrap}
+.b{background:var(--badbg);color:var(--bad)}.q{background:var(--decbg);color:var(--dec)}
+.hide .d{display:none}
+</style>
+</head>
+<body>
+<main>
+<h1>Grapes – teendőlista</h1>
+<p class="sub">Összevont lista a beszélgetésből · 2026. november 5.</p>
+<div class="bar"><i id="pb"></i></div>
+<p class="tot" id="tot"></p>
+<div class="ctl"><button id="hd">Kész tételek elrejtése</button><button id="rs">Visszaállítás</button></div>
+<div id="app"></div>
+</main>
+<script>
+var S=[
+["A. Kapu lezárása (Supabase TEST → PROD)","A kapu még nem zöld: addig nincs új összekapcsolási funkció.",[
+["Kétfiókos A/B TEST: két külön valódi Auth JWT, owner / editor / viewer szerepekkel","b"],
+["Idegen otthon és idegen kérés elutasításának igazolása","b"],
+["Meghívó-visszavonás ellenőrzése","b"],
+["Offline és párhuzamos CAS ellenőrzés (ütközésnél leállás)","b"],
+["Távoli ACL/RLS és PostgREST bizonyíték: anon tiltva, a magánséma nincs kiadva","b"],
+["Egységes home_id kiválasztás és migrációs felderítés"],
+["V1 helyi és V2 TEST események: export + hash + preflight (nem automatikus összegzés, nem destruktív)"],
+["Jóváhagyott, idempotens átvitel a V1 → V2 migrációhoz"],
+["Natív PROD Auth-tokenes RPC; a webes UI nem kap hosszú életű bearer tokent"],
+["Tartós outbox: művelet-UUID, szerver revízió/CAS, konfliktusnál stop, kézi egyeztetés"],
+["PROD séma telepítése: review-olt migration, backup, rollback, security advisor (csak TEST + E2E PASS után)"],
+["Modulonkénti fiókszinkron (Food, Water, Finance, E-book): owner-scoped, külön PASS-szal"],
+["Új aláírt, adatmegőrző PROD Android APK"]]],
+["B. Biztonság","",[
+["Leaked Password Protection bekapcsolása az Auth beállításban (nem RLS-lazítással)","b"],
+["Kliensoldali e-mail/PIN-kapu helyett szerveroldali felhasználó- és moduljogosultság"],
+["Ellenőrzés: a személyes modulok (Food, Water, Finance, E-book) nem kapnak Home-olvasási jogot"]]],
+["C. Specifikációk papíron","Kódot csak a kapu zöldje után.",[
+["Termékazonosító: a vonalkód a kulcs, kézi tételnél generált azonosító (Home készlet, Food és nyugta-OCR ugyanazt használja)"],
+["Kapcsolódás: a Home-vásárlásból a vásárló saját Finance-dokumentumába kerül kiadás; a háztartás ezt nem látja"],
+["Eseménynapló elve: csak hozzáfűzés, a javítás új esemény"],
+["Finance tétel: opcionális tételsorok (termék, mennyiség, ár), amelyeket a nyugta-OCR tölthet ki"],
+["Food: stabil productId"],
+["Egyeztetés a Home v1/v2 eseménynaplóval, hogy ne készüljön külön, párhuzamos napló"],
+["Döntés: egy app modulokkal, vagy több app (Health / Finance / Tools)","q"]]],
+["D. Modulok","",[
+["Health: önálló modul brief és feature branch (áttekintő, napi/heti előzmény, statisztika, adatforrás-állapot, engedély- és hibaállapotok)"],
+["Health Connect valós telefonos teszt (JDK 17, SDK 35, Android készülék)"],
+["Samsung Health csak ténylegesen meglévő feltételekkel jelölhető késznek (AAR, partnerjóváhagyás)"],
+["E-book Library + QR Studio: végső, célzott ellenőrzés, majd commit/PR"],
+["Valós e-olvasós, telefonkamerás és Google OAuth/Apps Script végponttól végpontig teszt"],
+["E-book: az EPUB-megnyitás ismert hibájának javítása, a broker-módosítások telepítése"],
+["Finance: friss, teljes funkcionális audit"],
+["Döntés: az import hozzon-e létre megtakarítási célokat is, vagy egy gyűjtőcél alá importáljon","q"],
+["Home: önálló, későbbi ütemezés (közös lista, készlet, növények)"]]],
+["E. Munkafolyamat és rend","",[
+["Snapshot vagy tag minden nagyobb változás előtt"],
+["Nyitott PR-ek (141) és issue-k (21) átnézése, a feleslegesek lezárása"],
+["A munkafolyamat-dokumentum szerepeinek frissítése, ha már másik ügynökkel dolgozol"],
+["PROJECT_STATUS.md frissítése (2026-10-12-i), a kód és a státusz újraegybevetése"],
+["Kis, külön ágú PR-ek; merge és PROD kiadás csak külön döntéssel"],
+["Minden munkaszakasz végén tényszerű állapotjelentés"]]],
+["F. Később / parkol","",[
+["3D Pattern / Array"],
+["Tools audit: szándékosan elengedve, csak kérésre"],
+["Brossúra HTML-import: sandboxolt iframe vagy rendes sanitizer"],
+["Brossúra history: memóriaoptimalizálás"]]]
+];
+var K="grapes-todo-v1",st={},hide=false;
+try{st=JSON.parse(localStorage.getItem(K)||"{}")}catch(e){st={}}
+function save(){try{localStorage.setItem(K,JSON.stringify(st))}catch(e){}}
+function render(){
+var h="",all=0,dn=0;
+S.forEach(function(s,i){
+var n=s[2].length,d=0,li="";
+s[2].forEach(function(it,j){
+var id=i+"-"+j,c=!!st[id];if(c)d++;
+li+='<li class="'+(c?"d":"")+'"><label><input type="checkbox" data-id="'+id+'"'+(c?" checked":"")+'><span class="t">'+it[0]+(it[1]?'<span class="tag '+it[1]+'">'+(it[1]=="b"?"blokkoló":"döntés")+"</span>":"")+"</span></label></li>";
+});
+all+=n;dn+=d;
+h+="<section><h2>"+s[0]+"</h2>"+(s[1]?'<p class="note">'+s[1]+"</p>":"")+'<p class="cnt">'+d+" / "+n+" kész</p><ul>"+li+"</ul></section>";
+});
+var a=document.getElementById("app");a.innerHTML=h;a.className=hide?"hide":"";
+document.getElementById("pb").style.width=(all?dn/all*100:0)+"%";
+document.getElementById("tot").textContent=dn+" / "+all+" tétel kész";
+document.getElementById("hd").textContent=hide?"Kész tételek mutatása":"Kész tételek elrejtése";
+}
+document.getElementById("app").addEventListener("change",function(e){
+var id=e.target.getAttribute("data-id");if(!id)return;
+if(e.target.checked)st[id]=1;else delete st[id];
+save();render();
+});
+document.getElementById("hd").onclick=function(){hide=!hide;render()};
+document.getElementById("rs").onclick=function(){st={};save();render()};
+render();
+</script>
+</body>
+</html>
