@@ -1,9 +1,10 @@
 /* E-book könyvtár — Grapes Brand Guide v1.3 réteg.
-   Az ebook-library.css a saját modul betöltésekor, az index.css után kerül
-   a oldalra, ezért a felülírásokhoz duplázott osztályszelektor kell
-   (azonos osztály kétszer = magasabb specificitás, ősfüggés nélkül).
-   Az olvasó tartalomtipográfiájához és a felhasználó olvasási beállításaihoz
-   nem nyúlunk (guide 12. pont). */
+   Az index.css tölti be, az ebook-library.css viszont a saját modul
+   betöltésekor kerül az oldalra, tehát később. Hogy a felülírások ettől
+   függetlenül érvényesüljenek, minden szabály duplázott osztályszelektort
+   (azonos osztály kétszer = magasabb specificitás) vagy html.is-grapes-
+   android-module előtagot használ. Az olvasó tartalomtipográfiájához és a
+   felhasználó olvasási beállításaihoz nem nyúlunk (guide 12. pont). */
 
 /* --- Kártyák: 19px sarok, rövid felső/bal peremfény, nincs körbe neon --- */
 .ebook-library__panel.ebook-library__panel,
@@ -51,26 +52,26 @@
 }
 
 /* --- Szemantikus figyelmeztetés: egy kanonikus érték a hardkódolt borostyánok helyett --- */
-.ebook-library__validation[data-kind='warning'] {
+.ebook-library__validation.ebook-library__validation[data-kind='warning'] {
   border-color: var(--grapes-warning);
 }
 
-.ebook-library__validation[data-kind='warning'] .ebook-library__validation-icon {
+.ebook-library__validation.ebook-library__validation[data-kind='warning'] .ebook-library__validation-icon {
   color: var(--color-text-inverse);
   background: var(--grapes-warning);
 }
 
-.ebook-library__validation[data-stale='true']::after,
-.ebook-library__editor-global-actions #ebook-editor-status[data-kind='warning'] {
+.ebook-library__validation.ebook-library__validation[data-stale='true']::after,
+.ebook-library__editor-global-actions.ebook-library__editor-global-actions #ebook-editor-status[data-kind='warning'] {
   color: var(--grapes-warning);
 }
 
-.ebook-library__validation-messages li[data-kind='warning'] {
+.ebook-library__validation-messages.ebook-library__validation-messages li[data-kind='warning'] {
   border-color: var(--grapes-warning);
 }
 
 /* Hibaikon: a fehér előtér a rózsaszínes hibaszínen nem érte el a kontrasztot */
-.ebook-library__validation[data-kind='error'] .ebook-library__validation-icon {
+.ebook-library__validation.ebook-library__validation[data-kind='error'] .ebook-library__validation-icon {
   color: var(--color-text-inverse);
 }
 
