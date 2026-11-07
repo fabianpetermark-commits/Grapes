@@ -2,6 +2,8 @@
    Sötét felület, 1px halk keret, 19px sarok. Neon kizárólag a keret rövid
    szakaszán: felül egy elhalványuló vonal, balra egy még halványabb, rövid
    függőleges. Nincs külső fényudvar és nincs a belsőt megvilágító glow.
+   A peremvonalak 0px-re vannak igazítva (nem -1px-re), mert az
+   overflow:hidden a padding-boxnál vág, és a -1px-es vonal eltűnne.
    Tokenek: src/styles/tokens.css. */
 
 .grapes-widget,
@@ -20,7 +22,7 @@
 .module-group::before,
 .recent-project::before {
   position: absolute;
-  top: -1px;
+  top: 0;
   left: 17px;
   width: 45%;
   height: 1px;
@@ -35,7 +37,7 @@
 .recent-project::after {
   position: absolute;
   top: 19px;
-  left: -1px;
+  left: 0;
   width: 1px;
   height: 52px;
   pointer-events: none;
@@ -90,7 +92,7 @@ html.is-grapes-android-module #finance-app:not([hidden]) {
 
 .finance .finance__panel::before {
   position: absolute;
-  top: -1px;
+  top: 0;
   left: 17px;
   width: 45%;
   height: 1px;
@@ -103,7 +105,7 @@ html.is-grapes-android-module #finance-app:not([hidden]) {
 .finance .finance__panel::after {
   position: absolute;
   top: 19px;
-  left: -1px;
+  left: 0;
   width: 1px;
   height: 52px;
   pointer-events: none;
@@ -116,7 +118,7 @@ html.is-grapes-android-module #finance-app:not([hidden]) {
    stb.), ezért itt csak a felső peremszakasz kerül a ::after-re. */
 .finance .finance__metric::after {
   position: absolute;
-  top: -1px;
+  top: 0;
   left: 17px;
   width: 45%;
   height: 1px;
