@@ -1,9 +1,8 @@
-# Grapes Stúdió
+# Grapes
 
-Magyar nyelvű, böngészőben futó szerkesztőcsomag két modullal: egy Fabric.js
-és Vite alapú brossúraszerkesztővel, valamint egy Three.js alapú
-parametrikus 3D-szerkesztővel. Nyitáskor egy modulválasztó képernyő jelenik
-meg, ahonnan bármelyik modul elérhető, és onnan is vissza lehet lépni.
+A Grapes egy hosszabb távon több modulból álló személyes és családi alkalmazás-ökoszisztéma koncepciója. Ez a repository jelenleg a Grapes böngészőben futó felületeit és kapcsolódó szerkesztőeszközeit tartalmazza; a teljes mobil- és szolgáltatási ökoszisztéma nem tekinthető automatikusan megvalósítottnak ebben a kódbázisban.
+
+A hosszabb távú termékirányok, köztük a családi Home központ és az új Media streaming koncepció a [`conception/`](./conception/README.md) mappában találhatók. Ezek tervek, nem kész vagy éles funkciók.
 
 Mindkét modul ugyanazt a sötét design systemet használja
 (`src/styles/tokens.css`), és a szerkesztőmotorok dinamikus importtal
