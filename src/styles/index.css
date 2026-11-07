@@ -21,6 +21,10 @@
 @import './screens/qr-studio.css';
 @import './screens/ebook-reader-sync.css';
 
+/* Brand Guide v1.3 widgetkártya: a képernyőstílusok után töltődik, hogy
+   felülírja a .module-group / .recent-project / .login-card megjelenését. */
+@import './components/widget.css';
+
 /* A 3D stúdió (screens/studio.css) és a legacy GrapesJS-motor
    (screens/legacy.css, legacy-grapes.css) stílusait a saját moduljuk
    importálja, így csak akkor kerülnek le a hálóról, ha az adott képernyő
