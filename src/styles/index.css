@@ -25,8 +25,11 @@
    felülírja a .module-group / .recent-project / .login-card megjelenését. */
 @import './components/widget.css';
 
-/* Brand Guide v1.3 képernyőrétegek: a saját képernyőstílus után töltődnek. */
+/* Brand Guide v1.3 képernyőrétegek. A qr-studio-v13 a saját alapja után
+   töltődik. Az ebook-library-v13 szelektorai duplázott osztályt használnak,
+   mert az ebook-library.css később, lazy módon érkezik. */
 @import './screens/qr-studio-v13.css';
+@import './screens/ebook-library-v13.css';
 
 /* A 3D stúdió (screens/studio.css) és a legacy GrapesJS-motor
    (screens/legacy.css, legacy-grapes.css) stílusait a saját moduljuk
