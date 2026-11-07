@@ -1,0 +1,159 @@
+/* Grapes Brand Guide v1.3 — widgetkártya (0.2 és 0.B.7 pont).
+   Sötét felület, 1px halk keret, 19px sarok. Neon kizárólag a keret rövid
+   szakaszán: felül egy elhalványuló vonal, balra egy még halványabb, rövid
+   függőleges. Nincs külső fényudvar és nincs a belsőt megvilágító glow.
+   A peremvonalak 0px-re vannak igazítva (nem -1px-re), mert az
+   overflow:hidden a padding-boxnál vág, és a -1px-es vonal eltűnne.
+   Tokenek: src/styles/tokens.css. */
+
+.grapes-widget,
+.module-group,
+.recent-project {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: var(--grapes-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: none;
+}
+
+.grapes-widget::before,
+.module-group::before,
+.recent-project::before {
+  position: absolute;
+  top: 0;
+  left: 17px;
+  width: 45%;
+  height: 1px;
+  pointer-events: none;
+  content: '';
+  background: linear-gradient(90deg, rgb(59 220 242 / 87%), rgb(59 220 242 / 35%) 53%, transparent);
+  box-shadow: var(--glow-edge);
+}
+
+.grapes-widget::after,
+.module-group::after,
+.recent-project::after {
+  position: absolute;
+  top: 19px;
+  left: 0;
+  width: 1px;
+  height: 52px;
+  pointer-events: none;
+  content: '';
+  background: linear-gradient(180deg, rgb(59 220 242 / 42%), transparent);
+  box-shadow: 0 0 3px rgb(59 220 242 / 20%);
+}
+
+.module-group__heading {
+  background: transparent;
+}
+
+/* Interaktív kártya: halk cián keret hoverre, érintéskor enyhe lenyomás */
+.recent-project:hover:not(:disabled) {
+  background: var(--grapes-raised);
+  border-color: var(--grapes-cyanBorder);
+}
+
+.recent-project:active:not(:disabled) {
+  transform: scale(0.99);
+}
+
+/* Belépő kártya (modal jellegű felület): kiemelt cián keret */
+.login-card {
+  border-color: var(--grapes-cyanBorder);
+  border-radius: var(--radius-card);
+}
+
+/* --- Finance ---------------------------------------------------------
+   A finance-tracker.css a komponensek után töltődik, ezért a felülírásokhoz
+   magasabb specificitás kell (.finance előtag). */
+
+/* Nincs háttérradiális ciánfolt (0.2: tiltott) */
+html body .finance,
+html.is-grapes-android-module #finance-app:not([hidden]) {
+  background: var(--grapes-bg);
+}
+
+.finance .finance__panel,
+.finance .finance__metric {
+  position: relative;
+  background: var(--grapes-surface);
+  border-color: var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: none;
+}
+
+/* A panel mindkét peremszakaszt megkapja */
+.finance .finance__panel {
+  isolation: isolate;
+}
+
+.finance .finance__panel::before {
+  position: absolute;
+  top: 0;
+  left: 17px;
+  width: 45%;
+  height: 1px;
+  pointer-events: none;
+  content: '';
+  background: linear-gradient(90deg, rgb(59 220 242 / 87%), rgb(59 220 242 / 35%) 53%, transparent);
+  box-shadow: var(--glow-edge);
+}
+
+.finance .finance__panel::after {
+  position: absolute;
+  top: 19px;
+  left: 0;
+  width: 1px;
+  height: 52px;
+  pointer-events: none;
+  content: '';
+  background: linear-gradient(180deg, rgb(59 220 242 / 42%), transparent);
+  box-shadow: 0 0 3px rgb(59 220 242 / 20%);
+}
+
+/* A metrikakártya ::before eleme a szemantikus színcsík (bevétel, kiadás
+   stb.), ezért itt csak a felső peremszakasz kerül a ::after-re. */
+.finance .finance__metric::after {
+  position: absolute;
+  top: 0;
+  left: 17px;
+  width: 45%;
+  height: 1px;
+  pointer-events: none;
+  content: '';
+  background: linear-gradient(90deg, rgb(59 220 242 / 87%), rgb(59 220 242 / 35%) 53%, transparent);
+  box-shadow: var(--glow-edge);
+}
+
+/* Android modul: a korábbi 16/18px sarok és mélyebb árnyék helyett v1.3 */
+html.is-grapes-android-module .finance .finance__metric,
+html.is-grapes-android-module .finance .finance__panel {
+  border-radius: var(--radius-card);
+  box-shadow: none;
+}
+
+/* Ikonsor: 23px kapszula (0.A.1) */
+@media (max-width: 820px) {
+  .finance .finance__tabs,
+  html.is-grapes-android-module .finance .finance__tabs {
+    border-radius: var(--radius-rail);
+  }
+}
+
+/* Mobil FAB: sima cián kitöltés, sötét előtér, kontrollált 20px-es fény (0.B.5) */
+html.is-grapes-android-module .finance .finance__mobile-add {
+  min-height: var(--fab-size);
+  color: var(--color-text-inverse);
+  background: var(--grapes-cyan);
+  border-radius: calc(var(--fab-size) / 2);
+  box-shadow: var(--glow-fab);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recent-project:active:not(:disabled) {
+    transform: none;
+  }
+}

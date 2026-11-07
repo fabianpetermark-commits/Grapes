@@ -1,43 +1,79 @@
 /* Design tokenek — ez az EGYETLEN hely, ahol nyers szín- és méretérték
-   szerepelhet. Minden más stílusfájl kizárólag var(--…)-ot használ. */
+   szerepelhet. Minden más stílusfájl kizárólag var(--…)-ot használ.
+
+   Grapes Brand Guide v1.3 (docs/GRAPES_BRAND_GUIDE.md, 2026-11-03):
+   a kanonikus szemantikus tokenek a --grapes-* nevek. A korábbi
+   --color-* nevek változatlanul léteznek, de ezekre képeződnek le,
+   így a meglévő komponensek módosítás nélkül az új arculatot kapják. */
 
 :root {
   color-scheme: dark;
 
+  /* --- v1.3 kanonikus Grapes tokenek (0.B.2) --- */
+  --grapes-bg: #090e14; /* globális nézetháttér */
+  --grapes-surface: #101821; /* kártyák, modulok alapfelülete */
+  --grapes-raised: #17222e; /* kiemelt elemek, gombháttér, ikontartó */
+  --grapes-line: #243343; /* keret, inaktív track, passzív elválasztó */
+  --grapes-cyan: #3bdcf2; /* elsődleges akcentus, aktív interakció */
+  --grapes-cyanSoft: rgb(59 220 242 / 12%); /* halk háttér, jelvény */
+  --grapes-cyanBorder: rgb(59 220 242 / 22%); /* interaktív kártya, modal keret */
+  --grapes-metric-1: #22c55e; /* 1. metrikasorozat, pozitív állapot */
+  --grapes-metric-2: #a3ff12; /* 2. metrikasorozat */
+  --grapes-metric-3: #d946ef; /* 3. metrikasorozat */
+  --grapes-warning: #f59e0b; /* figyelmeztetés, értékelés */
+  --grapes-muted: #94a5b8; /* másodlagos szöveg, inaktív ikon */
+
+  /* v1.2 kiegészítők: szöveg, hiba, ikonsor és Quick Action sáv */
+  --grapes-text: #f2f7fb;
+  --grapes-danger: #ff7083;
+  --grapes-rail-border: #2c4a58;
+  --grapes-rail-icon: #9bb2c0;
+  --grapes-rail-active-bg: #1b3541;
+  --grapes-rail-active-border: #477a88;
+  --grapes-quick-bg: #172d38;
+  --grapes-quick-border: #3b5b68;
+  --grapes-quick-primary-bg: #173843;
+  --grapes-quick-primary-border: #468995;
+
+  /* Kompatibilitási aliasok (a v1.3 szerint azonos szerepre ugyanaz az érték) */
+  --grapes-accent: var(--grapes-cyan);
+  --grapes-accent-soft: var(--grapes-cyanSoft);
+  --grapes-success: var(--grapes-metric-1);
+
   /* --- Felületek, a legmélyebbtől a legkiemeltebbig --- */
-  --color-bg-sunken: #080a0d; /* a vászon mögötti terület */
-  --color-bg-app: #0f1318;
-  --color-bg-surface: #161b22; /* toolbar, panelek */
-  --color-bg-raised: #1d242e; /* menü, modal, űrlapmező */
-  --color-bg-hover: #242c38;
-  --color-bg-active: #2c3644;
+  --color-bg-sunken: #05080c; /* a vászon mögötti terület */
+  --color-bg-app: var(--grapes-bg);
+  --color-bg-surface: var(--grapes-surface); /* toolbar, panelek */
+  --color-bg-raised: var(--grapes-raised); /* menü, modal, űrlapmező */
+  --color-bg-hover: #1e2c3a;
+  --color-bg-active: var(--grapes-rail-active-bg);
 
   /* --- Keretek --- */
-  --color-border: #252d38;
-  --color-border-strong: #364252;
+  --color-border: var(--grapes-line);
+  --color-border-strong: var(--grapes-rail-border);
 
   /* --- Szöveg --- */
-  --color-text: #e3e8ef;
-  --color-text-muted: #98a2b3;
-  --color-text-subtle: #6b7686;
-  --color-text-inverse: #0b0f14;
+  --color-text: var(--grapes-text);
+  --color-text-muted: var(--grapes-muted);
+  --color-text-subtle: #7a8a9b;
+  --color-text-inverse: #090e14; /* sötét szöveg a cián kitöltésen */
   --color-paper: #fff;
 
   /* --- Akcent és státuszok --- */
-  --color-accent: #4c8dfd;
-  --color-accent-hover: #6ba0ff;
-  --color-accent-soft: rgb(76 141 253 / 14%);
-  --color-danger: #f0616d;
-  --color-danger-soft: rgb(240 97 109 / 14%);
-  --color-success: #3ecf8e;
-  --color-warning: #e3a008;
+  --color-accent: var(--grapes-cyan);
+  --color-accent-hover: #6ae8f8;
+  --color-accent-soft: var(--grapes-cyanSoft);
+  --color-danger: var(--grapes-danger);
+  --color-danger-soft: rgb(255 112 131 / 14%);
+  --color-success: var(--grapes-success);
+  --color-warning: var(--grapes-warning);
 
   /* Átfedő rétegek: elsötétítő fátyol és a vászon fölött lebegő,
      áttetsző felület. */
   --color-scrim: rgb(5 7 10 / 72%);
   --color-scrim-soft: rgb(5 7 10 / 60%);
-  --color-bg-floating: rgb(22 27 34 / 92%);
-  --color-accent-glow: rgb(76 141 253 / 8%);
+  --color-bg-floating: rgb(16 24 33 / 92%);
+  --color-accent-glow: rgb(59 220 242 / 8%);
 
   /* --- Térköz: 4px-es rács --- */
   --space-1: 4px;
@@ -50,9 +86,9 @@
   --space-10: 40px;
 
   /* --- Tipográfia --- */
-  --font-ui: system-ui, -apple-system, 'Segoe UI', roboto, 'Helvetica Neue', sans-serif;
+  --font-ui: inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', roboto, 'Helvetica Neue', sans-serif;
   --font-mono: ui-monospace, 'JetBrains Mono', 'Cascadia Code', consolas, monospace;
-  --text-xs: 11px;
+  --text-xs: 12px; /* v1.3: kiegészítő címke legalább 12px */
   --text-sm: 12px;
   --text-md: 13px;
   --text-lg: 15px;
@@ -63,18 +99,28 @@
   --weight-regular: 400;
   --weight-medium: 500;
   --weight-semibold: 600;
+  --weight-bold: 700;
+  --weight-extrabold: 800;
 
   /* --- Sarokkerekítés --- */
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 10px;
   --radius-xl: 14px;
+  --radius-card: 19px; /* widgetkártya (guide: 18–21px) */
+  --radius-rail: 23px; /* felső ikonsor kapszula */
+  --radius-sheet: 24px; /* bottom sheet felső sarka */
   --radius-full: 999px;
 
   /* --- Elevation --- */
   --shadow-1: 0 1px 2px rgb(0 0 0 / 40%);
   --shadow-2: 0 4px 14px rgb(0 0 0 / 45%);
   --shadow-3: 0 18px 44px rgb(0 0 0 / 55%);
+
+  /* --- Glow: kizárólag a guide által engedélyezett helyeken --- */
+  --glow-edge: 0 0 4px rgb(59 220 242 / 22%); /* widget peremszakasz */
+  --glow-active: 0 0 12px rgb(59 220 242 / 30%); /* aktív ikon / ikonkeret */
+  --glow-fab: 0 0 20px rgb(59 220 242 / 35%); /* FAB */
 
   /* --- Mozgás --- */
   --dur-fast: 120ms;
@@ -99,4 +145,7 @@
   --inspector-width: 288px;
   --touch-target: 44px;
   --content-max: 1480px;
+  --fab-size: 58px;
+  --fab-action-size: 46px;
+  --fab-arc-radius: 120px;
 }
