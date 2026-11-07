@@ -7,6 +7,7 @@ Ez a mappa a Grapes hosszabb távú termékirányait, modulötleteit és üzleti
 ## Dokumentumok
 
 - [Grapes Media – otthoni médiaközpont és streaming](./GRAPES_MEDIA.md)
+- [Grapes E-book – PDF-feldolgozás és e-könyv-konvertálás](./GRAPES_EBOOK.md)
 - [Grapes Home – háztartási és családi központ](./GRAPES_HOME.md)
 - [Közös architektúra és modulkapcsolatok](./ARCHITECTURE.md)
 
