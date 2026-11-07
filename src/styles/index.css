@@ -25,6 +25,9 @@
    felülírja a .module-group / .recent-project / .login-card megjelenését. */
 @import './components/widget.css';
 
+/* Brand Guide v1.3 képernyőrétegek: a saját képernyőstílus után töltődnek. */
+@import './screens/qr-studio-v13.css';
+
 /* A 3D stúdió (screens/studio.css) és a legacy GrapesJS-motor
    (screens/legacy.css, legacy-grapes.css) stílusait a saját moduljuk
    importálja, így csak akkor kerülnek le a hálóról, ha az adott képernyő
