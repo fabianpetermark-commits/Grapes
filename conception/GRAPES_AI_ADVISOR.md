@@ -109,6 +109,36 @@ A javaslatoknál vegye figyelembe a mennyiséget, a lejáratot vagy fogyaszthat�
 
 A bevásárlólista módosítása, a készlet csökkentése vagy egy étkezés naplózása előtt a felhasználó kapjon egyértelmű megerősítési lehetőséget. Egy receptajánlás önmagában ne módosítsa automatikusan a készletet vagy az étkezési naplót.
 
+
+### Tanult vásárlási ritmus és vásárlás előtti személyre szabott terv
+
+A motor a korábbi bevásárlások dátumaiból és időpontjaiból felismerheti a felhasználó visszatérő vásárlási ritmusát. Például észlelheti, ha a vásárlások jellemzően keddenként vagy csütörtökönként történnek, és megbecsülheti a következő vásárlás várható időpontját.
+
+Ez ne merev heti emlékeztető legyen, hanem tanult, folyamatosan frissülő becslés:
+- több hét vásárlási előzménye alapján keressen ismétlődő napokat és időablakokat;
+- vegye figyelembe a ritmus változását, kihagyott heteket és rendkívüli vásárlásokat;
+- jelezze a becslés bizonytalanságát, és ne tekintse biztosnak a vásárlás napját;
+- a felhasználó bármikor felülbírálhassa vagy kikapcsolhassa a tanult vásárlási mintát.
+
+Ha a rendszer kellő bizonyossággal előre jelzi a következő vásárlást, előző nap automatikusan készíthessen személyre szabott bevásárlási tervet. Ehhez – kizárólag engedélyezett adatkapcsolatokkal – összegezze:
+- a közelmúlt étkezési naplóit, a makrók és egyéb követett táplálkozási célok alakulását;
+- a visszatérő étkezési mintákat és a következő napokra tervezett ételeket;
+- a Home tényleges, bizonytalan és hamarosan lejáró készletét, valamint a már meglévő bevásárlólistát;
+- a korábbi vásárlások gyakoriságát, termékeit, kiszereléseit és árait;
+- a Finance által elérhető, erre a célra engedélyezett élelmiszer-költéseket és költségkeretet.
+
+Az eredmény ne pusztán egy hiánylista legyen, hanem indokolt, rangsorolt vásárlási javaslat:
+- mely termékek segíthetnek a táplálkozási célok teljesítésében;
+- mely termékeket érdemes újravásárolni a korábbi fogyás és a jelenlegi készlet alapján;
+- milyen olcsóbb vagy táplálkozási szempontból megfelelőbb alternatívák léteznek;
+- mely ételek készíthetők el több, már otthon lévő alapanyag felhasználásával;
+- mennyi lehet a lista várható költsége, és hogyan illeszkedik a korábbi költési mintához vagy a megadott kerethez.
+
+A rendszer mutassa meg, hogy az egyes javaslatokat mely adatok támasztják alá, különítse el a tényeket a becslésektől, és jelezze, ha kevés vagy elavult adatból dolgozik. A termékárak csak friss, ellenőrizhető árforrásból jelenjenek meg aktuális árként; a korábbi vásárlási ár legfeljebb korábbi árként vagy becslési alapként használható.
+
+A bevásárlási terv elkészítése nem adhat le rendelést, nem módosíthatja automatikusan a készletet vagy a naplót. A lista elfogadása és minden további módosítása a felhasználó jóváhagyásával történjen.
+
+
 ## 4. További modulkapcsolatok
 
 ### Food + Finance + Home
