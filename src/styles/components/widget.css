@@ -1,0 +1,71 @@
+/* Grapes Brand Guide v1.3 — widgetkártya (0.2 és 0.B.7 pont).
+   Sötét felület, 1px halk keret, 19px sarok. Neon kizárólag a keret rövid
+   szakaszán: felül egy elhalványuló vonal, balra egy még halványabb, rövid
+   függőleges. Nincs külső fényudvar és nincs a belsőt megvilágító glow.
+   Tokenek: src/styles/tokens.css. */
+
+.grapes-widget,
+.module-group,
+.recent-project {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: var(--grapes-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: none;
+}
+
+.grapes-widget::before,
+.module-group::before,
+.recent-project::before {
+  position: absolute;
+  top: -1px;
+  left: 17px;
+  width: 45%;
+  height: 1px;
+  pointer-events: none;
+  content: '';
+  background: linear-gradient(90deg, rgb(59 220 242 / 87%), rgb(59 220 242 / 35%) 53%, transparent);
+  box-shadow: var(--glow-edge);
+}
+
+.grapes-widget::after,
+.module-group::after,
+.recent-project::after {
+  position: absolute;
+  top: 19px;
+  left: -1px;
+  width: 1px;
+  height: 52px;
+  pointer-events: none;
+  content: '';
+  background: linear-gradient(180deg, rgb(59 220 242 / 42%), transparent);
+  box-shadow: 0 0 3px rgb(59 220 242 / 20%);
+}
+
+.module-group__heading {
+  background: transparent;
+}
+
+/* Interaktív kártya: halk cián keret hoverre, érintéskor enyhe lenyomás */
+.recent-project:hover:not(:disabled) {
+  background: var(--grapes-raised);
+  border-color: var(--grapes-cyanBorder);
+}
+
+.recent-project:active:not(:disabled) {
+  transform: scale(0.99);
+}
+
+/* Belépő kártya (modal jellegű felület): kiemelt cián keret */
+.login-card {
+  border-color: var(--grapes-cyanBorder);
+  border-radius: var(--radius-card);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recent-project:active:not(:disabled) {
+    transform: none;
+  }
+}
