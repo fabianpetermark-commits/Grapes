@@ -11,8 +11,8 @@ Ez a mappa a Grapes hosszabb távú termékirányait, modulötleteit és üzleti
 - [Grapes AI Advisor – modulokon átívelő, személyre szabott tanácsadó](./GRAPES_AI_ADVISOR.md)
 - [Grapes Home – háztartási és családi központ](./GRAPES_HOME.md)
 - [Grapes – különálló alkalmazások és alkalmazásközi kapcsolatok](./GRAPES_MODULAR_ECOSYSTEM.md)
-- [Grapes alkalmazás-ökoszisztéma – különálló alkalmazások és funkcionális határaik](./GRAPES_MODULAR_ECOSYSTEM.md)
 - [Közös architektúra és modulkapcsolatok](./ARCHITECTURE.md)
+- [Grapes Core & Family – közös platform- és jogosultsági architektúra](./GRAPES_CORE_FAMILY_ARCHITECTURE.md)
 
 ## Alapelvek
 
