@@ -9,7 +9,7 @@
 
 ## 1. Vezetői összefoglaló
 
-A Grapes hosszú távú célja egy egységes, több modulból és – ahol termékileg indokolt – több önálló alkalmazásból álló ökoszisztéma. A modulok saját üzleti felelősséggel, adatmodellel és felhasználói folyamattal rendelkeznek, de közös platformképességeket használnak.
+A Grapes elsődleges termékstratégiája egyetlen, egységes Grapes alkalmazás, amelyen belül a funkcionális területek szigorúan elkülönített modulokként működnek. A modulok saját üzleti felelősséggel, adatmodellel és felhasználói folyamattal rendelkeznek, miközben közös platformképességeket használnak. Külön alkalmazás kiadása nem induló cél; csak későbbi, bizonyított termék-, biztonsági vagy üzemeltetési indok alapján vizsgálható.
 
 A javasolt alapmodell:
 
@@ -354,9 +354,11 @@ A jelvény önmagában nem jogosultsági bizonyíték. A tényleges hozzáféré
 
 ### 9.4 Egy alkalmazás vagy több alkalmazás
 
-A felhasználói élmény legyen egységes, de a modulok funkcionálisan elkülönülhetnek. A jelenlegi termékirány szerint a közös Grapes felület és a moduláris belső felépítés előnyös; később egyes termékterületek önálló alkalmazássá válhatnak, ha ezt a használat indokolja.
+A jelenlegi, jóváhagyott termékstratégia szerint a Grapes egyetlen Android-alkalmazásként indul és működik, közös belépéssel, munkamenet-kezeléssel, helyi adattárolási és szinkronizációs infrastruktúrával, valamint egységes navigációval. A funkcionális modulok Gradle multi-module felépítésben, világos API- és domainhatárokkal különülnek el.
 
-Nem cél, hogy minden modulból külön telepíthető app készüljön. Nem cél az sem, hogy egyetlen képernyőre minden funkciót bezsúfoljunk.
+A több különálló alkalmazás kiadása jelenleg nem cél. Csak akkor vizsgálható újra, ha egy modul önálló piaci igényt és üzleti modellt igazol, eltérő célcsoportot szolgál ki, vagy valós biztonsági/üzemeltetési követelmény teszi indokolttá. A moduláris kódstruktúra megkönnyítheti a későbbi leválasztást, de nem garantálja annak automatikus vagy költségmentes megvalósíthatóságát.
+
+Nem cél az sem, hogy egyetlen képernyőre minden funkciót bezsúfoljunk.
 
 ## 10. Biztonság, adatvédelem és audit
 
@@ -519,7 +521,7 @@ Food/LifeHub, Garage, Vault, Finance és más modulok külön integrációs terv
 Ez a specifikáció jelenleg nem írja elő:
 
 - a Family önálló alkalmazásként történő létrehozását;
-- az összes modul külön telepíthető alkalmazássá alakítását;
+- minden modul külön telepíthető alkalmazásként történő kiadását az induló termékstratégiában;
 - mikroszolgáltatások bevezetését;
 - minden domainadat közös táblákba költöztetését;
 - minden rekord kötelező megoszthatóvá tételét;
@@ -558,4 +560,4 @@ A Grapes hosszú távú architekturális iránya:
 - **Egységes Grapes Design System**, közös komponensekkel és visszafogott modulakcentusokkal.
 - **Fokozatos, TEST-first bevezetés**, regresszióvédelemmel és explicit PROD-jóváhagyással.
 
-Ez az irány a későbbi Grapes modulok és alkalmazások közös alapját adhatja anélkül, hogy most előre meg kellene valósítani minden elképzelt funkciót.
+Ez az irány egyetlen, egységes Grapes alkalmazás közös alapját adja anélkül, hogy most előre meg kellene valósítani minden elképzelt funkciót. Az Android-specifikus Gradle multi-module, Jetpack Compose és Type-Safe Navigation szabályokat a [GRAPES_ANDROID_APP_ARCHITECTURE.md](./GRAPES_ANDROID_APP_ARCHITECTURE.md) rögzíti.
