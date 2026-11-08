@@ -13,6 +13,7 @@ Ez a mappa a Grapes hosszabb távú termékirányait, modulötleteit és üzleti
 - [Grapes – különálló alkalmazások és alkalmazásközi kapcsolatok](./GRAPES_MODULAR_ECOSYSTEM.md)
 - [Közös architektúra és modulkapcsolatok](./ARCHITECTURE.md)
 - [Grapes Core & Family – közös platform- és jogosultsági architektúra](./GRAPES_CORE_FAMILY_ARCHITECTURE.md)
+- [Grapes Android – egyetlen alkalmazás és multi-module Compose architektúra](./GRAPES_ANDROID_APP_ARCHITECTURE.md)
 
 ## Alapelvek
 
