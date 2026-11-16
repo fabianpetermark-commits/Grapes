@@ -206,6 +206,8 @@ try {
   await page.locator('[data-fab]').click()
   assert.equal(await page.evaluate(() => window.grapesHandleAndroidBack()), true, 'Az Android rendszer-vissza kezelje az ételfelvétel oldalt.')
   await page.waitForFunction(() => !document.querySelector('[data-food-add-sheet]')?.classList.contains('is-open'))
+  assert.equal(await page.locator('[data-food-detail]').isVisible(), true, 'A panel bezárása után az étkezés részletei maradjanak nyitva.')
+  assert.equal(await page.locator('[data-fab]').isVisible(), true, 'A panel bezárása után a + gomb maradjon elérhető.')
   await page.locator('[data-fab]').click()
   await page.locator('[data-food-search]').fill('rizs')
   await page.getByText(/További találatok/).waitFor()
