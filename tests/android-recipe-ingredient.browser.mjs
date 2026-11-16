@@ -345,7 +345,11 @@ try {
   // Full end-to-end recipe draft import and local image. No remote save
   // occurs until the user explicitly saves the recipe.
   await page.locator('[data-fab]').click()
+  // First Back closes the add-food sheet; the second returns from meal detail
+  // to the overview where the Recipes entry is actually visible.
   await page.evaluate(() => window.grapesHandleAndroidBack())
+  await page.evaluate(() => window.grapesHandleAndroidBack())
+  await page.locator('[data-food-open-recipes]').waitFor({ state: 'visible' })
   await page.locator('[data-food-open-recipes]').click()
   await page.locator('[data-food-recipes-new]').click()
   await page.locator('[data-food-recipe-edit-sheet].is-open').waitFor({state:'visible'})
