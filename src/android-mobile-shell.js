@@ -1745,6 +1745,10 @@ window.grapesHandleAndroidBack = () => {
   if (activePage === 'outdoor' && outdoor.handleBack()) return true
   if (activePage === 'household' && household?.handleBack()) return true
   if (activePage === 'food' && menuReturnPage === 'hub-health') {
+    // An open Food sheet always gets the first Back press. Route-specific
+    // returns (for example after Stats) must never dismiss the meal detail
+    // underneath the sheet.
+    if ($('.bottom-sheet.is-open') && mobileFood?.handleBack()) return true
     // Stats may close its full-screen sheet when the range is changed; the
     // next Back must still return to Health, not strand the user on Food.
     if (menuEntry === 'stats') { showPage('hub-health'); return true }
