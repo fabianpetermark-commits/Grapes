@@ -1,0 +1,106 @@
+name: Android Debug APK
+
+on:
+  push:
+    branches:
+      - codex/android-app
+    paths:
+      - 'android-health-connect-poc/**'
+      - 'src/**'
+      - 'design/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.*'
+  pull_request:
+    branches:
+      - codex/android-app
+    paths:
+      - 'android-health-connect-poc/**'
+      - 'src/**'
+      - 'design/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grapes-android-debug-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-debug-apk:
+    runs-on: ubuntu-latest
+    env:
+      VITE_GOOGLE_CLIENT_ID: 991532871119-mtf4k74hk1ehrm4p05n2e8hhkr582o7v.apps.googleusercontent.com
+      VITE_GOOGLE_APP_ID: 991532871119
+      VITE_GOOGLE_PICKER_API_KEY: ${{ secrets.GOOGLE_PICKER_API_KEY }}
+      VITE_GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
+      VITE_EBOOK_EPUB_WRITE_ENABLED: 'true'
+      VITE_EBOOK_TRANSFER_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
+      VITE_FOOD_BROKER_URL: https://script.google.com/a/*/macros/s/AKfycbxWJ8WQUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/exec
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Android web assets
+        run: npm run build:android-web
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install Android SDK 36
+        run: |
+          SDKMANAGER=$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | sort -V | tail -1)
+          "$SDKMANAGER" "platforms;android-36" "build-tools;35.0.0"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.11.1
+
+      - name: Build debug APK
+        run: gradle --project-dir android-health-connect-poc :app:assembleDebug
+
+      - name: Verify debug APK
+        run: |
+          set -euo pipefail
+          APK="android-health-connect-poc/app/build/outputs/apk/debug/app-debug.apk"
+          TOOLS="$ANDROID_HOME/build-tools/35.0.0"
+          test -s "$APK"
+          info=$("$TOOLS/aapt" dump badging "$APK")
+          package_line=$(printf '%s\n' "$info" | grep -m 1 '^package:')
+          [[ "$package_line" == *"name='hu.grapes.healthconnect'"* ]] \
+            || { echo "ERROR: Unexpected package ID in debug APK"; exit 1; }
+          echo "Package ID verified: hu.grapes.healthconnect"
+          echo "APK size: $(du -sh "$APK" | cut -f1)"
+          "$TOOLS/apksigner" verify --print-certs "$APK" | grep -i "Subject"
+          echo "Debug APK verified OK"
+
+      - name: Collect APK
+        run: |
+          SHORT_SHA="${GITHUB_SHA:0:7}"
+          DEST="grapes-android-debug-${SHORT_SHA}.apk"
+          cp android-health-connect-poc/app/build/outputs/apk/debug/app-debug.apk "$DEST"
+          echo "APK_NAME=$DEST" >> "$GITHUB_ENV"
+
+      - name: Upload debug APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: grapes-android-debug-${{ github.run_id }}
+          path: grapes-android-debug-*.apk
+          if-no-files-found: error
+          retention-days: 30
