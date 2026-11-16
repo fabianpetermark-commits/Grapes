@@ -178,6 +178,10 @@ try {
   await page.locator('[data-food-targets-back]').click()
   await page.screenshot({ path: 'mobile-food-icons.png', fullPage: true })
   await page.locator('[data-food-meals] .meal').first().click()
+  // Wait for the FAB to become visible after openMeal() sets fab.hidden = false.
+  // Using waitFor instead of a bare isVisible assert prevents a timing-dependent
+  // false negative when the DOM update has not yet propagated to the layout engine.
+  await page.locator('[data-fab]').waitFor({ state: 'visible' })
   assert.equal(await page.locator('[data-fab]').isVisible(), true, 'A + gomb az étkezés részletein jelenjen meg.')
   assert.equal(await page.locator('[data-food-detail-add]').isVisible(), false, 'A régi teljes szélességű ételfelvétel gomb eltűnt.')
   assert.notEqual(await page.locator('[data-food-meal-energy]').textContent(), '—', 'A meglévő étkezési bejegyzések összesítője megjelenik.')
