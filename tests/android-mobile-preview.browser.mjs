@@ -178,6 +178,7 @@ try {
   await page.locator('[data-food-targets-back]').click()
   await page.screenshot({ path: 'mobile-food-icons.png', fullPage: true })
   await page.locator('[data-food-meals] .meal').first().click()
+  await page.locator('[data-fab]').waitFor({ state: 'visible' })
   assert.equal(await page.locator('[data-fab]').isVisible(), true, 'A + gomb az étkezés részletein jelenjen meg.')
   assert.equal(await page.locator('[data-food-detail-add]').isVisible(), false, 'A régi teljes szélességű ételfelvétel gomb eltűnt.')
   assert.notEqual(await page.locator('[data-food-meal-energy]').textContent(), '—', 'A meglévő étkezési bejegyzések összesítője megjelenik.')
