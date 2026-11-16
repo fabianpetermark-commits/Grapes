@@ -269,7 +269,26 @@ try {
   page.once('dialog', dialog => dialog.accept())
   await page.locator('[data-food-entries] .food-entry-card', { hasText: 'Mobil tesztétel' }).first().locator('[data-entry-delete]').click()
   assert.equal(await page.locator('[data-food-entries] .food-entry-card').count(), beforeRepeat)
-  await page.evaluate(() => window.grapesHandleAndroidBack())
+  const foodBackState = () => page.evaluate(() => ({
+    foodPageHidden: document.querySelector('[data-page="food"]')?.hidden,
+    overviewHidden: document.querySelector('[data-food-overview]')?.hidden,
+    detailHidden: document.querySelector('[data-food-detail]')?.hidden,
+    recipesHidden: document.querySelector('[data-food-recipes-view]')?.hidden,
+    fabHidden: document.querySelector('[data-fab]')?.hidden,
+    openSheets: [...document.querySelectorAll('.bottom-sheet.is-open')].map(sheet =>
+      sheet.getAttribute('data-food-add-sheet') !== null ? 'add'
+        : sheet.getAttribute('data-food-edit-sheet') !== null ? 'edit'
+          : sheet.className),
+    recipesButtonHidden: document.querySelector('[data-food-open-recipes]')?.hidden,
+  }))
+  console.log(JSON.stringify({ foodBeforeFinalBack: await foodBackState() }))
+  const finalFoodBackHandled = await page.evaluate(() => window.grapesHandleAndroidBack())
+  console.log(JSON.stringify({ finalFoodBackHandled, foodAfterFinalBack: await foodBackState() }))
+  assert.equal(finalFoodBackHandled, true, 'Az Android vissza vigyen ki az étkezés részleteiből.')
+  assert.equal(await page.locator('[data-food-detail]').isVisible(), false,
+    'A végső vissza után az étkezés részletei záródjanak be.')
+  assert.equal(await page.locator('[data-food-overview]').isVisible(), true,
+    'A végső vissza után a Food áttekintő jelenjen meg.')
   await page.locator('[data-food-open-recipes]').click()
   await page.locator('[data-food-recipes-new]').click()
   await page.locator('[data-food-recipe-edit-sheet].is-open').waitFor({ state: 'visible' })
