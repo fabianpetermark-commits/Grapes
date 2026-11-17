@@ -317,7 +317,11 @@ try {
   await page.locator('[data-water-log] button').filter({ hasText: '300 ml' }).evaluate(button => button.click())
   assert.equal((await page.locator('[data-water-total]').textContent()).replace(/\s/g, ''), '250ml', 'A Health-víz törölhető legyen.')
 
-  await page.locator('.appbar [data-nav="more"]').click()
+  // Health-group pages hide the root module rail; return Home via the always-visible brand first.
+  await page.locator('.appbar__home').click()
+  await page.locator('[data-page="home"]').waitFor({ state: 'visible' })
+  await page.locator('[data-main-nav="settings"]').click()
+  await page.locator('[data-page="more"]').waitFor({ state: 'visible' })
   await page.locator('[data-page="more"] [data-nav="sync"]').click()
   const retryChooserPromise = page.waitForEvent('filechooser')
   await page.locator('[data-health-sync]').click()
