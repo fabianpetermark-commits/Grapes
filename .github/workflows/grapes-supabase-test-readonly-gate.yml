@@ -37,6 +37,20 @@ jobs:
           node --test tests/home-supabase-test-readonly.test.js
       - name: Android app web compilation without release or user login
         run: npm run build:android-web
+      - name: Diagnose TEST Supabase DNS and HTTPS reachability (no credentials)
+        shell: bash
+        run: |
+          set -euo pipefail
+          host="${GRAPES_TEST_PROJECT_URL#https://}"
+          host="${host%%/*}"
+          echo "Checking DNS for TEST Supabase host: $host"
+          if ! getent ahosts "$host"; then
+            echo '::error::TEST Supabase hostname did not resolve from this GitHub runner.'
+            exit 1
+          fi
+          echo 'DNS resolution succeeded.'
+          echo 'Checking HTTPS transport without sending API keys or request bodies.'
+          curl -sS --max-time 15 -o /dev/null -w 'HTTPS response status: %{http_code}; remote IP: %{remote_ip}; TLS/connect time: %{time_connect}s\\n' "$GRAPES_TEST_PROJECT_URL"
       - name: Remote TEST anonymous denial / private-schema isolation (READ ONLY RPC)
         shell: bash
         run: |
