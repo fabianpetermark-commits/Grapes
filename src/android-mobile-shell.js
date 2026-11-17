@@ -1745,8 +1745,23 @@ window.grapesHandleAndroidBack = () => {
   if (activePage === 'outdoor' && outdoor.handleBack()) return true
   if (activePage === 'household' && household?.handleBack()) return true
   if (activePage === 'food' && menuReturnPage === 'hub-health') {
-    // Stats may close its full-screen sheet when the range is changed; the
-    // next Back must still return to Health, not strand the user on Food.
+    // An open Food sheet always gets the first Back press. Route-specific
+    // returns (for example after Stats) must never dismiss the meal detail
+    // underneath the sheet.
+    if ($('.bottom-sheet.is-open')) {
+      // Stats is a full-screen destination launched from the Health hub.
+      // One system Back closes that destination and returns to its parent.
+      // Other Food sheets (notably the meal add sheet) close in place so the
+      // meal detail underneath remains available.
+      if (menuEntry === 'stats' && $('[data-food-stats-sheet].is-open')) {
+        mobileFood?.handleBack()
+        showPage('hub-health')
+        return true
+      }
+      if (mobileFood?.handleBack()) return true
+    }
+    // A stats route can also remain active after its sheet was dismissed by
+    // an in-page control; the next Back returns to the Health hub.
     if (menuEntry === 'stats') { showPage('hub-health'); return true }
     if (menuEntry === 'recipes' && !$('[data-food-recipes-view]').hidden && !$('.bottom-sheet.is-open')) { showPage('hub-health'); return true }
     // Food overview reached from Health hub: Back returns to hub-health.

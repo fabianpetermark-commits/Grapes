@@ -2055,7 +2055,10 @@ export function createMobileFoodController({ root = document, fab, addSheet, bac
     if (recipeCatalogActive) { closeRecipeCatalog(); return true }
     if ($('[data-food-recipe-edit-sheet]').classList.contains('is-open')) { dismissRecipeEditor(); return true }
     if (root.querySelector('.bottom-sheet.is-open')) { closeSheets(); return true }
-    if (selectedMeal) { closeMeal(); return true }
+    // The visible detail view is the source of truth for Back navigation.
+    // A stale selectedMeal value must not let the shell leave Food while the
+    // meal detail is still on screen.
+    if (!$('[data-food-detail]').hidden || selectedMeal) { closeMeal(); return true }
     if (selectedRecipeId) { openRecipes(); return true }
     if (!$('[data-food-recipes-view]').hidden) { showOverview(); return true }
     return false

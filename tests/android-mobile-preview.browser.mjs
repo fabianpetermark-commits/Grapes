@@ -178,6 +178,7 @@ try {
   await page.locator('[data-food-targets-back]').click()
   await page.screenshot({ path: 'mobile-food-icons.png', fullPage: true })
   await page.locator('[data-food-meals] .meal').first().click()
+  await page.locator('[data-fab]').waitFor({ state: 'visible' })
   assert.equal(await page.locator('[data-fab]').isVisible(), true, 'A + gomb az étkezés részletein jelenjen meg.')
   assert.equal(await page.locator('[data-food-detail-add]').isVisible(), false, 'A régi teljes szélességű ételfelvétel gomb eltűnt.')
   assert.notEqual(await page.locator('[data-food-meal-energy]').textContent(), '—', 'A meglévő étkezési bejegyzések összesítője megjelenik.')
@@ -203,8 +204,12 @@ try {
   assert.equal(await page.locator('[data-fab]').getAttribute('aria-expanded'), 'false', 'Bezáráskor a × visszafordul + jellé.')
   assert.equal(await page.locator('[data-food-detail]').isVisible(), true, 'A lista a felugró panel mögött marad.')
   await page.locator('[data-fab]').click()
+  await page.locator('[data-food-add-sheet].is-open').waitFor({ state: 'visible' })
   assert.equal(await page.evaluate(() => window.grapesHandleAndroidBack()), true, 'Az Android rendszer-vissza kezelje az ételfelvétel oldalt.')
   await page.waitForFunction(() => !document.querySelector('[data-food-add-sheet]')?.classList.contains('is-open'))
+  await page.locator('[data-fab]').waitFor({ state: 'visible' })
+  assert.equal(await page.locator('[data-food-detail]').isVisible(), true, 'A panel bezárása után az étkezés részletei maradjanak nyitva.')
+  assert.equal(await page.locator('[data-fab]').isVisible(), true, 'A panel bezárása után a + gomb maradjon elérhető.')
   await page.locator('[data-fab]').click()
   await page.locator('[data-food-search]').fill('rizs')
   await page.getByText(/További találatok/).waitFor()
@@ -266,7 +271,30 @@ try {
   page.once('dialog', dialog => dialog.accept())
   await page.locator('[data-food-entries] .food-entry-card', { hasText: 'Mobil tesztétel' }).first().locator('[data-entry-delete]').click()
   assert.equal(await page.locator('[data-food-entries] .food-entry-card').count(), beforeRepeat)
-  await page.evaluate(() => window.grapesHandleAndroidBack())
+  const foodBackState = () => page.evaluate(() => ({
+    foodPageHidden: document.querySelector('[data-page="food"]')?.hidden,
+    overviewHidden: document.querySelector('[data-food-overview]')?.hidden,
+    detailHidden: document.querySelector('[data-food-detail]')?.hidden,
+    recipesHidden: document.querySelector('[data-food-recipes-view]')?.hidden,
+    fabHidden: document.querySelector('[data-fab]')?.hidden,
+    openSheets: [...document.querySelectorAll('.bottom-sheet.is-open')].map(sheet =>
+      sheet.getAttribute('data-food-add-sheet') !== null ? 'add'
+        : sheet.getAttribute('data-food-edit-sheet') !== null ? 'edit'
+          : sheet.className),
+    recipesButtonHidden: document.querySelector('[data-food-open-recipes]')?.hidden,
+  }))
+  console.log(JSON.stringify({ foodBeforeFinalBack: await foodBackState() }))
+  const finalFoodBackHandled = await page.evaluate(() => window.grapesHandleAndroidBack())
+  console.log(JSON.stringify({ finalFoodBackHandled, foodAfterFinalBack: await foodBackState() }))
+  assert.equal(finalFoodBackHandled, true, 'Az Android vissza vigyen ki az étkezés részleteiből.')
+  await page.locator('[data-page="hub-health"]').waitFor({ state: 'visible' })
+  assert.equal(await page.locator('[data-food-detail]').isVisible(), false,
+    'A Health hubra visszatéréskor az étkezés részletei záródjanak be.')
+  // The route was entered from Health Stats; the final Back returns to the
+  // Health hub, so re-enter Food before continuing the recipe editor checks.
+  await page.locator('[data-health-food-open]').click()
+  await page.locator('[data-page="food"]').waitFor({ state: 'visible' })
+  await page.locator('[data-food-overview]').waitFor({ state: 'visible' })
   await page.locator('[data-food-open-recipes]').click()
   await page.locator('[data-food-recipes-new]').click()
   await page.locator('[data-food-recipe-edit-sheet].is-open').waitFor({ state: 'visible' })
@@ -289,7 +317,11 @@ try {
   await page.locator('[data-water-log] button').filter({ hasText: '300 ml' }).evaluate(button => button.click())
   assert.equal((await page.locator('[data-water-total]').textContent()).replace(/\s/g, ''), '250ml', 'A Health-víz törölhető legyen.')
 
-  await page.locator('.appbar [data-nav="more"]').click()
+  // Health-group pages hide the root module rail; return Home via the always-visible brand first.
+  await page.locator('.appbar__home').click()
+  await page.locator('[data-page="home"]').waitFor({ state: 'visible' })
+  await page.locator('[data-main-nav="settings"]').click()
+  await page.locator('[data-page="more"]').waitFor({ state: 'visible' })
   await page.locator('[data-page="more"] [data-nav="sync"]').click()
   const retryChooserPromise = page.waitForEvent('filechooser')
   await page.locator('[data-health-sync]').click()

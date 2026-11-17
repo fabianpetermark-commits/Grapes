@@ -345,8 +345,19 @@ try {
   // Full end-to-end recipe draft import and local image. No remote save
   // occurs until the user explicitly saves the recipe.
   await page.locator('[data-fab]').click()
-  await page.evaluate(() => window.grapesHandleAndroidBack())
-  await page.locator('[data-food-open-recipes]').click()
+  // Back may return either to Food overview or to the Health hub, depending
+  // on the entry route. Stop at the first stable screen with a Recipes action.
+  const foodRecipesEntry = page.locator('[data-food-open-recipes]')
+  const healthRecipesEntry = page.locator('[data-health-nav="recipes"]')
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (await foodRecipesEntry.isVisible() || await healthRecipesEntry.isVisible()) break
+    await page.evaluate(() => window.grapesHandleAndroidBack())
+  }
+  if (await healthRecipesEntry.isVisible()) await healthRecipesEntry.click()
+  else {
+    await foodRecipesEntry.waitFor({ state: 'visible' })
+    await foodRecipesEntry.click()
+  }
   await page.locator('[data-food-recipes-new]').click()
   await page.locator('[data-food-recipe-edit-sheet].is-open').waitFor({state:'visible'})
   assert.equal(await page.locator('[data-food-recipe-tabs] [role="tab"]').count(),5)
