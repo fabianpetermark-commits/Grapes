@@ -87,7 +87,10 @@ jobs:
             || { echo "ERROR: Unexpected package ID in debug APK"; exit 1; }
           echo "Package ID verified: hu.grapes.healthconnect"
           echo "APK size: $(du -sh "$APK" | cut -f1)"
-          "$TOOLS/apksigner" verify --print-certs "$APK" | grep -i "Subject"
+          signature_info=$("$TOOLS/apksigner" verify --print-certs "$APK")
+          printf '%s\n' "$signature_info"
+          grep -Eqi 'Signer #[0-9]+ certificate DN:' <<< "$signature_info" \
+            || { echo "ERROR: APK signature certificate details missing"; exit 1; }
           echo "Debug APK verified OK"
 
       - name: Collect APK
