@@ -295,7 +295,9 @@ try {
   await page.locator('[data-food-recipe-editor-back]').click()
   await page.locator('[data-food-recipes-back]').click()
 
-  await page.locator('[data-water-open]').click()
+  // Recipe Back from a Health entry returns to the Health hub; open Water
+  // through the hub's supported navigation instead of the hidden Food card.
+  await page.locator('[data-health-nav="water"]').click()
   await page.locator('[data-page="water"]').waitFor({ state: 'visible' })
   await page.locator('[data-page="water"] [data-water-add="250"]').click()
   assert.ok(await page.locator('[data-water-log] .water-log__icon svg').count() >= 1, 'A víznapló sorainak SVG ikon kell.')
