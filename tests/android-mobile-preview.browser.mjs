@@ -306,6 +306,8 @@ try {
   await page.locator('[data-water-log] button').filter({ hasText: '300 ml' }).evaluate(button => button.click())
   assert.equal((await page.locator('[data-water-total]').textContent()).replace(/\s/g, ''), '250ml', 'A Health-víz törölhető legyen.')
 
+  await page.locator('.appbar [data-nav="home"]').click()
+  await page.locator('[data-page="home"]').waitFor({ state: 'visible' })
   await page.locator('[data-main-rail] [data-main-nav="settings"]').click()
   await page.locator('[data-page="more"] [data-nav="sync"]').click()
   const retryChooserPromise = page.waitForEvent('filechooser')
