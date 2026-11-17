@@ -123,6 +123,7 @@ try {
   await page.reload()
   await page.waitForFunction(() => document.querySelector('#finance-save-status')?.textContent === 'Kész')
   await page.locator('#finance-restore-last').click()
+  await page.getByRole('button', { name: 'Igen, állítsd vissza' }).click()
   await page.locator('#finance-rows tr').first().waitFor()
   assert.equal(await page.locator('#finance-currency').inputValue(), 'EUR')
   assert.equal(await page.locator('.finance__receipt-link').textContent(), 'szamla.pdf')
@@ -133,9 +134,45 @@ try {
   await page.getByRole('button', { name: /Igen, töröld mind/ }).click()
   await page.locator('#finance-rows tr').waitFor({ state: 'detached' })
   await page.locator('#finance-backup-input').setInputFiles(await download.path())
+  await page.getByRole('button', { name: 'Igen, állítsd vissza' }).click()
   await page.locator('#finance-rows tr').first().waitFor()
   assert.equal(await page.locator('.finance__receipt-link').textContent(), 'szamla.pdf')
-  console.log('✓ Pénzügyi teljes mentés, törlés, helyi és fájlból történő visszaállítás bizonylattal')
+  // Establish a genuinely empty Finance state: deleting transactions alone must not be mistaken for deleting savings.
+  await page.locator('#finance-backup-input').setInputFiles({
+    name: 'ures-mentes-alap.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({
+      grapesFinanceBackup: true,
+      version: 2,
+      exportedAt: new Date().toISOString(),
+      data: { version: 2, currency: 'HUF', transactions: [], people: [], categories: { income: [], expense: [] }, savingsGoals: [], savingsEntries: [], forecastSettings: { historyMonths: 6, futureMonths: 3 } },
+    })),
+  })
+  await page.getByRole('button', { name: 'Igen, állítsd vissza' }).click()
+  await page.waitForFunction(() => document.querySelectorAll('#finance-rows tr').length === 0)
+  assert.equal(await page.locator('#finance-goals').getByText('Még nincs megtakarítási cél.').count(), 1)
+  // Savings-only state is still user data and must require confirmation before replacement.
+  await page.locator('[data-finance-tab="savings"]').click()
+  await page.fill('#finance-goal-name', 'Csak megtakarítás')
+  await page.fill('#finance-goal-amount', '50000')
+  await page.locator('#finance-goal-form button[type="submit"]').click()
+  await page.fill('#finance-saving-amount', '15000')
+  await page.locator('#finance-saving-form button[type="submit"]').click()
+  await page.locator('#finance-backup-input').setInputFiles({
+    name: 'ures-mentes.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({
+      grapesFinanceBackup: true,
+      version: 2,
+      exportedAt: new Date().toISOString(),
+      data: { version: 2, currency: 'HUF', transactions: [], people: [], categories: { income: [], expense: [] }, savingsGoals: [], savingsEntries: [], forecastSettings: { historyMonths: 6, futureMonths: 3 } },
+    })),
+  })
+  await page.getByRole('button', { name: 'Nem, maradjon a jelen' }).waitFor()
+  await page.getByRole('button', { name: 'Nem, maradjon a jelen' }).click()
+  assert.equal(await page.locator('#finance-goals').getByText('Csak megtakarítás').count(), 1)
+  assert.match(await page.locator('#finance-savings-total').textContent(), /15[.\s]?000/)
+  console.log('✓ Mentés/visszaállítás és megerősítés csak megtakarítási adatok esetén is')
   await context.close()
 } finally {
   await browser?.close()
