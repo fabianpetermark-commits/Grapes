@@ -178,6 +178,10 @@ try {
   await page.locator('[data-food-targets-back]').click()
   await page.screenshot({ path: 'mobile-food-icons.png', fullPage: true })
   await page.locator('[data-food-meals] .meal').first().click()
+  // Wait for the FAB to become visible after openMeal() sets fab.hidden = false.
+  // Using waitFor instead of a bare isVisible assert prevents a timing-dependent
+  // false negative when the DOM update has not yet propagated to the layout engine.
+  await page.locator('[data-fab]').waitFor({ state: 'visible' })
   assert.equal(await page.locator('[data-fab]').isVisible(), true, 'A + gomb az étkezés részletein jelenjen meg.')
   assert.equal(await page.locator('[data-food-detail-add]').isVisible(), false, 'A régi teljes szélességű ételfelvétel gomb eltűnt.')
   assert.notEqual(await page.locator('[data-food-meal-energy]').textContent(), '—', 'A meglévő étkezési bejegyzések összesítője megjelenik.')
@@ -269,8 +273,16 @@ try {
   page.once('dialog', dialog => dialog.accept())
   await page.locator('[data-food-entries] .food-entry-card', { hasText: 'Mobil tesztétel' }).first().locator('[data-entry-delete]').click()
   assert.equal(await page.locator('[data-food-entries] .food-entry-card').count(), beforeRepeat)
+  // After the last delete Back returns the user to the Food overview inside
+  // the shell. From there, Recipes are reachable via the Health nav rail —
+  // the same supported route used by openRecipesFromHealth — because
+  // grapesHandleAndroidBack with menuReturnPage='hub-health' navigates to
+  // hub-health, not to the Food overview, so [data-food-open-recipes] on the
+  // Food overview is not reliably visible after a Back from meal detail.
   await page.evaluate(() => window.grapesHandleAndroidBack())
-  await page.locator('[data-food-open-recipes]').click()
+  await page.locator('[data-page="hub-health"]').waitFor({ state: 'visible' })
+  await page.locator('[data-health-nav="recipes"]').click()
+  await page.locator('[data-food-recipes-view]').waitFor({ state: 'visible' })
   await page.locator('[data-food-recipes-new]').click()
   await page.locator('[data-food-recipe-edit-sheet].is-open').waitFor({ state: 'visible' })
   assert.equal(await page.locator('[data-food-recipe-tabs] [role="tab"]').count(),5)
