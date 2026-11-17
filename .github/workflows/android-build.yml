@@ -11,6 +11,9 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - 'vite.config.*'
+      - 'tests/android-mobile-preview.browser.mjs'
+      - 'tests/outdoor-mobile.browser.mjs'
+      - '.github/workflows/android-build.yml'
   pull_request:
     branches:
       - codex/android-app
@@ -21,6 +24,9 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - 'vite.config.*'
+      - 'tests/android-mobile-preview.browser.mjs'
+      - 'tests/outdoor-mobile.browser.mjs'
+      - '.github/workflows/android-build.yml'
   workflow_dispatch:
 
 permissions:
