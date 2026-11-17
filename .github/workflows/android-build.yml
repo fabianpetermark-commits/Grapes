@@ -87,7 +87,7 @@ jobs:
             || { echo "ERROR: Unexpected package ID in debug APK"; exit 1; }
           echo "Package ID verified: hu.grapes.healthconnect"
           echo "APK size: $(du -sh "$APK" | cut -f1)"
-          "$TOOLS/apksigner" verify --print-certs "$APK" | grep -i "Subject"
+          "$TOOLS/apksigner" verify --print-certs "$APK"
           echo "Debug APK verified OK"
 
       - name: Collect APK
