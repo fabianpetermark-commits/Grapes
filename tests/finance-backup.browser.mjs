@@ -149,7 +149,7 @@ try {
     })),
   })
   await page.getByRole('button', { name: 'Igen, állítsd vissza' }).click()
-  await page.locator('#finance-rows tr').waitFor({ state: 'detached' })
+  await page.waitForFunction(() => document.querySelectorAll('#finance-rows tr').length === 0)
   assert.equal(await page.locator('#finance-goals').getByText('Még nincs megtakarítási cél.').count(), 1)
   // Savings-only state is still user data and must require confirmation before replacement.
   await page.locator('[data-finance-tab="savings"]').click()
