@@ -122,6 +122,7 @@ export function showGrapesConfirm({
   cancelLabel = 'Nem, inkább mégse',
   danger = false,
   icon = '🤨',
+  onConfirm,
 } = {}) {
   return new Promise((resolve) => {
     const cancel = dialogButton(cancelLabel)
@@ -139,7 +140,12 @@ export function showGrapesConfirm({
       modal?.close()
     }
     cancel.addEventListener('click', () => finish(false))
-    confirm.addEventListener('click', () => finish(true))
+    confirm.addEventListener('click', () => {
+      // Run gesture-sensitive work (for example, a browser download) before
+      // resolving the Promise and returning control to the awaiting caller.
+      onConfirm?.()
+      finish(true)
+    })
     modal = openModal({ title, content, onClose: () => finish(false) })
   })
 }
