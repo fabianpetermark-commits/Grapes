@@ -204,8 +204,10 @@ try {
   assert.equal(await page.locator('[data-fab]').getAttribute('aria-expanded'), 'false', 'Bezáráskor a × visszafordul + jellé.')
   assert.equal(await page.locator('[data-food-detail]').isVisible(), true, 'A lista a felugró panel mögött marad.')
   await page.locator('[data-fab]').click()
+  await page.locator('[data-food-add-sheet].is-open').waitFor({ state: 'visible' })
   assert.equal(await page.evaluate(() => window.grapesHandleAndroidBack()), true, 'Az Android rendszer-vissza kezelje az ételfelvétel oldalt.')
   await page.waitForFunction(() => !document.querySelector('[data-food-add-sheet]')?.classList.contains('is-open'))
+  await page.locator('[data-fab]').waitFor({ state: 'visible' })
   assert.equal(await page.locator('[data-food-detail]').isVisible(), true, 'A panel bezárása után az étkezés részletei maradjanak nyitva.')
   assert.equal(await page.locator('[data-fab]').isVisible(), true, 'A panel bezárása után a + gomb maradjon elérhető.')
   await page.locator('[data-fab]').click()
@@ -285,10 +287,14 @@ try {
   const finalFoodBackHandled = await page.evaluate(() => window.grapesHandleAndroidBack())
   console.log(JSON.stringify({ finalFoodBackHandled, foodAfterFinalBack: await foodBackState() }))
   assert.equal(finalFoodBackHandled, true, 'Az Android vissza vigyen ki az étkezés részleteiből.')
+  await page.locator('[data-page="hub-health"]').waitFor({ state: 'visible' })
   assert.equal(await page.locator('[data-food-detail]').isVisible(), false,
-    'A végső vissza után az étkezés részletei záródjanak be.')
-  assert.equal(await page.locator('[data-food-overview]').isVisible(), true,
-    'A végső vissza után a Food áttekintő jelenjen meg.')
+    'A Health hubra visszatéréskor az étkezés részletei záródjanak be.')
+  // The route was entered from Health Stats; the final Back returns to the
+  // Health hub, so re-enter Food before continuing the recipe editor checks.
+  await page.locator('[data-health-food-open]').click()
+  await page.locator('[data-page="food"]').waitFor({ state: 'visible' })
+  await page.locator('[data-food-overview]').waitFor({ state: 'visible' })
   await page.locator('[data-food-open-recipes]').click()
   await page.locator('[data-food-recipes-new]').click()
   await page.locator('[data-food-recipe-edit-sheet].is-open').waitFor({ state: 'visible' })
