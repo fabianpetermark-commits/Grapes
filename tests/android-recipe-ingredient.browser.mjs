@@ -297,6 +297,13 @@ try {
   // enormous blank box; the height remains the same for many local records.
   await page.locator('[data-food-recipe-back]').click()
   await page.locator('[data-food-recipes-back]').click()
+  // The Android shell intentionally routes the Recipes root Back action to
+  // the Health hub when Food was opened from Health. Re-enter the Food
+  // overview through its supported Health action before selecting a meal.
+  await page.locator('[data-page="hub-health"]').waitFor({ state: 'visible' })
+  await page.locator('[data-page="hub-health"] [data-health-food-open]').click()
+  await page.locator('[data-page="food"]').waitFor({ state: 'visible' })
+  await page.locator('[data-food-meals] .meal').first().waitFor({ state: 'visible' })
   await page.locator('[data-food-meals] .meal').first().click()
   await page.locator('[data-fab]').click()
   await page.locator('[data-food-add-sheet].is-open').waitFor({ state: 'visible' })
