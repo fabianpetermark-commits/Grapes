@@ -150,7 +150,7 @@ try {
   })
   await page.getByRole('button', { name: 'Igen, állítsd vissza' }).click()
   await page.locator('#finance-rows tr').waitFor({ state: 'detached' })
-  assert.equal(await page.locator('#finance-goals [data-goal-id]').count(), 0)
+  assert.equal(await page.locator('#finance-goals').getByText('Még nincs megtakarítási cél.').count(), 1)
   // Savings-only state is still user data and must require confirmation before replacement.
   await page.locator('[data-finance-tab="savings"]').click()
   await page.fill('#finance-goal-name', 'Csak megtakarítás')
@@ -171,7 +171,7 @@ try {
   await page.getByRole('button', { name: 'Nem, maradjon a jelen' }).waitFor()
   await page.getByRole('button', { name: 'Nem, maradjon a jelen' }).click()
   assert.equal(await page.locator('#finance-goals').getByText('Csak megtakarítás').count(), 1)
-  assert.match(await page.locator('#finance-savings-total').textContent(), /15[.\\s]?000/)
+  assert.match(await page.locator('#finance-savings-total').textContent(), /15[.\s]?000/)
   console.log('✓ Mentés/visszaállítás és megerősítés csak megtakarítási adatok esetén is')
   await context.close()
 } finally {
