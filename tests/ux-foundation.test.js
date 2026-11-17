@@ -45,7 +45,9 @@ test('finance and billing use responsive task-oriented layouts', async () => {
 })
 
 test('finance deletes all transactions only after creating a safety export', async () => {
-  const [markup, source] = await Promise.all([read('index.html'), read('src/finance-tracker.js')])
+  const [markup, source, modal] = await Promise.all([
+    read('index.html'), read('src/finance-tracker.js'), read('src/ui/modal.js'),
+  ])
   assert.match(markup, /id="finance-delete-all"[^>]*btn--danger[^>]*disabled/)
   const begin = source.indexOf("el('#finance-delete-all').addEventListener")
   const end = source.indexOf("el('#finance-currency').addEventListener", begin)
@@ -56,9 +58,9 @@ test('finance deletes all transactions only after creating a safety export', asy
   // Deletion remains strictly AFTER BOTH local snapshots and a second explicit
   // user confirmation; a failed local safety write must prevent deletion.
   const stages = [
-    'if (!await showGrapesConfirm({',
     'const snapshot = serializeProject()',
-    'download(financeBackupToJson(snapshot)',
+    'if (!await showGrapesConfirm({',
+    'onConfirm: () => download(financeBackupToJson(snapshot)',
     'await persistLocal()',
     'await saveSafetySnapshot(DELETE_BACKUP_ID',
     'const confirmed = await showGrapesConfirm({',
@@ -71,6 +73,7 @@ test('finance deletes all transactions only after creating a safety export', asy
     assert.ok(index > previous, `Finance safe-delete ordering broken at ${stage}`)
     previous = index
   }
+  assert.match(modal, /confirm\.addEventListener\('click', \(\) => \{[\s\S]*onConfirm\?\.\(\)[\s\S]*finish\(true\)/)
   assert.match(source, /penzugyi-naplo-teljes-mentes-/)
   assert.match(markup, /id="finance-backup-input"/)
   assert.match(markup, /id="finance-restore-last"/)
