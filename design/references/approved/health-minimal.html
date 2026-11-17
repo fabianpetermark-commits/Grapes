@@ -58,7 +58,7 @@
 <body>
   <svg class="icon-defs" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
     <symbol id="ic-health" viewBox="0 0 24 24"><path d="M20.8 9.2c0 5-8.8 10.3-8.8 10.3S3.2 14.2 3.2 9.2A4.7 4.7 0 0 1 12 6.8a4.7 4.7 0 0 1 8.8 2.4Z"/><path d="M7.5 12h2l1.2-2.5 2.2 5 1.2-2.5h2.4"/></symbol>
-    <symbol id="ic-settings" viewBox="0 0 24 24"><path d="M10 2.5h4l.6 2.4 1.6.9 2.4-.7 2 3.5-1.8 1.7v1.9l1.8 1.7-2 3.5-2.4-.7-1.6.9-.6 2.4h-4l-.6-2.4-1.6-.9-2.4.7-2-3.5 1.8-1.7v-1.9L3.4 8.6l2-3.5 2.4.7 1.6-.9z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="ic-settings" viewBox="0 0 24 24"><path d="M10.4 2.3h3.2l.55 2.05a8 8 0 0 1 1.89.79l1.83-1.06 2.27 2.27-1.06 1.83a8 8 0 0 1 .79 1.89l2.05.55v3.2l-2.05.55a8 8 0 0 1-.79 1.89l1.06 1.83-2.27 2.27-1.83-1.06a8 8 0 0 1-1.89.79l-.55 2.05h-3.2l-.55-2.05a8 8 0 0 1-1.89-.79l-1.83 1.06-2.27-2.27 1.06-1.83a8 8 0 0 1-.79-1.89l-2.05-.55v-3.2l2.05-.55a8 8 0 0 1 .79-1.89L3.86 6.35l2.27-2.27 1.83 1.06a8 8 0 0 1 1.89-.79z"/><circle cx="12" cy="12" r="3"/></symbol>
     <symbol id="ic-book" viewBox="0 0 24 24"><path d="M6 3h12v18H6zM9 7h6M9 11h6M9 15h3"/></symbol>
     <symbol id="ic-drop" viewBox="0 0 24 24"><path d="M12 2s7 7 7 12a7 7 0 1 1-14 0c0-5 7-12 7-12z"/><path d="M9 16a3 3 0 0 0 3 3"/></symbol>
     <symbol id="ic-chart" viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 16v-5M13 16V7M18 16v-9"/></symbol>
@@ -100,9 +100,7 @@
         <main class="scroll-content" id="scroll-content">
           <section class="widget neon-edge" id="widget-food" aria-label="Food – napi összesítő">
             <div class="widget__heading">
-              <div class="heading-icon"><svg class="icon"><use href="#ic-health"/></svg></div>
-              <h3>Food</h3><span class="heading-count">MAI ÖSSZESÍTŐ</span>
-              <button class="text-link" type="button" data-action="stats">Statisztika →</button>
+              <h3>Mai tápanyagok</h3>
             </div>
             <div class="daily-overview">
               <button type="button" class="calorie-ring" id="calorie-ring" data-action="stats" aria-label="Kalória Statisztika megnyitása, minta napi fogyasztás">
@@ -123,19 +121,18 @@
               <button type="button" class="meal-button" data-meal="Uzsonna"><span>Uzsonna</span><b>190 kcal</b></button>
               <button type="button" class="meal-button" data-meal="Vacsora"><span>Vacsora</span><b>290 kcal</b></button>
             </div>
-            <button class="inline-link" type="button" data-action="food">Teljes ételnapló megnyitása →</button>
+            <button class="inline-link" type="button" data-action="food">Ételnapló →</button>
           </section>
           <section class="widget neon-edge" id="widget-water" aria-label="Vízfogyasztás">
             <div class="widget__heading">
-              <div class="heading-icon"><svg class="icon"><use href="#ic-drop"/></svg></div>
-              <h3>Víz</h3><span class="water-total"><strong id="water-total">1 250</strong> / <span id="water-goal">2 200</span> ml</span>
+              <h3>Mai folyadék</h3><span class="water-total"><strong id="water-total">1 250</strong> / <span id="water-goal">2 200</span> ml</span>
             </div>
             <div class="water-controls">
               <div class="track" role="progressbar" aria-label="Napi vízcél teljesülése" aria-valuemin="0" aria-valuemax="2200" aria-valuenow="1250" id="water-track"><i id="water-progress"></i></div>
               <button type="button" class="water-add" id="water-add">＋ 250 ml</button>
             </div>
             <p class="water-desc" id="water-description">Még 950 ml hiányzik a napi célhoz.</p>
-            <button class="inline-link" type="button" data-action="water-log">Víznapló megnyitása →</button>
+            <button class="inline-link" type="button" data-action="water-log">Részletek →</button>
           </section>
           <button class="recipe-card neon-edge" id="widget-recipe" type="button" data-action="recipe" aria-label="Saját receptajánló megnyitása">
             <span class="recipe-art" aria-hidden="true">
@@ -208,29 +205,18 @@
   function addWater(){state.water+=250;render();toast('＋250 ml – csak a mintanézetben, nincs mentés.')}
   $('#water-add').addEventListener('click',addWater);
   $('#settings-open').addEventListener('click',()=>{
-    const opts=[['widget-food','Food összesítő'],['widget-water','Víz widget'],['widget-recipe','Saját receptajánló']];
-    const toggles=opts.map(([id,label])=>`<label class="option-row"><span>${label}</span><input type="checkbox" data-widget="${id}" ${$('#'+id).hidden?'':'checked'}></label>`).join('');
-    openModal('Health beállítások',
-      '<p>A jelenlegi Health modul beállításai alapján készült mintanézet. A változtatások nem mentődnek.</p>'+
-      '<div class="settings-heading">CÉLOK</div>'+
-      `<label class="option-row"><span>Napi kalóriacél (kcal)</span><input type="number" min="1" max="10000" step="50" data-goal="goal" value="${state.goal}"></label>`+
+    openModal('Beállítások',
+      '<div class="settings-heading">NAPI CÉLOK</div>'+
+      `<label class="option-row"><span>Kalóriacél (kcal)</span><input type="number" min="1" max="10000" step="50" data-goal="goal" value="${state.goal}"></label>`+
       `<label class="option-row"><span>Vízcél (ml)</span><input type="number" min="250" max="10000" step="250" data-goal="waterGoal" value="${state.waterGoal}"></label>`+
-      '<div class="settings-heading">MEGJELENÍTÉS</div>'+toggles+
-      '<div class="settings-heading">TOVÁBBI BEÁLLÍTÁSOK</div>'+
-      '<button class="settings-button" type="button" data-extra="Mértékegységek">Mértékegységek · Metrikus / Imperial (terv)</button>'+
-      '<button class="settings-button" type="button" data-extra="Integrációk">Integrációk · Health Connect / Samsung Health / YAZIO</button>'+
-      '<button class="settings-button" type="button" data-extra="Adatok és biztonság">Adatok és biztonság · mentések és importok</button>'+
-      '<p class="modal__sub">A valódi Health modul meglévő adatkezelését ez a HTML nem érinti.</p>');
+      '<div class="settings-heading">ADATKAPCSOLATOK</div>'+
+      '<div class="option-row"><span>Health Connect</span><span class="modal__sub">Demó · nem ellenőrzött</span></div>'+
+      '<div class="option-row"><span>Samsung Health</span><span class="modal__sub">Demó · nem ellenőrzött</span></div>'+
+      '<div class="option-row"><span>YAZIO</span><span class="modal__sub">Demó · nem ellenőrzött</span></div>');
   });
   $('#modal-body').addEventListener('change',event=>{
-    const w=event.target.dataset.widget;
-    if(w){$('#'+w).hidden=!event.target.checked;return}
     const g=event.target.dataset.goal;
     if(g){const value=Number(event.target.value);if(Number.isFinite(value)&&value>0&&value<=10000){state[g]=value;render()}else{event.target.value=state[g]}}
-  });
-  $('#modal-body').addEventListener('click',event=>{
-    const btn=event.target.closest('[data-extra]');
-    if(btn)toast(`${btn.dataset.extra}: külön beállítási képernyő a végleges alkalmazásban.`);
   });
   $$('[data-meal]').forEach(button=>button.addEventListener('click',()=>{
     const name=button.dataset.meal;
