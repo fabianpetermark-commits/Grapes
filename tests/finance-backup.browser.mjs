@@ -108,6 +108,7 @@ try {
   await page.locator('#finance-delete-all').click()
   await page.getByRole('button', { name: 'Igen, készíts mentést' }).click()
   const download = await firstDownload
+  assert.match(download.suggestedFilename(), /^penzugyi-naplo-teljes-mentes-\\d{4}-\\d{2}-\\d{2}-\\d{6}-\\d{3}\\.json$/)
   await page.getByRole('button', { name: /Igen, töröld mind/ }).click()
   const backup = JSON.parse(readFileSync(await download.path(), 'utf8'))
   assert.equal(backup.data.currency, 'EUR')
