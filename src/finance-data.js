@@ -191,11 +191,16 @@ export function financeBackupFromJson(source) {
   const backupList = (value, label) => {
     if (value == null) return []
     if (!Array.isArray(value)) throw new Error(`A biztonsági mentés ${label} listája hibás.`)
+    if (value.length > 100000) throw new Error(`A biztonsági mentés ${label} listája túl sok elemet tartalmaz.`)
     return value
   }
-  const people = backupList(backup.data.people, 'személy').map(normalizePerson)
-  const savingsGoals = backupList(backup.data.savingsGoals, 'megtakarítási cél').map(normalizeSavingsGoal)
-  const savingsEntries = backupList(backup.data.savingsEntries, 'megtakarítási mozgás').map(normalizeSavingsEntry)
+  const rejectDuplicateIds = (items, label) => {
+    if (new Set(items.map((item) => item.id)).size !== items.length) throw new Error(`A biztonsági mentésben ismétlődő ${label}-azonosító van.`)
+    return items
+  }
+  const people = rejectDuplicateIds(backupList(backup.data.people, 'személy').map(normalizePerson), 'személy')
+  const savingsGoals = rejectDuplicateIds(backupList(backup.data.savingsGoals, 'megtakarítási cél').map(normalizeSavingsGoal), 'megtakarítási cél')
+  const savingsEntries = rejectDuplicateIds(backupList(backup.data.savingsEntries, 'megtakarítási mozgás').map(normalizeSavingsEntry), 'megtakarítási mozgás')
   const rawCategories = backup.data.categories
   if (rawCategories != null && (typeof rawCategories !== 'object' || Array.isArray(rawCategories))) throw new Error('A biztonsági mentés kategóriái hibásak.')
   const categories = {
