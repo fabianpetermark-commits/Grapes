@@ -55,9 +55,15 @@ try {
   await page.locator('[data-finance-tab="transaction"]').click()
   await page.locator('#finance-form').waitFor({ state: 'visible' })
   await page.selectOption('#finance-currency', 'EUR')
+  await page.locator('#finance-add-person').click()
+  await page.locator('.grapes-dialog__input').fill('Audit Anna')
+  await page.getByRole('button', { name: 'Személy hozzáadása', exact: true }).click()
+  await page.locator('#finance-add-category').click()
+  await page.locator('.grapes-dialog__input').fill('Audit kategória')
+  await page.getByRole('button', { name: 'Kategória hozzáadása', exact: true }).click()
   await page.fill('#finance-amount', '7000')
   assert.equal(await page.locator('#finance-amount').inputValue(), '7.000')
-  await page.fill('#finance-category', 'Teszt')
+  assert.equal(await page.locator('#finance-category').inputValue(), 'Audit kategória')
   await page.locator('#finance-receipt').setInputFiles({ name: 'szamla.pdf', mimeType: 'application/pdf', buffer: Buffer.from('abc') })
   await page.locator('#finance-receipt-name').getByText('szamla.pdf').waitFor()
   await page.locator('#finance-form button[type="submit"]').click()
@@ -103,6 +109,43 @@ try {
   await page.locator('[data-finance-tab="overview"]').click()
   assert.match(await page.locator('#finance-savings-total').textContent(), /12[.\s]500/)
   assert.match((await page.locator('.finance__bar--savings').last().getAttribute('title')).replace(/[.\s]/g, ''), /12500/)
+
+  // Cancel must preserve the complete existing state before any safety write
+  // or replacement happens.
+  await page.locator('#finance-backup-input').setInputFiles({
+    name: 'ures-mentes-cancel.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({
+      grapesFinanceBackup: true,
+      version: 2,
+      data: { currency: 'HUF', transactions: [], people: [], categories: { income: [], expense: [] }, savingsGoals: [], savingsEntries: [], forecastSettings: { historyMonths: 6, futureMonths: 3 } },
+    })),
+  })
+  await page.getByRole('button', { name: 'Nem, maradjon a jelen' }).click()
+  assert.equal(await page.locator('#finance-currency').inputValue(), 'EUR')
+  assert.equal(await page.locator('#finance-rows tr').count(), 2)
+  assert.match(await page.locator('#finance-rows').textContent(), /Audit kategória/)
+  assert.match(await page.locator('#finance-rows').textContent(), /Audit Anna/)
+  assert.match(await page.locator('#finance-person').textContent(), /Audit Anna/)
+  assert.match(await page.locator('#finance-savings-total').textContent(), /12[.\s]500/)
+  assert.equal(await page.locator('#finance-forecast-history').inputValue(), '12')
+
+  // Validation must finish before confirmation or storage writes. A malformed
+  // categories collection therefore cannot replace the current Finance state.
+  await page.locator('#finance-backup-input').setInputFiles({
+    name: 'hibas-kategoriak.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({
+      grapesFinanceBackup: true,
+      version: 2,
+      data: { currency: 'HUF', transactions: [], categories: { income: {}, expense: [] } },
+    })),
+  })
+  await page.getByText(/bevételi kategória listája hibás/).waitFor()
+  assert.equal(await page.locator('#finance-currency').inputValue(), 'EUR')
+  assert.equal(await page.locator('#finance-rows tr').count(), 2)
+  assert.match(await page.locator('#finance-savings-total').textContent(), /12[.\s]500/)
+  assert.equal(await page.locator('#finance-forecast-history').inputValue(), '12')
 
   const firstDownload = page.waitForEvent('download')
   await page.locator('#finance-delete-all').click()
@@ -156,8 +199,6 @@ try {
   await page.fill('#finance-goal-name', 'Csak megtakarítás')
   await page.fill('#finance-goal-amount', '50000')
   await page.locator('#finance-goal-form button[type="submit"]').click()
-  await page.fill('#finance-saving-amount', '15000')
-  await page.locator('#finance-saving-form button[type="submit"]').click()
   await page.locator('#finance-backup-input').setInputFiles({
     name: 'ures-mentes.json',
     mimeType: 'application/json',
@@ -172,6 +213,33 @@ try {
   await page.getByRole('button', { name: 'Nem, maradjon a jelen' }).click()
   assert.equal(await page.locator('#finance-goals').getByText('Csak megtakarítás').count(), 1)
   assert.match(await page.locator('#finance-goals').textContent(), /50[.\s]?000/)
+  assert.match(await page.locator('#finance-savings-total').textContent(), /0/)
+  // A savings entry without a goal is valid Finance data and must independently
+  // trigger the same confirmation.
+  await page.locator('#finance-backup-input').setInputFiles({
+    name: 'ures-mentes-goal-torles.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({
+      grapesFinanceBackup: true,
+      version: 2,
+      data: { currency: 'HUF', transactions: [], people: [], categories: { income: [], expense: [] }, savingsGoals: [], savingsEntries: [], forecastSettings: { historyMonths: 6, futureMonths: 3 } },
+    })),
+  })
+  await page.getByRole('button', { name: 'Igen, állítsd vissza' }).click()
+  await page.fill('#finance-saving-amount', '15000')
+  await page.locator('#finance-saving-form button[type="submit"]').click()
+  await page.locator('#finance-backup-input').setInputFiles({
+    name: 'ures-mentes-entry.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({
+      grapesFinanceBackup: true,
+      version: 2,
+      data: { currency: 'HUF', transactions: [], people: [], categories: { income: [], expense: [] }, savingsGoals: [], savingsEntries: [], forecastSettings: { historyMonths: 6, futureMonths: 3 } },
+    })),
+  })
+  await page.getByRole('button', { name: 'Nem, maradjon a jelen' }).waitFor()
+  await page.getByRole('button', { name: 'Nem, maradjon a jelen' }).click()
+  assert.equal(await page.locator('#finance-goals').getByText('Még nincs megtakarítási cél.').count(), 1)
   assert.match(await page.locator('#finance-savings-total').textContent(), /15[.\s]?000/)
   console.log('✓ Mentés/visszaállítás és megerősítés csak megtakarítási adatok esetén is')
   await context.close()
