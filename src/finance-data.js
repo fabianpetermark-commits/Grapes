@@ -188,10 +188,20 @@ export function financeBackupFromJson(source) {
   try { transactions = backup.data.transactions.map((item) => normalizeTransaction(item)) }
   catch (error) { throw new Error(`A biztonsági mentés egyik tétele hibás: ${error.message}`) }
   if (new Set(transactions.map((item) => item.id)).size !== transactions.length) throw new Error('A biztonsági mentésben ismétlődő tételazonosító van.')
-  const people = (backup.data.people || []).map(normalizePerson)
-  const savingsGoals = (backup.data.savingsGoals || []).map(normalizeSavingsGoal)
-  const savingsEntries = (backup.data.savingsEntries || []).map(normalizeSavingsEntry)
-  const categories = backup.data.categories || { income: [], expense: [] }
+  const backupList = (value, label) => {
+    if (value == null) return []
+    if (!Array.isArray(value)) throw new Error(`A biztonsági mentés ${label} listája hibás.`)
+    return value
+  }
+  const people = backupList(backup.data.people, 'személy').map(normalizePerson)
+  const savingsGoals = backupList(backup.data.savingsGoals, 'megtakarítási cél').map(normalizeSavingsGoal)
+  const savingsEntries = backupList(backup.data.savingsEntries, 'megtakarítási mozgás').map(normalizeSavingsEntry)
+  const rawCategories = backup.data.categories
+  if (rawCategories != null && (typeof rawCategories !== 'object' || Array.isArray(rawCategories))) throw new Error('A biztonsági mentés kategóriái hibásak.')
+  const categories = {
+    income: backupList(rawCategories?.income, 'bevételi kategória'),
+    expense: backupList(rawCategories?.expense, 'kiadási kategória'),
+  }
   return { version: 2, currency: backup.data.currency, transactions, people, savingsGoals, savingsEntries, categories, forecastSettings: backup.data.forecastSettings || { historyMonths: 6, futureMonths: 3 } }
 }
 

@@ -97,6 +97,39 @@ test('complete finance backup rejects invalid receipts and duplicate ids without
   assert.throws(() => financeBackupFromJson(JSON.stringify(payload)), /nem támogatott/)
 })
 
+test('complete finance backup rejects malformed optional collections before restore', () => {
+  const source = { currency: 'HUF', transactions: [rows[0]] }
+  const payload = JSON.parse(financeBackupToJson(source))
+  for (const [field, value] of [
+    ['people', {}], ['savingsGoals', {}], ['savingsEntries', {}],
+  ]) {
+    payload.data[field] = value
+    assert.throws(() => financeBackupFromJson(JSON.stringify(payload)), /listája hibás/)
+    delete payload.data[field]
+  }
+  payload.data.categories = { income: {}, expense: [] }
+  assert.throws(() => financeBackupFromJson(JSON.stringify(payload)), /kategória/)
+  payload.data.categories = 'hibás'
+  assert.throws(() => financeBackupFromJson(JSON.stringify(payload)), /kategóriái hibásak/)
+  assert.throws(() => financeBackupFromJson(''), /nem érvényes JSON/)
+  assert.throws(() => financeBackupFromJson(JSON.stringify({ grapesFinanceBackup: true, version: 2 })), /nem támogatott/)
+})
+
+test('complete finance backup accepts partial legacy-shaped savings data', () => {
+  const backup = {
+    grapesFinanceBackup: true, version: 1,
+    data: {
+      version: 1, currency: 'HUF', transactions: [],
+      savingsGoals: [{ id: 'goal', name: 'Cél', targetAmount: 1000, startDate: '2026-01-01', targetDate: '2026-12-31' }],
+      savingsEntries: [{ id: 'entry', type: 'deposit', amount: 500, date: '2026-02-01' }],
+    },
+  }
+  const restored = financeBackupFromJson(JSON.stringify(backup))
+  assert.equal(restored.savingsGoals.length, 1)
+  assert.equal(restored.savingsEntries[0].goalId, '')
+  assert.deepEqual(restored.categories, { income: [], expense: [] })
+})
+
 test('formats and parses Hungarian money input', () => {
   assert.equal(formatMoneyInput('7000'), '7.000')
   assert.equal(formatMoneyInput('1234567,89'), '1.234.567,89')
