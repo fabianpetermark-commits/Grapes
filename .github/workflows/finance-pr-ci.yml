@@ -1,0 +1,67 @@
+name: Finance PR CI
+
+on:
+  push:
+    branches:
+      - 'codex/grapes-finance-*'
+      - 'fix/grapes-finance-*'
+    paths:
+      - 'src/finance-*.js'
+      - 'src/**/finance*'
+      - 'tests/finance-*.test.js'
+      - 'tests/finance-*.browser.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/finance-pr-ci.yml'
+  pull_request:
+    paths:
+      - 'src/finance-*.js'
+      - 'src/**/finance*'
+      - 'tests/finance-*.test.js'
+      - 'tests/finance-*.browser.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/finance-pr-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: finance-pr-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  finance-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Chromium
+        run: npx playwright-core install --with-deps chromium
+      - name: Locate Chromium
+        run: |
+          set -euo pipefail
+          browser=$(command -v chromium || command -v chromium-browser || command -v google-chrome)
+          test -n "$browser"
+          echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$browser" >> "$GITHUB_ENV"
+      - name: Full Node regression suite
+        run: npm test
+      - name: Finance backup browser regression
+        run: npm run test:finance:backup
+      - name: Finance import browser regression
+        run: npm run test:finance:import
+      - name: Finance mobile browser regression
+        run: npm run test:finance:mobile
+      - name: Production build
+        run: npm run build
+      - name: Android web build
+        run: npm run build:android-web

@@ -468,7 +468,8 @@ async function saveSafetySnapshot(id, name, data) {
 }
 
 async function restoreFinanceBackup(data) {
-  if (transactions.length && !await showGrapesConfirm({
+  const hasCurrentFinanceData = transactions.length > 0 || savingsGoals.length > 0 || savingsEntries.length > 0
+  if (hasCurrentFinanceData && !await showGrapesConfirm({
     title: 'Időutazás a pénzügyekben?',
     message: 'A visszaállítás lecseréli a jelenlegi tételeket, megtakarításokat és beállításokat. A mostani állapotról előtte készül biztonsági mentés.',
     confirmLabel: 'Igen, állítsd vissza',
