@@ -115,6 +115,26 @@ test('complete finance backup rejects malformed optional collections before rest
   assert.throws(() => financeBackupFromJson(JSON.stringify({ grapesFinanceBackup: true, version: 2 })), /nem támogatott/)
 })
 
+test('complete finance backup rejects duplicate ids in optional collections', () => {
+  const base = { grapesFinanceBackup: true, version: 2, data: { currency: 'HUF', transactions: [] } }
+  const duplicateCases = [
+    ['people', [{ id: 'person-1', name: 'Anna' }, { id: 'person-1', name: 'Béla' }], /ismétlődő személy-azonosító/],
+    ['savingsGoals', [
+      { id: 'goal-1', name: 'Első cél', targetAmount: 1000, startDate: '2026-01-01', targetDate: '2026-12-31' },
+      { id: 'goal-1', name: 'Második cél', targetAmount: 2000, startDate: '2026-01-01', targetDate: '2026-12-31' },
+    ], /ismétlődő megtakarítási cél-azonosító/],
+    ['savingsEntries', [
+      { id: 'entry-1', type: 'deposit', amount: 500, date: '2026-02-01' },
+      { id: 'entry-1', type: 'withdrawal', amount: 100, date: '2026-02-02' },
+    ], /ismétlődő megtakarítási mozgás-azonosító/],
+  ]
+  for (const [field, value, error] of duplicateCases) {
+    const payload = structuredClone(base)
+    payload.data[field] = value
+    assert.throws(() => financeBackupFromJson(JSON.stringify(payload)), error)
+  }
+})
+
 test('complete finance backup accepts partial legacy-shaped savings data', () => {
   const backup = {
     grapesFinanceBackup: true, version: 1,
