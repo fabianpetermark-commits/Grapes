@@ -188,10 +188,25 @@ export function financeBackupFromJson(source) {
   try { transactions = backup.data.transactions.map((item) => normalizeTransaction(item)) }
   catch (error) { throw new Error(`A biztonsági mentés egyik tétele hibás: ${error.message}`) }
   if (new Set(transactions.map((item) => item.id)).size !== transactions.length) throw new Error('A biztonsági mentésben ismétlődő tételazonosító van.')
-  const people = (backup.data.people || []).map(normalizePerson)
-  const savingsGoals = (backup.data.savingsGoals || []).map(normalizeSavingsGoal)
-  const savingsEntries = (backup.data.savingsEntries || []).map(normalizeSavingsEntry)
-  const categories = backup.data.categories || { income: [], expense: [] }
+  const backupList = (value, label) => {
+    if (value == null) return []
+    if (!Array.isArray(value)) throw new Error(`A biztonsági mentés ${label} listája hibás.`)
+    if (value.length > 100000) throw new Error(`A biztonsági mentés ${label} listája túl sok elemet tartalmaz.`)
+    return value
+  }
+  const rejectDuplicateIds = (items, label) => {
+    if (new Set(items.map((item) => item.id)).size !== items.length) throw new Error(`A biztonsági mentésben ismétlődő ${label}-azonosító van.`)
+    return items
+  }
+  const people = rejectDuplicateIds(backupList(backup.data.people, 'személy').map(normalizePerson), 'személy')
+  const savingsGoals = rejectDuplicateIds(backupList(backup.data.savingsGoals, 'megtakarítási cél').map(normalizeSavingsGoal), 'megtakarítási cél')
+  const savingsEntries = rejectDuplicateIds(backupList(backup.data.savingsEntries, 'megtakarítási mozgás').map(normalizeSavingsEntry), 'megtakarítási mozgás')
+  const rawCategories = backup.data.categories
+  if (rawCategories != null && (typeof rawCategories !== 'object' || Array.isArray(rawCategories))) throw new Error('A biztonsági mentés kategóriái hibásak.')
+  const categories = {
+    income: backupList(rawCategories?.income, 'bevételi kategória'),
+    expense: backupList(rawCategories?.expense, 'kiadási kategória'),
+  }
   return { version: 2, currency: backup.data.currency, transactions, people, savingsGoals, savingsEntries, categories, forecastSettings: backup.data.forecastSettings || { historyMonths: 6, futureMonths: 3 } }
 }
 

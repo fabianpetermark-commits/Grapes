@@ -27,7 +27,7 @@ try {
   const page = await ctx.newPage()
   await page.goto(url, {waitUntil:'networkidle'})
   await page.locator('[data-local]').click()
-  await page.locator('.appbar [data-nav="more"]').click()
+  await page.locator('[data-main-rail] [data-main-nav="settings"]').click()
   await page.locator('[data-page="more"]').waitFor({state:'visible'})
   assert.equal((await page.locator('[data-page="more"] h1').textContent()).trim(),
     'Beállítások', 'Approved title, no redundant Továbbiak title')
@@ -62,12 +62,12 @@ try {
     await page.locator('[data-page="sync"]').waitFor({state:'visible'})
     assert.equal(await page.locator('[data-page="sync"] '+target).isVisible(),true,
       'Existing action missing from live Sync page: '+provider)
-    await page.locator('.appbar [data-nav="more"]').click()
+    await page.locator('[data-main-rail] [data-main-nav="settings"]').click()
     await page.locator('[data-page="more"]').waitFor({state:'visible'})
   }
   await page.locator('[data-page="more"] [data-nav="projects"]').click()
   await page.locator('[data-page="projects"]').waitFor({state:'visible'})
-  await page.locator('.appbar [data-nav="more"]').click()
+  await page.locator('[data-main-rail] [data-main-nav="settings"]').click()
   await page.locator('[data-settings-open-home]').click()
   await page.locator('[data-page="household"]').waitFor({state:'visible'})
   // Previous root route to Health + Food remains available.

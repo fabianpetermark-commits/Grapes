@@ -52,7 +52,7 @@ try {
   assert.match(await page.locator('[data-page="home"] [data-main-module-link="health"]').textContent(),/Food.*Receptek.*Statisztika/)
   assert.equal(await page.locator('.bottom-nav, .nav-item').count(), 0, 'Nincs párhuzamos alsó navigáció.')
   assert.equal(await page.locator('.appbar [data-nav="home"]').count(), 1)
-  assert.equal(await page.locator('.appbar [data-nav="more"] svg').count(), 1, 'A jobb felső beállítások ikon legyen SVG fogaskerék.')
+  assert.equal(await page.locator('[data-main-rail] [data-main-nav="settings"] svg').count(), 1, 'A jobb felső beállítások ikon legyen SVG fogaskerék.')
 
   for (const width of [320, 360, 390, 412]) {
     await page.setViewportSize({ width, height: 844 })
@@ -136,12 +136,12 @@ try {
   await page.evaluate(() => window.grapesHandleAndroidBack())
   await page.locator('[data-page="home"]').waitFor({state:'visible'})
 
-  await page.locator('.appbar [data-nav="more"]').click()
+  await page.locator('[data-main-rail] [data-main-nav="settings"]').click()
   await page.locator('[data-page="more"]').waitFor({ state: 'visible' })
   await page.screenshot({ path: 'grapes-menu-settings-preview.png' })
   await page.locator('[data-page="more"] [data-nav="projects"]').click()
   await page.locator('[data-page="projects"]').waitFor({ state: 'visible' })
-  await page.locator('.appbar [data-nav="more"]').click()
+  await page.locator('[data-main-rail] [data-main-nav="settings"]').click()
   await page.locator('[data-page="more"] [data-nav="sync"]').click()
   await page.locator('[data-page="sync"]').waitFor({ state: 'visible' })
   await page.locator('.appbar [data-nav="home"]').click()

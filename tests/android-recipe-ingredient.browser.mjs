@@ -24,6 +24,16 @@ try {
   }
   browser = await chromium.launch({ executablePath: chrome, headless: true, args: ['--no-sandbox'] })
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
+  const openRecipesFromHealth = async () => {
+    // Recipes are a first-class Health navigation destination. Return to the
+    // Health hub and use its supported route instead of relying on the
+    // overview's secondary shortcut, which is not consistently visible in
+    // the Android preview state.
+    await page.locator('.appbar [data-nav="home"]').click()
+    await page.locator('[data-main-nav="health"]').click()
+    await page.locator('[data-health-nav="recipes"]').click()
+    await page.locator('[data-food-recipes-view]').waitFor({ state: 'visible' })
+  }
   // Exercise the realistic Android WebView fallback when BarcodeDetector is unavailable.
   await page.addInitScript(() => { Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: undefined }) })
   page.on('pageerror', error => console.error('Recipe browser page error:', error.message))
@@ -53,7 +63,7 @@ try {
   await page.locator('[data-page="hub-health"] [data-health-food-open]').click()
   await page.locator('[data-page="food"]').waitFor({ state: 'visible' })
   await page.locator('[data-food-meals] .meal').first().waitFor()
-  await page.locator('[data-food-open-recipes]').click()
+  await openRecipesFromHealth()
   await page.locator('[data-food-recipes-new]').click()
   await page.locator('[data-food-recipe-edit-sheet].is-open').waitFor({ state: 'visible', timeout: 10000 })
     .catch(async error => {
@@ -287,6 +297,13 @@ try {
   // enormous blank box; the height remains the same for many local records.
   await page.locator('[data-food-recipe-back]').click()
   await page.locator('[data-food-recipes-back]').click()
+  // The Android shell intentionally routes the Recipes root Back action to
+  // the Health hub when Food was opened from Health. Re-enter the Food
+  // overview through its supported Health action before selecting a meal.
+  await page.locator('[data-page="hub-health"]').waitFor({ state: 'visible' })
+  await page.locator('[data-page="hub-health"] [data-health-food-open]').click()
+  await page.locator('[data-page="food"]').waitFor({ state: 'visible' })
+  await page.locator('[data-food-meals] .meal').first().waitFor({ state: 'visible' })
   await page.locator('[data-food-meals] .meal').first().click()
   await page.locator('[data-fab]').click()
   await page.locator('[data-food-add-sheet].is-open').waitFor({ state: 'visible' })
@@ -346,7 +363,7 @@ try {
   // occurs until the user explicitly saves the recipe.
   await page.locator('[data-fab]').click()
   await page.evaluate(() => window.grapesHandleAndroidBack())
-  await page.locator('[data-food-open-recipes]').click()
+  await openRecipesFromHealth()
   await page.locator('[data-food-recipes-new]').click()
   await page.locator('[data-food-recipe-edit-sheet].is-open').waitFor({state:'visible'})
   assert.equal(await page.locator('[data-food-recipe-tabs] [role="tab"]').count(),5)

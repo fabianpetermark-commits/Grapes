@@ -468,7 +468,8 @@ async function saveSafetySnapshot(id, name, data) {
 }
 
 async function restoreFinanceBackup(data) {
-  if (transactions.length && !await showGrapesConfirm({
+  const hasCurrentFinanceData = transactions.length > 0 || savingsGoals.length > 0 || savingsEntries.length > 0
+  if (hasCurrentFinanceData && !await showGrapesConfirm({
     title: 'Időutazás a pénzügyekben?',
     message: 'A visszaállítás lecseréli a jelenlegi tételeket, megtakarításokat és beállításokat. A mostani állapotról előtte készül biztonsági mentés.',
     confirmLabel: 'Igen, állítsd vissza',
@@ -815,25 +816,22 @@ function bindControls() {
   el('#finance-delete-all').addEventListener('click', async () => {
     if (!transactions.length) return
     const count = transactions.length
+    const snapshot = serializeProject()
+    const filename = `penzugyi-naplo-teljes-mentes-${backupTimestamp()}.json`
+    // The download must start inside the confirmation button's real click
+    // handler. Starting it after awaiting the modal Promise loses the browser's
+    // transient user activation and may be blocked by Chromium/WebView.
     if (!await showGrapesConfirm({
       title: 'Nagy piros gomb következik…',
       message: `Mind a(z) ${count} tétel törlésére készülsz. Előbb készítsek teljes mentést a tételekről és a bizonylatokról? A törlésről utána még egyszer külön megkérdezlek — mert ennyire nem bízom a véletlen kattintásokban.`,
       confirmLabel: 'Igen, készíts mentést',
       cancelLabel: 'Nem, visszavonulok',
       icon: '🚨',
+      onConfirm: () => download(financeBackupToJson(snapshot), 'application/json;charset=utf-8', filename),
     })) return
     const button = el('#finance-delete-all')
     button.disabled = true
     try {
-      const snapshot = serializeProject()
-      const filename = `penzugyi-naplo-teljes-mentes-${backupTimestamp()}.json`
-      // Start the user-requested file download while the confirm button's
-      // transient activation is still available. Awaiting IndexedDB writes
-      // first can cause Chromium/Android WebView to silently block a later
-      // synthetic anchor click. This downloads a snapshot only; it deletes
-      // NOTHING. Deletion still requires BOTH local writes and a second,
-      // explicit confirmation to succeed below.
-      download(financeBackupToJson(snapshot), 'application/json;charset=utf-8', filename)
       clearTimeout(localSaveTimer)
       clearTimeout(driveSaveTimer)
       await persistLocal()
