@@ -1,0 +1,61 @@
+/* QR Stúdió — Grapes Brand Guide v1.3 réteg.
+   A qr-studio.css régi, nem definiált változókra (--surface-1/2, --border,
+   --text, --text-muted) és palack-szürke tartalékokra támaszkodott. Itt a
+   kanonikus Grapes tokenekre képezzük le. A QR-vászon fehér háttere és a
+   színminták funkcionális tartalom, ezekhez nem nyúlunk (guide 12. pont). */
+
+.qr-studio__preview {
+  background: var(--grapes-surface);
+}
+
+.qr-studio__canvas-wrap {
+  box-shadow: var(--shadow-2);
+}
+
+.qr-studio__generation-status,
+.qr-studio__hint,
+.qr-studio__contrast {
+  color: var(--color-text-muted);
+}
+
+.qr-studio__generation-status[data-state='error'] {
+  color: var(--color-danger);
+}
+
+.qr-studio__tabs {
+  background: var(--grapes-surface);
+  border-top-color: var(--color-border);
+}
+
+.qr-studio__tab {
+  color: var(--color-text-muted);
+}
+
+.qr-studio__tab:hover {
+  color: var(--color-text);
+  background: var(--grapes-raised);
+}
+
+.qr-studio__tab[aria-selected='true'] {
+  color: var(--grapes-cyan);
+  background: var(--grapes-raised);
+}
+
+.qr-studio__tab[aria-selected='true']::after {
+  background: var(--grapes-cyan);
+}
+
+.qr-studio__tab:focus-visible {
+  outline: 2px solid var(--grapes-cyan);
+  outline-offset: -2px;
+}
+
+.qr-studio__panel {
+  background: var(--grapes-surface);
+}
+
+.qr-studio__color-card {
+  background: var(--grapes-raised);
+  border-color: var(--color-border);
+  border-radius: var(--radius-card);
+}

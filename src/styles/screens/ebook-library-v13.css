@@ -1,0 +1,102 @@
+/* E-book könyvtár — Grapes Brand Guide v1.3 réteg.
+   Az index.css tölti be, az ebook-library.css viszont a saját modul
+   betöltésekor kerül az oldalra, tehát később. Hogy a felülírások ettől
+   függetlenül érvényesüljenek, minden szabály duplázott osztályszelektort
+   (azonos osztály kétszer = magasabb specificitás) vagy html.is-grapes-
+   android-module előtagot használ. Az olvasó tartalomtipográfiájához és a
+   felhasználó olvasási beállításaihoz nem nyúlunk (guide 12. pont). */
+
+/* --- Kártyák: 19px sarok, rövid felső/bal peremfény, nincs körbe neon --- */
+.ebook-library__panel.ebook-library__panel,
+.ebook-library__hub-card.ebook-library__hub-card {
+  position: relative;
+  isolation: isolate;
+  background: var(--grapes-surface);
+  border-color: var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: none;
+}
+
+.ebook-library__panel::before,
+.ebook-library__hub-card::before {
+  position: absolute;
+  top: 0;
+  left: 17px;
+  z-index: 1;
+  width: 45%;
+  height: 1px;
+  pointer-events: none;
+  content: '';
+  background: linear-gradient(90deg, rgb(59 220 242 / 87%), rgb(59 220 242 / 35%) 53%, transparent);
+  box-shadow: var(--glow-edge);
+}
+
+.ebook-library__panel::after,
+.ebook-library__hub-card::after {
+  position: absolute;
+  top: 19px;
+  left: 0;
+  z-index: 1;
+  width: 1px;
+  height: 52px;
+  pointer-events: none;
+  content: '';
+  background: linear-gradient(180deg, rgb(59 220 242 / 42%), transparent);
+  box-shadow: 0 0 3px rgb(59 220 242 / 20%);
+}
+
+/* Átvitel / párosítás ablak: kiemelt cián keret (0.B.2 cyanBorder) */
+.ebook-library__transfer-card.ebook-library__transfer-card {
+  border-color: var(--grapes-cyanBorder);
+  border-radius: var(--radius-card);
+}
+
+/* --- Szemantikus figyelmeztetés: egy kanonikus érték a hardkódolt borostyánok helyett --- */
+.ebook-library__validation.ebook-library__validation[data-kind='warning'] {
+  border-color: var(--grapes-warning);
+}
+
+.ebook-library__validation.ebook-library__validation[data-kind='warning'] .ebook-library__validation-icon {
+  color: var(--color-text-inverse);
+  background: var(--grapes-warning);
+}
+
+.ebook-library__validation.ebook-library__validation[data-stale='true']::after,
+.ebook-library__editor-global-actions.ebook-library__editor-global-actions #ebook-editor-status[data-kind='warning'] {
+  color: var(--grapes-warning);
+}
+
+.ebook-library__validation-messages.ebook-library__validation-messages li[data-kind='warning'] {
+  border-color: var(--grapes-warning);
+}
+
+/* Hibaikon: a fehér előtér a rózsaszínes hibaszínen nem érte el a kontrasztot */
+.ebook-library__validation.ebook-library__validation[data-kind='error'] .ebook-library__validation-icon {
+  color: var(--color-text-inverse);
+}
+
+/* --- Android modul --- */
+
+/* Nincs háttérradiális ciánfolt (0.2: tiltott) */
+html.is-grapes-android-module #ebook-app:not([hidden]) {
+  background: var(--grapes-bg);
+}
+
+/* A metadata panel itt keret nélküli konténer, ezért kimarad a kártyából */
+html.is-grapes-android-module .ebook-library__panel.ebook-library__panel:not(.ebook-library__metadata) {
+  border-radius: var(--radius-card);
+  box-shadow: none;
+}
+
+html.is-grapes-android-module .ebook-library__metadata::before,
+html.is-grapes-android-module .ebook-library__metadata::after {
+  display: none;
+}
+
+html.is-grapes-android-module .ebook-library__metadata-layout.ebook-library__metadata-layout {
+  border-radius: var(--radius-card);
+}
+
+html.is-grapes-android-module .ebook-library__transfer-card.ebook-library__transfer-card {
+  border-radius: var(--radius-sheet) var(--radius-sheet) var(--radius-card) var(--radius-card);
+}
