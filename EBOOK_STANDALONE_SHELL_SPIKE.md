@@ -112,22 +112,23 @@ The browser smoke test now checks both standalone app and reader landing page wi
 
 ## Current outcome
 
-The standalone E-book shell is implemented on the isolated feature branch and has passed the current CI validation run:
+The standalone E-book shell, reader landing page and deployment-specific broker configuration are implemented on the isolated feature branch. The latest CI validation run passed: [44957894727](https://github.com/fabianpetermark-commits/Grapes/actions/runs/44957894727).
 
 - Full repository unit suite: **passed**.
-- Targeted E-book suite: **passed**.
-- EPUBCheck integration (EPUB 2/3 fixtures and repaired files): **passed**.
-- Standalone E-book browser smoke: **passed**; the page boots with its own storage namespace and does not load the Grapes main app.
+- Targeted E-book suite, including broker/config isolation tests: **passed**.
+- EPUBCheck integration: **passed**.
+- Standalone library and reader landing-page browser smoke: **passed**.
 - EPUB validation browser check: **passed** with 0 errors and 0 warnings.
 - Existing E-book editor/layout browser checks: **passed** at 360, 390, 768, 1024 and 1440 px.
-- Production Vite build with both HTML entry points: **passed**.
+- Existing Grapes production build: **passed**.
+- Dedicated standalone production build: **passed**. CI verifies it emits the standalone library and reader HTML pages only, without the Grapes index or the legacy Grapes reader HTML.
 
-The first build attempt exposed incorrect relative import paths in `src/ebook-reader-sync.js`; these are corrected to reference `src/ebook/platform.js` and `src/ebook/config.js`. The final successful CI run is [44956864427](https://github.com/fabianpetermark-commits/Grapes/actions/runs/44956864427).
+The standalone Vite build uses a root-relative base by default (configurable for a project-page subpath) and does not copy the Grapes `public/` directory. Its configuration reads only the `VITE_EBOOK_STANDALONE_*` variables; it cannot silently inherit the Grapes OAuth/Picker variables. The standalone reader uses a unique token key and redirects only to the configured standalone broker.
 
-The configuration boundary is implemented in `src/ebook/config.js`. The existing Grapes entry keeps its original OAuth environment variables, canonical Pages URLs, Drive folder and storage keys. The standalone entry sets a separate configuration before importing the feature, with its own token/session namespace, view key, library cache, reader-sync database and Drive folder. No secrets or live OAuth tokens were committed.
+The Apps Script broker source now reads its folder, return URL, parent origin and reader URL from Script Properties. With no properties set, the original Grapes defaults are preserved. A separately deployed script can set `EBOOK_STANDALONE_MODE=true` to restrict the GET/POST routes to E-book operations. The README documents the required settings for a new Apps Script project. **The existing production Grapes Apps Script deployment has not been updated.**
 
-The standalone shell is still hosted as an additional entry point inside the Grapes repository. It is not yet a separate repository or separate production deployment. The production Grapes reader HTML and Apps Script broker remain untouched. Standalone reader pairing, QR transfer and broker callbacks remain unavailable until the final standalone origins and a separate broker deployment are configured. Live Google OAuth/Picker acceptance has not yet been performed.
+Live pairing, QR transfer, Drive sharing and real Google OAuth/Picker acceptance have not been performed: they require a final standalone HTTPS origin, a separately created Apps Script project/deployment, and the new deployment URL. No production deployment or user-data migration has been performed.
 
-The draft PR is [#245](https://github.com/fabianpetermark-commits/Grapes/pull/245). It remains open and unmerged. `main` remains at `bdddf33a4a585ca4c82343157cc3238e063c94b2`; the feature branch is 51 commits ahead and 0 behind. No production deployment, data migration or Apps Script deployment was performed.
+The draft PR is [#245](https://github.com/fabianpetermark-commits/Grapes/pull/245). It remains open and unmerged. `main` remains at `bdddf33a4a585ca4c82343157cc3238e063c94b2`; the feature branch is 75 commits ahead and 0 behind. No secrets, live OAuth tokens or clasp credentials were committed.
 
-**Next phase:** isolate `public/ebook-reader.html` and the Apps Script transfer broker for standalone origins; then run mocked and live acceptance for pairing, QR transfer, ReaderSync, and cross-account behavior. After that, perform the full-history migration into the separately named standalone repository, preserving only the approved E-book paths and verifying representative file history before any repository is published.
+**Next phase:** once the standalone HTTPS host and separate Apps Script project exist, set the documented Script Properties and Vite variables, deploy the broker and frontend independently, then run real-device pairing, QR transfer, ReaderSync and cross-account acceptance. Only after that should the approved E-book paths be migrated into a new repository with full Git history; verify representative file histories before publishing it.
