@@ -90,6 +90,15 @@ The standalone build intentionally leaves the transfer broker empty and EPUB fil
 
 `tests/ebook-standalone.test.js` checks the DOM contract, entrypoint separation, adapter initialization order, and that the standalone config does not embed the production broker URL. These checks are included in `npm run test:ebook` and the extraction workflow now includes pull-request triggers.
 
+
+## Reader and broker isolation slice
+
+The standalone reader is built as `ebook-reader-standalone.html` with its own module entry and `ebook-standalone-reader-token-v1` storage key. Its pairing form is disabled until the standalone broker URL is configured. The app config now defaults to this standalone reader URL; the production Grapes reader URL remains the original default in the Grapes config.
+
+The shared Apps Script source reads its deployment-specific folder, return URL, parent origin and reader URL from Script Properties. If these properties are absent, the original Grapes values are used unchanged. A separate script project can enable `EBOOK_STANDALONE_MODE=true`, which blocks non-E-book GET and POST endpoints. The README lists the required properties and instructs deployment into a new Apps Script project; the existing Grapes deployment is not updated.
+
+The browser smoke test now checks both standalone app and reader landing page with no broker configured. The extraction workflow includes reader and Apps Script source changes in its pull-request and push path filters.
+
 ## Acceptance gates before considering the extraction usable
 
 - Existing Grapes E-book screen still boots and all current E-book regression tests pass.
