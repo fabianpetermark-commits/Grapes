@@ -21,7 +21,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test:ebook:standalone:browser": "node tests/ebook-standalone.browser.mjs"
+    "test:ebook:standalone:browser": "node tests/ebook-standalone.browser.mjs",
+    "build:ebook-standalone": "vite build --mode ebook-standalone"
   },
   "devDependencies": {
     "playwright-core": "^1.62.1",
