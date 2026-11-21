@@ -4,6 +4,14 @@ import { defineConfig, searchForWorkspaceRoot } from 'vite'
 
 export default defineConfig({
   base: '/Grapes/',
+  build: {
+    rollupOptions: {
+      input: {
+        main: resolve(process.cwd(), 'index.html'),
+        ebook: resolve(process.cwd(), 'ebook.html'),
+      },
+    },
+  },
   server: {
     fs: {
       // Managed worktrees may share dependencies through a junction. Keep the
