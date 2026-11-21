@@ -91,5 +91,7 @@ jobs:
         run: npm run test:epubcheck:browser
       - name: E-book editor layout browser check
         run: npm run test:ebook:layout
-      - name: Production build
+      - name: Production Grapes build
         run: npm run build
+      - name: Standalone E-book production build
+        run: npm run build:ebook-standalone
