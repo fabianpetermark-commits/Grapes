@@ -103,7 +103,7 @@ The standalone build intentionally leaves the transfer broker empty and EPUB fil
 
 ## Current outcome
 
-The branch now contains the platform adapter, deployment configuration boundary, standalone Google Drive adapter, and a separate E-book entry page. No package dependencies, production Apps Script deployment, user data, or `main` branch content was changed. Full repository tests, browser tests, and production build have not yet been executed in this environment.
+The branch now contains the platform adapter, deployment configuration boundary, standalone Google Drive adapter, and a separate E-book entry page. No package dependencies, production Apps Script deployment, user data, or `main` branch content was changed. The first complete CI attempt reported **106/106 unit tests passing** and the targeted E-book suite passing. It then stopped before browser/build checks because the extraction workflow had not downloaded the EPUBCheck JAR required by the integration test. The workflow has now been corrected to download and export the same EPUBCheck 5.4.0 JAR used by the production Pages workflow; the rerun is pending.
 
 The deployment configuration boundary is now implemented in `src/ebook/config.js`. The Grapes build retains its existing OAuth environment variables, canonical Pages return/reader URLs, Drive folder name, and storage namespaces as defaults. A standalone host can provide `window.__EBOOK_CONFIG__` before loading the E-book module to override those values without changing the Grapes defaults. The reader-sync IndexedDB name and directory-picker identifier are also configurable.
 
