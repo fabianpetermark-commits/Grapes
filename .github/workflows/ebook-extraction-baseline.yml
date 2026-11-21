@@ -94,4 +94,9 @@ jobs:
       - name: Production Grapes build
         run: npm run build
       - name: Standalone E-book production build
-        run: npm run build:ebook-standalone
+        run: |
+          npm run build:ebook-standalone
+          test -f dist/ebook.html
+          test -f dist/ebook-reader-standalone.html
+          test ! -e dist/index.html
+          test ! -e dist/ebook-reader.html
