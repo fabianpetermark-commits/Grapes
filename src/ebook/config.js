@@ -17,6 +17,7 @@ const GRAPES_DEFAULTS = Object.freeze({
   legacyLibraryCacheKey: 'grapes-ebook-library-cache-v1',
   readerSyncDbName: 'grapes-ebook-reader-sync',
   readerDirectoryPickerId: 'grapes-ebook-reader',
+  storageNamespace: 'grapes',
 })
 
 function normalizedHttpUrl(value, name) {
@@ -35,7 +36,7 @@ export function createEbookConfig(overrides = {}, defaults = GRAPES_DEFAULTS) {
     'olvasóoldal',
   )
   config.transferBrokerUrl = config.transferBrokerUrl ? normalizedHttpUrl(config.transferBrokerUrl, 'broker cím') : ''
-  for (const key of ['clientId', 'pickerApiKey', 'pickerAppId', 'booksApiKey', 'folderName', 'readerSharingKey', 'libraryCacheKey', 'legacyLibraryCacheKey', 'readerSyncDbName', 'readerDirectoryPickerId']) {
+  for (const key of ['clientId', 'pickerApiKey', 'pickerAppId', 'booksApiKey', 'folderName', 'readerSharingKey', 'libraryCacheKey', 'legacyLibraryCacheKey', 'readerSyncDbName', 'readerDirectoryPickerId', 'storageNamespace']) {
     if (typeof config[key] !== 'string') throw new TypeError(`Érvénytelen E-book konfiguráció: ${key}`)
   }
   if (typeof config.epubWriteEnabled !== 'boolean') throw new TypeError('Az epubWriteEnabled csak logikai érték lehet.')
