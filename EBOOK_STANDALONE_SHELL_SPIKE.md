@@ -45,6 +45,19 @@ A standalone deployment must not reuse these as implicit defaults. The broker ne
 
 `src/screens.js` lazy-loads `initEbookLibrary()` as the `ebook` screen and handles navigation. The E-book module itself imports `src/screens.js` only in the dirty-editor exit-confirmation path. That dependency should be replaced with an injected navigation callback or a standalone-safe navigation adapter before mounting it in a separate shell.
 
+## First implementation slice completed
+
+The first host-boundary slice is now implemented on this branch:
+
+- Added `src/ebook/platform.js`, a small runtime contract for Drive, account state, confirmation dialogs, and navigation.
+- Added `src/ebook/grapes-platform.js`, which installs the existing Grapes Drive singleton and Grapes confirmation dialog as the host adapter.
+- Updated `src/ebook-library.js` to use the platform contract instead of importing the Drive singleton and modal directly.
+- Updated `src/ebook-reader-sync.js` to use the same platform contract.
+- Updated the Grapes screen loader to install the Grapes adapter before initializing the library.
+- Added `tests/ebook-platform.test.js` for adapter validation and delegation.
+
+The adapter contract test was run independently in the local Node.js runtime: **2 tests passed**. The repository-wide E-book tests, browser tests, and production build have not been run; the local environment could not resolve GitHub to clone the repository. GitHub Actions currently reports no workflow run for this feature branch.
+
 ## Safe first implementation boundary
 
 Do not copy the 2,189-line library module or fork it into a second implementation. Keep one feature implementation and progressively replace singleton dependencies with small contracts:
@@ -70,6 +83,6 @@ The first runnable standalone slice should use the same E-book feature code and 
 
 ## Current outcome
 
-The branch exists and this discovery note is the only change in this spike. No source code, package dependencies, production configuration, Apps Script deployment, user data, or `main` branch content was changed. No tests or build were executed in this environment.
+The branch contains the additive platform-adapter slice and this discovery note. No package dependencies, production configuration, Apps Script deployment, user data, or `main` branch content was changed. No tests or build were executed in this environment.
 
-The next source change should be the smallest adapter extraction (Drive + dialog + navigation/config), with the Grapes screen continuing to use behavior-equivalent adapters. Only after that should a standalone entry point be added.
+The next source change should separate E-book deployment configuration (OAuth client, Picker keys, broker URL, return URL, reader URL, Drive folder and storage-key namespace) from the Grapes defaults. After that, add a standalone entry point with its own host adapter and complete E-book DOM contract.
