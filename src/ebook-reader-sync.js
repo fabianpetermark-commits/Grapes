@@ -1,4 +1,4 @@
-import { grapesDriveRequest, isGrapesDriveConnected } from './storage/grapes-drive.js'
+import { grapesDriveRequest, isGrapesDriveConnected } from './platform.js'
 
 const FOLDER_NAME = 'Grapes E-book Library'
 const DB_NAME = 'grapes-ebook-reader-sync'
