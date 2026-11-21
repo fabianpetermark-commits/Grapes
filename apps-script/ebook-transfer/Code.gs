@@ -17,7 +17,7 @@ const DEFAULT_EBOOK_READER_URL = 'https://fabianpetermark-commits.github.io/Grap
 // A separately deployed standalone broker sets these Script Properties.
 // Missing properties preserve the existing production Grapes deployment.
 function ebookBrokerSetting(name, fallback) {
-  const value = PropertiesService.getScriptProperties().getProperty(name);
+  const value = typeof PropertiesService !== 'undefined' ? PropertiesService.getScriptProperties().getProperty(name) : '';
   return String(value || fallback).trim();
 }
 function ebookFolderName() { return ebookBrokerSetting('EBOOK_FOLDER_NAME', DEFAULT_EBOOK_FOLDER_NAME); }
