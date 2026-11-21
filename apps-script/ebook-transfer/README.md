@@ -75,4 +75,6 @@ Do **not** repoint or overwrite the existing Grapes Apps Script deployment. Crea
 
 Replace the example host with the final HTTPS origin and exact app paths. Deploy as a web app with an access policy intentionally selected for the use case; the broker stores reader pairing codes and tokens in that separate Apps Script project's Script Properties. Standalone mode blocks non-E-book endpoints. Keep the production Grapes deployment and its existing Script Properties untouched.
 
+Build the standalone frontend with `npm run build:ebook-standalone`; this emits only the standalone library and reader pages with a root-relative base by default. The regular `npm run build` remains the Grapes deployment build.
+
 After deploying the new project, set `VITE_EBOOK_STANDALONE_TRANSFER_BROKER_URL` to its web-app `/exec` URL, and set `VITE_EBOOK_STANDALONE_RETURN_URL` and `VITE_EBOOK_STANDALONE_READER_URL` to the exact URLs above. Then rebuild and deploy the standalone frontend. Never put Apps Script owner credentials or clasp JSON in Vite variables.
