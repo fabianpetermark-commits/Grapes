@@ -123,7 +123,7 @@ async function refreshInventory() {
 }
 async function connectReader() {
   if (!supports()) { status('Ez a böngésző nem támogatja az USB-s mappahozzáférést.', 'error'); return }
-  try { const handle = await showDirectoryPicker({ id: 'grapes-ebook-reader', mode: 'readwrite', startIn: 'documents' }); if (await handle.requestPermission({ mode: 'readwrite' }) !== 'granted') throw new Error('Az írási engedély nem lett megadva.'); readerRoot = handle; await saveHandle(handle); if (!await verifyReaderAccess({ announce: true })) throw new Error('A kiválasztott mappa jelenleg nem érhető el.'); await refreshInventory() }
+  try { const handle = await showDirectoryPicker({ id: EBOOK_CONFIG.readerDirectoryPickerId, mode: 'readwrite', startIn: 'documents' }); if (await handle.requestPermission({ mode: 'readwrite' }) !== 'granted') throw new Error('Az írási engedély nem lett megadva.'); readerRoot = handle; await saveHandle(handle); if (!await verifyReaderAccess({ announce: true })) throw new Error('A kiválasztott mappa jelenleg nem érhető el.'); await refreshInventory() }
   catch (error) { if (error?.name !== 'AbortError') status(`Az e-reader csatlakoztatása nem sikerült. ${error.message}`, 'error') }
 }
 async function writeToReader(book, existing = null) {
