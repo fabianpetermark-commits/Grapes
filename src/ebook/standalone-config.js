@@ -5,10 +5,10 @@ const env = import.meta.env || {}
 const appBase = new URL('./', window.location.href).toString()
 
 globalThis.__EBOOK_CONFIG__ = {
-  clientId: env.VITE_EBOOK_STANDALONE_GOOGLE_CLIENT_ID || env.VITE_GOOGLE_CLIENT_ID || '',
-  pickerApiKey: env.VITE_EBOOK_STANDALONE_PICKER_API_KEY || env.VITE_GOOGLE_PICKER_API_KEY || '',
-  pickerAppId: env.VITE_EBOOK_STANDALONE_GOOGLE_APP_ID || env.VITE_GOOGLE_APP_ID || (env.VITE_EBOOK_STANDALONE_GOOGLE_CLIENT_ID || env.VITE_GOOGLE_CLIENT_ID || '').split('-')[0],
-  booksApiKey: env.VITE_EBOOK_STANDALONE_BOOKS_API_KEY || env.VITE_GOOGLE_BOOKS_API_KEY || '',
+  clientId: env.VITE_EBOOK_STANDALONE_GOOGLE_CLIENT_ID || '',
+  pickerApiKey: env.VITE_EBOOK_STANDALONE_PICKER_API_KEY || '',
+  pickerAppId: env.VITE_EBOOK_STANDALONE_GOOGLE_APP_ID || (env.VITE_EBOOK_STANDALONE_GOOGLE_CLIENT_ID || '').split('-')[0],
+  booksApiKey: env.VITE_EBOOK_STANDALONE_BOOKS_API_KEY || '',
   transferBrokerUrl: env.VITE_EBOOK_STANDALONE_TRANSFER_BROKER_URL || '',
   epubWriteEnabled: env.VITE_EBOOK_STANDALONE_EPUB_WRITE_ENABLED === 'true',
   folderName: env.VITE_EBOOK_STANDALONE_DRIVE_FOLDER || 'Standalone E-book Library',
