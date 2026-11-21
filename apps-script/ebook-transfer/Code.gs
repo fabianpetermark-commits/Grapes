@@ -9,27 +9,41 @@ const READER_BOOKS_PREFIX = 'ebook_reader_books_';
 const READER_BOOK_CHUNK_MAX_BYTES = 7000;
 const READER_TOKEN_TTL_MS = 180 * 24 * 60 * 60 * 1000;
 const READER_MARKER_TTL_MS = 10 * 60 * 1000;
-const FOLDER_NAME = 'Grapes E-book Library';
-const ALLOWED_RETURN_URL = 'https://fabianpetermark-commits.github.io/Grapes/';
-const ALLOWED_PARENT_ORIGIN = 'https://fabianpetermark-commits.github.io';
-const READER_RETURN_URL = 'https://fabianpetermark-commits.github.io/Grapes/ebook-reader.html';
+const DEFAULT_EBOOK_FOLDER_NAME = 'Grapes E-book Library';
+const DEFAULT_EBOOK_RETURN_URL = 'https://fabianpetermark-commits.github.io/Grapes/';
+const DEFAULT_EBOOK_PARENT_ORIGIN = 'https://fabianpetermark-commits.github.io';
+const DEFAULT_EBOOK_READER_URL = 'https://fabianpetermark-commits.github.io/Grapes/ebook-reader.html';
+
+// A separately deployed standalone broker sets these Script Properties.
+// Missing properties preserve the existing production Grapes deployment.
+function ebookBrokerSetting(name, fallback) {
+  const value = PropertiesService.getScriptProperties().getProperty(name);
+  return String(value || fallback).trim();
+}
+function ebookFolderName() { return ebookBrokerSetting('EBOOK_FOLDER_NAME', DEFAULT_EBOOK_FOLDER_NAME); }
+function ebookAllowedReturnUrl() { return ebookBrokerSetting('EBOOK_ALLOWED_RETURN_URL', DEFAULT_EBOOK_RETURN_URL); }
+function ebookAllowedParentOrigin() { return ebookBrokerSetting('EBOOK_ALLOWED_PARENT_ORIGIN', DEFAULT_EBOOK_PARENT_ORIGIN); }
+function ebookReaderReturnUrl() { return ebookBrokerSetting('EBOOK_READER_RETURN_URL', DEFAULT_EBOOK_READER_URL); }
+function isStandaloneEbookBroker() { return ebookBrokerSetting('EBOOK_STANDALONE_MODE', 'false').toLowerCase() === 'true'; }
 const ALLOWED_BOOK_EXTENSIONS = ['epub', 'pdf', 'mobi', 'azw', 'azw3', 'prc', 'txt', 'cbz', 'cbr'];
 
 // Compatibility for older open Grapes tabs. The retired provider is never called.
 function doPost(e) {
   const p = (e && e.parameter) || {};
+  if (isStandaloneEbookBroker() && p.action !== 'create-reader-pairing') return HtmlService.createHtmlOutput('Unsupported action');
   if (p.action === 'create-reader-pairing') return pairingOutput(createReaderPairingManifestPage(p), p);
   if (p.action !== 'lookup-isbndb') return HtmlService.createHtmlOutput('Unsupported action');
   const nonce = String(p.nonce || '');
   if (!/^[a-f0-9]{48}$/.test(nonce)) return HtmlService.createHtmlOutput('Invalid request');
   const payload = JSON.stringify({ type: 'grapes-isbndb-result', nonce: nonce, status: 'ok', books: [] });
-  return HtmlService.createHtmlOutput('<!doctype html><html><body><script>window.top.postMessage(' + payload + ',' + JSON.stringify(ALLOWED_PARENT_ORIGIN) + ')</script></body></html>')
+  return HtmlService.createHtmlOutput('<!doctype html><html><body><script>window.top.postMessage(' + payload + ',' + JSON.stringify(ebookAllowedParentOrigin()) + ')</script></body></html>')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 function doGet(e) {
   const action = String((e && e.parameter && e.parameter.action) || '').toLowerCase();
   const p = (e && e.parameter) || {};
+  if (isStandaloneEbookBroker() && !['health', 'create', 'download', 'create-reader-pairing', 'pair-reader', 'reader', 'revoke-reader'].includes(action)) return HtmlService.createHtmlOutput('Unsupported action');
   if (action === 'health') {
     return ContentService
       .createTextOutput(JSON.stringify({ ok: true, version: BROKER_API_VERSION }))
@@ -74,7 +88,7 @@ function fatSecretFoodSearchPage(p) {
 
 function fatSecretBridgePage(payload) {
   const safePayload = JSON.stringify(payload).replace(/</g, '\\u003c');
-  return HtmlService.createHtmlOutput('<!doctype html><html><body><script>window.top.postMessage(' + safePayload + ',' + JSON.stringify(ALLOWED_PARENT_ORIGIN) + ');<\/script></body></html>')
+  return HtmlService.createHtmlOutput('<!doctype html><html><body><script>window.top.postMessage(' + safePayload + ',' + JSON.stringify(ebookAllowedParentOrigin()) + ');<\/script></body></html>')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
@@ -313,7 +327,7 @@ function pairingOutput(output, p) {
 
 function embeddedCodePage(code, label, singleUse, messageType, nonce) {
   const bridge = messageType
-    ? '<script>(function(){var payload=' + JSON.stringify({ type: messageType, code: code, nonce: nonce, expiresInSeconds: Math.round(TTL_MS / 1000) }) + ';var target=' + JSON.stringify(ALLOWED_PARENT_ORIGIN) + ';function send(){window.top.postMessage(payload,target)}[0,250,750,1500,3000,6000].forEach(function(delay){setTimeout(send,delay)})})();</script>'
+    ? '<script>(function(){var payload=' + JSON.stringify({ type: messageType, code: code, nonce: nonce, expiresInSeconds: Math.round(TTL_MS / 1000) }) + ';var target=' + JSON.stringify(ebookAllowedParentOrigin()) + ';function send(){window.top.postMessage(payload,target)}[0,250,750,1500,3000,6000].forEach(function(delay){setTimeout(send,delay)})})();</script>'
     : '';
   return HtmlService.createHtmlOutput('<!doctype html><html lang="hu"><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Párosítási kód</title>' +
     '<style>body{margin:0;padding:24px 12px;background:#fff;color:#111;font:16px Arial,sans-serif;text-align:center;overflow-wrap:anywhere}.code{font-size:36px;font-weight:bold;letter-spacing:.12em;margin:24px 0}</style></head><body>' +
@@ -324,7 +338,7 @@ function readerPairingError(p, title, message) {
   const nonce = String((p && p.nonce) || '').trim().toLowerCase();
   if (p && p.embed === '1' && /^[a-f0-9]{48}$/.test(nonce)) {
     const payload = JSON.stringify({ type: 'grapes-reader-pairing-error', nonce: nonce, message: message });
-    return HtmlService.createHtmlOutput('<!doctype html><html><body><p>' + escapeHtml(message) + '</p><script>(function(){var payload=' + payload + ';var target=' + JSON.stringify(ALLOWED_PARENT_ORIGIN) + ';function send(){window.top.postMessage(payload,target)}[0,300,1000].forEach(function(delay){setTimeout(send,delay)})})();<\/script></body></html>');
+    return HtmlService.createHtmlOutput('<!doctype html><html><body><p>' + escapeHtml(message) + '</p><script>(function(){var payload=' + payload + ';var target=' + JSON.stringify(ebookAllowedParentOrigin()) + ';function send(){window.top.postMessage(payload,target)}[0,300,1000].forEach(function(delay){setTimeout(send,delay)})})();<\/script></body></html>');
   }
   return readerMessagePage(title, message);
 }
@@ -403,7 +417,7 @@ function deleteReaderBookChunks(props, ownerKey, count) {
 function createReaderPairingManifestPage(p) {
   const nonce = String(p.nonce || '').trim().toLowerCase();
   const returnUrl = String(p.returnUrl || '').trim();
-  if (!/^[a-f0-9]{48}$/.test(nonce) || returnUrl !== READER_RETURN_URL) return readerPairingError(p, 'Érvénytelen párosítás', 'A párosítási kérés hibás vagy nem a hivatalos Grapes olvasóoldalról érkezett.');
+  if (!/^[a-f0-9]{48}$/.test(nonce) || returnUrl !== ebookReaderReturnUrl()) return readerPairingError(p, 'Érvénytelen párosítás', 'A párosítási kérés hibás vagy nem a hivatalos Grapes olvasóoldalról érkezett.');
   let books;
   try { books = normalizeReaderBookRows(p.books); }
   catch (err) { return readerPairingError(p, 'Érvénytelen könyvlista', err.message); }
@@ -417,7 +431,7 @@ function createReaderPairingManifestPage(p) {
     cleanupExpiredRecords();
     code = createUniqueCode();
     const chunks = writeReaderBookChunks(props, code, books);
-    props.setProperty(READER_PAIR_PREFIX + code, JSON.stringify({ returnUrl: READER_RETURN_URL, expiresAt: Date.now() + TTL_MS, bookChunks: chunks, omittedCount: omittedCount }));
+    props.setProperty(READER_PAIR_PREFIX + code, JSON.stringify({ returnUrl: ebookReaderReturnUrl(), expiresAt: Date.now() + TTL_MS, bookChunks: chunks, omittedCount: omittedCount }));
   } catch (err) {
     return readerPairingError(p, 'A párosítás nem sikerült', 'A kód létrehozása közben hiba történt. Kérj új kódot.');
   } finally { lock.releaseLock(); }
@@ -428,7 +442,7 @@ function createTransferPage(p) {
   const fileId = String(p.fileId || '').trim();
   const returnUrl = String(p.returnUrl || '').trim();
   if (!fileId || !returnUrl) return HtmlService.createHtmlOutput('<h2>Hiányzó adatok</h2><p>A fileId és returnUrl kötelező.</p>');
-  if (returnUrl !== ALLOWED_RETURN_URL) {
+  if (returnUrl !== ebookAllowedReturnUrl()) {
     return HtmlService.createHtmlOutput('<h2>Érvénytelen visszatérési cím</h2><p>Az átvitel csak a hivatalos Grapes oldalra térhet vissza.</p>');
   }
 
@@ -499,7 +513,7 @@ function createReaderPairingPage(p) {
   const markerId = String(p.markerId || '').trim();
   const nonce = String(p.nonce || '').trim().toLowerCase();
   const returnUrl = String(p.returnUrl || '').trim();
-  if (!markerId || !/^[a-f0-9]{48}$/.test(nonce) || returnUrl !== READER_RETURN_URL) {
+  if (!markerId || !/^[a-f0-9]{48}$/.test(nonce) || returnUrl !== ebookReaderReturnUrl()) {
     return readerMessagePage('Érvénytelen párosítás', 'A párosítási kérés hibás vagy nem a hivatalos Grapes olvasóoldalról érkezett.');
   }
 
@@ -519,7 +533,7 @@ function createReaderPairingPage(p) {
     const parents = marker.getParents();
     while (parents.hasNext()) {
       const folder = parents.next();
-      if (folder.getId() === String(payload.folderId || '') && folder.getName() === FOLDER_NAME) {
+      if (folder.getId() === String(payload.folderId || '') && folder.getName() === ebookFolderName()) {
         verifiedFolder = folder;
         break;
       }
@@ -537,7 +551,7 @@ function createReaderPairingPage(p) {
       code = createUniqueCode();
       PropertiesService.getScriptProperties().setProperty(READER_PAIR_PREFIX + code, JSON.stringify({
         folderId: verifiedFolder.getId(),
-        returnUrl: READER_RETURN_URL,
+        returnUrl: ebookReaderReturnUrl(),
         expiresAt: Date.now() + TTL_MS
       }));
       marker.setTrashed(true);
@@ -547,7 +561,7 @@ function createReaderPairingPage(p) {
     return HtmlService.createHtmlOutput(
       '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>E-olvasó párosítás</title>' +
       '<style>body{font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:28px;text-align:center}.code{font-size:42px;font-weight:bold;letter-spacing:.18em;margin:24px 0}.box{border:1px solid #bbb;padding:22px;border-radius:8px}a{color:#111}</style></head><body>' +
-      '<div class="box"><h1>E-olvasó párosítása</h1><p>Írd be ezt a kódot az e-book olvasón:</p><div class="code">' + code + '</div><p>A kód 20 percig érvényes és egyszer használható.</p><p><a href="' + escapeHtml(READER_RETURN_URL) + '">Könnyített e-olvasó oldal</a></p></div></body></html>'
+      '<div class="box"><h1>E-olvasó párosítása</h1><p>Írd be ezt a kódot az e-book olvasón:</p><div class="code">' + code + '</div><p>A kód 20 percig érvényes és egyszer használható.</p><p><a href="' + escapeHtml(ebookReaderReturnUrl()) + '">Könnyített e-olvasó oldal</a></p></div></body></html>'
     );
   } catch (err) {
     return readerMessagePage('A párosítás nem sikerült', 'A hitelesítő fájl ellenőrzése közben hiba történt.');
@@ -608,7 +622,7 @@ function pairReader(p) {
 }
 
 function readerPairingCompletePage(token) {
-  const landing = READER_RETURN_URL + '?reader-token=' + encodeURIComponent(token);
+  const landing = ebookReaderReturnUrl() + '?reader-token=' + encodeURIComponent(token);
   return HtmlService.createHtmlOutput(
     '<!doctype html><html><head><meta http-equiv="refresh" content="1;url=' + escapeHtml(landing) + '"><meta name="viewport" content="width=device-width,initial-scale=1">' +
     '<title>Párosítás kész</title>' +
@@ -673,7 +687,7 @@ function readerLibraryPage(p) {
   if (!items) items = '<li class="empty">Még nincs e-olvasóra megosztott könyv.</li>';
 
   const refreshUrl = base + '?action=reader&token=' + encodeURIComponent(token);
-  const savedReaderUrl = READER_RETURN_URL + '?reader-token=' + encodeURIComponent(token);
+  const savedReaderUrl = ebookReaderReturnUrl() + '?reader-token=' + encodeURIComponent(token);
   const revokeUrl = base + '?action=revoke-reader&token=' + encodeURIComponent(token);
   return HtmlService.createHtmlOutput(
     '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Grapes E-book Könyvtár</title>' +
@@ -697,7 +711,7 @@ function getReaderLibraryFolders(primaryFolder) {
   add(primaryFolder);
 
   try {
-    const matches = DriveApp.getFoldersByName(FOLDER_NAME);
+    const matches = DriveApp.getFoldersByName(ebookFolderName());
     while (matches.hasNext()) add(matches.next());
   } catch (err) {
     // A hitelesített elsődleges mappával akkor is tovább tudunk menni.
@@ -775,17 +789,17 @@ function revokeReaderPage(p) {
     if (raw) try { deleteReaderBookChunks(props, token, JSON.parse(raw).bookChunks); } catch (err) {}
     props.deleteProperty(READER_TOKEN_PREFIX + token);
   }
-  const landing = READER_RETURN_URL + '?forget=1';
+  const landing = ebookReaderReturnUrl() + '?forget=1';
   return HtmlService.createHtmlOutput('<!doctype html><html><head><meta http-equiv="refresh" content="0;url=' + escapeHtml(landing) + '"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Leválasztva</title></head><body><p>Az e-olvasó leválasztva.</p><p><a href="' + escapeHtml(landing) + '">Vissza az olvasóoldalra</a></p></body></html>');
 }
 
 function readerExpiredPage(title, message) {
-  const landing = READER_RETURN_URL + '?forget=1';
+  const landing = ebookReaderReturnUrl() + '?forget=1';
   return HtmlService.createHtmlOutput('<!doctype html><html><head><meta http-equiv="refresh" content="1;url=' + escapeHtml(landing) + '"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + escapeHtml(title || 'A párosítás lejárt') + '</title><style>body{font-family:Arial,sans-serif;max-width:620px;margin:0 auto;padding:28px;text-align:center}a{color:#111}</style></head><body><h1>' + escapeHtml(title || 'A párosítás lejárt') + '</h1><p>' + escapeHtml(message || 'Nyisd meg az e-olvasó oldalt és párosítsd újra az eszközt.') + '</p><p>Az újrapárosító oldal megnyílik…</p><p><a href="' + escapeHtml(landing) + '">Újrapárosítás most</a></p></body></html>');
 }
 
 function readerMessagePage(title, message, link) {
-  const href = link || READER_RETURN_URL;
+  const href = link || ebookReaderReturnUrl();
   return HtmlService.createHtmlOutput('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + escapeHtml(title) + '</title><style>body{font-family:Arial,sans-serif;max-width:620px;margin:0 auto;padding:28px;text-align:center}a{color:#111}</style></head><body><h1>' + escapeHtml(title) + '</h1><p>' + escapeHtml(message) + '</p><p><a href="' + escapeHtml(href) + '">E-olvasó oldal</a></p></body></html>');
 }
 
