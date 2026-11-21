@@ -70,6 +70,26 @@ Do not copy the 2,189-line library module or fork it into a second implementatio
 
 The first runnable standalone slice should use the same E-book feature code and complete DOM contract, but boot from a separate HTML/JS entry point. Keep the existing Grapes entry point wired to the existing adapters. Do not change the production Apps Script allowlist until the standalone deployment origin is known.
 
+
+## Standalone shell slice
+
+An independent `ebook.html` entry page and `src/ebook-standalone.js` boot sequence are now present. The page reuses the complete E-book DOM contract but does not load `src/main.js`, `src/screens.js`, or the Grapes login/navigation shell. It installs `createStandaloneEbookPlatform()` before initializing the shared E-book feature. Its Google Drive token/session namespace, view state, library cache, reader-sync database, and Drive folder are separate from the Grapes defaults.
+
+`vite.config.js` now builds both `index.html` and `ebook.html`. The standalone configuration reads these build-time variables (no secret values are committed):
+
+- `VITE_EBOOK_STANDALONE_GOOGLE_CLIENT_ID`
+- `VITE_EBOOK_STANDALONE_PICKER_API_KEY`
+- `VITE_EBOOK_STANDALONE_GOOGLE_APP_ID`
+- `VITE_EBOOK_STANDALONE_BOOKS_API_KEY`
+- `VITE_EBOOK_STANDALONE_TRANSFER_BROKER_URL`
+- `VITE_EBOOK_STANDALONE_RETURN_URL` and `VITE_EBOOK_STANDALONE_READER_URL`
+- `VITE_EBOOK_STANDALONE_DRIVE_FOLDER`
+- `VITE_EBOOK_STANDALONE_EPUB_WRITE_ENABLED`
+
+The standalone build intentionally leaves the transfer broker empty and EPUB file writing disabled unless explicitly configured. The standalone reader link is shown as unavailable until its own reader/broker deployment is configured. The production Grapes reader page and Apps Script broker have not been changed.
+
+`tests/ebook-standalone.test.js` checks the DOM contract, entrypoint separation, adapter initialization order, and that the standalone config does not embed the production broker URL. These checks are included in `npm run test:ebook` and the extraction workflow now includes pull-request triggers.
+
 ## Acceptance gates before considering the extraction usable
 
 - Existing Grapes E-book screen still boots and all current E-book regression tests pass.
@@ -83,7 +103,7 @@ The first runnable standalone slice should use the same E-book feature code and 
 
 ## Current outcome
 
-The branch contains the additive platform-adapter slice and this discovery note. No package dependencies, production configuration, Apps Script deployment, user data, or `main` branch content was changed. No tests or build were executed in this environment.
+The branch now contains the platform adapter, deployment configuration boundary, standalone Google Drive adapter, and a separate E-book entry page. No package dependencies, production Apps Script deployment, user data, or `main` branch content was changed. Full repository tests, browser tests, and production build have not yet been executed in this environment.
 
 The deployment configuration boundary is now implemented in `src/ebook/config.js`. The Grapes build retains its existing OAuth environment variables, canonical Pages return/reader URLs, Drive folder name, and storage namespaces as defaults. A standalone host can provide `window.__EBOOK_CONFIG__` before loading the E-book module to override those values without changing the Grapes defaults. The reader-sync IndexedDB name and directory-picker identifier are also configurable.
 
