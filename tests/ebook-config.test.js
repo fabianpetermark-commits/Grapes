@@ -41,6 +41,7 @@ test('standalone deployment can override URLs, credentials, folder and storage n
     readerSyncDbName: 'standalone-reader-sync',
   })
   assert.equal(config.clientId, 'standalone-client')
+  assert.equal(createEbookConfig({ clientId: '123456-client.apps.googleusercontent.com', pickerAppId: '' }).pickerAppId, '123456')
   assert.equal(config.pickerApiKey, 'standalone-picker-key')
   assert.equal(config.pickerAppId, '123456')
   assert.equal(config.transferBrokerUrl, 'https://broker.example.test/exec')
