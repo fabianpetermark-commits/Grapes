@@ -57,6 +57,10 @@ jobs:
           gradle-version: 8.11.1
       - name: Compile and package standalone E-book APK
         run: gradle --project-dir android-ebook :app:testDebugUnitTest :app:assembleDebug
+      - name: Verify APK and print Android OAuth certificate fingerprint
+        run: |
+          APK="android-ebook/app/build/outputs/apk/debug/app-debug.apk"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$APK"
       - uses: actions/upload-artifact@v4
         with:
           name: standalone-ebook-debug-apk
