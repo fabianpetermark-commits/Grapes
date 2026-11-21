@@ -13,7 +13,7 @@ globalThis.__EBOOK_CONFIG__ = {
   epubWriteEnabled: env.VITE_EBOOK_STANDALONE_EPUB_WRITE_ENABLED === 'true',
   folderName: env.VITE_EBOOK_STANDALONE_DRIVE_FOLDER || 'Standalone E-book Library',
   appReturnUrl: env.VITE_EBOOK_STANDALONE_RETURN_URL || appBase,
-  readerPageUrl: env.VITE_EBOOK_STANDALONE_READER_URL || '',
+  readerPageUrl: env.VITE_EBOOK_STANDALONE_READER_URL || new URL('ebook-reader-standalone.html', appBase).toString(),
   readerSharingKey: 'ebook-standalone-reader-enabled-v1',
   libraryCacheKey: 'ebook-standalone-library-cache-v1:',
   legacyLibraryCacheKey: 'ebook-standalone-library-cache-v0',
