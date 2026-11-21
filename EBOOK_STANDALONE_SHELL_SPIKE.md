@@ -103,10 +103,22 @@ The standalone build intentionally leaves the transfer broker empty and EPUB fil
 
 ## Current outcome
 
-The branch now contains the platform adapter, deployment configuration boundary, standalone Google Drive adapter, and a separate E-book entry page. No package dependencies, production Apps Script deployment, user data, or `main` branch content was changed. The first complete CI attempt reported **106/106 unit tests passing** and the targeted E-book suite passing. It then stopped before browser/build checks because the extraction workflow had not downloaded the EPUBCheck JAR required by the integration test. The workflow has now been corrected to download and export the same EPUBCheck 5.4.0 JAR used by the production Pages workflow; the rerun is pending.
+The standalone E-book shell is implemented on the isolated feature branch and has passed the current CI validation run:
 
-The deployment configuration boundary is now implemented in `src/ebook/config.js`. The Grapes build retains its existing OAuth environment variables, canonical Pages return/reader URLs, Drive folder name, and storage namespaces as defaults. A standalone host can provide `window.__EBOOK_CONFIG__` before loading the E-book module to override those values without changing the Grapes defaults. The reader-sync IndexedDB name and directory-picker identifier are also configurable.
+- Full repository unit suite: **passed**.
+- Targeted E-book suite: **passed**.
+- EPUBCheck integration (EPUB 2/3 fixtures and repaired files): **passed**.
+- Standalone E-book browser smoke: **passed**; the page boots with its own storage namespace and does not load the Grapes main app.
+- EPUB validation browser check: **passed** with 0 errors and 0 warnings.
+- Existing E-book editor/layout browser checks: **passed** at 360, 390, 768, 1024 and 1440 px.
+- Production Vite build with both HTML entry points: **passed**.
 
-The library and reader-sync modules now consume this configuration. `tests/ebook-config.test.js` covers compatibility defaults, standalone overrides, and rejection of invalid URL protocols/empty folder names; the `test:ebook` script includes both config and platform boundary tests.
+The first build attempt exposed incorrect relative import paths in `src/ebook-reader-sync.js`; these are corrected to reference `src/ebook/platform.js` and `src/ebook/config.js`. The final successful CI run is [44956864427](https://github.com/fabianpetermark-commits/Grapes/actions/runs/44956864427).
 
-The separate reader HTML and Apps Script broker still contain the current Grapes production broker URL and allowlist. They are intentionally untouched: standalone transfer cannot be enabled safely until its final app/reader origins and a separate broker deployment are known. The next implementation step is to create a standalone entry point and host adapter with the full E-book DOM contract, then make the reader page/broker deployment-specific without changing the production Grapes deployment.
+The configuration boundary is implemented in `src/ebook/config.js`. The existing Grapes entry keeps its original OAuth environment variables, canonical Pages URLs, Drive folder and storage keys. The standalone entry sets a separate configuration before importing the feature, with its own token/session namespace, view key, library cache, reader-sync database and Drive folder. No secrets or live OAuth tokens were committed.
+
+The standalone shell is still hosted as an additional entry point inside the Grapes repository. It is not yet a separate repository or separate production deployment. The production Grapes reader HTML and Apps Script broker remain untouched. Standalone reader pairing, QR transfer and broker callbacks remain unavailable until the final standalone origins and a separate broker deployment are configured. Live Google OAuth/Picker acceptance has not yet been performed.
+
+The draft PR is [#245](https://github.com/fabianpetermark-commits/Grapes/pull/245). It remains open and unmerged. `main` remains at `bdddf33a4a585ca4c82343157cc3238e063c94b2`; the feature branch is 51 commits ahead and 0 behind. No production deployment, data migration or Apps Script deployment was performed.
+
+**Next phase:** isolate `public/ebook-reader.html` and the Apps Script transfer broker for standalone origins; then run mocked and live acceptance for pairing, QR transfer, ReaderSync, and cross-account behavior. After that, perform the full-history migration into the separately named standalone repository, preserving only the approved E-book paths and verifying representative file history before any repository is published.
