@@ -17,6 +17,8 @@ test('Grapes-compatible defaults preserve the existing deployment identifiers', 
     legacyLibraryCacheKey: 'grapes-ebook-library-cache-v1',
     readerSyncDbName: 'grapes-ebook-reader-sync',
     readerDirectoryPickerId: 'grapes-ebook-reader',
+    storageNamespace: 'grapes',
+    viewStorageKey: 'grapes-ebook-view',
   })
   assert.equal(config.folderName, 'Grapes E-book Library')
   assert.equal(config.appReturnUrl, 'https://fabianpetermark-commits.github.io/Grapes/')
