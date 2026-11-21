@@ -12,7 +12,8 @@ test('standalone platform uses native Android authorization instead of embedded 
   assert.match(source, /if \(!native && !config\.clientId\)/)
   assert.match(source, /loadGoogleIdentity\(\)/)
   assert.match(source, /ebook:android-result/)
-  assert.match(source, /ebook-standalone/)
+  assert.match(source, /config\.storageNamespace/)
+  assert.match(source, /:drive-session/)
 })
 
 test('Android package is isolated from Grapes and exposes only the E-book bridge', async () => {
