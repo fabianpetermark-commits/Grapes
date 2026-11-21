@@ -24,7 +24,7 @@ try {
   let ready = false
   for (let attempt = 0; attempt < 80; attempt++) {
     try {
-      const response = await fetch('http://127.0.0.1:4175/ebook.html')
+      const response = await fetch('http://127.0.0.1:4175/Grapes/ebook.html')
       if (response.ok) { ready = true; break }
     } catch {}
     if (attempt === 79) throw new Error('Az önálló E-book tesztszerver nem indult el.')
@@ -36,7 +36,7 @@ try {
   const page = await context.newPage()
   const pageErrors = []
   page.on('pageerror', error => pageErrors.push(error.message))
-  await page.goto('http://127.0.0.1:4175/ebook.html', { waitUntil: 'domcontentloaded', timeout: 20000 })
+  await page.goto('http://127.0.0.1:4175/Grapes/ebook.html', { waitUntil: 'domcontentloaded', timeout: 20000 })
   await page.locator('#ebook-manager-view').waitFor({ state: 'visible', timeout: 20000 })
   await page.locator('#ebook-drive-connect').waitFor({ state: 'visible', timeout: 20000 })
   await page.locator('#ebook-reader-connect').waitFor({ state: 'visible', timeout: 20000 })
