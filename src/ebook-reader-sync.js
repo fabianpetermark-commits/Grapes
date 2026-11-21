@@ -1,6 +1,6 @@
-import { grapesDriveRequest, isGrapesDriveConnected } from './platform.js'
+import { grapesDriveRequest, isGrapesDriveConnected } from './ebook/platform.js'
 
-import { EBOOK_CONFIG } from './config.js'
+import { EBOOK_CONFIG } from './ebook/config.js'
 
 const FOLDER_NAME = EBOOK_CONFIG.folderName
 const DB_NAME = EBOOK_CONFIG.readerSyncDbName
