@@ -3,7 +3,7 @@
 **Date:** 2026-11-21  
 **Implementation branch:** `feature/ebook-standalone-shell-20261121`  
 **Base:** `audit/ebook-extraction-20261121`  
-**Status:** discovery spike only; no production module behavior changed.
+**Status:** configuration boundary implemented; standalone shell and broker isolation remain pending.
 
 ## Objective
 
@@ -85,4 +85,8 @@ The first runnable standalone slice should use the same E-book feature code and 
 
 The branch contains the additive platform-adapter slice and this discovery note. No package dependencies, production configuration, Apps Script deployment, user data, or `main` branch content was changed. No tests or build were executed in this environment.
 
-The next source change should separate E-book deployment configuration (OAuth client, Picker keys, broker URL, return URL, reader URL, Drive folder and storage-key namespace) from the Grapes defaults. After that, add a standalone entry point with its own host adapter and complete E-book DOM contract.
+The deployment configuration boundary is now implemented in `src/ebook/config.js`. The Grapes build retains its existing OAuth environment variables, canonical Pages return/reader URLs, Drive folder name, and storage namespaces as defaults. A standalone host can provide `window.__EBOOK_CONFIG__` before loading the E-book module to override those values without changing the Grapes defaults. The reader-sync IndexedDB name and directory-picker identifier are also configurable.
+
+The library and reader-sync modules now consume this configuration. `tests/ebook-config.test.js` covers compatibility defaults, standalone overrides, and rejection of invalid URL protocols/empty folder names; the `test:ebook` script includes both config and platform boundary tests.
+
+The separate reader HTML and Apps Script broker still contain the current Grapes production broker URL and allowlist. They are intentionally untouched: standalone transfer cannot be enabled safely until its final app/reader origins and a separate broker deployment are known. The next implementation step is to create a standalone entry point and host adapter with the full E-book DOM contract, then make the reader page/broker deployment-specific without changing the production Grapes deployment.
