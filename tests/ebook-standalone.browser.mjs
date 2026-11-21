@@ -40,6 +40,10 @@ try {
   await page.locator('#ebook-manager-view').waitFor({ state: 'visible', timeout: 20000 })
   await page.locator('#ebook-drive-connect').waitFor({ state: 'visible', timeout: 20000 })
   await page.locator('#ebook-reader-connect').waitFor({ state: 'visible', timeout: 20000 })
+  await page.waitForFunction(() => {
+    const status = document.querySelector('#ebook-status')?.textContent || ''
+    return status && !status.includes('Drive kapcsolat ellenőrzése')
+  }, null, { timeout: 20000 })
   const state = await page.evaluate(() => ({
     namespace: globalThis.__EBOOK_CONFIG__?.storageNamespace,
     folder: globalThis.__EBOOK_CONFIG__?.folderName,
