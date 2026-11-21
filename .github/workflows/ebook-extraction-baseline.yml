@@ -1,0 +1,58 @@
+name: E-book extraction baseline
+
+on:
+  push:
+    branches:
+      - audit/ebook-extraction-20261121
+    paths:
+      - '.github/workflows/ebook-extraction-baseline.yml'
+      - 'src/ebook-library.js'
+      - 'src/ebook-reader-sync.js'
+      - 'src/ebook/**'
+      - 'tests/ebook-*'
+      - 'tests/epub-*'
+      - 'tests/pdf-metadata.test.js'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'index.html'
+      - 'public/ebook-reader.html'
+      - 'src/styles/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ebook-extraction-baseline-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      RAYON_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Full unit regression suite
+        run: npm test
+      - name: E-book targeted regression suite
+        run: npm run test:ebook
+      - name: EPUBCheck integration
+        run: npm run test:epubcheck
+      - name: Install Chromium for browser checks
+        run: npx playwright-core install --with-deps chromium
+      - name: EPUB validation browser check
+        run: npm run test:epubcheck:browser
+      - name: E-book editor layout browser check
+        run: npm run test:ebook:layout
+      - name: Production build
+        run: npm run build
