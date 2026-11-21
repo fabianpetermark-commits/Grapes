@@ -31,6 +31,7 @@ function normalizedHttpUrl(value, name) {
 
 export function createEbookConfig(overrides = {}, defaults = GRAPES_DEFAULTS) {
   const config = { ...defaults, ...overrides }
+  if (!config.pickerAppId && config.clientId) config.pickerAppId = config.clientId.split('-')[0]
   config.appReturnUrl = normalizedHttpUrl(config.appReturnUrl, 'visszatérési cím')
   config.readerPageUrl = normalizedHttpUrl(
     config.readerPageUrl || new URL('ebook-reader.html', config.appReturnUrl).toString(),
