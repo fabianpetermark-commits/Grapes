@@ -61,3 +61,18 @@ never shipped to GitHub Pages. Configure these values under Apps Script
 
 Do not add them to a `VITE_` variable or commit them. The broker requests only
 short-lived FatSecret access tokens and caches search results for ten minutes.
+
+
+## Separate standalone E-book broker
+
+Do **not** repoint or overwrite the existing Grapes Apps Script deployment. Create a new Apps Script project and a new web-app deployment for the standalone E-book app. Use the reviewed broker source, but configure the new project with its own Script Properties before deploying:
+
+- `EBOOK_STANDALONE_MODE=true`
+- `EBOOK_FOLDER_NAME=Standalone E-book Library`
+- `EBOOK_ALLOWED_RETURN_URL=https://YOUR-STANDALONE-HOST/`
+- `EBOOK_ALLOWED_PARENT_ORIGIN=https://YOUR-STANDALONE-HOST`
+- `EBOOK_READER_RETURN_URL=https://YOUR-STANDALONE-HOST/ebook-reader-standalone.html`
+
+Replace the example host with the final HTTPS origin and exact app paths. Deploy as a web app with an access policy intentionally selected for the use case; the broker stores reader pairing codes and tokens in that separate Apps Script project's Script Properties. Standalone mode blocks non-E-book endpoints. Keep the production Grapes deployment and its existing Script Properties untouched.
+
+After deploying the new project, set `VITE_EBOOK_STANDALONE_TRANSFER_BROKER_URL` to its web-app `/exec` URL, and set `VITE_EBOOK_STANDALONE_RETURN_URL` and `VITE_EBOOK_STANDALONE_READER_URL` to the exact URLs above. Then rebuild and deploy the standalone frontend. Never put Apps Script owner credentials or clasp JSON in Vite variables.
