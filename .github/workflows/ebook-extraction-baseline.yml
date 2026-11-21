@@ -35,6 +35,7 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - 'index.html'
+      - 'ebook.html'
       - 'public/ebook-reader.html'
       - 'src/styles/**'
   workflow_dispatch:
