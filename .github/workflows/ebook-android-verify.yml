@@ -1,0 +1,65 @@
+name: Standalone E-book Android verification
+
+on:
+  push:
+    branches:
+      - feature/ebook-android-app-20261122
+  pull_request:
+    paths:
+      - 'android-ebook/**'
+      - 'src/ebook/**'
+      - 'src/ebook-standalone.js'
+      - 'src/ebook-library.js'
+      - 'ebook.html'
+      - 'ebook-reader-standalone.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.js'
+      - 'tests/ebook-android-bridge.test.js'
+      - '.github/workflows/ebook-android-verify.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ebook-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Run E-book regression suite
+        run: npm run test:ebook
+      - name: Build standalone E-book web assets for Android
+        run: |
+          npm run build:ebook-android-web
+          test -f android-ebook/app/src/main/assets/ebook.html
+          test -f android-ebook/app/src/main/assets/ebook-reader-standalone.html
+          test ! -f android-ebook/app/src/main/assets/index.html
+          test ! -f android-ebook/app/src/main/assets/ebook-reader.html
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Install Android SDK
+        run: |
+          SDKMANAGER=$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | sort -V | tail -1)
+          "$SDKMANAGER" "platforms;android-36" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.11.1
+      - name: Compile and package standalone E-book APK
+        run: gradle --project-dir android-ebook :app:testDebugUnitTest :app:assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: standalone-ebook-debug-apk
+          path: android-ebook/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
