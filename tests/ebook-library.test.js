@@ -16,7 +16,7 @@ function app(fetch, { connected = true, session = new Map(), local = new Map(), 
   const storage = map => ({ getItem: key => map.get(key) ?? null, setItem: (key, value) => map.set(key, value), removeItem: key => map.delete(key) })
   if (connected && !session.has('grapes-drive-session')) session.set('grapes-drive-session', JSON.stringify({ clientId: '123-client', accessToken: 'test-token', expiresAt: Date.now() + 3600000 }))
   const testSetTimeout = (callback, delay) => { const timer = setTimeout(callback, delay); timer.unref?.(); return timer }
-  const context = vm.createContext({ document, fetch, Blob, URL, URLSearchParams, AbortController, crypto: webcrypto, QRCode: { async toCanvas(canvas, value) { canvas.qrValue = value } },
+  const context = vm.createContext({ EBOOK_CONFIG: { clientId: '123-client', pickerApiKey: pickerKey, pickerAppId: '123', booksApiKey: booksKey, transferBrokerUrl: 'https://broker.example/exec', epubWriteEnabled: true, folderName: 'Grapes E-book Library', appReturnUrl: 'https://fabianpetermark-commits.github.io/Grapes/', readerPageUrl: 'https://fabianpetermark-commits.github.io/Grapes/ebook-reader.html', readerSharingKey: 'grapes-reader-library-enabled', libraryCacheKey: 'grapes-ebook-library-cache-v2:', legacyLibraryCacheKey: 'grapes-ebook-library-cache-v1', readerSyncDbName: 'grapes-ebook-reader-sync', readerDirectoryPickerId: 'grapes-ebook-reader', storageNamespace: 'grapes', viewStorageKey: 'grapes-ebook-view' }, document, fetch, Blob, URL, URLSearchParams, AbortController, crypto: webcrypto, QRCode: { async toCanvas(canvas, value) { canvas.qrValue = value } },
     env: { VITE_GOOGLE_CLIENT_ID: '123-client', VITE_GOOGLE_PICKER_API_KEY: pickerKey, VITE_GOOGLE_BOOKS_API_KEY: booksKey, VITE_GOOGLE_APP_ID: '123', VITE_EBOOK_TRANSFER_BROKER_URL: 'https://broker.example/exec', VITE_EBOOK_EPUB_WRITE_ENABLED: 'true' }, rewriteEpubMetadata: epubWriter, rewritePdfMetadata: pdfWriter,
     window: { confirm: () => true, sessionStorage: storage(session), localStorage: storage(local), setTimeout: testSetTimeout, clearTimeout, location: { href: 'https://fabianpetermark-commits.github.io/Grapes/', origin: 'https://fabianpetermark-commits.github.io', search: '' } } })
   context.showGrapesConfirm = async (options = {}) => context.window.confirm(options.message)
@@ -427,7 +427,7 @@ test('reader pairing saves the persistent token before opening the direct librar
   assert.match(readerPageSource, /savedToken\(\)/)
   assert.match(brokerSource, /http-equiv="refresh" content="1;url=/)
   assert.match(brokerSource, /Párosítás mentése és könyvtár megnyitása/)
-  assert.match(brokerSource, /savedReaderUrl = READER_RETURN_URL \+ '\?reader-token='/)
+  assert.match(brokerSource, /savedReaderUrl = ebookReaderReturnUrl\(\) \+ '\?reader-token='/)
 })
 
 test('EPUB save path never requests the restricted full Drive write scope', () => {

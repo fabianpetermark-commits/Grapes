@@ -9,6 +9,7 @@ const source = readFileSync(new URL('../src/ebook-reader-sync.js', import.meta.u
 
 function syncHelpers() {
   const context = vm.createContext({
+    EBOOK_CONFIG: { folderName: 'Grapes E-book Library', readerSyncDbName: 'grapes-ebook-reader-sync', readerDirectoryPickerId: 'grapes-ebook-reader' },
     document: { querySelector() { return null }, querySelectorAll() { return [] } },
     window: {},
     indexedDB: {},

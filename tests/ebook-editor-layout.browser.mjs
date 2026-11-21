@@ -6,7 +6,7 @@ import { dirname, resolve } from 'node:path'
 import { chromium } from 'playwright-core'
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const browserPath = [process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH, 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe'].find((path) => path && existsSync(path))
+const browserPath = [process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH, chromium.executablePath(), 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe'].find((path) => path && existsSync(path))
 if (!browserPath) throw new Error('Chromium-alapú böngésző nem található.')
 const server = spawn(process.execPath, [resolve(projectRoot, 'node_modules/vite/bin/vite.js'), '--host', '127.0.0.1', '--port', '4174', '--strictPort'], { cwd: projectRoot, env: { ...process.env, VITE_GOOGLE_CLIENT_ID: 'ebook-layout-test' }, stdio: ['ignore', 'pipe', 'pipe'] })
 let browser

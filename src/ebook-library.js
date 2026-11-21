@@ -1,23 +1,25 @@
 import QRCode from 'qrcode'
 import './styles/screens/ebook-library.css'
-import { connectGrapesDrive, disconnectGrapesDrive, getConnectedGrapesAccount, getGrapesDriveAccessToken, grapesDriveHasFullReadAccess, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange } from './storage/grapes-drive.js'
+import { connectGrapesDrive, disconnectGrapesDrive, getConnectedGrapesAccount, getGrapesDriveAccessToken, grapesDriveHasFullReadAccess, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange, showGrapesConfirm, navigateEbookScreen } from './ebook/platform.js'
 import { messageLabel, validateEpub, validationSummary } from './ebook/epub-validation.js'
-import { showGrapesConfirm } from './ui/modal.js'
 
-const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
-const PICKER_API_KEY = import.meta.env.VITE_GOOGLE_PICKER_API_KEY || ''
-const PICKER_APP_ID = import.meta.env.VITE_GOOGLE_APP_ID || CLIENT_ID.split('-')[0]
-const BOOKS_API_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY || ''
-const TRANSFER_BROKER_URL = import.meta.env.VITE_EBOOK_TRANSFER_BROKER_URL || ''
-const EPUB_WRITE_ENABLED = import.meta.env.VITE_EBOOK_EPUB_WRITE_ENABLED === 'true'
-const FOLDER_NAME = 'Grapes E-book Library'
-// The Apps Script broker accepts only the canonical reader and return URLs.
-// A pilot build must not turn its own subdirectory into a separate pairing target.
-const APP_RETURN_URL = 'https://fabianpetermark-commits.github.io/Grapes/'
-const READER_PAGE_URL = new URL('ebook-reader.html', APP_RETURN_URL).toString()
-const READER_SHARING_KEY = 'grapes-reader-library-enabled'
-const LIBRARY_CACHE_KEY = 'grapes-ebook-library-cache-v2:'
-const LEGACY_LIBRARY_CACHE_KEY = 'grapes-ebook-library-cache-v1'
+
+import { EBOOK_CONFIG } from './ebook/config.js'
+
+const {
+  clientId: CLIENT_ID,
+  pickerApiKey: PICKER_API_KEY,
+  pickerAppId: PICKER_APP_ID,
+  booksApiKey: BOOKS_API_KEY,
+  transferBrokerUrl: TRANSFER_BROKER_URL,
+  epubWriteEnabled: EPUB_WRITE_ENABLED,
+  folderName: FOLDER_NAME,
+  appReturnUrl: APP_RETURN_URL,
+  readerPageUrl: READER_PAGE_URL,
+  readerSharingKey: READER_SHARING_KEY,
+  libraryCacheKey: LIBRARY_CACHE_KEY,
+  legacyLibraryCacheKey: LEGACY_LIBRARY_CACHE_KEY,
+} = EBOOK_CONFIG
 const FULL_SCAN_CACHE_MS = 5 * 60 * 1000
 const INTERNAL_PAIRING_FILE = /^\.grapes-reader-pairing(?:-\d+)?\.json$/i
 const INTERNAL_METADATA_FILE = /^\.grapes-ebook-metadata\.json$/i
@@ -1965,7 +1967,7 @@ function showEbookOrganizer() {
   if (accessTokenAvailable()) refreshLibrary()
 }
 function navigateToEbookOrganizer() {
-  try { window.sessionStorage?.setItem('grapes-ebook-view', 'organizer') } catch {}
+  try { window.sessionStorage?.setItem(EBOOK_CONFIG.viewStorageKey, 'organizer') } catch {}
   const manager = $('#ebook-manager-view')
   if (manager) { manager.dataset.ebookTab = 'metadata'; manager.scrollTop = 0 }
   setEbookMode('organizer')
@@ -1982,7 +1984,7 @@ async function navigateToEbookLibrary() {
     icon: '📚',
   })) return false
   if (dirty) { setMetadataDirty(false); resetContentState() }
-  try { window.sessionStorage?.setItem('grapes-ebook-view', 'library') } catch {}
+  try { window.sessionStorage?.setItem(EBOOK_CONFIG.viewStorageKey, 'library') } catch {}
   const manager = $('#ebook-manager-view')
   setEbookMode('library')
   if (manager) manager.scrollTop = 0
@@ -1992,7 +1994,7 @@ export function initEbookLibrary() {
   import('./ebook-reader-sync.js').then(({ initReaderSync }) => initReaderSync()).catch((error) => console.warn('Az USB-s e-reader modul nem tölthető be:', error))
   const params = new URLSearchParams(window.location.search)
   const directReceiver = params.has('ebook-pair') || params.has('ebook-reader')
-  const requestedView = window.sessionStorage?.getItem('grapes-ebook-view') === 'organizer' ? 'organizer' : 'library'
+  const requestedView = window.sessionStorage?.getItem(EBOOK_CONFIG.viewStorageKey) === 'organizer' ? 'organizer' : 'library'
   if (initialized) {
     if (directReceiver || requestedView === 'library') showEbookManager()
     else showEbookOrganizer()
@@ -2168,8 +2170,7 @@ export function initEbookLibrary() {
       if (!confirmed || !target) return
       setMetadataDirty(false)
       resetContentState()
-      const { showScreen } = await import('./screens.js')
-      showScreen(target)
+      await navigateEbookScreen(target)
     })
   })
   window.addEventListener?.('beforeunload', (event) => {

@@ -1,0 +1,102 @@
+name: E-book extraction baseline
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/ebook-extraction-baseline.yml'
+      - 'src/ebook-library.js'
+      - 'src/ebook-reader-sync.js'
+      - 'src/ebook/**'
+      - 'src/ebook-standalone.js'
+      - 'tests/ebook-*'
+      - 'tests/epub-*'
+      - 'tests/pdf-metadata.test.js'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'index.html'
+      - 'ebook.html'
+      - 'ebook-reader-standalone.html'
+      - 'src/ebook-reader-standalone.js'
+      - 'apps-script/ebook-transfer/**'
+      - 'vite.config.js'
+      - 'public/ebook-reader.html'
+      - 'src/styles/**'
+  push:
+    branches:
+      - audit/ebook-extraction-20261121
+      - feature/ebook-standalone-shell-20261121
+    paths:
+      - '.github/workflows/ebook-extraction-baseline.yml'
+      - 'src/ebook-library.js'
+      - 'src/ebook-reader-sync.js'
+      - 'src/ebook/**'
+      - 'src/ebook-standalone.js'
+      - 'vite.config.js'
+      - 'tests/ebook-*'
+      - 'tests/epub-*'
+      - 'tests/pdf-metadata.test.js'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'index.html'
+      - 'ebook.html'
+      - 'ebook-reader-standalone.html'
+      - 'src/ebook-reader-standalone.js'
+      - 'apps-script/ebook-transfer/**'
+      - 'public/ebook-reader.html'
+      - 'src/styles/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ebook-extraction-baseline-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      RAYON_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Full unit regression suite
+        run: npm test
+      - name: E-book targeted regression suite
+        run: npm run test:ebook
+      - name: Download EPUBCheck
+        run: |
+          mkdir -p "$RUNNER_TEMP/epubcheck"
+          curl --fail --location --retry 3 https://github.com/w3c/epubcheck/releases/download/v5.4.0/epubcheck-5.4.0.zip -o "$RUNNER_TEMP/epubcheck.zip"
+          unzip -q "$RUNNER_TEMP/epubcheck.zip" -d "$RUNNER_TEMP/epubcheck"
+          EPUBCHECK_JAR="$(find "$RUNNER_TEMP/epubcheck" -name epubcheck.jar -print -quit)"
+          test -n "$EPUBCHECK_JAR"
+          echo "EPUBCHECK_JAR=$EPUBCHECK_JAR" >> "$GITHUB_ENV"
+      - name: EPUBCheck integration
+        run: npm run test:epubcheck
+      - name: Install Chromium for browser checks
+        run: npx playwright-core install --with-deps chromium
+      - name: Standalone E-book shell browser smoke
+        run: npm run test:ebook:standalone:browser
+      - name: EPUB validation browser check
+        run: npm run test:epubcheck:browser
+      - name: E-book editor layout browser check
+        run: npm run test:ebook:layout
+      - name: Production Grapes build
+        run: npm run build
+      - name: Standalone E-book production build
+        run: |
+          npm run build:ebook-standalone
+          test -f dist/ebook.html
+          test -f dist/ebook-reader-standalone.html
+          test ! -e dist/index.html
+          test ! -e dist/ebook-reader.html

@@ -31,7 +31,10 @@ const SCREENS = {
   },
   ebook: {
     id: '#ebook-app',
-    load: () => import('./ebook-library.js').then((module) => module.initEbookLibrary()),
+    load: () => import('./ebook/grapes-platform.js')
+      .then(({ configureGrapesEbookPlatform }) => configureGrapesEbookPlatform())
+      .then(() => import('./ebook-library.js'))
+      .then((module) => module.initEbookLibrary()),
   },
   email: {
     id: '#email-app',
