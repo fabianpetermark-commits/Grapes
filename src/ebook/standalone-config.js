@@ -20,4 +20,5 @@ globalThis.__EBOOK_CONFIG__ = {
   readerSyncDbName: 'ebook-standalone-reader-sync-v1',
   readerDirectoryPickerId: 'ebook-standalone-reader-v1',
   storageNamespace: 'ebook-standalone-v1',
+  viewStorageKey: 'ebook-standalone-view-v1',
 }
