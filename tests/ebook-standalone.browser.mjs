@@ -60,6 +60,17 @@ try {
   assert.deepEqual(state.scripts, [])
   assert.ok(state.rootOverflow <= 1, `Vízszintes túlcsordulás: ${JSON.stringify(state)}`)
   assert.match(state.status, /Drive nincs konfigurálva/)
+  await page.goto('http://127.0.0.1:4175/Grapes/ebook-reader-standalone.html', { waitUntil: 'domcontentloaded', timeout: 20000 })
+  await page.locator('#pair-form').waitFor({ state: 'visible', timeout: 20000 })
+  await page.waitForFunction(() => (document.querySelector('#reader-status')?.textContent || '').includes('broker nincs konfigurálva'), null, { timeout: 10000 })
+  const readerState = await page.evaluate(() => ({
+    title: document.querySelector('h1')?.textContent,
+    disabled: document.querySelector('#pair-submit')?.disabled,
+    storageKeys: Object.keys(localStorage),
+  }))
+  assert.equal(readerState.title, 'Önálló E-book olvasó')
+  assert.equal(readerState.disabled, true)
+  assert.ok(!readerState.storageKeys.some(key => key.startsWith('grapes-')))
   await page.waitForTimeout(300)
   assert.deepEqual(pageErrors, [], `Böngészőhibák: ${pageErrors.join('; ')}`)
   console.log('✓ Önálló E-book shell betölt, saját tárhelyet használ, és nem indítja a Grapes főalkalmazást.')
