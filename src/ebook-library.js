@@ -1,8 +1,8 @@
 import QRCode from 'qrcode'
 import './styles/screens/ebook-library.css'
-import { connectGrapesDrive, disconnectGrapesDrive, getConnectedGrapesAccount, getGrapesDriveAccessToken, grapesDriveHasFullReadAccess, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange } from './storage/grapes-drive.js'
+import { connectGrapesDrive, disconnectGrapesDrive, getConnectedGrapesAccount, getGrapesDriveAccessToken, grapesDriveHasFullReadAccess, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange, showGrapesConfirm, navigateEbookScreen } from './ebook/platform.js'
 import { messageLabel, validateEpub, validationSummary } from './ebook/epub-validation.js'
-import { showGrapesConfirm } from './ui/modal.js'
+
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 const PICKER_API_KEY = import.meta.env.VITE_GOOGLE_PICKER_API_KEY || ''
@@ -2168,8 +2168,7 @@ export function initEbookLibrary() {
       if (!confirmed || !target) return
       setMetadataDirty(false)
       resetContentState()
-      const { showScreen } = await import('./screens.js')
-      showScreen(target)
+      await navigateEbookScreen(target)
     })
   })
   window.addEventListener?.('beforeunload', (event) => {
