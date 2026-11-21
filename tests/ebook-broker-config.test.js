@@ -25,3 +25,14 @@ test('standalone reader has a unique token key and configurable broker target', 
   assert.match(reader, /EBOOK_CONFIG\.transferBrokerUrl/)
   assert.doesNotMatch(reader, /grapes-ebook-reader-token|AKfycb/)
 })
+
+test('standalone build does not inherit Grapes OAuth configuration and builds at its own root', async () => {
+  const [config, vite] = await Promise.all([
+    readFile(new URL('../src/ebook/standalone-config.js', import.meta.url), 'utf8'),
+    readFile(new URL('../vite.config.js', import.meta.url), 'utf8'),
+  ])
+  assert.doesNotMatch(config, /env\.VITE_GOOGLE_CLIENT_ID|env\.VITE_GOOGLE_PICKER_API_KEY|env\.VITE_GOOGLE_APP_ID|env\.VITE_GOOGLE_BOOKS_API_KEY/)
+  assert.match(config, /VITE_EBOOK_STANDALONE_GOOGLE_CLIENT_ID/)
+  assert.match(vite, /standaloneBuild \? \(process\.env\.VITE_EBOOK_STANDALONE_BASE \|\| '\/'\)/)
+  assert.match(vite, /standaloneBuild\s*\?\s*\{/)
+})
