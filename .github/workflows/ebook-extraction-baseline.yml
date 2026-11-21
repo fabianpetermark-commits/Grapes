@@ -79,6 +79,8 @@ jobs:
         run: npm run test:epubcheck
       - name: Install Chromium for browser checks
         run: npx playwright-core install --with-deps chromium
+      - name: Standalone E-book shell browser smoke
+        run: npm run test:ebook:standalone:browser
       - name: EPUB validation browser check
         run: npm run test:epubcheck:browser
       - name: E-book editor layout browser check
