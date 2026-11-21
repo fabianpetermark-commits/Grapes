@@ -1967,7 +1967,7 @@ function showEbookOrganizer() {
   if (accessTokenAvailable()) refreshLibrary()
 }
 function navigateToEbookOrganizer() {
-  try { window.sessionStorage?.setItem('grapes-ebook-view', 'organizer') } catch {}
+  try { window.sessionStorage?.setItem(EBOOK_CONFIG.viewStorageKey, 'organizer') } catch {}
   const manager = $('#ebook-manager-view')
   if (manager) { manager.dataset.ebookTab = 'metadata'; manager.scrollTop = 0 }
   setEbookMode('organizer')
@@ -1984,7 +1984,7 @@ async function navigateToEbookLibrary() {
     icon: '📚',
   })) return false
   if (dirty) { setMetadataDirty(false); resetContentState() }
-  try { window.sessionStorage?.setItem('grapes-ebook-view', 'library') } catch {}
+  try { window.sessionStorage?.setItem(EBOOK_CONFIG.viewStorageKey, 'library') } catch {}
   const manager = $('#ebook-manager-view')
   setEbookMode('library')
   if (manager) manager.scrollTop = 0
@@ -1994,7 +1994,7 @@ export function initEbookLibrary() {
   import('./ebook-reader-sync.js').then(({ initReaderSync }) => initReaderSync()).catch((error) => console.warn('Az USB-s e-reader modul nem tölthető be:', error))
   const params = new URLSearchParams(window.location.search)
   const directReceiver = params.has('ebook-pair') || params.has('ebook-reader')
-  const requestedView = window.sessionStorage?.getItem('grapes-ebook-view') === 'organizer' ? 'organizer' : 'library'
+  const requestedView = window.sessionStorage?.getItem(EBOOK_CONFIG.viewStorageKey) === 'organizer' ? 'organizer' : 'library'
   if (initialized) {
     if (directReceiver || requestedView === 'library') showEbookManager()
     else showEbookOrganizer()
