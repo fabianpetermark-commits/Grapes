@@ -20,7 +20,8 @@
     "test:responsive": "node tests/responsive-layout.browser.mjs",
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:ebook:standalone:browser": "node tests/ebook-standalone.browser.mjs"
   },
   "devDependencies": {
     "playwright-core": "^1.62.1",
