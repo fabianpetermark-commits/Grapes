@@ -1,6 +1,23 @@
 name: E-book extraction baseline
 
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/ebook-extraction-baseline.yml'
+      - 'src/ebook-library.js'
+      - 'src/ebook-reader-sync.js'
+      - 'src/ebook/**'
+      - 'src/ebook-standalone.js'
+      - 'tests/ebook-*'
+      - 'tests/epub-*'
+      - 'tests/pdf-metadata.test.js'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'index.html'
+      - 'ebook.html'
+      - 'vite.config.js'
+      - 'public/ebook-reader.html'
+      - 'src/styles/**'
   push:
     branches:
       - audit/ebook-extraction-20261121
@@ -10,6 +27,8 @@ on:
       - 'src/ebook-library.js'
       - 'src/ebook-reader-sync.js'
       - 'src/ebook/**'
+      - 'src/ebook-standalone.js'
+      - 'vite.config.js'
       - 'tests/ebook-*'
       - 'tests/epub-*'
       - 'tests/pdf-metadata.test.js'
