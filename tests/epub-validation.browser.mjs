@@ -7,7 +7,7 @@ import JSZip from 'jszip'
 import { chromium } from 'playwright-core'
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const browserPath = [process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH, 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe'].find((path) => path && existsSync(path))
+const browserPath = [process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH, chromium.executablePath(), 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe'].find((path) => path && existsSync(path))
 if (!browserPath) throw new Error('Chromium-alapú böngésző nem található.')
 
 const zip = new JSZip()
