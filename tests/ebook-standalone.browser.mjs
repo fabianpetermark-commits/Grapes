@@ -62,14 +62,18 @@ try {
   assert.match(state.status, /Drive nincs konfigurálva/)
   await page.goto('http://127.0.0.1:4175/Grapes/ebook-reader-standalone.html', { waitUntil: 'domcontentloaded', timeout: 20000 })
   await page.locator('#pair-form').waitFor({ state: 'visible', timeout: 20000 })
-  await page.waitForFunction(() => (document.querySelector('#reader-status')?.textContent || '').includes('broker nincs konfigurálva'), null, { timeout: 10000 })
+  await page.waitForTimeout(1000)
   const readerState = await page.evaluate(() => ({
     title: document.querySelector('h1')?.textContent,
     disabled: document.querySelector('#pair-submit')?.disabled,
     storageKeys: Object.keys(localStorage),
+    status: document.querySelector('#reader-status')?.textContent || '',
+    scripts: performance.getEntriesByType('resource').map(item => item.name).filter(name => name.includes('ebook-reader-standalone.js') || name.includes('standalone-config.js')),
   }))
   assert.equal(readerState.title, 'Önálló E-book olvasó')
-  assert.equal(readerState.disabled, true)
+  assert.equal(readerState.disabled, true, JSON.stringify(readerState))
+  assert.match(readerState.status, /broker nincs konfigurálva/, JSON.stringify(readerState))
+  assert.ok(readerState.scripts.length >= 1, JSON.stringify(readerState))
   assert.ok(!readerState.storageKeys.some(key => key.startsWith('grapes-')))
   await page.waitForTimeout(300)
   assert.deepEqual(pageErrors, [], `Böngészőhibák: ${pageErrors.join('; ')}`)
