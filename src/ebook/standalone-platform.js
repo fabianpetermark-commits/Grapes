@@ -120,7 +120,7 @@ export function createStandaloneEbookPlatform(config) {
   function acceptAuthorization(result, requestedFullRead) {
     if (!result?.accessToken) throw new Error('A Google nem adott hozzáférési tokent.')
     const scopes = Array.isArray(result.grantedScopes) ? result.grantedScopes.join(' ') : String(result.grantedScopes || '')
-    if (requestedFullRead && ![scope, readScope].every(item => scopes.split(/\\s+/).includes(item))) {
+    if (requestedFullRead && ![scope, readScope].every(item => scopes.split(/\s+/).includes(item))) {
       throw new Error('A Google nem adta meg mindkét szükséges Drive-engedélyt.')
     }
     accessToken = result.accessToken
@@ -197,7 +197,7 @@ export function createStandaloneEbookPlatform(config) {
   function getAccessToken() { return isDriveConnected() ? accessToken : null }
   function getConnectedAccount() { return isDriveConnected() && accountProfile?.email ? { ...accountProfile } : null }
   function hasFullReadAccess() {
-    return isDriveConnected() && grantedScopes.split(/\\s+/).some(item => item === readScope || item === 'https://www.googleapis.com/auth/drive')
+    return isDriveConnected() && grantedScopes.split(/\s+/).some(item => item === readScope || item === 'https://www.googleapis.com/auth/drive')
   }
 
   async function driveRequest(url, options = {}) {
@@ -228,7 +228,7 @@ export function createStandaloneEbookPlatform(config) {
     driveRequest,
     isDriveConnected,
     onDriveChange(listener) { listeners.add(listener); return () => listeners.delete(listener) },
-    confirm({ title = 'Megerősítés', message = '' } = {}) { return Promise.resolve(window.confirm(`${title}\\n\\n${message}`)) },
+    confirm({ title = 'Megerősítés', message = '' } = {}) { return Promise.resolve(window.confirm(`${title}\n\n${message}`)) },
     navigate(target) {
       if (target !== 'ebook') return false
       const manager = document.querySelector('#ebook-manager-view')
