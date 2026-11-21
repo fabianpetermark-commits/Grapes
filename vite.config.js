@@ -9,6 +9,7 @@ export default defineConfig({
       input: {
         main: resolve(process.cwd(), 'index.html'),
         ebook: resolve(process.cwd(), 'ebook.html'),
+        ebookReader: resolve(process.cwd(), 'ebook-reader-standalone.html'),
       },
     },
   },
