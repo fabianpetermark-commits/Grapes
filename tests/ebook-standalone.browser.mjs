@@ -72,7 +72,7 @@ try {
   }))
   assert.equal(readerState.title, 'Önálló E-book olvasó')
   assert.equal(readerState.disabled, true, JSON.stringify(readerState))
-  assert.match(readerState.status, /broker nincs konfigurálva/, JSON.stringify(readerState))
+  assert.match(readerState.status, /nincs beállítva az önálló átviteli broker/, JSON.stringify(readerState))
   assert.ok(readerState.scripts.length >= 1, JSON.stringify(readerState))
   assert.ok(!readerState.storageKeys.some(key => key.startsWith('grapes-')))
   await page.waitForTimeout(300)
