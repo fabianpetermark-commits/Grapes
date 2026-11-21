@@ -427,7 +427,7 @@ test('reader pairing saves the persistent token before opening the direct librar
   assert.match(readerPageSource, /savedToken\(\)/)
   assert.match(brokerSource, /http-equiv="refresh" content="1;url=/)
   assert.match(brokerSource, /Párosítás mentése és könyvtár megnyitása/)
-  assert.match(brokerSource, /savedReaderUrl = READER_RETURN_URL \+ '\?reader-token='/)
+  assert.match(brokerSource, /savedReaderUrl = ebookReaderReturnUrl\(\) \+ '\?reader-token='/)
 })
 
 test('EPUB save path never requests the restricted full Drive write scope', () => {
