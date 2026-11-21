@@ -6,6 +6,7 @@ export default defineConfig(({ mode }) => {
   const standaloneBuild = mode === 'ebook-standalone'
   return {
     base: standaloneBuild ? (process.env.VITE_EBOOK_STANDALONE_BASE || '/') : '/Grapes/',
+    publicDir: standaloneBuild ? false : 'public',
     build: {
       rollupOptions: {
         input: standaloneBuild
