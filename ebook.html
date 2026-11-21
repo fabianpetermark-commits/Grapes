@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#111827">
+  <title>E-book Könyvtár</title>
+  <meta name="description" content="Önálló e-book könyvtár, metaadat- és EPUB-szerkesztő, valamint e-reader szinkronizáció.">
+</head>
+<body>
+  <div id="ebook-app" class="ebook-library">
+      <header class="toolbar" id="ebook-toolbar">
+        <div class="toolbar__brand">
+          <span class="toolbar__brand-name">E-book</span>
+          <span class="toolbar__brand-sub">Önálló könyvtár</span>
+        </div>
+      </header>
+      <div id="ebook-manager-view" data-ebook-mode="library">
+      <section id="ebook-receiver-panel" class="ebook-library__transfer ebook-library__receiver" hidden>
+        <div class="ebook-library__transfer-card">
+          <p class="ebook-library__eyebrow">E-olvasó mód</p>
+          <h2>Könyv átvétele</h2>
+          <p>Mentsd könyvjelzőként ezt az oldalt. Új könyvhöz csak a telefonon vagy számítógépen kapott kódot kell beírnod.</p>
+          <strong id="ebook-receiver-code" class="ebook-library__receiver-code"></strong>
+          <label class="field__label" for="ebook-receiver-input">6 karakteres kód</label>
+          <input id="ebook-receiver-input" class="input" type="text" inputmode="text" autocomplete="one-time-code" maxlength="6" spellcheck="false" aria-label="6 karakteres átvételi kód" />
+          <button id="ebook-receiver-submit" class="btn btn--primary btn--block" type="button">Párosítás és letöltés</button>
+          <p id="ebook-receiver-status" class="ebook-library__receiver-status" role="status"></p>
+          <a id="ebook-receiver-download" class="btn btn--ghost btn--block" href="#" hidden>E-book letöltése</a>
+          <a id="ebook-receiver-home" class="btn btn--ghost btn--block" href="?ebook-reader=1">Új kód megadása</a>
+        </div>
+      </section>
+      <main class="ebook-library__body">
+        <section class="ebook-library__hero">
+          <div>
+            <p class="ebook-library__eyebrow">Saját könyvtár</p>
+            <h1 class="ebook-library__title">E-book Könyvtár</h1>
+            <p class="ebook-library__subtitle">A könyvek a saját Google Drive-od dedikált könyvtárában maradnak. Innen később közvetlenül az e-olvasóra küldhetők.</p>
+          </div>
+          <div class="ebook-library__actions">
+            <button id="ebook-refresh-btn" class="btn btn--ghost" type="button">Frissítés</button>
+            <button id="ebook-drive-connect" class="btn btn--primary" type="button">Google Drive csatlakoztatása</button>
+            <button id="ebook-drive-disconnect" class="btn btn--danger" type="button" disabled>Drive leválasztása</button>
+          </div>
+        </section>
+        <div id="ebook-status" class="ebook-library__status" role="status">Drive kapcsolat ellenőrzése…</div>
+      <section id="ebook-transfer-panel" class="ebook-library__transfer" hidden aria-label="E-olvasó átvitel">
+        <div class="ebook-library__transfer-card">
+          <div class="ebook-library__transfer-head">
+            <div><p class="ebook-library__eyebrow">E-olvasó párosítás</p><h2 id="ebook-transfer-name">E-book</h2></div>
+            <button id="ebook-transfer-close" class="btn btn--ghost btn--sm" type="button">Bezárás</button>
+          </div>
+          <div class="ebook-library__transfer-grid">
+            <div><canvas id="ebook-transfer-qr" width="260" height="260" aria-label="A könyv közvetlen letöltésének QR-kódja"></canvas><p id="ebook-qr-status" role="status"></p></div>
+            <div class="ebook-library__transfer-info">
+              <p>A QR-kód a könyv letöltését nyitja meg. Ha az e-olvasón nincs kamera, kérj hatkarakteres kódot, majd írd be az állandó átvételi oldalon.</p>
+              <button id="ebook-transfer-pair" class="btn btn--primary" type="button">6 karakteres kód kérése</button>
+              <iframe id="ebook-transfer-code" class="ebook-library__pair-frame" title="A könyv párosítási kódja" referrerpolicy="no-referrer" hidden></iframe>
+              <label for="ebook-reader-url">E-olvasón könyvjelzőként menthető cím</label>
+              <input id="ebook-reader-url" class="input" readonly />
+              <p>A Küldés nyilvános olvasási linket engedélyez a könyvhöz. A kód lejárata nem szünteti meg a Drive-megosztást.</p>
+              <label class="field__label" for="ebook-transfer-url">Közvetlen letöltési link</label>
+              <input id="ebook-transfer-url" class="input" type="text" readonly />
+              <button id="ebook-transfer-copy" class="btn btn--ghost btn--block" type="button">Link másolása</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+        <section class="ebook-library__panel ebook-library__quick-add" aria-labelledby="ebook-quick-add-title">
+          <div class="ebook-library__quick-add-heading">
+            <h2 id="ebook-quick-add-title">Új könyv</h2>
+            <span id="ebook-upload-state" class="ebook-library__quick-status" role="status">Drive kapcsolat ellenőrzése…</span>
+          </div>
+          <div class="ebook-library__quick-add-actions">
+            <div class="ebook-library__quick-group"><button id="ebook-upload-btn" class="btn btn--ghost ebook-library__upload-btn" type="button">Fájl feltöltése</button></div>
+            <div class="ebook-library__quick-group ebook-library__quick-group--pair">
+              <button id="ebook-reader-pair-btn" class="btn btn--primary ebook-library__pair-control" type="button">E-olvasó párosítása</button>
+              <input id="ebook-reader-pair-value" class="input ebook-library__pair-control ebook-library__pair-value" type="text" readonly aria-label="E-olvasó párosítási kód" placeholder="Párosítási kód" />
+            </div>
+            <div class="ebook-library__quick-group ebook-library__quick-group--usb">
+              <button id="ebook-reader-connect" class="btn btn--ghost" type="button">E-reader csatlakoztatása</button>
+              <span id="ebook-reader-state" class="ebook-library__quick-status" role="status">○ Nincs csatlakoztatva</span>
+            </div>
+          </div>
+          <span id="ebook-reader-pair-status" class="ebook-library__quick-status ebook-library__pair-status" role="status" aria-live="polite"></span>
+          <input id="ebook-file-input" type="file" hidden />
+          <iframe id="ebook-reader-pair-code" class="ebook-library__pair-bridge" title="Az e-olvasó párosítási kódjának biztonságos átvitele" referrerpolicy="no-referrer" hidden></iframe>
+        </section>
+
+        <div class="ebook-library__grid">
+          <section class="ebook-library__panel" aria-labelledby="ebook-list-title">
+            <div class="ebook-library__panel-head ebook-library__panel-head--actions"><h2 id="ebook-list-title">Könyvtár</h2><button id="ebook-open-organizer" class="btn btn--primary btn--sm" type="button">Szerkesztés</button></div>
+            <div id="ebook-list" class="ebook-library__list"></div>
+            <div id="ebook-empty" class="ebook-library__empty">Még nincs könyv a könyvtárban.</div>
+          </section>
+          <aside class="ebook-library__panel ebook-library__side">
+            <div class="ebook-library__reader-setup">
+            <section class="ebook-library__reader-sync" aria-labelledby="ebook-reader-sync-title">
+              <h3 id="ebook-reader-sync-title">USB-s e-reader szinkron</h3>
+              <p>Csatlakoztasd az e-readert kábellel, válaszd ki a könyvmappáját, majd indítsd el a kétirányú szinkronizálást.</p>
+              <div class="ebook-library__reader-sync-actions"><button id="ebook-sync" class="btn btn--primary btn--block" type="button">Szinkronizálás</button></div>
+              <p id="ebook-reader-support" class="ebook-library__support" hidden>Ehhez Chrome vagy Edge asztali böngésző kell.</p>
+              <div id="ebook-sync-success" class="ebook-library__reader-sync-success" role="status" aria-live="polite" hidden><span aria-hidden="true">✓</span><strong>Sikeres szinkronizálás</strong></div><p id="ebook-sync-status" role="status">A Drive és az e-reader csatlakoztatása után használható.</p><progress id="ebook-sync-progress" max="1" value="0" hidden></progress><p id="ebook-sync-progress-label" class="ebook-library__reader-sync-progress" aria-live="polite"></p>
+            </section>
+              <a class="ebook-library__reader-link" href="./ebook-reader.html">Könnyített e-olvasó oldal</a>
+            </div>
+          </aside>
+        </div>
+        <section id="ebook-metadata-panel" class="ebook-library__panel ebook-library__metadata" aria-labelledby="ebook-metadata-title-heading">
+          <div class="ebook-library__panel-head"><div><button id="ebook-detail-back" class="btn btn--ghost ebook-library__detail-back" type="button">← Vissza a könyvtárhoz</button><p id="ebook-metadata-eyebrow" class="ebook-library__eyebrow">Könyvszerkesztő</p><h2 id="ebook-metadata-title-heading" tabindex="-1">Metaadatok szerkesztése</h2></div><span class="ebook-library__metadata-note">A könyvfájl csak az EPUB-mentés engedélyezése után módosul; a könyv szövege változatlan marad.</span></div>
+          <div class="ebook-library__metadata-layout">
+            <aside class="ebook-library__metadata-picker">
+              <label class="field"><span class="field__label">Keresés a könyvtárban</span><input id="ebook-metadata-filter" class="input" type="search" placeholder="Cím, szerző vagy fájlnév…" autocomplete="off" /></label>
+              <label class="field"><span class="field__label">Könyv</span><select id="ebook-metadata-book" class="input"><option value="">Válassz könyvet…</option></select></label>
+            </aside>
+            <div class="ebook-library__metadata-workspace">
+              <div class="ebook-library__editor-topbar">
+                <div id="ebook-editor-tabs" class="ebook-library__editor-tabs" role="tablist" aria-label="Könyvszerkesztő nézetek">
+                  <button id="ebook-editor-metadata-tab" class="btn btn--ghost" type="button" role="tab" aria-controls="ebook-editor-metadata-pane" aria-selected="true">Adatlap</button>
+                  <button id="ebook-editor-text-tab" class="btn btn--ghost" type="button" role="tab" aria-controls="ebook-editor-text-pane" aria-selected="false">Szöveg és kinézet</button>
+                  <button id="ebook-editor-structure-tab" class="btn btn--ghost" type="button" role="tab" aria-controls="ebook-editor-structure-pane" aria-selected="false">Szerkezeti hibák</button>
+                </div>
+                <button id="ebook-open-library" class="btn btn--primary" type="button">Könyvtár</button>
+                <button id="ebook-editor-open" class="btn btn--ghost" type="button">EPUB megnyitása</button>
+              </div>
+              <div id="ebook-editor-metadata-pane" class="ebook-library__editor-pane" role="tabpanel" aria-labelledby="ebook-editor-metadata-tab">
+              <div id="ebook-metadata-preview" class="ebook-library__metadata-preview" data-empty="true">
+                <div class="ebook-library__book-icon" aria-hidden="true">E</div>
+                <div><strong id="ebook-metadata-preview-title">Nincs kiválasztott könyv</strong><span id="ebook-metadata-preview-meta">Válassz egy könyvet a bal oldali listából.</span></div>
+              </div>
+              <div class="ebook-library__editor-field-row ebook-library__metadata-filename">
+                <label class="field"><span class="field__label">Jelenlegi fájlnév a Google Drive-ban</span><input id="ebook-metadata-filename" class="input" type="text" readonly /></label>
+                <label class="field"><span class="field__label">Mentés utáni fájlnév</span><input id="ebook-metadata-filename-target" class="input" type="text" autocomplete="off" /><small id="ebook-metadata-filename-next">Ez a fájlnév kerül az e-olvasóra.</small></label>
+              </div>
+              <div id="ebook-metadata-access" class="ebook-library__metadata-access" hidden>
+                <span id="ebook-metadata-access-status" role="status" aria-live="polite"></span>
+                <button id="ebook-metadata-grant" class="btn btn--ghost" type="button">EPUB-hozzáférés engedélyezése</button>
+              </div>
+              <div class="ebook-library__metadata-form">
+                <label class="field"><span class="field__label">Cím</span><input id="ebook-metadata-title" class="input" type="text" placeholder="Pl. Dűne" /></label>
+                <label class="field"><span class="field__label">Szerző</span><input id="ebook-metadata-author" class="input" type="text" placeholder="Pl. Frank Herbert" /></label>
+                <label class="field"><span class="field__label">ISBN</span><input id="ebook-metadata-isbn" class="input" type="text" inputmode="numeric" placeholder="ISBN-10 vagy ISBN-13" /><small>Az ISBN-keresést a Webes keresés gomb indítja.</small></label>
+                <label class="field"><span class="field__label">Nyelv</span><input id="ebook-metadata-language" class="input" type="text" placeholder="Pl. hu vagy en" /></label>
+                <label class="field"><span class="field__label">Kiadó</span><input id="ebook-metadata-publisher" class="input" type="text" /></label>
+                <label class="field"><span class="field__label">Megjelenés</span><input id="ebook-metadata-publishedDate" class="input" type="text" placeholder="ÉÉÉÉ vagy ÉÉÉÉ-HH-NN" /></label>
+                <label class="field"><span class="field__label">Sorozat</span><input id="ebook-metadata-series" class="input" type="text" /></label>
+                <label class="field"><span class="field__label">Sorozatszám</span><input id="ebook-metadata-seriesIndex" class="input" type="text" inputmode="decimal" placeholder="Pl. 2" /></label>
+                <label class="field ebook-library__metadata-wide"><span class="field__label">Műfajok (vesszővel elválasztva)</span><input id="ebook-metadata-subjects" class="input" type="text" /></label>
+                <label class="field ebook-library__metadata-wide"><span class="field__label">Leírás</span><textarea id="ebook-metadata-description" class="input" rows="4"></textarea></label>
+                <div class="ebook-library__metadata-cover ebook-library__metadata-wide">
+                  <img id="ebook-metadata-cover-preview" alt="A kiválasztott könyv borítója" hidden />
+                  <div><label class="field"><span class="field__label">Borító (JPG vagy PNG, legfeljebb 10 MiB)</span><input id="ebook-metadata-cover" type="file" accept="image/jpeg,image/png" /></label><button id="ebook-metadata-cover-clear" class="btn btn--ghost btn--sm" type="button">Borító eltávolítása</button></div>
+                </div>
+              </div>
+              <p id="ebook-metadata-suggestion" class="ebook-library__metadata-suggestion" role="status"></p>
+              <div id="ebook-metadata-evidence" class="ebook-library__metadata-evidence" aria-label="Katalógustalálatok ellenőrzése" hidden></div>
+              <label id="ebook-metadata-source-wrap" class="field" hidden><span class="field__label">Katalógustalálat</span><select id="ebook-metadata-source" class="input"></select></label>
+              <div id="ebook-metadata-field-suggestions" class="ebook-library__metadata-proposals" hidden></div>
+              <p id="ebook-metadata-operation-status" class="ebook-library__metadata-operation-status" role="status" aria-live="polite"></p>
+              <div class="ebook-library__metadata-actions">
+                <span id="ebook-metadata-dirty" class="ebook-library__metadata-dirty" aria-live="polite">Nincs mentetlen módosítás</span>
+                <button id="ebook-metadata-lookup" class="btn btn--ghost" type="button">Webes keresés</button>
+                <button id="ebook-metadata-apply" class="btn btn--ghost" type="button" disabled>Kiválasztott mezők alkalmazása</button>
+                <button id="ebook-metadata-save-catalog" class="btn btn--ghost" type="button" hidden>Csak adatlap mentése</button>
+                <button id="ebook-metadata-save" class="btn btn--primary" type="button" disabled>Metaadatok mentése</button>
+              </div>
+              </div>
+              <section id="ebook-editor-text-pane" class="ebook-library__editor-pane" role="tabpanel" aria-labelledby="ebook-editor-text-tab">
+                <p class="ebook-library__editor-hint">A javítások az EPUB szövegcsomópontjait módosítják; a linkek, képek és formázó elemek szerkezete megmarad. A változásokat mentés előtt ellenőrizheted.</p>
+                <div class="ebook-library__editor-field-row">
+                  <label class="field"><span class="field__label">Fejezet keresése</span><input id="ebook-editor-chapter-filter" class="input" type="search" placeholder="Keresés a fejezetek között" /></label>
+                  <label class="field"><span class="field__label">Fejezet</span><select id="ebook-editor-chapter" class="input"></select></label>
+                  <div class="ebook-library__editor-field-row"><label class="field"><span class="field__label">Fejezet címe a könyvben</span><input id="ebook-editor-heading" class="input" type="text" /></label><label class="field"><span class="field__label">Cím a tartalomjegyzékben</span><input id="ebook-editor-toc" class="input" type="text" /></label></div>
+                  <button id="ebook-editor-title-apply" class="btn btn--ghost" type="button">Fejezetcímek alkalmazása</button>
+                </div>
+                <div class="ebook-library__editor-section">
+                  <h3>Szövegrész kézi javítása</h3>
+                  <div class="ebook-library__editor-pagination"><button id="ebook-editor-segments-prev" class="btn btn--ghost" type="button">← Előző részek</button><span id="ebook-editor-segments-range"></span><button id="ebook-editor-segments-next" class="btn btn--ghost" type="button">Következő részek →</button></div>
+                  <select id="ebook-editor-segments" class="input ebook-library__segment-list" aria-label="Fejezet szövegrészei"></select>
+                  <label class="field"><span class="field__label">Kiválasztott szövegrész</span><textarea id="ebook-editor-segment-text" class="input" rows="5"></textarea></label>
+                  <button id="ebook-editor-segment-apply" class="btn btn--ghost" type="button">Szövegrész alkalmazása</button>
+                </div>
+                <div class="ebook-library__editor-section">
+                  <h3>Könyvszintű keresés és csere</h3>
+                  <div class="ebook-library__editor-field-row"><label class="field"><span class="field__label">Keresett szöveg</span><input id="ebook-editor-find" class="input" type="search" /></label><label class="field"><span class="field__label">Új szöveg</span><input id="ebook-editor-replace" class="input" type="text" /></label></div>
+                  <div class="ebook-library__editor-options"><label><input id="ebook-editor-case" type="checkbox" /> Kis- és nagybetű számít</label><label><input id="ebook-editor-word" type="checkbox" /> Csak teljes szó</label></div>
+                  <div class="ebook-library__editor-buttons"><button id="ebook-editor-search" class="btn btn--ghost" type="button">Találatok keresése</button><button id="ebook-editor-select-matches" class="btn btn--ghost" type="button">Összes kijelölése</button><button id="ebook-editor-apply-matches" class="btn btn--primary" type="button">Kijelölt cserék alkalmazása</button></div>
+                  <p id="ebook-editor-match-summary" role="status"></p><div id="ebook-editor-matches" class="ebook-library__editor-results"></div>
+                </div>
+                <div class="ebook-library__editor-section">
+                  <h3>Karakterhibák</h3><button id="ebook-editor-encoding-scan" class="btn btn--ghost" type="button">Gyanús karakterek keresése</button>
+                  <p id="ebook-editor-encoding-summary" role="status"></p><div id="ebook-editor-encoding-results" class="ebook-library__editor-results"></div>
+                </div>
+                <div class="ebook-library__editor-section">
+                  <h3>Betűtípus és megjelenés</h3>
+                  <p class="ebook-library__editor-hint">A kiválasztott hibás fontbeállítást a fájl CSS-ében és a szövegbe írt stílusokban cseréljük. Az olvasó saját betűtípus-beállítása ezt felülírhatja.</p>
+                  <div class="ebook-library__editor-field-row"><label class="field"><span class="field__label">Lecserélendő betűcsalád</span><select id="ebook-editor-font-source" class="input"></select></label><label class="field"><span class="field__label">Helyettesítő család</span><select id="ebook-editor-font-target" class="input"><option value="serif">Talpas (serif)</option><option value="sans-serif">Talpatlan (sans-serif)</option></select></label></div>
+                  <p id="ebook-editor-font-summary" role="status"></p><button id="ebook-editor-font-apply" class="btn btn--primary" type="button">Betűtípus-javítás alkalmazása</button>
+                </div>
+              </section>
+              <section id="ebook-editor-structure-pane" class="ebook-library__editor-pane" role="tabpanel" aria-labelledby="ebook-editor-structure-tab">
+                <p class="ebook-library__editor-hint">Csak olyan szerkezeti javításokat ajánlunk fel, amelyek a könyv szövegét nem változtatják meg. Semmi nem módosul automatikusan.</p>
+                <div class="ebook-library__editor-section">
+                  <div class="ebook-library__editor-buttons"><button id="ebook-editor-structure-select" class="btn btn--ghost" type="button">Összes kijelölése</button><button id="ebook-editor-structure-apply" class="btn btn--primary" type="button">Kijelölt javítások alkalmazása</button></div>
+                  <p id="ebook-editor-structure-summary" role="status">Nyisd meg az EPUB-ot a biztonságosan javítható szerkezeti hibák elemzéséhez.</p>
+                  <div id="ebook-editor-structure-results" class="ebook-library__editor-results"></div>
+                </div>
+              </section>
+              <div id="ebook-editor-global-actions" class="ebook-library__metadata-actions ebook-library__editor-global-actions">
+                <section id="ebook-editor-validation" class="ebook-library__validation" aria-labelledby="ebook-editor-validation-title" hidden>
+                  <div class="ebook-library__validation-head">
+                    <span id="ebook-editor-validation-icon" class="ebook-library__validation-icon" aria-hidden="true">✓</span>
+                    <div><strong id="ebook-editor-validation-title">EPUB állapot</strong><span id="ebook-editor-validation-counts"></span></div>
+                  </div>
+                  <details id="ebook-editor-validation-details">
+                    <summary id="ebook-editor-validation-toggle">Ellenőrzési részletek</summary>
+                    <ol id="ebook-editor-validation-messages" class="ebook-library__validation-messages"></ol>
+                  </details>
+                </section>
+                <span id="ebook-editor-status" role="status" aria-live="polite">Válassz EPUB-könyvet, majd nyisd meg a fájlt.</span>
+                <button id="ebook-editor-undo" class="btn btn--ghost" type="button" aria-label="Utolsó módosítás visszavonása" title="Visszavonás" disabled>↶</button>
+                <button id="ebook-editor-save" class="btn btn--primary" type="button" disabled>Változások mentése a Drive-ra</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+      </div>
+    </div>
+  <script type="module" src="./src/ebook-standalone.js"></script>
+</body>
+</html>
