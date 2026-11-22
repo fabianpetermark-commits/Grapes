@@ -1973,7 +1973,7 @@ function navigateToEbookOrganizer() {
   setEbookMode('organizer')
   return true
 }
-export async function navigateToEbookLibrary() {
+async function navigateToEbookLibrary() {
   const dirty = metadataDirty || hasContentChanges()
   if (dirty && !await showGrapesConfirm({
     title: 'A mentés gomb szerint még nincs vége…',
@@ -1991,6 +1991,7 @@ export async function navigateToEbookLibrary() {
   return true
 }
 export function initEbookLibrary() {
+  window.EbookLibraryNavigation = Object.freeze({ navigateToLibrary: navigateToEbookLibrary })
   import('./ebook-reader-sync.js').then(({ initReaderSync }) => initReaderSync()).catch((error) => console.warn('Az USB-s e-reader modul nem tölthető be:', error))
   const params = new URLSearchParams(window.location.search)
   const directReceiver = params.has('ebook-pair') || params.has('ebook-reader')
