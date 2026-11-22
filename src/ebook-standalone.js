@@ -15,3 +15,6 @@ if (typeof window.EbookAndroid?.postMessage === 'function') {
 
 const { initEbookLibrary } = await import('./ebook-library.js')
 initEbookLibrary()
+
+const { mountEbookStandaloneShell } = await import('./ebook/standalone-shell.js')
+mountEbookStandaloneShell()
