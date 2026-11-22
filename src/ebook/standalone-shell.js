@@ -26,7 +26,6 @@ export function mountEbookStandaloneShell({ root = document.querySelector('#eboo
   const readerPanel = manager?.querySelector('#ebook-reader-aside')
   const metadataPanel = manager?.querySelector('#ebook-metadata-panel')
   const receiverPanel = manager?.querySelector('#ebook-receiver-panel')
-  const transferPanel = manager?.querySelector('#ebook-transfer-panel')
 
   if (!manager || !hero || !quickAdd || !libraryPanel || !readerPanel || !metadataPanel || !receiverPanel) {
     throw new Error('Az E-Library DOM-szerződése hiányos; a közös navigáció nem indítható el.')
@@ -101,6 +100,7 @@ export function mountEbookStandaloneShell({ root = document.querySelector('#eboo
       routeDescription.textContent = heading[1]
     }
     if (nextRoute === 'reader') {
+      receiverPanel.hidden = false
       const isAndroid = root.classList.contains('ebook-library--android')
       const sync = readerPanel.querySelector('.ebook-library__reader-sync')
       if (sync) sync.hidden = isAndroid
@@ -120,7 +120,7 @@ export function mountEbookStandaloneShell({ root = document.querySelector('#eboo
   shell = createGrapesAppShell({
     appName: 'E-Library',
     navItems: NAV_ITEMS,
-    initialRoute: { mainRoute: 'library', page: 'root' },
+    initialRoute: { mainRoute: new URLSearchParams(window.location.search).has('ebook-pair') || new URLSearchParams(window.location.search).has('ebook-reader') ? 'reader' : 'library', page: 'root' },
     mount: root,
     manageHistory: false,
     onLogin: () => root.querySelector('#ebook-drive-connect')?.click(),
