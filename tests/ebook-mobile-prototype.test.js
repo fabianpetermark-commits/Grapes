@@ -15,3 +15,15 @@ test('mobile E-book prototype exposes only existing feature areas', async () => 
   }
   assert.match(html, /Android WebView-ban nem érhető el/)
 })
+
+test('editor uses a cover mosaic and opens the selected book workspace', async () => {
+  const html = await readFile(new URL('../ebook-mobile-prototype.html', import.meta.url), 'utf8')
+  assert.match(html, /class="editor-picker" id="editor-picker"/)
+  assert.match(html, /data-book-select="0"/)
+  assert.match(html, /class="editor-workspace" id="editor-workspace" hidden/)
+  assert.match(html, /id="editor-back"/)
+  assert.match(html, /id="selected-book-title"/)
+  assert.match(html, /picker\.hidden=true;workspace\.hidden=false/)
+  assert.match(html, /workspace\.hidden=true;picker\.hidden=false/)
+  assert.match(html, /Könyvborítók mozaikja/)
+})
