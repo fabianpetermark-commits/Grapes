@@ -13,8 +13,8 @@ if (typeof window.EbookAndroid?.postMessage === 'function') {
   document.querySelector('#ebook-app')?.classList.add('ebook-library--android')
 }
 
-const { initEbookLibrary } = await import('./ebook-library.js')
+const { initEbookLibrary, navigateToEbookLibrary } = await import('./ebook-library.js')
 initEbookLibrary()
 
 const { mountEbookStandaloneShell } = await import('./ebook/standalone-shell.js')
-mountEbookStandaloneShell()
+mountEbookStandaloneShell({ navigateToLibrary: navigateToEbookLibrary })
