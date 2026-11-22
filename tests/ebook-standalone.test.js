@@ -41,7 +41,7 @@ test('standalone E-Library mounts the shared four-route shell without duplicatin
   assert.match(shellSource, /manageHistory: false/)
   assert.match(shellSource, /#ebook-drive-connect.*click/)
   assert.match(shellSource, /onGrapesDriveChange/)
-  assert.match(shellSource, /#ebook-transfer-panel/)
+  assert.match(shellSource, /#ebook-receiver-panel/)
   assert.match(shellSource, /ebook-library--android/)
   assert.match(featureSource, /export async function navigateToEbookLibrary/)
 })
