@@ -1,6 +1,6 @@
 import QRCode from 'qrcode'
 import './styles/screens/ebook-library.css'
-import { connectGrapesDrive, disconnectGrapesDrive, getConnectedGrapesAccount, getGrapesDriveAccessToken, grapesDriveHasFullReadAccess, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange, showGrapesConfirm, navigateEbookScreen } from './ebook/platform.js'
+import { connectDrive, disconnectDrive, getConnectedAccount, getAccessToken, hasFullReadAccess, driveRequest, isDriveConnected, onDriveChange, confirm, navigate } from './ebook/platform.js'
 import { messageLabel, validateEpub, validationSummary } from './ebook/epub-validation.js'
 
 
@@ -180,7 +180,7 @@ async function validateEpubForDisplay(file, book, serial = contentLoadSerial) {
   }
 }
 function setUploadState(message, kind = '') { const node = $('#ebook-upload-state'); if (node) { node.textContent = message; node.dataset.kind = kind } }
-function activeLibraryAccount() { return getConnectedGrapesAccount()?.email?.trim().toLocaleLowerCase('en-US') || '' }
+function activeLibraryAccount() { return getConnectedAccount()?.email?.trim().toLocaleLowerCase('en-US') || '' }
 function libraryCacheKey(account) { return `${LIBRARY_CACHE_KEY}${encodeURIComponent(account)}` }
 function resetLibraryCacheMemory() { cachedBooks = []; cachedAt = 0; cachedAccount = '' }
 function saveLibraryCache(books) {
@@ -321,7 +321,7 @@ function handleReaderPairingMessage(event) {
   frame.removeAttribute('srcdoc')
 }
 function renderDriveConnection() {
-  const connected = isGrapesDriveConnected()
+  const connected = isDriveConnected()
   if ((!connected && currentBooks.length) || (cachedAccount && cachedAccount !== activeLibraryAccount())) {
     resetLibraryCacheMemory()
     ebookMetadata = {}
@@ -536,7 +536,7 @@ async function grantSelectedEpubAccess() {
   renderMetadataAccess(book)
   setMetadataAccessStatus('A Google fájlválasztó megnyitása…')
   try {
-    const token = getGrapesDriveAccessToken() || await connectGrapesDrive()
+    const token = getAccessToken() || await connectDrive()
     await loadGooglePicker()
     const picked = await pickExistingBook(book, token)
     if (!picked) return setMetadataAccessStatus('A fájlválasztás megszakítva; a szerkesztett adatok megmaradtak.')
@@ -644,7 +644,7 @@ async function loadSavedCoverPreview(bookId, fileId) {
 async function selectMetadataBook() {
   const select = $('#ebook-metadata-book')
   const next = select?.value || ''
-  if ((metadataDirty || hasContentChanges()) && next !== activeMetadataBookId && !await showGrapesConfirm({
+  if ((metadataDirty || hasContentChanges()) && next !== activeMetadataBookId && !await confirm({
     title: 'A piszkozat kapaszkodik az ajtófélfába…',
     message: 'Mentetlen módosításaid vannak. Ha másik könyvet választasz, ezek elvesznek — és később hiába nézünk ártatlanul.',
     confirmLabel: 'Igen, válts könyvet',
@@ -773,7 +773,7 @@ async function lookupBookMetadata() {
 }
 
 async function findGoogleBooksMetadata({ title = '', author = '', isbn = '' } = {}) {
-  const token = getGrapesDriveAccessToken()
+  const token = getAccessToken()
   if (!BOOKS_API_KEY && !token) return null
   const searches = isbn ? [`isbn:${isbn}`] : []
   if (title || author) searches.push([title && `intitle:${title}`, author && `inauthor:${author}`].filter(Boolean).join(' '))
@@ -1140,7 +1140,7 @@ function deduplicateOriginalMatches(matches = []) {
 }
 
 async function findGoogleBooksOriginalWorks({ author = '', excludedTitle = '' } = {}) {
-  const token = getGrapesDriveAccessToken()
+  const token = getAccessToken()
   if ((!BOOKS_API_KEY && !token) || !author) return []
   const params = new URLSearchParams({ q: `inauthor:${author}`, printType: 'books', maxResults: '20' })
   if (BOOKS_API_KEY) params.set('key', BOOKS_API_KEY)
@@ -1509,7 +1509,7 @@ function openBookDetail(id) {
   $('#ebook-metadata-title-heading')?.focus?.()
 }
 async function closeBookDetail({ force = false } = {}) {
-  if (!force && metadataDirty && !await showGrapesConfirm({
+  if (!force && metadataDirty && !await confirm({
     title: 'Máris vissza a polchoz?',
     message: 'A könyv mentetlen módosításai itt maradnak, te viszont nem. Biztosan visszalépsz a könyvtárhoz?',
     confirmLabel: 'Igen, változtatások nélkül',
@@ -1551,7 +1551,7 @@ async function saveMetadata({ catalogOnly = false } = {}) {
   const edited = metadataFromForm()
   const fingerprint = JSON.stringify(edited) + ($('#ebook-metadata-filename-target')?.value || '') + pendingCoverUrl + (pendingCoverBlob?.size || '') + String(pendingCoverRemoved) + coverChangeSerial + (contentEdited ? `:${contentChangeSerial}` : '')
   try {
-    if (epub && !catalogOnly && !partialMetadataSave && !await showGrapesConfirm({
+    if (epub && !catalogOnly && !partialMetadataSave && !await confirm({
       title: 'Az eredeti EPUB most nagyot nyel…',
       message: contentEdited
         ? `A Drive-on lévő eredeti fájlt felülírjuk, és ${contentSession.changeSummary.length} szerkesztési művelet véglegessé válik. Külön másolat nem készül.`
@@ -1561,7 +1561,7 @@ async function saveMetadata({ catalogOnly = false } = {}) {
       danger: true,
       icon: '📕',
     })) return
-    if (pdf && !catalogOnly && !partialMetadataSave && !await showGrapesConfirm({
+    if (pdf && !catalogOnly && !partialMetadataSave && !await confirm({
       title: 'Beleírhatunk a PDF belsejébe?',
       message: 'A Drive-on lévő PDF cím- és szerzőadatai módosulnak; az oldalak tartalma nem. Külön másolat nem készül, mert a Grapes most bátor, de nem vakmerő helyetted.',
       confirmLabel: 'Igen, módosítsd',
@@ -1620,7 +1620,7 @@ async function saveMetadata({ catalogOnly = false } = {}) {
         const original = await (await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media`)).blob()
         const clearFields = METADATA_FIELDS.filter((field) => Boolean(ebookMetadata[id]?.[field]?.length) && !edited[field]?.length)
         const result = await (await loadPdfWriter())(original, edited, { clearFields })
-        if (result.hasSignatures && !await showGrapesConfirm({
+        if (result.hasSignatures && !await confirm({
           title: 'Az aláírás ezt lehet, hogy nem díjazza…',
           message: 'Ez a PDF digitális aláírást tartalmazhat. A metaadat módosítása érvénytelenítheti az aláírást. Biztosan feltöltöd a módosított fájlt?',
           confirmLabel: 'Igen, vállalom',
@@ -1677,7 +1677,7 @@ async function saveMetadata({ catalogOnly = false } = {}) {
 }
 async function connectDrive() {
   try {
-    await connectGrapesDrive()
+    await connectDrive()
     const connect = $('#ebook-drive-connect')
     if (connect) { connect.textContent = 'Google Drive csatlakoztatva'; connect.disabled = true }
     setStatus('A közös Grapes Drive kapcsolat aktív.', 'success')
@@ -1687,13 +1687,13 @@ async function connectDrive() {
   }
 }
 async function disconnectDrive() {
-  await disconnectGrapesDrive()
+  await disconnectDrive()
   setStatus('A Google Drive kapcsolat leválasztva. A Drive-on lévő fájlok nem változtak.', 'success')
 }
-const driveRequest = grapesDriveRequest
+const driveRequest = driveRequest
 async function loadEpubWriter() { return (await import('./ebook/epub-metadata.js')).rewriteEpubMetadata }
 async function loadPdfWriter() { return (await import('./ebook/pdf-metadata.js')).rewritePdfMetadata }
-function accessTokenAvailable() { return isGrapesDriveConnected() }
+function accessTokenAvailable() { return isDriveConnected() }
 async function findLibraryFolderIds() {
   const query = `name = '${FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`
   const folderIds = []
@@ -1869,10 +1869,10 @@ async function refreshLibrary({ forceFullScan = false } = {}) {
     const libraryFolder = folderIds[0]
     if (libraryFolder) await loadEbookMetadata(libraryFolder)
     let books = [...new Map(foundBooks.map((file) => [file.id, file])).values()]
-    if (grapesDriveHasFullReadAccess() && cachedBooks.length) books = [...new Map([...books, ...cachedBooks].map((file) => [file.id, file])).values()]
+    if (hasFullReadAccess() && cachedBooks.length) books = [...new Map([...books, ...cachedBooks].map((file) => [file.id, file])).values()]
     renderBooks(books)
     setUploadState(`● ${foundBooks.length} könyv a Grapes mappában`, 'success')
-    if (grapesDriveHasFullReadAccess()) {
+    if (hasFullReadAccess()) {
       const cacheFresh = cachedAt > Date.now() - FULL_SCAN_CACHE_MS
       if (!forceFullScan && cacheFresh) {
         saveLibraryCache(books)
@@ -1975,7 +1975,7 @@ function navigateToEbookOrganizer() {
 }
 async function navigateToEbookLibrary() {
   const dirty = metadataDirty || hasContentChanges()
-  if (dirty && !await showGrapesConfirm({
+  if (dirty && !await confirm({
     title: 'A mentés gomb szerint még nincs vége…',
     message: 'A könyvszerkesztőben mentetlen módosítások vannak. Biztosan visszalépsz a könyvtárhoz nélkülük?',
     confirmLabel: 'Igen, lépj vissza',
@@ -2003,7 +2003,7 @@ export function initEbookLibrary() {
     return
   }
   initialized=true
-  onGrapesDriveChange(renderDriveConnection)
+  onDriveChange(renderDriveConnection)
   $('#ebook-reader-pair-btn')?.addEventListener('click', createReaderPairing)
   $('#ebook-reader-pair-value')?.addEventListener('click', (event) => event.currentTarget.select())
   $('#ebook-drive-connect')?.addEventListener('click',connectDrive)
@@ -2160,7 +2160,7 @@ export function initEbookLibrary() {
     if (event.detail?.from !== 'ebook' || (!metadataDirty && !hasContentChanges()) || $('#ebook-manager-view')?.dataset.ebookMode === 'library') return
     event.preventDefault()
     const target = event.detail?.to
-    showGrapesConfirm({
+    confirm({
       title: 'Elpárolognának a módosítások. Puff.',
       message: 'A könyvszerkesztőben mentetlen módosítások vannak. Biztosan kilépsz ebből a modulból?',
       confirmLabel: 'Igen, kilépek',
@@ -2171,7 +2171,7 @@ export function initEbookLibrary() {
       if (!confirmed || !target) return
       setMetadataDirty(false)
       resetContentState()
-      await navigateEbookScreen(target)
+      await navigate(target)
     })
   })
   window.addEventListener?.('beforeunload', (event) => {
