@@ -229,6 +229,7 @@ export function createStandaloneEbookPlatform(config) {
     isDriveConnected,
     onDriveChange(listener) { listeners.add(listener); return () => listeners.delete(listener) },
     confirm({ title = 'Megerősítés', message = '' } = {}) { return Promise.resolve(window.confirm(`${title}\n\n${message}`)) },
+    isNative: isAndroidNative,
     navigate(target) {
       if (target !== 'ebook') return false
       const manager = document.querySelector('#ebook-manager-view')
