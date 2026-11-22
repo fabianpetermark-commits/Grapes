@@ -193,3 +193,10 @@
 .ebook-library__editor-global-actions #ebook-editor-undo{grid-column:1;justify-self:center}
 .ebook-library__editor-global-actions #ebook-editor-save{grid-column:1;justify-self:center}
 @media(max-width:760px){#ebook-manager-view[data-ebook-mode="organizer"] .ebook-library__editor-topbar{display:grid;grid-template-columns:minmax(0,1fr)}.ebook-library__editor-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.ebook-library__editor-tabs .btn{min-width:0;min-height:44px;padding-inline:5px}.ebook-library__editor-topbar #ebook-editor-open{width:100%;margin-left:0;min-height:44px}.ebook-library__editor-buttons .btn,.ebook-library__editor-pagination .btn{flex:1 1 140px;min-height:44px}.ebook-library__editor-global-actions #ebook-editor-save{max-width:100%;min-width:0;min-height:44px;white-space:normal}}
+
+
+/* Android WebView: the desktop flex basis must not become a 620px tall mobile row. */
+@media(max-width:700px){
+  .ebook-library__quick-add-actions{flex:0 0 auto;width:100%;}
+  .ebook-library__quick-group--usb{flex:none;}
+}
