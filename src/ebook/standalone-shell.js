@@ -12,7 +12,7 @@ const NAV_ITEMS = [
  * Adapts the existing standalone E-book DOM to the shared Grapes shell.
  * Feature nodes are moved, never cloned, so their IDs and event listeners stay intact.
  */
-export function mountEbookStandaloneShell({ root = document.querySelector('#ebook-app') } = {}) {
+export function mountEbookStandaloneShell({ root = document.querySelector('#ebook-app'), navigateToLibrary = async () => false } = {}) {
   if (!root) throw new Error('Az E-book alkalmazás gyökéreleme nem található.')
   if (root.dataset.grapesShellMounted === 'true') return root._grapesEbookShell || null
 
@@ -70,7 +70,6 @@ export function mountEbookStandaloneShell({ root = document.querySelector('#eboo
   place(metadataPanel, 'library')
   place(receiverPanel, 'reader')
   place(readerPanel, 'reader')
-  place(transferPanel, 'share')
 
   const originalGrid = grid
   originalGrid?.remove()
@@ -84,12 +83,10 @@ export function mountEbookStandaloneShell({ root = document.querySelector('#eboo
     const nextRoute = NAV_ITEMS.some(item => item.id === route.mainRoute) ? route.mainRoute : 'library'
     const mode = manager.dataset.ebookMode
     if (mode === 'organizer' && nextRoute !== 'library') {
-      const back = manager.querySelector('#ebook-open-library')
-      back?.click()
-      await Promise.resolve()
+      const canLeave = await navigateToLibrary()
       if (request !== routeRequest) return
-      if (manager.dataset.ebookMode === 'organizer') {
-        shell?.navigate({ mainRoute: activeRoute, page: 'root' })
+      if (!canLeave) {
+        shell?.navigate({ mainRoute: 'library', page: 'root' })
         return
       }
     }
