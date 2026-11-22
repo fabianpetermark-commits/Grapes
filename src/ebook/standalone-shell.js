@@ -74,9 +74,6 @@ export function mountEbookStandaloneShell({ root = document.querySelector('#eboo
 
   const originalGrid = grid
   originalGrid?.remove()
-  const sharePanel = libraryPanel
-  views.get('share').append(sharePanel)
-  views.get('share').prepend(routeIntro)
 
   let shell
   let activeRoute = 'library'
@@ -98,12 +95,13 @@ export function mountEbookStandaloneShell({ root = document.querySelector('#eboo
     }
 
     activeRoute = nextRoute
+    if (nextRoute === 'library') views.get('library').append(libraryPanel, metadataPanel)
+    if (nextRoute === 'share') views.get('share').append(routeIntro, libraryPanel)
     for (const [id, view] of views) view.hidden = id !== nextRoute
     if (nextRoute === 'share') {
       const heading = headings.share
       routeTitle.textContent = heading[0]
       routeDescription.textContent = heading[1]
-      views.get('share').prepend(routeIntro)
     }
     if (nextRoute === 'reader') {
       const isAndroid = root.classList.contains('ebook-library--android')
