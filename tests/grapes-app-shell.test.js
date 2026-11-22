@@ -32,7 +32,7 @@ test('shared navigation has four top-level items and preserves parent selection 
   assert.match(source, /item\.icon \|\| item\.glyph/)
   assert.match(source, /manageHistory = true/)
   assert.match(source, /if \(manageHistory\) window\.history\.pushState/)
-  assert.match(source, /if \(manageHistory\) window\.addEventListener\('popstate'/)
+  assert.match(source, /window\.addEventListener\('popstate', handlePopState\)/)
   assert.doesNotMatch(source, /back-arrow|back-button|Vissza/)
 })
 
