@@ -27,6 +27,7 @@ test('Android package is isolated from Grapes and exposes only the E-book bridge
   assert.match(activity, /appassets\.androidplatform\.net/)
   assert.match(activity, /authorizeGoogleDrive/)
   assert.match(activity, /disconnectGoogleDrive/)
+  assert.match(activity, /JSONArray\(result\.grantedScopes\.map \{ it\.scopeUri \}\)/)
   assert.match(activity, /onJsConfirm/)
   assert.match(activity, /AlertDialog/)
   assert.doesNotMatch(activity, /GrapesAndroid|HealthConnect|Supabase|Yazio/i)
