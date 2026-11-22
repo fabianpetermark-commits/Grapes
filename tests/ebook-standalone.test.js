@@ -36,7 +36,7 @@ test('standalone E-Library mounts the shared four-route shell without duplicatin
     readFile(new URL('../src/ebook-library.js', import.meta.url), 'utf8'),
   ])
   assert.match(entrySource, /mountEbookStandaloneShell/)
-  assert.match(entrySource, /navigateToLibrary: navigateToEbookLibrary/)
+  assert.match(entrySource, /navigateToLibrary: \(\) => window\.EbookLibraryNavigation\.navigateToLibrary\(\)/)
   for (const route of ['library', 'share', 'reader', 'tools']) assert.match(shellSource, new RegExp(`id: '${route}'`))
   assert.match(shellSource, /manageHistory: false/)
   assert.match(shellSource, /#ebook-drive-connect.*click/)
