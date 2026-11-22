@@ -200,3 +200,38 @@
   .ebook-library__quick-add-actions{flex:0 0 auto;width:100%;}
   .ebook-library__quick-group--usb{flex:none;}
 }
+
+
+/* Native Android build: USB directory access is unavailable in WebView. */
+.ebook-library--android #ebook-reader-aside,
+.ebook-library--android .ebook-library__quick-group--usb {
+  display: none !important;
+}
+.ebook-library--android .ebook-library__quick-add {
+  gap: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.ebook-library--android .ebook-library__quick-add-actions {
+  flex: 0 0 auto;
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+.ebook-library--android .ebook-library__quick-group {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+.ebook-library--android .ebook-library__quick-group--pair {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+.ebook-library--android .ebook-library__quick-add .btn,
+.ebook-library--android .ebook-library__pair-control {
+  min-width: 0;
+  width: 100%;
+}
+.ebook-library--android .ebook-library__body {
+  padding: 16px 12px calc(16px + env(safe-area-inset-bottom));
+}
