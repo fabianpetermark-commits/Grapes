@@ -48,4 +48,3 @@ export const isGrapesDriveConnected = (...args) => getEbookPlatform().isDriveCon
 export const onGrapesDriveChange = (...args) => getEbookPlatform().onDriveChange(...args)
 export const showGrapesConfirm = (options) => getEbookPlatform().confirm(options)
 export const navigateEbookScreen = (target) => getEbookPlatform().navigate(target)
-export const isEbookNativePlatform = () => Boolean(getEbookPlatform().isNative?.())
