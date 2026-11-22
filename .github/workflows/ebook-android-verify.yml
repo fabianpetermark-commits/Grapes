@@ -9,6 +9,8 @@ on:
       - 'android-ebook/**'
       - 'src/ebook/**'
       - 'src/ebook-standalone.js'
+      - 'src/ebook/standalone-shell.js'
+      - 'src/styles/screens/ebook-library.css'
       - 'src/ebook-library.js'
       - 'ebook.html'
       - 'ebook-reader-standalone.html'
@@ -16,6 +18,7 @@ on:
       - 'package-lock.json'
       - 'vite.config.js'
       - 'tests/ebook-android-bridge.test.js'
+      - 'tests/ebook-standalone.test.js'
       - '.github/workflows/ebook-android-verify.yml'
 
 permissions:
