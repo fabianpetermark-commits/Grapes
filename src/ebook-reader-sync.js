@@ -1,4 +1,4 @@
-import { grapesDriveRequest, isGrapesDriveConnected } from './ebook/platform.js'
+import { driveRequest, isDriveConnected } from './ebook/platform.js'
 
 import { EBOOK_CONFIG } from './ebook/config.js'
 
@@ -89,7 +89,7 @@ async function scanDirectory(directory, prefix = '') {
 }
 async function findLibraryFolder() {
   const query = `name = '${FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`
-  const data = await (await grapesDriveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)&pageSize=100`)).json()
+  const data = await (await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)&pageSize=100`)).json()
   return data.files?.[0]?.id || null
 }
 async function listDriveBooks(folderId) {
@@ -98,7 +98,7 @@ async function listDriveBooks(folderId) {
   while (pending.length) {
     const folder = pending.shift(); if (visited.has(folder)) continue; visited.add(folder)
     const query = `'${folder}' in parents and trashed = false`
-    const data = await (await grapesDriveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,size,modifiedTime,md5Checksum,mimeType,parents,appProperties)&pageSize=1000`)).json()
+    const data = await (await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,size,modifiedTime,md5Checksum,mimeType,parents,appProperties)&pageSize=1000`)).json()
     for (const file of data.files || []) file.mimeType === 'application/vnd.google-apps.folder' ? pending.push(file.id) : candidate(file.name) && result.push(file)
   }
   return result
@@ -115,7 +115,7 @@ function renderInventory() {
   }
 }
 async function refreshInventory() {
-  if (!isGrapesDriveConnected()) throw new Error('Előbb csatlakoztasd a Google Drive-ot a főmenüben.')
+  if (!isDriveConnected()) throw new Error('Előbb csatlakoztasd a Google Drive-ot a főmenüben.')
   const folder = await findLibraryFolder()
   driveBooks = await listDriveBooks(folder)
   readerBooks = await verifyReaderAccess() ? await scanDirectory(readerRoot) : []
@@ -127,7 +127,7 @@ async function connectReader() {
   catch (error) { if (error?.name !== 'AbortError') status(`Az e-reader csatlakoztatása nem sikerült. ${error.message}`, 'error') }
 }
 async function writeToReader(book, existing = null) {
-  const response = await grapesDriveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(book.id)}?alt=media`)
+  const response = await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(book.id)}?alt=media`)
   const handle = existing?.handle && normalize(existing.name) === normalize(book.name)
     ? existing.handle
     : await readerRoot.getFileHandle(book.name, { create: true })
@@ -158,7 +158,7 @@ async function removeReaderBook(book) {
 async function uploadFromReader(book, folderId) {
   const boundary = `grapes-reader-sync-${crypto.randomUUID()}`
   const body = new Blob([`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n`, JSON.stringify({ name: book.name, parents: [folderId] }), `\r\n--${boundary}\r\nContent-Type: ${book.file.type || 'application/octet-stream'}\r\n\r\n`, book.file, `\r\n--${boundary}--\r\n`])
-  await grapesDriveRequest('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', { method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${boundary}` }, body })
+  await driveRequest('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', { method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${boundary}` }, body })
 }
 async function synchronize() {
   if (!readerRoot || !await verifyReaderAccess()) return status('Az e-reader nem érhető el. Csatlakoztasd USB-kábellel, majd válaszd ki újra a mappáját.', 'error')
