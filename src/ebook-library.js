@@ -1,6 +1,6 @@
 import QRCode from 'qrcode'
 import './styles/screens/ebook-library.css'
-import { connectDrive, disconnectDrive, getConnectedAccount, getAccessToken, hasFullReadAccess, driveRequest, isDriveConnected, onDriveChange, confirm, navigate } from './ebook/platform.js'
+import { connectDrive as platformConnectDrive, disconnectDrive as platformDisconnectDrive, getConnectedAccount, getAccessToken, hasFullReadAccess, driveRequest as platformDriveRequest, isDriveConnected, onDriveChange, confirm, navigate } from './ebook/platform.js'
 import { messageLabel, validateEpub, validationSummary } from './ebook/epub-validation.js'
 
 
@@ -408,22 +408,22 @@ function normalizeEbookMetadata(payload) {
 async function loadEbookMetadata(folderId) {
   ebookMetadata = {}; ebookMetadataFileId = null
   const query = `'${folderId}' in parents and name = '${metadataFileName()}' and trashed = false`
-  const found = await (await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id)&pageSize=1`)).json()
+  const found = await (await platformDriveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id)&pageSize=1`)).json()
   const file = found.files?.[0]
   if (!file) return
   ebookMetadataFileId = file.id
-  const payload = JSON.parse(await (await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.id)}?alt=media`)).text())
+  const payload = JSON.parse(await (await platformDriveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.id)}?alt=media`)).text())
   ebookMetadata = normalizeEbookMetadata(payload)
 }
 async function saveEbookMetadata(folderId) {
   const payload = JSON.stringify({ version: 2, updatedAt: new Date().toISOString(), books: ebookMetadata })
   if (ebookMetadataFileId) {
-    await driveRequest(`https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(ebookMetadataFileId)}?uploadType=media`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: payload })
+    await platformDriveRequest(`https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(ebookMetadataFileId)}?uploadType=media`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: payload })
     return
   }
   const boundary = `grapes-ebook-metadata-${crypto.randomUUID()}`
   const body = new Blob([`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n`, JSON.stringify({ name: metadataFileName(), parents: [folderId], mimeType: 'application/json' }), `\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n`, payload, `\r\n--${boundary}--\r\n`])
-  ebookMetadataFileId = (await (await driveRequest('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', { method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${boundary}` }, body })).json()).id
+  ebookMetadataFileId = (await (await platformDriveRequest('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', { method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${boundary}` }, body })).json()).id
 }
 function renderMetadataEditor() {
   const select = $('#ebook-metadata-book'); if (!select) return
@@ -634,7 +634,7 @@ function showCoverBlob(blob) {
 }
 async function loadSavedCoverPreview(bookId, fileId) {
   try {
-    const blob = await (await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`)).blob()
+    const blob = await (await platformDriveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`)).blob()
     if (bookId !== activeMetadataBookId || pendingCoverBlob || pendingCoverUrl || pendingCoverRemoved) return
     coverObjectUrl = URL.createObjectURL(blob)
     const preview = $('#ebook-metadata-cover-preview')
@@ -1105,7 +1105,7 @@ async function uploadCoverAsset(folderId, bookId, cover) {
   const extension = cover.mimeType === 'image/png' ? 'png' : 'jpg'
   const boundary = `grapes-cover-${crypto.randomUUID()}`
   const body = new Blob([`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n`, JSON.stringify({ name: `.grapes-cover-${bookId}-${Date.now()}.${extension}`, parents: [folderId], mimeType: cover.mimeType }), `\r\n--${boundary}\r\nContent-Type: ${cover.mimeType}\r\n\r\n`, cover.bytes, `\r\n--${boundary}--\r\n`])
-  const response = await driveRequest('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', { method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${boundary}` }, body })
+  const response = await platformDriveRequest('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', { method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${boundary}` }, body })
   return (await response.json()).id
 }
 function sameDriveVersion(left, right) {
@@ -1114,7 +1114,7 @@ function sameDriveVersion(left, right) {
   return left?.modifiedTime === right?.modifiedTime && String(left?.size || '') === String(right?.size || '')
 }
 async function getBookDriveVersion(id) {
-  const response = await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?fields=id,name,size,modifiedTime,md5Checksum,headRevisionId,mimeType,capabilities(canEdit),isAppAuthorized,appProperties`)
+  const response = await platformDriveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?fields=id,name,size,modifiedTime,md5Checksum,headRevisionId,mimeType,capabilities(canEdit),isAppAuthorized,appProperties`)
   return response.json()
 }
 
@@ -1185,7 +1185,7 @@ async function renameBookOnDrive(book, metadata, requestedName = '') {
   const priorFingerprints = String(book.appProperties?.grapesPrev || '').split(',').filter((value) => /^[a-f0-9]{16}$/.test(value))
   const fingerprints = [...new Set([nameFingerprint(book.name), ...legacyNames.map(nameFingerprint), ...priorFingerprints])].slice(0, 5)
   const compactHistory = fingerprints.join(',')
-  const response = await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(book.id)}?fields=id,name,size,modifiedTime,md5Checksum,headRevisionId,appProperties,isAppAuthorized`, {
+  const response = await platformDriveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(book.id)}?fields=id,name,size,modifiedTime,md5Checksum,headRevisionId,appProperties,isAppAuthorized`, {
     method: 'PATCH', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name: nextName, appProperties: { grapesPrev: compactHistory, grapesPreviousNames: null } }),
   })
@@ -1355,7 +1355,7 @@ async function openContentBook() {
   try {
     const before = await getBookDriveVersion(book.id)
     if (before.isAppAuthorized !== true) throw new Error('A fájlonkénti Drive-hozzáférés már nem aktív.')
-    const blob = await (await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(book.id)}?alt=media`)).blob()
+    const blob = await (await platformDriveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(book.id)}?alt=media`)).blob()
     const validationPromise = validateEpubForDisplay(blob, book, serial)
     const { openEpubContent } = await import('./ebook/epub-content.js')
     const session = await openEpubContent(blob)
@@ -1590,7 +1590,7 @@ async function saveMetadata({ catalogOnly = false } = {}) {
         if (before.capabilities?.canEdit === false) throw new Error('Ehhez az EPUB-hoz nincs szerkesztési jogod a Drive-on.')
         if (before.isAppAuthorized !== true) throw new Error('Ehhez az EPUB-hoz nincs fájlonkénti Grapes-hozzáférés. A teljes Drive-jogot nem kérjük; egyelőre csak a könyvtári adatlap menthető.')
         setStatus('Az EPUB letöltése és ellenőrzése…')
-        const original = await (await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media`)).blob()
+        const original = await (await platformDriveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media`)).blob()
         setStatus(contentEdited ? 'A jóváhagyott szöveg-, fejezet- és fontjavítások elkészítése…' : 'Az EPUB metaadatainak és borítójának frissítése…')
         const contentBlob = contentEdited ? await contentSession.buildBlob() : original
         const clearFields = METADATA_FIELDS.filter((field) => Boolean(ebookMetadata[id]?.[field]?.length) && !edited[field]?.length)
@@ -1602,7 +1602,7 @@ async function saveMetadata({ catalogOnly = false } = {}) {
         const preparedContentSession = contentEdited ? await (await import('./ebook/epub-content.js')).openEpubContent(updated) : null
         if (!sameDriveVersion(before, await getBookDriveVersion(id))) throw new Error('Az EPUB-fájl a feldolgozás közben módosult. Nem írtam felül.')
         setStatus('A módosított EPUB feltöltése a Drive-ra…')
-        const response = await driveRequest(`https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(id)}?uploadType=media&fields=id,size,modifiedTime,md5Checksum,headRevisionId`, { method: 'PATCH', headers: { 'Content-Type': 'application/epub+zip' }, body: updated })
+        const response = await platformDriveRequest(`https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(id)}?uploadType=media&fields=id,size,modifiedTime,md5Checksum,headRevisionId`, { method: 'PATCH', headers: { 'Content-Type': 'application/epub+zip' }, body: updated })
         const uploaded = await response.json()
         Object.assign(book, uploaded)
         partialMetadataSave = { id, fingerprint, cover, version: uploaded, preparedContentSession, format: 'epub' }
@@ -1617,7 +1617,7 @@ async function saveMetadata({ catalogOnly = false } = {}) {
         if (before.capabilities?.canEdit === false) throw new Error('Ehhez a PDF-hez nincs szerkesztési jogod a Drive-on.')
         if (before.isAppAuthorized !== true) throw new Error('Ehhez a PDF-hez nincs fájlonkénti Grapes-hozzáférés. Egyelőre csak a könyvtári adatlap menthető.')
         setStatus('A PDF letöltése és ellenőrzése…')
-        const original = await (await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media`)).blob()
+        const original = await (await platformDriveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media`)).blob()
         const clearFields = METADATA_FIELDS.filter((field) => Boolean(ebookMetadata[id]?.[field]?.length) && !edited[field]?.length)
         const result = await (await loadPdfWriter())(original, edited, { clearFields })
         if (result.hasSignatures && !await confirm({
@@ -1633,7 +1633,7 @@ async function saveMetadata({ catalogOnly = false } = {}) {
         }
         if (!sameDriveVersion(before, await getBookDriveVersion(id))) throw new Error('A PDF-fájl a feldolgozás közben módosult. Nem írtam felül.')
         setStatus('A módosított PDF feltöltése a Drive-ra…')
-        const response = await driveRequest(`https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(id)}?uploadType=media&fields=id,size,modifiedTime,md5Checksum,headRevisionId`, { method: 'PATCH', headers: { 'Content-Type': 'application/pdf' }, body: result.blob })
+        const response = await platformDriveRequest(`https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(id)}?uploadType=media&fields=id,size,modifiedTime,md5Checksum,headRevisionId`, { method: 'PATCH', headers: { 'Content-Type': 'application/pdf' }, body: result.blob })
         const uploaded = await response.json()
         Object.assign(book, uploaded)
         partialMetadataSave = { id, fingerprint, cover, version: uploaded, preparedContentSession: null, format: 'pdf' }
@@ -1677,7 +1677,7 @@ async function saveMetadata({ catalogOnly = false } = {}) {
 }
 async function connectDrive() {
   try {
-    await connectDrive()
+    await platformConnectDrive()
     const connect = $('#ebook-drive-connect')
     if (connect) { connect.textContent = 'Google Drive csatlakoztatva'; connect.disabled = true }
     setStatus('A közös Grapes Drive kapcsolat aktív.', 'success')
@@ -1687,10 +1687,9 @@ async function connectDrive() {
   }
 }
 async function disconnectDrive() {
-  await disconnectDrive()
+  await platformDisconnectDrive()
   setStatus('A Google Drive kapcsolat leválasztva. A Drive-on lévő fájlok nem változtak.', 'success')
 }
-const driveRequest = driveRequest
 async function loadEpubWriter() { return (await import('./ebook/epub-metadata.js')).rewriteEpubMetadata }
 async function loadPdfWriter() { return (await import('./ebook/pdf-metadata.js')).rewritePdfMetadata }
 function accessTokenAvailable() { return isDriveConnected() }
@@ -1699,7 +1698,7 @@ async function findLibraryFolderIds() {
   const folderIds = []
   let pageToken = ''
   do {
-    const response = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=nextPageToken,files(id,name)&pageSize=100&pageToken=${encodeURIComponent(pageToken)}`)
+    const response = await platformDriveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=nextPageToken,files(id,name)&pageSize=100&pageToken=${encodeURIComponent(pageToken)}`)
     const data = await response.json()
     for (const folder of data.files || []) if (folder.id) folderIds.push(folder.id)
     pageToken = data.nextPageToken || ''
@@ -1709,7 +1708,7 @@ async function findLibraryFolderIds() {
 async function ensureLibraryFolder() {
   const folderIds = await findLibraryFolderIds()
   if (folderIds[0]) return folderIds[0]
-  const created=await driveRequest('https://www.googleapis.com/drive/v3/files',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:FOLDER_NAME,mimeType:'application/vnd.google-apps.folder'})})
+  const created=await platformDriveRequest('https://www.googleapis.com/drive/v3/files',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:FOLDER_NAME,mimeType:'application/vnd.google-apps.folder'})})
   return (await created.json()).id
 }
 async function listFolderChildren(folderId) {
@@ -1717,7 +1716,7 @@ async function listFolderChildren(folderId) {
   const query = `'${folderId}' in parents and trashed = false`
   let pageToken = ''
   do {
-    const response = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=nextPageToken,files(id,name,size,createdTime,modifiedTime,mimeType,parents,isAppAuthorized,appProperties)&orderBy=modifiedTime desc&pageSize=1000&pageToken=${encodeURIComponent(pageToken)}`)
+    const response = await platformDriveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=nextPageToken,files(id,name,size,createdTime,modifiedTime,mimeType,parents,isAppAuthorized,appProperties)&orderBy=modifiedTime desc&pageSize=1000&pageToken=${encodeURIComponent(pageToken)}`)
     const data = await response.json()
     children.push(...(data.files || []))
     pageToken = data.nextPageToken || ''
@@ -1746,7 +1745,7 @@ async function listAllDriveBooks() {
   const query = "trashed = false and mimeType != 'application/vnd.google-apps.folder'"
   let pageToken = ''
   do {
-    const response = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=nextPageToken,files(id,name,size,createdTime,modifiedTime,mimeType,parents,isAppAuthorized,appProperties)&orderBy=modifiedTime desc&pageSize=1000&pageToken=${encodeURIComponent(pageToken)}`)
+    const response = await platformDriveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=nextPageToken,files(id,name,size,createdTime,modifiedTime,mimeType,parents,isAppAuthorized,appProperties)&orderBy=modifiedTime desc&pageSize=1000&pageToken=${encodeURIComponent(pageToken)}`)
     const data = await response.json()
     for (const file of data.files || []) if (isDriveBook(file)) books.push(file)
     pageToken = data.nextPageToken || ''
@@ -1762,7 +1761,7 @@ async function getReaderLibraryBooks() {
 }
 async function ensurePublicRead(fileId) {
   try {
-    await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/permissions`, {
+    await platformDriveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/permissions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'anyone', role: 'reader', allowFileDiscovery: false }),
@@ -1781,10 +1780,10 @@ async function createReaderMarker(folderId) {
   })
   const boundary = `grapes-reader-${crypto.randomUUID()}`
   const staleQuery = `'${folderId}' in parents and name contains '.grapes-reader-pairing' and trashed = false`
-  const stale = await (await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(staleQuery)}&fields=files(id,name)&pageSize=100`)).json()
+  const stale = await (await platformDriveRequest(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(staleQuery)}&fields=files(id,name)&pageSize=100`)).json()
   for (const file of stale.files || []) {
     if (!INTERNAL_PAIRING_FILE.test(file.name)) continue
-    await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.id)}?fields=id,trashed`, {
+    await platformDriveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.id)}?fields=id,trashed`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trashed: true }),
     })
   }
@@ -1799,7 +1798,7 @@ async function createReaderMarker(folderId) {
     payload,
     `\r\n--${boundary}--\r\n`,
   ])
-  const response = await driveRequest('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+  const response = await platformDriveRequest('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
     method: 'POST',
     headers: { 'Content-Type': `multipart/related; boundary=${boundary}` },
     body,
@@ -1898,21 +1897,21 @@ async function uploadBook(file) {
   try {
     const folderId=await ensureLibraryFolder(); const boundary=`grapes-ebook-${crypto.randomUUID()}`
     const body=new Blob([`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n`,JSON.stringify({name:file.name,parents:[folderId]}),`\r\n--${boundary}\r\nContent-Type: ${file.type||'application/octet-stream'}\r\n\r\n`,file,`\r\n--${boundary}--\r\n`])
-    const uploadResponse = await driveRequest('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{'Content-Type':`multipart/related; boundary=${boundary}`},body})
+    const uploadResponse = await platformDriveRequest('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{'Content-Type':`multipart/related; boundary=${boundary}`},body})
     const created = await uploadResponse.json()
     if (readerLibraryEnabled() && created.id && isShareableBook(file.name)) await ensurePublicRead(created.id)
     if (await refreshLibrary()) setStatus(`${file.name} hozzáadva a könyvtárhoz.`,'success')
   } catch (error) { setStatus(`A feltöltés nem sikerült. ${error.message}`,'error') }
 }
 async function downloadBook(fileId) {
-  try { const meta=await(await driveRequest(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=name`)).json(); const blob=await(await driveRequest(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`)).blob(); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=meta.name; a.click(); URL.revokeObjectURL(url) } catch { setStatus('A letöltés nem sikerült.','error') }
+  try { const meta=await(await platformDriveRequest(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=name`)).json(); const blob=await(await platformDriveRequest(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`)).blob(); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=meta.name; a.click(); URL.revokeObjectURL(url) } catch { setStatus('A letöltés nem sikerült.','error') }
 }
 async function sendBook(fileId) {
   if (!accessTokenAvailable()) return setStatus('Előbb csatlakoztasd a Google Drive-ot.', 'error')
   if (!TRANSFER_BROKER_URL) return setStatus('Az E-book Transfer broker nincs konfigurálva.', 'error')
   try {
-    const meta = await (await driveRequest(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=name`)).json()
-    await driveRequest(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+    const meta = await (await platformDriveRequest(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=name`)).json()
+    await platformDriveRequest(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'anyone', role: 'reader', allowFileDiscovery: false }),
