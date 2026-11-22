@@ -1,6 +1,6 @@
 import QRCode from 'qrcode'
 import './styles/screens/ebook-library.css'
-import { connectGrapesDrive, disconnectGrapesDrive, getConnectedGrapesAccount, getGrapesDriveAccessToken, grapesDriveHasFullReadAccess, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange, showGrapesConfirm, navigateEbookScreen } from './ebook/platform.js'
+import { connectGrapesDrive, disconnectGrapesDrive, getConnectedGrapesAccount, getGrapesDriveAccessToken, grapesDriveHasFullReadAccess, grapesDriveRequest, isGrapesDriveConnected, onGrapesDriveChange, showGrapesConfirm, navigateEbookScreen, isEbookNativePlatform } from './ebook/platform.js'
 import { messageLabel, validateEpub, validationSummary } from './ebook/epub-validation.js'
 
 
@@ -2181,7 +2181,11 @@ export function initEbookLibrary() {
   const sharedConnected = accessTokenAvailable()
   renderLibraryCache()
   renderDriveConnection()
-  setStatus(sharedConnected ? 'A közös Grapes Drive kapcsolat aktív.' : (CLIENT_ID ? 'A Google Drive-ot a főmenüben vagy itt csatlakoztathatod.' : 'Drive nincs konfigurálva. Állítsd be a VITE_GOOGLE_CLIENT_ID értéket.'), sharedConnected ? 'success' : (CLIENT_ID ? '' : 'error'))
+  const nativeDrive = isEbookNativePlatform()
+  const driveSetupMessage = nativeDrive
+    ? 'A Drive nincs csatlakoztatva. Androidon válassz Google-fiókot, majd engedélyezd a hozzáférést.'
+    : (CLIENT_ID ? 'A Google Drive-ot itt csatlakoztathatod.' : 'Drive nincs konfigurálva. Állítsd be a VITE_EBOOK_STANDALONE_GOOGLE_CLIENT_ID értéket.')
+  setStatus(sharedConnected ? 'A Google Drive kapcsolat aktív.' : driveSetupMessage, sharedConnected ? 'success' : (nativeDrive || CLIENT_ID ? '' : 'error'))
   if (sharedConnected) refreshLibrary()
   if (directReceiver || requestedView === 'library') showEbookManager()
   else showEbookOrganizer()
