@@ -9,5 +9,12 @@ const [{ EBOOK_CONFIG }, { configureEbookPlatform }, { createStandaloneEbookPlat
 
 configureEbookPlatform(createStandaloneEbookPlatform(EBOOK_CONFIG))
 
+if (typeof window.EbookAndroid?.postMessage === 'function') {
+  document.querySelector('#ebook-app')?.classList.add('ebook-library--android')
+}
+
 const { initEbookLibrary } = await import('./ebook-library.js')
 initEbookLibrary()
+
+const { mountEbookStandaloneShell } = await import('./ebook/standalone-shell.js')
+mountEbookStandaloneShell({ navigateToLibrary: () => window.EbookLibraryNavigation.navigateToLibrary() })

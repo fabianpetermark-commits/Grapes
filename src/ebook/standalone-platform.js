@@ -1,5 +1,37 @@
 // Standalone Google Drive host adapter. It intentionally owns a separate
 // token/session namespace and never imports Grapes account or project storage.
+// Android uses the native Google Authorization API; browser builds use GIS.
+const ANDROID_RESULT_EVENT = 'ebook:android-result'
+
+function isAndroidNative() {
+  try { return typeof window.EbookAndroid?.postMessage === 'function' } catch { return false }
+}
+
+function androidRequest(method, ...args) {
+  if (!isAndroidNative()) return Promise.reject(new Error('A natív Android-kapcsolat nem érhető el.'))
+  const requestId = crypto.randomUUID()
+  return new Promise((resolve, reject) => {
+    const finish = callback => {
+      window.clearTimeout(timeout)
+      window.removeEventListener(ANDROID_RESULT_EVENT, listener)
+      callback()
+    }
+    const listener = event => {
+      if (event.detail?.requestId !== requestId) return
+      finish(() => event.detail.ok
+        ? resolve(event.detail.payload)
+        : reject(new Error(event.detail.error || 'Az Android-művelet nem sikerült.')))
+    }
+    const timeout = window.setTimeout(
+      () => finish(() => reject(new Error('Az Android-művelet túllépte az időkorlátot.'))),
+      120000,
+    )
+    window.addEventListener(ANDROID_RESULT_EVENT, listener)
+    try { window.EbookAndroid.postMessage(JSON.stringify({ method, args, requestId })) }
+    catch (error) { finish(() => reject(error)) }
+  })
+}
+
 export function createStandaloneEbookPlatform(config) {
   const scope = 'https://www.googleapis.com/auth/drive.file'
   const readScope = 'https://www.googleapis.com/auth/drive.readonly'
@@ -34,7 +66,7 @@ export function createStandaloneEbookPlatform(config) {
   function restoreSession() {
     try {
       const saved = JSON.parse(window.sessionStorage.getItem(sessionKey))
-      if (saved?.clientId === config.clientId && typeof saved.accessToken === 'string' && saved.expiresAt > Date.now() + 30000) {
+      if (saved?.clientId === (config.clientId || '') && typeof saved.accessToken === 'string' && saved.expiresAt > Date.now() + 30000) {
         accessToken = saved.accessToken
         expiresAt = saved.expiresAt
         grantedScopes = saved.scopes || scope
@@ -47,7 +79,7 @@ export function createStandaloneEbookPlatform(config) {
   function persistSession() {
     try {
       window.sessionStorage.setItem(sessionKey, JSON.stringify({
-        clientId: config.clientId, accessToken, expiresAt, scopes: grantedScopes, account: accountProfile,
+        clientId: config.clientId || '', accessToken, expiresAt, scopes: grantedScopes, account: accountProfile,
       }))
     } catch {}
   }
@@ -85,17 +117,46 @@ export function createStandaloneEbookPlatform(config) {
     } catch {}
   }
 
+  function acceptAuthorization(result, requestedFullRead) {
+    if (!result?.accessToken) throw new Error('A Google nem adott hozzáférési tokent.')
+    const scopes = Array.isArray(result.grantedScopes) ? result.grantedScopes.join(' ') : String(result.grantedScopes || '')
+    if (requestedFullRead && ![scope, readScope].every(item => scopes.split(/\s+/).includes(item))) {
+      throw new Error('A Google nem adta meg mindkét szükséges Drive-engedélyt.')
+    }
+    accessToken = result.accessToken
+    grantedScopes = scopes || scope
+    expiresAt = Date.now() + (Number(result.expiresIn) || 3300) * 1000
+    window.clearTimeout(expiryTimer)
+    expiryTimer = window.setTimeout(clearSession, Math.max(0, expiresAt - Date.now() - 30000))
+    if (requestedFullRead) try { window.localStorage.setItem(fullReadKey, '1') } catch {}
+  }
+
   async function connectDrive({ fullRead = false } = {}) {
-    if (!config.clientId) throw new Error('A Google Drive kliensazonosító nincs konfigurálva ehhez az önálló E-book alkalmazáshoz.')
+    const native = isAndroidNative()
+    if (!native && !config.clientId) throw new Error('A Google Drive kliensazonosító nincs konfigurálva ehhez az önálló E-book alkalmazáshoz.')
     let preferredFullRead = false
     try { preferredFullRead = window.localStorage.getItem(fullReadKey) === '1' } catch {}
     const requestedFullRead = fullRead || preferredFullRead
     if (isDriveConnected() && (!requestedFullRead || hasFullReadAccess())) return accessToken
-    await loadGoogleIdentity()
     if (connecting) {
       await connecting
       return requestedFullRead && !hasFullReadAccess() ? connectDrive({ fullRead: true }) : accessToken
     }
+
+    if (native) {
+      connecting = (async () => {
+        const payload = await androidRequest('authorizeGoogleDrive', requestedFullRead)
+        const result = typeof payload === 'string' ? JSON.parse(payload) : payload
+        acceptAuthorization(result, requestedFullRead)
+        await rememberAccount(accessToken)
+        persistSession()
+        for (const listener of listeners) listener(true)
+        return accessToken
+      })()
+      try { return await connecting } finally { connecting = null }
+    }
+
+    await loadGoogleIdentity()
     let loginHint = ''
     try { loginHint = window.localStorage.getItem(accountKey) || '' } catch {}
     connecting = new Promise((resolve, reject) => {
@@ -107,20 +168,13 @@ export function createStandaloneEbookPlatform(config) {
         callback: async response => {
           if (response.error) return reject(new Error(response.error_description || response.error))
           if (!response.access_token) return reject(new Error('A Google nem adott hozzáférési tokent.'))
-          const scopes = String(response.scope || '')
-          if (requestedFullRead && ![scope, readScope].every(item => scopes.split(/\s+/).includes(item))) {
-            return reject(new Error('A Google nem adta meg mindkét szükséges Drive-engedélyt.'))
-          }
-          accessToken = response.access_token
-          grantedScopes = scopes || scope
-          expiresAt = Date.now() + (Number(response.expires_in) || 3600) * 1000
-          window.clearTimeout(expiryTimer)
-          expiryTimer = window.setTimeout(clearSession, Math.max(0, expiresAt - Date.now() - 30000))
-          if (requestedFullRead) try { window.localStorage.setItem(fullReadKey, '1') } catch {}
-          await rememberAccount(accessToken)
-          persistSession()
-          for (const listener of listeners) listener(true)
-          resolve(accessToken)
+          try {
+            acceptAuthorization({ accessToken: response.access_token, grantedScopes: response.scope, expiresIn: response.expires_in }, requestedFullRead)
+            await rememberAccount(accessToken)
+            persistSession()
+            for (const listener of listeners) listener(true)
+            resolve(accessToken)
+          } catch (error) { reject(error) }
         },
       })
       tokenClient.requestAccessToken({ prompt: loginHint ? '' : 'select_account' })
@@ -130,7 +184,9 @@ export function createStandaloneEbookPlatform(config) {
 
   async function disconnectDrive({ forgetAccount = false } = {}) {
     const token = accessToken
-    if (token && window.google?.accounts?.oauth2?.revoke) {
+    if (token && isAndroidNative()) {
+      await androidRequest('disconnectGoogleDrive', token).catch(() => {})
+    } else if (token && window.google?.accounts?.oauth2?.revoke) {
       await new Promise(resolve => window.google.accounts.oauth2.revoke(token, resolve)).catch(() => {})
     }
     clearSession()

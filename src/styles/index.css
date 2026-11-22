@@ -4,6 +4,8 @@
 @import './reset.css';
 @import './base.css';
 
+@import '../ui/grapes-app-shell.css';
+
 @import './components/icon.css';
 @import './components/button.css';
 @import './components/field.css';

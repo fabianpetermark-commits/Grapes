@@ -27,3 +27,21 @@ test('standalone boot installs its own platform before initializing the feature'
   assert.match(standaloneConfig, /VITE_EBOOK_STANDALONE_TRANSFER_BROKER_URL/)
   assert.doesNotMatch(standaloneConfig, /AKfycbxW8J8QUlHOYl7zI9mvfW9ec-Zal4ihDqUWBD-gxASnhxLK9YAU6sPZcteW8kjemOGb/)
 })
+
+
+test('standalone E-Library mounts the shared four-route shell without duplicating feature logic', async () => {
+  const [entrySource, shellSource, featureSource] = await Promise.all([
+    readFile(new URL('../src/ebook-standalone.js', import.meta.url), 'utf8'),
+    readFile(new URL('../src/ebook/standalone-shell.js', import.meta.url), 'utf8'),
+    readFile(new URL('../src/ebook-library.js', import.meta.url), 'utf8'),
+  ])
+  assert.match(entrySource, /mountEbookStandaloneShell/)
+  assert.match(entrySource, /navigateToLibrary: \(\) => window\.EbookLibraryNavigation\.navigateToLibrary\(\)/)
+  for (const route of ['library', 'share', 'reader', 'tools']) assert.match(shellSource, new RegExp(`id: '${route}'`))
+  assert.match(shellSource, /manageHistory: false/)
+  assert.match(shellSource, /#ebook-drive-connect.*click/)
+  assert.match(shellSource, /onGrapesDriveChange/)
+  assert.match(shellSource, /#ebook-receiver-panel/)
+  assert.match(shellSource, /ebook-library--android/)
+  assert.match(featureSource, /EbookLibraryNavigation = Object\.freeze\(\{ navigateToLibrary: navigateToEbookLibrary \}\)/)
+})

@@ -1,0 +1,153 @@
+.grapes-app-shell {
+  --grapes-page: #F7F5EE;
+  --grapes-surface: #FFFFFF;
+  --grapes-border: #E3DECF;
+  --grapes-text: #2E2A24;
+  --grapes-muted: #756F64;
+  --grapes-primary: #6B8F4E;
+  --grapes-primary-soft: #E8EEDC;
+  --grapes-success: #88B97A;
+  --grapes-copper: #A6734D;
+}
+
+.grapes-app-shell {
+  color: var(--grapes-text);
+  background: var(--grapes-page);
+}
+
+.grapes-app-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 76px;
+  padding: 12px 16px;
+  background: rgba(247, 245, 238, .96);
+  border-bottom: 1px solid var(--grapes-border);
+  backdrop-filter: blur(14px);
+}
+
+.grapes-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.grapes-brand__logo {
+  display: block;
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  flex: 0 0 42px;
+}
+
+.grapes-brand__names {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  line-height: 1.05;
+}
+
+.grapes-brand__wordmark {
+  color: var(--grapes-text);
+  font-size: 23px;
+  font-weight: 780;
+  letter-spacing: -.035em;
+}
+
+.grapes-brand__app-name {
+  margin-top: 4px;
+  color: var(--grapes-primary);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: .01em;
+}
+
+.grapes-login {
+  min-height: 42px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--grapes-primary);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.grapes-login:disabled {
+  opacity: .72;
+}
+
+.grapes-bottom-nav {
+  position: fixed;
+  z-index: 30;
+  inset: auto 0 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  padding: 8px 8px max(8px, env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, .97);
+  border-top: 1px solid var(--grapes-border);
+  backdrop-filter: blur(16px);
+}
+
+.grapes-bottom-nav button {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 3px;
+  min-width: 0;
+  min-height: 54px;
+  padding: 7px 2px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--grapes-muted);
+  font: inherit;
+  white-space: nowrap;
+}
+
+.grapes-bottom-nav button[aria-current="page"] {
+  background: var(--grapes-primary-soft);
+  color: var(--grapes-primary);
+}
+
+.grapes-bottom-nav__icon {
+  font-size: 19px;
+  line-height: 1.1;
+}
+
+.grapes-bottom-nav__label {
+  overflow: hidden;
+  max-width: 100%;
+  font-size: 10px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (min-width: 720px) {
+  .grapes-bottom-nav {
+    position: sticky;
+    inset: auto;
+    max-width: 760px;
+    margin: 12px auto;
+    padding: 6px;
+    border: 1px solid var(--grapes-border);
+    border-radius: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .grapes-bottom-nav button,
+  .grapes-login {
+    transition: background-color 140ms ease, color 140ms ease, opacity 140ms ease;
+  }
+}

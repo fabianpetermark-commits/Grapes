@@ -193,3 +193,70 @@
 .ebook-library__editor-global-actions #ebook-editor-undo{grid-column:1;justify-self:center}
 .ebook-library__editor-global-actions #ebook-editor-save{grid-column:1;justify-self:center}
 @media(max-width:760px){#ebook-manager-view[data-ebook-mode="organizer"] .ebook-library__editor-topbar{display:grid;grid-template-columns:minmax(0,1fr)}.ebook-library__editor-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.ebook-library__editor-tabs .btn{min-width:0;min-height:44px;padding-inline:5px}.ebook-library__editor-topbar #ebook-editor-open{width:100%;margin-left:0;min-height:44px}.ebook-library__editor-buttons .btn,.ebook-library__editor-pagination .btn{flex:1 1 140px;min-height:44px}.ebook-library__editor-global-actions #ebook-editor-save{max-width:100%;min-width:0;min-height:44px;white-space:normal}}
+
+
+/* Android WebView: the desktop flex basis must not become a 620px tall mobile row. */
+@media(max-width:700px){
+  .ebook-library__quick-add-actions{flex:0 0 auto;width:100%;}
+  .ebook-library__quick-group--usb{flex:none;}
+}
+
+
+/* Native Android build: USB directory access is unavailable in WebView. */
+.ebook-library--android #ebook-reader-aside,
+.ebook-library--android .ebook-library__quick-group--usb {
+  display: none !important;
+}
+.ebook-library--android .ebook-library__quick-add {
+  gap: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.ebook-library--android .ebook-library__quick-add-actions {
+  flex: 0 0 auto;
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+.ebook-library--android .ebook-library__quick-group {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+.ebook-library--android .ebook-library__quick-group--pair {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+.ebook-library--android .ebook-library__quick-add .btn,
+.ebook-library--android .ebook-library__pair-control {
+  min-width: 0;
+  width: 100%;
+}
+.ebook-library--android .ebook-library__body {
+  padding: 16px 12px calc(16px + env(safe-area-inset-bottom));
+}
+
+
+/* Shared Grapes shell layout for the standalone E-Library routes. */
+.ebook-shell-views {
+  width: min(1180px, 100%);
+  min-width: 0;
+  margin: 0 auto;
+  padding: 24px 28px calc(92px + env(safe-area-inset-bottom));
+}
+.ebook-shell-view {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  min-width: 0;
+}
+.ebook-shell-view[hidden] { display: none; }
+.ebook-shell-route-intro { margin: 0 0 2px; }
+.ebook-shell-route-intro h1 { margin: 0; font-size: clamp(25px, 4vw, 34px); }
+.ebook-shell-route-intro p { margin: 7px 0 0; color: var(--color-text-muted); }
+.ebook-shell-view[data-ebook-route="reader"] #ebook-reader-aside { width: 100%; }
+.ebook-shell-view[data-ebook-route="reader"] #ebook-receiver-panel { width: 100%; }
+.ebook-shell-view[data-ebook-route="share"] #ebook-open-organizer { display: none; }
+@media (max-width: 640px) {
+  .ebook-shell-views { padding: 18px 14px calc(88px + env(safe-area-inset-bottom)); }
+}

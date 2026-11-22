@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#F7F5EE">
+<title>E-book – Warm Paper mobilfelület prototípus</title>
+<style>
+:root{color-scheme:light;--bg:#F7F5EE;--surface:#FFFFFF;--surface2:#F8F6F0;--line:#E3DECF;--text:#2E2A24;--muted:#756F64;--accent:#6B8F4E;--accent-soft:#E8EEDC;--success:#88B97A;--copper:#A6734D;--safe:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,Segoe UI,sans-serif}
+.app{min-height:100dvh;padding-bottom:calc(84px + var(--safe))}
+header{position:sticky;top:0;z-index:3;display:flex;align-items:center;justify-content:space-between;padding:16px 18px;background:rgba(247,245,238,.94);border-bottom:1px solid var(--line);backdrop-filter:blur(14px)}
+.brand{font-weight:750;font-size:20px;letter-spacing:-.03em}.sub{display:block;color:var(--muted);font-size:12px;font-weight:500;letter-spacing:0}
+.icon-btn{width:42px;height:42px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--text);font-size:19px}
+main{max-width:760px;margin:auto;padding:20px 16px 28px}.eyebrow{color:var(--accent);font-size:11px;font-weight:750;letter-spacing:.14em;text-transform:uppercase;margin:0 0 6px}
+h1{font-size:27px;letter-spacing:-.04em;margin:0 0 5px}h2{font-size:18px;margin:0}p{color:var(--muted);margin:7px 0 0}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px;margin-top:14px;box-shadow:0 3px 12px rgba(65,52,31,.06)}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px}.row p{font-size:13px}
+.action{display:flex;align-items:center;gap:10px;width:100%;padding:14px 13px;margin-top:10px;border:1px solid var(--line);border-radius:14px;background:var(--surface2);color:var(--text);text-align:left;font:inherit}
+.action .ico{width:38px;height:38px;display:grid;place-items:center;border-radius:12px;background:var(--accent-soft);color:#496B35;font-size:19px;flex:none}
+.action strong{display:block;font-size:14px}.action small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.note{padding:12px 13px;border:1px dashed #CFC5B2;border-radius:14px;color:var(--muted);font-size:13px;margin-top:12px}
+.screen{display:none}.screen.active{display:block}
+nav{position:fixed;z-index:5;bottom:0;left:0;right:0;padding:8px 8px calc(8px + var(--safe));background:rgba(255,255,255,.96);border-top:1px solid var(--line);backdrop-filter:blur(18px);display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px}
+nav button{border:0;background:transparent;color:var(--muted);border-radius:13px;padding:8px 2px 7px;font:inherit;min-width:0}
+nav button[aria-current=page]{background:var(--accent-soft);color:#496B35}
+nav .navico{display:block;font-size:20px;line-height:1.2;margin-bottom:4px}
+nav .navlabel{display:block;font-size:10px;font-weight:700;white-space:nowrap}
+@media(min-width:700px){main{padding-top:30px}.app{padding-bottom:30px}nav{position:sticky;top:64px;bottom:auto;max-width:760px;margin:12px auto 0;border:1px solid var(--line);border-radius:18px;padding:6px;}}
+.book-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:14px}
+.book-card{border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:8px;text-align:left;color:var(--text);min-width:0}
+.book-card[aria-pressed="true"]{outline:2px solid var(--accent);background:var(--accent-soft)}
+.book-cover{aspect-ratio: .70;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;border-radius:8px;padding:10px;color:#514A3D;box-shadow:inset 0 0 0 1px rgba(81,74,61,.12)}
+.book-cover b{font-family:Georgia,serif;font-size:clamp(12px,3.5vw,17px);line-height:1.15}
+.book-cover span{font-size:10px;margin-top:9px}
+.book-card small{display:block;color:var(--muted);font-size:11px;line-height:1.25;margin-top:7px;overflow-wrap:anywhere}
+.book-card .cover-mark{font-size:22px;margin-bottom:8px}
+.editor-workspace[hidden],.editor-picker[hidden]{display:none}
+.workspace-title{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.workspace-title .mini-cover{width:48px;aspect-ratio:.7;border-radius:6px;display:grid;place-items:center;color:#514A3D;font-size:20px;flex:none}
+.back-button{border:0;background:transparent;color:var(--accent);font:inherit;font-weight:700;padding:8px 0}
+@media(min-width:560px){.book-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}}
+</style>
+</head>
+<body>
+<div class="app">
+<header><div class="brand">E-book<span class="sub">Önálló könyvtár</span></div><button class="icon-btn" type="button" aria-label="Google Drive kapcsolat és beállítások" title="Google Drive kapcsolat">☁</button></header>
+<main>
+<section class="screen active" data-screen="library" aria-labelledby="library-title">
+<p class="eyebrow">Saját könyvek</p><h1 id="library-title">Könyvtár</h1><p>A Google Drive-könyvtárad és a feltöltött könyveid kezelése.</p>
+<div class="panel"><div class="row"><h2>Könyveid</h2><span aria-hidden="true">▤</span></div>
+<button class="action" type="button"><span class="ico">＋</span><span><strong>Fájl feltöltése</strong><small>Meglévő könyv hozzáadása a könyvtárhoz</small></span></button>
+<button class="action" type="button"><span class="ico">↻</span><span><strong>Könyvtár frissítése</strong><small>Google Drive tartalmának újraolvasása</small></span></button>
+<div class="book-grid" aria-label="Könyvborítók mozaikja">
+<button class="book-card" type="button"><span class="book-cover" style="background:#E9E1CF"><span class="cover-mark">✦</span><b>A könyv címe</b><span>Szerző neve</span></span><small>Könyv címe · Szerző</small></button>
+<button class="book-card" type="button"><span class="book-cover" style="background:#E5E8D9"><span class="cover-mark">❧</span><b>A könyv címe</b><span>Szerző neve</span></span><small>Könyv címe · Szerző</small></button>
+<button class="book-card" type="button"><span class="book-cover" style="background:#EADFD2"><span class="cover-mark">✧</span><b>A könyv címe</b><span>Szerző neve</span></span><small>Könyv címe · Szerző</small></button>
+</div>
+<div class="note">A borítómozaik a könyvtár tényleges borítóit és metaadatait jeleníti majd meg. A semleges mintakártyák csak a prototípus elrendezését mutatják.</div></div>
+</section>
+<section class="screen" data-screen="editor" aria-labelledby="editor-title">
+<p class="eyebrow">Meglévő EPUB-szerkesztő</p><h1 id="editor-title">Szerkesztő</h1>
+<div class="editor-picker" id="editor-picker">
+<p>Válaszd ki a szerkeszteni kívánt könyvet a borítók közül.</p>
+<div class="book-grid" aria-label="Szerkeszthető könyvek">
+<button class="book-card" type="button" data-book-select="0" aria-pressed="false"><span class="book-cover" style="background:#E9E1CF"><span class="cover-mark">✦</span><b>A könyv címe</b><span>Szerző neve</span></span><small>Könyv címe · Szerző</small></button>
+<button class="book-card" type="button" data-book-select="1" aria-pressed="false"><span class="book-cover" style="background:#E5E8D9"><span class="cover-mark">❧</span><b>A könyv címe</b><span>Szerző neve</span></span><small>Könyv címe · Szerző</small></button>
+<button class="book-card" type="button" data-book-select="2" aria-pressed="false"><span class="book-cover" style="background:#EADFD2"><span class="cover-mark">✧</span><b>A könyv címe</b><span>Szerző neve</span></span><small>Könyv címe · Szerző</small></button>
+</div>
+<div class="note">A tényleges alkalmazásban a saját könyvtárad könyvei és valódi EPUB-borítói jelennek meg. Választás után az adott könyv szerkesztője nyílik meg.</div>
+</div>
+<div class="editor-workspace" id="editor-workspace" hidden>
+<button class="back-button" type="button" id="editor-back">← Vissza a könyvekhez</button>
+<div class="workspace-title"><span class="mini-cover" id="selected-cover" style="background:#E9E1CF">✦</span><div><h2 id="selected-book-title">Kiválasztott könyv</h2><p id="selected-book-author">Szerző neve</p></div></div>
+<div class="panel"><h2>Könyvadatlap</h2>
+<button class="action" type="button"><span class="ico">Aa</span><span><strong>Metaadatok és fájlnév</strong><small>Cím, szerző, ISBN, kiadó, sorozat, leírás</small></span></button>
+<button class="action" type="button"><span class="ico">▧</span><span><strong>Borító kezelése</strong><small>Borító cseréje vagy eltávolítása</small></span></button>
+<button class="action" type="button"><span class="ico">⌕</span><span><strong>Webes katalóguskeresés</strong><small>Google Books és Open Library találatok</small></span></button></div>
+<div class="panel"><h2>EPUB-tartalom</h2>
+<button class="action" type="button"><span class="ico">¶</span><span><strong>Fejezetek és tartalomjegyzék</strong><small>Fejezetcímek és TOC-elemek szerkesztése</small></span></button>
+<button class="action" type="button"><span class="ico">✎</span><span><strong>Szövegrészek javítása</strong><small>Kijelölt szöveg módosítása</small></span></button>
+<button class="action" type="button"><span class="ico">⌕</span><span><strong>Keresés és csere</strong><small>Könyvszintű szövegkeresés és cserék</small></span></button>
+<button class="action" type="button"><span class="ico">文</span><span><strong>Kódolási és betűtípus-javítás</strong><small>Felismerhető karakterhibák és fontcsere</small></span></button>
+<button class="action" type="button"><span class="ico">✓</span><span><strong>Szerkezeti ellenőrzés és validálás</strong><small>EPUB-hibák áttekintése és javítása</small></span></button>
+<div class="note">A kiválasztott könyv címe végig látható. A szerkesztési műveletek a jelenlegi EPUB-szerkesztőben már léteznek; ez az előnézet még nem futtatja őket.</div></div>
+</div>
+</section>
+<section class="screen" data-screen="share" aria-labelledby="share-title">
+<p class="eyebrow">Könyvátadás</p><h1 id="share-title">Megosztás</h1><p>Válassz könyvet a könyvtárból, majd használd a meglévő megosztási lehetőségeket.</p>
+<div class="panel"><h2>Meglévő megosztási módok</h2>
+<button class="action" type="button"><span class="ico">▦</span><span><strong>QR-kód</strong><small>Közvetlen könyvletöltési link QR-kódja</small></span></button>
+<button class="action" type="button"><span class="ico">⌗</span><span><strong>6 karakteres párosítási kód</strong><small>Kód kérése az e-olvasó átvételi oldalához</small></span></button>
+<button class="action" type="button"><span class="ico">↗</span><span><strong>Letöltési link</strong><small>Közvetlen link megjelenítése és másolása</small></span></button>
+<div class="note">A megosztás a meglévő átviteli broker beállítását igényli. A prototípus nem hoz létre valódi megosztást.</div></div>
+</section>
+<section class="screen" data-screen="reader" aria-labelledby="reader-title">
+<p class="eyebrow">Könnyített e-olvasó</p><h1 id="reader-title">Olvasó</h1><p>A jelenlegi önálló olvasó- és könyvátvételi oldal elérése.</p>
+<div class="panel"><h2>Meglévő olvasófunkció</h2>
+<button class="action" type="button"><span class="ico">⌗</span><span><strong>Párosítási kód megadása</strong><small>Könyvtár megnyitása e-olvasón kapott kóddal</small></span></button>
+<div class="note">A jelenlegi önálló olvasóoldal párosításra és könyvátvételre szolgál; nem jelölünk teljes értékű EPUB-olvasóként nem létező funkciót.</div></div>
+</section>
+<section class="screen" data-screen="devices" aria-labelledby="devices-title">
+<p class="eyebrow">Kapcsolatok és szinkron</p><h1 id="devices-title">Eszközök</h1><p>E-reader csatlakoztatása és a meglévő szinkronizálás kezelése.</p>
+<div class="panel"><h2>E-reader</h2>
+<button class="action" type="button"><span class="ico">⌁</span><span><strong>E-reader csatlakoztatása</strong><small>Eszköz könyvmappájának kiválasztása</small></span></button>
+<button class="action" type="button"><span class="ico">⇄</span><span><strong>Kétirányú szinkronizálás</strong><small>Drive és e-reader könyveinek összehangolása</small></span></button>
+<div class="note">Az USB-s szinkron a jelenlegi megvalósítás szerint támogatott asztali Chrome vagy Edge böngészőben. Android WebView-ban nem érhető el.</div></div>
+</section>
+</main>
+<nav aria-label="Fő navigáció">
+<button type="button" data-nav="library" aria-current="page"><span class="navico">▤</span><span class="navlabel">Könyvtár</span></button>
+<button type="button" data-nav="editor"><span class="navico">✎</span><span class="navlabel">Szerkesztő</span></button>
+<button type="button" data-nav="share"><span class="navico">↗</span><span class="navlabel">Megosztás</span></button>
+<button type="button" data-nav="reader"><span class="navico">▣</span><span class="navlabel">Olvasó</span></button>
+<button type="button" data-nav="devices"><span class="navico">▱</span><span class="navlabel">Eszközök</span></button>
+</nav>
+</div>
+<script>
+const navButtons=[...document.querySelectorAll('[data-nav]')];
+const screens=[...document.querySelectorAll('[data-screen]')];
+function activate(name){
+  screens.forEach(screen=>screen.classList.toggle('active',screen.dataset.screen===name));
+  navButtons.forEach(button=>{if(button.dataset.nav===name)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current')});
+  const active=screens.find(screen=>screen.dataset.screen===name);
+  if(active){const heading=active.querySelector('h1');if(heading)document.title='E-book – '+heading.textContent}
+  window.scrollTo({top:0,behavior:'instant'});
+}
+navButtons.forEach(button=>button.addEventListener('click',()=>activate(button.dataset.nav)));
+const demoBooks=[
+ {title:'Könyv címe 1',author:'Szerző neve',mark:'✦',color:'#E9E1CF'},
+ {title:'Könyv címe 2',author:'Szerző neve',mark:'❧',color:'#E5E8D9'},
+ {title:'Könyv címe 3',author:'Szerző neve',mark:'✧',color:'#EADFD2'}
+];
+const picker=document.getElementById('editor-picker');
+const workspace=document.getElementById('editor-workspace');
+document.querySelectorAll('[data-book-select]').forEach(button=>{
+ button.addEventListener('click',()=>{
+  const book=demoBooks[Number(button.dataset.bookSelect)];
+  document.getElementById('selected-book-title').textContent=book.title;
+  document.getElementById('selected-book-author').textContent=book.author;
+  const cover=document.getElementById('selected-cover');
+  cover.textContent=book.mark;cover.style.background=book.color;
+  picker.hidden=true;workspace.hidden=false;
+  document.title='E-book – '+book.title;
+  window.scrollTo({top:0,behavior:'instant'});
+ });
+});
+document.getElementById('editor-back').addEventListener('click',()=>{
+ workspace.hidden=true;picker.hidden=false;document.title='E-book – Szerkesztő';
+ window.scrollTo({top:0,behavior:'instant'});
+});
+</script>
+</body></html>
