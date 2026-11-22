@@ -34,6 +34,17 @@ The E-book module has its own independent visual identity. It must not inherit t
 - **Touch targets:** maintain comfortable mobile hit areas; do not shrink controls to fit dense layouts.
 - **Status colors:** success may use the success token; do not use accent colors as decoration.
 
+## Book cover mosaic and editor selection
+
+- Both the Library and Editor entry points use a responsive cover mosaic.
+- The Library mosaic represents the user's existing book collection; the Editor mosaic is the selection step before editing.
+- On mobile, use three columns; on wider screens, allow four columns when space permits.
+- Use the real EPUB cover and metadata when available. If a cover is missing, use a quiet neutral placeholder rather than a fabricated book jacket.
+- Tapping a book in the Editor mosaic opens the existing editor workspace for that selected book.
+- Keep the selected book's cover, title, and author visible in the editor header.
+- Provide a clear “Vissza a könyvekhez” action that returns to the cover mosaic without losing the selection context unexpectedly.
+- Do not show editing tools as if a book were selected when no book has been chosen.
+
 ## Explicit exclusions
 
 - No Grapes neon colors or glow effects.
