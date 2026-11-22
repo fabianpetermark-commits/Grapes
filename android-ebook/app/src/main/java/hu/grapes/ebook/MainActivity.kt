@@ -213,7 +213,7 @@ class MainActivity : ComponentActivity() {
         }
         sendResult(requestId, JSONObject().apply {
             put("accessToken", token)
-            put("grantedScopes", JSONArray(result.grantedScopes.map { it.scopeUri }))
+            put("grantedScopes", JSONArray(result.grantedScopes))
             put("expiresIn", 3300)
         }.toString())
     }
