@@ -2,10 +2,10 @@ import { create } from './dom.js'
 import './grapes-app-shell.css'
 
 const DEFAULT_NAV = [
-  { id: 'library', label: 'Könyvtár', icon: 'book-open' },
-  { id: 'share', label: 'Megosztás', icon: 'share-2' },
-  { id: 'reader', label: 'Olvasó', icon: 'book-open' },
-  { id: 'tools', label: 'Eszközök', icon: 'wrench' },
+  { id: 'library', label: 'Könyvtár', icon: '▤' },
+  { id: 'share', label: 'Megosztás', icon: '↗' },
+  { id: 'reader', label: 'Olvasó', icon: '▣' },
+  { id: 'tools', label: 'Eszközök', icon: '⚙' },
 ]
 
 /**
@@ -15,12 +15,13 @@ const DEFAULT_NAV = [
  */
 export function createGrapesAppShell({
   appName,
-  logoUrl = '/grapes-logo.svg',
+  logoUrl = './grapes-logo.svg',
   navItems = DEFAULT_NAV,
   initialRoute = { mainRoute: navItems[0]?.id || 'home', page: 'root' },
   onLogin = () => {},
   onNavigate = () => {},
   mount = document.body,
+  manageHistory = true,
 } = {}) {
   if (!appName?.trim()) throw new TypeError('A Grapes app shell requires an appName.')
   if (!Array.isArray(navItems) || navItems.length !== 4) {
@@ -52,7 +53,7 @@ export function createGrapesAppShell({
       dataset: { route: item.id },
       ariaLabel: item.label,
     }, [
-      create('span', { class: 'grapes-bottom-nav__icon', ariaHidden: 'true', textContent: item.glyph || '•' }),
+      create('span', { class: 'grapes-bottom-nav__icon', ariaHidden: 'true', textContent: item.icon || item.glyph || '•' }),
       create('span', { class: 'grapes-bottom-nav__label', textContent: item.label }),
     ])
     button.addEventListener('click', () => navigate({ mainRoute: item.id, page: 'root' }))
@@ -74,7 +75,7 @@ export function createGrapesAppShell({
   }
   const navigate = (route) => {
     const next = { ...route }
-    window.history.pushState({ grapesAppRoute: next }, '')
+    if (manageHistory) window.history.pushState({ ...(window.history.state || {}), grapesAppRoute: next }, '')
     renderRoute(next)
   }
   const handlePopState = (event) => {
@@ -82,10 +83,12 @@ export function createGrapesAppShell({
     renderRoute(route)
   }
 
-  if (!window.history.state?.grapesAppRoute) {
-    window.history.replaceState({ grapesAppRoute: currentRoute }, '')
+  if (manageHistory) {
+    if (!window.history.state?.grapesAppRoute) {
+      window.history.replaceState({ ...(window.history.state || {}), grapesAppRoute: currentRoute }, '')
+    }
+    window.addEventListener('popstate', handlePopState)
   }
-  window.addEventListener('popstate', handlePopState)
   renderRoute(currentRoute)
 
   return {
@@ -97,7 +100,7 @@ export function createGrapesAppShell({
       login.disabled = signedIn
     },
     destroy() {
-      window.removeEventListener('popstate', handlePopState)
+      if (manageHistory) window.removeEventListener('popstate', handlePopState)
       frame.remove()
     },
   }
