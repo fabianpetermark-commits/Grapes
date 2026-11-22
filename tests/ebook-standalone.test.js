@@ -40,7 +40,7 @@ test('standalone E-Library mounts the shared four-route shell without duplicatin
   for (const route of ['library', 'share', 'reader', 'tools']) assert.match(shellSource, new RegExp(`id: '${route}'`))
   assert.match(shellSource, /manageHistory: false/)
   assert.match(shellSource, /#ebook-drive-connect.*click/)
-  assert.match(shellSource, /onGrapesDriveChange/)
+  assert.match(shellSource, /onDriveChange/)
   assert.match(shellSource, /#ebook-receiver-panel/)
   assert.match(shellSource, /ebook-library--android/)
   assert.match(featureSource, /EbookLibraryNavigation = Object\.freeze\(\{ navigateToLibrary: navigateToEbookLibrary \}\)/)
