@@ -3,27 +3,27 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#101827">
-<title>E-book – mobilfelület prototípus</title>
+<meta name="theme-color" content="#F7F5EE">
+<title>E-book – Warm Paper mobilfelület prototípus</title>
 <style>
-:root{color-scheme:dark;--bg:#101827;--surface:#192538;--surface2:#223249;--line:#304158;--text:#f2f5fa;--muted:#a7b4c6;--accent:#8eb9ff;--safe:env(safe-area-inset-bottom,0px)}
+:root{color-scheme:light;--bg:#F7F5EE;--surface:#FFFFFF;--surface2:#F8F6F0;--line:#E3DECF;--text:#2E2A24;--muted:#756F64;--accent:#6B8F4E;--accent-soft:#E8EEDC;--success:#88B97A;--copper:#A6734D;--safe:env(safe-area-inset-bottom,0px)}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,Segoe UI,sans-serif}
 .app{min-height:100dvh;padding-bottom:calc(84px + var(--safe))}
-header{position:sticky;top:0;z-index:3;display:flex;align-items:center;justify-content:space-between;padding:16px 18px;background:#101827ed;border-bottom:1px solid var(--line);backdrop-filter:blur(14px)}
+header{position:sticky;top:0;z-index:3;display:flex;align-items:center;justify-content:space-between;padding:16px 18px;background:rgba(247,245,238,.94);border-bottom:1px solid var(--line);backdrop-filter:blur(14px)}
 .brand{font-weight:750;font-size:20px;letter-spacing:-.03em}.sub{display:block;color:var(--muted);font-size:12px;font-weight:500;letter-spacing:0}
 .icon-btn{width:42px;height:42px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--text);font-size:19px}
 main{max-width:760px;margin:auto;padding:20px 16px 28px}.eyebrow{color:var(--accent);font-size:11px;font-weight:750;letter-spacing:.14em;text-transform:uppercase;margin:0 0 6px}
 h1{font-size:27px;letter-spacing:-.04em;margin:0 0 5px}h2{font-size:18px;margin:0}p{color:var(--muted);margin:7px 0 0}
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px;margin-top:14px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px;margin-top:14px;box-shadow:0 3px 12px rgba(65,52,31,.06)}
 .row{display:flex;align-items:center;justify-content:space-between;gap:12px}.row p{font-size:13px}
 .action{display:flex;align-items:center;gap:10px;width:100%;padding:14px 13px;margin-top:10px;border:1px solid var(--line);border-radius:14px;background:var(--surface2);color:var(--text);text-align:left;font:inherit}
-.action .ico{width:38px;height:38px;display:grid;place-items:center;border-radius:12px;background:#304766;color:#c4dcff;font-size:19px;flex:none}
+.action .ico{width:38px;height:38px;display:grid;place-items:center;border-radius:12px;background:var(--accent-soft);color:#496B35;font-size:19px;flex:none}
 .action strong{display:block;font-size:14px}.action small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
-.note{padding:12px 13px;border:1px dashed #52647b;border-radius:14px;color:var(--muted);font-size:13px;margin-top:12px}
+.note{padding:12px 13px;border:1px dashed #CFC5B2;border-radius:14px;color:var(--muted);font-size:13px;margin-top:12px}
 .screen{display:none}.screen.active{display:block}
-nav{position:fixed;z-index:5;bottom:0;left:0;right:0;padding:8px 8px calc(8px + var(--safe));background:#111d2dee;border-top:1px solid var(--line);backdrop-filter:blur(18px);display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px}
+nav{position:fixed;z-index:5;bottom:0;left:0;right:0;padding:8px 8px calc(8px + var(--safe));background:rgba(255,255,255,.96);border-top:1px solid var(--line);backdrop-filter:blur(18px);display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px}
 nav button{border:0;background:transparent;color:var(--muted);border-radius:13px;padding:8px 2px 7px;font:inherit;min-width:0}
-nav button[aria-current=page]{background:#263d5b;color:var(--accent)}
+nav button[aria-current=page]{background:var(--accent-soft);color:#496B35}
 nav .navico{display:block;font-size:20px;line-height:1.2;margin-bottom:4px}
 nav .navlabel{display:block;font-size:10px;font-weight:700;white-space:nowrap}
 @media(min-width:700px){main{padding-top:30px}.app{padding-bottom:30px}nav{position:sticky;top:64px;bottom:auto;max-width:760px;margin:12px auto 0;border:1px solid var(--line);border-radius:18px;padding:6px;}}
