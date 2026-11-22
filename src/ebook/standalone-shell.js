@@ -1,5 +1,5 @@
 import { createGrapesAppShell } from '../ui/grapes-app-shell.js'
-import { isGrapesDriveConnected, onGrapesDriveChange } from './platform.js'
+import { isDriveConnected, onDriveChange } from './platform.js'
 
 const NAV_ITEMS = [
   { id: 'library', label: 'Könyvtár', icon: '▤' },
@@ -128,8 +128,8 @@ export function mountEbookStandaloneShell({ root = document.querySelector('#eboo
   })
   root.prepend(shell.element)
   root.dataset.grapesShellMounted = 'true'
-  shell.setLoginState({ signedIn: isGrapesDriveConnected(), label: isGrapesDriveConnected() ? 'Drive csatlakoztatva' : 'Bejelentkezés' })
-  const unsubscribe = onGrapesDriveChange((connected) => {
+  shell.setLoginState({ signedIn: isDriveConnected(), label: isDriveConnected() ? 'Drive csatlakoztatva' : 'Bejelentkezés' })
+  const unsubscribe = onDriveChange((connected) => {
     shell.setLoginState({ signedIn: connected, label: connected ? 'Drive csatlakoztatva' : 'Bejelentkezés' })
   })
 
