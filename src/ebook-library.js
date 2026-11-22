@@ -1973,7 +1973,7 @@ function navigateToEbookOrganizer() {
   setEbookMode('organizer')
   return true
 }
-async function navigateToEbookLibrary() {
+export async function navigateToEbookLibrary() {
   const dirty = metadataDirty || hasContentChanges()
   if (dirty && !await showGrapesConfirm({
     title: 'A mentés gomb szerint még nincs vége…',
