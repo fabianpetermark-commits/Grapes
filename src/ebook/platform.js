@@ -38,13 +38,27 @@ export function getEbookPlatform() {
   return activePlatform
 }
 
-export const connectGrapesDrive = (options) => getEbookPlatform().connectDrive(options)
-export const disconnectGrapesDrive = (options) => getEbookPlatform().disconnectDrive(options)
-export const getConnectedGrapesAccount = (...args) => getEbookPlatform().getConnectedAccount(...args)
-export const getGrapesDriveAccessToken = (...args) => getEbookPlatform().getAccessToken(...args)
-export const grapesDriveHasFullReadAccess = (...args) => getEbookPlatform().hasFullReadAccess(...args)
-export const grapesDriveRequest = (...args) => getEbookPlatform().driveRequest(...args)
-export const isGrapesDriveConnected = (...args) => getEbookPlatform().isDriveConnected(...args)
-export const onGrapesDriveChange = (...args) => getEbookPlatform().onDriveChange(...args)
-export const showGrapesConfirm = (options) => getEbookPlatform().confirm(options)
-export const navigateEbookScreen = (target) => getEbookPlatform().navigate(target)
+// Host-neutral feature API. Feature modules must use these names; Grapes-specific
+// names below remain as temporary compatibility aliases for external callers.
+export const connectDrive = (...args) => getEbookPlatform().connectDrive(...args)
+export const disconnectDrive = (...args) => getEbookPlatform().disconnectDrive(...args)
+export const getConnectedAccount = (...args) => getEbookPlatform().getConnectedAccount(...args)
+export const getAccessToken = (...args) => getEbookPlatform().getAccessToken(...args)
+export const hasFullReadAccess = (...args) => getEbookPlatform().hasFullReadAccess(...args)
+export const driveRequest = (...args) => getEbookPlatform().driveRequest(...args)
+export const isDriveConnected = (...args) => getEbookPlatform().isDriveConnected(...args)
+export const onDriveChange = (...args) => getEbookPlatform().onDriveChange(...args)
+export const confirm = (...args) => getEbookPlatform().confirm(...args)
+export const navigate = (...args) => getEbookPlatform().navigate(...args)
+
+/** @deprecated Use the host-neutral exports above. */
+export const connectGrapesDrive = (...args) => connectDrive(...args)
+export const disconnectGrapesDrive = (...args) => disconnectDrive(...args)
+export const getConnectedGrapesAccount = (...args) => getConnectedAccount(...args)
+export const getGrapesDriveAccessToken = (...args) => getAccessToken(...args)
+export const grapesDriveHasFullReadAccess = (...args) => hasFullReadAccess(...args)
+export const grapesDriveRequest = (...args) => driveRequest(...args)
+export const isGrapesDriveConnected = (...args) => isDriveConnected(...args)
+export const onGrapesDriveChange = (...args) => onDriveChange(...args)
+export const showGrapesConfirm = (...args) => confirm(...args)
+export const navigateEbookScreen = (...args) => navigate(...args)
