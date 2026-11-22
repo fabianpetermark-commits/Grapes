@@ -28,7 +28,7 @@ The shared Grapes UI shell is not a prerequisite for source separation. UI work 
 
 | Area | Current evidence | Required outcome |
 |---|---|---|
-| Feature API | Grapes-named platform functions are imported by E-book feature code | Rename the feature-facing contract to host-neutral names; retain compatibility aliases during migration |
+| Feature API | Host-neutral exports are now used by the library, reader sync and standalone shell; legacy names remain aliases | Keep compatibility aliases until all consumers/tests are migrated, then remove only after a full search and regression pass |
 | Grapes integration | Dedicated `grapes-platform.js` imports Grapes storage, modal, and screen modules | Keep all such imports in the Grapes host entry only |
 | Standalone entry | Imports `./styles/index.css` and mounts the Grapes shell | Use a standalone stylesheet and make the Grapes shell optional |
 | Configuration | Grapes defaults live in the shared config module | Separate host defaults from neutral validation/schema; fail closed when standalone deployment settings are absent |
@@ -82,9 +82,13 @@ This inventory describes source-code evidence only. It does not prove that exter
 ## Work plan and acceptance gates
 
 ### Phase 1 — dependency boundary
-- Inventory E-book imports, runtime globals, DOM contracts, storage keys, Drive metadata, broker actions, and build inputs.
+- [x] Inventory the primary E-book external services, runtime globals, DOM contracts, storage keys, Drive metadata, broker actions, and build inputs at source level.
+- [x] Record that no direct E-book Supabase SDK/config/request dependency was found in the repository source search; Supabase appears only in the architecture planning document.
+- [ ] Complete a static import-graph check and verify all standalone entry transitive imports before closing this phase.
 - [x] Separate neutral feature APIs from Grapes-named compatibility wrappers; migrate library, reader sync and standalone shell call sites. Keep deprecated aliases during the transition.
 - [x] Add platform contract tests for neutral API delegation and legacy alias compatibility.
+- [x] Migrate standalone shell listeners to neutral platform exports.
+- [x] Correct library adapter name shadowing introduced during the API migration by aliasing imported platform methods (`platformConnectDrive`, `platformDisconnectDrive`, `platformDriveRequest`).
 - [x] Record Google OAuth, Drive, Picker, Books, Open Library, Apps Script/FatSecret, persistence and Supabase source findings in this audit.
 - Add tests proving the standalone entry does not import Grapes host modules.
 - **Gate:** dependency graph and tests show no Grapes storage/UI/navigation import reachable from the standalone feature entry.
@@ -116,3 +120,12 @@ This inventory describes source-code evidence only. It does not prove that exter
 - Do not deploy or overwrite the existing Grapes Apps Script project.
 - Do not redesign the E-book UI during the extraction phases.
 - Do not claim production OAuth, broker pairing, Android USB sync, or real-device acceptance based only on a successful compile.
+
+
+## Verification log
+
+- Neutral platform API and compatibility alias tests were added/updated, but **were not executed in this environment**.
+- GitHub Actions currently reports no workflow runs for `feature/ebook-core-separation-20261122`; therefore there is no CI pass/fail result to report yet.
+- Current branch head at the latest source review: `a20d710c9af9632078d004ed9da05bb3c45956b9`.
+- Source inspection found and fixed a name-shadowing hazard in `src/ebook-library.js`: local UI handlers named `connectDrive` / `disconnectDrive` now delegate to explicitly aliased platform methods, and Drive requests use `platformDriveRequest`.
+- No production OAuth client, Google Cloud console settings, Supabase project, or Apps Script deployment was modified.
