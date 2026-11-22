@@ -2,7 +2,7 @@
 
 **Audit baseline:** `feature/ebook-android-app-20261122` at `64eaab7889e937082504d2135c1c74045cfb71ad`  
 **Working branch:** `feature/ebook-core-separation-20261122`  
-**Status:** initial source-level audit; not yet an extraction or proof of standalone operation.
+**Status:** source-level dependency inventory in progress; not yet an extraction or proof of standalone operation.
 
 ## Objective
 
@@ -13,7 +13,7 @@ The shared Grapes UI shell is not a prerequisite for source separation. UI work 
 ## Current architecture observed
 
 - `src/ebook-library.js` owns most library/editor behavior and imports its platform boundary from `src/ebook/platform.js`.
-- `src/ebook/platform.js` is a useful host seam, but its exported functions are named `connectGrapesDrive`, `grapesDriveRequest`, `isGrapesDriveConnected`, `showGrapesConfirm`, and `navigateEbookScreen`. This leaks the original host into the feature-facing API.
+- `src/ebook/platform.js` now exposes host-neutral functions (`connectDrive`, `driveRequest`, `isDriveConnected`, `confirm`, `navigate`, etc.). The former Grapes-named exports remain as deprecated compatibility aliases. `src/ebook-library.js`, `src/ebook-reader-sync.js`, and `src/ebook/standalone-shell.js` have been migrated to the neutral names.
 - `src/ebook/grapes-platform.js` is the actual Grapes adapter. It imports `../storage/grapes-drive.js`, `../ui/modal.js`, and `../screens.js`. These imports must remain on the Grapes host side and must never enter a standalone bundle.
 - `src/ebook/standalone-platform.js` implements a separate browser GIS / Android-native Drive authorization adapter and uses a configurable storage namespace. It is not a complete independent application boundary by itself.
 - `src/ebook/config.js` currently defines Grapes deployment defaults, including the Grapes Pages URL, Grapes folder name, Grapes storage keys, and Grapes IndexedDB identifiers. Standalone overrides these through `src/ebook/standalone-config.js`.
@@ -38,6 +38,36 @@ The shared Grapes UI shell is not a prerequisite for source separation. UI work 
 | Android | Separate `hu.grapes.ebook` package and native bridge exist | Keep native bridge as a platform adapter; test OAuth, file picker, lifecycle and actual device behavior |
 | Tests | Current suite includes source-string contract tests | Add behavior-level tests for host isolation, build contents, config validation and standalone workflows |
 
+
+## External integration inventory (source inspection)
+
+This inventory describes source-code evidence only. It does not prove that external cloud projects, OAuth clients, API keys, or Apps Script deployments are correctly configured or currently reachable.
+
+| Integration | E-book usage found in source | Configuration / ownership | Separation risk and required check |
+|---|---|---|---|
+| Google OAuth — Grapes web | Google Identity Services token flow in `src/storage/grapes-drive.js`; client ID comes from `VITE_GOOGLE_CLIENT_ID` | Grapes host Drive adapter; session/account state uses Grapes keys | Preserve the existing Grapes OAuth client, authorized origins, Drive API enablement and scopes. Do not replace its client ID during extraction |
+| Google OAuth — standalone web | GIS token flow in `src/ebook/standalone-platform.js`; `VITE_EBOOK_STANDALONE_GOOGLE_CLIENT_ID` | Standalone-specific client ID and `ebook-standalone-v1` session namespace | Verify standalone OAuth client, allowed web origins, consent configuration and scopes independently |
+| Google OAuth — Android | Native Google Authorization API through `EbookAndroid` in `android-ebook/app/src/main/java/hu/grapes/ebook/MainActivity.kt` | Android application ID `hu.grapes.ebook`; Drive `drive.file` and optional `drive.readonly` scopes | Android OAuth registration must match package name and signing SHA-1. Debug CI fingerprints are ephemeral; verify with the exact installed build |
+| Google Drive API | Library listing, folder creation, upload/download, metadata, permissions and reader transfer in `src/ebook-library.js`; account/token adapter in platform implementations | Grapes and standalone use different adapters, storage namespaces and configured folder names | Preserve user files and existing Grapes folder/metadata protocol. Verify standalone folder and metadata do not collide with Grapes data |
+| Google Picker | Loads `https://apis.google.com/js/api.js`; uses Picker API key and app/project ID | Grapes `VITE_GOOGLE_PICKER_API_KEY` / `VITE_GOOGLE_APP_ID`; standalone equivalents use `VITE_EBOOK_STANDALONE_*` | Separate API key restrictions and allowed origins; feature can remain partially usable without Picker, but file-level access flow must be tested |
+| Google Books API | Metadata lookup in `src/ebook-library.js`; optional API key, otherwise uses Drive access token | `VITE_GOOGLE_BOOKS_API_KEY` and standalone counterpart | Verify key restrictions/quota and ensure unauthenticated metadata lookup still behaves as intended |
+| Open Library | Metadata and cover lookup via `openlibrary.org` | Public external API; no project key found in inspected E-book source | Network/CORS/availability behavior should be tested; this is an optional metadata provider, not a storage backend |
+| Apps Script transfer broker | Pairing, reader token, download and revoke actions in `apps-script/ebook-transfer/Code.gs` | Script Properties: `EBOOK_STANDALONE_MODE`, `EBOOK_FOLDER_NAME`, `EBOOK_ALLOWED_RETURN_URL`, `EBOOK_ALLOWED_PARENT_ORIGIN`, `EBOOK_READER_RETURN_URL`; standalone URL comes from `VITE_EBOOK_STANDALONE_TRANSFER_BROKER_URL` | Standalone requires a separate Apps Script project/deployment and exact allowlist. Source does not prove a live deployment exists |
+| Apps Script / FatSecret (non-E-book) | The same `Code.gs` also contains FatSecret search and OAuth endpoints used by Food | FatSecret credentials are Script Properties; unrelated to E-book transfer | Do not accidentally package or expose Food/FatSecret code as part of the standalone E-book broker. The standalone action allowlist currently blocks unrelated actions, but source separation remains desirable |
+| Supabase | No E-book Supabase SDK import, `createClient` call, Supabase URL/key environment variable, or direct Supabase request was found in the inspected repository source search. Supabase appears in `conception/ARCHITECTURE.md` as a platform/backend design consideration | No E-book-specific Supabase configuration was found | Current evidence does not support a direct E-book → Supabase dependency. Re-run repository-wide checks before extraction is finalized; do not invent a migration or replace a backend that E-book does not use |
+| Browser persistence | Library cache, reader-sharing preference, current view and Drive session/account state use localStorage/sessionStorage; reader USB sync uses IndexedDB | Grapes and standalone config provide distinct key prefixes/namespaces; standalone reader token uses `ebook-standalone-reader-token-v1` | Audit every persistent key and migration/cleanup path. Never clear or rename existing Grapes keys during extraction |
+| Android native bridge | `EbookAndroid.postMessage` handles Drive authorization/revocation and document picker | Isolated Android package and WebView origin `appassets.androidplatform.net` | Keep bridge calls behind standalone adapter; test activity lifecycle, request correlation, permissions and actual device behavior |
+
+### Integration conclusions
+
+1. The currently visible E-book cloud data path is Google Drive, not Supabase.
+2. OAuth has three distinct host contexts: existing Grapes web, standalone web, and standalone Android. They must not be collapsed into one configuration.
+3. The standalone adapter already isolates its browser session namespace, and standalone config uses a different Drive folder and local persistence identifiers. This is a good starting point, not yet proof of complete data isolation.
+4. Pairing/reader transfer depends on a separately configured Apps Script broker. A code file and README are not evidence of a deployed, working broker.
+5. The Apps Script source currently combines E-book transfer with unrelated Food/FatSecret endpoints. Keep the E-book broker deployment allowlist strict and extract the broker source cleanly before treating it as an independent product service.
+6. No secrets or production credentials should be copied into source control. The checked-in `.env.example` contains empty Google E-book credential placeholders; the real OAuth client configuration and external project settings must be verified in their respective consoles.
+
+
 ## Extraction rules
 
 1. E-book core modules must not import from Grapes application directories such as `src/storage/`, `src/screens.js`, `src/ui/`, or the Grapes bootstrap.
@@ -53,7 +83,9 @@ The shared Grapes UI shell is not a prerequisite for source separation. UI work 
 
 ### Phase 1 — dependency boundary
 - Inventory E-book imports, runtime globals, DOM contracts, storage keys, Drive metadata, broker actions, and build inputs.
-- Separate neutral feature APIs from Grapes-named compatibility wrappers.
+- [x] Separate neutral feature APIs from Grapes-named compatibility wrappers; migrate library, reader sync and standalone shell call sites. Keep deprecated aliases during the transition.
+- [x] Add platform contract tests for neutral API delegation and legacy alias compatibility.
+- [x] Record Google OAuth, Drive, Picker, Books, Open Library, Apps Script/FatSecret, persistence and Supabase source findings in this audit.
 - Add tests proving the standalone entry does not import Grapes host modules.
 - **Gate:** dependency graph and tests show no Grapes storage/UI/navigation import reachable from the standalone feature entry.
 
