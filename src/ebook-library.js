@@ -536,7 +536,7 @@ async function grantSelectedEpubAccess() {
   renderMetadataAccess(book)
   setMetadataAccessStatus('A Google fájlválasztó megnyitása…')
   try {
-    const token = getAccessToken() || await connectDrive()
+    const token = getAccessToken() || await platformConnectDrive()
     await loadGooglePicker()
     const picked = await pickExistingBook(book, token)
     if (!picked) return setMetadataAccessStatus('A fájlválasztás megszakítva; a szerkesztett adatok megmaradtak.')
