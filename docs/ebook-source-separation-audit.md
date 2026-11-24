@@ -18,11 +18,13 @@ The shared Grapes UI shell is not a prerequisite for source separation. UI work 
 - `src/ebook/standalone-platform.js` implements a separate browser GIS / Android-native Drive authorization adapter and uses a configurable storage namespace. It is not a complete independent application boundary by itself.
 - `src/ebook/config.js` now contains only a host-neutral schema/validator and fails closed if `globalThis.__EBOOK_CONFIG__` was not installed. Grapes defaults live in `src/ebook/grapes-config.js`, loaded as a side effect by `src/ebook/grapes-platform.js`; standalone web and reader entries load `src/ebook/standalone-config.js` before dynamically/static importing the core.
 - `src/ebook-standalone.js` imports the Grapes global stylesheet and the Grapes app shell adapter (`src/ebook/standalone-shell.js`). This is a direct Grapes UI dependency in the standalone entry point.
-- `src/ebook/standalone-shell.js` imports `src/ui/grapes-app-shell.js` and adapts the existing E-book DOM. It is presentation/host integration, not core E-book logic.
+- `src/ebook/standalone-shell.js` imports `src/ui/grapes-app-shell.js` and adapts the existing E-book DOM. It is presentation/host integration, not core E-book logic. This remains a direct Grapes UI dependency in the standalone transitive graph.
 - `src/ebook-reader-sync.js` uses the platform seam, but still imports the shared E-book config and uses the same library DOM. Its File System Access API capability is browser-dependent and unavailable in Android WebView.
 - `src/ebook-reader-standalone.js` and `ebook-reader-standalone.html` form a separate lightweight reader handoff page. The reader page depends on the standalone config and separately deployed broker.
 - `apps-script/ebook-transfer/Code.gs` supports both legacy Grapes and standalone operation through Script Properties. The standalone broker must be a separately deployed Apps Script project; the current source file alone does not prove that such a deployment exists.
-- The root `package.json` is named `grapes` and includes the entire Grapes dependency set. The standalone Vite mode selects only E-book HTML entry points, but it still installs and builds from the Grapes package and Vite configuration.
+- The root `package.json` is named `grapes` and includes the entire Grapes dependency set. The standalone Vite mode selects `ebook.html` and `ebook-reader-standalone.html`, but still installs and builds from the Grapes package and Vite configuration.
+- `src/ebook-standalone.js` imports the global `src/styles/index.css`, which in turn imports the Grapes app-shell stylesheet and unrelated app-wide component/screen styles. It also dynamically imports `src/ebook/standalone-shell.js`, which statically imports `src/ui/grapes-app-shell.js`. Both edges must be removed or replaced before the standalone bundle can be considered host-independent.
+- The directly visible runtime package imports in the E-book entry path include `qrcode` (`src/ebook-library.js`) and `epubcheck-standalone` plus its `plugins` and `epubcheck-engine.js?url` entry (`src/ebook/epubcheck.worker.js`). This is an initial import inventory, not yet a complete dependency closure; inspect all transitive EPUB/metadata modules before writing the independent manifest.
 
 ## Confirmed coupling and gaps
 
@@ -85,6 +87,7 @@ This inventory describes source-code evidence only. It does not prove that exter
 - [x] Inventory the primary E-book external services, runtime globals, DOM contracts, storage keys, Drive metadata, broker actions, and build inputs at source level.
 - [x] Record that no direct E-book Supabase SDK/config/request dependency was found in the repository source search; Supabase appears only in the architecture planning document.
 - [ ] Complete a static import-graph check and verify all standalone entry transitive imports before closing this phase.
+- [x] Identify the remaining direct Grapes UI edges in the standalone graph: global `src/styles/index.css` and `src/ebook/standalone-shell.js` → `src/ui/grapes-app-shell.js`.
 - [x] Separate neutral feature APIs from Grapes-named compatibility wrappers; migrate library, reader sync and standalone shell call sites. Keep deprecated aliases during the transition.
 - [x] Add platform contract tests for neutral API delegation and legacy alias compatibility.
 - [x] Migrate standalone shell listeners to neutral platform exports.
@@ -102,7 +105,7 @@ This inventory describes source-code evidence only. It does not prove that exter
 - **Gate:** standalone mode cannot silently use Grapes URLs, folder names, namespaces, or broker endpoints.
 
 ### Phase 3 — independent package and build
-- Create a standalone package manifest and build configuration containing only the E-book runtime dependencies.
+- [ ] Create a standalone package manifest and build configuration containing only the E-book runtime dependencies, after the transitive dependency closure is verified.
 - Build the library and reader handoff pages from the independent package.
 - Keep the Grapes host integration as a consumer of the extracted core.
 - **Gate:** clean install and production build from the standalone package, with an artifact inspection proving no Grapes application modules/assets are bundled.
@@ -133,3 +136,5 @@ This inventory describes source-code evidence only. It does not prove that exter
 - No production OAuth client, Google Cloud console settings, Supabase project, or Apps Script deployment was modified.
 
 - The config tests now install an explicit host config before importing the fail-closed core module. Tests have **not been executed**; runtime import ordering has been reviewed from the Grapes, standalone web, and standalone reader entry points only.
+
+- Static standalone-entry review confirmed the existing Vite build is still rooted in the Grapes package. The shared stylesheet and shared Grapes shell remain explicit blockers; no independent package manifest was created prematurely.
