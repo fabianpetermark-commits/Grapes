@@ -1,7 +1,5 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createEbookConfig } from '../src/ebook/config.js'
-
 const hostDefaults = {
   clientId: '',
   pickerApiKey: '',
@@ -19,6 +17,10 @@ const hostDefaults = {
   storageNamespace: 'grapes',
   viewStorageKey: 'grapes-ebook-view',
 }
+
+// EBOOK_CONFIG is intentionally fail-closed when no host bootstrap is installed.
+globalThis.__EBOOK_CONFIG__ = hostDefaults
+const { createEbookConfig } = await import('../src/ebook/config.js')
 
 test('host configuration preserves explicitly supplied Grapes deployment identifiers', () => {
   const config = createEbookConfig({}, hostDefaults)
