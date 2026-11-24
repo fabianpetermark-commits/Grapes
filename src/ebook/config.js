@@ -1,35 +1,39 @@
-// Deployment-specific settings for the E-book feature.
-// A standalone shell may set window.__EBOOK_CONFIG__ before importing the
-// feature entry point. Vite variables remain the build-time fallback.
-const buildEnv = import.meta.env || {}
-
-const GRAPES_DEFAULTS = Object.freeze({
-  clientId: buildEnv.VITE_GOOGLE_CLIENT_ID || '',
-  pickerApiKey: buildEnv.VITE_GOOGLE_PICKER_API_KEY || '',
-  pickerAppId: buildEnv.VITE_GOOGLE_APP_ID || (buildEnv.VITE_GOOGLE_CLIENT_ID || '').split('-')[0],
-  booksApiKey: buildEnv.VITE_GOOGLE_BOOKS_API_KEY || '',
-  transferBrokerUrl: buildEnv.VITE_EBOOK_TRANSFER_BROKER_URL || '',
-  epubWriteEnabled: buildEnv.VITE_EBOOK_EPUB_WRITE_ENABLED === 'true',
-  folderName: 'Grapes E-book Library',
-  appReturnUrl: 'https://fabianpetermark-commits.github.io/Grapes/',
-  readerSharingKey: 'grapes-reader-library-enabled',
-  libraryCacheKey: 'grapes-ebook-library-cache-v2:',
-  legacyLibraryCacheKey: 'grapes-ebook-library-cache-v1',
-  readerSyncDbName: 'grapes-ebook-reader-sync',
-  readerDirectoryPickerId: 'grapes-ebook-reader',
-  storageNamespace: 'grapes',
-  viewStorageKey: 'grapes-ebook-view',
+// Host-neutral E-book configuration schema and validation.
+// Each host must install globalThis.__EBOOK_CONFIG__ before importing E-book
+// feature modules. Host-specific defaults belong in host adapters/bootstrap.
+const NEUTRAL_DEFAULTS = Object.freeze({
+  clientId: '',
+  pickerApiKey: '',
+  pickerAppId: '',
+  booksApiKey: '',
+  transferBrokerUrl: '',
+  epubWriteEnabled: false,
+  folderName: '',
+  appReturnUrl: '',
+  readerPageUrl: '',
+  readerSharingKey: '',
+  libraryCacheKey: '',
+  legacyLibraryCacheKey: '',
+  readerSyncDbName: '',
+  readerDirectoryPickerId: '',
+  storageNamespace: '',
+  viewStorageKey: '',
 })
 
 function normalizedHttpUrl(value, name) {
-  const url = new URL(String(value))
+  let url
+  try {
+    url = new URL(String(value))
+  } catch {
+    throw new TypeError(`Az E-book ${name} érvényes HTTP(S) URL kell legyen.`)
+  }
   if (url.protocol !== 'https:' && url.protocol !== 'http:') {
     throw new TypeError(`Az E-book ${name} csak HTTP(S) URL lehet.`)
   }
   return url.toString()
 }
 
-export function createEbookConfig(overrides = {}, defaults = GRAPES_DEFAULTS) {
+export function createEbookConfig(overrides = {}, defaults = NEUTRAL_DEFAULTS) {
   const config = { ...defaults, ...overrides }
   if (!config.pickerAppId && config.clientId) config.pickerAppId = config.clientId.split('-')[0]
   config.appReturnUrl = normalizedHttpUrl(config.appReturnUrl, 'visszatérési cím')
@@ -43,11 +47,15 @@ export function createEbookConfig(overrides = {}, defaults = GRAPES_DEFAULTS) {
   }
   if (typeof config.epubWriteEnabled !== 'boolean') throw new TypeError('Az epubWriteEnabled csak logikai érték lehet.')
   if (!config.folderName.trim()) throw new TypeError('Az E-book Drive-mappanév nem lehet üres.')
+  for (const key of ['readerSharingKey', 'libraryCacheKey', 'legacyLibraryCacheKey', 'readerSyncDbName', 'readerDirectoryPickerId', 'storageNamespace', 'viewStorageKey']) {
+    if (!config[key].trim()) throw new TypeError(`Hiányzó E-book host konfiguráció: ${key}`)
+  }
   return Object.freeze(config)
 }
 
-const hostOverrides = typeof globalThis.__EBOOK_CONFIG__ === 'object' && globalThis.__EBOOK_CONFIG__
-  ? globalThis.__EBOOK_CONFIG__
-  : {}
+const hostConfig = globalThis.__EBOOK_CONFIG__
+if (!hostConfig || typeof hostConfig !== 'object' || Array.isArray(hostConfig)) {
+  throw new Error('Az E-book host konfiguráció nincs telepítve. A host bootstrapnek a feature modulok előtt kell betöltődnie.')
+}
 
-export const EBOOK_CONFIG = createEbookConfig(hostOverrides)
+export const EBOOK_CONFIG = createEbookConfig(hostConfig)
