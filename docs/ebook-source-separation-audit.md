@@ -16,7 +16,7 @@ The shared Grapes UI shell is not a prerequisite for source separation. UI work 
 - `src/ebook/platform.js` now exposes host-neutral functions (`connectDrive`, `driveRequest`, `isDriveConnected`, `confirm`, `navigate`, etc.). The former Grapes-named exports remain as deprecated compatibility aliases. `src/ebook-library.js`, `src/ebook-reader-sync.js`, and `src/ebook/standalone-shell.js` have been migrated to the neutral names.
 - `src/ebook/grapes-platform.js` is the actual Grapes adapter. It imports `../storage/grapes-drive.js`, `../ui/modal.js`, and `../screens.js`. These imports must remain on the Grapes host side and must never enter a standalone bundle.
 - `src/ebook/standalone-platform.js` implements a separate browser GIS / Android-native Drive authorization adapter and uses a configurable storage namespace. It is not a complete independent application boundary by itself.
-- `src/ebook/config.js` currently defines Grapes deployment defaults, including the Grapes Pages URL, Grapes folder name, Grapes storage keys, and Grapes IndexedDB identifiers. Standalone overrides these through `src/ebook/standalone-config.js`.
+- `src/ebook/config.js` now contains only a host-neutral schema/validator and fails closed if `globalThis.__EBOOK_CONFIG__` was not installed. Grapes defaults live in `src/ebook/grapes-config.js`, loaded as a side effect by `src/ebook/grapes-platform.js`; standalone web and reader entries load `src/ebook/standalone-config.js` before dynamically/static importing the core.
 - `src/ebook-standalone.js` imports the Grapes global stylesheet and the Grapes app shell adapter (`src/ebook/standalone-shell.js`). This is a direct Grapes UI dependency in the standalone entry point.
 - `src/ebook/standalone-shell.js` imports `src/ui/grapes-app-shell.js` and adapts the existing E-book DOM. It is presentation/host integration, not core E-book logic.
 - `src/ebook-reader-sync.js` uses the platform seam, but still imports the shared E-book config and uses the same library DOM. Its File System Access API capability is browser-dependent and unavailable in Android WebView.
@@ -31,7 +31,7 @@ The shared Grapes UI shell is not a prerequisite for source separation. UI work 
 | Feature API | Host-neutral exports are now used by the library, reader sync and standalone shell; legacy names remain aliases | Keep compatibility aliases until all consumers/tests are migrated, then remove only after a full search and regression pass |
 | Grapes integration | Dedicated `grapes-platform.js` imports Grapes storage, modal, and screen modules | Keep all such imports in the Grapes host entry only |
 | Standalone entry | Imports `./styles/index.css` and mounts the Grapes shell | Use a standalone stylesheet and make the Grapes shell optional |
-| Configuration | Grapes defaults live in the shared config module | Separate host defaults from neutral validation/schema; fail closed when standalone deployment settings are absent |
+| Configuration | Neutral schema/validation in `src/ebook/config.js`; Grapes defaults in `src/ebook/grapes-config.js`; standalone defaults in `src/ebook/standalone-config.js` | Preserve each host's existing IDs and namespaces; fail closed if a host bootstrap is missing |
 | Build | Standalone mode shares root package manifest and Vite config | Establish a standalone package/build manifest with only E-book runtime dependencies |
 | Drive data | Namespace and folder overrides exist | Verify all keys, filenames, Drive folder names, appProperties and broker settings are host-specific and non-overlapping |
 | Reader transfer | Broker supports standalone mode by Script Properties | Verify separate deployment, allowed origins, URLs, storage, and API contract |
@@ -94,8 +94,10 @@ This inventory describes source-code evidence only. It does not prove that exter
 - **Gate:** dependency graph and tests show no Grapes storage/UI/navigation import reachable from the standalone feature entry.
 
 ### Phase 2 — standalone configuration and persistence
-- Move Grapes deployment defaults into the Grapes adapter/configuration.
-- Define required standalone settings and validate them at startup.
+- [x] Move Grapes deployment defaults out of the shared core into `src/ebook/grapes-config.js`, loaded by the Grapes host adapter.
+- [x] Make the shared config module host-neutral and fail closed when no host configuration is installed.
+- [x] Validate required host URLs, Drive folder name, and persistence namespace/key settings.
+- [ ] Audit localStorage/sessionStorage/IndexedDB keys, Drive folder naming, hidden metadata files, appProperties and broker token namespaces.
 - Audit localStorage/sessionStorage/IndexedDB keys, Drive folder naming, hidden metadata files, appProperties and broker token namespaces.
 - **Gate:** standalone mode cannot silently use Grapes URLs, folder names, namespaces, or broker endpoints.
 
@@ -126,6 +128,8 @@ This inventory describes source-code evidence only. It does not prove that exter
 
 - Neutral platform API and compatibility alias tests were added/updated, but **were not executed in this environment**.
 - GitHub Actions currently reports no workflow runs for `feature/ebook-core-separation-20261122`; therefore there is no CI pass/fail result to report yet.
-- Current branch head at the latest source review: `a20d710c9af9632078d004ed9da05bb3c45956b9`.
+- Configuration isolation was implemented in commits `3ab6148`, `7f24645`, `4968bfc`, `8a8cd4b`, and `df382b0`; the shared core no longer contains Grapes deployment defaults.
 - Source inspection found and fixed a name-shadowing hazard in `src/ebook-library.js`: local UI handlers named `connectDrive` / `disconnectDrive` now delegate to explicitly aliased platform methods, and Drive requests use `platformDriveRequest`.
 - No production OAuth client, Google Cloud console settings, Supabase project, or Apps Script deployment was modified.
+
+- The config tests now install an explicit host config before importing the fail-closed core module. Tests have **not been executed**; runtime import ordering has been reviewed from the Grapes, standalone web, and standalone reader entry points only.
