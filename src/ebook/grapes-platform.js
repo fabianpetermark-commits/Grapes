@@ -1,4 +1,6 @@
 // Grapes host adapter for the reusable E-book feature.
+// Install Grapes deployment defaults before the feature imports EBOOK_CONFIG.
+import './grapes-config.js'
 import {
   connectGrapesDrive,
   disconnectGrapesDrive,
